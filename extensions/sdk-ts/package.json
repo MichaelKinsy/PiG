@@ -23,7 +23,7 @@
   },
   "devDependencies": {
     "@earendil-works/pi-coding-agent": "0.87.1",
-    "typescript": "5.9.3"
+    "typescript": "7.0.2"
   },
   "engines": {
     "node": ">=22.19.0"
