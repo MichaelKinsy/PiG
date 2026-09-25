@@ -43,7 +43,7 @@ func writeClaimsFixture(t *testing.T, files map[string]string) string {
 		"coding/piglet/main.go": "package piglet\n\nimport \"io\"\n\nfunc printHelp(w io.Writer) {\n" +
 			"\tprint(w, `pig piglet list\npig piglet build\n`)\n}\n",
 		"AGENTS.md": "<!-- BEGIN COVERAGE -->\n**Porting:** 40 / 50 intended-portable entries ✅ (80.0%); **Verification:** 30 behavioral (75.0%), 10 untested.\n<!-- END COVERAGE -->\n",
-		"README.md": "<!-- BEGIN PORTING -->\n**Porting:** 40 of 50 intended-portable upstream files are ported (80.0%).\n\n**Parity coverage badge:** 30 of the 40 ported files (75.0%) have at least one behavioral parity scenario.\n<!-- END PORTING -->\n",
+		"README.md": "# PiG\n",
 	}
 	maps.Copy(base, files)
 	for name, body := range base {
@@ -74,7 +74,6 @@ func TestPublicClaimsCheckAcceptsSupportedStatements(t *testing.T) {
 
 func TestPublicClaimsCheckRejectsContradictedStatements(t *testing.T) {
 	root := writeClaimsFixture(t, map[string]string{
-		"README.md": "<!-- BEGIN PORTING -->\n**Porting:** 45 of 50 intended-portable upstream files are ported (90.0%).\n<!-- END PORTING -->\n",
 		"docs/site/docs/index.md": "PiG has full parity with Pi and sends the same requests byte for byte.\n" +
 			"PiG implements every Pi command.\n" +
 			"It tracks Pi 9.8.0 and Pi 9.9.0.\n" +
@@ -88,7 +87,6 @@ func TestPublicClaimsCheckRejectsContradictedStatements(t *testing.T) {
 		t.Fatalf("contradicted statements passed:\n%s", output)
 	}
 	for _, want := range []string{
-		"readme: porting block disagrees with the AGENTS.md coverage block",
 		"forbidden phrase 'full parity'",
 		"forbidden phrase 'same requests'",
 		"forbidden phrase 'byte for byte'",

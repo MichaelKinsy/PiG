@@ -31,7 +31,8 @@ func TestDependabotCoversMaintainedManifests(t *testing.T) {
 		"/piglets/standard",
 		"/tests/extension-conformance/testdata/rust-sdk-fixture",
 	} {
-		if !strings.Contains(config, "directory: "+directory+"\n") {
+		// A directory is listed either alone or in a grouped entry's list.
+		if !strings.Contains(config, "directory: "+directory+"\n") && !strings.Contains(config, "- "+directory+"\n") {
 			t.Errorf("dependabot does not cover %s", directory)
 		}
 	}

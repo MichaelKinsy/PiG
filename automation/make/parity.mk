@@ -294,21 +294,20 @@ parity-flow-coverage: parity-deps
 		echo "$(PARITY_FLOW_COVERAGE)"
 
 # Regenerate parity/coverage.md from the latest results, and patch the
-# condensed coverage block in AGENTS.md and the porting block in README.md.
+# condensed coverage block in AGENTS.md.
 coverage: ## Regenerate coverage.md from PORT_MAP + scenarios
 	@set -eu; mkdir -p tmp; tmp=$$(mktemp -d tmp/coverage.XXXXXXXX); trap 'rm -rf "$$tmp"' EXIT; \
-	    cp AGENTS.md "$$tmp/AGENTS.md"; cp README.md "$$tmp/README.md"; \
+	    cp AGENTS.md "$$tmp/AGENTS.md"; \
 	    go run ./parity/cmd/coverage \
 	    $(if $(filter command line environment override,$(origin RESULTS)),$(if $(RESULTS),-results "$(RESULTS)",),$(if $(wildcard $(RESULTS)),-results "$(RESULTS)",)) \
 	    -port-map PORT_MAP.md \
 	    -scenarios parity/scenarios \
 	    -agents-md "$$tmp/AGENTS.md" \
-	    -readme "$$tmp/README.md" \
 	    -badge "$$tmp/badge.svg" > "$$tmp/coverage.md"; \
 	    mv "$$tmp/coverage.md" parity/coverage.md; \
-	    mv "$$tmp/AGENTS.md" AGENTS.md; mv "$$tmp/README.md" README.md; \
+	    mv "$$tmp/AGENTS.md" AGENTS.md; \
 	    mv "$$tmp/badge.svg" .github/badges/parity-coverage.svg
-	@echo "wrote parity/coverage.md + AGENTS.md coverage block + README porting block + parity coverage badge"
+	@echo "wrote parity/coverage.md + AGENTS.md coverage block + parity coverage badge"
 	@head -6 parity/coverage.md | tail -2
 
 interface-proposals: parity-deps interface-deps ## Regenerate unreviewed interface inventories and recommendations

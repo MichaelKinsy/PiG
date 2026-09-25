@@ -20,7 +20,6 @@ passes its page sources and generated docs data), and fails on:
              the generated coverage block in AGENTS.md
   piglet    a ``pig piglet <verb>`` command in Markdown that is absent from
              ``pig piglet --help``, unless it appears under a Planned heading
-  readme     a README porting block that disagrees with that coverage block
 
 Every expected value is read from its single source, so the check follows the
 pin and `make coverage` without edits here. Pass delivery or blog drafts as
@@ -307,22 +306,6 @@ def scan(path: pathlib.Path, name: str, pinned: str, reviewed: str, cov: Coverag
     return findings
 
 
-def readme_findings(root: pathlib.Path, cov: Coverage) -> list[Finding]:
-    text = (root / "README.md").read_text(encoding="utf-8")
-    block = re.search(r"<!-- BEGIN PORTING -->(.*?)<!-- END PORTING -->", text, re.DOTALL)
-    if not block:
-        return [Finding("README.md", 0, "readme", "no generated porting block; run make coverage", "")]
-    required = [
-        f"{cov.ported} of {cov.intended} intended-portable upstream files are ported ({cov.porting_pct}%)",
-        f"{cov.behavioral} of the {cov.ported} ported files ({cov.behavioral_pct}%)",
-    ]
-    return [
-        Finding("README.md", 0, "readme", f"porting block disagrees with the AGENTS.md coverage block: missing {want!r}; run make coverage", "")
-        for want in required
-        if want not in block.group(1)
-    ]
-
-
 def apply_allowlist(root: pathlib.Path, findings: list[Finding]) -> tuple[list[Finding], list[str]]:
     used = set()
     kept = []
@@ -352,7 +335,7 @@ def main() -> int:
     reviewed = go_const(root, "UpstreamReviewedVersion")
     cov = coverage_block(root)
 
-    findings = readme_findings(root, cov)
+    findings: list[Finding] = []
     piglet_commands = piglet_help_commands(root)
     for path in public_files(root):
         name = display(path, root)

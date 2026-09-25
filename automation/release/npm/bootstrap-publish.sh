@@ -61,7 +61,9 @@ while read -r name tarball; do
     echo "bootstrap: DRY_RUN, would publish $work/npm/$tarball"
     continue
   fi
-  npm publish "$work/npm/$tarball" --access public
+  # The loop reads its input from the publish list, so hand npm the terminal
+  # for the browser (or one-time password) 2FA prompt.
+  npm publish "$work/npm/$tarball" --access public </dev/tty
   echo "bootstrap: published ${name}@${npm_version}"
 done < "$work/npm/publish-order.txt"
 
