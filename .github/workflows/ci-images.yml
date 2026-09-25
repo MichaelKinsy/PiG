@@ -161,7 +161,7 @@ jobs:
           sha256sum image.tar.gz image-ref.txt image-id.txt > SHA256SUMS
       - name: Upload validated image
         if: github.event_name == 'workflow_dispatch' && inputs.publish == true && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pig-ci-${{ matrix.image }}-candidate
           path: ${{ runner.temp }}/pig-ci-${{ matrix.image }}/
@@ -170,7 +170,7 @@ jobs:
           retention-days: 14
       - name: Upload image evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pig-ci-${{ matrix.image }}-evidence
           path: ${{ github.workspace }}/ci-image-${{ matrix.image }}/out/ci-images/${{ matrix.image }}/
@@ -262,7 +262,7 @@ jobs:
           printf '%s@%s\n' "${IMAGE_REF%:*}" "$digest" > publication/image-ref.txt
       - name: Upload publication evidence
         if: always()
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pig-ci-${{ matrix.image }}-publication
           path: ${{ runner.temp }}/pig-ci-${{ matrix.image }}/publication/
