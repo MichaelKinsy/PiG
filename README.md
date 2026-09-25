@@ -35,7 +35,35 @@ SPDX-License-Identifier: MIT
 
 PiG (Pi in Go) is a Go implementation of [Pi](https://github.com/earendil-works/pi), the TypeScript codebase behind the Pi coding agent. PiG is a parity-bound translation, where Pi's behavior is the contract and Go is the implementation language.
 
-PiG is under active development. Install it on macOS or Linux with `curl -fsSL https://pi-in-go.dev/install.sh | sh`, on any supported platform with `npm install -g @pi-in-go/pig` or `go install github.com/MichaelKinsy/PiG/cmd/pig@latest`, or download an archive from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases). Windows support is a preview.
+PiG is under active development. Windows support is a preview.
+
+## Install
+
+macOS and Linux:
+
+```bash
+curl -fsSL https://pi-in-go.dev/install.sh | sh
+```
+
+Windows (PowerShell):
+
+```powershell
+irm https://pi-in-go.dev/install.ps1 | iex
+```
+
+npm, on any supported platform:
+
+```bash
+npm install -g @pi-in-go/pig
+```
+
+Go:
+
+```bash
+go install github.com/MichaelKinsy/PiG/cmd/pig@latest
+```
+
+You can also download an archive for your platform from [GitHub Releases](https://github.com/MichaelKinsy/PiG/releases) or [build from source](#build-from-source). [pi-in-go.dev/install](https://pi-in-go.dev/install) covers every method, with update and uninstall steps. Then run `pig` in a project directory.
 
 ## Upstream Pi
 

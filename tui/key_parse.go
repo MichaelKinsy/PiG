@@ -120,7 +120,7 @@ func parsedKeyName(codepoint int) (string, bool) {
 		return string(rune(codepoint)), true
 	}
 	if isSymbolCodepoint(codepoint) {
-		return string(rune(uint16(codepoint))), true
+		return string(rune(codepoint & 0xFFFF)), true
 	}
 	return "", false
 }
