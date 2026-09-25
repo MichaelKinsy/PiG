@@ -1,0 +1,1149 @@
+{
+  "upstreamVersion": "0.87.1",
+  "kind": "cli",
+  "interfaces": [
+    {
+      "id": "cli:pi-config/--approve",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:3a43ff638e285964c585d6776c25871da86ae790f7606539899d8c0fbdfc6485",
+      "command": "pi-config",
+      "flag": "--approve",
+      "aliases": [
+        "-a"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 810
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 290
+      }
+    },
+    {
+      "id": "cli:pi-config/--help",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:1bc2f6d637247d89a6414c3c2152976f28d81138199996f76da65f934d83c542",
+      "command": "pi-config",
+      "flag": "--help",
+      "aliases": [
+        "-h"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 800
+      },
+      "help": null
+    },
+    {
+      "id": "cli:pi-config/--local",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:2b9260112a2ad4150be89722c888fdb7323b25cab758d550542b3c6e3cba00dc",
+      "command": "pi-config",
+      "flag": "--local",
+      "aliases": [
+        "-l"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 808
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 289
+      }
+    },
+    {
+      "id": "cli:pi-config/--no-approve",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:9bb6c85137d96e5975b3b0857a812475054705a93f9920990465a9442df7d248",
+      "command": "pi-config",
+      "flag": "--no-approve",
+      "aliases": [
+        "-na"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 812
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 291
+      }
+    },
+    {
+      "id": "cli:pi-install/--approve",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:6b3a44fbe28fff12eaecbf64f13c0e6edc9965bef0d6c3ba7ebde580e45f139a",
+      "command": "pi-install",
+      "flag": "--approve",
+      "aliases": [
+        "-a"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 454
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 305
+      }
+    },
+    {
+      "id": "cli:pi-install/--help",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:dfd5df43f6da62e1ef189d54731975b35916ec486344e065896f76398e4af4d3",
+      "command": "pi-install",
+      "flag": "--help",
+      "aliases": [
+        "-h"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 404
+      },
+      "help": null
+    },
+    {
+      "id": "cli:pi-install/--local",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:141cc098fecb7b995001e1e92e4b688fcc7964fc087cb8d52dbc632fe60a65a5",
+      "command": "pi-install",
+      "flag": "--local",
+      "aliases": [
+        "-l"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 409
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 304
+      }
+    },
+    {
+      "id": "cli:pi-install/--no-approve",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:bd210de0dd7d4308ce82539f1724deaab623211c3e01cb5ea634701d170bfe93",
+      "command": "pi-install",
+      "flag": "--no-approve",
+      "aliases": [
+        "-na"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 459
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 306
+      }
+    },
+    {
+      "id": "cli:pi-list/--approve",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:5d39fa39aba2c2db9d34550a2d3d0d79fe320253c3b4f28c910450d7c6b4b3a5",
+      "command": "pi-list",
+      "flag": "--approve",
+      "aliases": [
+        "-a"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 454
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 368
+      }
+    },
+    {
+      "id": "cli:pi-list/--help",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:eefcc5df380666222dfd1042a290b8680845cf851d82b7fddb72b60d4f0775ea",
+      "command": "pi-list",
+      "flag": "--help",
+      "aliases": [
+        "-h"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 404
+      },
+      "help": null
+    },
+    {
+      "id": "cli:pi-list/--no-approve",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:d18b3f8e936bc7732e2d21143b3b0c3b789c92196ab6717ab08465e9c94157d2",
+      "command": "pi-list",
+      "flag": "--no-approve",
+      "aliases": [
+        "-na"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 459
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 369
+      }
+    },
+    {
+      "id": "cli:pi-remove/--approve",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:853c6efb3b0eae39ffbc0a093990c6875d5c4156f132d61aaa5b72f1f3c151e0",
+      "command": "pi-remove",
+      "flag": "--approve",
+      "aliases": [
+        "-a"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 454
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 327
+      }
+    },
+    {
+      "id": "cli:pi-remove/--help",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:dc13b3424bf6c0730d18ce92c5090bab2270c1e7cbdd56d84a157dcb9f902f17",
+      "command": "pi-remove",
+      "flag": "--help",
+      "aliases": [
+        "-h"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 404
+      },
+      "help": null
+    },
+    {
+      "id": "cli:pi-remove/--local",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:20bc4c6e1e57ff93d194e5c8ab30ac33ee6080015c2d8500d380e0045f5925b4",
+      "command": "pi-remove",
+      "flag": "--local",
+      "aliases": [
+        "-l"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 409
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 326
+      }
+    },
+    {
+      "id": "cli:pi-remove/--no-approve",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:7a9f013731b3bd47e98c00d12e1850f8c730008ab3ea1c27100d073c765abead",
+      "command": "pi-remove",
+      "flag": "--no-approve",
+      "aliases": [
+        "-na"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 459
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 328
+      }
+    },
+    {
+      "id": "cli:pi-update/--all",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:2f4b5219adcc6af7954c92eb3001be44c988ffdc9dee5e4c6ea8277ac2935b87",
+      "command": "pi-update",
+      "flag": "--all",
+      "aliases": [],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 445
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 346
+      }
+    },
+    {
+      "id": "cli:pi-update/--approve",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:5ef83d5778a41946d55e7e1ae90167f4dcc4cd8d4ef91b55e33170e6caffcc23",
+      "command": "pi-update",
+      "flag": "--approve",
+      "aliases": [
+        "-a"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 454
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 348
+      }
+    },
+    {
+      "id": "cli:pi-update/--extension",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:9fa3b4dbb9fad6c897e200aa0c84bd22f76ebb108b124faca134c2b8209ec3a6",
+      "command": "pi-update",
+      "flag": "--extension",
+      "aliases": [],
+      "value": "<source>",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 473
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 347
+      }
+    },
+    {
+      "id": "cli:pi-update/--extensions",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:3bcc6b5447c838199df07e94dbb259777284206736780d5ff681fafa3110ffe7",
+      "command": "pi-update",
+      "flag": "--extensions",
+      "aliases": [],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 427
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 344
+      }
+    },
+    {
+      "id": "cli:pi-update/--force",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:1afe582df58f29cda573657de2f6fe030c3a5efe586ded665efee007d675ade9",
+      "command": "pi-update",
+      "flag": "--force",
+      "aliases": [],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 464
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 350
+      }
+    },
+    {
+      "id": "cli:pi-update/--help",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:c334b7ad85c6a22ed07a982a351d71e6fe3b617084775fd9d9dbe7feffc17af0",
+      "command": "pi-update",
+      "flag": "--help",
+      "aliases": [
+        "-h"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 404
+      },
+      "help": null
+    },
+    {
+      "id": "cli:pi-update/--models",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:a30b346ff2c5a244586b2ec50145810c3b54b1029c601f44ddedbfb07481de12",
+      "command": "pi-update",
+      "flag": "--models",
+      "aliases": [],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 436
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 345
+      }
+    },
+    {
+      "id": "cli:pi-update/--no-approve",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:1807fc93d1b20387dfaa28b56ce39daf4fe8d86734d2f9b97a09403f90d0e35f",
+      "command": "pi-update",
+      "flag": "--no-approve",
+      "aliases": [
+        "-na"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 459
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 349
+      }
+    },
+    {
+      "id": "cli:pi-update/--self",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:de5c572c4b752f918c18133339727215e8be45bcafb1d1009c71320531644aaf",
+      "command": "pi-update",
+      "flag": "--self",
+      "aliases": [],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 418
+      },
+      "help": {
+        "path": "packages/coding-agent/src/package-manager-cli.ts",
+        "line": 343
+      }
+    },
+    {
+      "id": "cli:pi/--api-key",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:b10c820fe31df919832ac342370aab7848c1b7a120d0690988895198b51ccfb8",
+      "command": "pi",
+      "flag": "--api-key",
+      "aliases": [],
+      "value": "<key>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 118
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 290
+      }
+    },
+    {
+      "id": "cli:pi/--append-system-prompt",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:25f380689b26c84a8b82ed49128cc597f936462b7308564d0fcfac5b0bbc9415",
+      "command": "pi",
+      "flag": "--append-system-prompt",
+      "aliases": [],
+      "value": "<text>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 122
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 292
+      }
+    },
+    {
+      "id": "cli:pi/--approve",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:e0da0942ad5cdbfe73d2e6d7e581bfb56e811c7cec9af6623328347e318dafee",
+      "command": "pi",
+      "flag": "--approve",
+      "aliases": [
+        "-a"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 229
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 326
+      }
+    },
+    {
+      "id": "cli:pi/--continue",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:9a46324956c12a7791f8bef1909b4d9491ec6a57fc2f7ef1bf118e5ac0379798",
+      "command": "pi",
+      "flag": "--continue",
+      "aliases": [
+        "-c"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 110
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 295
+      }
+    },
+    {
+      "id": "cli:pi/--exclude-tools",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:4e61abb19b379640e5b830185a4a35a5a0a557637d0f535adcac7a3789d12773",
+      "command": "pi",
+      "flag": "--exclude-tools",
+      "aliases": [
+        "-xt"
+      ],
+      "value": "<tools>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 152
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 309
+      }
+    },
+    {
+      "id": "cli:pi/--export",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:881c61074e01272937c415b1d5e2edf9f9d680789ccbc728f867cea0d8481c9c",
+      "command": "pi",
+      "flag": "--export",
+      "aliases": [],
+      "value": "<file>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 174
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 322
+      }
+    },
+    {
+      "id": "cli:pi/--extension",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:fc297220690691ce1bf9cd5a72689dc884056e7bb36443092efb73e0d69891d5",
+      "command": "pi",
+      "flag": "--extension",
+      "aliases": [
+        "-e"
+      ],
+      "value": "<path>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 176
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 312
+      }
+    },
+    {
+      "id": "cli:pi/--fork",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:a34ed7d4ff5ec2c4bc48cb0875e953aaad18e3691fd6514f2ce89b717d077871",
+      "command": "pi",
+      "flag": "--fork",
+      "aliases": [],
+      "value": "<path|id>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 137
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 299
+      }
+    },
+    {
+      "id": "cli:pi/--help",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:6d889393a8592fb2af5dea393dcb4647c1ca41b703ca16d4e1fbd9f25f07f828",
+      "command": "pi",
+      "flag": "--help",
+      "aliases": [
+        "-h"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 91
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 330
+      }
+    },
+    {
+      "id": "cli:pi/--list-models",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:8ebdc9211251d2053a78a694a3cba76eb97f343fc122af7ff60cd9a21b42ba37",
+      "command": "pi",
+      "flag": "--list-models",
+      "aliases": [],
+      "value": "[search]",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 206
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 323
+      }
+    },
+    {
+      "id": "cli:pi/--mode",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:fe854104818f6c1a0ce122e2a60e6fcbe3999f98d3c09cda0419396b2a1011d7",
+      "command": "pi",
+      "flag": "--mode",
+      "aliases": [],
+      "value": "<mode>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 95
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 293
+      }
+    },
+    {
+      "id": "cli:pi/--model",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:d5c6ec3acab6f27f9ef068e92814b2bad3e80a7d35fe83804d07d3b9f4866503",
+      "command": "pi",
+      "flag": "--model",
+      "aliases": [],
+      "value": "<pattern>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 116
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 289
+      }
+    },
+    {
+      "id": "cli:pi/--models",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:963965ae4894b57b993a37f01a5764c20d17d70bab9ce484ee4fdf3ccdb5b46e",
+      "command": "pi",
+      "flag": "--models",
+      "aliases": [],
+      "value": "<patterns>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 141
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 303
+      }
+    },
+    {
+      "id": "cli:pi/--name",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:bc48893122fe13577910132e0c3db205e2308705fd777927488b0f2450111561",
+      "command": "pi",
+      "flag": "--name",
+      "aliases": [
+        "-n"
+      ],
+      "value": "<name>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 125
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 302
+      }
+    },
+    {
+      "id": "cli:pi/--no-approve",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:0de0a6000cbc1882739694911876dec9854aaceb55a00ed1a333bab0dbd0408e",
+      "command": "pi",
+      "flag": "--no-approve",
+      "aliases": [
+        "-na"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 231
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 327
+      }
+    },
+    {
+      "id": "cli:pi/--no-builtin-tools",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:22706afb89fdc05355af81d37a426820bf75ea08d7c840fa8b499bb95dc018e2",
+      "command": "pi",
+      "flag": "--no-builtin-tools",
+      "aliases": [
+        "-nbt"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 145
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 306
+      }
+    },
+    {
+      "id": "cli:pi/--no-context-files",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:ec2196bdc92cb289215f7bdfd951ad639ce8732be29e8e9d4dcbe86c7a973130",
+      "command": "pi",
+      "flag": "--no-context-files",
+      "aliases": [
+        "-nc"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 204
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 321
+      }
+    },
+    {
+      "id": "cli:pi/--no-extensions",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:6ba95dea34a1c535b4fc942c6946f461868d0039d57c1a46bc2b9a8851da5ac5",
+      "command": "pi",
+      "flag": "--no-extensions",
+      "aliases": [
+        "-ne"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 179
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 313
+      }
+    },
+    {
+      "id": "cli:pi/--no-prompt-templates",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:2ba5eb9b8bfcb14f4c731f530c9a1bda97fc012850f3527346b4c7825aacf2f2",
+      "command": "pi",
+      "flag": "--no-prompt-templates",
+      "aliases": [
+        "-np"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 200
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 317
+      }
+    },
+    {
+      "id": "cli:pi/--no-session",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:30ad99e6e61626bf6f5310267a373600daf6aa5e856bfb57e1943f8ef928a872",
+      "command": "pi",
+      "flag": "--no-session",
+      "aliases": [],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 131
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 301
+      }
+    },
+    {
+      "id": "cli:pi/--no-skills",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:7b5bb8e53d2c21d8a754c77d45538d0ad60c2661605d34c0a4dcd80424064b71",
+      "command": "pi",
+      "flag": "--no-skills",
+      "aliases": [
+        "-ns"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 198
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 315
+      }
+    },
+    {
+      "id": "cli:pi/--no-themes",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:f4408d086b766de6bfbcd3a438bfd938e0a543f525f242988c4b0c8a0fa952c3",
+      "command": "pi",
+      "flag": "--no-themes",
+      "aliases": [],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 202
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 320
+      }
+    },
+    {
+      "id": "cli:pi/--no-tools",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:8b247530911ae0852aa8ca19f1535a81c227dbccfed15868e94ecf7edb6b03eb",
+      "command": "pi",
+      "flag": "--no-tools",
+      "aliases": [
+        "-nt"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 143
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 305
+      }
+    },
+    {
+      "id": "cli:pi/--offline",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:87196899a729faab93d3666252ddb1f312f04b0b331f0a7025963519037778f8",
+      "command": "pi",
+      "flag": "--offline",
+      "aliases": [],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 233
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 328
+      }
+    },
+    {
+      "id": "cli:pi/--print",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:acd2bd857e54b842d38c809d7c17c142614fc6315cfd1fb7866e17526c354a87",
+      "command": "pi",
+      "flag": "--print",
+      "aliases": [
+        "-p"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 167
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 294
+      }
+    },
+    {
+      "id": "cli:pi/--prompt-template",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:14668813e83151ff0c0e8a92b1cdc3fa225336136487b6777a3f4adddcfab99d",
+      "command": "pi",
+      "flag": "--prompt-template",
+      "aliases": [],
+      "value": "<path>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 184
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 316
+      }
+    },
+    {
+      "id": "cli:pi/--provider",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:7bedf16d46801fc9d0fe439a31a8819224fbb33aa49bce9f3bf4416aecc2117c",
+      "command": "pi",
+      "flag": "--provider",
+      "aliases": [],
+      "value": "<name>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 114
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 288
+      }
+    },
+    {
+      "id": "cli:pi/--resume",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:8246e72003558875ca53a3ea84d47071d0ab57ddfb73ef84d87bd6cdde35aeb3",
+      "command": "pi",
+      "flag": "--resume",
+      "aliases": [
+        "-r"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 112
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 296
+      }
+    },
+    {
+      "id": "cli:pi/--session",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:4910a89476a12a6c9e5ff46de05e3d7fa0f775db58dd34626d16740413736c2c",
+      "command": "pi",
+      "flag": "--session",
+      "aliases": [],
+      "value": "<path|id>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 133
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 297
+      }
+    },
+    {
+      "id": "cli:pi/--session-dir",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:83ade1b2ad129d165126979256c62e3d4adb543b8ecfd6b48ad772bc2d429a5f",
+      "command": "pi",
+      "flag": "--session-dir",
+      "aliases": [],
+      "value": "<dir>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 139
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 300
+      }
+    },
+    {
+      "id": "cli:pi/--session-id",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:9a1044bcfb86ccc157449b62d0a040bed918b1db473c50047622ba01f343f98d",
+      "command": "pi",
+      "flag": "--session-id",
+      "aliases": [],
+      "value": "<id>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 135
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 298
+      }
+    },
+    {
+      "id": "cli:pi/--skill",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:1dd1cdae4430c8a836d73a88655bc2c0aa5d56486f940091869f13f5614be2cf",
+      "command": "pi",
+      "flag": "--skill",
+      "aliases": [],
+      "value": "<path>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 181
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 314
+      }
+    },
+    {
+      "id": "cli:pi/--system-prompt",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:7836e8f62e64570edf715bb8f1ed48230dfc4d7c1303edba6c6a977669cde6a7",
+      "command": "pi",
+      "flag": "--system-prompt",
+      "aliases": [],
+      "value": "<text>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 120
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 291
+      }
+    },
+    {
+      "id": "cli:pi/--theme",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:2fdf9e4957badf272a782512a37258fca275427ae659ce29970527fe1c7555a5",
+      "command": "pi",
+      "flag": "--theme",
+      "aliases": [],
+      "value": "<path>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 187
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 318
+      }
+    },
+    {
+      "id": "cli:pi/--thinking",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:9b53e44f039576ac254842a7f4897210268b7ab01029ea7182d75a61d296b219",
+      "command": "pi",
+      "flag": "--thinking",
+      "aliases": [],
+      "value": "<level>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 157
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 311
+      }
+    },
+    {
+      "id": "cli:pi/--tools",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:86dcde00b4ffe58298df96e2a0a7aaf2cbe7dab54cb3c6e2dd859962418d385a",
+      "command": "pi",
+      "flag": "--tools",
+      "aliases": [
+        "-t"
+      ],
+      "value": "<tools>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 147
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 307
+      }
+    },
+    {
+      "id": "cli:pi/--tui-mode",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:f0a7473029c78a960ee6c3aa43bd87b71cc70c48866bf4e72d9c27ac36610313",
+      "command": "pi",
+      "flag": "--tui-mode",
+      "aliases": [],
+      "value": "<mode>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 213
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 325
+      }
+    },
+    {
+      "id": "cli:pi/--use-theme",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:091d3407f7577cf2d4480eb5409a5378256895be646f4cc2a40b7ab1cec3da3a",
+      "command": "pi",
+      "flag": "--use-theme",
+      "aliases": [],
+      "value": "<name[/name]>",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 190
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 319
+      }
+    },
+    {
+      "id": "cli:pi/--verbose",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:14fd99a786f4617b97faeb95cd9ded73c6fa2b46b939d8c960d0cd46f61998d6",
+      "command": "pi",
+      "flag": "--verbose",
+      "aliases": [],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 227
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 324
+      }
+    },
+    {
+      "id": "cli:pi/--version",
+      "kind": "cli-flag",
+      "shapeHash": "sha256:eb9d77d8d53a6d4e81f02d51858da9f1bc4230d84635e5e1831baeb56eb59d6b",
+      "command": "pi",
+      "flag": "--version",
+      "aliases": [
+        "-v"
+      ],
+      "value": "",
+      "parser": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 93
+      },
+      "help": {
+        "path": "packages/coding-agent/src/cli/args.ts",
+        "line": 331
+      }
+    }
+  ]
+}

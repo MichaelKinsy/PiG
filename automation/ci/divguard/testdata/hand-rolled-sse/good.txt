@@ -1,0 +1,22 @@
+// divguard:path ai/openrouter_images.go
+
+package ai
+
+import "strings"
+
+type sseEvent struct{ Event, Data string }
+
+// decodeSSE stands in for the shared decoder in ai/sse.go.
+func decodeSSE(frames []sseEvent, emit func(sseEvent)) {
+	for _, f := range frames {
+		emit(f)
+	}
+}
+
+// imageMime reads a data: URL, not an SSE line.
+func imageMime(imageURL string) string {
+	if !strings.HasPrefix(imageURL, "data:") {
+		return ""
+	}
+	return strings.TrimPrefix(strings.Split(imageURL, ";")[0], "data:")
+}

@@ -1,0 +1,127 @@
+# Behavior family: selectors
+# Surface: extension editor overlay (ExtensionEditorComponent)
+#
+# Driven via /tree → select older user message → "Summarize branch?"
+# → "Summarize with custom prompt". Upstream opens
+# ExtensionEditorComponent("Custom summarization instructions") in
+# the editor slot.
+#
+# Upstream evidence (pi v0.80.3, reprobed in tmux 100×35,
+# PI_CODING_AGENT_DIR=/tmp/probe-pi-agent pi --no-extensions
+# -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1,
+# sequence: "What is 20+22?" Enter, /tree Enter, Up, Enter [selector
+# shows], Down Down [cursor on "Summarize with custom prompt"], Enter):
+#
+#     ────────────────────────────────────────────────────────────────────
+#
+#      Custom summarization instructions
+#
+#     ────────────────────────────────────────────────────────────────────
+#
+#     ────────────────────────────────────────────────────────────────────
+#
+#      enter submit  shift+enter/ctrl+j newline  escape/ctrl+c cancel
+#
+#     ────────────────────────────────────────────────────────────────────
+#
+# Structure: DynamicBorder + Spacer + accent-title (indented 1) + Spacer +
+# Editor (with its own top/bottom dashed borders and empty body) + Spacer +
+# hint line (indented 1) + Spacer + DynamicBorder.
+#
+# Bugs fixed in this loop:
+#   (a) pig's ShowExtensionEditor used runTextInput (single-line
+#       TextInput in a floating overlay). Replaced with
+#       ExtensionEditorComponent (multi-line Editor in editor slot),
+#       matching upstream's layout exactly.
+#   (b) Enter-handoff race: the old floating-overlay approach could
+#       auto-close before user input. The new editor-slot approach
+#       uses the standard runEditorSlotExtensionEditor loop, which
+#       reads stdin only after placing and rendering the component.
+#
+# Asserts output_equal on tmux's plain capture. ANSI codes for
+# accent/muted/dim theming differ between palettes; escaped-output parity is
+# tracked separately below, while visible glyph layout is byte-identical.
+
+# lint-known-gap: escaped_output_equal fails because pig and pi emit
+# slightly different ANSI byte sequences for the accent-coloured title
+# and dim border lines (same visible glyphs after ANSI strip;
+# output_equal = true confirms parity at the glyph level). Residual
+# difference is theme-palette only, not behavioural.
+
+# Pi 0.87.1 (re-probed 2026-09-23) persists the [system] entry at the first
+# prompt, so /tree lists [system], the user message and the reply ("(3/3)");
+# one Up from the reply still selects the user message.
+name = "10-extension-editor"
+description = "Both binaries render the ExtensionEditorComponent identically when /tree opens 'Custom summarization instructions'."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/extension-editor.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Custom summarization instructions"
+capture_end = "escape/ctrl+c cancel"
+
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+settle_seconds = 5
+
+[[tmux.steps]]
+keys = ["/tree", "Enter"]
+wait_contains = ["Session Tree", "(3/3)"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Up"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Summarize branch?", "No summary", "Summarize with custom prompt"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Down"]
+wait_contains = ["→ Summarize"]
+wait_timeout_seconds = 3
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Down"]
+wait_contains = ["→ Summarize with custom prompt"]
+wait_timeout_seconds = 3
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Custom summarization instructions", "escape/ctrl+c cancel"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+both_contain = [
+  "Custom summarization instructions",
+  "enter submit",
+  "shift+enter/ctrl+j newline",
+  "escape/ctrl+c cancel",
+]
+output_equal = true
+runtime_ratio_max = 1.50
+runs = 1

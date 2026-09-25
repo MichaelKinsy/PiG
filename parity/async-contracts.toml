@@ -1,0 +1,2038 @@
+version = "0.87.1"
+
+[[files]]
+path = "packages/agent/src/agent-loop.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`agent/agent_loop.go + agent/tool_execution.go + agent/system_state.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/agent.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`agent/agent.go + agent/queue.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/agent-harness.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/session.go + coding/runtime.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/compaction/branch-summarization.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/compaction/branch_summarization.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/compaction/compaction.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/compaction/compaction.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/env/nodejs.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(Node-only execution environment)`"
+
+[[files]]
+path = "packages/agent/src/harness/events.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/execution/assistant.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/execution/effect-gate.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/execution/tools.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/hooks.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/bash.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/chord.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/context.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/harness.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/hooks.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/jsonl.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/collapse.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/generation.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/job.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/plugin.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/post-tools.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/task-api.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/tool.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/memory.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/scheduler.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/session.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/system.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/prompt-templates.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/prompt_templates.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/boundary.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/checkpoint.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/deferred.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/generation.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/reconcile.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/recovery.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/response.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/retry.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/structural.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/terminal.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/tool-placement.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/tools.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/harness.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/lane.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/progress.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/restore.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/transcript.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/context.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`agent/harness/session/context.go (state derivation, latest-compaction transform, retainedTail, summary roles, custom projectors; unit+mutation-tested)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/fork.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/io.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/legacy-v3.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/repo.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`agent/harness/session/repo.go (create/open/list/delete/fork; unit+mutation-tested; JSONL backend passes full conformance suite)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/storage.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`agent/harness/session/storage.go (serialized append, fail-loud/torn-tail/atomic publish; unit+mutation+race-tested; JSONL backend passes full conformance suite)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/memory.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`agent/harness/session/memory.go (in-memory storage/repo; passes full upstream conformance suite)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/mutation-line.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/session.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/session.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/benchmark/session-repo.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/benchmark/storage.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/conformance/session-repo.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/conformance/storage.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/gating-storage.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/instrumented-storage.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/storage-decorator.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`agent/harness/session/conformance_suite_test.go (confRepo backend-fixture factory + Go conformance fixtures)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`agent/harness/session/{types,codec,session}.go (Entry/Record/Mutation/Session contracts; exercised by full conformance suite)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/skills.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/skills.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/telemetry.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(not ported: telemetry is supplied through extensions)`"
+
+[[files]]
+path = "packages/agent/src/harness/tools/bash.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/bash.go + bash_executor.go (SDK exec primitive; collapsed with coding-agent wrapper)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/tools/edit.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/edit.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/tools/file-mutation-queue.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/mutation_queue.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/tools/path-utils.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/path_utils.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/tools/read.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/read.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/tools/write.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/write.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/session.go + agent/messages.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/utils/shell-output.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/truncate.go + internal/codingagent/tool_render.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/proxy.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(not needed: no TS proxy)`"
+
+[[files]]
+path = "packages/agent/src/search/index.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`agent/types.go + agent/agent.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/anthropic-messages.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `ai/anthropic.go + ai/anthropic_client.go (createClient auth branches and header merge, getBetaFeatures and params.betas, Claude Code identity for sk-ant-oat tokens: Bearer auth, user-agent claude-cli/2.1.280, x-app: cli, claude-code-20250219 + oauth-2025-04-20 betas, Claude Code system block, toClaudeCodeName/fromClaudeCodeName on tools, history, and streamed tool calls; tests in ai/anthropic_oauth_test.go and agent/anthropic_oauth_history_test.go); missing: native mid-conversation tool changes (mid-conversation-tool-changes-2026-07-01 beta, tool_addition/tool_removal blocks, deferred placeholder tool), server-side fallback (allowedFallbackModels fallbacks param, server-side-fallback-2026-07-01 beta, fallback content block and cost), managed mid-conversation effort (supportsMidConvoEffort betas, adaptive block_binding, output_config and effort system messages, providerThinkingLevel), strict tool schemas (supportsStrictTools), toolChoice, metadata.user_id, the getPiUserAgent default User-Agent (utils/pi-user-agent.ts), and mapStopReason edge cases (sensitive error message, unknown stop reasons)`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/azure-openai-responses.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/azure_openai_responses.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/bedrock-converse-stream.lazy.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(lazy dynamic-import wrapper; Go providers are statically linked)`"
+
+[[files]]
+path = "packages/ai/src/api/bedrock-converse-stream.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/bedrock.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/cloudflare-ai-binding.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(designed out: fetch adapter over a Cloudflare Workers env.AI binding; PiG runs as a native process, not inside a Worker, so no AI binding exists; HTTPS AI Gateway stays in ai/cloudflare.go)`"
+
+[[files]]
+path = "packages/ai/src/api/google-generative-ai.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/google.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/google-shared.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/google.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/google-vertex.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/google_vertex.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/lazy.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(Go providers are statically linked; async setup errors surface through Provider.Stream errors)`"
+
+[[files]]
+path = "packages/ai/src/api/mistral-conversations.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/mistral.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/openai-codex-responses.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/openai_codex_responses.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/openai-completions.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/openai.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/openai-responses-shared.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/openai_responses.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/openai-responses.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/openai_responses.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/openrouter-images.lazy.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(lazy dynamic-import wrapper; Go providers are statically linked)`"
+
+[[files]]
+path = "packages/ai/src/api/openrouter-images.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/openrouter_images.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/pi-messages.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⏸ deferred: `(deferred: requires the PiG-owned hosted transport, authentication, privacy, and operational contract)`"
+
+[[files]]
+path = "packages/ai/src/auth/context.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/auth.go + ai/oauth_*.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/auth/credential-store.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/auth.go + ai/oauth_*.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/auth/helpers.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/auth.go + ai/oauth_*.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/auth/oauth/anthropic.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oauth_anthropic.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/auth/oauth/device-code.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oauth_device_code.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/auth/oauth/github-copilot.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/githubcopilot.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/auth/oauth/kimi-coding.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oauth_kimi.go (device flow and refresh ported; caller-path parity pending)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/auth/oauth/load.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oauth_registry.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/auth/oauth/meta.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oauth_meta.go (device flow + Muse Code key mint, registered in ai/oauth_registry.go; meta-oauth.test.ts cases in ai/oauth_meta_test.go)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/auth/oauth/openai-codex.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oauth_openai_codex.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/auth/oauth/openrouter.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oauth_openrouter.go (OpenRouter OAuth login/exchange; registered in oauth_registry.go; unit-tested + oauth/08 behavioral scenario)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/auth/oauth/pkce.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/pkce.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/auth/oauth/radius.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⏸ deferred: `(deferred: PiG-owned hosted authentication and gateway contract is not ratified)`"
+
+[[files]]
+path = "packages/ai/src/auth/oauth/xai.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(not ported: xAI device-code OAuth flow)`"
+
+[[files]]
+path = "packages/ai/src/auth/resolve.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/auth.go + ai/oauth_*.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/auth/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/auth.go + ai/oauth_*.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/cli.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/auth_commands.go (login/logout)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/compat.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/types.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/compat/extension-oauth-types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/oauth_types.go + coding/extension/provider.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/env-api-keys.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/main.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/images-api-registry.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/images.go + ai/images_registry.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/images-models.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/images_registry.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/images.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/images.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/models-store.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/models_store.go (ModelsStoreEntry) + internal/codingagent/model_registry.go (dynamic provider/model store analogue)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/models.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/registry.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/providers/amazon-bedrock.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/bedrock.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/providers/anthropic.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `ai/anthropic.go + ai/anthropic_client.go + ai/oauth_anthropic.go + internal/codingagent/model_registry.go + coding/model.go (catalog; env auth in upstream order: ANTHROPIC_AUTH_TOKEN as an Authorization bearer header, then ANTHROPIC_OAUTH_TOKEN, then ANTHROPIC_API_KEY; subscription OAuth login, resolved per request in coding/model.go, whose sk-ant-oat token requests carry the Claude Code identity; tests in ai/anthropic_oauth_test.go, internal/codingagent/anthropic_env_auth_test.go, coding/anthropic_auth_test.go, cmd/pig/model_anthropic_auth_test.go); missing: a stored auth.json credential does not outrank ambient ANTHROPIC_OAUTH_TOKEN/ANTHROPIC_API_KEY in cmd/pig/model.go and coding/model.go (upstream resolveProviderAuth consults it first), and a stored api_key credential never reaches Anthropic requests`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/providers/cloudflare-auth.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/models_generated.go + internal/codingagent/model_registry.go (provider metadata/catalog registration)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/providers/faux.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/faux.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/providers/google-vertex.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/google_vertex.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/providers/images/register-builtins.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/images_registry.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/providers/radius-config.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⏸ deferred: `(deferred: PiG-owned gateway URL, authentication, privacy, and retention contract is not ratified)`"
+
+[[files]]
+path = "packages/ai/src/providers/radius.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `ai/models_generated.go + ai/registry.go (0.87.1 published catalog retained; runtime discovery and construction fail closed until the PiG-owned service and pi-messages transport are implemented)`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/types.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/utils/abort.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(AbortSignal/Promise racing: raceWithAbortSignal/operationSignal; pig uses context.Context cancellation + select (D3): runtime mechanics, designed out)`"
+
+[[files]]
+path = "packages/ai/src/utils/event-stream.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/openai.go (inline SSE)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/utils/provider-retry.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/provider_retry.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/utils/retry.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/openai.go + ai/openai_responses.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/utils/sleep.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/provider_retry.go abortableSleep (context-cancelled timer: immediate rejection when already aborted, rejection on abort mid-wait; ai/sleep_test.go)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/cli/auth-check.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/cli/config-selector.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/config_command.go + tui/config_selector.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/cli/credential-print.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⏸ deferred: `deferred: security-sensitive auth print-api-key/print-bearer-token CLI; requires a model-runtime request-auth resolution surface (getAuth with OAuth refresh/persist, listCredentials, getProviders) pig does not yet expose. Port after that lands`"
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/command.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(not ported: remote-session capability via A2A, spec 482; pi-client cloud SDK not portable)`"
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/commands/client.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(not ported: remote-session capability via A2A, spec 482; pi-client cloud SDK not portable)`"
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/commands/server.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(not ported: remote-session capability via A2A, spec 482; pi-client cloud SDK not portable)`"
+
+[[files]]
+path = "packages/coding-agent/src/cli/file-processor.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/file_processor.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/cli/list-models.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/settings.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/cli/project-trust.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/project_trust.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/cli/session-picker.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/session_selector.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/cli/startup-ui.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `partial: ShowStartupSelector/ShowStartupInput ported in internal/codingagent/startup_ui.go. The upstream first-time setup branch is designed out because PiG is not the official Pi distribution, so upstream shouldRunFirstTimeSetup returns false for this binary. Remaining: interactive OSC-11 background query for startup selectors`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session-runtime.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `partial: coding/runtime.go, coding/session.go, and cmd/pig/rpc_mode.go; Session replacement retains the host-scoped extension runner (D30) and startup-project Services and Resources (D61)`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session-services.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/services.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/session.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/auth-storage.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/auth.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/bash-executor.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/bash_executor.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/bug-report-upload.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(designed out: D62, PiG never uploads bug reports)`"
+
+[[files]]
+path = "packages/coding-agent/src/core/bug-report.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/bug_report.go (export subset: metadata, redaction, diagnostics, archive; D62)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/cache-warmer.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/compaction/branch-summarization.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/compaction/branch_summarization.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/compaction/compaction.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/compaction/compaction.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/event-bus.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/extension/eventbus.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/exec.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/extension/exec.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/export-html/index.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/export/export.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/loader.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/extensions.go + coding/extension/host/subprocess/builder_node.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/runner.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/extension/host/inproc/runner.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `partial: coding/extension/*.go (Layer 0); subprocess setEditorComponent carries decoration instead of a full editor factory, and addAutocompleteProvider accepts only the async suggestion-source bridge; tracked in docs/extension-api-parity.md`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/footer-data-provider.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/status_line.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/model-config.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/model_registry.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/model-registry.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/model_registry.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/model-resolver.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/model.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/model-runtime.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/model_registry.go + coding/services.go + internal/codingagent/interactive.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/models-store.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/models_store.go (FileModelsStore) + internal/codingagent/model_registry.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/output-guard.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/output_guard.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/package-manager.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/packagecontent/packagecontent.go, cmd/pig/package_commands.go, cmd/pig/package_updates.go, cmd/pig/configured_resources.go, internal/codingagent/settings.go, cmd/pig/config_command.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/project-trust.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/project_trust.go + internal/codingagent/trust_manager.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/provider-composer.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/extension/provider.go + internal/codingagent/model_registry.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/remote-catalog-provider.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(not ported: pi.dev remote model catalog refresh)`"
+
+[[files]]
+path = "packages/coding-agent/src/core/resource-loader.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/packagecontent/packagecontent.go + internal/codingagent/resources.go + cmd/pig/configured_resources.go + internal/codingagent/prompt_templates.go + internal/codingagent/skills.go + cmd/pig/config_command.go + cmd/pig/reload_resources.go + cmd/pig/resource_source_info.go + internal/codingagent/interactive.go + internal/codingagent/reload_resources.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/runtime-credentials.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ai/auth.go + internal/codingagent/model_registry.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/sdk.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/session.go + coding/runtime.go + coding/services.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/session-manager.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/session_manager.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/settings-manager.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/settings.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/bash.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/bash.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/edit-diff.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/edit_diff.go + unified_patch.go (GenerateUnifiedPatch) + diff_string.go (GenerateDiffString)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/edit.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/edit.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/file-mutation-queue.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/mutation_queue.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/find.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/find.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/grep.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/grep.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/ls.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/ls.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/output-accumulator.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/bash_executor.go + truncate.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/path-utils.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/path_utils.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/read.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/read.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/edit.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `partial: tui/tool_execution.go (FormatEditHeader) + internal/codingagent/tool_render.go (renderDiffString). Remaining: renderShell \"self\" call box with the async argsComplete preview diff and its pending/success/error header background, str() invalid-arg path, error text de-duplication against the preview error`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/tool-definition-wrapper.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/extension_bridge.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/write.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/tools/write.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/trust-manager.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/trust_manager.go (unit-tested + project-trust/01 behavioral scenario covers it)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/client-runtime.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: opens unix or Radius server connections and Chord remote service sources for a presentation; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; pi-server/pi-client/pi-protocol are outside PORT_MAP package scope; its radius:// route is pending owner decision: Q1 Radius)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/client-tui.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: service-only alt-screen client TUI over replicated Transcript/Models/SessionDirectory services and a Chord FacetHost; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice; Radius reconnect status is pending owner decision: Q1 Radius)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/client.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: non-interactive \"client\" command (discover servers, list/attach/create Session, one-shot prompt) over client-runtime.ts; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; pi-server/pi-client/pi-protocol are outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/commands.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending owner decision: source-only: tsconfig.build.json excludes src/experimental from Pi's npm package and binaries; dispatches \"server\"/\"client\" for the development entrypoint only; \"server\" always starts RadiusRelayHost (pending owner decision: Q1 Radius); parser rows cli/experimental/* are n/a under spec 482)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/coordinator-entry.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: entry for the internal \"coordinator\" process role, spawned only by server.ts ensureCoordinator; no PiG caller until server.ts lands)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/coordinator.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: stable unix-socket endpoint and JSON-line message router between replaceable server generations and session workers; only callers are server.ts, session-worker*.ts, which are pending)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/micro/api.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: MicroView/MicroController boundary over Pico3 types; micro is a standalone source-only program (tsx micro/main.ts), not reachable from pi; experimental Pico3 harness (agent/src/harness/pico3) is ⬜, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/micro/models.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Pico3 model adapter over ModelRuntime; experimental Pico3 harness (agent/src/harness/pico3) is ⬜, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/micro/runtime.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: owns ModelRuntime, Pico3 harness, JSONL storage; default model openai-codex/gpt-5.6-sol; experimental Pico3 harness (agent/src/harness/pico3) is ⬜, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/micro/sessions.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: locked session directories under <agentDir>/experimental/micro-sessions/<cwd-hash>/; only consumer is micro/runtime.ts; experimental Pico3 harness (agent/src/harness/pico3) is ⬜, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/micro/tools.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: adapts coding tools to Pico3 tool definitions; experimental Pico3 harness (agent/src/harness/pico3) is ⬜, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/micro/tui.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: alt-screen micro TUI over MicroView; experimental Pico3 harness (agent/src/harness/pico3) is ⬜, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/main.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: standalone source-only \"mini\" program entry (node mini/main.ts), not reachable from pi; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/server/entry.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: mini server process entry; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/server/run.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: mini router, worker supervision, event fan-out over <agentDir>/experimental/mini.sock; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/shared/protocol.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: mini service tokens and wire types carrying LaneSnapshot/LaneWatchEvent; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/shared/rpc.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: harness-free call/emit RPC peer, but its only consumers are mini server/worker/tui; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/shared/transport.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: harness-free newline-delimited JSON connection, but its only consumers are mini server/worker/tui; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/tui/run.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: mini presentation host that spawns the detached mini server; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/tui/session.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: attach/watch/rebase over reduceLaneSnapshot; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/tui/view.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: alt-screen mini view over the replicated LaneSnapshot; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/worker/entry.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: mini session worker process entry; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/worker/lane-service.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Lane watch subscriptions and lane commands; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/worker/models-service.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: catalog, accounts, interactive login service; only consumer is mini/worker/run.ts; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/worker/run.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: opens the Session and builds the AgentHarness for one mini worker; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/plugins/bundled.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(Node-runtime-only: loads Chord facet bundles (esbuild-built ESM) into the server, worker, and client processes by dynamic import; AGENTS.md forbids an embedded-JS or in-process extension runtime)`"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/plugins/package.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(Node-runtime-only: builds TypeScript plugin packages (src/session.ts, src/tui.ts) with @earendil-works/chord/bundler (esbuild) into facet bundles for in-process import; its plugin-package profile JSON only selects those bundles; AGENTS.md forbids an embedded-JS or in-process extension runtime)`"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/process.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: spawns detached coordinator/server/session-worker roles via __PI_INTERNAL_SPAWN for the server stack; its source-mode branch (--import source-resolver.ts) is Node-runtime-only; no PiG caller until server.ts lands)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/radius-auth.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending owner decision: Q1 Radius: resolves the relay Bearer token from --auth-token/--auth-token-file or the stored \"radius\" OAuth credential (5-minute minimum validity, may refresh) for gateway PI_RADIUS_GATEWAY, default https://radius.pi.dev, an Earendil-operated service)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/radius-relay.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending owner decision: Q1 Radius: WebSocket relay to wss://<gateway>/v1/session-relays/<serverId>/connect (default gateway radius.pi.dev, Earendil-operated), subprotocols pi-session-relay.host.v1/client.v1; \"server\" starts the host side unconditionally, \"client --connect radius://<id>\" uses the client side)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/server.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending owner decision: Q1 Radius: startServer always creates and starts RadiusRelayHost, which connects to radius.pi.dev whenever a Radius credential resolves; the rest (server profile under PI_SERVER_DIR or ~/.pi/server, coordinator, worker manager, plugin selection) needs Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope and pi-server/pi-client/pi-protocol are outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/agent-controller-provider.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: AgentController facade over AgentLane; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/agent-controller.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Chord service contract pi.agent-controller; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/connection.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: server and selected-Session remote service sources over pi-client; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; pi-server/pi-client/pi-protocol are outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/models-provider.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Models service facet over ModelRuntime and SettingsManager; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/models.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Chord service contract pi.models with ReplicatedState; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/plugins.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Chord service contracts pi.presentation-plugins and pi.session-plugins for TypeScript facet bundles; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/presentation-ui.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: local Chord service contract pi.local.presentation-ui; only consumer is client-tui.ts; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/server.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: SessionDirectory/SessionManagement/PresentationPlugins server facets; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; pi-server/pi-client/pi-protocol are outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/sessions.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Chord service contracts pi.session-directory and pi.session-management; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; pi-server/pi-client/pi-protocol are outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/slash-commands-provider.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: SlashCommandRegistry and built-in /model, /thinking, /compact, /reload, /hello facets; only consumer is client-tui.ts; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/slash-commands.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: local Chord service contract pi.local.slash-commands; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/transcript-provider.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: publishes the main-lane transcript as ReplicatedState; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/worker.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: assembles a Session worker's built-in and plugin facets; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/session-worker-manager.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: server-side worker process bookkeeping over the coordinator; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; pi-server/pi-client/pi-protocol are outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/session-worker.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: per-Session worker process hosting the AgentHarness behind Chord services; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/client.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/llama/client.go + internal/codingagent/llama/fetch.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/huggingface.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/llama/huggingface.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/index.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/llama/index.go + internal/codingagent/interactive_llama.go + internal/codingagent/slash_commands.go + cmd/pig/rpc_mode.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/provider.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/llama/provider.go + internal/codingagent/llama/host.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/ui.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/llama/ui.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/main.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/main.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/migrations.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/migrations.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/bug-report.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/slash_bug.go, internal/codingagent/interactive_bug.go (consent flow, export-only; D62)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/extension-editor.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/text_input.go + internal/codingagent/session_selectors.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/login-dialog.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/auth_commands.go + interactive.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/model_select.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/scoped_models_list.go + internal/codingagent/interactive.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/session_selector.go + session_selectors.go + interactive.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/tool-execution.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/tool_execution.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/external-editor.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`ported+wired: OpenExternalEditor (internal/codingagent/external_editor.go) called interactive.go:7452, unit-tested`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `partial: internal/codingagent/interactive.go, internal/codingagent/interactive_input.go, internal/codingagent/interactive_turn.go, internal/codingagent/interactive_commands.go, internal/codingagent/interactive_auth.go, internal/codingagent/interactive_events.go, internal/codingagent/interactive_tui.go, internal/codingagent/interactive_models.go, internal/codingagent/interactive_extensions.go, internal/codingagent/interactive_chat.go, internal/codingagent/interactive_layout.go, internal/codingagent/interactive_editor.go, internal/codingagent/interactive_transcript.go, internal/codingagent/interactive_thinking.go, internal/codingagent/interactive_helpers.go; Esc does not cancel an active branch summary, and automatic Copilot reauthentication cannot prompt for an enterprise domain`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/session-share.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `internal/codingagent/session_share.go (pi.share entry on /bug transcripts; private-gist /share via the user's gh). Not ported: the Radius artifact upload and exportSessionForShare, pending an owner decision on contacting Earendil's gateway`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/theme.go (0.79.10 Automatic option; AC-6 / Stage 2)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/theme.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/tui-renderer.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/print-mode.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/print_mode.go (text) and cmd/pig/json_mode.go (json): upstream runs both modes from one function, pig splits them by mode. json streams the session event stream as JSONL while the turn runs; text still prints only the final assistant message. Behavioral coverage: print/01-print-mode-arithmetic, json/01-json-mode-streams-events`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-client.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⏸ deferred: `(deferred: PiG exposes the RPC server protocol but does not yet ship a Go subprocess client library)`"
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/rpc_mode.go + cmd/pig/rpc_ui.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-types.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/rpc_types.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/package-manager-cli.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/package_commands.go + cmd/pig/config_command.go + coding/packagecontent/packagecontent.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/abort.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(AbortSignal/Promise racing: raceWithAbortSignal/operationSignal; pig uses context.Context cancellation + select (D3): runtime mechanics, designed out)`"
+
+[[files]]
+path = "packages/coding-agent/src/utils/child-process.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(stdlib os/exec)`"
+
+[[files]]
+path = "packages/coding-agent/src/utils/clipboard-command.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/clipboard_copy.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/clipboard-image.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/clipboard_paste.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/clipboard.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/clipboard.go + internal/codingagent/clipboard_copy.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/image-convert.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⏸ deferred: `internal/codingagent/images.go (faithful port; Kitty tool-result path not tmux-assertable, both binaries hit the identical fallback: clipboard-images/02)`"
+
+[[files]]
+path = "packages/coding-agent/src/utils/image-process.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/images.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/image-resize-core.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/images.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/image-resize-worker.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(Node worker thread: Go uses goroutines)`"
+
+[[files]]
+path = "packages/coding-agent/src/utils/image-resize.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/images.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/management-http.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/managementhttp/managementhttp.go FetchWithRetry (management-http.test.ts cases in managementhttp_test.go), used by internal/codingagent/tools/tools_manager.go getLatestVersion and downloadFile; its other upstream callers, version-check.ts and remote-catalog-provider.ts, call pi.dev and are not ported (see their rows)`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/mime.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`internal/codingagent/images.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/photon.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(not ported: WASM)`"
+
+[[files]]
+path = "packages/coding-agent/src/utils/sleep.ts"
+disposition = "translated"
+contracts = ["awaited", "cancellable"]
+evidence = ["test:ai/assistant_retry_test.go#TestRetryAssistantCallAbortsBackoffSleepViaContext"]
+rationale = "The Session-owned retry loop blocks in sleepContext until the timer completes or its context is cancelled. A context cancelled by the scheduling callback wins before the backoff wait and returns an aborted retry result."
+
+[[files]]
+path = "packages/coding-agent/src/utils/syntax-highlight.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/highlight.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/tool-result-images.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`NormalizeToolResultImages wired coding/session.go:261; both auto-resize paths + convert-only + conversion-hint parity, unit/mutation-tested`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/tools-manager.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `internal/codingagent/tools/tools.go + tools_manager.go (asset table, releases/latest redirect version lookup, fetchWithRetry downloads, extraction per D14; tools_manager_test.go, tools_manager_latest_test.go ports the getLatestVersion cases); missing: ensureTool reports through an onStatus ToolStatus callback that interactive mode shows via showManagedToolStatus and grep/find keep silent, where PiG prints to stderr unless silent, and the failure message does not join the error cause chain`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/version-check.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(not ported: Pig uses configured signed release manifests under D39 instead of the pi.dev version API)`"
+
+[[files]]
+path = "packages/coding-agent/src/utils/zip.ts"
+disposition = "designed-out"
+contracts = []
+evidence = []
+rationale = "`(Go archive/zip, used by internal/codingagent/bug_report.go)`"
+
+[[files]]
+path = "packages/tui/src/autocomplete.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/autocomplete.go + tui/file_autocomplete.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/tui/src/components/cancellable-loader.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/cancellable_loader.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/tui/src/components/editor.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/editor.go + tui/graphemes.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/tui/src/native-platform.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/tui/src/terminal.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/terminal.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/tui/src/tui-alt-screen.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/tui_alt_screen.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/tui/src/tui.ts"
+disposition = "deferred"
+contracts = []
+evidence = []
+rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`tui/tui.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"

@@ -1,0 +1,45 @@
+// divguard:path ai/anthropic.go
+
+package ai
+
+import "errors"
+
+type StopReason string
+
+const (
+	StopReasonStop  StopReason = "stop"
+	StopReasonError StopReason = "error"
+)
+
+// mapAnthStopReason fails on a reason it does not know, as upstream throws.
+func mapAnthStopReason(reason string) (StopReason, error) {
+	switch reason {
+	case "end_turn":
+		return StopReasonStop, nil
+	default:
+		return StopReasonError, errors.New("Unhandled stop reason: " + reason)
+	}
+}
+
+type builder struct{}
+
+func (b *builder) fail(error) {}
+
+func finish(b *builder, reason StopReason, data string) {
+	if reason == "" {
+		b.fail(errors.New("Anthropic stream ended without a stop reason"))
+		return
+	}
+	if data == "[DONE]" {
+		b.fail(errors.New("stream ended before a terminal response event"))
+	}
+}
+
+// fauxReason defaults exactly as upstream's faux provider does.
+func fauxReason(reason StopReason) StopReason {
+	// upstream: ai/src/providers/faux.ts:stopReason
+	if reason == "" {
+		reason = StopReasonStop
+	}
+	return reason
+}

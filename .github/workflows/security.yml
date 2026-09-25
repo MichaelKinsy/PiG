@@ -1,0 +1,209 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+
+name: Security and supply chain
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 4 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  source-assurance:
+    name: Source assurance
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: |
+            parity/interface-extractor/package-lock.json
+            automation/images/ci-parity/package-lock.json
+            automation/images/npm-runtime/package-lock.json
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Install source-analysis tools
+        run: |
+          python -m pip install --disable-pip-version-check \
+            "reuse[charset-normalizer]==6.2.0" \
+            ruff==0.15.12 \
+            bandit==1.9.3
+          sudo apt-get update
+          sudo apt-get install --yes shellcheck
+      - name: Check compliance evidence (REUSE, govulncheck, pins, workflow hardening)
+        run: make compliance
+      - name: Run Go static analysis
+        run: |
+          go vet ./...
+          # golangci-lint owns style and Pi-compatible naming checks. This pass
+          # runs Staticcheck's correctness analyzers without conflicting rules.
+          go tool staticcheck -checks='SA*' ./...
+      - name: Audit npm lock files
+        shell: bash
+        run: |
+          set -u
+          mkdir -p evidence
+          status=0
+          for directory in parity/interface-extractor automation/images/ci-parity automation/images/npm-runtime; do
+            name=${directory//\//-}
+            if ! npm audit --prefix "$directory" --omit=dev --json > "evidence/npm-audit-$name.json"; then
+              echo "::warning file=$directory/package-lock.json::npm audit reported findings; review the uploaded evidence"
+              status=1
+            fi
+          done
+          echo "npmAuditFindings=$status" >> "$GITHUB_OUTPUT"
+          exit 0
+      - name: Analyze Python SDK
+        run: |
+          ruff check extensions/sdk-py
+          bandit -q -r extensions/sdk-py/pig_sdk
+          python - <<'PY'
+          import tomllib
+          from pathlib import Path
+          data = tomllib.loads(Path('extensions/sdk-py/pyproject.toml').read_text())
+          dependencies = data.get('project', {}).get('dependencies', [])
+          if dependencies:
+              raise SystemExit(f'run pip-audit for declared dependencies: {dependencies}')
+          print('Python SDK declares no runtime dependencies')
+          PY
+        shell: bash
+      - name: Analyze shell scripts
+        run: find automation docs/site/public -type f -name '*.sh' -print0 | xargs -0 shellcheck
+      - name: Generate source SBOMs
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          path: .
+          format: spdx-json
+          output-file: evidence/source.spdx.json
+          upload-artifact: false
+      - name: Generate source CycloneDX inventory
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          path: .
+          format: cyclonedx-json
+          output-file: evidence/source.cyclonedx.json
+          upload-artifact: false
+      - name: Scan source inventory with Grype
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
+        with:
+          sbom: evidence/source.spdx.json
+          fail-build: false
+          output-format: sarif
+          output-file: evidence/grype-report.sarif
+          severity-cutoff: high
+          only-fixed: false
+      - name: Validate and summarize source inventory
+        run: |
+          python automation/release/validate-sbom.py \
+            --spdx evidence/source.spdx.json \
+            --cyclonedx evidence/source.cyclonedx.json \
+            --licenses evidence/licenses.csv \
+            --out evidence/inventory-validation.json
+      - name: Upload source evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: source-assurance-evidence
+          path: evidence/
+          retention-days: 30
+
+  secret-scan:
+    name: Secret scanning
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@e0c47f4f8be36e29cdc102c57e68cb5cbf0e8d1e # v3.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: TruffleHog verified findings
+        uses: trufflesecurity/trufflehog@f714bf454f350590f4a24c3ddb1aef02c35bf5b6 # v3.97.5
+        with:
+          path: ./
+          extra_args: --only-verified
+
+  dependency-review:
+    name: Dependency review
+    if: github.event_name == 'pull_request' && github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/dependency-review-action@2031cfc080254a8a887f58cffee85186f0e49e48 # v4.9.0
+        with:
+          fail-on-severity: high
+          license-check: true
+
+  codeql:
+    name: CodeQL (${{ matrix.language }})
+    if: github.event.repository.private == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      security-events: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: go
+            build-mode: manual
+            config: '{}'
+          - language: javascript-typescript
+            build-mode: none
+            config: |
+              paths:
+                - extensions/sdk-ts
+                - coding/extension/host/subprocess/runtime-node
+          - language: python
+            build-mode: none
+            config: |
+              paths:
+                - extensions/sdk-py
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        if: matrix.language == 'go'
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: github/codeql-action/init@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          config: ${{ matrix.config }}
+      - if: matrix.build-mode == 'manual'
+        run: go build ./...
+      - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
+        with:
+          category: /language:${{ matrix.language }}

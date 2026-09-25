@@ -1,0 +1,48 @@
+# Behavior family: oauth
+# Surface: xAI OAuth device-code (RFC 8628) subscription flow.
+#
+# Upstream evidence (pi v0.84.0, current loop probe):
+#   /probe-oauth-xai
+#   output: xai-oauth:access=xai-access:refresh=xai-refresh:grant=true:exp=true
+#
+# The parity harness stubs the device-authorization and token endpoints locally
+# and drives the login helper through one poll to completion, proving the device
+# grant type, credential fields, and expiry computation without live
+# credentials. Both harnesses honour the pre-poll wait (waitBeforeFirstPoll), so
+# the probe takes ~1s on each side.
+
+name = "09-oauth-xai"
+description = "xAI OAuth device-code login completes against hermetic device and token stubs."
+covers = [
+  "packages/ai/src/auth/oauth/xai.ts",
+]
+tags = ["hermetic", "tui", "serial"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 160
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "xai-oauth:access="
+capture_end = "exp=true"
+
+[[tmux.steps]]
+keys = ["/probe-oauth-xai", "Enter"]
+wait_contains = ["xai-oauth:access=xai-access", "refresh=xai-refresh", "grant=true", "exp=true"]
+wait_timeout_seconds = 15
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../clipboard-images/testdata/pig-agent", "PIG_PARITY_HARNESS=1"]
+pi = ["PI_CODING_AGENT_DIR=../clipboard-images/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/oauth-harness.ts"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

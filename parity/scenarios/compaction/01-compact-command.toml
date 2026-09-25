@@ -1,0 +1,82 @@
+# Behavior family: compaction
+# Surface: /compact slash command triggers manual compaction: exercises
+#          PrepareCompaction, FindCutPoint, Compact (LLM summarization via
+#          faux provider), and CompactionSummaryComponent rendering.
+#
+# Upstream evidence (pi v0.69.0, 2026-05-17, 100x35 tmux probe):
+#   Session fixture: testdata/compact-session/sessions/...jsonl
+#   (6 entries: session header + 3 user/assistant pairs about Go features;
+#    last assistant usage: input=300 output=150 totalTokens=450)
+#   pi -e test-faux-provider.ts --model test-faux/faux-1 --session-dir sessions -c
+#   wait: ready
+#   keys: /compact Enter
+#   wait: "[compaction]"
+#   settle: 3s
+#   crop: capture_start_last="[compaction]", capture_end="expand)"
+#   raw cropped upstream block (last [compaction] block after /compact):
+#
+#      [compaction]
+#
+#      Compacted from 450 tokens (ctrl+o to expand)
+#
+# This scenario proves:
+#   1. /compact fires the compaction engine (compaction.go: PrepareCompaction + Compact)
+#   2. The faux provider handles the SUMMARIZATION_PROMPT
+#   3. EstimateContextTokens uses wire usage stats → "450 tokens"
+#   4. CompactionSummaryComponent renders the [compaction] block
+#
+# Bugs fixed in this loop:
+#   - emitSessionBeforeCompact returned false (= "not cancelled") but caller
+#     interpreted !false as "cancelled". /compact was ALWAYS silently cancelled
+#     when no extensions hooked session_before_compact. Fixed in event_bridge.go.
+#   - WireMessage did not carry Usage field. EstimateContextTokens fell back to
+#     char/4 heuristic giving wrong token count (200 vs 450). Fixed by adding
+#     WireUsageStats to WireMessage + conversion in WireToMessage/MessageToWire.
+
+name = "01-compact-command"
+description = "/compact triggers manual compaction and renders [compaction] block with correct token count."
+covers = [
+  "packages/coding-agent/src/core/compaction/compaction.ts",
+  "packages/coding-agent/src/core/compaction/utils.ts",
+  "packages/agent/src/harness/compaction/compaction.ts",
+  "packages/agent/src/harness/compaction/utils.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+# Depends on testdata/{pig,pi}-agent/settings.json setting
+# compaction.keepRecentTokens=100 so this small fixture still has messages
+# outside the recent-keep window to summarize. Under the default (20000) the
+# 0.79.10 empty-compaction guard would refuse (see 05-nothing-to-compact).
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/compact-session"
+capture_start = "[compaction]"
+capture_end = "expand)"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["/compact", "Enter"]
+settle_seconds = 5
+wait_contains = ["[compaction]", "450 tokens"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "unknown command", "Nothing to compact"]
+both_contain = ["[compaction]", "450 tokens", "expand)"]
+output_layout_equal = true
+runtime_ratio_max = 2.0
+runs = 3

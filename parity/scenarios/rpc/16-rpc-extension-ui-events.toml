@@ -1,0 +1,53 @@
+# Behavior family: rpc
+# Surface: fire-and-forget ExtensionUIContext methods become RPC UI requests.
+# Random request IDs are intentionally not compared; the method payloads are the
+# public contract and are asserted for both binaries.
+
+name = "16-rpc-extension-ui-events"
+description = "RPC mode forwards extension status, widget, notification, title, and editor UI requests."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+  "packages/coding-agent/src/core/extensions/types.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = [
+  '{"id":"show","type":"prompt","message":"/show"}',
+]
+timeout_seconds = 15
+settle_seconds = 2
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["../../../cmd/pig/testdata/rpc-ui.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../../cmd/pig/testdata/rpc-ui.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"show","type":"response","command":"prompt","success":true',
+  '"method":"setStatus"',
+  '"statusKey":"rpc-ui"',
+  '"statusText":"ready"',
+  '"method":"setWidget"',
+  '"widgetKey":"choice"',
+  '"widgetLines":["selected:none"]',
+  '"widgetPlacement":"belowEditor"',
+  '"method":"notify"',
+  '"message":"selected:none"',
+  '"notifyType":"info"',
+  '"method":"setTitle"',
+  '"title":"RPC UI"',
+  '"method":"set_editor_text"',
+  '"text":"next prompt"',
+]
+both_not_contain = [
+  '"success":false',
+  'extension_error',
+]
+runs = 3

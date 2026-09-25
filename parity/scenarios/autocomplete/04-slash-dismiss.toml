@@ -1,0 +1,56 @@
+# Behavior family: autocomplete
+# Surface: Escape dismisses the slash popup without changing the input
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   keys: / Escape
+#   crop: start="/\n────────────────────────────────────────────────────────────────────────────────────────────────────" end="────────────────────────────────────────────────────────────────────────────────────────────────────"
+#   raw cropped upstream block:
+#
+#     /
+#     ────────────────────────────────────────────────────────────────────────────────────────────────────
+
+name = "04-slash-dismiss"
+description = "Escape dismisses the slash popup and leaves only the '/' input line."
+covers = [
+  "packages/tui/src/autocomplete.ts",
+  "packages/tui/src/components/input.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "/\n────────────────────────────────────────────────────────────────────────────────────────────────────"
+capture_end = "────────────────────────────────────────────────────────────────────────────────────────────────────"
+
+[[tmux.steps]]
+keys = ["/"]
+wait_contains = ["→ settings"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Escape"]
+# Dismissal can remove the popup without repainting the unchanged input row.
+# Assert the resulting visible state instead of requiring a new "/" byte.
+wait_visible_contains = ["/"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../session/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../session/testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 1.5
+runs = 1

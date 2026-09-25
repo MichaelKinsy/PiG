@@ -1,0 +1,67 @@
+# Behavior family: compaction
+# Surface: threshold auto-compaction after a successful response whose provider
+#          usage exceeds the configured context threshold. Upstream pi 0.79.10
+#          compacts this path with reason="threshold" and willRetry=false: the
+#          original assistant response remains visible, compaction is appended,
+#          and no retry/continue turn runs.
+#
+# Upstream evidence (pi v0.79.10, 2026-07-07, 100x35 tmux probe):
+#   pi -e test-faux-provider.ts --model test-faux/faux-1 --session-dir <temp>
+#   with PI_CODING_AGENT_DIR=testdata/overwindow-pi-agent
+#   keys: "Trigger: over-window response" Enter
+#   faux provider returns "over-window-ok" with usage.totalTokens=131000.
+#   settings keepRecentTokens=1 so prepareCompaction has messages to summarize.
+#   observed: visible "over-window-ok" followed by one [compaction] block.
+#   No retry turn is attempted; no "test-faux: unhandled request" appears.
+#
+# This covers the AC-10 over-window rule. It is intentionally a successful
+# threshold compaction, not an overflow error recovery: overflow recovery uses
+# willRetry=true, while threshold over-window responses must compact without
+# retrying.
+
+name = "04-overflow-retry"
+description = "A successful over-window response triggers threshold compaction without retrying the turn."
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/compaction/compaction.ts",
+  "packages/ai/src/utils/estimate.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/overwindow-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/overwindow-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "over-window-ok"
+capture_end = "expand)"
+
+[[tmux.steps]]
+keys = ["Trigger: over-window response", "Enter"]
+settle_seconds = 6
+wait_contains = ["over-window-ok", "[compaction]", "Compacted from 131,000 tokens"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_not_contain = [
+  "panic:",
+  "goroutine ",
+  "test-faux: unhandled request",
+  "Context overflow recovery failed",
+  "Auto-compaction failed",
+]
+both_contain = ["over-window-ok", "[compaction]", "Compacted from 131,000 tokens"]
+output_layout_equal = true
+runtime_ratio_max = 2.0
+runs = 3

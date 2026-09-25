@@ -1,0 +1,9 @@
+[package]
+name = "chain-rs"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+# Pig resolves this dependency to the version-matched staged SDK at build time.
+pig-sdk = "0.1.0"
+serde_json = "1"

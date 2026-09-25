@@ -1,0 +1,18 @@
+
+│ first quote line
+│ continued quote line
+│ - quoted bullet
+
+1. first item
+    1. nested ordered
+    - nested bullet
+
+┌───────┬─────────────────────┐
+│ Name  │ Value               │
+├───────┼─────────────────────┤
+│ alpha │ 10                  │
+├───────┼─────────────────────┤
+│ beta  │ wrapped code sample │
+└───────┴─────────────────────┘
+
+Read docs (https://example.com/docs)

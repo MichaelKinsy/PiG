@@ -1,0 +1,58 @@
+# Behavior family: model-resolver-selector
+# Surface: /model <spec> direct switch.
+#
+# Upstream evidence: exact Pi 0.83.0 probe (2026-08-04, tmux 100×35):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent-local pi --no-extensions --offline
+#   keys: /model fixture/model-one, Enter, Enter
+#   crop: "Model: model-one"
+#
+#   Model: model-one
+#
+# The local provider starts on model-two. This command resolves the canonical
+# provider/model reference, switches to model-one, and emits the same status.
+# Two Enter keys preserve the real autocomplete/submission event path.
+
+name = "05-model-direct-switch"
+description = "Both binaries switch directly to the same local provider model."
+covers = [
+  "packages/coding-agent/src/core/model-resolver.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 20
+capture_start = "Model: model-one"
+capture_end = "Model: model-one"
+
+[[tmux.steps]]
+keys = ["/model fixture/model-one"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-local"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-local"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Model: model-one"]
+both_not_contain = ["No matching models", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 1.30
+runs = 3

@@ -1,0 +1,69 @@
+# Behavior family: extensions-runtime
+# Surface: a component row wider than the terminal reaching the main-screen
+# differential render.
+#
+# Upstream evidence (Pi 0.87.1, packages/tui/src/tui-main-screen.ts:517-545):
+# the differential loop writes the TUI crash log, stops the TUI, and throws
+# "Rendered line N exceeds terminal width (W > T)". InteractiveMode's
+# uncaughtException handler (interactive-mode.ts:4199-4222) prints
+# "<app> exiting due to uncaughtException:" and the error, records the crash,
+# and exits 1. The widget is added after the first frame, so its over-wide row
+# reaches the differential loop. The pane is tall enough to hold PiG's Go
+# stack as well as Pi's JavaScript stack; the stack frames themselves differ
+# by runtime and are not compared. The row index is not asserted because the
+# two startup headers differ in height (see OVERFLOW-FAITHFUL.md).
+# lint-known-gap: no equality comparator because the report ends with the
+# runtime stack (Go frames for PiG, JavaScript frames for Pi), and the row index
+# differs while PiG's compact [Extensions] header row and widget spacing do not
+# match Pi's. The error text, widths, log name, and exit status are asserted.
+
+name = "20-differential-render-overflow-terminates"
+description = "An over-wide widget row in a differential render terminates both binaries with Pi's error"
+covers = [
+  "packages/tui/src/tui-main-screen.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/overflow-widget.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/overflow-widget.mjs",
+]
+
+[tmux]
+width = 100
+height = 72
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "exiting due to uncaughtException:"
+# The crash-log path lives under the runner's temporary directory, so where
+# the 100-column pane soft-wraps it depends on the host (a longer TMPDIR split
+# "pi-tui-" from "crash.log"). Capture logical lines so the path is asserted
+# as the program printed it.
+capture_join_wrapped = true
+
+[[tmux.steps]]
+keys = ["/overflow-widget-probe", "Enter"]
+wait_contains = ["Debug log written to:"]
+wait_timeout_seconds = 20
+
+[assert]
+exit_code = 1
+both_contain = [
+  "exiting due to uncaughtException:",
+  "Error: Rendered line",
+  "exceeds terminal width (126 > 100).",
+  "This is likely caused by a custom TUI component not truncating its output.",
+  "Use visibleWidth() to measure and truncateToWidth() to truncate lines.",
+  "Debug log written to:",
+  "tui-crash.log",
+]
+both_not_contain = ["panic:", "connection closed"]
+runs = 3

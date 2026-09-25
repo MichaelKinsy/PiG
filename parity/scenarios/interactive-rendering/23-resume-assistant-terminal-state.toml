@@ -1,0 +1,42 @@
+# Behavior family: interactive-rendering
+# Upstream evidence: AssistantMessageComponent.updateContent and interactive-mode.ts
+# renderSessionItems, at coding.UpstreamVersion. Resume this staged session with
+# pi -e test-faux-provider.ts --model test-faux/faux-1 --session-dir sessions -c.
+# The faux provider has no length-stop response, so persisted messages exercise
+# abort/error/length without a network request. Crop includes every assistant
+# and tool card, bounded by user markers, excluding the unrelated banner/footer.
+# Abort/error belong to the assistant unless tools handle the failure; length
+# always renders "Response was truncated before completion." without "Error:".
+name = "23-resume-assistant-terminal-state"
+description = "Resumed assistant and tool messages preserve abort, error, and length diagnostics, including empty content."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/assistant-message.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 50
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/terminal-state-cwd"
+capture_start = "Terminal state start"
+capture_end = "Terminal state end"
+
+[assert]
+both_reach_ready = true
+both_contain = ["Operation aborted", "Error: Provider rejected request", "Error: Unknown error", "Response was truncated before completion.", "Tool provider failure"]
+both_not_contain = ["panic:", "Error: Response was truncated", "maximum output token limit"]
+escaped_output_equal = true
+runs = 3

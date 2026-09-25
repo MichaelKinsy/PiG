@@ -1,0 +1,53 @@
+# Behavior family: tui-components
+# Surface: Spacer empty-line separation between chat blocks
+#
+# Upstream evidence (pi v0.69.0, 2026-05-15):
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   send: "reply with exactly: hello" Enter
+#   wait: 3s
+#   Observe: user message block, then blank spacer line, then assistant "hello"
+#
+# The Spacer component (spacer.ts → spacer.go) renders N empty lines.
+# It's used in tool execution (leading spacer before each tool block) and
+# between chat messages. This scenario verifies that the spacing between
+# the user message and the "hello" response has the correct number of blank
+# lines. The output_normalized_equal comparison strips ANSI but preserves
+# spacing structure, proving the Spacer produces identical line breaks.
+
+name = "04-spacer-message-separation"
+description = "Blank-line spacing between user message and assistant reply matches upstream."
+covers = [
+  "packages/tui/src/components/spacer.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "reply with exactly: hello"
+capture_end = "hello"
+
+[[tmux.steps]]
+keys = ["reply with exactly: hello", "Enter"]
+settle_seconds = 4
+wait_contains = ["hello"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

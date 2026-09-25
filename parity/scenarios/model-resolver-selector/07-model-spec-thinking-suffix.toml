@@ -1,0 +1,53 @@
+# Behavior family: model-resolver-selector
+# Surface: --model "provider/model:thinking" suffix parsing.
+#
+# Upstream evidence: exact Pi 0.83.0 probe (2026-08-04, tmux 100×35):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent-local pi --no-extensions --offline
+#     --model fixture/model-two:high
+#   crop: final cwd/footer block
+#
+#   ... model-two • high
+#
+# The local model is reasoning-capable. The suffix must become the active
+# thinking level and must not remain part of the model ID.
+#
+# The runner launches both binaries in same-length copies of the default cwd fixture and masks only the random digits. The crop retains both complete footer rows. The canonical cwd plus configured branch must fit the terminal width without HOME abbreviation; the runner rejects longer roots before launch and asks for a shorter TMPDIR or wider tmux.width. Re-probing pinned Pi with a long external TMPDIR confirms that its cwd row truncates before the snapshot-name anchor, while the stats row remains unchanged.
+
+name = "07-model-spec-thinking-suffix"
+description = "The model spec thinking suffix selects the exact local model and thinking level."
+covers = [
+  "packages/coding-agent/src/cli/args.ts",
+  "packages/coding-agent/src/core/model-resolver.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 20
+capture_start = "parity-snap-cwd-"
+capture_start_last = true
+settle_seconds = 2
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-local"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-local"]
+pig_args = ["--no-extensions", "--offline", "--model", "fixture/model-two:high", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--model", "fixture/model-two:high", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["model-two", "high"]
+both_match_regex = ['model-two . high']
+both_not_contain = [
+  "model-two:high",
+  "thinking off",
+  "panic:",
+  "goroutine ",
+]
+escaped_output_equal = true
+runtime_ratio_max = 1.50
+runs = 3

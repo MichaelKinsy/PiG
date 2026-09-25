@@ -1,0 +1,81 @@
+# Behavior family: interactive-rendering
+# Surface: BashExecutionComponent: `!cmd` bordered block rendering
+#          on successful (exit 0) completion.
+#
+# Upstream evidence (pi v0.69.0, 2026-05-15, captured via tmux probe in
+# this loop at 100x35 against parity-probe):
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   send: "!echo hello world" Enter
+#   wait: 3s
+#   crop: capture_start="$ echo hello world", capture_end_regex='─{80,}'
+#   raw cropped upstream block (inside two horizontal borders):
+#     $ echo hello world
+#                                                <- blank
+#     hello world
+#                                                <- blank (from trailing \n in echo output)
+#     <bottom border>
+#
+# This scenario locks the following parity contract in
+# `components/bash-execution.ts` (upstream lines 117-200):
+#   - Top + bottom DynamicBorder rows in bashMode color
+#   - 1-col left-padded header `$ <cmd>`
+#   - Blank row between header and first output line (from `\n${output}`)
+#   - Output lines in muted color
+#   - Trailing blank inside the box from preserved `\n` in echo output
+#   - NO status line for exit==0 (upstream renders `(exit N)` only for
+#     error branch, i.e. exitCode !== 0)
+#
+# Bugs fixed in this loop (pig root-cause fixes):
+#   1. bash_execution.go stripped trailing newline via TrimRight("\n"),
+#      losing the second blank row inside the box.
+#   2. bash_execution.go emitted no blank line between header and first
+#      output row.
+#   3. bash_execution.go always rendered "(exit N · Xms)" even on
+#      success; upstream renders nothing for exit==0.
+#   4. bash_execution.go rendered "(exit N · Xms)" / "(cancelled · Xms)"
+#      with duration suffix; upstream renders bare "(exit N)" / "(cancelled)".
+
+name = "06-bash-execution-success"
+description = "BashExecutionComponent renders `!echo hello world` as a bordered block with a header, blank line, output, and final blank line. Exit 0 has no status line."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/bash-wrap-cwd"
+capture_start = "$ echo hello world"
+# Bottom horizontal rule of the bash block (>=80 hyphens).
+capture_end_regex = '─{80,}'
+
+[[tmux.steps]]
+keys = ["!echo hello world", "Enter"]
+settle_seconds = 3
+wait_contains = ["$ echo hello world", "hello world"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine ", "exit 0", "(exit 0)"]
+# lint-known-gap: bg-paint SGR encoding differs between pig and upstream
+# (pig uses truecolor for bashMode #b5bd68; upstream goes through the
+# theme/Box delegation path). Visible content and box structure are
+# identical post-fix.
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+# runs=3 because bash-execution timing has natural jitter on completion.
+runs = 3

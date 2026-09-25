@@ -1,0 +1,52 @@
+name: Difference from Pi
+description: PiG behaves differently from the pinned Pi release.
+title: "Parity: "
+labels: ["parity"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        PiG follows the Pi release shown by `pig verify`. Report any observable difference that `DIVERGENCES.md` does not already number.
+  - type: textarea
+    id: validate
+    attributes:
+      label: pig verify output
+      description: Paste the output of `pig verify`. It shows the PiG version, the pinned Pi release, and the platform.
+      render: text
+    validations:
+      required: true
+  - type: input
+    id: pi-version
+    attributes:
+      label: Pi version compared against
+      placeholder: "0.87.1"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Commands, keys, or RPC messages. Include the terminal and its size for display differences.
+    validations:
+      required: true
+  - type: textarea
+    id: pi
+    attributes:
+      label: What Pi does
+    validations:
+      required: true
+  - type: textarea
+    id: pig
+    attributes:
+      label: What PiG does
+    validations:
+      required: true
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched DIVERGENCES.md and existing issues.
+          required: true
+        - label: The report contains no credentials, private prompts, or customer data.
+          required: true

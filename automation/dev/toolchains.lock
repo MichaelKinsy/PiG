@@ -1,0 +1,8 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# Pinned toolchain archives for automation/dev/setup.sh.
+# setup.sh prefers the official go.dev archive, whose SHA-256 it reads from
+# go.dev's JSON index. It uses a row here only when go.dev is unreachable.
+# Columns: tool version os arch source url sha256
+go	1.27.1	linux	amd64	actions/go-versions	https://github.com/actions/go-versions/releases/download/1.27.1-33583469715/go-1.27.1-linux-x64.tar.gz	6f00fbc5b337fbf00581b7ced382fecdc4fa9493aef971277652a25f7aa14c6e

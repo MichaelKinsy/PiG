@@ -1,0 +1,142 @@
+# golangci-lint is a `make check` gate for pig. Keep this file aligned
+# with AGENTS.md "Lint policy": fix valid findings at source; suppress only
+# audited false-positive classes; use the narrowest rule/path/text selector;
+# prefer inline `//nolint:<linter> // rationale` for site-specific cases.
+#
+# Do not add broad exclusions merely to make CI green. If a linter conflicts
+# with upstream-faithful behavior, document the upstream contract or pig
+# divergence in the suppression rationale.
+version: "2"
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - staticcheck
+    - ineffassign
+    - unused
+    - gocritic
+    - errorlint
+    # iface rejects unused/duplicate interfaces, opaque interface returns with a
+    # single concrete implementation, and leaked unexported interface contracts
+    # without banning real consumer-owned boundaries. Do not replace upstream
+    # public protocol interfaces merely to satisfy a generic interface-style rule.
+    - iface
+    - gosec
+    - bodyclose
+    - nolintlint
+    # misspell: catch typos in comments and doc strings (near-zero false
+    # positives). Preserve upstream-faithful user-visible strings via
+    # settings.misspell.ignore-words rather than editing them to match US spelling.
+    - misspell
+  exclusions:
+    # Rules here are programmatic suppressions for audited false-positive
+    # classes. Site-specific false positives should generally live beside the
+    # code as `//nolint:<linter> // rationale` so reviewers see the tradeoff.
+    rules:
+      # gosec: subprocess launched with variable: expected in a CLI tool
+      # that execs user-specified commands (git, node, tar, etc.)
+      - linters: [gosec]
+        text: "G204:"
+      # gosec: file inclusion via variable: expected for a tool that
+      # reads user config files, session files, and extension sources
+      - linters: [gosec]
+        text: "G304:"
+      # gosec: path traversal via taint: same rationale as G304
+      - linters: [gosec]
+        text: "G703:"
+      # gosec: file permissions > 0600: generated code and non-secret
+      # config files legitimately use 0644
+      - linters: [gosec]
+        text: "G306:"
+      # gosec: weak RNG: faux provider and test fixtures use math/rand
+      # intentionally, no crypto needed
+      - linters: [gosec]
+        text: "G404:"
+      # gosec: potential hardcoded credentials: OAuth client IDs and
+      # redirect URIs are public by design (RFC 8252 §8.4)
+      - linters: [gosec]
+        text: "G101:"
+      # gosec: Slowloris: local-only OAuth callback server bound to
+      # 127.0.0.1, not a production HTTP service
+      - linters: [gosec]
+        text: "G112:"
+      # gosec: integer overflow conversion: provider APIs use int for
+      # token counts and sizes; overflow is not a realistic concern for
+      # values that fit in API response JSON
+      - linters: [gosec]
+        text: "G115:"
+      # gosec: filesystem race in filepath.Walk: the CLI walks user
+      # directories at startup; TOCTOU is not a security concern here
+      - linters: [gosec]
+        text: "G122:"
+      # gosec: XSS via taint: OAuth redirect HTML is served locally
+      # on 127.0.0.1 with user-controlled state params; not a real XSS
+      # vector since the server is ephemeral and localhost-only
+      - linters: [gosec]
+        text: "G705:"
+      # gosec: directory permissions: CLI creates user-owned dirs; 0755
+      # is standard for bin/config dirs
+      - linters: [gosec]
+        text: "G301:"
+      # gosec: file permissions: session files and configs use 0644
+      - linters: [gosec]
+        text: "G302:"
+      # gosec: goroutine with Background context: long-lived session
+      # goroutines intentionally outlive request contexts
+      - linters: [gosec]
+        text: "G118:"
+      # gosec: command injection via taint: external editor launch
+      # uses user-configured $EDITOR, which is intentional
+      - linters: [gosec]
+        text: "G702:"
+      # gosec: slice index out of range: false positives on guarded
+      # index operations where the guard is not visible to the checker
+      - linters: [gosec]
+        text: "G602:"
+      # gosec: marshaled field matches secret pattern: APIKey field
+      # is intentionally serialized to auth.json for credential storage
+      - linters: [gosec]
+        text: "G117:"
+      # gosec: unhandled error: interactive TUI cleanup paths where
+      # error handling would be noise (cursor restore, etc.)
+      - linters: [gosec]
+        text: "G104:"
+      # gosec: file traversal in archive extraction: D14 documents
+      # this as intentional; Go stdlib extraction with path validation
+      - linters: [gosec]
+        text: "G305:"
+      # gosec: decompression bomb: tools-manager downloads from GitHub
+      # releases CDN (trusted source), not arbitrary user input
+      - linters: [gosec]
+        text: "G110:"
+      # staticcheck: error strings should not be capitalized: upstream
+      # error messages are user-facing and intentionally capitalized
+      - linters: [staticcheck]
+        text: "ST1005:"
+      # staticcheck: SA5011 in tests flags dereferences after t.Fatal.
+      # testing.T.Fatal calls runtime.Goexit, but staticcheck does not always
+      # model that through helper-heavy table tests. Production SA5011 stays
+      # enabled.
+      - linters: [staticcheck]
+        path: ".*_test\\.go"
+        text: "SA5011"
+      # govet: inline suggestion for ptrString: used in generated code
+      # (models_generated.go) where a helper is cleaner than addr-of literals
+      - linters: [govet]
+        text: "inline: Call of ai.ptrString"
+    paths:
+      - .upstream
+
+formatters:
+  enable:
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/MichaelKinsy/PiG
+
+output:
+  sort-order:
+    - file

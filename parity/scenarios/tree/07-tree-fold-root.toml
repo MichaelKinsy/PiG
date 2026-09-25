@@ -1,0 +1,62 @@
+# Behavior family: tree
+# Manual upstream-first tmux probe (2026-05-14):
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   send: "reply with exactly: done" Enter
+#   wait: 5s
+#   send: "/tree" Enter
+#   send: C-Left, C-Left
+#   crop: from "Type to search:" through "(1/1)"
+# Raw cropped block observed in upstream pi (faux):
+#   Type to search:
+#   ────────────────────────────────────────────────────────────────────────────────────────────────────
+#
+#   › ⊞ • user: reply with exactly: done
+#     (1/1)
+#
+# This scenario uses the deterministic faux provider. Both pig and pi register
+# test-faux. Folding with Ctrl+Left collapses children under the user node.
+
+name = "07-tree-fold-root"
+description = "Both binaries fold the root user row after two Ctrl+Left presses in /tree."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+]
+tags = [
+  "fast",
+  "hermetic",
+  "tui",
+]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Type to search:"
+capture_end = "(1/1)"
+
+[[tmux.steps]]
+keys = ["reply with exactly: done", "Enter"]
+settle_seconds = 5
+
+[[tmux.steps]]
+keys = ["/tree", "Enter"]
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["C-Left", "C-Left"]
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 1.50
+runs = 1

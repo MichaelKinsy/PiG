@@ -1,0 +1,86 @@
+# Behavior family: selectors
+# Surface: extension input overlay (ExtensionInputComponent)
+#
+# Driven via /probe-input (registered by test-ui-extension.ts), which
+# calls ctx.ui.input("Probe Title", "type here"). Both binaries load
+# the same test extension and open the ExtensionInputComponent in the
+# editor slot.
+#
+# Upstream evidence (pi v0.69.0, manually probed in tmux 100×35,
+# PI_CODING_AGENT_DIR=/tmp/probe-pi-agent pi --no-extensions
+# -e parity/testdata/test-ui-extension.ts, then /probe-input Enter):
+#
+#     ────────────────────────────────────────────────────────────────────
+#
+#      Probe Title
+#
+#     >
+#
+#      enter submit  escape/ctrl+c cancel
+#
+#     ────────────────────────────────────────────────────────────────────
+#
+# Structure: DynamicBorder + Spacer + accent-title (indented 1) + Spacer +
+# Input ("> " prompt) + Spacer + hint line (indented 1) + Spacer +
+# DynamicBorder.
+#
+# Bugs fixed in this loop:
+#   (a) pig's ExtensionInputComponent Render() did not indent the
+#       title or hint lines (upstream indents with 1 space via
+#       Text(content, 1, 0)).
+#   (b) pig's hint said "esc cancel" instead of "escape/ctrl+c cancel"
+#       (upstream resolves tui.select.cancel → "escape/ctrl+c").
+#   (c) ExtUIContext.Input used layout.Remove/Add instead of
+#       layout.Replace (inconsistent with all other editor-slot
+#       patterns; could cause ordering bugs on restore).
+#
+# Asserts output_equal on tmux's plain capture. ANSI codes for accent/dim
+# theming differ; visible glyph layout is byte-identical.
+
+# lint-known-gap: escaped_output_equal fails because pig and pi emit
+# slightly different ANSI byte sequences for the accent-coloured title
+# and dim border lines (same visible glyphs after ANSI strip;
+# output_equal = true confirms parity at the glyph level).
+
+name = "11-extension-input"
+description = "Both binaries render the ExtensionInputComponent identically when /probe-input opens the input dialog."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/extension-input.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "Probe Title"
+capture_end = "escape/ctrl+c cancel"
+
+[[tmux.steps]]
+keys = ["/probe-input", "Enter"]
+wait_contains = ["Probe Title", "escape/ctrl+c cancel"]
+wait_timeout_seconds = 10
+settle_seconds = 2
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pi_extensions = ["../../testdata/test-ui-extension.ts"]
+pig_extensions = ["../../testdata/test-ui-extension.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+both_contain = [
+  "Probe Title",
+  "enter submit",
+  "escape/ctrl+c cancel",
+]
+output_equal = true
+runtime_ratio_max = 2.00
+runs = 1

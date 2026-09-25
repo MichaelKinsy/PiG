@@ -1,0 +1,75 @@
+# Behavior family: selectors
+# Surface: /login → Sign in with an account → OAuth provider picker.
+#
+# Regression intent: manual verification found a scary UX gap where the
+# second /login screen appeared to omit GitHub Copilot. That screen was the
+# API-key provider picker, but this scenario locks the subscription path so
+# Copilot cannot silently disappear from the OAuth provider list again.
+#
+# Upstream evidence (pi v0.83.0, probed against the exact npm oracle):
+# the account-login list is sorted by provider display name. With the fixture's
+# stored GitHub Copilot credential, the stable prefix is:
+#   Anthropic • unconfigured
+#   GitHub Copilot ✓ stored
+#   Kimi For Coding • unconfigured
+#   OpenAI Codex • unconfigured
+#
+# Later entries (Radius, xAI) sort after OpenAI Codex. This crop ends after
+# OpenAI Codex and excludes only those later entries. Kimi's
+# appearance verifies provider registration/name wiring; its device-flow and
+# refresh behavior require separate caller-path evidence.
+#
+# Staging note: CI's reference pi can render the auth-method selector slowly;
+# sending both Enters in one legacy keys array can drop the second Enter before
+# the selector is ready. The steps below wait for each intermediate screen.
+
+name = "10-login-subscription-providers"
+description = "/login subscription provider picker includes GitHub Copilot and Kimi For Coding with upstream labels."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts",
+  "packages/coding-agent/src/core/model-runtime.ts",
+]
+tags = ["hermetic", "tui", "fixture-auth"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "Select provider to configure"
+capture_end = "OpenAI Codex • unconfigured"
+
+[[tmux.steps]]
+keys = ["/login", "Enter"]
+wait_contains = ["Select authentication method:", "Sign in with an account"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Select provider to configure:", "OpenAI Codex • unconfigured"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[assert]
+both_reach_ready = true
+output_normalized_equal = true
+both_contain = [
+  "Select provider to configure",
+  "Anthropic • unconfigured",
+  "GitHub Copilot ✓ stored",
+  "Kimi For Coding • unconfigured",
+  "OpenAI Codex • unconfigured",
+]
+runs = 3

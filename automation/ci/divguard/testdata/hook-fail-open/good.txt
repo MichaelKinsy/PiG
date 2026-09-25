@@ -1,0 +1,33 @@
+// divguard:path coding/runtime.go
+
+package coding
+
+import "context"
+
+type ToolCallHookResult struct {
+	Block  bool
+	Reason string
+}
+
+type emitResult struct {
+	Block  bool
+	Reason string
+}
+
+type runner interface {
+	EmitToolCall(ctx context.Context, name string) (*emitResult, error)
+}
+
+// toolCallHook blocks the tool when its handler fails, as upstream does.
+func toolCallHook(r runner) func(ctx context.Context, name string) ToolCallHookResult {
+	return func(ctx context.Context, name string) ToolCallHookResult {
+		result, err := r.EmitToolCall(ctx, name)
+		if err != nil {
+			return ToolCallHookResult{Block: true, Reason: "Extension failed, blocking execution: " + err.Error()}
+		}
+		if result == nil {
+			return ToolCallHookResult{}
+		}
+		return ToolCallHookResult{Block: result.Block, Reason: result.Reason}
+	}
+}

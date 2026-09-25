@@ -1,0 +1,81 @@
+# Behavior family: settings
+# Surface: editor-padding setting live application
+#
+# Upstream evidence was captured through Pi 0.84.0's production interactive
+# settings selector at 100x35. The setting changes from 0 to 1, the selector
+# closes, and 99 typed characters wrap as 98 columns plus one indented column:
+# the captured lines are 98 `q` cells followed by ` q`. Pig must produce the
+# same raw and escaped crop without a restart.
+#
+# Pi 0.87.1 (re-probed 2026-09-23) aligns settings values after the widest
+# label, "Default thinking level per model" (32 cells), so the post-toggle wait
+# matches "Editor padding" followed by 20 spaces and "1".
+
+name = "06-settings-editor-padding-live"
+description = "Both binaries apply editor padding immediately after changing it in /settings."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+  "packages/tui/src/components/editor.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "qqqqqqqqqq"
+capture_start_last = true
+capture_end = "────────────────────────────────────────────────────────────────────────────────────────────────────"
+
+[[tmux.steps]]
+keys = ["/settings", "Enter"]
+wait_contains = [">", "Type to search · Enter/Space to change · Esc to cancel"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+# The first post-open key is a synchronization key for the modal input-owner
+# handoff. Keep it in its own step so CI contention
+# cannot coalesce it with the first semantic filter character.
+[[tmux.steps]]
+keys = ["Space"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["e", "d", "i", "t", "o", "r"]
+wait_contains = ["> editor", "Type to search · Enter/Space to change · Esc to cancel"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Editor padding                    1", "Type to search · Enter/Space to change · Esc to cancel"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Escape"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q", "q"]
+wait_contains = ["qqqqqqqqqq"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+escaped_output_equal = true
+runtime_ratio_max = 1.25
+runs = 3

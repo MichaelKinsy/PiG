@@ -1,0 +1,73 @@
+# Behavior family: rpc
+# Surface: clear queued steering and follow-up messages during an active RPC prompt.
+# Pi returns the removed queues in their original categories and emits an empty queue update before the clear response.
+# The faux provider pauses after LIVE-STREAM-08. Waiting for that delta proves the agent is streaming before queue commands are sent.
+
+name = "25-rpc-clear-queue"
+description = "RPC clear_queue returns and removes queued steering and follow-up messages."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+settle_seconds = 3
+
+[[rpc.steps]]
+line = '{"id":"prompt","type":"prompt","message":"TUI_LIVE_STREAM_PAUSE"}'
+wait_contains = [
+  '"id":"prompt","type":"response","command":"prompt","success":true',
+  '"type":"agent_start"',
+  '"delta":"LIVE-STREAM-08\n"',
+]
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"steer","type":"steer","message":"What is 20+22?"}'
+wait_contains = [
+  '"type":"queue_update","steering":["What is 20+22?"],"followUp":[]',
+  '"id":"steer","type":"response","command":"steer","success":true',
+]
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"follow","type":"follow_up","message":"Remember this exact code: letters A L P H A and digits 7 7 4 9"}'
+wait_contains = [
+  '"type":"queue_update","steering":["What is 20+22?"],"followUp":["Remember this exact code: letters A L P H A and digits 7 7 4 9"]',
+  '"id":"follow","type":"response","command":"follow_up","success":true',
+]
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"clear","type":"clear_queue"}'
+wait_contains = [
+  '"type":"queue_update","steering":[],"followUp":[]',
+  '"id":"clear","type":"response","command":"clear_queue","success":true,"data":{"steering":["What is 20+22?"],"followUp":["Remember this exact code: letters A L P H A and digits 7 7 4 9"]}',
+]
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"clear","type":"response","command":"clear_queue","success":true,"data":{"steering":["What is 20+22?"],"followUp":["Remember this exact code: letters A L P H A and digits 7 7 4 9"]}',
+  '"type":"queue_update","steering":[],"followUp":[]',
+]
+both_not_contain = [
+  '"success":false',
+  '"delta":"42"',
+  '"delta":"Alpha"',
+]
+both_match_regex = [
+  '(?s)"type":"agent_start".*"type":"queue_update","steering":\["What is 20\+22\?"\],"followUp":\[\].*"id":"steer","type":"response","command":"steer","success":true.*"type":"queue_update","steering":\["What is 20\+22\?"\],"followUp":\["Remember this exact code: letters A L P H A and digits 7 7 4 9"\].*"id":"follow","type":"response","command":"follow_up","success":true.*"type":"queue_update","steering":\[\],"followUp":\[\].*"id":"clear","type":"response","command":"clear_queue","success":true,"data":\{"steering":\["What is 20\+22\?"\],"followUp":\["Remember this exact code: letters A L P H A and digits 7 7 4 9"\]\}',
+]
+runs = 3

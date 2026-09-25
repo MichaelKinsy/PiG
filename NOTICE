@@ -1,0 +1,47 @@
+SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+SPDX-License-Identifier: MIT
+
+PiG
+===
+
+PiG is a Go implementation designed to provide behavior corresponding to the Pi coding-agent project:
+
+https://github.com/earendil-works/pi/
+
+Pi is distributed under the MIT License and carries this notice:
+
+Copyright (c) 2025 Mario Zechner
+
+PiG is not an official release of the upstream Pi project. The upstream maintainers do not endorse PiG. PiG preserves upstream copyright and license notices where applicable. See `LICENSE`, `docs/project/PROVENANCE.md`, the repository SPDX metadata, and this notice.
+
+Embedded third-party software
+-----------------------------
+
+PiG embeds the following third-party browser assets in exported HTML transcripts:
+
+- Highlight.js 11.9.0, Copyright (c) 2006, Ivan Sagalaev, BSD-3-Clause.
+- Marked 15.0.4, Copyright (c) 2018+, MarkedJS and Copyright (c) 2011-2018, Christopher Jeffrey, MIT; bundled Markdown material is Copyright 2004 John Gruber, BSD-3-Clause.
+
+See `THIRD_PARTY_NOTICES.md` for the applicable license texts. Dependencies included in a release are recorded in that release's SPDX SBOM.
+
+PiG also contains a Go port of `grok-mermaid` 0.2.2 and data generated from its width table:
+
+- Source: <https://github.com/xl0/grok-mermaid/tree/v0.2.2>
+- Copyright 2023-2026 SpaceXAI
+- Copyright 2026 Alexey Zaytsev
+- License: Apache-2.0
+
+The generated width table also derives from `unicode-width` 0.2.0, Copyright (c) 2015 The Rust Project Developers, used under its MIT option.
+
+PiG ports upstream Pi code that incorporates material from OpenTUI, `ansi-regex`, and `strip-ansi`. Their notices are retained in the corresponding source files and in `THIRD_PARTY_NOTICES.md`.
+
+The project banner and derived social banners adapt the Go gopher, which was designed by Renee French and is licensed under CC-BY-4.0. The license text is in `LICENSES/CC-BY-4.0.txt`.
+
+`CODE_OF_CONDUCT.md` adapts Contributor Covenant 2.1 under CC-BY-4.0. Its source and attribution are retained in that document and in `THIRD_PARTY_NOTICES.md`.
+
+Unicode character data
+----------------------
+
+`tui/widthx/unicode_tables.go` includes data derived from Unicode 17.0.0.
+Copyright © 1991-2026 Unicode, Inc. Distributed under Unicode License V3;
+see `LICENSES/Unicode-3.0.txt` and `THIRD_PARTY_NOTICES.md`.

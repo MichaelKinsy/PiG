@@ -1,0 +1,49 @@
+# Behavior family: cli-utils
+# Surface: --resume always opens the startup picker and does not consume the next
+# positional argument as a session ID; explicit selection uses --session.
+#
+# Manual upstream-first tmux probe (exact Pi 0.83.0, 2026-08-04):
+#   command:
+#     PI_CODING_AGENT_DIR=../session/testdata/pi-agent \
+#       pi --no-extensions --session-dir {{TEMP}}/sessions --resume session-123
+#   crop: start="Resume Session (Current Folder)" end="  No sessions in current folder. Press Tab to view all."
+#   raw cropped upstream block:
+#
+#     Resume Session (Current Folder)                  ◉ Current Folder | ○ All  Name: All  Sort: Threaded
+#     tab scope · re:<pattern> regex · "phrase" exact
+#     ctrl+s sort · ctrl+n named · ctrl+d delete · ctrl+p path (off)
+#
+#     >
+#
+#       No sessions in current folder. Press Tab to view all.
+
+name = "03-startup-resume-picker"
+description = "--resume opens the startup picker without consuming the following positional argument."
+covers = [
+  "packages/coding-agent/src/cli/args.ts",
+  "packages/coding-agent/src/cli/session-picker.ts",
+  "packages/coding-agent/src/cli/startup-ui.ts",
+]
+tags = ["hermetic", "fast", "tui"]
+driver = "interactive-tmux"
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../session/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../session/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions", "--resume", "session-123"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions", "--resume", "session-123"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "Resume Session (Current Folder)"
+ready_pattern_pi = "Resume Session (Current Folder)"
+ready_timeout_seconds = 25
+capture_start = "Resume Session (Current Folder)"
+capture_end = "  No sessions in current folder. Press Tab to view all."
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

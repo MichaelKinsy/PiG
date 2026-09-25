@@ -1,0 +1,55 @@
+# Behavior family: tui-components
+# Surface: Text component wrapping via widthx.WrapTextWithAnsi
+#
+# Upstream evidence (pi v0.69.0, 2026-05-15):
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   send: "reply with exactly: The quick brown fox jumps over the lazy dog and continues running across the wide open field until it reaches the far edge of the meadow where flowers bloom" Enter
+#   wait: 3s
+#   crop: start="The quick brown fox" end="flowers bloom"
+#   raw cropped upstream block:
+#     The quick brown fox jumps over the lazy dog and continues running across the wide open field
+#     until it reaches the far edge of the meadow where flowers bloom
+#
+# This exercises the word-wrapping path in widthx.WrapTextWithAnsi (ports
+# upstream packages/tui/src/utils.ts:wrapTextWithAnsi) and the Text
+# component's render path.
+
+name = "01-text-wrap-long-response"
+description = "Long faux response wraps identically at terminal width via widthx word-wrap."
+covers = [
+  "packages/tui/src/utils.ts",
+  "packages/tui/src/components/text.ts",
+  "packages/coding-agent/src/utils/syntax-highlight.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "The quick brown fox"
+capture_end = "flowers bloom"
+
+[[tmux.steps]]
+keys = ["reply with exactly: The quick brown fox jumps over the lazy dog and continues running across the wide open field until it reaches the far edge of the meadow where flowers bloom", "Enter"]
+settle_seconds = 4
+wait_contains = ["flowers bloom"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

@@ -1,0 +1,82 @@
+# Behavior family: interactive-rendering
+# Surface: ToolExecutionComponent: bg-painted tool result box with bash call/result
+#
+# Upstream evidence (pi v0.69.0, 2026-05-15):
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   send: "Run: expr 20 + 22" Enter
+#   wait: 6s
+#   crop: start="$ expr 20 + 22" end="Took 0.0s"
+#   raw cropped upstream block (inside bg-painted Box):
+#     $ expr 20 + 22
+#
+#     42
+#
+#     Took 0.0s
+#
+# This exercises the ToolExecutionComponent's full lifecycle:
+# - Top padding row from Box(paddingY=1)
+# - Bold `$ command` header from renderCall
+# - Separator (leading \n from renderResult)
+# - Output lines in toolOutput color (gray #808080)
+# - Duration footer "Took Xs" in muted color (gray #808080)
+# - Bottom padding row from Box(paddingY=1)
+#
+# Bugs fixed in this loop:
+#   1. Missing top/bottom padding rows (Box paddingY=1 was skipped)
+#   2. Bash output lines had no toolOutput color
+#   3. "Took" footer used dim SGR instead of muted gray
+#   4. Missing blank line between output and "Took" footer
+
+name = "03-tool-execution-bash"
+description = "Bash tool result box renders with correct padding, colors, and spacing."
+covers = [
+  "packages/coding-agent/src/core/timings.ts",
+  "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+]
+# timings.ts: the "Took Xs" footer is rendered from RecordTool() timing
+# data. If timings broke, the duration would be absent or wrong.
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "$ expr 20 + 22"
+capture_end_regex = 'Took \d+\.\d+s'
+
+[[tmux.steps]]
+keys = ["Run: expr 20 + 22", "Enter"]
+settle_seconds = 6
+wait_contains = ["42", "Took"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+# lint-known-gap: bg-paint SGR encoding differs between pig (paintBgWith with
+# reset re-application) and upstream (Box delegation with theme.bg). The visible
+# content, spacing, and structure are identical.
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+# runs=3 because tool-execution timing has shown ~12% flake (1/8) at runs=1.
+# Repeating + normalize_replace nail the durability.
+runs = 3
+
+# Mask sub-second timing in "Took Xs" footer: pi and pig can finish a
+# trivial bash tool call in 0.0s vs 0.1s due to scheduling jitter.
+# normalize_replace applies after ANSI strip, before equality compare.
+# normalize-rationale: only the sub-second tool duration varies with scheduling.
+[[assert.normalize_replace]]
+pattern = 'Took \d+\.\d+s'
+with = "Took Ns"

@@ -1,0 +1,135 @@
+# Behavior family: ai-sdk
+# Surface: package-level AI SDK helpers added/exposed by upstream v0.75.x.
+#
+# Upstream evidence (2026-05-21): parity/testdata/ai-sdk-pi.mjs imports the
+# installed upstream @earendil-works/pi-ai dist files from the same npm binary
+# used as the parity comparator. It exercises the image model registry,
+# image API dispatch, OpenRouter image generation payload/response handling,
+# OpenAI prompt-cache key clamping, Cloudflare URL placeholder substitution,
+# session resource cleanup registration, diagnostic extraction, and proxy URL
+# resolution. parity/testdata/ai-sdk-pig/main.go exercises the matching Go
+# API and prints the same normalized JSON object.
+# Re-probed 2026-09-25 against the pinned installed Pi: cloudflare-stream.ts
+# resolveCloudflareModel substitutes only explicit env. With ambient acct/gate
+# present, undefined env retains both placeholders; resolved provider env yields
+# /acct/gate/compat. Call the Pi resolver directly, not a fixture replacement.
+# Three pairs retain the exact JSON comparison across repeated helper dispatch.
+# Mutation proof: restoring ambient fallback for nil env in ai/cloudflare.go
+# compiles and changes only cloudflareUnresolvedURL to /acct/gate/compat.
+
+name = "01-ai-sdk-helpers"
+description = "AI SDK helper surfaces produce the same normalized JSON behavior as upstream."
+covers = [
+  "packages/ai/src/image-models.generated.ts",
+  "packages/ai/src/session-resources.ts",
+  "packages/ai/src/api/openai-prompt-cache.ts",
+  "packages/ai/src/api/cloudflare.ts",
+  "packages/ai/src/api/openrouter-images.ts",
+  "packages/ai/src/images.ts",
+  "packages/ai/src/image-models.ts",
+  "packages/ai/src/images-api-registry.ts",
+  "packages/ai/src/utils/diagnostics.ts",
+  "packages/ai/src/utils/node-http-proxy.ts",
+  "packages/ai/src/providers/all.ts",
+  "packages/ai/src/models.generated.ts",
+  "packages/ai/src/models.ts",
+  "packages/ai/src/compat.ts",
+  "packages/ai/src/images-models.ts",
+  "packages/ai/src/auth/helpers.ts",
+  "packages/ai/src/auth/types.ts",
+  "packages/ai/src/auth/oauth/load.ts",
+  "packages/ai/src/providers/openai-codex.ts",
+  "packages/ai/src/providers/openai.ts",
+  "packages/ai/src/providers/openrouter-images.ts",
+  "packages/ai/src/providers/images/register-builtins.ts",
+  "packages/ai/src/providers/amazon-bedrock.models.ts",
+  "packages/ai/src/providers/ant-ling.models.ts",
+  "packages/ai/src/providers/anthropic.models.ts",
+  "packages/ai/src/providers/azure-openai-responses.models.ts",
+  "packages/ai/src/providers/cerebras.models.ts",
+  "packages/ai/src/providers/cloudflare-ai-gateway.models.ts",
+  "packages/ai/src/providers/cloudflare-workers-ai.models.ts",
+  "packages/ai/src/providers/deepseek.models.ts",
+  "packages/ai/src/providers/fireworks.models.ts",
+  "packages/ai/src/providers/github-copilot.models.ts",
+  "packages/ai/src/providers/google-vertex.models.ts",
+  "packages/ai/src/providers/google.models.ts",
+  "packages/ai/src/providers/groq.models.ts",
+  "packages/ai/src/providers/huggingface.models.ts",
+  "packages/ai/src/providers/kimi-coding.models.ts",
+  "packages/ai/src/providers/minimax-cn.models.ts",
+  "packages/ai/src/providers/minimax.models.ts",
+  "packages/ai/src/providers/mistral.models.ts",
+  "packages/ai/src/providers/moonshotai-cn.models.ts",
+  "packages/ai/src/providers/moonshotai.models.ts",
+  "packages/ai/src/providers/nvidia.models.ts",
+  "packages/ai/src/providers/openai-codex.models.ts",
+  "packages/ai/src/providers/openai.models.ts",
+  "packages/ai/src/providers/opencode-go.models.ts",
+  "packages/ai/src/providers/opencode.models.ts",
+  "packages/ai/src/providers/openrouter.models.ts",
+  "packages/ai/src/providers/together.models.ts",
+  "packages/ai/src/providers/vercel-ai-gateway.models.ts",
+  "packages/ai/src/providers/xai.models.ts",
+  "packages/ai/src/providers/xiaomi-token-plan-ams.models.ts",
+  "packages/ai/src/providers/xiaomi-token-plan-cn.models.ts",
+  "packages/ai/src/providers/xiaomi-token-plan-sgp.models.ts",
+  "packages/ai/src/providers/xiaomi.models.ts",
+  "packages/ai/src/providers/zai-coding-cn.models.ts",
+  "packages/ai/src/providers/zai.models.ts",
+  "packages/ai/src/providers/ant-ling.ts",
+  "packages/ai/src/providers/cerebras.ts",
+  "packages/ai/src/providers/cloudflare-ai-gateway.ts",
+  "packages/ai/src/providers/cloudflare-auth.ts",
+  "packages/ai/src/providers/cloudflare-stream.ts",
+  "packages/ai/src/providers/cloudflare-workers-ai.ts",
+  "packages/ai/src/providers/deepseek.ts",
+  "packages/ai/src/providers/fireworks.ts",
+  "packages/ai/src/providers/github-copilot.ts",
+  "packages/ai/src/providers/groq.ts",
+  "packages/ai/src/providers/huggingface.ts",
+  "packages/ai/src/providers/kimi-coding.ts",
+  "packages/ai/src/providers/minimax-cn.ts",
+  "packages/ai/src/providers/minimax.ts",
+  "packages/ai/src/providers/moonshotai-cn.ts",
+  "packages/ai/src/providers/moonshotai.ts",
+  "packages/ai/src/providers/nvidia.ts",
+  "packages/ai/src/providers/opencode-go.ts",
+  "packages/ai/src/providers/opencode.ts",
+  "packages/ai/src/providers/openrouter.ts",
+  "packages/ai/src/providers/together.ts",
+  "packages/ai/src/providers/vercel-ai-gateway.ts",
+  "packages/ai/src/providers/xai.ts",
+  "packages/ai/src/providers/xiaomi-token-plan-ams.ts",
+  "packages/ai/src/providers/xiaomi-token-plan-cn.ts",
+  "packages/ai/src/providers/xiaomi-token-plan-sgp.ts",
+  "packages/ai/src/providers/xiaomi.ts",
+  "packages/ai/src/providers/zai-coding-cn.ts",
+  "packages/ai/src/providers/zai.ts",
+  "packages/ai/src/providers/anthropic.ts",
+  "packages/ai/src/providers/google.ts",
+  "packages/ai/src/providers/google-vertex.ts",
+  "packages/ai/src/providers/amazon-bedrock.ts",
+  "packages/ai/src/providers/azure-openai-responses.ts",
+  "packages/ai/src/providers/mistral.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./parity/testdata/ai-sdk-pig"]
+pi_args = ["node", "./parity/testdata/ai-sdk-pi.mjs"]
+
+[cli]
+cwd = "../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_not_contain = ["panic:", "Error:", "UnhandledPromiseRejection"]
+runtime_ratio_max = 5.0
+runs = 3

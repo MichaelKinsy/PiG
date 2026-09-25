@@ -1,0 +1,49 @@
+# Behavior family: clipboard-images
+# Surface: Image fallback rendering through image.ts + terminal-image.ts.
+#
+# Upstream evidence (pi v0.69.0, current loop probe in tmux 100x35):
+#   PI_CODING_AGENT_DIR=parity/scenarios/clipboard-images/testdata/pi-agent \
+#   pi --no-extensions -e parity/testdata/batch2-ui-harness.ts
+#   send: /probe-image-fallback Enter
+#   output: [Image: probe.png [image/png] 1x1]
+#
+# tmux reports no terminal image protocol support, so both binaries must take
+# the visible fallback path. The command directly renders the Image component
+# and reports the produced fallback line.
+
+name = "03-image-rendering-deferred"
+description = "Both binaries render the tmux fallback line for a 1x1 PNG image component."
+covers = [
+  "packages/tui/src/components/image.ts",
+  "packages/tui/src/terminal-image.ts",
+]
+tags = ["hermetic", "fast", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "[Image: probe.png [image/png] 1x1]"
+capture_end = "[Image: probe.png [image/png] 1x1]"
+
+[[tmux.steps]]
+keys = ["/probe-image-fallback", "Enter"]
+wait_contains = ["[Image: probe.png [image/png] 1x1]"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent", "PIG_PARITY_HARNESS=1"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/batch2-ui-harness.ts"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

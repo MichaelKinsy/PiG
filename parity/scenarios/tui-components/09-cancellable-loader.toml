@@ -1,0 +1,54 @@
+# Behavior family: tui-components
+# Surface: cancellable-loader.ts: Esc-cancellable loader behavior.
+#
+# Upstream evidence (Pi 0.83.0, current loop probe in tmux 100x35):
+#   PI_CODING_AGENT_DIR=parity/scenarios/clipboard-images/testdata/pi-agent \
+#   pi --no-extensions -e parity/testdata/batch2-ui-harness.ts
+#   send: /probe-cancellable-loader Enter
+#   output: cancellable-loader:render=true:aborted=true:onAbort=true
+#
+# The probe command constructs a CancellableLoader, confirms its rendered line
+# includes the working message, dispatches Escape to the loader, and reports
+# whether both AbortSignal and onAbort fired.
+
+name = "09-cancellable-loader"
+description = "Both binaries render the cancel hint and abort a cancellable loader on Escape."
+covers = [
+  "packages/tui/src/components/cancellable-loader.ts",
+]
+tags = ["hermetic", "fast", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "cancellable-loader:render=true:aborted=true:onAbort=true"
+capture_end = "cancellable-loader:render=true:aborted=true:onAbort=true"
+
+[[tmux.steps]]
+keys = ["/probe-cancellable-loader", "Enter"]
+wait_contains = ["cancellable-loader:render=true:aborted=true:onAbort=true"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = [
+  "PIG_CODING_AGENT_DIR=../clipboard-images/testdata/pig-agent",
+  "PIG_PARITY_HARNESS=1",
+]
+pi = [
+  "PI_CODING_AGENT_DIR=../clipboard-images/testdata/pi-agent",
+  "PI_SKIP_VERSION_CHECK=1",
+]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/batch2-ui-harness.ts"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

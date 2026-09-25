@@ -1,0 +1,9 @@
+{"Time":"2026-09-24T22:03:25.814295028-07:00","Action":"start","Package":"github.com/MichaelKinsy/PiG/internal/codingagent"}
+{"Time":"2026-09-24T22:03:25.857164281-07:00","Action":"run","Package":"github.com/MichaelKinsy/PiG/internal/codingagent","Test":"TestConvertToPngReturnsNilWhenConversionFails"}
+{"Time":"2026-09-24T22:03:25.857295196-07:00","Action":"output","Package":"github.com/MichaelKinsy/PiG/internal/codingagent","Test":"TestConvertToPngReturnsNilWhenConversionFails","Output":"=== RUN   TestConvertToPngReturnsNilWhenConversionFails\n","OutputType":"frame"}
+{"Time":"2026-09-24T22:03:25.857343496-07:00","Action":"output","Package":"github.com/MichaelKinsy/PiG/internal/codingagent","Test":"TestConvertToPngReturnsNilWhenConversionFails","Output":"    image_convert_test.go:115: ConvertToPng(\"\") = \u0026{Data: MimeType:image/png}, want nil\n","OutputType":"error"}
+{"Time":"2026-09-24T22:03:25.857361568-07:00","Action":"output","Package":"github.com/MichaelKinsy/PiG/internal/codingagent","Test":"TestConvertToPngReturnsNilWhenConversionFails","Output":"--- FAIL: TestConvertToPngReturnsNilWhenConversionFails (0.00s)\n","OutputType":"frame"}
+{"Time":"2026-09-24T22:03:25.857373984-07:00","Action":"fail","Package":"github.com/MichaelKinsy/PiG/internal/codingagent","Test":"TestConvertToPngReturnsNilWhenConversionFails","Elapsed":0}
+{"Time":"2026-09-24T22:03:25.857483239-07:00","Action":"output","Package":"github.com/MichaelKinsy/PiG/internal/codingagent","Output":"FAIL\n","OutputType":"frame"}
+{"Time":"2026-09-24T22:03:25.864785513-07:00","Action":"output","Package":"github.com/MichaelKinsy/PiG/internal/codingagent","Output":"FAIL\tgithub.com/MichaelKinsy/PiG/internal/codingagent\t0.050s\n","OutputType":"frame"}
+{"Time":"2026-09-24T22:03:25.864848063-07:00","Action":"fail","Package":"github.com/MichaelKinsy/PiG/internal/codingagent","Elapsed":0.051}

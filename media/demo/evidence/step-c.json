@@ -1,0 +1,17 @@
+{
+  "step": "c",
+  "recording_wall_seconds": 51.17,
+  "faux_provider": true,
+  "status": "PASS",
+  "binaries": {
+    "pig-go": {
+      "sha256": "08e939b83a2ac7a2407cce43ef8547e0f7d6e81f136bf852e322539b5b6ed0fb",
+      "bytes": 34570503
+    },
+    "pig-demo": {
+      "sha256": "e0140520d4e1491dc6d21305f8e300f8b00c13818e53ea96c745035c66ab10ab",
+      "bytes": 35946759
+    }
+  },
+  "raw_sha256": "b3adaa597487a8bb57d32f5f5dddddfcbdff5c766b1575933cf83b374e3eb654"
+}

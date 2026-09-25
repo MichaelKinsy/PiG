@@ -1,0 +1,59 @@
+# Behavior family: interactive-rendering
+# Surface: CompactionSummaryMessageComponent: collapsed `[compaction]` block
+#          rendered when resuming a session that contains a compaction entry.
+#
+# Upstream evidence (pi v0.69.0, 2026-05-16, 100x35 tmux probe):
+#   Session fixture: testdata/compaction-cwd/sessions/...jsonl
+#   (header + user:Hello world + assistant:Hi there + compaction:summary,87432 tokens)
+#   pi -e test-faux-provider.ts --model test-faux/faux-1 --session-dir sessions -c
+#   wait: ready
+#   crop: capture_start="[compaction]", capture_end="expand)"
+#   raw cropped upstream block:
+#
+#      [compaction]
+#
+#      Compacted from 87,432 tokens (ctrl+o to expand)
+#
+# pig renders the collapse hint lowercase (`ctrl+o`) natively, matching upstream.
+#
+# Root-cause fix in this loop:
+#   pig lacked the initial-session-render call on resume: resumed
+#   sessions showed only the banner without prior messages or structural
+#   entries (compaction/branch-summary). Fixed by adding
+#   rebuildChatFromSession() after the welcome banner when ResumePath is
+#   set, mirroring upstream renderInitialMessages() (interactive-mode.ts:3097).
+#   Also wired ResumePath from cmd/pig/main.go into InteractiveOptions.
+
+name = "14-compaction-summary-message"
+description = "CompactionSummaryComponent renders collapsed [compaction] block on session resume with pre-staged compaction entry."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/compaction-cwd"
+capture_start = "[compaction]"
+capture_end = "expand)"
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "unknown command"]
+both_contain = ["[compaction]", "87,432", "expand)"]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3

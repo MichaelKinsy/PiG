@@ -1,0 +1,46 @@
+# Behavior family: clipboard-images
+# Surface: Settings menu Kitty-image-gated entries visible under Ghostty env.
+#
+# Under tmux, getCapabilities().images returns null, hiding the
+# "Show images", "Image width", "Auto-resize images", and "Block images"
+# settings. Under a Kitty-capable terminal (Ghostty, Kitty, WezTerm),
+# these entries appear because getCapabilities().images === "kitty".
+#
+# This scenario uses the headless-terminal driver (ht, backed by
+# libghostty-vt) with TERM_PROGRAM=ghostty env overrides so both
+# binaries detect Kitty image capability. It then opens /settings
+# and asserts the image-related entries are present.
+#
+# Upstream evidence (Pi 0.84.0 via ht/libghostty-vt, 2026-08-07): the
+# headless-terminal production path reports Kitty capability and both binaries
+# render the complete image-settings crop identically after normalization.
+
+name = "05-kitty-settings-visible"
+description = "Image-related settings appear when terminal reports Kitty image capability."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "headless-terminal"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 25
+keys = ["/settings<CR>"]
+settle_seconds = 1
+capture_start = "Show images"
+capture_end = "Type to search"
+cwd = "testdata"
+
+[env]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pig = ["PIG_TEST_FAUX=1", "TERM_PROGRAM=ghostty", "TERM=xterm-ghostty", "COLORTERM=truecolor"]
+pi = ["TERM_PROGRAM=ghostty", "TERM=xterm-ghostty", "COLORTERM=truecolor"]
+
+[assert]
+runs = 3
+output_normalized_equal = true

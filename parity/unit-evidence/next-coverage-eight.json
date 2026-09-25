@@ -1,0 +1,88 @@
+[
+  {
+    "upstream": "packages/ai/src/providers/meta.ts",
+    "package": "./ai",
+    "tests": [
+      "TestMetaCatalogMatchesPinnedProviderDefinition",
+      "TestMetaResponsesRequestShape",
+      "TestMetaResponsesClampsUnsupportedMaxThinking"
+    ],
+    "upstream_reference": "packages/ai/src/providers/meta.ts metaProvider id, baseUrl, openAIResponsesApi selection, and model wiring; pinned source has no dedicated provider test",
+    "mutation": "ai/models_generated.go: in the meta/muse-spark-1.1 provider record replace API \"openai-responses\" with \"mutant\"; compiling go test -overlay meta.json ./ai -run '^(TestMetaCatalogMatchesPinnedProviderDefinition|TestMetaResponsesRequestShape|TestMetaResponsesClampsUnsupportedMaxThinking)$' -count=1 fails TestMetaCatalogMatchesPinnedProviderDefinition; meta-red.log"
+  },
+  {
+    "upstream": "packages/ai/src/providers/qwen-token-plan-individual.ts",
+    "package": "./ai",
+    "tests": [
+      "TestEnvAPIKeysQwenIndividualReusesInternationalTokenPlanVariable",
+      "TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels",
+      "TestQwenTokenPlanSendsQwenThinkingFields"
+    ],
+    "upstream_reference": "packages/ai/src/providers/qwen-token-plan-individual.ts qwenTokenPlanIndividualProvider API-key variable, catalog, and Qwen thinking compatibility fields in serialized Completions requests; packages/ai/test/qwen-token-plan-models.test.ts; these tests do not prove Model Runtime API dispatch",
+    "mutation": "ai/auth_env_keys.go: replace qwen-token-plan-individual's QWEN_TOKEN_PLAN_API_KEY mapping with MUTANT_QWEN_TOKEN_PLAN_API_KEY; compiling go test -overlay qwen-individual.json ./ai -run '^(TestEnvAPIKeysQwenIndividualReusesInternationalTokenPlanVariable|TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels|TestQwenTokenPlanSendsQwenThinkingFields)$' -count=1 fails TestEnvAPIKeysQwenIndividualReusesInternationalTokenPlanVariable; qwen-red.log"
+  },
+  {
+    "upstream": "packages/ai/src/utils/pi-user-agent.ts",
+    "package": "./ai",
+    "tests": [
+      "TestPiUserAgentFormat",
+      "TestProviderDefaultUserAgent",
+      "TestProviderUserAgentOverridePrecedence"
+    ],
+    "upstream_reference": "packages/ai/src/utils/pi-user-agent.ts getPiUserAgent exact platform/release/arch identity independently obtained from node:os, plus provider default-header wiring and override precedence; the approved pig/<coding.Version> product-identity divergence D65 is preserved",
+    "mutation": "ai/user_agent.go: change piUserAgentArch's amd64 result from x64 to invented-arch; go test -overlay ai-arch.json ./ai -run '^$' -count=1 compiles, then -run '^TestPiUserAgentFormat$' -count=1 fails on invented-arch versus independently observed x64; ai-after-compile.log and ai-after-red.log. The same mutation passed all three selected tests before the independent assertion; ai-before-mutation.log. Restored tests pass; restored-green.log"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/pi-user-agent.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestBugReportEnvironmentUsesPiGUserAgent"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/pi-user-agent.ts getPiUserAgent(version), packages/coding-agent/test/pi-user-agent.test.ts, and bug-report collectEnvironment caller; D65 preserves PiG identity with a node:os platform/release/arch suffix independently observed in the test, not derived from returned environment fields; evidence is limited to the bug-report metadata caller",
+    "mutation": "internal/codingagent/bug_report.go: change nodeArch's amd64 result from x64 to invented-arch; go test -overlay coding-arch.json ./internal/codingagent -run '^$' -count=1 compiles, then -run '^TestBugReportEnvironmentUsesPiGUserAgent$' -count=1 fails on invented-arch versus independently observed x64; coding-after-compile.log and coding-after-red.log. The same mutation passed the selected test before the independent assertion; coding-before-mutation.log. Restored tests pass; restored-green.log"
+  },
+  {
+    "upstream": "packages/coding-agent/src/cli/credential-print.ts",
+    "package": "./cmd/pig",
+    "tests": [
+      "TestCredentialPrintPrintsResolvedAPIKey",
+      "TestCredentialPrintPrintsBearerTokenFromAuthorizationHeader",
+      "TestCredentialPrintRefreshesExpiredOAuthTokenBeforePrinting"
+    ],
+    "upstream_reference": "packages/coding-agent/src/cli/credential-print.ts resolveCredentialForPrint and packages/coding-agent/test/credential-print.test.ts API-key, bearer-token, OAuth-refresh, and persistence cases",
+    "mutation": "cmd/pig/credential_print.go: replace the sole resolved credential return value with \"mutant\"; compiling go test -overlay credential-print.json ./cmd/pig -run '^(TestCredentialPrintPrintsResolvedAPIKey|TestCredentialPrintPrintsBearerTokenFromAuthorizationHeader|TestCredentialPrintRefreshesExpiredOAuthTokenBeforePrinting)$' -count=1 fails all three selected credential tests; credential-print-red.log"
+  },
+  {
+    "upstream": "packages/coding-agent/src/cli/auth-check.ts",
+    "package": "./cmd/pig",
+    "tests": [
+      "TestAuthCheckReportsConfiguredProviderAsReady",
+      "TestAuthCheckReadsCredentialsWithoutRefreshingOAuthWhenRequested",
+      "TestAuthCheckReportsUnknownProviderAsNotReady",
+      "TestAuthCheckReportsMalformedAuthStateAsInvalid",
+      "TestAuthCheckDoesNotCreateAuthFileOrParentDirectory"
+    ],
+    "upstream_reference": "packages/coding-agent/src/cli/auth-check.ts checkProviderAuth/getProviderCredential/createAuthCheckModelRuntime and packages/coding-agent/test/auth-check.test.ts ready, no-refresh, unknown-provider, invalid-state, and no-file-write assertions",
+    "mutation": "cmd/pig/auth_check.go: change the successful final CheckProviderAuth status from ready to not_ready; compiling go test -overlay auth-check.json ./cmd/pig -run '^(TestAuthCheckReportsConfiguredProviderAsReady|TestAuthCheckReadsCredentialsWithoutRefreshingOAuthWhenRequested|TestAuthCheckReportsUnknownProviderAsNotReady|TestAuthCheckReportsMalformedAuthStateAsInvalid|TestAuthCheckDoesNotCreateAuthFileOrParentDirectory)$' -count=1 fails TestAuthCheckReportsConfiguredProviderAsReady; auth-check-red.log"
+  },
+  {
+    "upstream": "packages/coding-agent/src/cli/auth-command.ts",
+    "package": "./cmd/pig",
+    "tests": [
+      "TestAuthCommandPrintsSecretsOnlyInTheRequestedForm",
+      "TestAuthCommandExitCodesAndErrors",
+      "TestParseAuthCommandLargeMinimumExpiry"
+    ],
+    "upstream_reference": "packages/coding-agent/src/cli/auth-command.ts parseAuthCommand/validateAuthCommandArgs/getAuthCredential and packages/coding-agent/test/credential-print.test.ts command parsing and error cases; TestParseAuthCommandLargeMinimumExpiry proves large-value acceptance without signed-integer overflow, not exact JavaScript multiplication or rounding",
+    "mutation": "cmd/pig/auth_command.go: change --credentials parsing from command.Credentials = true to false; compiling go test -overlay auth-command.json ./cmd/pig -run '^(TestAuthCommandPrintsSecretsOnlyInTheRequestedForm|TestAuthCommandExitCodesAndErrors|TestParseAuthCommandLargeMinimumExpiry)$' -count=1 fails TestAuthCommandPrintsSecretsOnlyInTheRequestedForm because credential output becomes ready; auth-command-red.log"
+  },
+  {
+    "upstream": "packages/coding-agent/src/cli/setup.ts",
+    "package": "./cmd/pig",
+    "tests": [
+      "TestSetupCliSetsInheritedProcessMarkers"
+    ],
+    "upstream_reference": "packages/coding-agent/src/cli/setup.ts setupCli PI_CODING_AGENT and AI_AGENT environment markers inherited by child processes; process.title and Node warning suppression have no Go analogue",
+    "mutation": "cmd/pig/setup_cli.go: replace AI_AGENT value pi with mutant; compiling go test -overlay setup.json ./cmd/pig -run '^TestSetupCliSetsInheritedProcessMarkers$' -count=1 fails TestSetupCliSetsInheritedProcessMarkers; setup-red.log"
+  }
+]

@@ -1,0 +1,47 @@
+# Behavior family: clipboard-images
+# Surface: CLI image processing pipeline for @file arguments.
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   PI_SKIP_VERSION_CHECK=1 \
+#     pi --no-extensions -e parity/testdata/test-faux-provider.ts \
+#     --model test-faux/faux-1 @testdata/large.png --print "describe resized image"
+#   output:
+#     cli-image-resize-ok
+#
+# Faux returns cli-image-resize-ok only when the initial prompt contains the
+# upstream resize note
+#   [Image: original 4000x2000, displayed at 2000x1000. Multiply coordinates by 2.00 ...]
+# and the user message also carries one image/png attachment.
+#
+# This exercises the file-argument image pipeline that routes through
+# exif-orientation.ts, image-resize.ts, and image-resize-core.ts. The faux
+# provider checks the core resize result through the final dimensions, note,
+# MIME type, and attached image count.
+
+name = "04-image-processing-file-args"
+description = "CLI image @file args resize oversized images and emit the upstream dimension note."
+covers = [
+  "packages/coding-agent/src/utils/exif-orientation.ts",
+  "packages/coding-agent/src/utils/image-resize.ts",
+  "packages/coding-agent/src/utils/image-resize-core.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=../tools/testdata/pig-home"]
+pig_args = ["@large.png"]
+pi_args = ["@large.png"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "describe resized image"
+timeout_seconds = 30
+cwd = "testdata"
+
+[assert]
+exit_code = 0
+both_contain = ["cli-image-resize-ok"]
+output_equal = true
+runs = 3

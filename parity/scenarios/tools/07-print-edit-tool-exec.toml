@@ -1,0 +1,42 @@
+# Behavior family: tools
+# Scenario: print-mode edit tool execution via faux provider.
+#
+# Faux provider receives "Run: edit parity-edit-target.txt", emits an edit
+# tool call with path "parity-edit-target.txt", oldText "REPLACE_ME",
+# newText "REPLACED". The tool edits the file. Faux sees the result
+# and replies with "edited".
+#
+# The print driver snapshots [print].cwd into a temp directory before each
+# run, so the fixture file is isolated per binary and per run.
+#
+# Upstream evidence (2026-05-15):
+#   cd parity/scenarios/tools/testdata
+#   Both binaries output: "edited"
+
+name = "07-print-edit-tool-exec"
+description = "Faux triggers edit(parity-edit-target.txt), both produce edited in print mode"
+covers = [
+  "packages/coding-agent/src/core/tools/edit.ts",
+  "packages/agent/src/harness/tools/edit.ts",
+  "packages/coding-agent/src/core/tools/edit-diff.ts",
+  "packages/agent/src/harness/tools/edit-diff.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--no-extensions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: edit parity-edit-target.txt"
+timeout_seconds = 30
+cwd = "testdata"
+
+[assert]
+exit_code = 0
+both_contain = ["edited"]
+output_equal = true
+runs = 3

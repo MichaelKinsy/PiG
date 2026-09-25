@@ -1,0 +1,59 @@
+# Behavior family: extensions-runtime
+# Surface: resumed Session identity reaches subprocess lifecycle handlers before
+# their request executes and survives reload.
+#
+# Upstream evidence (Pi 0.83.0): with the staged parity-continue session,
+# the first agent_start after /reload observes id `parity-continue` plus the
+# resolved absolute JSONL basename. Pig must publish the replacement runner's
+# state snapshot before dispatching that same lifecycle request.
+
+name = "16-resumed-session-identity"
+description = "Replacement subprocess agent_start observes the resumed Session ID and resolved absolute file"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+pig_extensions = ["testdata/ext/session-identity.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/session-identity.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+cwd = "../session/testdata/continue-session"
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "identity:agent_start"
+capture_end = "absolute=true"
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+wait_contains = ["Reloaded"]
+wait_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+wait_contains = ["identity:agent_start:parity-continue:", "absolute=true", "42"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = [
+  "identity:agent_start:parity-continue:",
+  "absolute=true",
+]
+both_not_contain = ["absolute=false", "panic:", "goroutine ", "connection closed"]
+output_equal = true
+runs = 3

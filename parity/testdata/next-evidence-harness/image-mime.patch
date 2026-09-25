@@ -1,0 +1,13 @@
+diff --git i/internal/imageprocessing/images.go w/internal/imageprocessing/images.go
+index f83b6490f..ffcbc3f46 100644
+--- i/internal/imageprocessing/images.go
++++ w/internal/imageprocessing/images.go
+@@ -233,7 +233,7 @@ func joinImageHints(hints ...string) string {
+ // pipeline to that format's parser.
+ func DetectSupportedImageMimeType(buffer []byte) string {
+ 	if startsWithBytes(buffer, []byte{0xff, 0xd8, 0xff}) {
+-		if len(buffer) > 3 && buffer[3] == 0xf7 {
++		if len(buffer) > 3 && buffer[3] != 0xf7 {
+ 			return ""
+ 		}
+ 		return "image/jpeg"

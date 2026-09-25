@@ -1,0 +1,10 @@
+[package]
+name = "rust-sdk-fixture"
+version = "0.1.0"
+edition = "2024"
+publish = false
+license = "MIT"
+
+[dependencies]
+pig-sdk = { path = "../../../../extensions/sdk-rs" }
+serde_json = "1"

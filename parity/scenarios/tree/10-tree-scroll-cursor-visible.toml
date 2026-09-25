@@ -1,0 +1,75 @@
+# Behavior family: tree
+# Surface: Tree selector viewport scrolling keeps cursor visible
+#
+# Regression test for the bug where pressing Up in the tree selector
+# moved the cursor above the visible viewport without scrolling, leaving
+# the cursor marker invisible while the row list remained static.
+#
+# After a multi-turn faux session (3 round-trips = 12 entries), /tree
+# opens with cursor at the last entry. Moving Up several times must keep
+# the cursor marker (›) visible in the captured output.
+#
+# Scaffolding uses bash-only round-trips. grep/find/ls are NOT in the
+# default active tool set as of upstream pi v0.78.x (sdk.ts
+# defaultActiveToolNames = [read, bash, edit, write]); driving them here
+# would make pi emit "Tool grep not found" and trip both_not_contain.
+# The scroll behavior under test is tool-agnostic, so bash suffices.
+
+name = "10-tree-scroll-cursor-visible"
+description = "boot-only: Tree selector cursor stays visible when scrolling upward."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi = ["PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 120
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["Run: expr 20 + 22", "Enter"]
+wait_contains = ["42"]
+wait_timeout_seconds = 15
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["Run: bash long output", "Enter"]
+wait_contains = ["ran"]
+wait_timeout_seconds = 15
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["Run: bash control-chars", "Enter"]
+wait_contains = ["sanitized"]
+wait_timeout_seconds = 15
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["/tree", "Enter"]
+wait_contains = ["Session Tree"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+# Move cursor up 5 times to exercise scroll tracking.
+[[tmux.steps]]
+keys = ["Up", "Up", "Up", "Up", "Up"]
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+# The cursor marker must be visible in the final capture.
+both_contain = ["›"]
+both_not_contain = ["panic:", "goroutine ", "not found"]
+runs = 1

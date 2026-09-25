@@ -1,0 +1,24 @@
+[
+  {
+    "upstream": "packages/coding-agent/src/utils/image-convert.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestConvertToPngReturnsOriginalDataForPNG",
+      "TestImageConvertDecodedPixels",
+      "TestConvertToPngReturnsNilWhenConversionFails"
+    ],
+    "upstream_reference": "packages/coding-agent/test/image-processing.test.ts (PNG passthrough, JPEG conversion, EXIF after XMP); packages/coding-agent/src/utils/image-convert.ts (conversion failure)",
+    "mutation": "Compiling mutations: internal/codingagent/image_convert.go ConvertToPng returns nil for declared PNG (TestConvertToPngReturnsOriginalDataForPNG FAIL), and returns a fabricated ConvertedImage for conversion failure (TestConvertToPngReturnsNilWhenConversionFails FAIL); internal/imageprocessing/images.go decodeAutoOriented bypasses fixOrientation (TestImageConvertDecodedPixels/EXIF_after_XMP FAIL: 2x1 instead of 1x2). The latter is called directly by mapped internal/imageprocessing/image_convert.go ConvertImageBytesToPng. All restored tests PASS. Exact patches, green.jsonl, image-{passthrough,failure,orientation}-red.jsonl, and restored-green.jsonl: parity/testdata/next-evidence-app-b/."
+  },
+  {
+    "upstream": "packages/tui/src/components/alt-screen-flash.ts",
+    "package": "./tui",
+    "tests": [
+      "TestFlashExactRender",
+      "TestFlashOrderedExpiryAndDispose",
+      "TestFlashNonPositiveExpiryRequestsRender"
+    ],
+    "upstream_reference": "packages/tui/src/components/alt-screen-flash.ts; packages/tui/src/utils.ts truncateToWidth; pinned-source fake-timer and exact-byte probe parity/testdata/next-evidence-app-b/oracle.mjs",
+    "mutation": "Compiling mutations in mapped tui/alt_screen_flash.go: retain expiring entry via entries[i:] instead of entries[i+1:] (TestFlashOrderedExpiryAndDispose and TestFlashNonPositiveExpiryRequestsRender FAIL with stale visible lines); truncate at width+1 (TestFlashExactRender FAIL on exact bytes). Restore -> all PASS. Tests also assert the 999ms/1000ms default boundary, out-of-order expiry, exact add/expiry render counts, and no callbacks after disposal under synctest. Exact patches, green.jsonl, flash-{removal,truncation}-red.jsonl, and restored-green.jsonl: parity/testdata/next-evidence-app-b/."
+  }
+]

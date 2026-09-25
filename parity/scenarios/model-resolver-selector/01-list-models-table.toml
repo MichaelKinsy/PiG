@@ -1,0 +1,38 @@
+# Behavior family: model-resolver-selector
+# Surface: --list-models table format and deterministic sorting.
+#
+# Exact Pi 0.83.0 probe (2026-08-04):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent-local pi --no-extensions --offline --list-models
+#
+#   provider  model      context  max-out  thinking  images
+#   fixture   model-one  128K     4.1K     no        no
+#   fixture   model-two  200K     8.2K     yes       yes
+#
+# The local models.json fixture provides credential-complete models without
+# network access or user credentials. Equality proves parsing, auth-filtered
+# availability, sorting, token formatting, capability columns, and output.
+
+name = "01-list-models-table"
+description = "Both binaries render the exact six-column model table from a local credential-complete provider."
+covers = [
+  "packages/coding-agent/src/cli/args.ts",
+  "packages/coding-agent/src/cli/list-models.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[cli]
+args = ["--list-models"]
+timeout_seconds = 15
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-local"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-local"]
+pig_args = ["--no-extensions", "--offline"]
+pi_args = ["--no-extensions", "--offline"]
+
+[assert]
+output_equal = true
+both_not_contain = ["panic:", "goroutine ", "Warning:"]
+runtime_ratio_max = 2.0
+runs = 3

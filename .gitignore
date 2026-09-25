@@ -1,0 +1,153 @@
+bin/
+/out/
+/build/
+/dist/
+/coverage/
+/evidence/
+node_modules/
+**/target/
+**/__pycache__/
+**/*.py[cod]
+**/.cache/
+**/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
+**/.coverage
+**/coverage.xml
+*.test
+*.out
+*.prof
+*.pprof
+*.trace
+*.log
+*.pid
+*.sock
+
+# Developer-specific environment and editor state.
+.envrc
+.direnv/
+.env
+.env.*
+!.env.example
+*.local
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*~
+*.swp
+*.swo
+
+# Common local credential files. Committed non-secret fixtures require an
+# explicit exception next to the owning fixture below.
+/*.npmrc
+/.netrc
+/.pypirc
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+credentials.json
+secrets.json
+
+# Tmux captures and other ad-hoc test artefacts.
+tmp/
+parity/artifacts/
+.pig-faux-tool-started
+
+# Live-integration test bookkeeping (in case anyone overrides PIG_HOME
+# into the repo: we never want auth.json committed).
+.pig/
+auth.json
+# Exception: a hermetic, non-secret auth.json fixture for the
+# 02-list-models-oauth-builtins parity scenario. It stages a placeholder
+# openai-codex OAuth credential (refresh-token presence gates registration;
+# the access token is never validated for listing) and carries no real secret.
+!parity/scenarios/providers-registry/testdata/oauth-agent/auth.json
+# Exception: the print-extension-tool-bridge parity scenario's echo_bridge
+# extension lives under a .pig/ dir otherwise caught by the broad .pig/ rule.
+!parity/scenarios/tools/testdata/.pig/
+!parity/scenarios/tools/testdata/.pig/extensions/
+!parity/scenarios/tools/testdata/.pig/extensions/parity-echo.mjs
+!parity/scenarios/footer/testdata/multi-pig-agent/auth.json
+!parity/scenarios/footer/testdata/multi-pi-agent/auth.json
+# Exception: 05-footer-experimental-indicator needs a configured provider in
+# both agent dirs, and without these two the scenario fails on a clean
+# checkout. Placeholder OAuth values only: presence gates provider
+# registration and the tokens are never validated offline.
+!parity/scenarios/footer/testdata/pi-agent/auth.json
+!parity/scenarios/footer/testdata/pig-agent/auth.json
+# Exception: model-expiry and login-selector scenarios use placeholder OAuth
+# values to exercise stored and expired credential state without network access.
+!parity/scenarios/model-resolver-selector/testdata/pi-agent-expired/auth.json
+!parity/scenarios/model-resolver-selector/testdata/pig-agent-expired/auth.json
+!parity/scenarios/selectors/testdata/pi-agent/auth.json
+!parity/scenarios/selectors/testdata/pig-home/agent/auth.json
+# Exception: the project-trust scenarios need an auto-discovered project
+# extension in the fixture project itself, which the broad .pig/ rule (and the
+# repo-root .pi/ rule) would otherwise swallow. These register a probe provider
+# that must not execute before trust is granted; they hold no credentials.
+# Without the exception the fixtures stay local to whoever wrote them and the
+# scenarios fail on a clean checkout.
+!parity/scenarios/project-trust/testdata/project-*/.pig/
+!parity/scenarios/project-trust/testdata/project-*/.pig/**
+!parity/scenarios/project-trust/testdata/project-*/.pi/
+!parity/scenarios/project-trust/testdata/project-*/.pi/**
+# Exception: this named fixture directory represents the Session target cwd. It
+# is source data, not Rust build output.
+!parity/scenarios/project-trust/testdata/session-target-cwd/target/
+!parity/scenarios/project-trust/testdata/session-target-cwd/target/README.txt
+
+# Side-by-side mirror of upstream pi sources, materialised by
+# automation/gen/mirror-upstream.sh. Read-only reference material, not vendored.
+.upstream/
+
+/pig
+.gopi/
+
+# Runtime session traces written into testdata dirs during parity runs.
+# Parity runner snapshots testdata to ephemeral temp dirs before launch,
+# so these are leftover from older runs and never affect correctness.
+parity/scenarios/*/testdata/pig-home/agent/sessions/--Users-*/
+parity/scenarios/*/testdata/pig-home/agent/sessions/--tmp-*/
+
+# Conformance fixture build/cache output.
+tests/extension-conformance/testdata/python-sdk-fixture/**/__pycache__/
+tests/extension-conformance/testdata/python-sdk-fixture/**/*.py[cod]
+
+# Example extension build artifacts.
+examples/extensions/rust-factory/Cargo.lock
+examples/extensions/python-factory/**/__pycache__/
+examples/extensions/python-factory/**/*.py[cod]
+
+# SDK staging content-hash markers are derived runtime state. They may appear
+# when a source SDK directory is used as a staging target, but are never inputs.
+extensions/sdk*/.pig-sdk-version
+
+# Python SDK build/cache output. The Python SDK ships as source and is
+# loaded into generated packed/standalone runners via PIG_SDK_PY_ROOT;
+# we never want bytecode caches, build artefacts, or virtual envs in git.
+extensions/sdk-py/**/__pycache__/
+extensions/sdk-py/**/*.py[cod]
+extensions/sdk-py/**/*.egg-info/
+extensions/sdk-py/build/
+extensions/sdk-py/dist/
+extensions/sdk-py/.pytest_cache/
+extensions/sdk-py/.ruff_cache/
+extensions/sdk-py/.mypy_cache/
+extensions/sdk-py/.venv/
+
+# Generated packed-cell artefacts. These are rebuilt deterministically
+# from extension/SDK sources; we never want the cache contents in git.
+# The cache lives under the resolved pig home (PIG_HOME / ~/.pig) or a
+# test-temp cache root, so this guard catches accidental in-tree builds.
+coding/extension/host/runtimecell/cache/
+coding/extension/host/runtimecell/**/__pycache__/
+coding/extension/host/runtimecell/**/*.py[cod]
+
+# Stray local builds of the pig binary (the Makefile installs to ~/.local/bin/pig)
+/gopi
+
+# npm launcher source (automation/release/npm), not a build output.
+!automation/release/npm/launcher/bin/

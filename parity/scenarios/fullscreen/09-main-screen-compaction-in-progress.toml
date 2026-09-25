@@ -1,0 +1,86 @@
+# Behavior family: fullscreen
+# Surface: Pi 0.87.1 main-screen compaction transition before replacement settles.
+# Upstream evidence: paired 0.87.1 probes resume the same compactable
+# conversation and retain its settled tail above the editor-border compaction
+# spinner. Animation frames vary at capture; border spacing, conversation rows,
+# and the viewport remain exact.
+
+name = "09-main-screen-compaction-in-progress"
+description = "In-progress compaction retains the same settled conversation tail as Pi."
+covers = [
+  "packages/tui/src/tui-main-screen.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent", "TUI_LIVE_PROBE=1"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TUI_LIVE_PROBE=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "--session", "sessions/2025-01-01T00-00-00-000Z_parity-compact.jsonl"]
+pi_args = ["--session-dir", "sessions", "--session", "sessions/2025-01-01T00-00-00-000Z_parity-compact.jsonl"]
+
+[tmux]
+width = 80
+height = 20
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "../compaction/testdata/compact-session"
+capture_start = "How do goroutines work internally?"
+capture_end = "faux-1"
+
+[[tmux.steps]]
+keys = ["/compact", "Enter"]
+wait_contains = ["Compacting context... (escape to cancel)"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_contain = ["Compacting context... (escape to cancel)"]
+both_not_contain = ["[compaction]", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3
+
+# normalize-rationale: spinner frame selection, temporary working-directory
+# identity, and faux footer usage vary independently of the transition layout.
+# Conversation markers, blank rows, whitespace, and ordering remain unmasked.
+
+[[assert.normalize_replace]]
+pattern = '(?m)^\s*[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏] Compacting context\.\.\. \(escape to cancel\)$'
+with = " <SPINNER> Compacting context... (escape to cancel)"
+
+# Pi 0.87.1 embeds the same animated loader in the editor top border.
+# Preserve both captures exactly: only the spinner code point is normalized.
+[[assert.normalize_replace]]
+pattern = '(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Compacting context\.\.\. \(escape to cancel\) ─*)$'
+with = '${1}<SPINNER>${2}'
+
+[[assert.normalize_replace]]
+pattern = '(?m)^.*[/\\]parity-snap-cwd-[^\n]*$'
+with = "<CWD>"
+
+# normalize-rationale: whether the last streamed "LIVE-TOOL-24" line of the
+# settled tool card is still on screen when /compact fires depends on how
+# quickly each binary scrolls that card into its collapsed preview relative
+# to when the harness sends /compact (immediately once "LIVE-TOOL-DONE"
+# appears). This is non-deterministic on both sides, not a Pig-only
+# divergence: reproduced pig showing the line while Pi's own capture omitted
+# it (parity/artifacts/09-main-screen-compaction-in-progress/20260924T202458Z,
+# pig="LIVE-TOOL-24\n\n Took 1.5s...", pi="\n Took 1.7s..."), the mirror image
+# of the original f2416f71 evidence where Pi had the line and pig did not.
+# Drop the line, the blank line that follows it, and the next line's leading
+# indent, when present, so both captures normalize to the same tail. The
+# harness trims the whole capture (TrimSpace) before these rules run, so the
+# side that never had the line already starts at "Took Ns" with no leading
+# whitespace at all; only the side carrying the line needs this rule, and it
+# must reach all the way to "Took" to match that trimmed form exactly.
+[[assert.normalize_replace]]
+pattern = '\A[ \t]*LIVE-TOOL-24[ \t]*\n\n[ \t]*'
+with = ""
+
+[[assert.normalize_replace]]
+pattern = '(?m)^.*?/128k \(auto\)\s+faux-1$'
+with = "<STATUS>"

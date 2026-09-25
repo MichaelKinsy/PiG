@@ -1,0 +1,31 @@
+# Behavior family: rpc
+# Surface: fork command before a stable user-message entry.
+
+name = "10-rpc-fork-session"
+description = "RPC fork returns selected user text and switches to the new branch."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+cwd = "testdata/session"
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"fork","type":"fork","entryId":"user-1"}'
+wait_contains = ['"id":"fork","type":"response","command":"fork"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--session", "sessions/source.jsonl", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session", "sessions/source.jsonl", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_normalized_equal = true
+runs = 3

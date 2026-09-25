@@ -1,0 +1,45 @@
+# Behavior family: footer
+# Pi provider-composer.ts preserves config.oauth.isSubscription. ModelRuntime
+# requires both OAuth auth and an explicit true flag; footer.ts then shows
+# "$0.000 (sub)" even with no usage. No provider request is made.
+# Upstream evidence (2026-09-25, exact pinned Pi): this factory's true provider
+# shows the label; false, omitted, missing auth, and API-key auth do not.
+# TestExtensionOAuthSubscriptionFooter asserts the complete plain stats line
+# for those cases and removal. This scenario compares the real CLI's ANSI.
+# A compiled mutation making the host proxy return false fails readiness on
+# PiG while Pi still renders "$0.000 (sub)" (2026-09-25).
+# PI_OFFLINE and PI_SKIP_VERSION_CHECK prevent startup network access.
+
+name = "07-footer-extension-subscription"
+description = "An extension's explicit OAuth subscription flag reaches the stock footer through registration."
+covers = [
+  "packages/coding-agent/src/core/provider-composer.ts",
+  "packages/coding-agent/src/modes/interactive/components/footer.ts",
+]
+tags = ["fast", "hermetic", "tui", "fixture-auth"]
+driver = "interactive-tmux"
+model = "subscription-yes/label-test"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/subscription-agent", "PI_OFFLINE=1"]
+pi = ["PI_CODING_AGENT_DIR=testdata/subscription-agent", "PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/subscription.mjs"]
+pi_extensions = ["testdata/subscription.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "$0.000 (sub)"
+ready_pattern_pi = "$0.000 (sub)"
+ready_timeout_seconds = 25
+capture_start = "$0.000 (sub)"
+capture_end = "label-test"
+settle_seconds = 2
+
+[assert]
+both_reach_ready = true
+both_contain = ["$0.000 (sub) 0.0%/200k (auto)", "(subscription-yes) label-test"]
+escaped_output_equal = true
+runs = 3

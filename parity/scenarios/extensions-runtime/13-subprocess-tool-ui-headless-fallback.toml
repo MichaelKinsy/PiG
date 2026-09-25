@@ -1,0 +1,36 @@
+# Behavior family: extensions-runtime
+# Scenario: the same subprocess UI tool preserves its own fallback in headless
+# print mode instead of attempting to open a dialog.
+#
+# Upstream evidence (Pi 0.83.0): --print binds noOpUIContext, Select resolves to
+# undefined, and this fixture returns `dialogs-cancelled:select` immediately.
+
+name = "13-subprocess-tool-ui-headless-fallback"
+description = "Headless subprocess extension tool receives no-UI fallback without opening a dialog"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/core/tools/tool-definition-wrapper.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/ui-dialogs.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/ui-dialogs.mjs",
+]
+
+[print]
+prompt = "Run: extension UI dialogs"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["dialogs-cancelled:select"]
+both_not_contain = ["Pick a deployment", "dialog transport failed"]
+output_equal = true
+runs = 3

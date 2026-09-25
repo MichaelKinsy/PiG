@@ -1,0 +1,41 @@
+# Behavior family: startup
+# PORT_MAP linkage is explicit in the covers table below.
+# Scenario: startup banner reaches ready
+#
+# Both binaries must display their startup banner within the timeout
+# when launched directly via tmux (no shell). This is the most basic
+# parity gate: does the binary boot at all, and within a reasonable
+# wall clock?
+#
+# Acts as the canonical hermetic scenario: no real LLM call, only
+# binary+runtime+TUI initialization.
+
+name = "00-startup-banner"
+description = "boot-only: Both pig and pi reach their ready prompt within the timeout"
+
+covers = [
+  "packages/coding-agent/src/main.ts",
+]
+
+tags = ["fast", "tui", "hermetic"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "pi v"
+ready_timeout_seconds = 15
+
+[assert]
+runs = 3
+both_reach_ready = true
+# pig should boot within 1.5x pi's wall clock. Generous tolerance for
+# the first scenario; we'll tighten as we baseline real numbers.
+runtime_ratio_max = 1.50
+
+[diverge]
+# Intentional naming divergence; banner text differs.
+pig_contains = ["pig"]
+pi_contains = ["pi v"]
+reason = "Intentional project naming. Locked here so any future banner drift trips this assertion."

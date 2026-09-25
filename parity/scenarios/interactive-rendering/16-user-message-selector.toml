@@ -1,0 +1,83 @@
+# Behavior family: interactive-rendering
+# Surface: /fork user-message selector: editor-slot picker with chronological
+# list, latest-by-default selection, and Up-arrow navigation.
+#
+# Upstream evidence (pi v0.69.0, 2026-05-16, current loop probe):
+#   command: PI_CODING_AGENT_DIR=parity/scenarios/interactive-rendering/testdata/pi-agent PI_SKIP_VERSION_CHECK=1 pi --no-extensions -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1 --session-dir {{TEMP}}/sessions
+#   keys: "reply with exactly: alpha" Enter
+#   keys: "reply with exactly: beta" Enter
+#   keys: "/fork" Enter
+#   keys: Up
+#   crop: start="Fork from Message" end="  Message 2 of 2"
+#   raw cropped upstream block:
+#     Fork from Message
+#      Select a user message to copy the active path up to that point into a new
+#      session
+#
+#     ────────────────────────────────────────────────────────────────────────────────
+#
+#     › reply with exactly: alpha
+#       Message 1 of 2
+#
+#       reply with exactly: beta
+#       Message 2 of 2
+#
+# This exercises the dedicated /fork selector component, not the generic
+# filterable-list overlay: chronological rendering, latest-by-default selection,
+# editor-slot placement, and Up-arrow navigation to the older message.
+
+name = "16-user-message-selector"
+description = "Both binaries render the /fork user-message selector identically after moving selection upward once."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 80
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Fork from Message"
+capture_end = "  Message 2 of 2"
+
+[[tmux.steps]]
+keys = ["reply with exactly: alpha", "Enter"]
+settle_seconds = 4
+wait_contains = ["alpha"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["reply with exactly: beta", "Enter"]
+settle_seconds = 4
+wait_contains = ["beta"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["/fork", "Enter"]
+settle_seconds = 1
+wait_contains = ["Fork from Message", "Message 2 of 2"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Up"]
+settle_seconds = 1
+wait_contains = ["› reply with exactly: alpha", "  Message 2 of 2"]
+wait_timeout_seconds = 5
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 1

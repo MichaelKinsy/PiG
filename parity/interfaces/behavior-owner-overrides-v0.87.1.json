@@ -1,0 +1,13 @@
+{
+  "upstreamVersion": "0.87.1",
+  "owners": [
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.init",
+      "ownerFamily": "startup"
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/extensions/runner.ts#ExtensionRunner.renderCurrentSystemPrompt",
+      "ownerFamily": "extensions-runtime"
+    }
+  ]
+}

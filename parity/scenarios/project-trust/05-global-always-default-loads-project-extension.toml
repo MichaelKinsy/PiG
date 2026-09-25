@@ -1,0 +1,40 @@
+# Behavior family: project-trust
+# group-rationale: serial: project-trust extension fixtures compile to the same
+# Pig content-cache identity and must not build concurrently.
+# Surface: global defaultProjectTrust="always" trusts an undecided project.
+#
+# Upstream probe (exact Pi 0.83.0, 2026-08-03): with
+# defaultProjectTrust="always" in the global agent settings, noninteractive
+# --list-models loads project-05's auto-discovered provider without prompting or
+# writing a saved decision.
+#
+# This positive control pairs with scenario 04: the same field grants trust only
+# from the global settings layer.
+
+name = "05-global-always-default-loads-project-extension"
+description = "Global defaultProjectTrust always permits project Resources when no earlier decision exists."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/core/project-trust.ts",
+  "packages/coding-agent/src/core/settings-manager.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+]
+tags = ["hermetic", "fast", "security", "serial"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-always", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-always"]
+override_base_args = true
+
+[cli]
+args = ["--list-models", "trust-probe"]
+cwd = "testdata/project-05"
+snapshot_cwd = true
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["trust-probe", "must-not-load-before-trust"]
+both_not_contain = ["panic:", "goroutine "]
+runs = 3

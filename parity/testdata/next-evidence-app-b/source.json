@@ -1,0 +1,13 @@
+{
+  "base_commit": "fa8024b01666fb6737c9d863e054bf59aec01485",
+  "upstream_version": "0.87.1",
+  "upstream_commit": "f07218c4d4bbc12bef056a7058c3dd49dfe41abe",
+  "go": "go version go1.27.1 linux/amd64",
+  "node": "v24.19.0",
+  "source_sha256": {
+    "packages/coding-agent/src/utils/clipboard-image.ts": "d0f228cbf7df4bd11bc0fd039c23049a8f2166b2e48a5df2e1a3e51723058904",
+    "packages/coding-agent/src/utils/image-convert.ts": "791f2a134995ecd2d337c5e881971bc257889615c1245ea54013203af1ef8e16",
+    "packages/coding-agent/src/modes/interactive/components/show-images-selector.ts": "6bea191c5442c0fa46c7fd54836de31df2042c8ed3aef3225b2a56a5fc1a65a9",
+    "packages/tui/src/components/alt-screen-flash.ts": "6d341546b59958e93e4d33fdc1766b10d13c98a779031e2c01b827f0a4c6e30c"
+  }
+}

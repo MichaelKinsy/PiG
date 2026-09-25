@@ -1,0 +1,48 @@
+# Behavior family: project-trust
+# group-rationale: serial: the three scenarios compile identical auto-discovered
+# extension sources; concurrent Pig builds contend on the same content cache key.
+# Surface: noninteractive startup defaults an undecided project to untrusted.
+#
+# Upstream probe (exact Pi 0.83.0, 2026-08-03):
+#   cwd: testdata/project-01
+#   PI_CODING_AGENT_DIR=<empty-agent> pi --list-models trust-probe
+#   stdout begins "No models available" and contains no trust-probe model.
+#
+# The project has an auto-discovered .pi/extensions provider. --list-models is
+# deliberately noninteractive, so resolveProjectTrusted has no startup UI and
+# returns false after the extension/saved/default decision paths remain
+# undecided. The Resource loader must not execute the project extension.
+#
+# Red proof before P1: current Pig executes .pig/extensions/trust-probe.js and
+# prints trust-probe/must-not-load-before-trust. The both_not_contain assertion
+# fails on Pig while Pi passes.
+
+name = "01-noninteractive-undecided-denies-project-extension"
+description = "An undecided noninteractive project cannot execute an auto-discovered project extension before trust."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/core/project-trust.ts",
+  "packages/coding-agent/src/core/trust-manager.ts",
+  "packages/coding-agent/src/core/settings-manager.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+  "packages/coding-agent/src/core/package-manager.ts",
+]
+tags = ["hermetic", "fast", "security", "serial"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+override_base_args = true
+
+[cli]
+args = ["--list-models", "trust-probe"]
+cwd = "testdata/project-01"
+snapshot_cwd = true
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["No models available"]
+both_not_contain = ["trust-probe", "must-not-load-before-trust", "panic:", "goroutine "]
+runs = 3

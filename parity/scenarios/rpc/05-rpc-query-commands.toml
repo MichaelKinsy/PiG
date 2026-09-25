@@ -1,0 +1,70 @@
+# Behavior family: rpc
+# Surface: data-returning query commands on empty session
+#
+# Upstream evidence (pi v0.69.0, probed 2026-05-17):
+#   $ printf '{"id":"gm1","type":"get_messages"}\n{"id":"gla1","type":"get_last_assistant_text"}\n{"id":"gfm1","type":"get_fork_messages"}\n{"id":"ge1","type":"get_entries"}\n{"id":"gt1","type":"get_tree"}\n' \
+#     | pi --mode rpc --no-extensions --model test-faux/faux-1 -e test-faux-provider.ts 2>/dev/null
+#   {"id":"gm1","type":"response","command":"get_messages","success":true,"data":{"messages":[]}}
+#   {"id":"gla1","type":"response","command":"get_last_assistant_text","success":true,"data":{}}
+#   {"id":"gfm1","type":"response","command":"get_fork_messages","success":true,"data":{"messages":[]}}
+#   {"id":"ge1","type":"response","command":"get_entries","success":true,"data":{"entries":[],"leafId":null}}
+#   {"id":"gt1","type":"response","command":"get_tree","success":true,"data":{"tree":[],"leafId":null}}
+#   {"id":"ge2","type":"response","command":"get_entries","success":false,"error":"Entry not found: missing"}
+#
+# Tests that data-returning commands produce structurally identical output.
+# Startup appends model_change and thinking_level_change entries with random ids
+# and wall-clock timestamps, so the comparator normalizes only those dynamic
+# fields before asserting full JSONL equality. get_last_assistant_text returns
+# {} (not {"text":null}) when no assistant messages exist: matches JS
+# semantics where undefined values are omitted from JSON serialization.
+
+name = "05-rpc-query-commands"
+description = "Query commands on empty session produce byte-equal data responses"
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = [
+  '{"id":"gm1","type":"get_messages"}',
+  '{"id":"gla1","type":"get_last_assistant_text"}',
+  '{"id":"gfm1","type":"get_fork_messages"}',
+  '{"id":"ge1","type":"get_entries"}',
+  '{"id":"gt1","type":"get_tree"}',
+  '{"id":"ge2","type":"get_entries","since":"missing"}',
+]
+timeout_seconds = 15
+# Pi 0.84 dispatches JSONL handlers asynchronously; keep stdin open until the
+# complete query batch is published before EOF shutdown.
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/echo", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/echo", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: generated entry IDs and timestamps are independent per process.
+[[assert.normalize_replace]]
+pattern = '"id":"[0-9a-f]{8,16}"'
+with = '"id":"<entry>"'
+
+[[assert.normalize_replace]]
+pattern = '"parentId":"[0-9a-f]{8,16}"'
+with = '"parentId":"<entry>"'
+
+[[assert.normalize_replace]]
+pattern = '"leafId":"[0-9a-f]{8,16}"'
+with = '"leafId":"<entry>"'
+
+[[assert.normalize_replace]]
+pattern = '"timestamp":"[^"]+"'
+with = '"timestamp":"<ts>"'

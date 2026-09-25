@@ -1,0 +1,55 @@
+package codingagent
+
+import (
+	"bytes"
+	"context"
+	"image/color"
+	"image/png"
+	"slices"
+	"testing"
+)
+
+// Pinned clipboard-image-bmp-conversion.test.ts: unsupported clipboard formats
+// convert before return; clipboard-image.ts returns null on conversion failure.
+func TestClipboardImageUnsupportedFormats(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		data  []byte
+		valid bool
+	}{
+		{"BMP", makeBMPImage(t, 1, 1, color.RGBA{R: 255, A: 255}), true},
+		{"corrupt BMP", []byte("corrupt BMP"), false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			clipboardImageEvidenceBackend(t, func(_ context.Context, name string, args ...string) ([]byte, error) {
+				if name != "wl-paste" {
+					t.Fatalf("unexpected fallback: %s %q", name, args)
+				}
+				if slices.Contains(args, "--list-types") {
+					return []byte("image/bmp\n"), nil
+				}
+				return tc.data, nil
+			})
+			data, mime, err := ReadClipboardImageContext(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !tc.valid {
+				if len(data) != 0 || mime != "" {
+					t.Fatalf("failed conversion returned %q MIME=%q, want no image", data, mime)
+				}
+				return
+			}
+			if mime != "image/png" {
+				t.Errorf("converted clipboard MIME = %q, want image/png", mime)
+			}
+			out, err := png.Decode(bytes.NewReader(data))
+			if err != nil {
+				t.Fatalf("clipboard PNG cannot decode: %v", err)
+			}
+			if out.Bounds().Dx() != 1 || out.Bounds().Dy() != 1 || color.NRGBAModel.Convert(out.At(0, 0)) != (color.NRGBA{R: 255, A: 255}) {
+				t.Fatalf("converted clipboard pixel/bounds = %v/%v", out.At(0, 0), out.Bounds())
+			}
+		})
+	}
+}

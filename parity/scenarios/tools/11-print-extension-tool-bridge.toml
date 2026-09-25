@@ -1,0 +1,55 @@
+# Behavior family: tools
+# Scenario: print-mode custom extension tool bridged into the agent runtime.
+#
+# The scenario loads a minimal parity extension that registers `echo_bridge`.
+# Faux provider calls that tool, then only returns the final assistant text when
+# the tool result content contains `echo-bridge: hello`.
+#
+# This directly exercises upstream tool-definition-wrapper.ts
+# (wrapToolDefinition → AgentTool.execute) and pig's corresponding extension
+# bridge path by proving a registered extension tool is visible to the agent
+# loop, executable, and its result round-trips back into the next model turn.
+#
+# Upstream evidence (2026-05-16):
+#   cd parity/scenarios/tools/testdata
+#   pi --no-extensions \
+#     -e ../../../testdata/test-faux-provider.ts \
+#     -e .pig/extensions/parity-echo.mjs \
+#     --model test-faux/faux-1 \
+#     --print "Run: extension echo hello"
+#   output: "echo-bridge: hello"
+#   exit: 0
+#
+#   PIG_TEST_FAUX=1 PIG_HOME=parity/scenarios/tools/testdata/pig-home \
+#     pig --model test-faux/faux-1 --print "Run: extension echo hello"
+#   output: "echo-bridge: hello"
+#   exit: 0
+
+name = "11-print-extension-tool-bridge"
+description = "Custom extension tool executes and round-trips identically in print mode"
+covers = [
+  "packages/coding-agent/src/core/tools/tool-definition-wrapper.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/.pig/extensions/parity-echo.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/.pig/extensions/parity-echo.mjs",
+]
+
+[print]
+prompt = "Run: extension echo hello"
+timeout_seconds = 30
+cwd = "testdata"
+
+[assert]
+exit_code = 0
+both_contain = ["echo-bridge: hello"]
+output_equal = true
+runs = 3

@@ -1,0 +1,15 @@
+$ go test ./agent/harness/pico3 -run '^TestHarnessPicoJSONLRetirementAndHighWater$' -count=1 -json
+exit: 1
+Go test Output events follow verbatim; top-level completion events retain elapsed seconds.
+=== RUN   TestHarnessPicoJSONLRetirementAndHighWater
+=== PAUSE TestHarnessPicoJSONLRetirementAndHighWater
+=== CONT  TestHarnessPicoJSONLRetirementAndHighWater
+    team_harness_jsonl_test.go:109: committed allocation horizon retained without a created row:
+         got: 3
+        want: 4
+--- FAIL: TestHarnessPicoJSONLRetirementAndHighWater (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/agent/harness/pico3	0.034s
+
+Top-level completion events:
+{"Time": "2026-09-24T22:01:44.664862438-07:00", "Action": "fail", "Package": "github.com/MichaelKinsy/PiG/agent/harness/pico3", "Test": "TestHarnessPicoJSONLRetirementAndHighWater", "Elapsed": 0}

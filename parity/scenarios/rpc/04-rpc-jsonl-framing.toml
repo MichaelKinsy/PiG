@@ -1,0 +1,70 @@
+# Behavior family: rpc
+# Surface: JSONL line framing: \r\n support, empty lines, multiple requests
+#
+# Upstream evidence (Pi 0.84.0, re-probed 2026-08-06):
+#   $ printf '{"id":"a","type":"hello"}\r\n{"id":"b","type":"hello"}\r\n' | pi --mode rpc --no-extensions 2>/dev/null
+#   {"type":"response","command":"hello","success":false,"error":"Unknown command: hello"}
+#   {"type":"response","command":"hello","success":false,"error":"Unknown command: hello"}
+#
+#   Empty lines: upstream jsonl.ts does NOT skip empty lines: they are
+#   parsed as JSON, which fails. Both sides must produce a parse error.
+#
+#   Multiple sequential lines: the framing splits on \n only (not Unicode
+#   line/paragraph separators U+2028/U+2029, which are valid inside JSON
+#   strings). Both sides must handle all lines in sequence.
+#
+# This tests the JSONL transport layer (jsonl.ts / bufio.Scanner):
+#  - \r\n line endings
+#  - empty lines → parse error
+#  - back-to-back requests with responses
+#  - id-less and id-carrying requests mixed
+
+name = "04-rpc-jsonl-framing"
+description = "JSONL framing: \\r\\n, empty lines, multi-request pipeline produce byte-equal output"
+covers = [
+  "packages/coding-agent/src/modes/rpc/jsonl.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+# Sequence: empty line (parse error), two known commands with \r\n delimiter,
+# then two more plain \n-delimited commands. The driver writes each entry with
+# \n; \r\n is embedded in the literal string.
+input_lines = [
+  "",
+  '{"type":"set_session_name","name":"framing-test"}',
+  '{"type":"set_auto_retry","enabled":true}',
+  '{"id":"z","type":"hello"}',
+]
+# Pi 0.84 dispatches input lines asynchronously and starts shutdown on stdin
+# EOF. Keep stdin open long enough for the four accepted lines to publish their
+# responses before exercising clean EOF shutdown. Offline mode excludes the
+# unrelated background catalog refresh from this JSONL transport contract.
+settle_seconds = 1
+timeout_seconds = 15
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--offline", "--model", "test-faux/echo", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"type":"session_info_changed","name":"framing-test"',
+  '"command":"set_session_name","success":true',
+  '"command":"set_auto_retry","success":true',
+  '"command":"hello","success":false',
+]
+output_normalized_equal = true
+runs = 3
+
+# Normalize the JSON parse error text (V8 vs Go produce different text).
+# The error field may contain escaped quotes in JSON, so we match the
+# entire line.
+# normalize-rationale: V8 and Go emit different parser prose inside the same error envelope.
+[[assert.normalize_replace]]
+pattern = '\{"type":"response","command":"parse","success":false,"error":"Failed to parse command:.*'
+with = 'PARSE_ERROR_LINE'

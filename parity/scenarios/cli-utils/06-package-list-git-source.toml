@@ -1,0 +1,52 @@
+# Behavior family: cli-utils
+# Surface: package-manager list with a git-sourced package.
+#
+# Upstream evidence (2026-05-17):
+#   echo '{"packages":[{"source":"git:github.com/test/example"}]}' > testdata/git-list-home/agent/settings.json
+#   PI_HOME=testdata/git-list-home PI_CODING_AGENT_DIR=testdata/git-list-home/agent pi list
+#   output:
+#     User packages:
+#       git:github.com/test/example (filtered)
+#   exit: 0
+#
+#   PIG_HOME=testdata/git-list-home PIG_CODING_AGENT_DIR=testdata/git-list-home/agent pig package list
+#   output:
+#     User packages:
+#       git:github.com/test/example (filtered)
+#   exit: 0
+#
+# This exercises git.ts (git URL parsing via parseGitPackageSource) and
+# package-manager.ts (list command with Filtered() display). A faithfulness
+# bug found in this loop: pig's Filtered() was field-based (Extensions!=nil)
+# while upstream is type-based (typeof pkg === "object"). Fixed by adding
+# WasObject tracking in UnmarshalJSON.
+
+name = "06-package-list-git-source"
+description = "Package list with git source shows '(filtered)' matching upstream object-form semantics."
+covers = [
+  "packages/coding-agent/src/utils/git.ts",
+  "packages/coding-agent/src/core/package-manager.ts",
+  "packages/coding-agent/src/package-manager-cli.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_HOME=testdata/git-list-home", "PI_CODING_AGENT_DIR=testdata/git-list-home/agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_HOME=testdata/git-list-home", "PIG_CODING_AGENT_DIR=testdata/git-list-home/agent"]
+override_base_args = true
+
+[cli]
+pig_args = ["package", "list"]
+pi_args = ["list"]
+timeout_seconds = 10
+# Outside the checkout: its tracked .agents/skills would make `pi list` run the
+# pre-trust project extension load (package-manager-cli.ts), which clones
+# the listed git package before any stored trust decision is consulted.
+cwd = "{{TEMP}}"
+
+[assert]
+exit_code = 0
+both_contain = ["git:github.com/test/example", "(filtered)"]
+output_equal = true
+runs = 3

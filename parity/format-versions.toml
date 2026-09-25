@@ -1,0 +1,467 @@
+[[fields]]
+id = "agent/harness/session/jsonl_types.go#LegacyV3SessionHeader.Version:json:version"
+path = "agent/harness/session/jsonl_types.go"
+owner = "LegacyV3SessionHeader"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "Exact upstream Pi format-3 JSONL session header discriminator retained for legacy transcript migration."
+
+[[fields]]
+id = "agent/harness/session/jsonl_types.go#const.JSONLFormatVersion:go:-"
+path = "agent/harness/session/jsonl_types.go"
+owner = "<package>"
+field = "JSONLFormatVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact upstream Pi JSONL session file format discriminator."
+
+[[fields]]
+id = "agent/harness/session/jsonl_types.go#const.JSONLStorageVersion:go:-"
+path = "agent/harness/session/jsonl_types.go"
+owner = "<package>"
+field = "JSONLStorageVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact upstream Pi JSONL storageVersion discriminator (matches upstream JSONL_STORAGE_VERSION)."
+
+[[fields]]
+id = "agent/harness/session/memory.go#const.memoryStorageVersion:go:-"
+path = "agent/harness/session/memory.go"
+owner = "<package>"
+field = "memoryStorageVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Mirrors upstream's session storageVersion concept (agent-harness/sqlite-node storageVersion) for the in-memory backend."
+
+[[fields]]
+id = "agent/harness/telemetry_schema.go#TelemetrySchemaDefinition.Version:json:version"
+path = "agent/harness/telemetry_schema.go"
+owner = "TelemetrySchemaDefinition"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "Preserves TelemetrySchemaDefinition.version from packages/telemetry/src/index.ts and the exact schema values in packages/agent/src/harness/telemetry.ts; TestTelemetrySchemasMatchUpstream compares both schemas to the executable upstream snapshot. It does not select a Pig format reader."
+
+[[fields]]
+id = "ai/anthropic_client.go#const.claudeCodeVersion:go:-"
+path = "ai/anthropic_client.go"
+owner = "<package>"
+field = "claudeCodeVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact literal from pinned ai/api/anthropic-messages.ts's claudeCodeVersion, sent in the same user-agent header."
+
+[[fields]]
+id = "ai/azure_openai_responses.go#const.defaultAzureAPIVersion:go:-"
+path = "ai/azure_openai_responses.go"
+owner = "<package>"
+field = "defaultAzureAPIVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Azure OpenAI API version is owned by the external provider contract."
+
+[[fields]]
+id = "ai/githubcopilot.go#const.copilotAPIVersion:go:-"
+path = "ai/githubcopilot.go"
+owner = "<package>"
+field = "copilotAPIVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact literal from pinned ai/auth/oauth/github-copilot.ts's COPILOT_API_VERSION, sent in the same X-GitHub-Api-Version header."
+
+[[fields]]
+id = "ai/google.go#GoogleConfig.APIVersion:go:-"
+path = "ai/google.go"
+owner = "GoogleConfig"
+field = "APIVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Google provider API path version is owned by the external provider contract."
+
+[[fields]]
+id = "cmd/pig/args.go#CLIFlags.Version:go:-"
+path = "cmd/pig/args.go"
+owner = "CLIFlags"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "Represents the exact upstream-compatible --version CLI action, not a schema discriminator."
+
+[[fields]]
+id = "cmd/pig/main.go#const.PigVersion:go:-"
+path = "cmd/pig/main.go"
+owner = "<package>"
+field = "PigVersion"
+wire_name = "-"
+classification = "release-content"
+rationale = "Identifies the running Pig release."
+
+[[fields]]
+id = "cmd/pig/main.go#const.UpstreamVersion:go:-"
+path = "cmd/pig/main.go"
+owner = "<package>"
+field = "UpstreamVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Identifies the exact upstream Pi release mirrored by the binary."
+
+[[fields]]
+id = "cmd/pig/main.go#const.Version:go:-"
+path = "cmd/pig/main.go"
+owner = "<package>"
+field = "Version"
+wire_name = "-"
+classification = "release-content"
+rationale = "Aliases coding.Version (in turn coding/pigversion/pigversion.go's Version), the combined Pig+upstream release string shown to users."
+
+[[fields]]
+id = "coding/extension/host/subprocess/builder_node.go#const.minimumNodeRuntimeVersion:go:-"
+path = "coding/extension/host/subprocess/builder_node.go"
+owner = "<package>"
+field = "minimumNodeRuntimeVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Names the minimum external Node runtime release accepted by the extension build preflight."
+
+[[fields]]
+id = "coding/extension/host/subprocess/builder_node.go#const.nodeRuntimeVersion:go:-"
+path = "coding/extension/host/subprocess/builder_node.go"
+owner = "<package>"
+field = "nodeRuntimeVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Pins the external Node runtime bridge build identity."
+
+[[fields]]
+id = "coding/extension/host/subprocess/protocol.go#RegisterPayload.Version:json:version"
+path = "coding/extension/host/subprocess/protocol.go"
+owner = "RegisterPayload"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "Identifies released content, a dependency constraint, or a runtime/toolchain requirement rather than selecting a Pig schema reader."
+
+[[fields]]
+id = "coding/piglet/artifact/plan.go#Origin.Version:json:version"
+path = "coding/piglet/artifact/plan.go"
+owner = "Origin"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "Identifies released content, a dependency constraint, or a runtime/toolchain requirement rather than selecting a Pig schema reader."
+
+[[fields]]
+id = "coding/piglet/artifact/plan.go#RuntimeRequirement.Version:json:version"
+path = "coding/piglet/artifact/plan.go"
+owner = "RuntimeRequirement"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "Identifies released content, a dependency constraint, or a runtime/toolchain requirement rather than selecting a Pig schema reader."
+
+[[fields]]
+id = "coding/piglet/artifact/record.go#InputPin.Version:json:version"
+path = "coding/piglet/artifact/record.go"
+owner = "InputPin"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "Identifies released content, a dependency constraint, or a runtime/toolchain requirement rather than selecting a Pig schema reader."
+
+[[fields]]
+id = "coding/piglet/extends.go#LineageEntry.Version:json:version"
+path = "coding/piglet/extends.go"
+owner = "LineageEntry"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "Identifies released content, a dependency constraint, or a runtime/toolchain requirement rather than selecting a Pig schema reader."
+
+[[fields]]
+id = "coding/piglet/release/index.go#Index.Version:json:version"
+path = "coding/piglet/release/index.go"
+owner = "Index"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "Identifies the published Piglet release selected by the signed index, not a Pig-owned schema reader."
+
+[[fields]]
+id = "coding/piglet/release/pull.go#Options.Version:go:-"
+path = "coding/piglet/release/pull.go"
+owner = "Options"
+field = "Version"
+wire_name = "-"
+classification = "release-content"
+rationale = "Selects an exact Piglet release version for a pull operation."
+
+[[fields]]
+id = "coding/piglet/release/pull.go#Result.Version:go:-"
+path = "coding/piglet/release/pull.go"
+owner = "Result"
+field = "Version"
+wire_name = "-"
+classification = "release-content"
+rationale = "Reports the exact Piglet release version installed by a pull operation."
+
+[[fields]]
+id = "coding/piglet/types.go#AgentPigRuntime.Version:yaml:version"
+path = "coding/piglet/types.go"
+owner = "AgentPigRuntime"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "Identifies released content, a dependency constraint, or a runtime/toolchain requirement rather than selecting a Pig schema reader."
+
+[[fields]]
+id = "coding/piglet/types.go#ExtendsSpec.Version:yaml:version"
+path = "coding/piglet/types.go"
+owner = "ExtendsSpec"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "Identifies released content, a dependency constraint, or a runtime/toolchain requirement rather than selecting a Pig schema reader."
+
+[[fields]]
+id = "coding/piglet/types.go#ReleaseSpec.Version:yaml:version"
+path = "coding/piglet/types.go"
+owner = "ReleaseSpec"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "Identifies released content, a dependency constraint, or a runtime/toolchain requirement rather than selecting a Pig schema reader."
+
+[[fields]]
+id = "coding/pigletbuild/plan.go#Options.Version:go:-"
+path = "coding/pigletbuild/plan.go"
+owner = "Options"
+field = "Version"
+wire_name = "-"
+classification = "release-content"
+rationale = "Carries the Profile release version into build identity."
+
+[[fields]]
+id = "coding/pigletbuild/records.go#buildInput.Version:go:-"
+path = "coding/pigletbuild/records.go"
+owner = "buildInput"
+field = "Version"
+wire_name = "-"
+classification = "release-content"
+rationale = "Carries the Profile release version into build record identity."
+
+[[fields]]
+id = "coding/pigversion/pigversion.go#const.PigVersion:go:-"
+path = "coding/pigversion/pigversion.go"
+owner = "<package>"
+field = "PigVersion"
+wire_name = "-"
+classification = "release-content"
+rationale = "Literal source of coding.PigVersion; ai imports it directly since ai cannot import coding (coding imports ai)."
+
+[[fields]]
+id = "coding/pigversion/pigversion.go#const.UpstreamVersion:go:-"
+path = "coding/pigversion/pigversion.go"
+owner = "<package>"
+field = "UpstreamVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Literal source of coding.UpstreamVersion; ai imports it directly since ai cannot import coding (coding imports ai)."
+
+[[fields]]
+id = "coding/pigversion/pigversion.go#const.Version:go:-"
+path = "coding/pigversion/pigversion.go"
+owner = "<package>"
+field = "Version"
+wire_name = "-"
+classification = "release-content"
+rationale = "Literal source of coding.Version and ai.ProductVersion's default; ai imports it directly since ai cannot import coding (coding imports ai)."
+
+[[fields]]
+id = "coding/upstream.go#const.PigVersion:go:-"
+path = "coding/upstream.go"
+owner = "<package>"
+field = "PigVersion"
+wire_name = "-"
+classification = "release-content"
+rationale = "Aliases coding/pigversion/pigversion.go's PigVersion for existing callers of coding.PigVersion."
+
+[[fields]]
+id = "coding/upstream.go#const.UpstreamReviewedVersion:go:-"
+path = "coding/upstream.go"
+owner = "<package>"
+field = "UpstreamReviewedVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Names the last upstream Pi release whose parity ledgers carry reviewed dispositions; leap ledgers diff from it."
+
+[[fields]]
+id = "coding/upstream.go#const.UpstreamVersion:go:-"
+path = "coding/upstream.go"
+owner = "<package>"
+field = "UpstreamVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Aliases coding/pigversion/pigversion.go's UpstreamVersion, the exact upstream Pi release used as the parity oracle."
+
+[[fields]]
+id = "coding/upstream.go#const.Version:go:-"
+path = "coding/upstream.go"
+owner = "<package>"
+field = "Version"
+wire_name = "-"
+classification = "release-content"
+rationale = "Aliases coding/pigversion/pigversion.go's Version, the combined Pig+upstream release string."
+
+[[fields]]
+id = "internal/codingagent/bug_report.go#BugReportDiagnostics.SchemaVersion:json:schemaVersion"
+path = "internal/codingagent/bug_report.go"
+owner = "BugReportDiagnostics"
+field = "SchemaVersion"
+wire_name = "schemaVersion"
+classification = "upstream"
+rationale = "Mirrors upstream core/bug-report.ts BUG_REPORT_SCHEMA_VERSION so PiG and Pi report archives share one exact upstream-owned format."
+
+[[fields]]
+id = "internal/codingagent/bug_report.go#BugReportEnvironment.Version:json:version"
+path = "internal/codingagent/bug_report.go"
+owner = "BugReportEnvironment"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "Records the running PiG release in a bug report."
+
+[[fields]]
+id = "internal/codingagent/bug_report.go#BugReportInputs.Version:go:-"
+path = "internal/codingagent/bug_report.go"
+owner = "BugReportInputs"
+field = "Version"
+wire_name = "-"
+classification = "release-content"
+rationale = "Carries the running PiG release into a bug report."
+
+[[fields]]
+id = "internal/codingagent/bug_report.go#BugReportMetadata.SchemaVersion:json:schemaVersion"
+path = "internal/codingagent/bug_report.go"
+owner = "BugReportMetadata"
+field = "SchemaVersion"
+wire_name = "schemaVersion"
+classification = "upstream"
+rationale = "Mirrors upstream core/bug-report.ts BUG_REPORT_SCHEMA_VERSION so PiG and Pi report archives share one exact upstream-owned format."
+
+[[fields]]
+id = "internal/codingagent/bug_report.go#const.bugReportSchemaVersion:go:-"
+path = "internal/codingagent/bug_report.go"
+owner = "<package>"
+field = "bugReportSchemaVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Mirrors upstream core/bug-report.ts BUG_REPORT_SCHEMA_VERSION so PiG and Pi report archives share one exact upstream-owned format."
+
+[[fields]]
+id = "internal/codingagent/crash_log.go#CrashInput.Version:go:-"
+path = "internal/codingagent/crash_log.go"
+owner = "CrashInput"
+field = "Version"
+wire_name = "-"
+classification = "release-content"
+rationale = "Identifies the running Pig release (InstalledPigVersion) that produced the crash record, mirroring upstream core/crash-log.ts's version field."
+
+[[fields]]
+id = "internal/codingagent/crash_log.go#CrashRecord.Version:json:version"
+path = "internal/codingagent/crash_log.go"
+owner = "CrashRecord"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "Identifies the running Pig release (InstalledPigVersion) that produced the crash record, mirroring upstream core/crash-log.ts's version field."
+
+[[fields]]
+id = "internal/codingagent/selfupdate.go#UpdateManifest.Version:json:version"
+path = "internal/codingagent/selfupdate.go"
+owner = "UpdateManifest"
+field = "Version"
+wire_name = "version"
+classification = "release-content"
+rationale = "Identifies released content, a dependency constraint, or a runtime/toolchain requirement rather than selecting a Pig schema reader."
+
+[[fields]]
+id = "internal/codingagent/session.go#SessionHeader.Version:json:version"
+path = "internal/codingagent/session.go"
+owner = "SessionHeader"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "Exact upstream Pi session-format discriminator retained for transcript compatibility."
+
+[[fields]]
+id = "internal/codingagent/session.go#const.CurrentSessionVersion:go:-"
+path = "internal/codingagent/session.go"
+owner = "<package>"
+field = "CurrentSessionVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Exact upstream Pi Session format discriminator retained for transcript compatibility."
+
+[[fields]]
+id = "internal/experimental/coordinator.go#const.CoordinatorProtocolVersion:go:-"
+path = "internal/experimental/coordinator.go"
+owner = "<package>"
+field = "CoordinatorProtocolVersion"
+wire_name = "-"
+classification = "upstream"
+rationale = "Mirrors experimental/coordinator.ts COORDINATOR_PROTOCOL_VERSION exactly; server and peer registration validate the upstream-owned control protocol."
+
+[[fields]]
+id = "internal/experimental/radius_relay.go#hostControlMessage.Version:json:version"
+path = "internal/experimental/radius_relay.go"
+owner = "hostControlMessage"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "Exact Radius relay control envelope discriminator from coding-agent/src/experimental/radius-relay.ts; not a Pig-owned format."
+
+[[fields]]
+id = "internal/toolchain/toolchain.go#goFile.Version:json:version"
+path = "internal/toolchain/toolchain.go"
+owner = "goFile"
+field = "Version"
+wire_name = "version"
+classification = "external"
+rationale = "Go release index (go.dev/dl) file field owned by the external download service."
+
+[[fields]]
+id = "internal/toolchain/toolchain.go#goRelease.Version:json:version"
+path = "internal/toolchain/toolchain.go"
+owner = "goRelease"
+field = "Version"
+wire_name = "version"
+classification = "external"
+rationale = "Go release index (go.dev/dl) release field owned by the external download service."
+
+[[fields]]
+id = "parity/cmd/asynccheck/main.go#asyncManifest.Version:go:-"
+path = "parity/cmd/asynccheck/main.go"
+owner = "asyncManifest"
+field = "Version"
+wire_name = "-"
+classification = "upstream"
+rationale = "Identifies the exact pinned upstream release audited by the async manifest."
+
+[[fields]]
+id = "parity/cmd/interfaceinventory/main.go#inventoryPackage.Version:json:version"
+path = "parity/cmd/interfaceinventory/main.go"
+owner = "inventoryPackage"
+field = "Version"
+wire_name = "version"
+classification = "upstream"
+rationale = "Records the exact pinned upstream package release represented by the semantic inventory."
+
+[[fields]]
+id = "tui/widthx/unicode_tables.go#const.unicodeTablesVersion:go:-"
+path = "tui/widthx/unicode_tables.go"
+owner = "<package>"
+field = "unicodeTablesVersion"
+wire_name = "-"
+classification = "external"
+rationale = "Identifies the Unicode standard data and upstream get-east-asian-width dependency used to generate terminal width tables; it does not select a Pig-owned format reader."

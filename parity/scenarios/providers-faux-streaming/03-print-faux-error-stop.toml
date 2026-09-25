@@ -1,0 +1,42 @@
+# Behavior family: providers-faux-streaming
+# Scenario: faux provider returns an error stop reason, both binaries
+# emit the error message on stderr and exit 1: without any "error:" prefix.
+#
+# This tests the streaming error event (EventError) and the print-mode
+# error path. Upstream prints the raw errorMessage; pig must match.
+#
+# Upstream evidence (2026-05-17):
+#   cd /tmp/parity-probe-faux
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts \
+#     --model test-faux/faux-1 --print "this is unrecognized by faux"
+#   combined output: 'test-faux: unhandled request "this is unrecognized by faux"'
+#   exit: 1
+#
+#   PIG_TEST_FAUX=1 PIG_HOME=testdata/pig-home PIG_QUIET_STARTUP=1 \
+#     pig --no-extensions --model test-faux/faux-1 --print "this is unrecognized by faux"
+#   combined output: 'test-faux: unhandled request "this is unrecognized by faux"'
+#   exit: 1
+
+name = "03-print-faux-error-stop"
+description = "Faux error → both emit raw errorMessage on stderr with exit 1, no 'error:' prefix"
+covers = [
+  "packages/ai/src/types.ts",
+  "packages/ai/src/providers/faux.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "this is unrecognized by faux"
+timeout_seconds = 30
+
+[assert]
+exit_code = 1
+both_contain = ["test-faux: unhandled request"]
+output_equal = true
+runs = 3

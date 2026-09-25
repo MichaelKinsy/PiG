@@ -1,0 +1,5 @@
+#!/bin/sh
+# Parity harness stub: suppress real browser launches during tests.
+# Mirrors `open` (macOS), `xdg-open` (Linux), and `start` (Windows) by
+# accepting any args and exiting 0 without side effects.
+exit 0

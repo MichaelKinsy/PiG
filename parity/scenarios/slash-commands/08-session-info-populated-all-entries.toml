@@ -1,0 +1,95 @@
+# Behavior family: slash-commands
+# Surface: /session all-entry counts, usage, cache fields, and cost after resume
+#
+# Upstream evidence (pinned Pi v0.84.0, manual 120x45 tmux probe using this fixture):
+#
+#     Messages
+#     Total: 7
+#     User: 2
+#     Assistant: 4
+#     Tools: 2 calls, 1 results
+#
+#     Tokens
+#     Input: 1,320
+#       Cached: 1,012 (76.7%)
+#       Uncached: 308 (50 written to cache)
+#     Output: 27
+#     Total: 1,347
+#
+#     Cache Warming
+#     Mode: streaming
+#     Status: Inactive (waiting for first request)
+#
+#     Cost
+#     Total: $0.500
+#       test-faux/faux-1: $0.410 (1.3k tokens)
+#       Tools/summaries: $0.090 (25 tokens)
+#
+# The fixture's active path has one user, three assistants, one tool result,
+# one compaction, and one branch summary. A sibling abandoned path contributes
+# one string-form user message, one assistant, and one tool call. Exact totals
+# therefore prove that /session accounts for every durable entry rather than
+# only the active branch. The Cache Warming block (Pi 0.87.1, probed with the
+# parity runner on 2026-09-23) proves a resumed session waits for its first
+# request instead of restoring warming.
+
+name = "08-session-info-populated-all-entries"
+description = "Both binaries render exact all-entry message, usage, cache, and cost totals for a resumed branched and compacted session."
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/cache-warmer.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+  "packages/coding-agent/src/core/usage-totals.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 120
+height = 45
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/session-info-cwd"
+capture_start = "Messages"
+capture_end = "Tools/summaries: $0.090 (25 tokens)"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["/session", "Enter"]
+wait_contains = ["Messages", "Total: 7", "Input: 1,320", "Total: $0.500", "Tools/summaries: $0.090 (25 tokens)"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+both_contain = [
+  "Total: 7",
+  "User: 2",
+  "Assistant: 4",
+  "Tools: 2 calls, 1 results",
+  "Input: 1,320",
+  "Cached: 1,012 (76.7%)",
+  "Uncached: 308 (50 written to cache)",
+  "Output: 27",
+  "Total: 1,347",
+  "Cache Warming",
+  "Mode: streaming",
+  "Status: Inactive (waiting for first request)",
+  "Total: $0.500",
+  "test-faux/faux-1: $0.410 (1.3k tokens)",
+  "Tools/summaries: $0.090 (25 tokens)",
+]
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

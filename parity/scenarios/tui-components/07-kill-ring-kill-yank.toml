@@ -1,0 +1,73 @@
+# Behavior family: tui-components
+# Surface: Emacs-style Ctrl+K (kill to end of line) and Ctrl+Y (yank) in the editor.
+#
+# Upstream evidence (pi v0.69.0, probed in tmux 100×35):
+#   command: PI_SKIP_VERSION_CHECK=1 PI_CODING_AGENT_DIR=testdata/pi-agent \
+#     pi --no-extensions --session-dir /tmp/probe-kr \
+#     -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   keys: type "hello world", C-a, Right×6, C-k, C-e, C-y
+#   observable: after C-k the prompt shows "hello"; after C-y it shows "hello world"
+#
+# This exercises kill-ring.ts (KillRing.Push + KillRing.Top) and the
+# editor's deleteToLineEnd + yank paths.
+
+name = "07-kill-ring-kill-yank"
+description = "Ctrl+K kills to the end of the line. Ctrl+Y restores the text from the kill ring."
+covers = [
+  "packages/tui/src/kill-ring.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+# After kill+yank round-trip the prompt line should show "hello world" again.
+# We crop just the editor input line.
+capture_start = "hello"
+capture_end = "hello world"
+
+# Step 1: type text
+[[tmux.steps]]
+keys = ["hello world"]
+settle_seconds = 1
+wait_contains = ["hello world"]
+wait_timeout_seconds = 5
+
+# Step 2: move to start, then right 6 (past "hello ")
+[[tmux.steps]]
+keys = ["C-a", "Right", "Right", "Right", "Right", "Right", "Right"]
+settle_seconds = 1
+
+# Step 3: kill to end of line
+[[tmux.steps]]
+keys = ["C-k"]
+settle_seconds = 1
+# After kill, only "hello" remains (no "world")
+wait_contains = ["hello"]
+wait_timeout_seconds = 5
+
+# Step 4: move to end and yank
+[[tmux.steps]]
+keys = ["C-e", "C-y"]
+settle_seconds = 1
+wait_contains = ["hello world"]
+wait_timeout_seconds = 5
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3

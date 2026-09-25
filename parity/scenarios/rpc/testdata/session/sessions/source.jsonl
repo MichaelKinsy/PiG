@@ -1,0 +1,5 @@
+{"type":"session","version":3,"id":"rpc-source","timestamp":"2026-01-01T00:00:00Z","cwd":"."}
+{"type":"model_change","id":"model-1","parentId":null,"timestamp":"2026-01-01T00:00:01Z","provider":"test-faux","modelId":"faux-1"}
+{"type":"thinking_level_change","id":"thinking-1","parentId":"model-1","timestamp":"2026-01-01T00:00:02Z","thinkingLevel":"off"}
+{"type":"message","id":"user-1","parentId":"thinking-1","timestamp":"2026-01-01T00:00:03Z","message":{"role":"user","content":[{"type":"text","text":"fork this prompt"}],"timestamp":1767225603000}}
+{"type":"message","id":"assistant-1","parentId":"user-1","timestamp":"2026-01-01T00:00:04Z","message":{"role":"assistant","content":[{"type":"text","text":"source answer"}],"api":"test-faux","provider":"test-faux","model":"faux-1","usage":{"input":10,"output":2,"cacheRead":0,"cacheWrite":0,"totalTokens":12,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1767225604000}}

@@ -1,0 +1,56 @@
+// divguard:path agent/mapped.go
+
+package agent
+
+import (
+	"bufio"
+	"errors"
+	"io"
+	"time"
+)
+
+// upstream: agent/src/agent-loop.ts:DEFAULT_RETRY_DELAY_MS
+const retryDelay = 2 * time.Second
+
+// upstream: agent/src/agent-loop.ts:MAX_AGE
+const maxAge = 7 * 24 * time.Hour
+
+const maxBytes = 50 * 1024 // upstream: agent/src/agent-loop.ts:DEFAULT_MAX_BYTES
+
+// queueLimit appears in agent/src/mapped.ts, which PORT_MAP maps here.
+const queueLimit = 250
+
+// pig divergence (D56): a recorded divergence allows its literal.
+const heartbeat = 5 * time.Second
+
+const maxSafeInteger = 1<<53 - 1
+
+type level int
+
+const (
+	ThinkingOff level = iota
+	ThinkingMax       = 6
+)
+
+func unboundedLines(body io.Reader) {
+	reader := bufio.NewReaderSize(body, 64*1024)
+	for {
+		_, err := reader.ReadSlice('\n')
+		if errors.Is(err, bufio.ErrBufferFull) {
+			continue
+		}
+		return
+	}
+}
+
+func convert(ms int, d time.Duration, body io.Reader) time.Duration {
+	_, _ = io.Copy(io.Discard, io.LimitReader(body, 1<<16))
+	start := time.Duration(ms) * time.Millisecond
+	rounded := (d + 999*time.Millisecond) / time.Second
+	_ = float64(d) / float64(time.Second)
+	maxTurns := 0
+	if maxTurns == 1 {
+		return 0
+	}
+	return start + rounded + d.Round(time.Millisecond) + time.Duration(0)
+}

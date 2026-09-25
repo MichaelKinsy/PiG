@@ -1,0 +1,76 @@
+go test ./parity/correspondence ./parity/cmd/correspondence
+ok  	github.com/MichaelKinsy/PiG/parity/correspondence	(cached)
+ok  	github.com/MichaelKinsy/PiG/parity/cmd/correspondence	(cached)
+known gap [finding:table-item:missing:cache-warming-mode] (unresolved.tsv: v0.87.1 settings selector (cache warming, model thinking)): Pig table has no item with the Pi identity
+known gap [finding:table-order:table:settings-selector] (unresolved.tsv: v0.87.1 settings selector (cache warming, model thinking)): Pi order ["autocompact" "show-images" "image-width-cells" "auto-resize-images" "block-images" "skill-commands" "show-hardware-cursor" "editor-padding" "output-padding" "autocomplete-max-visible" "clear-on-shrink" "terminal-progress" "steering-mode" "follow-up-mode" "transport" "http-idle-timeout" "cache-warming-mode" "hide-thinking" "mermaid-rendering" "cache-miss-notices" "collapse-changelog" "quiet-startup" "install-telemetry" "default-project-trust" "double-escape-action" "tree-filter-mode" "warnings" "model-thinking" "tui-mode" "fullscreen-exit-output" "fullscreen-scrollbar" "fullscreen-copy-on-select" "theme"] differs from Pig order ["autocompact" "show-images" "image-width-cells" "auto-resize-images" "block-images" "skill-commands" "show-hardware-cursor" "editor-padding" "output-padding" "autocomplete-max-visible" "clear-on-shrink" "terminal-progress" "steering-mode" "follow-up-mode" "transport" "http-idle-timeout" "hide-thinking" "mermaid-rendering" "cache-miss-notices" "collapse-changelog" "quiet-startup" "install-telemetry" "default-project-trust" "double-escape-action" "tree-filter-mode" "warnings" "model-thinking" "tui-mode" "fullscreen-exit-output" "fullscreen-scrollbar" "fullscreen-copy-on-select" "theme"]
+correspondence-check: direct facts agree except listed known gaps; packet paths run in go test
+go test ./parity/porter ./parity/cmd/porter
+ok  	github.com/MichaelKinsy/PiG/parity/porter	(cached)
+ok  	github.com/MichaelKinsy/PiG/parity/cmd/porter	(cached)
+interface-inventory: clean (13803 semantic interfaces at 0.87.1)
+
+> @michaelkinsy/pig-interface-extractor@0.1.0 test
+> node --test test/*.test.mjs
+
+✔ extracts stable input-handler branches, effects, and source identity (20.711955ms)
+✔ extracts WSL keybinding defaults separately from ordinary Linux (4.97966ms)
+✔ inherits keybinding descriptions through TUI definition spreads (2.740684ms)
+✔ fills spread descriptions when the TUI base file is visited after the coding override (2.436317ms)
+✔ source and event changes alter the generated contract denominator (5.425478ms)
+✔ distinguishes object render delegates from their enclosing class renderer (11.750284ms)
+✔ distinguishes module object renderers passed through factories (1.559131ms)
+✔ ac47_production_reachable_private_dialog_logic (3.999784ms)
+✔ tracks production-reachable private queue control flow (2.857692ms)
+✔ renderer dependencies catch positioning changes outside the render method (4.667913ms)
+✔ extracts independently parsed and documented flags with command-scoped aliases (40.680884ms)
+✔ rejects parsed flags missing from help (13.711945ms)
+✔ rejects documented flags missing from parser (7.005987ms)
+✔ rejects duplicate aliases in one command scope (6.211106ms)
+✔ recognizes reviewed internal package-manager flags without exposing them as user CLI (14.239363ms)
+✔ rejects unclassified flag candidates (5.419453ms)
+✔ extracts settings order, gates, values, callbacks, and static prompts (52.879133ms)
+✔ records every production callback for one setting (16.514112ms)
+✔ preserves a spread setting list as a reviewed expression (11.044234ms)
+✔ resolves prompts composed only from static constants (9.483724ms)
+✔ fails closed when a prompt-like constant is dynamic (9.020981ms)
+✔ fails closed when an insertion anchor is unresolved (7.113446ms)
+✔ fails closed when a setting has no dispatch path (7.205366ms)
+✔ fails closed when selector dispatch loses its production callback (7.257251ms)
+✔ production callback mutation changes compiled runtime effects (14.750722ms)
+✔ fails closed when a required compaction function disappears (1.937207ms)
+✔ fails closed when a reviewed production caller disappears (2.680063ms)
+✔ fails closed when a required settings manager function disappears (2.438783ms)
+✔ fails closed when settings production orchestration disappears (5.677915ms)
+✔ normalizes compiler dependency source paths (1.684235ms)
+✔ extracts package exports, re-exports, overloads, generics, members, and wildcard subpaths (4613.890411ms)
+✔ source/published comparison fails when a published overload disappears (3736.864829ms)
+✔ source/published comparison fails when a published interface member disappears (3842.693135ms)
+✔ source/published comparison fails when a source export is absent from the package declaration (3651.806571ms)
+✔ published declaration maps prove byte-identical pinned source provenance (4.698914ms)
+✔ published declaration provenance fails when the pinned source differs (3.338843ms)
+✔ enumerates every test file at any nesting depth (26.309545ms)
+✔ flags dynamic it/test sites instead of reporting a false zero (4.336166ms)
+✔ folds describe context into case ids and captures kind/modifiers (4.375664ms)
+✔ hashes file content and totals cases; output is deterministic (5.574714ms)
+ℹ tests 40
+ℹ suites 0
+ℹ pass 40
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16402.776046
+interface-go-drift: clean
+interface-recommendations-drift: clean
+interface-inventory: clean (13803 semantic interfaces at 0.87.1)
+interface-delta: clean (0.84.0 -> 0.87.1, 6685 semantic changes)
+behavior-input-inventory-drift: clean
+behavior contracts: OK (22 contracts, 56 input handlers: 0 ported, 0 partial, 0 pending, 55 deferred, 0 divergence, 1 designed-out; upstream 0.87.1)
+render contracts: 111 surfaces: 0 ported, 0 partial, 0 pending, 109 deferred, 0 divergence, 2 designed-out
+test-inventory-drift: clean
+test inventory: OK (598 files: 2 ported, 1 partial, 0 scenario-covered, 5 designed-out, 0 divergence, 590 pending; upstream 0.87.1)
+format-version inventory: clean (45 fields: 0 Pig-owned format, 21 release/content, 18 upstream, 6 external)
+ok  	github.com/MichaelKinsy/PiG/parity/cmd/customfactoryledger	1.153s
+coverage-drift: parity/coverage.md, .github/badges/parity-coverage.svg, and the README.md porting block are current
+port-map-drift: clean (616 upstream source files accounted for)
+ok  	github.com/MichaelKinsy/PiG/tests/docs-drift	1.885s

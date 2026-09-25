@@ -1,0 +1,75 @@
+# Behavior family: providers-registry
+# Surface: built-in provider wire payload construction across real provider
+# modules, plus openai-completions response-stream parsing.
+#
+# Upstream evidence: parity/testdata/provider-wire-pi.mjs imports the pinned
+# upstream @earendil-works/pi-ai provider dist files and drives each stream
+# function with a hermetic local HTTP endpoint plus onPayload capture. The Go
+# side drives the matching pig providers through Provider.Stream and the same
+# OnPayload hook. This asserts request shape, endpoint path, auth header kind,
+# message roles, tool presence, token field names, reasoning/session fields, and
+# wrapper behavior without live model calls.
+#
+# The 0.84 OpenAI-completions probe also drives the public simple-stream path
+# with model defaults plus request sampling overrides, Baseten
+# chat_template_args, and a vLLM thinking_token_budget. The normalized payload
+# records the merged values, so registration without request conversion cannot
+# satisfy this scenario.
+#
+# The Codex probe compares the unmasked protocol request: top-level instructions,
+# encrypted-reasoning include, low text verbosity, automatic parallel tool
+# choice, reasoning effort, omitted max_output_tokens, account header, and the
+# hyphenated cache-affinity header. Provider-specific key/role/max-field filters
+# must not hide Codex drift.
+#
+# The openaiCompletionsResponse probe additionally feeds both implementations a
+# fixed SSE body where a usage object rides on content-bearing chunks (the
+# gemini-3.5-flash-via-copilot shape). Both must parse the full text, the stop
+# reason, and input/output usage identically: the parser records usage and keeps
+# processing rather than aborting on the first usage chunk. This pins pig's
+# parseSSE to upstream openai-completions.ts response handling.
+
+name = "04-provider-wire-payloads"
+description = "Built-in provider modules construct matching normalized wire payloads and endpoint/auth shapes, including the unmasked Codex request, and openai-completions parses usage-on-content SSE identically."
+covers = [
+  "packages/ai/src/api/anthropic-messages.ts",
+  "packages/ai/src/api/azure-openai-responses.ts",
+  "packages/ai/src/api/bedrock-converse-stream.ts",
+  "packages/ai/src/api/google-generative-ai.ts",
+  "packages/ai/src/api/google-vertex.ts",
+  "packages/ai/src/api/mistral-conversations.ts",
+  "packages/ai/src/bedrock-provider.ts",
+  "packages/ai/src/providers/amazon-bedrock.ts",
+  "packages/ai/src/providers/anthropic.ts",
+  "packages/ai/src/providers/azure-openai-responses.ts",
+  "packages/ai/src/api/google-shared.ts",
+  "packages/ai/src/providers/google-vertex.ts",
+  "packages/ai/src/providers/google.ts",
+  "packages/ai/src/providers/mistral.ts",
+  "packages/ai/src/api/openai-codex-responses.ts",
+  "packages/ai/src/api/openai-completions.ts",
+  "packages/ai/src/api/openai-responses-shared.ts",
+  "packages/ai/src/api/openai-responses.ts",
+  "packages/ai/src/utils/error-body.ts",
+  "packages/ai/src/utils/provider-env.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./parity/testdata/provider-wire-pig"]
+pi_args = ["node", "./parity/testdata/provider-wire-pi.mjs"]
+
+[cli]
+cwd = "../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+both_not_contain = ["panic:", "UnhandledPromiseRejection", "ERR_MODULE_NOT_FOUND"]
+runtime_ratio_max = 5.0
+runs = 1

@@ -1,0 +1,47 @@
+# Behavior family: rpc
+# Surface: steer and follow-up queues during an active RPC prompt.
+# Pi starts prompt work without blocking the JSONL reader. Following queue
+# commands are acknowledged, appear in queue_update, and are consumed in order.
+
+name = "13-rpc-steering-queue"
+description = "RPC steer and follow-up messages are reported and consumed by the active run."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = [
+  '{"id":"prompt","type":"prompt","message":"TUI_LIVE_STREAM"}',
+  '{"id":"steer","type":"steer","message":"What is 20+22?"}',
+  '{"id":"follow","type":"follow_up","message":"Remember this exact code: letters A L P H A and digits 7 7 4 9"}',
+]
+timeout_seconds = 15
+settle_seconds = 5
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"prompt","type":"response","command":"prompt","success":true',
+  '"id":"steer","type":"response","command":"steer","success":true',
+  '"id":"follow","type":"response","command":"follow_up","success":true',
+  '"steering":["What is 20+22?"]',
+  '"followUp":["Remember this exact code: letters A L P H A and digits 7 7 4 9"]',
+  '"type":"queue_update","steering":[],"followUp":[]',
+  '"type":"text_delta"',
+  '"delta":"42"',
+  '"delta":"Alpha"',
+]
+both_not_contain = [
+  '"success":false',
+  'Agent is already processing',
+]
+runs = 3

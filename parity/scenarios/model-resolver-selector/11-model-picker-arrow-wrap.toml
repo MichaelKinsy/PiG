@@ -1,0 +1,54 @@
+# Behavior family: model-resolver-selector
+# Surface: model-picker arrow navigation wraps across list boundaries.
+#
+# Upstream evidence (exact Pi 0.83.0, model-selector.ts handleInput):
+# tui.select.up sets selectedIndex to filteredModels.length-1 when it is zero;
+# tui.select.down sets it to zero when it is the final index. With the local
+# two-model fixture, /model starts on current model-two and Up selects model-one.
+# The paired Go unit test red-proved Pig previously clamped at model-two.
+# Pi 0.87.1 (re-probed 2026-09-23) renders the current-model "✓ " as a prefix
+# column, so the wrapped selection reads "→   model-one [fixture]".
+
+name = "11-model-picker-arrow-wrap"
+description = "Up from the first model wraps to the final filtered model."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 15
+capture_start = "Only showing models"
+capture_end = "Model Name: Model One"
+
+[[tmux.steps]]
+keys = ["/model", "Enter"]
+wait_contains = ["Model Name: Model Two"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Up"]
+wait_contains = ["Model Name: Model One"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-local"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-local"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = [
+  "→   model-one [fixture]",
+  "Model Name: Model One",
+]
+both_not_contain = ["panic:", "goroutine ", "Could not refresh"]
+output_equal = true
+runs = 3

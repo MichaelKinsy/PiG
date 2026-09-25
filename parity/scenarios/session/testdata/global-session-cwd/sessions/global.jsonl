@@ -1,0 +1,3 @@
+{"type":"session","version":3,"id":"global-session-456","timestamp":"2026-08-04T00:00:00.000Z","cwd":"{{SNAPSHOT}}/other"}
+{"type":"message","id":"e1","parentId":null,"timestamp":"2026-08-04T00:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"remember global-prefix-7702"}]}}
+{"type":"message","id":"e2","parentId":"e1","timestamp":"2026-08-04T00:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"noted global-prefix-7702"}],"usage":{"input":100,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":100,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop"}}

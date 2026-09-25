@@ -1,0 +1,6383 @@
+{
+  "upstreamVersion": "0.87.1",
+  "keybindings": [
+    {
+      "id": "app.clear",
+      "defaults": {
+        "darwin": [
+          "ctrl+c"
+        ],
+        "linux": [
+          "ctrl+c"
+        ],
+        "linuxWsl": [
+          "ctrl+c"
+        ],
+        "win32": [
+          "ctrl+c"
+        ]
+      },
+      "description": "Clear editor",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 94,
+      "consumers": [
+        "input:packages/coding-agent/src/experimental/client-tui.ts#ExperimentalClientTui.<anonymous@124>",
+        "input:packages/coding-agent/src/experimental/client-tui.ts#ExperimentalClientTui.handleInput",
+        "input:packages/coding-agent/src/experimental/micro/tui.ts#MicroTui.<anonymous@133>",
+        "input:packages/coding-agent/src/experimental/mini/tui/view.ts#MiniTui.<anonymous@157>",
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.init",
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.clipboard.pasteImage",
+      "defaults": {
+        "darwin": [
+          "ctrl+v"
+        ],
+        "linux": [
+          "ctrl+v"
+        ],
+        "linuxWsl": [
+          "alt+v"
+        ],
+        "win32": [
+          "alt+v"
+        ]
+      },
+      "description": "Paste image from clipboard (text fallback)",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 142,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput"
+      ]
+    },
+    {
+      "id": "app.editor.external",
+      "defaults": {
+        "darwin": [
+          "ctrl+g"
+        ],
+        "linux": [
+          "ctrl+g"
+        ],
+        "linuxWsl": [
+          "ctrl+g"
+        ],
+        "win32": [
+          "ctrl+g"
+        ]
+      },
+      "description": "Open external editor",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 126,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/extension-editor.ts#ExtensionEditorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.exit",
+      "defaults": {
+        "darwin": [
+          "ctrl+d"
+        ],
+        "linux": [
+          "ctrl+d"
+        ],
+        "linuxWsl": [
+          "ctrl+d"
+        ],
+        "win32": [
+          "ctrl+d"
+        ]
+      },
+      "description": "Exit when editor is empty",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 95,
+      "consumers": [
+        "input:packages/coding-agent/src/experimental/client-tui.ts#ExperimentalClientTui.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput"
+      ]
+    },
+    {
+      "id": "app.interrupt",
+      "defaults": {
+        "darwin": [
+          "escape"
+        ],
+        "linux": [
+          "escape"
+        ],
+        "linuxWsl": [
+          "escape"
+        ],
+        "win32": [
+          "escape"
+        ]
+      },
+      "description": "Cancel or abort",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 93,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput"
+      ]
+    },
+    {
+      "id": "app.message.copy",
+      "defaults": {
+        "darwin": [
+          "ctrl+x"
+        ],
+        "linux": [
+          "ctrl+x"
+        ],
+        "linuxWsl": [
+          "ctrl+x"
+        ],
+        "win32": [
+          "ctrl+x"
+        ]
+      },
+      "description": "Copy selection or last assistant message",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 130,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.message.dequeue",
+      "defaults": {
+        "darwin": [
+          "alt+up"
+        ],
+        "linux": [
+          "alt+up"
+        ],
+        "linuxWsl": [
+          "alt+q"
+        ],
+        "win32": [
+          "alt+q"
+        ]
+      },
+      "description": "Restore queued messages",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 138,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.message.followUp",
+      "defaults": {
+        "darwin": [
+          "alt+enter"
+        ],
+        "linux": [
+          "alt+enter"
+        ],
+        "linuxWsl": [
+          "ctrl+q"
+        ],
+        "win32": [
+          "ctrl+q"
+        ]
+      },
+      "description": "Queue follow-up message",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 134,
+      "consumers": [
+        "input:packages/coding-agent/src/experimental/client-tui.ts#ExperimentalClientTui.<anonymous@124>",
+        "input:packages/coding-agent/src/experimental/micro/tui.ts#MicroTui.<anonymous@133>",
+        "input:packages/coding-agent/src/experimental/mini/tui/view.ts#MiniTui.<anonymous@157>",
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.model.cycleBackward",
+      "defaults": {
+        "darwin": [
+          "shift+ctrl+p"
+        ],
+        "linux": [
+          "shift+ctrl+p"
+        ],
+        "linuxWsl": [
+          "alt+p"
+        ],
+        "win32": [
+          "alt+p"
+        ]
+      },
+      "description": "Cycle to previous model",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 112,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.model.cycleForward",
+      "defaults": {
+        "darwin": [
+          "ctrl+p"
+        ],
+        "linux": [
+          "ctrl+p"
+        ],
+        "linuxWsl": [
+          "ctrl+p"
+        ],
+        "win32": [
+          "ctrl+p"
+        ]
+      },
+      "description": "Cycle to next model",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 108,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.model.select",
+      "defaults": {
+        "darwin": [
+          "ctrl+l"
+        ],
+        "linux": [
+          "ctrl+l"
+        ],
+        "linuxWsl": [
+          "ctrl+l"
+        ],
+        "win32": [
+          "ctrl+l"
+        ]
+      },
+      "description": "Open model selector",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 116,
+      "consumers": [
+        "input:packages/coding-agent/src/experimental/client-tui.ts#ExperimentalClientTui.<anonymous@124>",
+        "input:packages/coding-agent/src/experimental/micro/tui.ts#MicroTui.<anonymous@133>",
+        "input:packages/coding-agent/src/experimental/mini/tui/view.ts#MiniTui.<anonymous@157>",
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.models.clearAll",
+      "defaults": {
+        "darwin": [
+          "ctrl+x"
+        ],
+        "linux": [
+          "ctrl+x"
+        ],
+        "linuxWsl": [
+          "ctrl+x"
+        ],
+        "win32": [
+          "ctrl+x"
+        ]
+      },
+      "description": "Clear all models",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 194,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput"
+      ]
+    },
+    {
+      "id": "app.models.enableAll",
+      "defaults": {
+        "darwin": [
+          "ctrl+a"
+        ],
+        "linux": [
+          "ctrl+a"
+        ],
+        "linuxWsl": [
+          "ctrl+a"
+        ],
+        "win32": [
+          "ctrl+a"
+        ]
+      },
+      "description": "Enable all models",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 190,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput"
+      ]
+    },
+    {
+      "id": "app.models.reorderDown",
+      "defaults": {
+        "darwin": [
+          "alt+down"
+        ],
+        "linux": [
+          "alt+down"
+        ],
+        "linuxWsl": [
+          "alt+down"
+        ],
+        "win32": [
+          "alt+down"
+        ]
+      },
+      "description": "Move model down in order",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 206,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput"
+      ]
+    },
+    {
+      "id": "app.models.reorderUp",
+      "defaults": {
+        "darwin": [
+          "alt+up"
+        ],
+        "linux": [
+          "alt+up"
+        ],
+        "linuxWsl": [
+          "alt+up"
+        ],
+        "win32": [
+          "alt+up"
+        ]
+      },
+      "description": "Move model up in order",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 202,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput"
+      ]
+    },
+    {
+      "id": "app.models.save",
+      "defaults": {
+        "darwin": [
+          "ctrl+s"
+        ],
+        "linux": [
+          "ctrl+s"
+        ],
+        "linuxWsl": [
+          "ctrl+s"
+        ],
+        "win32": [
+          "ctrl+s"
+        ]
+      },
+      "description": "Save model selection",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 186,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput"
+      ]
+    },
+    {
+      "id": "app.models.toggleProvider",
+      "defaults": {
+        "darwin": [
+          "ctrl+p"
+        ],
+        "linux": [
+          "ctrl+p"
+        ],
+        "linuxWsl": [
+          "ctrl+p"
+        ],
+        "win32": [
+          "ctrl+p"
+        ]
+      },
+      "description": "Toggle all models for provider",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 198,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput"
+      ]
+    },
+    {
+      "id": "app.session.delete",
+      "defaults": {
+        "darwin": [
+          "ctrl+d"
+        ],
+        "linux": [
+          "ctrl+d"
+        ],
+        "linuxWsl": [
+          "ctrl+d"
+        ],
+        "win32": [
+          "ctrl+d"
+        ]
+      },
+      "description": "Delete session",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 178,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput"
+      ]
+    },
+    {
+      "id": "app.session.deleteNoninvasive",
+      "defaults": {
+        "darwin": [
+          "ctrl+backspace"
+        ],
+        "linux": [
+          "ctrl+backspace"
+        ],
+        "linuxWsl": [
+          "ctrl+backspace"
+        ],
+        "win32": [
+          "ctrl+backspace"
+        ]
+      },
+      "description": "Delete session when query is empty",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 182,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput"
+      ]
+    },
+    {
+      "id": "app.session.fork",
+      "defaults": {
+        "darwin": [],
+        "linux": [],
+        "linuxWsl": [],
+        "win32": []
+      },
+      "description": "Fork current session",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 148,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.session.new",
+      "defaults": {
+        "darwin": [],
+        "linux": [],
+        "linuxWsl": [],
+        "win32": []
+      },
+      "description": "Start a new session",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 146,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.session.rename",
+      "defaults": {
+        "darwin": [
+          "ctrl+r"
+        ],
+        "linux": [
+          "ctrl+r"
+        ],
+        "linuxWsl": [
+          "ctrl+r"
+        ],
+        "win32": [
+          "ctrl+r"
+        ]
+      },
+      "description": "Rename session",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 174,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput"
+      ]
+    },
+    {
+      "id": "app.session.resume",
+      "defaults": {
+        "darwin": [],
+        "linux": [],
+        "linuxWsl": [],
+        "win32": []
+      },
+      "description": "Resume a session",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 149,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.session.toggleNamedFilter",
+      "defaults": {
+        "darwin": [
+          "ctrl+n"
+        ],
+        "linux": [
+          "ctrl+n"
+        ],
+        "linuxWsl": [
+          "ctrl+n"
+        ],
+        "win32": [
+          "ctrl+n"
+        ]
+      },
+      "description": "Toggle named session filter",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 122,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput"
+      ]
+    },
+    {
+      "id": "app.session.togglePath",
+      "defaults": {
+        "darwin": [
+          "ctrl+p"
+        ],
+        "linux": [
+          "ctrl+p"
+        ],
+        "linuxWsl": [
+          "ctrl+p"
+        ],
+        "win32": [
+          "ctrl+p"
+        ]
+      },
+      "description": "Toggle session path display",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 166,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput"
+      ]
+    },
+    {
+      "id": "app.session.toggleSort",
+      "defaults": {
+        "darwin": [
+          "ctrl+s"
+        ],
+        "linux": [
+          "ctrl+s"
+        ],
+        "linuxWsl": [
+          "ctrl+s"
+        ],
+        "win32": [
+          "ctrl+s"
+        ]
+      },
+      "description": "Toggle session sort mode",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 170,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput"
+      ]
+    },
+    {
+      "id": "app.session.tree",
+      "defaults": {
+        "darwin": [],
+        "linux": [],
+        "linuxWsl": [],
+        "win32": []
+      },
+      "description": "Open session tree",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 147,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.suspend",
+      "defaults": {
+        "darwin": [
+          "ctrl+z"
+        ],
+        "linux": [
+          "ctrl+z"
+        ],
+        "linuxWsl": [
+          "ctrl+z"
+        ],
+        "win32": []
+      },
+      "description": "Suspend to background",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 96,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.thinking.cycle",
+      "defaults": {
+        "darwin": [
+          "shift+tab"
+        ],
+        "linux": [
+          "shift+tab"
+        ],
+        "linuxWsl": [
+          "shift+tab"
+        ],
+        "win32": [
+          "shift+tab"
+        ]
+      },
+      "description": "Cycle thinking level",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 100,
+      "consumers": [
+        "input:packages/coding-agent/src/experimental/micro/tui.ts#MicroTui.<anonymous@133>",
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.thinking.save",
+      "defaults": {
+        "darwin": [
+          "ctrl+s"
+        ],
+        "linux": [
+          "ctrl+s"
+        ],
+        "linuxWsl": [
+          "ctrl+s"
+        ],
+        "win32": [
+          "ctrl+s"
+        ]
+      },
+      "description": "Save thinking level",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 104,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/thinking-selector.ts#ThinkingSelectorComponent.handleInput"
+      ]
+    },
+    {
+      "id": "app.thinking.toggle",
+      "defaults": {
+        "darwin": [
+          "ctrl+t"
+        ],
+        "linux": [
+          "ctrl+t"
+        ],
+        "linuxWsl": [
+          "ctrl+t"
+        ],
+        "win32": [
+          "ctrl+t"
+        ]
+      },
+      "description": "Toggle thinking blocks",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 118,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.tools.expand",
+      "defaults": {
+        "darwin": [
+          "ctrl+o"
+        ],
+        "linux": [
+          "ctrl+o"
+        ],
+        "linuxWsl": [
+          "ctrl+o"
+        ],
+        "win32": [
+          "ctrl+o"
+        ]
+      },
+      "description": "Toggle tool output",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 117,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/extension-selector.ts#ExtensionSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers"
+      ]
+    },
+    {
+      "id": "app.tree.editLabel",
+      "defaults": {
+        "darwin": [
+          "shift+l"
+        ],
+        "linux": [
+          "shift+l"
+        ],
+        "linuxWsl": [
+          "shift+l"
+        ],
+        "win32": [
+          "shift+l"
+        ]
+      },
+      "description": "Edit tree label",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 158,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+      ]
+    },
+    {
+      "id": "app.tree.filter.all",
+      "defaults": {
+        "darwin": [
+          "ctrl+a"
+        ],
+        "linux": [
+          "ctrl+a"
+        ],
+        "linuxWsl": [
+          "ctrl+a"
+        ],
+        "win32": [
+          "ctrl+a"
+        ]
+      },
+      "description": "Tree filter: show all entries",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 226,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+      ]
+    },
+    {
+      "id": "app.tree.filter.cycleBackward",
+      "defaults": {
+        "darwin": [
+          "shift+ctrl+o"
+        ],
+        "linux": [
+          "shift+ctrl+o"
+        ],
+        "linuxWsl": [
+          "shift+ctrl+o"
+        ],
+        "win32": [
+          "shift+ctrl+o"
+        ]
+      },
+      "description": "Tree filter: cycle backward",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 234,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+      ]
+    },
+    {
+      "id": "app.tree.filter.cycleForward",
+      "defaults": {
+        "darwin": [
+          "ctrl+o"
+        ],
+        "linux": [
+          "ctrl+o"
+        ],
+        "linuxWsl": [
+          "ctrl+o"
+        ],
+        "win32": [
+          "ctrl+o"
+        ]
+      },
+      "description": "Tree filter: cycle forward",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 230,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+      ]
+    },
+    {
+      "id": "app.tree.filter.default",
+      "defaults": {
+        "darwin": [
+          "ctrl+d"
+        ],
+        "linux": [
+          "ctrl+d"
+        ],
+        "linuxWsl": [
+          "ctrl+d"
+        ],
+        "win32": [
+          "ctrl+d"
+        ]
+      },
+      "description": "Tree filter: default view",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 210,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+      ]
+    },
+    {
+      "id": "app.tree.filter.labeledOnly",
+      "defaults": {
+        "darwin": [
+          "ctrl+l"
+        ],
+        "linux": [
+          "ctrl+l"
+        ],
+        "linuxWsl": [
+          "ctrl+l"
+        ],
+        "win32": [
+          "ctrl+l"
+        ]
+      },
+      "description": "Tree filter: labeled entries only",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 222,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+      ]
+    },
+    {
+      "id": "app.tree.filter.noTools",
+      "defaults": {
+        "darwin": [
+          "ctrl+t"
+        ],
+        "linux": [
+          "ctrl+t"
+        ],
+        "linuxWsl": [
+          "ctrl+t"
+        ],
+        "win32": [
+          "ctrl+t"
+        ]
+      },
+      "description": "Tree filter: hide tool results",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 214,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+      ]
+    },
+    {
+      "id": "app.tree.filter.userOnly",
+      "defaults": {
+        "darwin": [
+          "ctrl+u"
+        ],
+        "linux": [
+          "ctrl+u"
+        ],
+        "linuxWsl": [
+          "ctrl+u"
+        ],
+        "win32": [
+          "ctrl+u"
+        ]
+      },
+      "description": "Tree filter: user messages only",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 218,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+      ]
+    },
+    {
+      "id": "app.tree.foldOrUp",
+      "defaults": {
+        "darwin": [
+          "alt+left",
+          "ctrl+left"
+        ],
+        "linux": [
+          "ctrl+left",
+          "alt+left"
+        ],
+        "linuxWsl": [
+          "ctrl+left",
+          "alt+left"
+        ],
+        "win32": [
+          "ctrl+left",
+          "alt+left"
+        ]
+      },
+      "description": "Fold tree branch or move up",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 150,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+      ]
+    },
+    {
+      "id": "app.tree.toggleLabelTimestamp",
+      "defaults": {
+        "darwin": [
+          "shift+t"
+        ],
+        "linux": [
+          "shift+t"
+        ],
+        "linuxWsl": [
+          "shift+t"
+        ],
+        "win32": [
+          "shift+t"
+        ]
+      },
+      "description": "Toggle tree label timestamps",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 162,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+      ]
+    },
+    {
+      "id": "app.tree.unfoldOrDown",
+      "defaults": {
+        "darwin": [
+          "alt+right",
+          "ctrl+right"
+        ],
+        "linux": [
+          "ctrl+right",
+          "alt+right"
+        ],
+        "linuxWsl": [
+          "ctrl+right",
+          "alt+right"
+        ],
+        "win32": [
+          "ctrl+right",
+          "alt+right"
+        ]
+      },
+      "description": "Unfold tree branch or move down",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 154,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.bottom",
+      "defaults": {
+        "darwin": [
+          "end"
+        ],
+        "linux": [
+          "end"
+        ],
+        "linuxWsl": [
+          "end"
+        ],
+        "win32": [
+          "end"
+        ]
+      },
+      "description": "Scroll viewport to bottom",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 209,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.halfPageDown",
+      "defaults": {
+        "darwin": [],
+        "linux": [],
+        "linuxWsl": [],
+        "win32": []
+      },
+      "description": "Scroll viewport down half a page",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 172,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.halfPageUp",
+      "defaults": {
+        "darwin": [],
+        "linux": [],
+        "linuxWsl": [],
+        "win32": []
+      },
+      "description": "Scroll viewport up half a page",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 168,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.lineDown",
+      "defaults": {
+        "darwin": [],
+        "linux": [],
+        "linuxWsl": [],
+        "win32": []
+      },
+      "description": "Scroll viewport down one line",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 180,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.lineUp",
+      "defaults": {
+        "darwin": [],
+        "linux": [],
+        "linuxWsl": [],
+        "win32": []
+      },
+      "description": "Scroll viewport up one line",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 176,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.nextPrompt",
+      "defaults": {
+        "darwin": [
+          "ctrl+shift+down",
+          "ctrl+down"
+        ],
+        "linux": [
+          "ctrl+shift+down",
+          "ctrl+down"
+        ],
+        "linuxWsl": [
+          "ctrl+down"
+        ],
+        "win32": [
+          "ctrl+down"
+        ]
+      },
+      "description": "Jump to next semantic prompt",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 85,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.pageDown",
+      "defaults": {
+        "darwin": [
+          "pageDown"
+        ],
+        "linux": [
+          "pageDown"
+        ],
+        "linuxWsl": [
+          "pageDown"
+        ],
+        "win32": [
+          "pageDown"
+        ]
+      },
+      "description": "Scroll viewport down one page",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 164,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.pageUp",
+      "defaults": {
+        "darwin": [
+          "pageUp"
+        ],
+        "linux": [
+          "pageUp"
+        ],
+        "linuxWsl": [
+          "pageUp"
+        ],
+        "win32": [
+          "pageUp"
+        ]
+      },
+      "description": "Scroll viewport up one page",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 160,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.previousPrompt",
+      "defaults": {
+        "darwin": [
+          "ctrl+shift+up",
+          "ctrl+up"
+        ],
+        "linux": [
+          "ctrl+shift+up",
+          "ctrl+up"
+        ],
+        "linuxWsl": [
+          "ctrl+up"
+        ],
+        "win32": [
+          "ctrl+up"
+        ]
+      },
+      "description": "Jump to previous semantic prompt",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 81,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.search",
+      "defaults": {
+        "darwin": [
+          "ctrl+shift+f"
+        ],
+        "linux": [
+          "ctrl+shift+f"
+        ],
+        "linuxWsl": [
+          "ctrl+f"
+        ],
+        "win32": [
+          "ctrl+f"
+        ]
+      },
+      "description": "Search the primary scroll view",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 89,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.searchClose",
+      "defaults": {
+        "darwin": [
+          "escape"
+        ],
+        "linux": [
+          "escape"
+        ],
+        "linuxWsl": [
+          "escape"
+        ],
+        "win32": [
+          "escape"
+        ]
+      },
+      "description": "Close transcript search",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 204,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.searchNext",
+      "defaults": {
+        "darwin": [
+          "enter",
+          "ctrl+g"
+        ],
+        "linux": [
+          "enter",
+          "ctrl+g"
+        ],
+        "linuxWsl": [
+          "enter",
+          "ctrl+g"
+        ],
+        "win32": [
+          "enter",
+          "ctrl+g"
+        ]
+      },
+      "description": "Select the next search match",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 196,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.searchPrevious",
+      "defaults": {
+        "darwin": [
+          "shift+enter",
+          "ctrl+shift+g"
+        ],
+        "linux": [
+          "shift+enter",
+          "ctrl+shift+g"
+        ],
+        "linuxWsl": [
+          "shift+enter",
+          "ctrl+shift+g"
+        ],
+        "win32": [
+          "shift+enter",
+          "ctrl+shift+g"
+        ]
+      },
+      "description": "Select the previous search match",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 200,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.altScreen.top",
+      "defaults": {
+        "darwin": [
+          "home"
+        ],
+        "linux": [
+          "home"
+        ],
+        "linuxWsl": [
+          "home"
+        ],
+        "win32": [
+          "home"
+        ]
+      },
+      "description": "Scroll viewport to top",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 208,
+      "consumers": [
+        "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput"
+      ]
+    },
+    {
+      "id": "tui.editor.cursorDown",
+      "defaults": {
+        "darwin": [
+          "down"
+        ],
+        "linux": [
+          "down"
+        ],
+        "linuxWsl": [
+          "down"
+        ],
+        "win32": [
+          "down"
+        ]
+      },
+      "description": "Move cursor down",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 73,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.cursorLeft",
+      "defaults": {
+        "darwin": [
+          "left",
+          "ctrl+b"
+        ],
+        "linux": [
+          "left",
+          "ctrl+b"
+        ],
+        "linuxWsl": [
+          "left",
+          "ctrl+b"
+        ],
+        "win32": [
+          "left",
+          "ctrl+b"
+        ]
+      },
+      "description": "Move cursor left",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 82,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput",
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.cursorLineEnd",
+      "defaults": {
+        "darwin": [
+          "end",
+          "ctrl+end",
+          "ctrl+e"
+        ],
+        "linux": [
+          "end",
+          "ctrl+end",
+          "ctrl+e"
+        ],
+        "linuxWsl": [
+          "end",
+          "ctrl+end",
+          "ctrl+e"
+        ],
+        "win32": [
+          "end",
+          "ctrl+end",
+          "ctrl+e"
+        ]
+      },
+      "description": "Move to line end",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 102,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.cursorLineStart",
+      "defaults": {
+        "darwin": [
+          "home",
+          "ctrl+home",
+          "ctrl+a"
+        ],
+        "linux": [
+          "home",
+          "ctrl+home",
+          "ctrl+a"
+        ],
+        "linuxWsl": [
+          "home",
+          "ctrl+home",
+          "ctrl+a"
+        ],
+        "win32": [
+          "home",
+          "ctrl+home",
+          "ctrl+a"
+        ]
+      },
+      "description": "Move to line start",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 98,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.cursorRight",
+      "defaults": {
+        "darwin": [
+          "right",
+          "ctrl+f"
+        ],
+        "linux": [
+          "right",
+          "ctrl+f"
+        ],
+        "linuxWsl": [
+          "right",
+          "ctrl+f"
+        ],
+        "win32": [
+          "right",
+          "ctrl+f"
+        ]
+      },
+      "description": "Move cursor right",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 86,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput",
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.cursorUp",
+      "defaults": {
+        "darwin": [
+          "up"
+        ],
+        "linux": [
+          "up"
+        ],
+        "linuxWsl": [
+          "up"
+        ],
+        "win32": [
+          "up"
+        ]
+      },
+      "description": "Move cursor up",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 72,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.cursorWordLeft",
+      "defaults": {
+        "darwin": [
+          "alt+left",
+          "ctrl+left",
+          "alt+b"
+        ],
+        "linux": [
+          "alt+left",
+          "ctrl+left",
+          "alt+b"
+        ],
+        "linuxWsl": [
+          "alt+left",
+          "ctrl+left",
+          "alt+b"
+        ],
+        "win32": [
+          "alt+left",
+          "ctrl+left",
+          "alt+b"
+        ]
+      },
+      "description": "Move cursor word left",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 90,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.cursorWordRight",
+      "defaults": {
+        "darwin": [
+          "alt+right",
+          "ctrl+right",
+          "alt+f"
+        ],
+        "linux": [
+          "alt+right",
+          "ctrl+right",
+          "alt+f"
+        ],
+        "linuxWsl": [
+          "alt+right",
+          "ctrl+right",
+          "alt+f"
+        ],
+        "win32": [
+          "alt+right",
+          "ctrl+right",
+          "alt+f"
+        ]
+      },
+      "description": "Move cursor word right",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 94,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.deleteCharBackward",
+      "defaults": {
+        "darwin": [
+          "backspace"
+        ],
+        "linux": [
+          "backspace"
+        ],
+        "linuxWsl": [
+          "backspace"
+        ],
+        "win32": [
+          "backspace"
+        ]
+      },
+      "description": "Delete character backward",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 116,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput",
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.deleteCharForward",
+      "defaults": {
+        "darwin": [
+          "delete",
+          "ctrl+d"
+        ],
+        "linux": [
+          "delete",
+          "ctrl+d"
+        ],
+        "linuxWsl": [
+          "delete",
+          "ctrl+d"
+        ],
+        "win32": [
+          "delete",
+          "ctrl+d"
+        ]
+      },
+      "description": "Delete character forward",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 120,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.deleteToLineEnd",
+      "defaults": {
+        "darwin": [
+          "ctrl+k"
+        ],
+        "linux": [
+          "ctrl+k"
+        ],
+        "linuxWsl": [
+          "ctrl+k"
+        ],
+        "win32": [
+          "ctrl+k"
+        ]
+      },
+      "description": "Delete to line end",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 136,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.deleteToLineStart",
+      "defaults": {
+        "darwin": [
+          "ctrl+u"
+        ],
+        "linux": [
+          "ctrl+u"
+        ],
+        "linuxWsl": [
+          "ctrl+u"
+        ],
+        "win32": [
+          "ctrl+u"
+        ]
+      },
+      "description": "Delete to line start",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 132,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.deleteWordBackward",
+      "defaults": {
+        "darwin": [
+          "ctrl+w",
+          "alt+backspace"
+        ],
+        "linux": [
+          "ctrl+w",
+          "alt+backspace"
+        ],
+        "linuxWsl": [
+          "ctrl+w",
+          "alt+backspace"
+        ],
+        "win32": [
+          "ctrl+w",
+          "alt+backspace"
+        ]
+      },
+      "description": "Delete word backward",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 124,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.deleteWordForward",
+      "defaults": {
+        "darwin": [
+          "alt+d",
+          "alt+delete"
+        ],
+        "linux": [
+          "alt+d",
+          "alt+delete"
+        ],
+        "linuxWsl": [
+          "alt+d",
+          "alt+delete"
+        ],
+        "win32": [
+          "alt+d",
+          "alt+delete"
+        ]
+      },
+      "description": "Delete word forward",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 128,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.historyNext",
+      "defaults": {
+        "darwin": [],
+        "linux": [],
+        "linuxWsl": [],
+        "win32": []
+      },
+      "description": "Select next prompt history entry",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 78,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput",
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.historyPrevious",
+      "defaults": {
+        "darwin": [],
+        "linux": [],
+        "linuxWsl": [],
+        "win32": []
+      },
+      "description": "Select previous prompt history entry",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 74,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput",
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.jumpBackward",
+      "defaults": {
+        "darwin": [
+          "ctrl+alt+]"
+        ],
+        "linux": [
+          "ctrl+alt+]"
+        ],
+        "linuxWsl": [
+          "ctrl+alt+]"
+        ],
+        "win32": [
+          "ctrl+alt+]"
+        ]
+      },
+      "description": "Jump backward to character",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 110,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.jumpForward",
+      "defaults": {
+        "darwin": [
+          "ctrl+]"
+        ],
+        "linux": [
+          "ctrl+]"
+        ],
+        "linuxWsl": [
+          "ctrl+]"
+        ],
+        "win32": [
+          "ctrl+]"
+        ]
+      },
+      "description": "Jump forward to character",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 106,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.pageDown",
+      "defaults": {
+        "darwin": [
+          "pageDown",
+          "ctrl+pageDown"
+        ],
+        "linux": [
+          "pageDown",
+          "ctrl+pageDown"
+        ],
+        "linuxWsl": [
+          "pageDown",
+          "ctrl+pageDown"
+        ],
+        "win32": [
+          "pageDown",
+          "ctrl+pageDown"
+        ]
+      },
+      "description": "Page down",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 115,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.pageUp",
+      "defaults": {
+        "darwin": [
+          "pageUp",
+          "ctrl+pageUp"
+        ],
+        "linux": [
+          "pageUp",
+          "ctrl+pageUp"
+        ],
+        "linuxWsl": [
+          "pageUp",
+          "ctrl+pageUp"
+        ],
+        "win32": [
+          "pageUp",
+          "ctrl+pageUp"
+        ]
+      },
+      "description": "Page up",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 114,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.undo",
+      "defaults": {
+        "darwin": [
+          "ctrl+-"
+        ],
+        "linux": [
+          "ctrl+-"
+        ],
+        "linuxWsl": [
+          "alt+z"
+        ],
+        "win32": [
+          "ctrl+z"
+        ]
+      },
+      "description": "Undo",
+      "path": "packages/coding-agent/src/core/keybindings.ts",
+      "line": 77,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.yank",
+      "defaults": {
+        "darwin": [
+          "ctrl+y"
+        ],
+        "linux": [
+          "ctrl+y"
+        ],
+        "linuxWsl": [
+          "ctrl+y"
+        ],
+        "win32": [
+          "ctrl+y"
+        ]
+      },
+      "description": "Yank",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 140,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.editor.yankPop",
+      "defaults": {
+        "darwin": [
+          "alt+y"
+        ],
+        "linux": [
+          "alt+y"
+        ],
+        "linuxWsl": [
+          "alt+y"
+        ],
+        "win32": [
+          "alt+y"
+        ]
+      },
+      "description": "Yank pop",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 141,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.input.copy",
+      "defaults": {
+        "darwin": [
+          "ctrl+c"
+        ],
+        "linux": [
+          "ctrl+c"
+        ],
+        "linuxWsl": [
+          "ctrl+c"
+        ],
+        "win32": [
+          "ctrl+c"
+        ]
+      },
+      "description": "Copy selection",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 146,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+      ]
+    },
+    {
+      "id": "tui.input.newLine",
+      "defaults": {
+        "darwin": [
+          "shift+enter",
+          "ctrl+j"
+        ],
+        "linux": [
+          "shift+enter",
+          "ctrl+j"
+        ],
+        "linuxWsl": [
+          "shift+enter",
+          "ctrl+j"
+        ],
+        "win32": [
+          "shift+enter",
+          "ctrl+j"
+        ]
+      },
+      "description": "Insert newline",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 143,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+      ]
+    },
+    {
+      "id": "tui.input.submit",
+      "defaults": {
+        "darwin": [
+          "enter"
+        ],
+        "linux": [
+          "enter"
+        ],
+        "linuxWsl": [
+          "enter"
+        ],
+        "win32": [
+          "enter"
+        ]
+      },
+      "description": "Submit input",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 144,
+      "consumers": [
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput"
+      ]
+    },
+    {
+      "id": "tui.input.tab",
+      "defaults": {
+        "darwin": [
+          "tab"
+        ],
+        "linux": [
+          "tab"
+        ],
+        "linuxWsl": [
+          "tab"
+        ],
+        "win32": [
+          "tab"
+        ]
+      },
+      "description": "Tab / autocomplete",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 145,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput",
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput"
+      ]
+    },
+    {
+      "id": "tui.select.cancel",
+      "defaults": {
+        "darwin": [
+          "escape",
+          "ctrl+c"
+        ],
+        "linux": [
+          "escape",
+          "ctrl+c"
+        ],
+        "linuxWsl": [
+          "escape",
+          "ctrl+c"
+        ],
+        "win32": [
+          "escape",
+          "ctrl+c"
+        ]
+      },
+      "description": "Cancel selection",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 155,
+      "consumers": [
+        "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput",
+        "input:packages/coding-agent/src/extensions/llama/ui.ts#LlamaView.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/extension-editor.ts#ExtensionEditorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/extension-input.ts#ExtensionInputComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/extension-selector.ts#ExtensionSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/first-time-setup.ts#FirstTimeSetupComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/login-dialog.ts#LoginDialogComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SelectSubmenu.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/thinking-selector.ts#ThinkingSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/trust-selector.ts#TrustSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/user-message-selector.ts#UserMessageList.handleInput",
+        "input:packages/tui/src/components/cancellable-loader.ts#CancellableLoader.handleInput",
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/input.ts#Input.handleInput",
+        "input:packages/tui/src/components/select-list.ts#SelectList.handleInput",
+        "input:packages/tui/src/components/settings-list.ts#SettingsList.handleInput"
+      ]
+    },
+    {
+      "id": "tui.select.confirm",
+      "defaults": {
+        "darwin": [
+          "enter"
+        ],
+        "linux": [
+          "enter"
+        ],
+        "linuxWsl": [
+          "enter"
+        ],
+        "win32": [
+          "enter"
+        ]
+      },
+      "description": "Confirm selection",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 154,
+      "consumers": [
+        "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/extension-input.ts#ExtensionInputComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/extension-selector.ts#ExtensionSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/first-time-setup.ts#FirstTimeSetupComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SelectSubmenu.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/thinking-selector.ts#ThinkingSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/trust-selector.ts#TrustSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/user-message-selector.ts#UserMessageList.handleInput",
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/select-list.ts#SelectList.handleInput",
+        "input:packages/tui/src/components/settings-list.ts#SettingsList.handleInput"
+      ]
+    },
+    {
+      "id": "tui.select.down",
+      "defaults": {
+        "darwin": [
+          "down"
+        ],
+        "linux": [
+          "down"
+        ],
+        "linuxWsl": [
+          "down"
+        ],
+        "win32": [
+          "down"
+        ]
+      },
+      "description": "Move selection down",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 148,
+      "consumers": [
+        "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/extension-selector.ts#ExtensionSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/first-time-setup.ts#FirstTimeSetupComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SelectSubmenu.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/thinking-selector.ts#ThinkingSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/trust-selector.ts#TrustSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/user-message-selector.ts#UserMessageList.handleInput",
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/select-list.ts#SelectList.handleInput",
+        "input:packages/tui/src/components/settings-list.ts#SettingsList.handleInput"
+      ]
+    },
+    {
+      "id": "tui.select.pageDown",
+      "defaults": {
+        "darwin": [
+          "pageDown"
+        ],
+        "linux": [
+          "pageDown"
+        ],
+        "linuxWsl": [
+          "pageDown"
+        ],
+        "win32": [
+          "pageDown"
+        ]
+      },
+      "description": "Selection page down",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 150,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+      ]
+    },
+    {
+      "id": "tui.select.pageUp",
+      "defaults": {
+        "darwin": [
+          "pageUp"
+        ],
+        "linux": [
+          "pageUp"
+        ],
+        "linuxWsl": [
+          "pageUp"
+        ],
+        "win32": [
+          "pageUp"
+        ]
+      },
+      "description": "Selection page up",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 149,
+      "consumers": [
+        "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput"
+      ]
+    },
+    {
+      "id": "tui.select.up",
+      "defaults": {
+        "darwin": [
+          "up"
+        ],
+        "linux": [
+          "up"
+        ],
+        "linuxWsl": [
+          "up"
+        ],
+        "win32": [
+          "up"
+        ]
+      },
+      "description": "Move selection up",
+      "path": "packages/tui/src/keybindings.ts",
+      "line": 147,
+      "consumers": [
+        "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/extension-selector.ts#ExtensionSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/first-time-setup.ts#FirstTimeSetupComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SelectSubmenu.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/thinking-selector.ts#ThinkingSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/trust-selector.ts#TrustSelectorComponent.handleInput",
+        "input:packages/coding-agent/src/modes/interactive/components/user-message-selector.ts#UserMessageList.handleInput",
+        "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+        "input:packages/tui/src/components/select-list.ts#SelectList.handleInput",
+        "input:packages/tui/src/components/settings-list.ts#SettingsList.handleInput"
+      ]
+    }
+  ],
+  "handlers": [
+    {
+      "id": "input:packages/coding-agent/src/core/agent-session.ts#AgentSession._emitExtensionEvent",
+      "path": "packages/coding-agent/src/core/agent-session.ts",
+      "owner": "AgentSession",
+      "method": "_emitExtensionEvent",
+      "startLine": 1062,
+      "endLine": 1139,
+      "sourceHash": "sha256:db626a8bc8098d9dbb14d80344d2bf1fef3b5a8db3c39c28699e67eeb4a2723d",
+      "async": true,
+      "branchCount": 13,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [
+        "this._dispatchTurnEndBoundary",
+        "this._replaceMessageInPlace"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this._turnIndex"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/experimental/client-tui.ts#ExperimentalClientTui.<anonymous@124>",
+      "path": "packages/coding-agent/src/experimental/client-tui.ts",
+      "owner": "ExperimentalClientTui",
+      "method": "<anonymous@124>",
+      "startLine": 124,
+      "endLine": 153,
+      "sourceHash": "sha256:6c685a0fc4bfd51c3dfcc4d5bef0a07ea514750935cce14d2b73835e95aa25a1",
+      "async": false,
+      "branchCount": 0,
+      "bindings": [
+        "app.clear",
+        "app.message.followUp",
+        "app.model.select"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.#chatInput.onAction"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.#chatInput",
+        "this.#chatInput.onCtrlD",
+        "this.#chatInput.onEscape",
+        "this.#chatInput.onSubmit",
+        "this.#finish",
+        "this.#layoutRoot",
+        "this.#requestRender",
+        "this.#sharedFacets",
+        "this.#ui"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/experimental/client-tui.ts#ExperimentalClientTui.handleInput",
+      "path": "packages/coding-agent/src/experimental/client-tui.ts",
+      "owner": "ExperimentalClientTui",
+      "method": "handleInput",
+      "startLine": 196,
+      "endLine": 212,
+      "sourceHash": "sha256:280c05636e9b547db0ff1828714c05f7f9409f303a5f53a83b2c4ea25bde7410",
+      "async": false,
+      "branchCount": 3,
+      "bindings": [
+        "app.clear",
+        "app.exit"
+      ],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [
+        "this.#chatInput.handleInput",
+        "this.#selectList.handleInput"
+      ],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/experimental/micro/tui.ts#ListSelector.handleInput",
+      "path": "packages/coding-agent/src/experimental/micro/tui.ts",
+      "owner": "ListSelector",
+      "method": "handleInput",
+      "startLine": 81,
+      "endLine": 93,
+      "sourceHash": "sha256:9226cc0e25ec621a478bc1bfdeebb3c99a9cf9f568d49432242e6617e6df3449",
+      "async": false,
+      "branchCount": 2,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [
+        "this.#input.handleInput",
+        "this.#list.handleInput"
+      ],
+      "mutations": [
+        "this.#list"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/experimental/micro/tui.ts#MicroTui.<anonymous@133>",
+      "path": "packages/coding-agent/src/experimental/micro/tui.ts",
+      "owner": "MicroTui",
+      "method": "<anonymous@133>",
+      "startLine": 133,
+      "endLine": 180,
+      "sourceHash": "sha256:87276b5e5fb8be5799b1a87f4dc7a840a194aab549e68377bad5b2195f4fa754",
+      "async": false,
+      "branchCount": 0,
+      "bindings": [
+        "app.clear",
+        "app.message.followUp",
+        "app.model.select",
+        "app.thinking.cycle"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.#editor.onAction"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.#cwd",
+        "this.#editor",
+        "this.#editor.onCtrlD",
+        "this.#editor.onEscape",
+        "this.#editor.onSubmit",
+        "this.#ui"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/experimental/mini/tui/view.ts#ListSelector.handleInput",
+      "path": "packages/coding-agent/src/experimental/mini/tui/view.ts",
+      "owner": "ListSelector",
+      "method": "handleInput",
+      "startLine": 106,
+      "endLine": 118,
+      "sourceHash": "sha256:9226cc0e25ec621a478bc1bfdeebb3c99a9cf9f568d49432242e6617e6df3449",
+      "async": false,
+      "branchCount": 2,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [
+        "this.#input.handleInput",
+        "this.#list.handleInput"
+      ],
+      "mutations": [
+        "this.#list"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/experimental/mini/tui/view.ts#MiniTui.<anonymous@157>",
+      "path": "packages/coding-agent/src/experimental/mini/tui/view.ts",
+      "owner": "MiniTui",
+      "method": "<anonymous@157>",
+      "startLine": 157,
+      "endLine": 195,
+      "sourceHash": "sha256:004d513fd93aac329cd29980a4b20e477b349f728b1cc47223566d444e1428ec",
+      "async": false,
+      "branchCount": 0,
+      "bindings": [
+        "app.clear",
+        "app.message.followUp",
+        "app.model.select"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.#editor.onAction"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.#cwd",
+        "this.#editor",
+        "this.#editor.onCtrlD",
+        "this.#editor.onEscape",
+        "this.#editor.onSubmit",
+        "this.#ui"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput",
+      "path": "packages/coding-agent/src/extensions/llama/ui.ts",
+      "owner": "HuggingFaceSearch",
+      "method": "handleInput",
+      "startLine": 243,
+      "endLine": 273,
+      "sourceHash": "sha256:67c320c852d9f5e8fb388ae13a6845d504a38bab2ec6888e88893c99c8154160",
+      "async": false,
+      "branchCount": 11,
+      "bindings": [
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.up"
+      ],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [
+        "this.input.handleInput"
+      ],
+      "mutations": [
+        "this.query",
+        "this.selectedIndex"
+      ],
+      "boundaryOperators": [
+        ">"
+      ]
+    },
+    {
+      "id": "input:packages/coding-agent/src/extensions/llama/ui.ts#LlamaView.handleInput",
+      "path": "packages/coding-agent/src/extensions/llama/ui.ts",
+      "owner": "LlamaView",
+      "method": "handleInput",
+      "startLine": 457,
+      "endLine": 467,
+      "sourceHash": "sha256:df7c0ce483653a7271d5e42440be6171743b021ad3826a50cb297a41a992fd4a",
+      "async": false,
+      "branchCount": 1,
+      "bindings": [
+        "tui.select.cancel"
+      ],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [
+        "this.inputHandler.handleInput"
+      ],
+      "mutations": [
+        "this.progressPromise",
+        "this.progressResolver"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/bordered-loader.ts#BorderedLoader.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/bordered-loader.ts",
+      "owner": "BorderedLoader",
+      "method": "handleInput",
+      "startLine": 55,
+      "endLine": 59,
+      "sourceHash": "sha256:4eab3f9f3948f46d47fbb4f5ef226ed801cc7867e6a2a34957efeb3b478f6831",
+      "async": false,
+      "branchCount": 1,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/config-selector.ts",
+      "owner": "ResourceList",
+      "method": "handleInput",
+      "startLine": 454,
+      "endLine": 514,
+      "sourceHash": "sha256:afb76a929ac9187a02f6fced406ffa20f9e85f2f94e7cf850ae74758e868a92a",
+      "async": false,
+      "branchCount": 12,
+      "bindings": [
+        "matchesKey:\"ctrl+c\"",
+        "tui.input.tab",
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.pageDown",
+        "tui.select.pageUp",
+        "tui.select.up"
+      ],
+      "rawInputs": [
+        "\" \""
+      ],
+      "callbacks": [
+        "this.onCancel",
+        "this.onExit",
+        "this.onSwitchMode",
+        "this.onToggle"
+      ],
+      "delegates": [
+        "this.searchInput.handleInput"
+      ],
+      "mutations": [
+        "this.selectedIndex"
+      ],
+      "boundaryOperators": [
+        "<",
+        ">="
+      ]
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/custom-editor.ts",
+      "owner": "CustomEditor",
+      "method": "handleInput",
+      "startLine": 88,
+      "endLine": 147,
+      "sourceHash": "sha256:d514f6e9127bfe44ff4eb6ecbf88ae2cc5618efa910579d20cdac3b0d7b392eb",
+      "async": false,
+      "branchCount": 10,
+      "bindings": [
+        "app.clipboard.pasteImage",
+        "app.exit",
+        "app.interrupt",
+        "tui.editor.historyNext",
+        "tui.editor.historyPrevious"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.onExtensionShortcut",
+        "this.onPasteImage"
+      ],
+      "delegates": [],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/extension-editor.ts#ExtensionEditorComponent.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/extension-editor.ts",
+      "owner": "ExtensionEditorComponent",
+      "method": "handleInput",
+      "startLine": 107,
+      "endLine": 123,
+      "sourceHash": "sha256:5c51ac6342ddbdcb3a16a117a0f41c9677d4d98cebe4a8a46557e9c0390e10b3",
+      "async": false,
+      "branchCount": 2,
+      "bindings": [
+        "app.editor.external",
+        "tui.select.cancel"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.onCancelCallback"
+      ],
+      "delegates": [
+        "this.editor.handleInput"
+      ],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/extension-input.ts#ExtensionInputComponent.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/extension-input.ts",
+      "owner": "ExtensionInputComponent",
+      "method": "handleInput",
+      "startLine": 80,
+      "endLine": 89,
+      "sourceHash": "sha256:4e201baefd61af4eafb98df69a6f8b2cd595a45cd737cd5108114a1afba68bfa",
+      "async": false,
+      "branchCount": 2,
+      "bindings": [
+        "tui.select.cancel",
+        "tui.select.confirm"
+      ],
+      "rawInputs": [
+        "\"\\n\""
+      ],
+      "callbacks": [
+        "this.onCancelCallback",
+        "this.onSubmitCallback"
+      ],
+      "delegates": [
+        "this.input.handleInput"
+      ],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/extension-selector.ts#ExtensionSelectorComponent.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+      "owner": "ExtensionSelectorComponent",
+      "method": "handleInput",
+      "startLine": 96,
+      "endLine": 112,
+      "sourceHash": "sha256:cbe5b66a67dd7e397748548102e66c918f0b20411b24b0e5a37a7ba5ce5ed133",
+      "async": false,
+      "branchCount": 6,
+      "bindings": [
+        "app.tools.expand",
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.up"
+      ],
+      "rawInputs": [
+        "\"\\n\"",
+        "\"j\"",
+        "\"k\""
+      ],
+      "callbacks": [
+        "this.onCancelCallback",
+        "this.onSelectCallback",
+        "this.onToggleToolsExpanded"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.selectedIndex"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/first-time-setup.ts#FirstTimeSetupComponent.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/first-time-setup.ts",
+      "owner": "FirstTimeSetupComponent",
+      "method": "handleInput",
+      "startLine": 125,
+      "endLine": 144,
+      "sourceHash": "sha256:e331330bd5addfff656d6663597b5203460b704bf157272a961235de52da54e4",
+      "async": false,
+      "branchCount": 5,
+      "bindings": [
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.up"
+      ],
+      "rawInputs": [
+        "\"\\n\"",
+        "\"j\"",
+        "\"k\""
+      ],
+      "callbacks": [
+        "this.options.onCancel",
+        "this.options.onSubmit"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.step"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/login-dialog.ts#LoginDialogComponent.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+      "owner": "LoginDialogComponent",
+      "method": "handleInput",
+      "startLine": 222,
+      "endLine": 232,
+      "sourceHash": "sha256:d28c174475d2d0a9a9b502ed10cbcbb352eea17035a249ad69b43a832a239dd1",
+      "async": false,
+      "branchCount": 1,
+      "bindings": [
+        "tui.select.cancel"
+      ],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [
+        "this.input.handleInput"
+      ],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+      "owner": "ModelSelectorComponent",
+      "method": "handleInput",
+      "startLine": 362,
+      "endLine": 411,
+      "sourceHash": "sha256:b7dcfcb845c03401efb3b946039a3a3d923fea45b69dd1651d73f346c3b1eb14",
+      "async": false,
+      "branchCount": 15,
+      "bindings": [
+        "app.models.save",
+        "tui.input.tab",
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.up"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.onCancelCallback",
+        "this.onSelectAsDefaultCallback"
+      ],
+      "delegates": [
+        "this.searchInput.handleInput"
+      ],
+      "mutations": [
+        "this.selectedIndex"
+      ],
+      "boundaryOperators": [
+        ">"
+      ]
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.refreshModels",
+      "path": "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+      "owner": "ModelSelectorComponent",
+      "method": "refreshModels",
+      "startLine": 184,
+      "endLine": 222,
+      "sourceHash": "sha256:6b9efac7db92d7e4f5144b8599a832dd0fa9a85436ff3743e5c18c554964c794",
+      "async": true,
+      "branchCount": 9,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [
+        "this.filterModels",
+        "this.loadModelsFromSnapshot",
+        "this.updateList"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.errorMessage",
+        "this.refreshStatusMessage",
+        "this.refreshStatusSuccess",
+        "this.refreshTimeout"
+      ],
+      "boundaryOperators": [
+        ">"
+      ]
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts",
+      "owner": "OAuthSelectorComponent",
+      "method": "handleInput",
+      "startLine": 183,
+      "endLine": 213,
+      "sourceHash": "sha256:66e0608a96aae79f17606ea5ed08b50332d3f943261f754f819c6f4004d1251e",
+      "async": false,
+      "branchCount": 7,
+      "bindings": [
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.up"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.onCancelCallback",
+        "this.onSelectCallback"
+      ],
+      "delegates": [
+        "this.searchInput.handleInput"
+      ],
+      "mutations": [
+        "this.selectedIndex"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts",
+      "owner": "ScopedModelsSelectorComponent",
+      "method": "handleInput",
+      "startLine": 280,
+      "endLine": 396,
+      "sourceHash": "sha256:ab877ead9e8110bd33e92194333466c2025aa0bf73eaaf0216b3de614fc7cec6",
+      "async": false,
+      "branchCount": 25,
+      "bindings": [
+        "app.models.clearAll",
+        "app.models.enableAll",
+        "app.models.reorderDown",
+        "app.models.reorderUp",
+        "app.models.save",
+        "app.models.toggleProvider",
+        "matchesKey:Key.ctrl(\"c\")",
+        "matchesKey:Key.escape",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.up"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.callbacks.onCancel",
+        "this.callbacks.onPersist"
+      ],
+      "delegates": [
+        "this.searchInput.handleInput"
+      ],
+      "mutations": [
+        "this.enabledIds",
+        "this.isDirty",
+        "this.selectedIndex"
+      ],
+      "boundaryOperators": [
+        "<",
+        ">="
+      ]
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/session-selector.ts",
+      "owner": "SessionList",
+      "method": "handleInput",
+      "startLine": 540,
+      "endLine": 646,
+      "sourceHash": "sha256:505088f684135ca1227661bbc755665f0abe35e460acb7abf0c6d101c0b0f6ff",
+      "async": false,
+      "branchCount": 21,
+      "bindings": [
+        "app.session.delete",
+        "app.session.deleteNoninvasive",
+        "app.session.rename",
+        "app.session.toggleNamedFilter",
+        "app.session.togglePath",
+        "app.session.toggleSort",
+        "tui.input.tab",
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.pageDown",
+        "tui.select.pageUp",
+        "tui.select.up"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.onCancel",
+        "this.onDeleteSession",
+        "this.onRenameSession",
+        "this.onSelect",
+        "this.onToggleNameFilter",
+        "this.onTogglePath",
+        "this.onToggleScope",
+        "this.onToggleSort"
+      ],
+      "delegates": [
+        "this.searchInput.handleInput"
+      ],
+      "mutations": [
+        "this.selectedIndex",
+        "this.selectionTouched",
+        "this.showPath"
+      ],
+      "boundaryOperators": [
+        ">"
+      ]
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionSelectorComponent.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/session-selector.ts",
+      "owner": "SessionSelectorComponent",
+      "method": "handleInput",
+      "startLine": 695,
+      "endLine": 707,
+      "sourceHash": "sha256:8a81914eeebcd91fb8292756556c0fdb5738559281f5a18e18a229a01e2096ec",
+      "async": false,
+      "branchCount": 2,
+      "bindings": [
+        "tui.select.cancel"
+      ],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [
+        "this.renameInput.handleInput",
+        "this.sessionList.handleInput"
+      ],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/settings-selector.ts#ThemeSubmenu.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+      "owner": "ThemeSubmenu",
+      "method": "handleInput",
+      "startLine": 280,
+      "endLine": 282,
+      "sourceHash": "sha256:83518fc788d755f285846a9444f74d9d43d6e699a180b1a71ce44d10709682ac",
+      "async": false,
+      "branchCount": 0,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [
+        "this.inputComponent.handleInput"
+      ],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/settings-selector.ts#WarningSettingsSubmenu.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+      "owner": "WarningSettingsSubmenu",
+      "method": "handleInput",
+      "startLine": 173,
+      "endLine": 175,
+      "sourceHash": "sha256:a2edb12c651e5471eb3e0b8ac5010971d36c7119a63889cbcdcfbbdd55ab02f3",
+      "async": false,
+      "branchCount": 0,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [
+        "this.settingsList.handleInput"
+      ],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SelectSubmenu.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts",
+      "owner": "SelectSubmenu",
+      "method": "handleInput",
+      "startLine": 120,
+      "endLine": 137,
+      "sourceHash": "sha256:6392c43fcd23be15ce056247b89286b0c12058d586af561bba09471b038bfdaf",
+      "async": false,
+      "branchCount": 2,
+      "bindings": [
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.up"
+      ],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [
+        "this.searchInput.handleInput",
+        "this.selectList.handleInput"
+      ],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SteppedSubmenu.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts",
+      "owner": "SteppedSubmenu",
+      "method": "handleInput",
+      "startLine": 251,
+      "endLine": 253,
+      "sourceHash": "sha256:242674cb3d34b9f9262382bb81485cb53a454c3a682d9923e843aa6e61280f13",
+      "async": false,
+      "branchCount": 0,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [
+        "this.activeComponent.handleInput"
+      ],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/thinking-selector.ts#ThinkingSelectorComponent.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts",
+      "owner": "ThinkingSelectorComponent",
+      "method": "handleInput",
+      "startLine": 129,
+      "endLine": 149,
+      "sourceHash": "sha256:6ff1325018285ea3755014922d7e87454f652cc7330f8dcbf53150638301d32d",
+      "async": false,
+      "branchCount": 3,
+      "bindings": [
+        "app.thinking.save",
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.up"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.onSelectAsDefault"
+      ],
+      "delegates": [
+        "this.searchInput.handleInput",
+        "this.selectList.handleInput"
+      ],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+      "owner": "LabelInput",
+      "method": "handleInput",
+      "startLine": 1320,
+      "endLine": 1330,
+      "sourceHash": "sha256:d6fda6144d9ce7df4b3738ba9fa599b9669d0f50af57490cf5db1cc9e4d4a70c",
+      "async": false,
+      "branchCount": 2,
+      "bindings": [
+        "tui.select.cancel",
+        "tui.select.confirm"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.onCancel",
+        "this.onSubmit"
+      ],
+      "delegates": [
+        "this.input.handleInput"
+      ],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#SearchLine.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+      "owner": "SearchLine",
+      "method": "handleInput",
+      "startLine": 1182,
+      "endLine": 1182,
+      "sourceHash": "sha256:1e0a25cf8c8f1c9e2cb369c7519e981c7e2a708d6b5068c2dad943c07b913a01",
+      "async": false,
+      "branchCount": 0,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+      "owner": "TreeList",
+      "method": "handleInput",
+      "startLine": 1004,
+      "endLine": 1110,
+      "sourceHash": "sha256:c828e99ef152bfdf528957d5f3520512830c3ab89ded1504d72090c773faa8d3",
+      "async": false,
+      "branchCount": 32,
+      "bindings": [
+        "app.message.copy",
+        "app.tree.editLabel",
+        "app.tree.filter.all",
+        "app.tree.filter.cycleBackward",
+        "app.tree.filter.cycleForward",
+        "app.tree.filter.default",
+        "app.tree.filter.labeledOnly",
+        "app.tree.filter.noTools",
+        "app.tree.filter.userOnly",
+        "app.tree.foldOrUp",
+        "app.tree.toggleLabelTimestamp",
+        "app.tree.unfoldOrDown",
+        "tui.editor.cursorLeft",
+        "tui.editor.cursorRight",
+        "tui.editor.deleteCharBackward",
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.pageDown",
+        "tui.select.pageUp",
+        "tui.select.up"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.onCancel",
+        "this.onLabelEdit",
+        "this.onSelect"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.filterMode",
+        "this.searchQuery",
+        "this.selectedIndex",
+        "this.showLabelTimestamps"
+      ],
+      "boundaryOperators": [
+        "%",
+        ">"
+      ]
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeSelectorComponent.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+      "owner": "TreeSelectorComponent",
+      "method": "handleInput",
+      "startLine": 1424,
+      "endLine": 1430,
+      "sourceHash": "sha256:3a20beffe3a8b630ed061086e6123bb4fdcdcaafa1909fabde35381df1e11a51",
+      "async": false,
+      "branchCount": 1,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [
+        "this.labelInput.handleInput",
+        "this.treeList.handleInput"
+      ],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/trust-selector.ts#TrustSelectorComponent.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/trust-selector.ts",
+      "owner": "TrustSelectorComponent",
+      "method": "handleInput",
+      "startLine": 117,
+      "endLine": 133,
+      "sourceHash": "sha256:26488f5b7f44e146c3bb2881afd800442a8d96c55aa20f994853dcb5b453ace0",
+      "async": false,
+      "branchCount": 5,
+      "bindings": [
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.up"
+      ],
+      "rawInputs": [
+        "\"\\n\"",
+        "\"j\"",
+        "\"k\""
+      ],
+      "callbacks": [
+        "this.onCancelCallback",
+        "this.onSelectCallback"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.selectedIndex"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/user-message-selector.ts#UserMessageList.handleInput",
+      "path": "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts",
+      "owner": "UserMessageList",
+      "method": "handleInput",
+      "startLine": 81,
+      "endLine": 104,
+      "sourceHash": "sha256:9540e5cc64804919f7c1be450e98fc3e0ec81e2f241b8d4a0c1e8a92511cb5c1",
+      "async": false,
+      "branchCount": 8,
+      "bindings": [
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.up"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.onCancel",
+        "this.onSelect"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.selectedIndex"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.flushCompactionQueue",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "flushCompactionQueue",
+      "startLine": 4616,
+      "endLine": 4693,
+      "sourceHash": "sha256:2322901ec46590d8dc4f629245f62e117821dd9705a6c1e3181b200e52307f69",
+      "async": true,
+      "branchCount": 9,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [
+        "this.isExtensionCommand",
+        "this.showError",
+        "this.updatePendingMessagesDisplay"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.compactionQueuedMessages"
+      ],
+      "boundaryOperators": [
+        ">"
+      ]
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "handleEvent",
+      "startLine": 3284,
+      "endLine": 3663,
+      "sourceHash": "sha256:bca1da9a42790796b4d4b791e2cc4c839391e23a4d25fe1b1d1e6bc0a75ac260",
+      "async": true,
+      "branchCount": 66,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [
+        "this.addCacheWarmingUsage",
+        "this.addCompactionCostNotice",
+        "this.addCustomEntryToChat",
+        "this.addMessageToChat",
+        "this.checkShutdownRequested",
+        "this.clearStatusIndicator",
+        "this.flushCompactionQueue",
+        "this.getMarkdownThemeWithSettings",
+        "this.getMarkdownTransformers",
+        "this.getRegisteredToolDefinition",
+        "this.init",
+        "this.maybeShowCacheMissNotice",
+        "this.maybeShowThinkingDropNotice",
+        "this.maybeSuggestBugReport",
+        "this.renderSessionEntries",
+        "this.showError",
+        "this.showStatus",
+        "this.showStatusIndicator",
+        "this.showWorkingStatusIndicator",
+        "this.updateEditorBorderColor",
+        "this.updatePendingMessagesDisplay",
+        "this.updateTerminalTitle"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.autoCompactionEscapeHandler",
+        "this.defaultEditor.onEscape",
+        "this.isInitialized",
+        "this.retryEscapeHandler",
+        "this.streamingComponent",
+        "this.streamingMessage",
+        "this.streamingMessage.errorMessage"
+      ],
+      "boundaryOperators": [
+        ">"
+      ]
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.init",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "init",
+      "startLine": 896,
+      "endLine": 1060,
+      "sourceHash": "sha256:68db7d328c5377d82e84947966004789590d8a376f0e57973590fbd0f770728c",
+      "async": true,
+      "branchCount": 4,
+      "bindings": [
+        "app.clear"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.defaultEditor.onAction",
+        "this.footerDataProvider.onBranchChange"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.builtInHeader",
+        "this.changelogMarkdown",
+        "this.defaultEditor.onCtrlD",
+        "this.defaultEditor.onSubmit",
+        "this.fdPath",
+        "this.fullscreenLayoutRoot",
+        "this.isInitialized",
+        "this.transcriptScrollView"
+      ],
+      "boundaryOperators": [
+        ">"
+      ]
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.onExtensionShortcut",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "onExtensionShortcut",
+      "startLine": 2185,
+      "endLine": 2197,
+      "sourceHash": "sha256:91fc18518e69fb86eac5277ba848138b3c74bcda4aaa5fe7edbd245d0c6ec4ef",
+      "async": false,
+      "branchCount": 1,
+      "bindings": [
+        "matchesKey:shortcutStr as KeyId"
+      ],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setExtensionFooter",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "setExtensionFooter",
+      "startLine": 2427,
+      "endLine": 2449,
+      "sourceHash": "sha256:9a1063b0a76f4a387cb0185d2f3a70939e74ebe14bfd48557651a8d027dddf3a",
+      "async": false,
+      "branchCount": 2,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [],
+      "mutations": [
+        "this.customFooter"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "setupKeyHandlers",
+      "startLine": 2962,
+      "endLine": 3031,
+      "sourceHash": "sha256:8c4cb7d170f26ccf48f79319691ca722f60c6add7a293780244fbbd74d8133a1",
+      "async": false,
+      "branchCount": 0,
+      "bindings": [
+        "app.clear",
+        "app.editor.external",
+        "app.message.copy",
+        "app.message.dequeue",
+        "app.message.followUp",
+        "app.model.cycleBackward",
+        "app.model.cycleForward",
+        "app.model.select",
+        "app.session.fork",
+        "app.session.new",
+        "app.session.resume",
+        "app.session.tree",
+        "app.suspend",
+        "app.thinking.cycle",
+        "app.thinking.toggle",
+        "app.tools.expand"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.defaultEditor.onAction"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.defaultEditor.onChange",
+        "this.defaultEditor.onCtrlD",
+        "this.defaultEditor.onEscape",
+        "this.defaultEditor.onPasteImage",
+        "this.ui.onDebug"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionEditor",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "showExtensionEditor",
+      "startLine": 2725,
+      "endLine": 2750,
+      "sourceHash": "sha256:026feccafc62585aa6074c730ff206097e15be31177c8003ad0c187805d965c0",
+      "async": false,
+      "branchCount": 0,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [
+        "this.disposeActiveSelector",
+        "this.hideExtensionEditor"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.extensionEditor"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionInput",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "showExtensionInput",
+      "startLine": 2669,
+      "endLine": 2708,
+      "sourceHash": "sha256:022876fc139ab53e51793699216eb539bcecd2b0ffbad36c461cd993a7fb7dd9",
+      "async": false,
+      "branchCount": 1,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [
+        "this.disposeActiveSelector",
+        "this.hideExtensionInput"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.extensionInput"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionSelector",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "showExtensionSelector",
+      "startLine": 2593,
+      "endLine": 2632,
+      "sourceHash": "sha256:90897861a935f9948a326b77157a82b3f5b4dceb95885c89c8bca7f189c1389c",
+      "async": false,
+      "branchCount": 1,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [
+        "this.disposeActiveSelector",
+        "this.hideExtensionSelector",
+        "this.toggleToolOutputExpansion"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.extensionSelector"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/tui/src/alt-screen-search.ts#AltScreenSearchComponent.handleInput",
+      "path": "packages/tui/src/alt-screen-search.ts",
+      "owner": "AltScreenSearchComponent",
+      "method": "handleInput",
+      "startLine": 249,
+      "endLine": 254,
+      "sourceHash": "sha256:7981409b2303ee1984199fa1c94c044375fd060bdcd76844d64e185236eb2af0",
+      "async": false,
+      "branchCount": 1,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [
+        "this.onQueryChange"
+      ],
+      "delegates": [
+        "this.input.handleInput"
+      ],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/tui/src/components/cancellable-loader.ts#CancellableLoader.dispose",
+      "path": "packages/tui/src/components/cancellable-loader.ts",
+      "owner": "CancellableLoader",
+      "method": "dispose",
+      "startLine": 37,
+      "endLine": 39,
+      "sourceHash": "sha256:da9341c89376d574750482838466a8b5b7ac0a507027ab8681898490f238a403",
+      "async": false,
+      "branchCount": 0,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [
+        "this.stop"
+      ],
+      "delegates": [],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/tui/src/components/cancellable-loader.ts#CancellableLoader.handleInput",
+      "path": "packages/tui/src/components/cancellable-loader.ts",
+      "owner": "CancellableLoader",
+      "method": "handleInput",
+      "startLine": 29,
+      "endLine": 35,
+      "sourceHash": "sha256:b1e59bf9bf6b3d1c174bbf974c261b0ebf1882b1846cb0b0dd637cd342039dc2",
+      "async": false,
+      "branchCount": 1,
+      "bindings": [
+        "tui.select.cancel"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.onAbort"
+      ],
+      "delegates": [],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+      "path": "packages/tui/src/components/editor.ts",
+      "owner": "Editor",
+      "method": "handleInput",
+      "startLine": 693,
+      "endLine": 993,
+      "sourceHash": "sha256:2b8b9bd0e0339dfcbef5421226ccf3a6490f40d923745d6ec964ff9b685fb575",
+      "async": false,
+      "branchCount": 56,
+      "bindings": [
+        "matchesKey:\"shift+backspace\"",
+        "matchesKey:\"shift+delete\"",
+        "matchesKey:\"shift+space\"",
+        "tui.editor.cursorDown",
+        "tui.editor.cursorLeft",
+        "tui.editor.cursorLineEnd",
+        "tui.editor.cursorLineStart",
+        "tui.editor.cursorRight",
+        "tui.editor.cursorUp",
+        "tui.editor.cursorWordLeft",
+        "tui.editor.cursorWordRight",
+        "tui.editor.deleteCharBackward",
+        "tui.editor.deleteCharForward",
+        "tui.editor.deleteToLineEnd",
+        "tui.editor.deleteToLineStart",
+        "tui.editor.deleteWordBackward",
+        "tui.editor.deleteWordForward",
+        "tui.editor.historyNext",
+        "tui.editor.historyPrevious",
+        "tui.editor.jumpBackward",
+        "tui.editor.jumpForward",
+        "tui.editor.pageDown",
+        "tui.editor.pageUp",
+        "tui.editor.undo",
+        "tui.editor.yank",
+        "tui.editor.yankPop",
+        "tui.input.copy",
+        "tui.input.newLine",
+        "tui.input.submit",
+        "tui.input.tab",
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.up"
+      ],
+      "rawInputs": [
+        "\"\\n\"",
+        "\"\\u001b[13;2~\"",
+        "\"\\u001b\\r\""
+      ],
+      "callbacks": [
+        "this.onChange"
+      ],
+      "delegates": [
+        "this.autocompleteList.handleInput",
+        "this.handleInput"
+      ],
+      "mutations": [
+        "this.autocompleteState",
+        "this.isInPaste",
+        "this.jumpMode",
+        "this.lastAction",
+        "this.pasteBuffer",
+        "this.state.cursorLine",
+        "this.state.lines"
+      ],
+      "boundaryOperators": [
+        ">",
+        ">="
+      ]
+    },
+    {
+      "id": "input:packages/tui/src/components/editor.ts#Editor.shouldSubmitOnBackslashEnter",
+      "path": "packages/tui/src/components/editor.ts",
+      "owner": "Editor",
+      "method": "shouldSubmitOnBackslashEnter",
+      "startLine": 1350,
+      "endLine": 1359,
+      "sourceHash": "sha256:83530a58b5825ab5615cf5d3814df8cbcc3b447bd849e45b793b087def87df98",
+      "async": false,
+      "branchCount": 3,
+      "bindings": [
+        "matchesKey:\"enter\""
+      ],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [],
+      "mutations": [],
+      "boundaryOperators": [
+        ">"
+      ]
+    },
+    {
+      "id": "input:packages/tui/src/components/input.ts#Input.handleInput",
+      "path": "packages/tui/src/components/input.ts",
+      "owner": "Input",
+      "method": "handleInput",
+      "startLine": 64,
+      "endLine": 227,
+      "sourceHash": "sha256:76078b081f705c476cc9a74b807510797186769304e430ff756e8e8fbdeada77",
+      "async": false,
+      "branchCount": 29,
+      "bindings": [
+        "tui.editor.cursorLeft",
+        "tui.editor.cursorLineEnd",
+        "tui.editor.cursorLineStart",
+        "tui.editor.cursorRight",
+        "tui.editor.cursorWordLeft",
+        "tui.editor.cursorWordRight",
+        "tui.editor.deleteCharBackward",
+        "tui.editor.deleteCharForward",
+        "tui.editor.deleteToLineEnd",
+        "tui.editor.deleteToLineStart",
+        "tui.editor.deleteWordBackward",
+        "tui.editor.deleteWordForward",
+        "tui.editor.undo",
+        "tui.editor.yank",
+        "tui.editor.yankPop",
+        "tui.input.submit",
+        "tui.select.cancel"
+      ],
+      "rawInputs": [
+        "\"\\n\""
+      ],
+      "callbacks": [
+        "this.onEscape",
+        "this.onSubmit"
+      ],
+      "delegates": [
+        "this.handleInput"
+      ],
+      "mutations": [
+        "this.cursor",
+        "this.isInPaste",
+        "this.lastAction",
+        "this.pasteBuffer"
+      ],
+      "boundaryOperators": [
+        "<",
+        ">"
+      ]
+    },
+    {
+      "id": "input:packages/tui/src/components/select-list.ts#SelectList.handleInput",
+      "path": "packages/tui/src/components/select-list.ts",
+      "owner": "SelectList",
+      "method": "handleInput",
+      "startLine": 145,
+      "endLine": 170,
+      "sourceHash": "sha256:72d3aa0d1c9eb7e94dd7f868f59c95ea8340594252465eddf8500ec3afd32709",
+      "async": false,
+      "branchCount": 8,
+      "bindings": [
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.up"
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.onCancel",
+        "this.onSelect"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this.selectedIndex"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/tui/src/components/settings-list.ts#SettingsList.handleInput",
+      "path": "packages/tui/src/components/settings-list.ts",
+      "owner": "SettingsList",
+      "method": "handleInput",
+      "startLine": 222,
+      "endLine": 250,
+      "sourceHash": "sha256:a3728e46624aadf723276d8e86e03b8f9a2ec6e7e6981a098735c500c6af25de",
+      "async": false,
+      "branchCount": 10,
+      "bindings": [
+        "tui.select.cancel",
+        "tui.select.confirm",
+        "tui.select.down",
+        "tui.select.up"
+      ],
+      "rawInputs": [
+        "\" \""
+      ],
+      "callbacks": [
+        "this.onCancel"
+      ],
+      "delegates": [
+        "this.searchInput.handleInput",
+        "this.submenuComponent.handleInput"
+      ],
+      "mutations": [
+        "this.searchEnabled",
+        "this.selectedIndex"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/tui/src/keybindings.ts#KeybindingsManager.matches",
+      "path": "packages/tui/src/keybindings.ts",
+      "owner": "KeybindingsManager",
+      "method": "matches",
+      "startLine": 270,
+      "endLine": 276,
+      "sourceHash": "sha256:049d846c293bb6547ca8d220f97d4b504c5826fc20a53c39775ef183100ad55c",
+      "async": false,
+      "branchCount": 1,
+      "bindings": [
+        "matchesKey:key"
+      ],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/tui/src/terminal-image.ts#<module>.detectCapabilities",
+      "path": "packages/tui/src/terminal-image.ts",
+      "owner": "<module>",
+      "method": "detectCapabilities",
+      "startLine": 139,
+      "endLine": 158,
+      "sourceHash": "sha256:b4dcb92b124a426336bff12e0eba165614e67ea216b28ee77a70a0c124e8b275",
+      "async": false,
+      "branchCount": 6,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [],
+      "mutations": [],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/tui/src/terminal.ts#ProcessTerminal.handleKeyboardProtocolNegotiationSequence",
+      "path": "packages/tui/src/terminal.ts",
+      "owner": "ProcessTerminal",
+      "method": "handleKeyboardProtocolNegotiationSequence",
+      "startLine": 264,
+      "endLine": 286,
+      "sourceHash": "sha256:25256f0fdc50f12997b8a1f51cb7e1d3d285e160ebe0784412d61068ee7d45d8",
+      "async": false,
+      "branchCount": 5,
+      "bindings": [],
+      "rawInputs": [],
+      "callbacks": [
+        "this.clearKeyboardProtocolNegotiationBuffer",
+        "this.disableModifyOtherKeys",
+        "this.enableModifyOtherKeys"
+      ],
+      "delegates": [],
+      "mutations": [
+        "this._kittyProtocolActive"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput",
+      "path": "packages/tui/src/tui-alt-screen.ts",
+      "owner": "TuiAltScreen",
+      "method": "handleViewportInput",
+      "startLine": 658,
+      "endLine": 771,
+      "sourceHash": "sha256:cbc73c6956ce698eba72326b46886a4f3d188ef7d8da00c6caec4f1d6e09207b",
+      "async": false,
+      "branchCount": 42,
+      "bindings": [
+        "tui.altScreen.bottom",
+        "tui.altScreen.halfPageDown",
+        "tui.altScreen.halfPageUp",
+        "tui.altScreen.lineDown",
+        "tui.altScreen.lineUp",
+        "tui.altScreen.nextPrompt",
+        "tui.altScreen.pageDown",
+        "tui.altScreen.pageUp",
+        "tui.altScreen.previousPrompt",
+        "tui.altScreen.search",
+        "tui.altScreen.searchClose",
+        "tui.altScreen.searchNext",
+        "tui.altScreen.searchPrevious",
+        "tui.altScreen.top"
+      ],
+      "rawInputs": [],
+      "callbacks": [],
+      "delegates": [],
+      "mutations": [
+        "this.lastClick",
+        "this.lastComponentClick",
+        "this.pressedUrl",
+        "this.selectionAnchor",
+        "this.selectionDragged",
+        "this.selectionFocus",
+        "this.selectionGranularity",
+        "this.selectionInitialRange",
+        "this.selectionPressActive"
+      ],
+      "boundaryOperators": []
+    },
+    {
+      "id": "input:packages/tui/src/tui.ts#TuiBase.handleTerminalInput",
+      "path": "packages/tui/src/tui.ts",
+      "owner": "TuiBase",
+      "method": "handleTerminalInput",
+      "startLine": 1006,
+      "endLine": 1082,
+      "sourceHash": "sha256:fb2286734dd989bb0668d094a7967d074dac77bfe240427548f9276fcfe2b7d3",
+      "async": false,
+      "branchCount": 16,
+      "bindings": [
+        "matchesKey:\"shift+ctrl+d\""
+      ],
+      "rawInputs": [],
+      "callbacks": [
+        "this.onDebug"
+      ],
+      "delegates": [
+        "this.focusedComponent.handleInput"
+      ],
+      "mutations": [
+        "this.focusedComponent.wantsKeyRelease"
+      ],
+      "boundaryOperators": [
+        ">"
+      ]
+    }
+  ],
+  "renderers": [
+    {
+      "id": "render:packages/agent/src/harness/pico3/system.ts#<module>.environment.render",
+      "path": "packages/agent/src/harness/pico3/system.ts",
+      "owner": "<module>",
+      "method": "environment.render",
+      "startLine": 39,
+      "endLine": 39,
+      "sourceHash": "sha256:54907154d9276f9409b7eaf974bc93bdd8f5503f937f4da6f223b9a9d8612158",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/agent/src/harness/pico3/system.ts#<module>.identity.render",
+      "path": "packages/agent/src/harness/pico3/system.ts",
+      "owner": "<module>",
+      "method": "identity.render",
+      "startLine": 36,
+      "endLine": 36,
+      "sourceHash": "sha256:c7188dcd686a68f047bdd6ad7f0c8ac12f3d5b6456ae620e6d806e09f88b0727",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/agent/src/harness/pico3/system.ts#<module>.render",
+      "path": "packages/agent/src/harness/pico3/system.ts",
+      "owner": "<module>",
+      "method": "render",
+      "startLine": 253,
+      "endLine": 253,
+      "sourceHash": "sha256:22ef8f576dd09f7b4240ff0ac096a83b403a64f5e279cac5283c831e8e537692",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/agent/src/harness/pico3/system.ts#<module>.skills.render",
+      "path": "packages/agent/src/harness/pico3/system.ts",
+      "owner": "<module>",
+      "method": "skills.render",
+      "startLine": 43,
+      "endLine": 43,
+      "sourceHash": "sha256:0897c6a9bdefea60b1ea255f5c042c029b0014f14cf95dd505a3227cae02b6f4",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [
+        "\"\\n\""
+      ],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/ai/src/auth/oauth/oauth-page.ts#<module>.renderPage",
+      "path": "packages/ai/src/auth/oauth/oauth-page.ts",
+      "owner": "<module>",
+      "method": "renderPage",
+      "startLine": 12,
+      "endLine": 92,
+      "sourceHash": "sha256:b46f473ad706647d4dca37a3982d4aff19d3f4f2cf179624c055ae1af67dca26",
+      "branchCount": 2,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": [
+        {
+          "name": "LOGO_SVG",
+          "value": "`<svg xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 800 800\" aria-hidden=\"true\"><path fill=\"#fff\" fill-rule=\"evenodd\" d=\"M165.29 165.29 H517.36 V400 H400 V517.36 H282.65 V634.72 H165.29 Z M282.65 282.65 V400 H400 V282.65 Z\"/><path fill=\"#fff\" d=\"M517.36 400 H634.72 V634.72 H517.36 Z\"/></svg>`",
+          "line": 1
+        }
+      ]
+    },
+    {
+      "id": "render:packages/ai/src/utils/text.ts#<module>.renderSystemMessageUpdate",
+      "path": "packages/ai/src/utils/text.ts",
+      "owner": "<module>",
+      "method": "renderSystemMessageUpdate",
+      "startLine": 28,
+      "endLine": 40,
+      "sourceHash": "sha256:eb431c6e8f2596fd39b5b6662d42c686ee07110b0b26d1e4f891aead5d5b305a",
+      "branchCount": 2,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [
+        "\"\\n\\n\""
+      ],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/export-html/tool-renderer.ts#<module>.renderCall",
+      "path": "packages/coding-agent/src/core/export-html/tool-renderer.ts",
+      "owner": "<module>",
+      "method": "renderCall",
+      "startLine": 99,
+      "endLine": 119,
+      "sourceHash": "sha256:eb9956420bef8b2d956b534edab7fe032d5fd5209b65fc9e3f209eba34fec4b9",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/export-html/tool-renderer.ts#<module>.renderResult",
+      "path": "packages/coding-agent/src/core/export-html/tool-renderer.ts",
+      "owner": "<module>",
+      "method": "renderResult",
+      "startLine": 121,
+      "endLine": 170,
+      "sourceHash": "sha256:72f56f58a2ecc2295aa292ec6ec33e8eed1e6c844abc8530db82b5e918e16927",
+      "branchCount": 2,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/extensions/runner.ts#ExtensionRunner.renderCurrentSystemPrompt",
+      "path": "packages/coding-agent/src/core/extensions/runner.ts",
+      "owner": "ExtensionRunner",
+      "method": "renderCurrentSystemPrompt",
+      "startLine": 1318,
+      "endLine": 1318,
+      "sourceHash": "sha256:f8659c7bab2aa1fb3328cffb913241592db3dee71c11dfcc7a01ae167c954d75",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/system-prompt.ts#<module>.renderProjectContext",
+      "path": "packages/coding-agent/src/core/system-prompt.ts",
+      "owner": "<module>",
+      "method": "renderProjectContext",
+      "startLine": 72,
+      "endLine": 79,
+      "sourceHash": "sha256:941d4f679d3147c82721a085efe5285500cd1ae742a1fa3ce93c33fc5823e5ce",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [
+        "\"\\n\\n\""
+      ],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/render-utils.ts#<module>.renderToolPath",
+      "path": "packages/coding-agent/src/core/tools/render-utils.ts",
+      "owner": "<module>",
+      "method": "renderToolPath",
+      "startLine": 75,
+      "endLine": 85,
+      "sourceHash": "sha256:2809463e6cb5b2ac033c379d36860c7f9697b4d06acfccad4add1cff6f2ca57f",
+      "branchCount": 2,
+      "themeCalls": [
+        "theme.fg(\"accent\")",
+        "theme.fg(\"toolOutput\")"
+      ],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/bash.ts#<module>.render",
+      "path": "packages/coding-agent/src/core/tools/renderers/bash.ts",
+      "owner": "<module>",
+      "method": "render",
+      "startLine": 84,
+      "endLine": 98,
+      "sourceHash": "sha256:ad632341b05790c610f12e0239b68f2769a3780353ab9e52a04afbb0f38d5147",
+      "branchCount": 2,
+      "themeCalls": [
+        "theme.fg(\"muted\")"
+      ],
+      "layoutCalls": [
+        "truncateToWidth"
+      ],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": [
+        {
+          "name": "BASH_PREVIEW_LINES",
+          "value": "5",
+          "line": 18
+        }
+      ]
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/bash.ts#<module>.renderCall",
+      "path": "packages/coding-agent/src/core/tools/renderers/bash.ts",
+      "owner": "<module>",
+      "method": "renderCall",
+      "startLine": 135,
+      "endLine": 144,
+      "sourceHash": "sha256:2145861c0d3754e79bf44e0808f46dbc5093b875d1ad4876c9650d38d8136d43",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/bash.ts#<module>.renderResult",
+      "path": "packages/coding-agent/src/core/tools/renderers/bash.ts",
+      "owner": "<module>",
+      "method": "renderResult",
+      "startLine": 145,
+      "endLine": 169,
+      "sourceHash": "sha256:0e31d554dfdd558d02b5d9ffc1da7c7725a6280ba80a1265def2d05f65c6a171",
+      "branchCount": 3,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "1000"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/edit.ts#<module>.renderCall",
+      "path": "packages/coding-agent/src/core/tools/renderers/edit.ts",
+      "owner": "<module>",
+      "method": "renderCall",
+      "startLine": 172,
+      "endLine": 196,
+      "sourceHash": "sha256:d7a764ce61beab7a57a1804463ca7df68aa8b64680f37306e10fb825ece9c6d4",
+      "branchCount": 3,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/edit.ts#<module>.renderResult",
+      "path": "packages/coding-agent/src/core/tools/renderers/edit.ts",
+      "owner": "<module>",
+      "method": "renderResult",
+      "startLine": 197,
+      "endLine": 237,
+      "sourceHash": "sha256:a9071ce16ba80527202373f045667d8ccdc1706edce24c1cb0c8844c8642c2cd",
+      "branchCount": 7,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/find.ts#<module>.renderCall",
+      "path": "packages/coding-agent/src/core/tools/renderers/find.ts",
+      "owner": "<module>",
+      "method": "renderCall",
+      "startLine": 67,
+      "endLine": 71,
+      "sourceHash": "sha256:1a4d3a749ac72f9b9aa90d6ed25fcf104ec8ab7a6491bf3e4580c74d391174d4",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/find.ts#<module>.renderResult",
+      "path": "packages/coding-agent/src/core/tools/renderers/find.ts",
+      "owner": "<module>",
+      "method": "renderResult",
+      "startLine": 72,
+      "endLine": 76,
+      "sourceHash": "sha256:4e950248224b57be66f5e99be2aa8927f54aecdcb87c2a544add3852dcffd7ae",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/grep.ts#<module>.renderCall",
+      "path": "packages/coding-agent/src/core/tools/renderers/grep.ts",
+      "owner": "<module>",
+      "method": "renderCall",
+      "startLine": 72,
+      "endLine": 76,
+      "sourceHash": "sha256:2f9416987d80182c2c09107bec9b1cc2e82c67e03c146664dfd4edbb0bf347d4",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/grep.ts#<module>.renderResult",
+      "path": "packages/coding-agent/src/core/tools/renderers/grep.ts",
+      "owner": "<module>",
+      "method": "renderResult",
+      "startLine": 77,
+      "endLine": 81,
+      "sourceHash": "sha256:c9c1e34051d052095867c92b1418c08c8e2e85a3085ab89fff37b8461497c5a4",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/ls.ts#<module>.renderCall",
+      "path": "packages/coding-agent/src/core/tools/renderers/ls.ts",
+      "owner": "<module>",
+      "method": "renderCall",
+      "startLine": 60,
+      "endLine": 64,
+      "sourceHash": "sha256:59a859a23f25c2bf248006db9de8c9f485f65e248108867f32bc82409f5cbb85",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/ls.ts#<module>.renderResult",
+      "path": "packages/coding-agent/src/core/tools/renderers/ls.ts",
+      "owner": "<module>",
+      "method": "renderResult",
+      "startLine": 65,
+      "endLine": 69,
+      "sourceHash": "sha256:73d23d0698d3676388dbbb04633257f4ea94b2737ac435ec4ba47f21ae53a0a7",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/read.ts#<module>.renderCall",
+      "path": "packages/coding-agent/src/core/tools/renderers/read.ts",
+      "owner": "<module>",
+      "method": "renderCall",
+      "startLine": 151,
+      "endLine": 159,
+      "sourceHash": "sha256:a3fe256978cf8c27dddc3c24eb798ca6556e5460111c0d91190054464bb2b71b",
+      "branchCount": 2,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/read.ts#<module>.renderResult",
+      "path": "packages/coding-agent/src/core/tools/renderers/read.ts",
+      "owner": "<module>",
+      "method": "renderResult",
+      "startLine": 160,
+      "endLine": 174,
+      "sourceHash": "sha256:fce1df72e15e0aa23b767e8d5a79f2b74baa5e5096c00023a59e55939c3f3b6e",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/write.ts#<module>.renderCall",
+      "path": "packages/coding-agent/src/core/tools/renderers/write.ts",
+      "owner": "<module>",
+      "method": "renderCall",
+      "startLine": 146,
+      "endLine": 169,
+      "sourceHash": "sha256:0884c99076e459c0a227f19d46204f3478db8d42e092bda350d919762ae6fb26",
+      "branchCount": 2,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/renderers/write.ts#<module>.renderResult",
+      "path": "packages/coding-agent/src/core/tools/renderers/write.ts",
+      "owner": "<module>",
+      "method": "renderResult",
+      "startLine": 170,
+      "endLine": 180,
+      "sourceHash": "sha256:81c725b07ccc08139535d2b30bd597fbc3e66a6b0f68ba347dcbc07d65de6f93",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/experimental/client-tui.ts#ExperimentalClientTui.render",
+      "path": "packages/coding-agent/src/experimental/client-tui.ts",
+      "owner": "ExperimentalClientTui",
+      "method": "render",
+      "startLine": 186,
+      "endLine": 194,
+      "sourceHash": "sha256:d20e987854b717c35cbecd8558e3313b27ab36617328a0872d604f16c58ebec8",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/experimental/micro/tui.ts#<module>.render",
+      "path": "packages/coding-agent/src/experimental/micro/tui.ts",
+      "owner": "<module>",
+      "method": "render",
+      "startLine": 556,
+      "endLine": 560,
+      "sourceHash": "sha256:97b048e7487c2c89dce1ff94bd467355620b9c423667ef18be50f4550de6cd05",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/experimental/mini/tui/view.ts#<module>.render",
+      "path": "packages/coding-agent/src/experimental/mini/tui/view.ts",
+      "owner": "<module>",
+      "method": "render",
+      "startLine": 539,
+      "endLine": 546,
+      "sourceHash": "sha256:972f771e034710436000049b5e8f28bbecdf5111ddb2cdaaa249610c4da774b2",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/experimental/mini/tui/view.ts#MiniTui.render",
+      "path": "packages/coding-agent/src/experimental/mini/tui/view.ts",
+      "owner": "MiniTui",
+      "method": "render",
+      "startLine": 211,
+      "endLine": 213,
+      "sourceHash": "sha256:87784885cfae7770fb475820731bc1203ec4341429d92806702447dece6330b4",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/extensions/llama/ui.ts#LlamaView.render",
+      "path": "packages/coding-agent/src/extensions/llama/ui.ts",
+      "owner": "LlamaView",
+      "method": "render",
+      "startLine": 469,
+      "endLine": 473,
+      "sourceHash": "sha256:692c68bf0bfbe3f51245c83e30fb106bf306bd324785b8d370ad3d0732d27686",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/armin.ts#ArminComponent.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/armin.ts",
+      "owner": "ArminComponent",
+      "method": "render",
+      "startLine": 86,
+      "endLine": 110,
+      "sourceHash": "sha256:26aab18a0dd3fc6109365d99646eb2e0eac23e4c30741a3a4f310c78dc2ba890",
+      "branchCount": 1,
+      "themeCalls": [
+        "theme.fg(\"accent\")"
+      ],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.max"
+      ],
+      "glyphs": [
+        "\" \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/assistant-message.ts#AssistantMessageComponent.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/assistant-message.ts",
+      "owner": "AssistantMessageComponent",
+      "method": "render",
+      "startLine": 80,
+      "endLine": 89,
+      "sourceHash": "sha256:c464a0338a21e013c66877ef15845226abcea88ecc3912c5944024ea3dbb1b10",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": [
+        {
+          "name": "OSC133_ZONE_END",
+          "value": "\"\\x1b]133;B\\x07\"",
+          "line": 8
+        },
+        {
+          "name": "OSC133_ZONE_FINAL",
+          "value": "\"\\x1b]133;C\\x07\"",
+          "line": 9
+        },
+        {
+          "name": "OSC133_ZONE_START",
+          "value": "\"\\x1b]133;A\\x07\"",
+          "line": 7
+        }
+      ]
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/bash-execution.ts#BashExecutionComponent.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+      "owner": "BashExecutionComponent",
+      "method": "render",
+      "startLine": 154,
+      "endLine": 161,
+      "sourceHash": "sha256:0d58b6399ab1e66b01786ab08afae720733a24f60065accf64665dc187d0b0b0",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "1"
+      ],
+      "dependencies": [
+        {
+          "name": "PREVIEW_LINES",
+          "value": "20",
+          "line": 19
+        }
+      ]
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ConfigSelectorHeader.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/config-selector.ts",
+      "owner": "ConfigSelectorHeader",
+      "method": "render",
+      "startLine": 202,
+      "endLine": 219,
+      "sourceHash": "sha256:932a6aad5c0f491badd9b52908feaaa8f76b44aeeb4a06c1002ef27f51f20a21",
+      "branchCount": 4,
+      "themeCalls": [
+        "theme.bold(this.writeScope === \"project\" ? \"Project Local Resources\" : \"Global Resources\")",
+        "theme.fg(\"muted\")"
+      ],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.max",
+        "truncateToWidth",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\" \"",
+        "\" · \""
+      ],
+      "numericLiterals": [
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/config-selector.ts",
+      "owner": "ResourceList",
+      "method": "render",
+      "startLine": 392,
+      "endLine": 452,
+      "sourceHash": "sha256:0acc44f3fae0a1c636f30ffb53945da0463ac64b206edd9919a4673541e44683",
+      "branchCount": 10,
+      "themeCalls": [
+        "theme.bold(`${entry.group.label}${inherited ? \" · inherited global\" : \"\"}`)",
+        "theme.bold(item.displayName)",
+        "theme.fg(\"dim\")",
+        "theme.fg(\"muted\")",
+        "theme.fg(color)",
+        "theme.fg(inherited ? \"dim\" : \"accent\")"
+      ],
+      "layoutCalls": [
+        "Math.floor",
+        "Math.max",
+        "Math.min",
+        "truncateToWidth"
+      ],
+      "glyphs": [
+        "\"  \"",
+        "\"  No resources found\"",
+        "\" · inherited global\"",
+        "\"> \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.renderCheckbox",
+      "path": "packages/coding-agent/src/modes/interactive/components/config-selector.ts",
+      "owner": "ResourceList",
+      "method": "renderCheckbox",
+      "startLine": 639,
+      "endLine": 647,
+      "sourceHash": "sha256:cacbfcc73657b6c46f708f712453a10b2ae8c093b1994a1dbcf194dced7bc095",
+      "branchCount": 5,
+      "themeCalls": [
+        "theme.fg(\"dim\")",
+        "theme.fg(\"success\")",
+        "theme.fg(\"warning\")"
+      ],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.renderTopBorder",
+      "path": "packages/coding-agent/src/modes/interactive/components/custom-editor.ts",
+      "owner": "CustomEditor",
+      "method": "renderTopBorder",
+      "startLine": 36,
+      "endLine": 79,
+      "sourceHash": "sha256:701905e57e660686cbdaf0a5b625cc5c75fbd48b6365e32a782f5f1cee7768f1",
+      "branchCount": 7,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\"─\".repeat",
+        "Math.floor",
+        "Math.max",
+        "Math.min",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\"─\"",
+        "\"── \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "4",
+        "5"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/daxnuts.ts#DaxnutsComponent.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/daxnuts.ts",
+      "owner": "DaxnutsComponent",
+      "method": "render",
+      "startLine": 95,
+      "endLine": 159,
+      "sourceHash": "sha256:b537a67b1accc51e8c7a9b015f6f449f7afd39ebc2212768e3c0fe650bdd3c39",
+      "branchCount": 5,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\" \".repeat",
+        "\"▓\".repeat",
+        "Math.floor",
+        "Math.max",
+        "Math.min"
+      ],
+      "glyphs": [
+        "\" \"",
+        "\"— @thdxr\"",
+        "\"▓\""
+      ],
+      "numericLiterals": [
+        "0",
+        "0.6",
+        "100",
+        "2",
+        "200",
+        "255",
+        "3"
+      ],
+      "dependencies": [
+        {
+          "name": "RESET",
+          "value": "\"\\x1b[0m\"",
+          "line": 37
+        },
+        {
+          "name": "WIDTH",
+          "value": "32",
+          "line": 14
+        }
+      ]
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/diff.ts#<module>.renderDiff",
+      "path": "packages/coding-agent/src/modes/interactive/components/diff.ts",
+      "owner": "<module>",
+      "method": "renderDiff",
+      "startLine": 79,
+      "endLine": 147,
+      "sourceHash": "sha256:2ea872aaa081b24261ccc364a81fd38e015c46f82bec1700701ae77517e4cf07",
+      "branchCount": 6,
+      "themeCalls": [
+        "theme.fg(\"toolDiffAdded\")",
+        "theme.fg(\"toolDiffContext\")",
+        "theme.fg(\"toolDiffRemoved\")"
+      ],
+      "layoutCalls": [],
+      "glyphs": [
+        "\"\\n\""
+      ],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/diff.ts#<module>.renderIntraLineDiff",
+      "path": "packages/coding-agent/src/modes/interactive/components/diff.ts",
+      "owner": "<module>",
+      "method": "renderIntraLineDiff",
+      "startLine": 26,
+      "endLine": 66,
+      "sourceHash": "sha256:05b5534e72416571959f63d6954dfb7d80ad88194121b019b90d1755a1d9a987",
+      "branchCount": 6,
+      "themeCalls": [
+        "theme.inverse(value)"
+      ],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/dynamic-border.ts#DynamicBorder.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/dynamic-border.ts",
+      "owner": "DynamicBorder",
+      "method": "render",
+      "startLine": 22,
+      "endLine": 24,
+      "sourceHash": "sha256:bf26c4d9c6dc5afedf471beb593424f0f0135334f99ca7fee20f8cd490df6501",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\"─\".repeat",
+        "Math.max"
+      ],
+      "glyphs": [
+        "\"─\""
+      ],
+      "numericLiterals": [
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/footer.ts#FooterComponent.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/footer.ts",
+      "owner": "FooterComponent",
+      "method": "render",
+      "startLine": 84,
+      "endLine": 246,
+      "sourceHash": "sha256:691e1cc0c816e66e7e652b2d2c39f0f661ae58c9a459d73ba9271aee613ab6ef",
+      "branchCount": 29,
+      "themeCalls": [
+        "theme.bold(theme.fg(\"warning\", \"xp\"))",
+        "theme.fg(\"dim\")",
+        "theme.fg(\"error\")",
+        "theme.fg(\"warning\")"
+      ],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.max",
+        "truncateToWidth",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\" \"",
+        "\" (auto)\"",
+        "\" (sub)\"",
+        "\"•\""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "100",
+        "2",
+        "3",
+        "70",
+        "90"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/session-selector.ts",
+      "owner": "SessionList",
+      "method": "render",
+      "startLine": 422,
+      "endLine": 528,
+      "sourceHash": "sha256:da65c66fbb2ed5add46bb2a24e32e9a012863a40d3275cadefcd41c1aa68a500",
+      "branchCount": 15,
+      "themeCalls": [
+        "theme.bg(\"selectedBg\")",
+        "theme.bold(styledMsg)",
+        "theme.fg(\"accent\")",
+        "theme.fg(\"dim\")",
+        "theme.fg(\"muted\")",
+        "theme.fg(isConfirmingDelete ? \"error\" : \"dim\")",
+        "theme.fg(messageColor)"
+      ],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.floor",
+        "Math.max",
+        "Math.min",
+        "truncateToWidth",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\"  \"",
+        "\"  No sessions found\"",
+        "\"  No sessions in current folder. Press Tab to view all.\"",
+        "\" \"",
+        "\"…\"",
+        "\"› \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "10",
+        "2"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionSelectorHeader.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/session-selector.ts",
+      "owner": "SessionSelectorHeader",
+      "method": "render",
+      "startLine": 130,
+      "endLine": 186,
+      "sourceHash": "sha256:67432036391be3eca419e05053dbe556f936fac8b972615f951a6836e9a45fe0",
+      "branchCount": 12,
+      "themeCalls": [
+        "theme.bold(title)",
+        "theme.fg(\"accent\")",
+        "theme.fg(\"error\")",
+        "theme.fg(\"muted\")",
+        "theme.fg(color)"
+      ],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.max",
+        "truncateToWidth",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\" \"",
+        "\" | ○ All\"",
+        "\" · \"",
+        "\"Name: \"",
+        "\"Sort: \"",
+        "\"re:<pattern> regex · \\\"phrase\\\" exact\"",
+        "\"…\"",
+        "\"◉ All\"",
+        "\"◉ Current Folder\"",
+        "\"○ Current Folder | \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/settings-submenu.ts#SteppedSubmenu.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts",
+      "owner": "SteppedSubmenu",
+      "method": "render",
+      "startLine": 247,
+      "endLine": 249,
+      "sourceHash": "sha256:1051c060cda619d301c7608017aa04dce0656176a0655d9024bc8925f34cb455",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/status-indicator.ts#IdleStatus.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/status-indicator.ts",
+      "owner": "IdleStatus",
+      "method": "render",
+      "startLine": 119,
+      "endLine": 122,
+      "sourceHash": "sha256:27e459b8ca2af4a5ce8624a4a277fbf67d62c3eef58c533d51fa7b4b98d9b34b",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\" \".repeat"
+      ],
+      "glyphs": [
+        "\" \""
+      ],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/status-indicator.ts#StatusIndicator.renderInBorder",
+      "path": "packages/coding-agent/src/modes/interactive/components/status-indicator.ts",
+      "owner": "StatusIndicator",
+      "method": "renderInBorder",
+      "startLine": 24,
+      "endLine": 27,
+      "sourceHash": "sha256:2ca78246da9dbd7a5757a5bdac740b1f9985a26b07430f71718a76664e6c4af6",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [
+        "truncateToWidth"
+      ],
+      "glyphs": [
+        "\" \""
+      ],
+      "numericLiterals": [
+        "1",
+        "2"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/status-indicator.ts#StatusIndicator.renderSpinnerInBorder",
+      "path": "packages/coding-agent/src/modes/interactive/components/status-indicator.ts",
+      "owner": "StatusIndicator",
+      "method": "renderSpinnerInBorder",
+      "startLine": 29,
+      "endLine": 31,
+      "sourceHash": "sha256:c6adf70b81f08db48a7c659b888c717a48b28e9ad87f1c25feb383d8b051a0e9",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [
+        "truncateToWidth"
+      ],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/tool-execution.ts#ToolExecutionComponent.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+      "owner": "ToolExecutionComponent",
+      "method": "render",
+      "startLine": 264,
+      "endLine": 295,
+      "sourceHash": "sha256:2d46ffb05c952e04d92fe9b216031af0862d821a7de8dbb04d231dbe53d4bc12",
+      "branchCount": 6,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#<module>.renderHorizontalViewport",
+      "path": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+      "owner": "<module>",
+      "method": "renderHorizontalViewport",
+      "startLine": 62,
+      "endLine": 92,
+      "sourceHash": "sha256:c13af7160265b8784aeaed499d33be4b9409aa5337258ea5ae2c82032cdc96c3",
+      "branchCount": 2,
+      "themeCalls": [],
+      "layoutCalls": [
+        "Math.floor",
+        "Math.max",
+        "Math.min"
+      ],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "3",
+        "4"
+      ],
+      "dependencies": [
+        {
+          "name": "MAX_ANCHOR_CONTEXT_WIDTH",
+          "value": "12",
+          "line": 53
+        },
+        {
+          "name": "MAX_VISIBLE_ANCHOR_CONTENT_WIDTH",
+          "value": "20",
+          "line": 51
+        },
+        {
+          "name": "MIN_ANCHOR_CONTEXT_WIDTH",
+          "value": "2",
+          "line": 52
+        },
+        {
+          "name": "MIN_VISIBLE_ANCHOR_CONTENT_WIDTH",
+          "value": "4",
+          "line": 50
+        },
+        {
+          "name": "TREE_GUTTER_WIDTH",
+          "value": "2",
+          "line": 49
+        }
+      ]
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+      "owner": "LabelInput",
+      "method": "render",
+      "startLine": 1305,
+      "endLine": 1318,
+      "sourceHash": "sha256:481bb35b72720859d6072215b829204d7e66e54545baa1105996ad17fb8b3e21",
+      "branchCount": 0,
+      "themeCalls": [
+        "theme.fg(\"muted\")"
+      ],
+      "layoutCalls": [
+        "truncateToWidth"
+      ],
+      "glyphs": [
+        "\"  \""
+      ],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#SearchLine.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+      "owner": "SearchLine",
+      "method": "render",
+      "startLine": 1174,
+      "endLine": 1180,
+      "sourceHash": "sha256:b47a00891bc60a6515992695281cd8d917ccfc11fc67c89bb6e61448716e04b3",
+      "branchCount": 1,
+      "themeCalls": [
+        "theme.fg(\"accent\")",
+        "theme.fg(\"muted\")"
+      ],
+      "layoutCalls": [
+        "truncateToWidth"
+      ],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeHelp.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+      "owner": "TreeHelp",
+      "method": "render",
+      "startLine": 1189,
+      "endLine": 1222,
+      "sourceHash": "sha256:0c8aa711acbbc6c3a63f145151e80aa1d940e505d5eecb6ea5645097cb1474af",
+      "branchCount": 5,
+      "themeCalls": [],
+      "layoutCalls": [
+        "Math.max",
+        "visibleWidth",
+        "wrapTextWithAnsi"
+      ],
+      "glyphs": [
+        "\"  \"",
+        "\" · \""
+      ],
+      "numericLiterals": [
+        "1"
+      ],
+      "dependencies": [
+        {
+          "name": "TREE_HELP_ITEMS",
+          "value": "[\n\t{ keys: [\"tui.select.up\", \"tui.select.down\"], label: \"move\" },\n\t{ keys: [\"tui.editor.cursorLeft\", \"tui.editor.cursorRight\"], label: \"page\" },\n\t{ keys: [\"app.tree.foldOrUp\", \"app.tree.unfoldOrDown\"], label: \"branch\" },\n\t{ keys: [\"app.message.copy\"], label: \"copy\" },\n\t{ keys: [\"app.tree.editLabel\"], label: \"label\" },\n\t{ keys: [\"app.tree.toggleLabelTimestamp\"], label: \"label time\" },\n\t{\n\t\tkeys: [\n\t\t\t\"app.tree.filter.default\",\n\t\t\t\"app.tree.filter.noTools\",\n\t\t\t\"app.tree.filter.userOnly\",\n\t\t\t\"app.tree.filter.labeledOnly\",\n\t\t\t\"app.tree.filter.all\",\n\t\t],\n\t\tlabel: \"filters\",\n\t\tlabelFirst: true,\n\t},\n\t{ keys: [\"app.tree.filter.cycleForward\", \"app.tree.filter.cycleBackward\"], label: \"cycle\", labelFirst: true },\n]",
+          "line": 1225
+        }
+      ]
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+      "owner": "TreeList",
+      "method": "render",
+      "startLine": 669,
+      "endLine": 771,
+      "sourceHash": "sha256:97ac1a358f7c055fdd24ec37baaab149982d0a12f62e2c06cfd12ff029a524e6",
+      "branchCount": 20,
+      "themeCalls": [
+        "theme.bg(\"selectedBg\")",
+        "theme.fg(\"accent\")",
+        "theme.fg(\"dim\")",
+        "theme.fg(\"muted\")",
+        "theme.fg(\"warning\")"
+      ],
+      "layoutCalls": [
+        "Math.floor",
+        "Math.max",
+        "Math.min",
+        "truncateToWidth",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\"  \"",
+        "\"  No entries found\"",
+        "\" \"",
+        "\"• \"",
+        "\"› \"",
+        "\"⊞ \"",
+        "\"⊞\"",
+        "\"⊟\"",
+        "\"─\"",
+        "\"│\"",
+        "\"└\"",
+        "\"└─ \"",
+        "\"├\"",
+        "\"├─ \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/user-message-selector.ts#UserMessageList.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts",
+      "owner": "UserMessageList",
+      "method": "render",
+      "startLine": 33,
+      "endLine": 79,
+      "sourceHash": "sha256:920c7a4f5e5cc0feb63b6ac21c4c2f78798750d75ee134724bb7b2553e25a894",
+      "branchCount": 4,
+      "themeCalls": [
+        "theme.bold(truncatedMsg)",
+        "theme.fg(\"accent\")",
+        "theme.fg(\"muted\")"
+      ],
+      "layoutCalls": [
+        "Math.floor",
+        "Math.max",
+        "Math.min",
+        "truncateToWidth"
+      ],
+      "glyphs": [
+        "\"  \"",
+        "\"  No user messages found\"",
+        "\" \"",
+        "\"› \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/user-message.ts#UserMessageComponent.render",
+      "path": "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+      "owner": "UserMessageComponent",
+      "method": "render",
+      "startLine": 60,
+      "endLine": 69,
+      "sourceHash": "sha256:d72e846d4e4545fb786d5ba95c033f8574ad0f8a12077f682e69c36089dc8638",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": [
+        {
+          "name": "OSC133_ZONE_END",
+          "value": "\"\\x1b]133;B\\x07\"",
+          "line": 7
+        },
+        {
+          "name": "OSC133_ZONE_FINAL",
+          "value": "\"\\x1b]133;C\\x07\"",
+          "line": 8
+        },
+        {
+          "name": "OSC133_ZONE_START",
+          "value": "\"\\x1b]133;A\\x07\"",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderCurrentSessionState",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "renderCurrentSessionState",
+      "startLine": 2115,
+      "endLine": 2124,
+      "sourceHash": "sha256:eb26630418cb7c2a8165b46332ba85b6f67726e277194342bf01c5a2c90f73b0",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderInitialMessages",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "renderInitialMessages",
+      "startLine": 4056,
+      "endLine": 4071,
+      "sourceHash": "sha256:64715dccd9b4a39fcb6f36c092f189793d26f6ceb2e831e60e36722676365d83",
+      "branchCount": 2,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderProjectTrustWarningIfNeeded",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "renderProjectTrustWarningIfNeeded",
+      "startLine": 4073,
+      "endLine": 4091,
+      "sourceHash": "sha256:3e6434a54f91efa50a264474512982ad60bf06c97ee0522a22bbf2c53911aee6",
+      "branchCount": 2,
+      "themeCalls": [
+        "theme.fg(\"warning\")"
+      ],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderSessionEntries",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "renderSessionEntries",
+      "startLine": 3945,
+      "endLine": 3960,
+      "sourceHash": "sha256:7510c7f99509dd8cc52df01ab41fb94aafc4cd91c2b3eefbdb7eee77887b5687",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderSessionItems",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "renderSessionItems",
+      "startLine": 3846,
+      "endLine": 3937,
+      "sourceHash": "sha256:82ea04adf7981baa24329de1177fd3e5436a7e9e73f0705241168384c7d4da48",
+      "branchCount": 15,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderWidgetContainer",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "renderWidgetContainer",
+      "startLine": 2401,
+      "endLine": 2422,
+      "sourceHash": "sha256:1691e49d08aca5e1856e8291e4dac699e2adb9098323465365b4c449968c629b",
+      "branchCount": 3,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderWidgets",
+      "path": "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+      "owner": "InteractiveMode",
+      "method": "renderWidgets",
+      "startLine": 2394,
+      "endLine": 2399,
+      "sourceHash": "sha256:991009cb32f8c7c130266b92897e46ad2e2038238c7960c37d81c4b356cd6bf7",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/coding-agent/src/utils/syntax-highlight.ts#<module>.renderHighlightedHtml",
+      "path": "packages/coding-agent/src/utils/syntax-highlight.ts",
+      "owner": "<module>",
+      "method": "renderHighlightedHtml",
+      "startLine": 146,
+      "endLine": 198,
+      "sourceHash": "sha256:9c0575201d8ad052301b7a9faaf69679d789ab4d30a3c73e3dc9d4509ee8ad32",
+      "branchCount": 6,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1",
+        "5"
+      ],
+      "dependencies": [
+        {
+          "name": "SPAN_CLOSE",
+          "value": "\"</span>\"",
+          "line": 80
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/alt-screen-search.ts#AltScreenSearchComponent.render",
+      "path": "packages/tui/src/alt-screen-search.ts",
+      "owner": "AltScreenSearchComponent",
+      "method": "render",
+      "startLine": 260,
+      "endLine": 326,
+      "sourceHash": "sha256:4f5aedd7cdc2724f9eed514d47687acaf31df02d3636ac16aaaa8f60d71937a2",
+      "branchCount": 15,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\" \".repeat",
+        "\"─\".repeat",
+        "Math.max",
+        "truncateToWidth",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\" \"",
+        "\" · \"",
+        "\"↑\"",
+        "\"↓\"",
+        "\"─\"",
+        "\"│\"",
+        "\"┌\"",
+        "\"└\""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2",
+        "3"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/alt-screen-flash.ts#AltScreenFlashContainer.render",
+      "path": "packages/tui/src/components/alt-screen-flash.ts",
+      "owner": "AltScreenFlashContainer",
+      "method": "render",
+      "startLine": 45,
+      "endLine": 50,
+      "sourceHash": "sha256:b1599fdd50890ab2af466e495ebee4479d3ee7a2c9593a3ea30d520fe7509eb7",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/box.ts#Box.render",
+      "path": "packages/tui/src/components/box.ts",
+      "owner": "Box",
+      "method": "render",
+      "startLine": 101,
+      "endLine": 155,
+      "sourceHash": "sha256:d70e20b3e32744a6b99c1ccfa50057e0813b466be1b9112bedbf7e3484aa67bf",
+      "branchCount": 4,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.max"
+      ],
+      "glyphs": [
+        "\" \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/editor.ts#Editor.render",
+      "path": "packages/tui/src/components/editor.ts",
+      "owner": "Editor",
+      "method": "render",
+      "startLine": 518,
+      "endLine": 628,
+      "sourceHash": "sha256:7e44d338420fce89e4c99e63ab8e1af09df2c1f50a2adfbb15005026bb5d6644",
+      "branchCount": 10,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.floor",
+        "Math.max",
+        "Math.min",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\" \"",
+        "\"\\u001b[7m \\u001b[0m\""
+      ],
+      "numericLiterals": [
+        "0",
+        "0.3",
+        "1",
+        "2",
+        "5"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/editor.ts#Editor.renderBottomBorder",
+      "path": "packages/tui/src/components/editor.ts",
+      "owner": "Editor",
+      "method": "renderBottomBorder",
+      "startLine": 513,
+      "endLine": 516,
+      "sourceHash": "sha256:7e323adaf05557a4b4d871b80e10a1c0156179edf8f65875c0cdb3c9ffcfa051",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\"─\".repeat"
+      ],
+      "glyphs": [
+        "\"↓\"",
+        "\"─\""
+      ],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/editor.ts#Editor.renderTopBorder",
+      "path": "packages/tui/src/components/editor.ts",
+      "owner": "Editor",
+      "method": "renderTopBorder",
+      "startLine": 508,
+      "endLine": 511,
+      "sourceHash": "sha256:446e401756e583e5f71749e3e64d2259d0daa456b5871f668c1ced63d19bb2ce",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\"─\".repeat"
+      ],
+      "glyphs": [
+        "\"↑\"",
+        "\"─\""
+      ],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/h-stack.ts#HStack.render",
+      "path": "packages/tui/src/components/h-stack.ts",
+      "owner": "HStack",
+      "method": "render",
+      "startLine": 12,
+      "endLine": 43,
+      "sourceHash": "sha256:545c1ee883f737661b412585c77abe3499a9b7c7ecdb03786cd0d2e51ff534b8",
+      "branchCount": 4,
+      "themeCalls": [],
+      "layoutCalls": [
+        "Math.floor",
+        "Math.max"
+      ],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/image.ts#Image.render",
+      "path": "packages/tui/src/components/image.ts",
+      "owner": "Image",
+      "method": "render",
+      "startLine": 61,
+      "endLine": 126,
+      "sourceHash": "sha256:d19f23e4d2c79f8bd32a9692b3201e6fbf4f403a725529338e37bb24f75e1ee5",
+      "branchCount": 7,
+      "themeCalls": [
+        "this.theme.fallbackColor(fallback)"
+      ],
+      "layoutCalls": [
+        "Math.ceil",
+        "Math.max",
+        "Math.min",
+        "truncateToWidth"
+      ],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2",
+        "60"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/input.ts#Input.render",
+      "path": "packages/tui/src/components/input.ts",
+      "owner": "Input",
+      "method": "render",
+      "startLine": 412,
+      "endLine": 493,
+      "sourceHash": "sha256:8011a9885de683c466e627e187032eec36a7a9972797a3e46e871cb7d1462cfd",
+      "branchCount": 9,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.floor",
+        "Math.max",
+        "truncateToWidth",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\" \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2"
+      ],
+      "dependencies": [
+        {
+          "name": "segmenter",
+          "value": "getGraphemeSegmenter()",
+          "line": 9
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/components/loader.ts#Loader.render",
+      "path": "packages/tui/src/components/loader.ts",
+      "owner": "Loader",
+      "method": "render",
+      "startLine": 43,
+      "endLine": 45,
+      "sourceHash": "sha256:82e3c01d5534ada8158af0e1b1d44bfe2cf8103e020d91b1cdd57fe9bb343911",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/markdown.ts#Markdown.render",
+      "path": "packages/tui/src/components/markdown.ts",
+      "owner": "Markdown",
+      "method": "render",
+      "startLine": 277,
+      "endLine": 369,
+      "sourceHash": "sha256:aaeded7b69344f58c88eaceed8f79355ce690552c5ae90f8f0324dd0ed2a6d4b",
+      "branchCount": 7,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.max",
+        "visibleWidth",
+        "wrapTextWithAnsi"
+      ],
+      "glyphs": [
+        "\"   \"",
+        "\" \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2"
+      ],
+      "dependencies": [
+        {
+          "name": "markdownParser",
+          "value": "new Marked()",
+          "line": 171
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderInlineTokens",
+      "path": "packages/tui/src/components/markdown.ts",
+      "owner": "Markdown",
+      "method": "renderInlineTokens",
+      "startLine": 634,
+      "endLine": 741,
+      "sourceHash": "sha256:d46538f22a7aff15cedd0bb3ebf8c257991e86fcf33980845dd34c41957d6c9f",
+      "branchCount": 19,
+      "themeCalls": [
+        "this.theme.bold(boldContent)",
+        "this.theme.code(token.text)",
+        "this.theme.italic(italicContent)",
+        "this.theme.link(this.theme.underline(linkText))",
+        "this.theme.linkUrl(` (${token.href})`)",
+        "this.theme.strikethrough(delContent)",
+        "this.theme.underline(linkText)"
+      ],
+      "layoutCalls": [],
+      "glyphs": [
+        "\"\\n\""
+      ],
+      "numericLiterals": [
+        "0",
+        "7"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderList",
+      "path": "packages/tui/src/components/markdown.ts",
+      "owner": "Markdown",
+      "method": "renderList",
+      "startLine": 756,
+      "endLine": 806,
+      "sourceHash": "sha256:c3ae8755dd9a31d90feada0bc7742ff70889319299ebc58ed3db16b7fdb35733",
+      "branchCount": 10,
+      "themeCalls": [
+        "this.theme.listBullet(marker)"
+      ],
+      "layoutCalls": [
+        "\"    \".repeat",
+        "\" \".repeat",
+        "Math.max",
+        "visibleWidth",
+        "wrapTextWithAnsi"
+      ],
+      "glyphs": [
+        "\"    \"",
+        "\" \"",
+        "\"- \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderTable",
+      "path": "packages/tui/src/components/markdown.ts",
+      "owner": "Markdown",
+      "method": "renderTable",
+      "startLine": 842,
+      "endLine": 1014,
+      "sourceHash": "sha256:f222f763154e0bfd33c904748282cc76497680d4dacea3034e2eff380602b638",
+      "branchCount": 11,
+      "themeCalls": [],
+      "layoutCalls": [
+        "Math.max",
+        "visibleWidth",
+        "wrapTextWithAnsi"
+      ],
+      "glyphs": [
+        "\" │ \"",
+        "\"─┬─\"",
+        "\"─┴─\"",
+        "\"─┼─\""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "3",
+        "30"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderToken",
+      "path": "packages/tui/src/components/markdown.ts",
+      "owner": "Markdown",
+      "method": "renderToken",
+      "startLine": 454,
+      "endLine": 632,
+      "sourceHash": "sha256:880eec70c2228ef9dc2bc5f09e69e644249eb0b89b88b4fd9beb7a546a120ce6",
+      "branchCount": 23,
+      "themeCalls": [
+        "this.theme.codeBlock(codeLine)",
+        "this.theme.codeBlockBorder(\"```\")",
+        "this.theme.codeBlockBorder(`\\`\\`\\`${token.lang || \"\"}`)",
+        "this.theme.highlightCode(token.text)",
+        "this.theme.hr(\"─\".repeat(Math.min(width, 80)))",
+        "this.theme.quoteBorder(\"│ \")"
+      ],
+      "layoutCalls": [
+        "\"#\".repeat",
+        "\"─\".repeat",
+        "Math.max",
+        "Math.min",
+        "wrapTextWithAnsi"
+      ],
+      "glyphs": [
+        "\"  \"",
+        "\"\\n\"",
+        "\"─\"",
+        "\"│ \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2",
+        "3",
+        "80"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/mouse-region.ts#MouseRegion.render",
+      "path": "packages/tui/src/components/mouse-region.ts",
+      "owner": "MouseRegion",
+      "method": "render",
+      "startLine": 21,
+      "endLine": 23,
+      "sourceHash": "sha256:0252b3da8336f3c96455a6635a8d361baaeba177f7ab014ad4fe26eeeb9f00db",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/scroll-view.ts#ScrollView.render",
+      "path": "packages/tui/src/components/scroll-view.ts",
+      "owner": "ScrollView",
+      "method": "render",
+      "startLine": 215,
+      "endLine": 219,
+      "sourceHash": "sha256:5cdaff32f1bf760d6e145430d363f418fde72d6a9ba842e3fd9455391ea51ebd",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/select-list.ts#SelectList.render",
+      "path": "packages/tui/src/components/select-list.ts",
+      "owner": "SelectList",
+      "method": "render",
+      "startLine": 75,
+      "endLine": 107,
+      "sourceHash": "sha256:5c19d606684a24281a6af2526ad42e2d79707921b6d882f3153601e37ca1b134",
+      "branchCount": 4,
+      "themeCalls": [
+        "this.theme.noMatch(\"  No matching commands\")",
+        "this.theme.scrollInfo(truncateToWidth(scrollText, width - 2, \"\"))"
+      ],
+      "layoutCalls": [
+        "truncateToWidth"
+      ],
+      "glyphs": [
+        "\"  No matching commands\""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2"
+      ],
+      "dependencies": [
+        {
+          "name": "normalizeToSingleLine",
+          "value": "(text: string): string => text.replace(/[\\r\\n]+/g, \" \").trim()",
+          "line": 9
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/components/select-list.ts#SelectList.renderItem",
+      "path": "packages/tui/src/components/select-list.ts",
+      "owner": "SelectList",
+      "method": "renderItem",
+      "startLine": 183,
+      "endLine": 220,
+      "sourceHash": "sha256:364626f19516c80f824a817f18ad0dbc45e67429e72cbb639c4de48640ef8180",
+      "branchCount": 5,
+      "themeCalls": [
+        "this.theme.description(spacing + truncatedDesc)",
+        "this.theme.selectedText(`${prefix}${truncatedValue}${spacing}${truncatedDesc}`)",
+        "this.theme.selectedText(`${prefix}${truncatedValue}`)"
+      ],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.max",
+        "Math.min",
+        "truncateToWidth",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\"  \"",
+        "\" \"",
+        "\"→ \""
+      ],
+      "numericLiterals": [
+        "1",
+        "2",
+        "4",
+        "40"
+      ],
+      "dependencies": [
+        {
+          "name": "MIN_DESCRIPTION_WIDTH",
+          "value": "10",
+          "line": 7
+        },
+        {
+          "name": "PRIMARY_COLUMN_GAP",
+          "value": "2",
+          "line": 6
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/components/settings-list.ts#SettingsList.render",
+      "path": "packages/tui/src/components/settings-list.ts",
+      "owner": "SettingsList",
+      "method": "render",
+      "startLine": 96,
+      "endLine": 103,
+      "sourceHash": "sha256:356ae11eb11ad63209cb5a81ebbcfb459ec6e5fb6b12643cad9cb065f5114f85",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/settings-list.ts#SettingsList.renderMainList",
+      "path": "packages/tui/src/components/settings-list.ts",
+      "owner": "SettingsList",
+      "method": "renderMainList",
+      "startLine": 105,
+      "endLine": 177,
+      "sourceHash": "sha256:2f094be72b298d26f3b075137dabef410268b6d18172d8543b9e7384ae6d33c3",
+      "branchCount": 8,
+      "themeCalls": [
+        "this.theme.description(`  ${line}`)",
+        "this.theme.hint(\"  No matching settings\")",
+        "this.theme.hint(\"  No settings available\")",
+        "this.theme.hint(truncateToWidth(scrollText, width - 2, \"\"))",
+        "this.theme.label(labelPadded)",
+        "this.theme.value(truncateToWidth(item.currentValue, valueMaxWidth, \"\"))"
+      ],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.max",
+        "Math.min",
+        "truncateToWidth",
+        "visibleWidth",
+        "wrapTextWithAnsi"
+      ],
+      "glyphs": [
+        "\"  \"",
+        "\"  No matching settings\"",
+        "\"  No settings available\"",
+        "\" \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2",
+        "36",
+        "4"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/spacer.ts#Spacer.render",
+      "path": "packages/tui/src/components/spacer.ts",
+      "owner": "Spacer",
+      "method": "render",
+      "startLine": 21,
+      "endLine": 27,
+      "sourceHash": "sha256:6dd8f8049fe59782ca6e8ffa4c4f4d2e0d156a3d77718bf901d2d34a4bb6b8ca",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/text.ts#Text.render",
+      "path": "packages/tui/src/components/text.ts",
+      "owner": "Text",
+      "method": "render",
+      "startLine": 45,
+      "endLine": 106,
+      "sourceHash": "sha256:40e378719c6cf04a2822f9bfcd80bdf1a8e01b4bbb6a740aea538bc9fc9c5a96",
+      "branchCount": 5,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.floor",
+        "Math.max",
+        "Math.min",
+        "visibleWidth",
+        "wrapTextWithAnsi"
+      ],
+      "glyphs": [
+        "\"   \"",
+        "\" \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/truncated-text.ts#TruncatedText.render",
+      "path": "packages/tui/src/components/truncated-text.ts",
+      "owner": "TruncatedText",
+      "method": "render",
+      "startLine": 22,
+      "endLine": 64,
+      "sourceHash": "sha256:c8d02b95e90fa0eb4fde8e53f1b14f4834d4453149782a1ecbdce94199b4d41f",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.max",
+        "truncateToWidth",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\" \"",
+        "\"\\n\""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/components/v-stack.ts#VStack.render",
+      "path": "packages/tui/src/components/v-stack.ts",
+      "owner": "VStack",
+      "method": "render",
+      "startLine": 10,
+      "endLine": 30,
+      "sourceHash": "sha256:67ec6cc31ca2d629bc16773873d68bb7cf613d1a76da48aeed8c0926115e9285",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [
+        "Math.max"
+      ],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/latex.ts#<module>.renderLatex",
+      "path": "packages/tui/src/latex.ts",
+      "owner": "<module>",
+      "method": "renderLatex",
+      "startLine": 1488,
+      "endLine": 1506,
+      "sourceHash": "sha256:e935675ed9adfe82d66844642a43957631e9c9d663d048258cd92f5e7ec5cb61",
+      "branchCount": 2,
+      "themeCalls": [],
+      "layoutCalls": [
+        "Math.min"
+      ],
+      "glyphs": [
+        "\" \"",
+        "\"\\n\""
+      ],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": [
+        {
+          "name": "PROTECTED_SPACE",
+          "value": "\"\\u{f0002}\"",
+          "line": 704
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/latex.ts#<module>.renderLayout",
+      "path": "packages/tui/src/latex.ts",
+      "owner": "<module>",
+      "method": "renderLayout",
+      "startLine": 737,
+      "endLine": 836,
+      "sourceHash": "sha256:ee77020c1a7e52674625e20bea98a31c77778a0078aa4eb46fb7fdcccfc95d63",
+      "branchCount": 21,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\" \".repeat",
+        "\"─\".repeat",
+        "Math.max",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\" \"",
+        "\"\\n\"",
+        "\"─\""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2"
+      ],
+      "dependencies": [
+        {
+          "name": "LAYOUT_MARKER_PATTERN",
+          "value": "/\\u{f0000}(\\d+)\\u{f0001}/gu",
+          "line": 702
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/latex.ts#LatexParser.render",
+      "path": "packages/tui/src/latex.ts",
+      "owner": "LatexParser",
+      "method": "render",
+      "startLine": 853,
+      "endLine": 859,
+      "sourceHash": "sha256:e937b03d1b4f783e073f1b6d445ea3c1031a08b35980a86231dce32792bc4be6",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/latex.ts#LatexParser.renderCases",
+      "path": "packages/tui/src/latex.ts",
+      "owner": "LatexParser",
+      "method": "renderCases",
+      "startLine": 1393,
+      "endLine": 1422,
+      "sourceHash": "sha256:d39e6af4c4dcb59a28bc55faf2c50e0da027b3bf919cae639c5753d83b4c6f33",
+      "branchCount": 3,
+      "themeCalls": [],
+      "layoutCalls": [
+        "Math.floor",
+        "Math.max"
+      ],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2"
+      ],
+      "dependencies": [
+        {
+          "name": "LAYOUT_MARKER_END",
+          "value": "\"\\u{f0001}\"",
+          "line": 701
+        },
+        {
+          "name": "LAYOUT_MARKER_START",
+          "value": "\"\\u{f0000}\"",
+          "line": 700
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/latex.ts#LatexParser.renderMatrix",
+      "path": "packages/tui/src/latex.ts",
+      "owner": "LatexParser",
+      "method": "renderMatrix",
+      "startLine": 1424,
+      "endLine": 1467,
+      "sourceHash": "sha256:58703d6daa86277e6f4fd67f287b62a461b9f84c245d09007667dbb1cd7410d1",
+      "branchCount": 3,
+      "themeCalls": [],
+      "layoutCalls": [
+        "Math.max"
+      ],
+      "glyphs": [
+        "\"\\n\"",
+        "\"⎛\"",
+        "\"⎜\"",
+        "\"⎝\"",
+        "\"⎞\"",
+        "\"⎟\"",
+        "\"⎠\"",
+        "\"⎡\"",
+        "\"⎢\"",
+        "\"⎣\"",
+        "\"⎤\"",
+        "\"⎥\"",
+        "\"⎦\"",
+        "\"⎧\"",
+        "\"⎨\"",
+        "\"⎩\"",
+        "\"⎫\"",
+        "\"⎬\"",
+        "\"⎭\"",
+        "\"│\"",
+        "\"║\""
+      ],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": [
+        {
+          "name": "LAYOUT_MARKER_END",
+          "value": "\"\\u{f0001}\"",
+          "line": 701
+        },
+        {
+          "name": "LAYOUT_MARKER_START",
+          "value": "\"\\u{f0000}\"",
+          "line": 700
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/latex.ts#LatexParser.renderNested",
+      "path": "packages/tui/src/latex.ts",
+      "owner": "LatexParser",
+      "method": "renderNested",
+      "startLine": 1469,
+      "endLine": 1476,
+      "sourceHash": "sha256:ac3077d363910e380f47bf0e5d6e99f2a3bb40e7b40b61891a2af28384d0a936",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/layout.ts#<module>.renderCached",
+      "path": "packages/tui/src/layout.ts",
+      "owner": "<module>",
+      "method": "renderCached",
+      "startLine": 68,
+      "endLine": 81,
+      "sourceHash": "sha256:e014b1fb3a5afb168f5c0e6031bb4b884c45bbe7d93da5664fb0e7690e34c69c",
+      "branchCount": 2,
+      "themeCalls": [],
+      "layoutCalls": [
+        "Math.floor",
+        "Math.max"
+      ],
+      "glyphs": [],
+      "numericLiterals": [
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/layout.ts#<module>.renderLayoutFrame",
+      "path": "packages/tui/src/layout.ts",
+      "owner": "<module>",
+      "method": "renderLayoutFrame",
+      "startLine": 379,
+      "endLine": 408,
+      "sourceHash": "sha256:d423f2c1c5ab4eecbdd2a19e9d856b20d40a8464420e862bc28f5b08cf0c42c4",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [
+        "Math.floor",
+        "Math.max"
+      ],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/terminal-image.ts#<module>.renderImage",
+      "path": "packages/tui/src/terminal-image.ts",
+      "owner": "<module>",
+      "method": "renderImage",
+      "startLine": 610,
+      "endLine": 653,
+      "sourceHash": "sha256:a74a090c9ba0e1b260ad9ef15eff6d1f67349c92befaa7835d839ab4a6ebdfa7",
+      "branchCount": 4,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "80"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.doRender",
+      "path": "packages/tui/src/tui-alt-screen.ts",
+      "owner": "TuiAltScreen",
+      "method": "doRender",
+      "startLine": 1661,
+      "endLine": 1744,
+      "sourceHash": "sha256:6e7a0694b59a5010b8c93bc860c281cbb83db0ea26b2d35f4082a53735957cdc",
+      "branchCount": 15,
+      "themeCalls": [],
+      "layoutCalls": [
+        "Math.max",
+        "Math.min"
+      ],
+      "glyphs": [
+        "\"\\u001b[2J\"",
+        "\"\\u001b[2K\"",
+        "\"\\u001b[?25h\"",
+        "\"\\u001b[?25l\""
+      ],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": [
+        {
+          "name": "BEGIN_SYNCHRONIZED_OUTPUT",
+          "value": "\"\\x1b[?2026h\"",
+          "line": 70
+        },
+        {
+          "name": "END_SYNCHRONIZED_OUTPUT",
+          "value": "\"\\x1b[?2026l\"",
+          "line": 71
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.implicitDocument.render",
+      "path": "packages/tui/src/tui-alt-screen.ts",
+      "owner": "TuiAltScreen",
+      "method": "implicitDocument.render",
+      "startLine": 258,
+      "endLine": 258,
+      "sourceHash": "sha256:6c8669191e69bfe6406e883185b133a6df57dfd3a7abfaa34b3c7949bd4c61cd",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.render",
+      "path": "packages/tui/src/tui-alt-screen.ts",
+      "owner": "TuiAltScreen",
+      "method": "render",
+      "startLine": 314,
+      "endLine": 316,
+      "sourceHash": "sha256:3b21480e2cd9d57cb8acbfa16b7723364a6141d411e54fcd711d5cff4aad494d",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/tui-main-screen.ts#TuiMainScreen.doRender",
+      "path": "packages/tui/src/tui-main-screen.ts",
+      "owner": "TuiMainScreen",
+      "method": "doRender",
+      "startLine": 247,
+      "endLine": 616,
+      "sourceHash": "sha256:1c87cee3538ce5bb3ffa95883d51aa6ed82e4466e74aa1e36c896ac66f44ea8e",
+      "branchCount": 42,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\"\\r\\n\".repeat",
+        "Math.max",
+        "Math.min",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\"\\n\"",
+        "\"\\r\"",
+        "\"\\r\\n\"",
+        "\"\\r\\n\\u001b[2K\"",
+        "\"\\r\\u001b[2K\"",
+        "\"\\u001b[1B\"",
+        "\"\\u001b[2K\"",
+        "\"\\u001b[?2026h\"",
+        "\"\\u001b[?2026l\""
+      ],
+      "numericLiterals": [
+        "0",
+        "1",
+        "2",
+        "36"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/tui.ts#Container.render",
+      "path": "packages/tui/src/tui.ts",
+      "owner": "Container",
+      "method": "render",
+      "startLine": 366,
+      "endLine": 378,
+      "sourceHash": "sha256:84384087883fe7374e0be57f89493894591712511c625b259013f28f6084b614",
+      "branchCount": 0,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/tui.ts#TuiBase.renderNow",
+      "path": "packages/tui/src/tui.ts",
+      "owner": "TuiBase",
+      "method": "renderNow",
+      "startLine": 944,
+      "endLine": 950,
+      "sourceHash": "sha256:7b94b3163dc56301e99868c1b1554a82fe4452121d7b2c0da9460b6e62723cda",
+      "branchCount": 1,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/utils.ts#<module>.breakLongWord",
+      "path": "packages/tui/src/utils.ts",
+      "owner": "<module>",
+      "method": "breakLongWord",
+      "startLine": 973,
+      "endLine": 1040,
+      "sourceHash": "sha256:12be262715a28ae3d491d5472261b4734135c3c835c3bf46ee1411430904393a",
+      "branchCount": 8,
+      "themeCalls": [],
+      "layoutCalls": [
+        "visibleWidth"
+      ],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": [
+        {
+          "name": "graphemeSegmenter",
+          "value": "new Intl.Segmenter(undefined, { granularity: \"grapheme\" })",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/utils.ts#<module>.splitIntoTokensWithAnsi",
+      "path": "packages/tui/src/utils.ts",
+      "owner": "<module>",
+      "method": "splitIntoTokensWithAnsi",
+      "startLine": 764,
+      "endLine": 838,
+      "sourceHash": "sha256:bd1bc4c02459b0566ece351d6bb46eeccccf06beab3cbce934562d572eee15a4",
+      "branchCount": 9,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [
+        "\" \""
+      ],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": [
+        {
+          "name": "cjkBreakRegex",
+          "value": "/[\\p{Script_Extensions=Han}\\p{Script_Extensions=Hiragana}\\p{Script_Extensions=Katakana}\\p{Script_Extensions=Hangul}\\p{Script_Extensions=Bopomofo}]/u",
+          "line": 54
+        },
+        {
+          "name": "graphemeSegmenter",
+          "value": "new Intl.Segmenter(undefined, { granularity: \"grapheme\" })",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/utils.ts#<module>.truncateToWidth",
+      "path": "packages/tui/src/utils.ts",
+      "owner": "<module>",
+      "method": "truncateToWidth",
+      "startLine": 1072,
+      "endLine": 1208,
+      "sourceHash": "sha256:bcd25f131e36e707cb8ee41479565a68b1e26e3b2ac549bb5e84afad20d90bb9",
+      "branchCount": 26,
+      "themeCalls": [],
+      "layoutCalls": [
+        "\" \".repeat",
+        "Math.max",
+        "visibleWidth"
+      ],
+      "glyphs": [
+        "\" \"",
+        "\"\\t\"",
+        "\"\\u001b\""
+      ],
+      "numericLiterals": [
+        "0",
+        "3"
+      ],
+      "dependencies": [
+        {
+          "name": "graphemeSegmenter",
+          "value": "new Intl.Segmenter(undefined, { granularity: \"grapheme\" })",
+          "line": 4
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/utils.ts#<module>.visibleWidth",
+      "path": "packages/tui/src/utils.ts",
+      "owner": "<module>",
+      "method": "visibleWidth",
+      "startLine": 248,
+      "endLine": 303,
+      "sourceHash": "sha256:9d48db4e080e3e602be2fbc658040d3877efb1c1e95c44778000bc95f037d3ed",
+      "branchCount": 8,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [
+        "\"   \"",
+        "\"\\t\"",
+        "\"\\u001b\""
+      ],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": [
+        {
+          "name": "WIDTH_CACHE_SIZE",
+          "value": "512",
+          "line": 51
+        },
+        {
+          "name": "graphemeSegmenter",
+          "value": "new Intl.Segmenter(undefined, { granularity: \"grapheme\" })",
+          "line": 4
+        },
+        {
+          "name": "widthCache",
+          "value": "new Map<string, number>()",
+          "line": 52
+        }
+      ]
+    },
+    {
+      "id": "render:packages/tui/src/utils.ts#<module>.wrapSingleLine",
+      "path": "packages/tui/src/utils.ts",
+      "owner": "<module>",
+      "method": "wrapSingleLine",
+      "startLine": 876,
+      "endLine": 955,
+      "sourceHash": "sha256:ba92a65c1c8db5acfaaa121f695c1c23877a07f7c3b2d692dd1c93c4a519f607",
+      "branchCount": 10,
+      "themeCalls": [],
+      "layoutCalls": [
+        "visibleWidth"
+      ],
+      "glyphs": [],
+      "numericLiterals": [
+        "0",
+        "1"
+      ],
+      "dependencies": []
+    },
+    {
+      "id": "render:packages/tui/src/utils.ts#<module>.wrapTextWithAnsi",
+      "path": "packages/tui/src/utils.ts",
+      "owner": "<module>",
+      "method": "wrapTextWithAnsi",
+      "startLine": 851,
+      "endLine": 874,
+      "sourceHash": "sha256:28030edfaa22abb50b826cb819095a73d6a12f529ef2ba96a40927c827a54df3",
+      "branchCount": 3,
+      "themeCalls": [],
+      "layoutCalls": [],
+      "glyphs": [],
+      "numericLiterals": [
+        "0"
+      ],
+      "dependencies": []
+    }
+  ]
+}

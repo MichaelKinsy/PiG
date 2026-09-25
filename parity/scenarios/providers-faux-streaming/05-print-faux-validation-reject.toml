@@ -1,0 +1,45 @@
+# Behavior family: providers-faux-streaming
+# Scenario: faux provider emits a bash tool call with invalid args
+# (command: 42 instead of string). The tool schema validation rejects
+# it, returns a ToolResult with is_error=true. Faux sees the tool
+# result and responds "validation-handled".
+#
+# This exercises validation.ts (validateToolArguments in upstream,
+# validateToolArgs in pig). The validation error becomes a tool result
+# fed back to the faux, which responds with text. Both binaries must
+# produce identical final output.
+#
+# Upstream evidence (2026-05-17):
+#   cd /tmp/parity-probe-faux
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts \
+#     --model test-faux/faux-1 --print "Run: bash with invalid args"
+#   output: "validation-handled"
+#   exit: 0
+#
+#   PIG_TEST_FAUX=1 PIG_HOME=testdata/pig-home PIG_QUIET_STARTUP=1 \
+#     pig --no-extensions --model test-faux/faux-1 --print "Run: bash with invalid args"
+#   output: "validation-handled"
+#   exit: 0
+
+name = "05-print-faux-validation-reject"
+description = "Faux sends tool call with invalid args → validation rejects → both produce same response"
+covers = [
+  "packages/ai/src/utils/validation.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: bash with invalid args"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["validation-handled"]
+output_equal = true
+runs = 3

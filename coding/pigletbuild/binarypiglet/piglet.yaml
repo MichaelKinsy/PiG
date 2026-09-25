@@ -1,0 +1,2 @@
+# Embedded into a Piglet Binary build. Empty in stock Pig.
+# The builder substitutes the selected Piglet through a go build overlay.

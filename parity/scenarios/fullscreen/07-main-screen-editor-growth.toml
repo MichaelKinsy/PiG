@@ -1,0 +1,58 @@
+# Behavior family: fullscreen
+# Surface: Pi 0.84.0 main-screen editor growth over settled transcript history.
+# Upstream evidence: the isolated Pi 0.84.0 live probe retained LIVE-TOOL-DONE
+# and wrapped the long editor value into four rows with a reserved cursor column.
+
+name = "07-main-screen-editor-growth"
+description = "A multi-row editor grows over the same settled transcript rows as Pi."
+covers = [
+  "packages/tui/src/tui-main-screen.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 80
+height = 12
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "../compaction/testdata/compact-session"
+capture_start = "LIVE-TOOL-DONE"
+capture_end = "faux-1"
+
+[[tmux.steps]]
+keys = ["Run: tui live tool", "Enter"]
+wait_contains = ["LIVE-TOOL-DONE"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["EDITOR-0001-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["LIVE-TOOL-DONE", "EDITOR-0001-"]
+both_not_contain = ["Working...", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3
+
+# normalize-rationale: temporary working-directory identity and faux footer
+# usage are outside this layout assertion. Editor rows, transcript rows,
+# whitespace, and ordering remain unmasked.
+[[assert.normalize_replace]]
+pattern = '(?m)^.*[/\\]parity-snap-cwd-[^\n]*$'
+with = "<CWD>"
+
+[[assert.normalize_replace]]
+pattern = '(?m)^.*?/128k \(auto\)\s+faux-1$'
+with = "<STATUS>"

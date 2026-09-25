@@ -1,0 +1,38 @@
+# Behavior family: cli-utils
+# Surface: package-manager list command with no packages installed.
+#
+# Upstream evidence (2026-05-17):
+#   PI_HOME=/tmp/parity-nopackages-pi PI_CODING_AGENT_DIR=/tmp/parity-nopackages-pi/agent \
+#     pi list
+#   output: "No packages installed."
+#   exit: 0
+#
+#   PIG_HOME=/tmp/parity-nopackages-pig PIG_CODING_AGENT_DIR=/tmp/parity-nopackages-pig/agent \
+#     pig package list
+#   output: "No packages installed."
+#   exit: 0
+
+name = "05-package-list-empty"
+description = "Both binaries print 'No packages installed.' when no packages are configured."
+covers = [
+  "packages/coding-agent/src/core/package-manager.ts",
+  "packages/coding-agent/src/package-manager-cli.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_HOME=testdata/empty-home", "PI_CODING_AGENT_DIR=testdata/empty-home/agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_HOME=testdata/empty-home", "PIG_CODING_AGENT_DIR=testdata/empty-home/agent"]
+override_base_args = true
+
+[cli]
+pig_args = ["package", "list"]
+pi_args = ["list"]
+timeout_seconds = 25
+
+[assert]
+exit_code = 0
+both_contain = ["No packages installed"]
+output_equal = true
+runs = 3

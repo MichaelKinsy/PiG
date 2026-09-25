@@ -1,0 +1,61 @@
+# Behavior family: autocomplete
+# Surface: slash-command popup opens on '/'
+#
+# Upstream evidence (pi v0.81.1, current loop probe):
+#   keys: /
+#   crop: start="/\n────────────────────────────────────────────────────────────────────────────────────────────────────" end="0.0%/0"
+#   raw cropped upstream block:
+#
+#     /
+#     ────────────────────────────────────────────────────────────────────────────────────────────────────
+#     → settings       Open settings menu
+#       model          Select model (opens selector UI)
+#       scoped-models  Enable/disable models for Ctrl+P cycling
+#       export         Export session (HTML default, or specify path: .html/.jsonl)
+#       import         Import and resume a session from a JSONL file
+#       (1/23)
+#
+# 0.79.1: the /trust command (#50 project trust) was added → count 21→22.
+# 0.81.1: the built-in hidden llama.cpp extension registers /llama → count 22→23.
+# 0.83.0: current command inventory contains 24 entries.
+# 0.84.0: the command count is environment-derived (23 in the CI image and 24
+# with the local fixture). The byte-equal crop includes the count and compares it
+# to Pi on every run instead of making either count a driver prerequisite.
+
+name = "01-slash-popup"
+description = "Typing '/' opens the exact slash-command popup block."
+covers = [
+  "packages/tui/src/autocomplete.ts",
+  "packages/tui/src/components/input.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "/\n────────────────────────────────────────────────────────────────────────────────────────────────────"
+capture_end = "0.0%/0"
+
+[[tmux.steps]]
+keys = ["/"]
+wait_contains = ["→ settings"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../session/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../session/testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 1.5
+runs = 1

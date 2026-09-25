@@ -1,0 +1,34 @@
+# Behavior family: clipboard-images
+# Surface: CLI image processing pipeline for BMP @file arguments.
+#
+# Upstream evidence (pi v0.80.3 release note #6047): disk BMP image files are
+# detected, converted to PNG, and attached through CLI @file inputs. The staged
+# faux provider returns cli-image-mime-ok only when the user turn contains one
+# image/png attachment for the "describe sample image" prompt.
+
+name = "06-bmp-file-args"
+description = "CLI BMP @file args are detected, converted to PNG, and attached as image/png."
+covers = [
+  "packages/coding-agent/src/utils/image-process.ts",
+  "packages/coding-agent/src/utils/image-resize.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=../tools/testdata/pig-home"]
+pig_args = ["@sample.bmp"]
+pi_args = ["@sample.bmp"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "describe sample image"
+timeout_seconds = 30
+cwd = "testdata"
+
+[assert]
+exit_code = 0
+both_contain = ["cli-image-mime-ok"]
+output_equal = true
+runs = 3

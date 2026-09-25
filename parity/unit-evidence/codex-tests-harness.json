@@ -1,0 +1,479 @@
+[
+  {
+    "upstream": "packages/agent/src/harness/utils/usage.ts",
+    "package": "./agent/harness/utils",
+    "tests": [
+      "TestUsageOptionalPresenceAndOwnership"
+    ],
+    "upstream_reference": "packages/agent/src/harness/utils/usage.ts",
+    "mutation": "agent/harness/utils/usage.go: sum += *right -> sum -= *right; compiling mutation fails TestUsageOptionalPresenceAndOwnership; usage-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/context.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestContextProjectorFailureStopsLaterEffects"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/context.ts",
+    "mutation": "agent/harness/session/context.go: return nil, err -> continue; compiling mutation fails TestContextProjectorFailureStopsLaterEffects; context-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/config.ts",
+    "package": "./agent/harness",
+    "tests": [
+      "TestValidateToolNamesRejectsDuplicates"
+    ],
+    "upstream_reference": "packages/agent/src/harness/config.ts",
+    "mutation": "agent/harness/config.go: names[tool.Name] = true -> names[tool.Name] = false; compiling mutation fails TestValidateToolNamesRejectsDuplicates; config-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/result.ts",
+    "package": "./agent/harness",
+    "tests": [
+      "TestTaggedErrorJSONMatchesUpstreamToJSON"
+    ],
+    "upstream_reference": "packages/agent/src/harness/result.ts",
+    "mutation": "agent/harness/result.go: return namedTaggedFields(tag, tag, message, fields) -> return namedTaggedFields(tag, \"\", message, fields); compiling mutation fails TestTaggedErrorJSONMatchesUpstreamToJSON; result-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/bounded.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestBoundedSlicesOversizedChunksAndCapsLines"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/bounded.ts",
+    "mutation": "agent/harness/pico3/bounded.go: bounded.DroppedBytes += len(dropped) -> bounded.DroppedBytes += 0; compiling mutation fails TestBoundedSlicesOversizedChunksAndCapsLines; bounded-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/utils/output-capture.ts",
+    "package": "./agent/harness/utils",
+    "tests": [
+      "TestOutputCaptureSlideDropCountsUTF16CodeUnits"
+    ],
+    "upstream_reference": "packages/agent/src/harness/utils/output-capture.ts",
+    "mutation": "agent/harness/utils/output_capture.go: Drop:     len(before) - shared, -> Drop:     len(before) - shared + 1,; compiling mutation fails TestOutputCaptureSlideDropCountsUTF16CodeUnits; output-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/utils/adaptive-publisher.ts",
+    "package": "./agent/harness/utils",
+    "tests": [
+      "TestAdaptivePublisherCommitsItsBaselineBeforeAConsumerThrows"
+    ],
+    "upstream_reference": "packages/agent/src/harness/utils/adaptive-publisher.ts",
+    "mutation": "agent/harness/utils/adaptive_publisher.go: publisher.published = &current -> publisher.published = nil; compiling mutation fails TestAdaptivePublisherCommitsItsBaselineBeforeAConsumerThrows; adaptive-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/values.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestBoundAddressesValidateComponents"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/values.ts",
+    "mutation": "agent/harness/session/values.go: if namespace == \"\" { -> if namespace == \"impossible\" {; compiling mutation fails TestBoundAddressesValidateComponents; values-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/testing/instrumented-storage.ts",
+    "package": "./agent/harness/session/testing",
+    "tests": [
+      "TestInstrumentedStorageClearsAttemptsWithoutAffectingTheDelegate"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/testing/instrumented-storage.ts",
+    "mutation": "agent/harness/session/testing/instrumented_storage.go: storage.commitAttempts = nil -> storage.commitAttempts = storage.commitAttempts[:len(storage.commitAttempts)]; compiling mutation fails TestInstrumentedStorageClearsAttemptsWithoutAffectingTheDelegate; instrument-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/jsonl/codec.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestJsonlHeaderValidation"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/jsonl/codec.ts",
+    "mutation": "agent/harness/session/jsonl_codec.go: jsonlInteger(fields, \"storageVersion\", 1) -> jsonlInteger(fields, \"storageVersion\", 0); compiling mutation fails TestJsonlHeaderValidation; codec-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/mutation-line.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestMutationLineContinuesAfterFailedJobPreservingTheFailure"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/mutation-line.ts",
+    "mutation": "agent/harness/session/mutation_line.go: job.value, job.err = op() -> job.value, job.err = op(); job.err = nil; compiling mutation fails TestMutationLineContinuesAfterFailedJobPreservingTheFailure; mutation-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/fork-policy.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestCreateForkSnapshotMatchesUpstream"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/fork-policy.ts",
+    "mutation": "agent/harness/session/fork_policy.go: return write, isEntryCopied(key), nil -> return write, !isEntryCopied(key), nil; compiling mutation fails TestCreateForkSnapshotMatchesUpstream; fork-policy-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/fork.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestCreateForkSnapshotMatchesUpstream"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/fork.ts",
+    "mutation": "agent/harness/session/fork.go: nextSeq := maxSeq + 1 -> nextSeq := maxSeq + 2; compiling mutation fails TestCreateForkSnapshotMatchesUpstream; review-codex-tests-harness-H/mut/s-fork1.log"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/memory.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestMemoryStorageConformance"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/memory.ts",
+    "mutation": "agent/harness/session/memory.go: result.Stats = storage.storageState.ApplyValidated(prepared.Writes) -> result.Stats = storage.storageState.ApplyValidated(nil); compiling mutation fails TestMemoryStorageConformance; memory-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/in-memory-storage-state.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestMemoryStorageConformance"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/in-memory-storage-state.ts",
+    "mutation": "agent/harness/session/in_memory_storage_state.go: if len(page) == resolved.Limit { -> if len(page) == resolved.Limit+1 {; compiling mutation fails TestMemoryStorageConformance; review-codex-tests-harness-H/mut/s-imss1.log"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/commit.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestMemoryStorageConformance"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/commit.ts",
+    "mutation": "agent/harness/session/commit.go: entry.Timestamp = timestamp -> entry.Timestamp = timestamp + seq; compiling mutation fails TestMemoryStorageConformance; review-codex-tests-harness-H/mut/s-commit1.log"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/testing/conformance/storage.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestMemoryStorageConformance"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/testing/conformance/storage.ts",
+    "mutation": "agent/harness/session/testing/conformance/storage.go: equal(t, len(result.Seqs), 3) -> equal(t, len(result.Seqs), 4); compiling mutation fails TestMemoryStorageConformance; review-codex-tests-harness-H/mut/s-cstor2.log"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/testing/benchmark/storage.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestMemoryBenchmarkScenariosProduceTheirExpectedResults"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/testing/benchmark/storage.ts",
+    "mutation": "agent/harness/session/testing/benchmark/storage.go: return min(50, dataset.EntryCount) -> return min(49, dataset.EntryCount); compiling mutation fails TestMemoryBenchmarkScenariosProduceTheirExpectedResults; benchmark-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/testing/benchmark/session-repo.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestMemoryBenchmarkScenariosProduceTheirExpectedResults"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/testing/benchmark/session-repo.ts",
+    "mutation": "agent/harness/session/testing/benchmark/session_repo.go: return dataset.SessionCount -> return dataset.SessionCount + 1; compiling mutation fails TestMemoryBenchmarkScenariosProduceTheirExpectedResults; benchmark-repo-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/kinds/frames.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestFrameMetadataUsesSharedAIValues"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/kinds/frames.ts",
+    "mutation": "agent/harness/pico3/kinds_frames.go: delete(block, \"textSignature\") -> delete(block, \"notTextSignature\"); compiling mutation fails TestFrameMetadataUsesSharedAIValues; frames-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/kinds/plugin.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestPluginHandlerResultAndMissingHandler"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/kinds/plugin.ts",
+    "mutation": "agent/harness/pico3/kinds_plugin.go: return done(Completed(stored)), nil -> return done(Completed(JsonObject{\"lost\":stored})), nil; compiling mutation fails TestPluginHandlerResultAndMissingHandler; plugin-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/membrane.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestMembraneIdentityRevocationAndPlainInputs"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/membrane.ts",
+    "mutation": "agent/harness/pico3/membrane.go: func (membrane *Membrane) Revoke() { membrane.alive.Store(false) } -> func (membrane *Membrane) Revoke() { membrane.alive.Store(true) }; compiling mutation fails TestMembraneIdentityRevocationAndPlainInputs; membrane-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/chord.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestChordRejectsInvalidCapacity"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/chord.ts",
+    "mutation": "agent/harness/pico3/chord.go: capacity < 1 || -> capacity < 0 ||; compiling mutation fails TestChordRejectsInvalidCapacity; chord-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/kinds/entries.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestOneTurnWithTwoToolsOnBothBackends"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/kinds/entries.ts",
+    "mutation": "agent/harness/pico3/kinds_common.go: stored[\"role\"] = \"assistant\" -> stored[\"role\"] = \"user\"; compiling mutation fails TestOneTurnWithTwoToolsOnBothBackends; pico-turn-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/kinds/generation.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestOneTurnWithTwoToolsOnBothBackends"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/kinds/generation.ts",
+    "mutation": "agent/harness/pico3/kinds_common.go: stored[\"role\"] = \"assistant\" -> stored[\"role\"] = \"user\"; compiling mutation fails TestOneTurnWithTwoToolsOnBothBackends; pico-turn-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/kinds/tool.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestOneTurnWithTwoToolsOnBothBackends"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/kinds/tool.ts",
+    "mutation": "agent/harness/pico3/kinds_common.go: stored[\"role\"] = \"assistant\" -> stored[\"role\"] = \"user\"; compiling mutation fails TestOneTurnWithTwoToolsOnBothBackends; pico-turn-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/kinds/post-tools.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestOneTurnWithTwoToolsOnBothBackends"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/kinds/post-tools.ts",
+    "mutation": "agent/harness/pico3/kinds_common.go: stored[\"role\"] = \"assistant\" -> stored[\"role\"] = \"user\"; compiling mutation fails TestOneTurnWithTwoToolsOnBothBackends; pico-turn-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/harness.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestOneTurnWithTwoToolsOnBothBackends"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/harness.ts",
+    "mutation": "agent/harness/pico3/kinds_common.go: stored[\"role\"] = \"assistant\" -> stored[\"role\"] = \"user\"; compiling mutation fails TestOneTurnWithTwoToolsOnBothBackends; pico-turn-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/session.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestOneTurnWithTwoToolsOnBothBackends"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/session.ts",
+    "mutation": "agent/harness/pico3/kinds_common.go: stored[\"role\"] = \"assistant\" -> stored[\"role\"] = \"user\"; compiling mutation fails TestOneTurnWithTwoToolsOnBothBackends; pico-turn-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/scheduler.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestOneTurnWithTwoToolsOnBothBackends"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/scheduler.ts",
+    "mutation": "agent/harness/pico3/kinds_common.go: stored[\"role\"] = \"assistant\" -> stored[\"role\"] = \"user\"; compiling mutation fails TestOneTurnWithTwoToolsOnBothBackends; pico-turn-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/memory.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestOneTurnWithTwoToolsOnBothBackends"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/memory.ts",
+    "mutation": "agent/harness/pico3/kinds_common.go: stored[\"role\"] = \"assistant\" -> stored[\"role\"] = \"user\"; compiling mutation fails TestOneTurnWithTwoToolsOnBothBackends; pico-turn-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/types.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestOneTurnWithTwoToolsOnBothBackends"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/types.ts",
+    "mutation": "agent/harness/pico3/kinds_common.go: stored[\"role\"] = \"assistant\" -> stored[\"role\"] = \"user\"; compiling mutation fails TestOneTurnWithTwoToolsOnBothBackends; pico-turn-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/context.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestForkMissingToolResultPreservesCallIdentity"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/context.ts",
+    "mutation": "agent/harness/pico3/context.go: \"toolCallId\": str(call, \"id\"), -> \"toolCallId\": \"wrong-id\",; compiling mutation fails TestForkMissingToolResultPreservesCallIdentity; context-identity-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/kinds/collapse.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestBeforeCollapseDeclineSummaryAndInstructions"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/kinds/collapse.ts",
+    "mutation": "agent/harness/pico3/kinds_collapse.go: collapseFailed(\"declined\", \"declined by beforeCollapse\") -> collapseFailed(\"wrong\", \"declined by beforeCollapse\"); compiling mutation fails TestBeforeCollapseDeclineSummaryAndInstructions; collapse-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/hooks.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestBeforeCollapseDeclineSummaryAndInstructions"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/hooks.ts",
+    "mutation": "agent/harness/pico3/kinds_collapse.go: collapseFailed(\"declined\", \"declined by beforeCollapse\") -> collapseFailed(\"wrong\", \"declined by beforeCollapse\"); compiling mutation fails TestBeforeCollapseDeclineSummaryAndInstructions; collapse-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/bash.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestBashToolStreamsAndReportsExit"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/bash.ts",
+    "mutation": "agent/harness/pico3/bash.go: details[\"exitCode\"] = float64(state.ExitCode()) -> details[\"exitCode\"] = float64(0); compiling mutation fails TestBashToolStreamsAndReportsExit; bash-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/tools/path-utils.ts",
+    "package": "./internal/codingagent/tools",
+    "tests": [
+      "TestExpandPath_UnicodeSpaces"
+    ],
+    "upstream_reference": "packages/agent/src/harness/tools/path-utils.ts",
+    "mutation": "internal/codingagent/tools/path_utils.go: return unicodeSpacesRE.ReplaceAllString(s, \" \") -> return unicodeSpacesRE.ReplaceAllString(s, \"_\"); compiling mutation fails TestExpandPath_UnicodeSpaces; path-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/env/nodejs.ts",
+    "package": "./agent/harness/env",
+    "tests": [
+      "TestNodeEnvExpandsHomeRelativePathsAndFileURLs"
+    ],
+    "upstream_reference": "packages/agent/src/harness/env/nodejs.ts",
+    "mutation": "agent/harness/env/paths.go: normalized = filepath.Join(homeDir(), normalized[2:]) -> normalized = filepath.Join(homeDir(), normalized); compiling mutation fails TestNodeEnvExpandsHomeRelativePathsAndFileURLs; nodeenv-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/testing/gating-storage.ts",
+    "package": "./agent/harness/session/testing",
+    "tests": [
+      "TestGatingStorageRejectsNonPositiveCounts"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/testing/gating-storage.ts",
+    "mutation": "agent/harness/session/testing/gating_storage.go: Pending commit count must be a positive safe integer -> Wrong pending commit count; compiling mutation fails TestGatingStorageRejectsNonPositiveCounts; gating-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/testing/storage-decorator.ts",
+    "package": "./agent/harness/session/testing",
+    "tests": [
+      "TestInstrumentedStorageDelegatesEveryReadWithoutRecordingSyntheticWrites"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/testing/storage-decorator.ts",
+    "mutation": "agent/harness/session/testing/storage_decorator.go: StorageDecorator{Storage: delegate} -> StorageDecorator{}; compiling mutation fails TestInstrumentedStorageDelegatesEveryReadWithoutRecordingSyntheticWrites; decorator-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/tools/file-mutation-queue.ts",
+    "package": "./internal/codingagent/tools",
+    "tests": [
+      "TestMutationQueuePreservesFailureAndReleasesPath"
+    ],
+    "upstream_reference": "packages/agent/src/harness/tools/file-mutation-queue.ts",
+    "mutation": "internal/codingagent/tools/mutation_queue.go: defer m.Unlock()\n\treturn fn() -> defer m.Unlock()\n\t_ = fn(); return nil; compiling mutation fails TestMutationQueuePreservesFailureAndReleasesPath; queue-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/system.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestSystemSectionsBaselineDeltaAndHeadOmissions"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/system.ts",
+    "mutation": "agent/harness/pico3/system.go: The %s section now reads: -> The %s section no longer reads:; compiling mutation fails TestSystemSectionsBaselineDeltaAndHeadOmissions; system-content-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/types.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestPendingEntryAndEntryJSONKeepNullDistinctFromAbsent"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/types.ts",
+    "mutation": "agent/harness/session/types.go: ParentID     *string              `json:\"parentId\"` -> ParentID     *string              `json:\"wrongParentId\"`; compiling mutation fails TestPendingEntryAndEntryJSONKeepNullDistinctFromAbsent; types-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/testing/benchmark/datasets.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestMemoryBenchmarkScenariosProduceTheirExpectedResults"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/testing/benchmark/datasets.ts",
+    "mutation": "agent/harness/session/testing/benchmark/datasets.go: TipID:        StorageBenchmarkEntryID(entryCount - 1), -> TipID:        StorageBenchmarkEntryID(entryCount - 2),; compiling mutation fails TestMemoryBenchmarkScenariosProduceTheirExpectedResults; dataset-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/kinds/job.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestSchedulerJobSpawnFailure"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/kinds/job.ts",
+    "mutation": "agent/harness/pico3/kinds_job.go: return jobFailed(\"spawn\", detail), nil -> return jobFailed(\"wrong\", detail), nil; compiling mutation fails TestSchedulerJobSpawnFailure; job-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/kinds/task-api.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestPluginTaskAPIRejectsToolOnlyActions"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/kinds/task-api.ts",
+    "mutation": "agent/harness/pico3/kinds_task_api.go: return &ToolApi{TaskId: task.Id, ConversationId: task.ConversationId, rt: rt} -> return &ToolApi{TaskId: 0, ConversationId: task.ConversationId, rt: rt}; compiling mutation fails TestPluginTaskAPIRejectsToolOnlyActions; taskapi-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/view.ts",
+    "package": "./agent/harness/pico3",
+    "tests": [
+      "TestWatchConvergesAndStops"
+    ],
+    "upstream_reference": "packages/agent/src/harness/pico3/view.ts",
+    "mutation": "agent/harness/pico3/view.go: ApplyImmutable(view, envelope.Ops) -> ApplyImmutable(view, nil); compiling mutation fails TestWatchConvergesAndStops; view-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/jsonl/legacy-v3.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestJsonlLegacyConfigurationLabelsAndDiscardedParents"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/jsonl/legacy-v3.ts",
+    "mutation": "agent/harness/session/jsonl_legacy.go: config.Model = ModelRef{Provider: entry.Provider, ModelID: entry.ModelID} -> config.Model = ModelRef{Provider: entry.Provider, ModelID: \"wrong-model\"}; compiling mutation fails TestJsonlLegacyConfigurationLabelsAndDiscardedParents; legacy-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/jsonl/repo.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestJsonlRepositoryCwdDiscoveryAndEncodedIDs"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/jsonl/repo.ts",
+    "mutation": "agent/harness/session/jsonl_repo.go: out.WriteByte('%') -> out.WriteByte('!'); compiling mutation fails TestJsonlRepositoryCwdDiscoveryAndEncodedIDs; repo-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/jsonl/io.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestJsonlAtomicPublicationFailuresAndRetry"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/jsonl/io.ts",
+    "mutation": "agent/harness/session/jsonl_io.go: if err = fs.RenameFile(ctx, temp, path); err != nil { -> if err = fs.RenameFile(ctx, temp, path); false {; compiling mutation fails TestJsonlAtomicPublicationFailuresAndRetry; io-publish-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/jsonl/storage.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestJsonlTornTailAndCompleteCorruption"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/jsonl/storage.ts",
+    "mutation": "agent/harness/session/jsonl_storage.go: return appendText(strings.Join(lines, \"\\n\") + \"\\n\") -> return appendText(strings.Join(lines, \"\\n\")); compiling mutation fails TestJsonlTornTailAndCompleteCorruption (torn tail not removed); review-codex-tests-harness-H/mut/h-jstor-torn.log"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/jsonl/fork.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestJsonlSessionRepoConformance"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/jsonl/fork.ts",
+    "mutation": "agent/harness/session/jsonl_fork.go: index.selected[id] = true -> index.selected[id] = false; compiling mutation fails TestJsonlSessionRepoConformance; jsonl-fork-red.json"
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/testing/conformance/session-repo.ts",
+    "package": "./agent/harness/session",
+    "tests": [
+      "TestJsonlSessionRepoConformance"
+    ],
+    "upstream_reference": "packages/agent/src/harness/session/testing/conformance/session-repo.ts",
+    "mutation": "agent/harness/session/testing/conformance/session_repo.go: equal(t, metadata.StorageVersion, 1) -> equal(t, metadata.StorageVersion, 2); compiling mutation fails TestJsonlSessionRepoConformance; review-codex-tests-harness-H/mut/s-crepo1.log"
+  }
+]

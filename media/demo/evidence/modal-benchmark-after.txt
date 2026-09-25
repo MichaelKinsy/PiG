@@ -1,0 +1,9 @@
+goos: linux
+goarch: amd64
+pkg: github.com/MichaelKinsy/PiG/tui
+cpu: Intel(R) Xeon(R) 6746E
+BenchmarkModalColoredClipping-196     	     598	   2006377 ns/op	  956299 B/op	    2726 allocs/op
+BenchmarkModalColoredClipping-196     	     541	   2275045 ns/op	  956312 B/op	    2726 allocs/op
+BenchmarkModalColoredClipping-196     	     423	   2403104 ns/op	  956370 B/op	    2727 allocs/op
+PASS
+ok  	github.com/MichaelKinsy/PiG/tui	3.511s

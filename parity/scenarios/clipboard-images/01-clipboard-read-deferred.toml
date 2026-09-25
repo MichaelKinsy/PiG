@@ -1,0 +1,63 @@
+# Behavior family: clipboard-images
+# Surface: Clipboard image read plumbing.
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   WAYLAND_DISPLAY=wayland-1 XDG_SESSION_TYPE=wayland \
+#   PATH=parity/testdata/fake-bin:$PATH \
+#   PI_CODING_AGENT_DIR=parity/scenarios/clipboard-images/testdata/pi-agent \
+#   pi --no-extensions -e parity/testdata/batch2-ui-harness.ts
+#   send: /probe-clipboard-read Enter
+#   output: clipboard:image/png:68
+#
+# The local wl-paste/xclip fixtures in parity/testdata/fake-bin supply a
+# deterministic 1x1 PNG. The command only succeeds when the runtime
+# clipboard image reader follows that Linux clipboard path.
+
+name = "01-clipboard-read-deferred"
+description = "Both binaries read a deterministic clipboard PNG via local wl-paste/xclip fixtures and report its MIME type + byte length."
+covers = [
+  "packages/coding-agent/src/utils/clipboard.ts",
+  "packages/coding-agent/src/utils/clipboard-image.ts",
+]
+tags = ["deferred", "hermetic", "fast", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "clipboard:image/png:68"
+capture_end = "clipboard:image/png:68"
+
+[[tmux.steps]]
+keys = ["/probe-clipboard-read", "Enter"]
+wait_contains = ["clipboard:image/png:68"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = [
+  "PIG_CODING_AGENT_DIR=testdata/pig-agent",
+  "PIG_PARITY_HARNESS=1",
+  "WAYLAND_DISPLAY=wayland-1",
+  "XDG_SESSION_TYPE=wayland",
+  "PATH={{FAKE_BIN}}:{{PATH}}",
+]
+pi = [
+  "PI_CODING_AGENT_DIR=testdata/pi-agent",
+  "PI_SKIP_VERSION_CHECK=1",
+  "WAYLAND_DISPLAY=wayland-1",
+  "XDG_SESSION_TYPE=wayland",
+  "PATH={{FAKE_BIN}}:{{PATH}}",
+]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/batch2-ui-harness.ts"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

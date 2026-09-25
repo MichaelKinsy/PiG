@@ -1,0 +1,114 @@
+// divguard:path internal/codingagent/interactive.go
+
+package codingagent
+
+type InteractiveMode struct{ uiTaskCh chan func() }
+
+// postUITask reproduces TUI-03: a full queue silently drops the task.
+func (m *InteractiveMode) postUITask(fn func()) bool {
+	select {
+	case m.uiTaskCh <- fn: // want
+		return true
+	default:
+		return false
+	}
+}
+
+type conn struct{ outCh chan []byte }
+
+// send reproduces EXT-17: a full outbound queue drops the frame.
+func (c *conn) send(data []byte) {
+	select {
+	case c.outCh <- data: // want
+	default:
+	}
+}
+
+// forward reproduces CDG-002: a capacity-1 queue fed from a loop keeps the
+// first event and drops every later one.
+func forward(events []int) chan int {
+	out := make(chan int, 1)
+	for _, ev := range events {
+		select {
+		case out <- ev: // want
+		default:
+		}
+	}
+	return out
+}
+
+// subscribe drops every callback value after the first.
+func subscribe(register func(func(int))) chan int {
+	updates := make(chan int, 1)
+	register(func(v int) {
+		select {
+		case updates <- v: // want
+		default:
+		}
+	})
+	return updates
+}
+
+// rebound reuses the name for a second queue, so the send is not one-shot.
+func rebound(v int) chan int {
+	ch := make(chan int, 1)
+	ch = make(chan int, 1)
+	select {
+	case ch <- v: // want
+	default:
+	}
+	return ch
+}
+
+// sendTwice has one binding but two send sites; once the first send fills the
+// channel, the second select drops its value.
+func sendTwice(first, second int) chan int {
+	ch := make(chan int, 1)
+	select {
+	case ch <- first: // want
+	default:
+	}
+	select {
+	case ch <- second: // want
+	default:
+	}
+	return ch
+}
+
+// sendAfterPrefill includes the ordinary send when proving that the select is
+// one-shot.
+func sendAfterPrefill(first, second int) chan int {
+	ch := make(chan int, 1)
+	ch <- first
+	select {
+	case ch <- second: // want
+	default:
+	}
+	return ch
+}
+
+// sendAfterAliasPrefill cannot prove a one-shot channel after it escapes
+// through an alias.
+func sendAfterAliasPrefill(first, second int) chan int {
+	ch := make(chan int, 1)
+	alias := ch
+	alias <- first
+	select {
+	case ch <- second: // want
+	default:
+	}
+	return ch
+}
+
+// sendAfterClosureLeak cannot prove a one-shot channel after a nested closure
+// returns it to code that can prefill it.
+func sendAfterClosureLeak(first, second int) chan int {
+	ch := make(chan int, 1)
+	leak := func() chan int { return ch }
+	leak() <- first
+	select {
+	case ch <- second: // want
+	default:
+	}
+	return ch
+}

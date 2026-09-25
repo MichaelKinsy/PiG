@@ -1,0 +1,77 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+
+name: Bug report
+description: Report a reproducible PiG defect
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not report an undisclosed vulnerability here. Follow SECURITY.md instead.
+        Do not include credentials, customer data, private configuration, or internal-only endpoints.
+  - type: input
+    id: version
+    attributes:
+      label: PiG and upstream Pi versions
+      description: Run `pig version` and provide both reported versions.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      description: Provide the operating system, architecture, terminal, and installation method.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Reproduction
+      description: Provide the smallest deterministic sequence that reproduces the problem.
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected result
+      description: State the observable contract or expected upstream Pi behavior.
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual result
+      description: Include sanitized output and exact errors. Do not include secrets.
+    validations:
+      required: true
+  - type: textarea
+    id: upstream
+    attributes:
+      label: Upstream comparison
+      description: State whether the same input was tested with the pinned Pi version and provide the result.
+    validations:
+      required: true
+  - type: textarea
+    id: divergence
+    attributes:
+      label: Divergence and parity evidence
+      description: Identify any relevant DIVERGENCES.md entry or parity scenario. State “None found” when applicable.
+    validations:
+      required: true
+  - type: textarea
+    id: boundaries
+    attributes:
+      label: Boundary and failure cases
+      description: Describe related invalid, empty, cancellation, persistence, or error-path behavior.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Submission checks
+      options:
+        - label: I removed credentials, customer data, private configuration, and internal-only information.
+          required: true
+        - label: I searched for an existing issue and relevant divergence record.
+          required: true

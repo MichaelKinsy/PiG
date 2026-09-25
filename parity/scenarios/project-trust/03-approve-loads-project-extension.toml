@@ -1,0 +1,42 @@
+# Behavior family: project-trust
+# group-rationale: serial: the three scenarios compile identical auto-discovered
+# extension sources; concurrent Pig builds contend on the same content cache key.
+# Surface: --approve/-a explicitly trusts project inputs for this run.
+#
+# Upstream probe (exact Pi 0.83.0, 2026-08-03):
+#   cwd: testdata/project-03
+#   PI_CODING_AGENT_DIR=<empty-agent> pi --approve --list-models trust-probe
+#   output contains trust-probe/must-not-load-before-trust.
+#
+# This is paired with scenarios 01 and 02. The same extension must be absent when
+# undecided/noninteractive or explicitly denied and present only under the run
+# approval override. The override is session-only and must not write trust.json.
+
+name = "03-approve-loads-project-extension"
+description = "--approve permits project Resources for this run and loads the auto-discovered provider."
+covers = [
+  "packages/coding-agent/src/cli/args.ts",
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/core/settings-manager.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+  "packages/coding-agent/src/core/package-manager.ts",
+]
+tags = ["hermetic", "fast", "security", "serial"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+override_base_args = true
+
+[cli]
+args = ["--approve", "--list-models", "trust-probe"]
+cwd = "testdata/project-03"
+snapshot_cwd = true
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["trust-probe", "must-not-load-before-trust"]
+both_not_contain = ["panic:", "goroutine "]
+runs = 3

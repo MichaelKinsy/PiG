@@ -1,0 +1,89 @@
+# Behavior family: interactive-rendering
+# Surface: Full conversation layout: user message, tool execution, assistant follow-up
+#
+# Upstream evidence (pi v0.69.0, 2026-05-15):
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   send: "Run: expr 20 + 22" Enter
+#   wait: 6s
+#   crop: start="Run: expr 20 + 22" end=/faux-1\s*$/
+#   raw cropped upstream block includes:
+#     Run: expr 20 + 22
+#
+#
+#
+#     $ expr 20 + 22
+#
+#     42
+#
+#     Took 0.1s
+#
+#
+#     42
+#
+#     … footer ending in faux-1
+#
+# Re-probe with the pinned Pi and the deterministic provider: send expr, then
+# control-chars. Both completed tool cards must remain, in conversation order.
+# The base test provider reuses its ID across turns; Pi retires completed IDs,
+# but PiG's retained ID lookup then overwrites the expr card with the second call.
+# The provider regression must fail here, not merely produce two final replies.
+#
+# This exercises the full vertical rhythm of a tool-call conversation:
+# user-message box → spacer → tool-execution box → spacer → assistant-reply.
+# Verifies all three components render in sequence with correct spacing.
+
+name = "04-conversation-layout"
+description = "Two tool turns retain separate tool cards and assistant replies in conversation order."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/assistant-message.ts",
+  "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+  "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Run: expr 20 + 22"
+capture_end_regex = "faux-1\\s*$"
+
+[[tmux.steps]]
+keys = ["Run: expr 20 + 22", "Enter"]
+settle_seconds = 6
+wait_contains = ["Took"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["Run: bash control-chars", "Enter"]
+wait_contains = ["sanitized"]
+wait_timeout_seconds = 15
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["$ expr 20 + 22", "helloworld", "sanitized"]
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+# lint-known-gap: bg-paint SGR codes differ between pig and upstream rendering
+# paths. The visible text, structure, and spacing are identical. The
+# tool-execution footer duration is timing-dependent, so normalize the
+# numeric suffix rather than weakening the comparator.
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3
+
+# normalize-rationale: only the sub-second tool duration varies with scheduling.
+[[assert.normalize_replace]]
+pattern = "Took \\d+\\.\\ds"
+with = "Took Ns"

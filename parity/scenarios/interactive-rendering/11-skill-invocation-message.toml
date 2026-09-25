@@ -1,0 +1,60 @@
+# Behavior family: interactive-rendering
+# Surface: SkillInvocationMessageComponent: collapsed `[skill]` block
+#          rendered when resuming a session containing a user message with
+#          `<skill name="..." location="...">...</skill>` XML block.
+#
+# Upstream evidence (pi v0.69.0, 2026-05-16, 100x35 tmux probe):
+#   Session fixture: testdata/skill-cwd/sessions/...jsonl
+#   (header + user:<skill name="testskill"...>...\n\nRun the test + assistant:reply)
+#   pi -e test-faux-provider.ts --model test-faux/faux-1 --session-dir sessions -c
+#   wait: ready
+#   crop: capture_start="[skill]", capture_end="Run the test"
+#   raw cropped upstream block:
+#
+#      [skill] testskill (ctrl+o to expand)
+#
+#
+#      Run the test
+#
+# Root-cause fixes in this loop:
+#   1. pig lacked ParseSkillBlock (agent-session.ts:102-116 port).
+#      Added regex-based parser at internal/codingagent/skills.go.
+#   2. pig's renderMessage case for user messages never checked for
+#      skill blocks. Now calls ParseSkillBlock and routes to
+#      SkillInvocationMessageComponent when matched (mirroring upstream
+#      addMessageToChat case "user" → parseSkillBlock → SkillInvocationMessageComponent).
+#   3. Shared fix with 13/14: rebuildChatFromSession on resume (renderInitialMessages port).
+
+name = "11-skill-invocation-message"
+description = "SkillInvocationMessageComponent renders collapsed [skill] block from a user message containing skill XML on session resume."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/skill-cwd"
+capture_start = "[skill]"
+capture_end = "Run the test"
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "unknown command", "<skill name="]
+both_contain = ["[skill]", "testskill", "expand)", "Run the test"]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3

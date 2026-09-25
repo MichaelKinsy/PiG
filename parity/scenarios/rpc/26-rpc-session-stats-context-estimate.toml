@@ -1,0 +1,71 @@
+# Behavior family: rpc
+# Surface: get_session_stats after a faux tool turn, including the estimated
+# context usage.
+#
+# Upstream evidence (pi v0.87.1, probed 2026-09-24, default parity cwd):
+#   {"id":"p1","type":"prompt","message":"Run: expr 20 + 22"}
+#   ... wait for agent_end ...
+#   {"id":"stats","type":"get_session_stats"}
+#   {"id":"stats","type":"response","command":"get_session_stats","success":true,
+#    "data":{"sessionFile":"<file>","sessionId":"<id>","userMessages":1,
+#    "assistantMessages":2,"toolCalls":1,"toolResults":1,"totalMessages":5,
+#    "tokens":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0},
+#    "cost":0,"contextUsage":{"tokens":<n>,"contextWindow":128000,"percent":<n/1280>}}}
+#
+# The faux provider reports no usage, so contextUsage is the chars/4 estimate
+# of the system prompt and messages (compaction.ts
+# estimateProjectedContextTokens). The runner balances the D22 documentation
+# paths so both prompts have the same length (parity/runner/default_cwd.go),
+# which makes the exact token count comparable. The comparison therefore
+# fails if the estimator, the prompt sections, or that balance drift, long
+# before a footer percentage rounds differently. It also pins Pi's key order
+# (sessionFile before sessionId).
+
+name = "26-rpc-session-stats-context-estimate"
+description = "RPC get_session_stats after a faux tool turn reports byte-equal counters and context estimate."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/compaction/compaction.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+
+[[rpc.steps]]
+line = '{"id":"p1","type":"prompt","message":"Run: expr 20 + 22"}'
+wait_contains = ['"type":"agent_end"']
+wait_timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"stats","type":"get_session_stats"}'
+wait_contains = ['"id":"stats","type":"response","command":"get_session_stats"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = ['"contextUsage":{"tokens":', '"toolCalls":1']
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: the event stream before the stats response is covered by
+# other rpc scenarios; this one compares only the stats response. The session
+# file path and id are generated per process.
+[[assert.normalize_replace]]
+pattern = '(?s)\A.*?(\{"id":"stats","type":"response","command":"get_session_stats"[^\n]*).*\z'
+with = '$1'
+
+[[assert.normalize_replace]]
+pattern = '"sessionFile":"[^"]*"'
+with = '"sessionFile":"<file>"'
+
+[[assert.normalize_replace]]
+pattern = '"sessionId":"[^"]*"'
+with = '"sessionId":"<id>"'

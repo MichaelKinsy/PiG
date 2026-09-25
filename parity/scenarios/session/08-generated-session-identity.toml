@@ -1,0 +1,45 @@
+# Upstream evidence: Pi's session-manager createSessionId uses uuidv7; newSession constructs
+# <ISO timestamp with millisecond precision>_<id>.jsonl. Inspect the live
+# sessionManager through a real Node extension. Assert the UUID version and
+# variant and the filename/identity relationship without normalizing random IDs.
+name = "08-generated-session-identity"
+description = "New sessions expose Pi-format UUIDv7 identity and millisecond filenames"
+covers = ["packages/coding-agent/src/core/session-manager.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=../extensions-runtime/testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../extensions-runtime/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/session-identity-probe.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/session-identity-probe.mjs"]
+
+[tmux]
+width = 100
+height = 35
+# Re-probed against the pinned Pi on 2026-09-25: both runtimes are ready at the
+# model footer. PiG's compact startup does not print the old Ready banner.
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "identity:"
+capture_end_regex = 'filename=(true|false)'
+
+[[tmux.steps]]
+keys = ["/session-identity-probe"]
+wait_contains = ["/session-identity-probe"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["identity:"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["identity: uuidv7=true filename=true"]
+output_equal = true
+runs = 3

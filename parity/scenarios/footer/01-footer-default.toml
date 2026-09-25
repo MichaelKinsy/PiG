@@ -1,0 +1,108 @@
+# Behavior family: footer
+#
+# Surface: default footer at idle.
+#
+# This scenario exercises the two files that own the bottom-of-screen
+# status line:
+#
+#   footer-data-provider.ts: resolves the current git branch from the
+#       repo .git/HEAD and exposes it to the footer renderer. The
+#       branch appears as " (<branch>)" appended to the cwd line.
+#
+#   footer.ts: renders the full footer: line 1 is "<pwd> (<branch>)"
+#       (with ~ home substitution); line 2 is "<cost> <context%/window>
+#       (auto)<padding><model id>". Line 2 is dim/grey via theme.fg("dim").
+#
+# Both files are exercised by the asserted crop.
+#
+# Upstream evidence (pi v0.81.1, this loop 2026-07-22):
+# ──────────────────────────────────────────────────────────────────────
+#
+#   command: PI_CODING_AGENT_DIR=parity/scenarios/footer/testdata/pi-agent \
+#            pi --no-extensions
+#   tmux:    100×35
+#   keys:    none (idle capture after boot)
+#   ready:   "$0.000"
+#   crop:    capture_start = "parity-snap-cwd-", capture_start_last = true
+#            capture_end   = "" (trim trailing blanks)
+#
+#   raw cropped upstream block (plain, ANSI stripped):
+#
+#     <working-directory>
+#     $0.000 (sub) 0.0%/1.0M (auto)                                                       gpt-5.4 • medium
+#
+#   raw cropped pig block (plain, ANSI stripped):
+#
+#     <working-directory>
+#     $0.000 (sub) 0.0%/1.0M (auto)                                                       gpt-5.4 • medium
+#
+# ANSI-level match: both binaries now emit the same dim color escape.
+# pig's dim() uses the theme's truecolor Dim field (\x1b[38;2;102;102;102m
+# for the dark theme) and fg-only reset (\x1b[39m), matching upstream's
+# theme.fg("dim", text). Promoted from output_normalized_equal to
+# escaped_output_equal in this loop.
+#
+# B1 source fix (this loop): cmd/pig/model.go now stores Model.ID as
+# the bare catalog id ("gpt-4o") matching upstream. The footer no longer
+# needs to strip a "provider/" prefix.
+#
+# B2 source fix (this loop): dim() now emits theme truecolor
+# \x1b[38;2;102;102;102m instead of SGR \x1b[2m, matching upstream's
+# theme.fg("dim") output byte-for-byte.
+#
+# Both binaries run in same-length copies of the default cwd fixture, each
+# initialized by the runner as an empty git repository on the unborn
+# branch "parity-fixture" (tmux.git_branch). The cwd line therefore renders
+# the same path and branch on both sides without depending on the checkout;
+# any future drift in pwd substitution, branch resolution, cost format,
+# context-percent format, autocompact tag, or model id render trips this
+# assertion.
+#
+# The runner launches both binaries in same-length copies of the default cwd fixture and masks only the random digits. The crop retains both complete footer rows. The canonical cwd plus configured branch must fit the terminal width without HOME abbreviation; the runner rejects longer roots before launch and asks for a shorter TMPDIR or wider tmux.width. Re-probing pinned Pi with a long external TMPDIR confirms that its cwd row truncates before the snapshot-name anchor, while the stats row remains unchanged.
+
+name = "01-footer-default"
+description = "Both binaries render the idle footer (pwd + branch line, stats + model line) identically including ANSI escapes."
+
+covers = [
+  "packages/coding-agent/src/core/footer-data-provider.ts",
+  "packages/coding-agent/src/modes/interactive/components/footer.ts",
+  "packages/coding-agent/src/utils/fs-watch.ts",
+]
+
+tags = ["fast", "tui", "requires-auth"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 20
+capture_start = "parity-snap-cwd-"
+capture_start_last = true
+git_branch = "parity-fixture"
+settle_seconds = 2
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../footer/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../footer/testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pi_args = ["--no-extensions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["$0.000 (sub)", "0.0%/1.0M (auto)", "gpt-5.4", "(parity-fixture)"]
+both_match_regex = ['(?m)\([a-z0-9._/-]+\)$']
+# Regression guard: FQ spec must never appear in the footer. After the
+# B1 source fix (cmd/pig/model.go stores bare catalog id), this guard
+# is trivially satisfied but remains as a regression sentinel in case
+# Model.ID storage ever drifts back to FQ form.
+both_not_contain = [
+  "GPT-5.4",                  # upstream renders model.id, not DisplayName
+  "github-copilot/gpt-5.4",   # FQ spec must not appear in the footer
+  "panic:",
+  "goroutine ",
+]
+escaped_output_equal = true
+runtime_ratio_max = 1.50
+runs = 3

@@ -1,0 +1,11 @@
+<!-- SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP -->
+<!-- SPDX-License-Identifier: MIT -->
+<svg xmlns="http://www.w3.org/2000/svg" width="154" height="20" role="img" aria-label="behavior tests: 96.0%">
+  <title>behavior tests: 96.0%</title>
+  <rect width="98" height="20" fill="#555"/>
+  <rect x="98" width="56" height="20" fill="#4c1"/>
+  <g fill="#fff" text-anchor="middle" font-family="Verdana,Geneva,DejaVu Sans,sans-serif" font-size="11">
+    <text x="49" y="14">behavior tests</text>
+    <text x="126" y="14">96.0%</text>
+  </g>
+</svg>

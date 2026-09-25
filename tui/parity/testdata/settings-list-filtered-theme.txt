@@ -1,0 +1,9 @@
+> theme
+
+→ Theme         auto
+
+  Color theme: auto, dark, or light
+
+  Type to search · Enter/Space to change · Esc to canc
+
+

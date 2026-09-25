@@ -1,0 +1,48 @@
+# Behavior family: tools
+# Scenario: print-mode bash tool execution via faux provider.
+#
+# Faux provider receives "Run: expr 20 + 22", emits a bash tool call with
+# command "expr 20 + 22". The tool executes, returns "42\n". Faux sees
+# the tool result containing "42" and replies with text "42". Print mode
+# outputs only the final assistant text.
+#
+# Upstream evidence (2026-05-15):
+#   cd /tmp/parity-probe
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1 --print "Run: expr 20 + 22"
+#   output: "42"
+#   exit: 0
+#
+#   pig --no-extensions --model test-faux/faux-1 --print "Run: expr 20 + 22"
+#   (with PIG_TEST_FAUX=1)
+#   output: "42"
+#   exit: 0
+
+name = "01-print-bash-tool-exec"
+description = "Faux triggers bash(expr 20+22), both produce 42 in print mode"
+covers = [
+  "packages/coding-agent/src/core/tools/bash.ts",
+  "packages/agent/src/harness/tools/bash.ts",
+  "packages/coding-agent/src/core/bash-executor.ts",
+  "packages/coding-agent/src/core/output-guard.ts",
+  "packages/coding-agent/src/utils/shell.ts",
+  "packages/coding-agent/src/core/http-dispatcher.ts",
+]
+# output-guard.ts: print mode calls TakeOverStdout at startup and
+# WriteRawStdout for the final text. If the guard broke, this scenario's
+# output would go to stderr (empty stdout → output_equal fails).
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: expr 20 + 22"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["42"]
+output_equal = true

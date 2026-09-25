@@ -1,0 +1,56 @@
+# Behavior family: rpc
+# Surface: runtime handling of syntactically valid JSON values outside the
+# compile-time TypeScript unions. Pi passes these values to Session methods and
+# reports their actual command outcomes instead of adding RPC-only validation.
+
+name = "20-rpc-runtime-boundary-values"
+description = "RPC command values follow Pi runtime handling after JSON parsing."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = [
+  '{"id":"model","type":"set_model","provider":"","modelId":""}',
+  '{"id":"steering-mode","type":"set_steering_mode","mode":"bogus"}',
+  '{"id":"follow-mode","type":"set_follow_up_mode","mode":"bogus"}',
+  '{"id":"steer","type":"steer","message":""}',
+  '{"id":"follow","type":"follow_up","message":""}',
+  '{"id":"switch","type":"switch_session","sessionPath":""}',
+  '{"id":"fork","type":"fork","entryId":""}',
+  '{"id":"bash","type":"bash","command":""}',
+  '{"id":"prompt","type":"prompt","message":""}',
+]
+timeout_seconds = 15
+settle_seconds = 2
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"model","type":"response","command":"set_model","success":false,"error":"Model not found: /"',
+  '"id":"steering-mode","type":"response","command":"set_steering_mode","success":true',
+  '"id":"follow-mode","type":"response","command":"set_follow_up_mode","success":true',
+  '"id":"steer","type":"response","command":"steer","success":true',
+  '"id":"follow","type":"response","command":"follow_up","success":true',
+  '"id":"switch","type":"response","command":"switch_session","success":false,"error":"EISDIR: illegal operation on a directory, read"',
+  '"id":"fork","type":"response","command":"fork","success":false,"error":"Invalid entry ID for forking"',
+  '"id":"bash","type":"response","command":"bash","success":true',
+  '"output":""',
+  '"id":"prompt","type":"response","command":"prompt","success":true',
+]
+both_not_contain = [
+  'message is required',
+  'provider and modelId are required',
+  'invalid steering mode',
+  'invalid follow-up mode',
+]
+runs = 3

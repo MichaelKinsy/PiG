@@ -1,0 +1,40 @@
+// divguard:path coding/session.go
+
+package coding
+
+import "os"
+
+type store struct{}
+
+func (store) AppendMessage(msg string) (string, error) { return msg, nil }
+func (store) AppendLabelChange(id, label string) error { return nil }
+
+type Session struct {
+	inner store
+	ids   []string
+}
+
+// persistMessage reproduces AGENT-05: a failed append only skips the
+// bookkeeping, and the transcript silently stops being saved.
+func (s *Session) persistMessage(msg string) {
+	if id, err := s.inner.AppendMessage(msg); err == nil { // want
+		s.ids = append(s.ids, id)
+	}
+}
+
+func (s *Session) label(id, label string) {
+	_ = s.inner.AppendLabelChange(id, label) // want
+}
+
+func saveSettings(path string, data []byte) {
+	_ = os.MkdirAll(path, 0o755)        // want
+	_ = os.WriteFile(path, data, 0o600) // want
+}
+
+// persistQuietly reproduces CDG-001: the error return is ignored entirely,
+// or blanked while the id is kept.
+func (s *Session) persistQuietly(msg string) {
+	s.inner.AppendMessage(msg)          // want
+	id, _ := s.inner.AppendMessage(msg) // want
+	s.ids = append(s.ids, id)
+}

@@ -1,0 +1,58 @@
+# Behavior family: rpc
+# Surface: malformed JSON input → error response shape
+#
+# Upstream evidence (pi v0.69.0, probed 2026-05-17):
+#   $ printf 'not-json\n' | pi --mode rpc --no-extensions 2>/dev/null
+#   {"type":"response","command":"parse","success":false,"error":"Failed to parse command: Unexpected token 'o', \"not-json\" is not valid JSON"}
+#
+# pig (after fix):
+#   $ printf 'not-json\n' | pig --mode rpc 2>/dev/null
+#   {"type":"response","command":"parse","success":false,"error":"Failed to parse command: unexpected end of JSON input"}
+#
+# NOTE: the error message text differs between V8 and Go JSON parsers,
+# but the response envelope shape (type, command, success, error) must
+# match. We normalize the error string with normalize_replace.
+#
+# Also tests empty-line framing: upstream parses "" as JSON (fails),
+# pig now does the same (matching jsonl.ts which does not skip empty
+# lines).
+
+name = "01-rpc-malformed-input"
+description = "Malformed JSON and empty lines produce parse error responses with matching envelope shape"
+covers = [
+  "packages/coding-agent/src/modes/rpc/jsonl.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = [
+  "",
+  "not-json",
+  '{"type":"hello"}',
+]
+timeout_seconds = 15
+# Pi 0.84 dispatches JSONL handlers asynchronously; keep stdin open until all
+# responses are published before exercising EOF shutdown.
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/echo", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_normalized_equal = true
+runs = 3
+
+# Normalize JSON parse error messages (V8 vs Go produce different text).
+# The error field may contain escaped quotes in JSON (e.g., \"not-json\"),
+# so we match the entire line (parse error response lines always end with
+# the closing brace).
+# normalize-rationale: V8 and Go emit different parser prose inside the same error envelope.
+[[assert.normalize_replace]]
+pattern = '\{"type":"response","command":"parse","success":false,"error":"Failed to parse command:.*'
+with = 'PARSE_ERROR_LINE'

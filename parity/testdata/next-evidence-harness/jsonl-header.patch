@@ -1,0 +1,13 @@
+diff --git i/agent/harness/session/jsonl_types.go w/agent/harness/session/jsonl_types.go
+index 022ef9bc9..0640cd954 100644
+--- i/agent/harness/session/jsonl_types.go
++++ w/agent/harness/session/jsonl_types.go
+@@ -10,7 +10,7 @@ const (
+ 
+ // JsonlStorageHeader is the upstream format-4 file header.
+ type JsonlStorageHeader struct {
+-	V                       int    `json:"v"`
++	V                       int    `json:"format"`
+ 	Kind                    string `json:"kind"`
+ 	ID                      string `json:"id"`
+ 	StorageVersion          int    `json:"storageVersion"`

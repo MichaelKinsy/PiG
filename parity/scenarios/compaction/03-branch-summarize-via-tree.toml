@@ -1,0 +1,93 @@
+# Behavior family: compaction
+# Surface: Branch summarization via /tree → navigate → "Summarize" exercises
+#          CollectEntriesForBranchSummary, PrepareBranchEntries, and
+#          GenerateBranchSummary in branch_summarization.go. Also exercises
+#          SerializeConversation in utils.go for the branch context.
+#
+# Upstream evidence (pi v0.69.0, 2026-05-17, 100x35 tmux probe):
+#   pi -e test-faux-provider.ts --model test-faux/faux-1 --session-dir <temp>
+#   keys: "What is 20+22?" Enter → wait 42 → /tree Enter → Up → Enter →
+#         Down → Enter (select "Summarize")
+#   wait: "[branch]"
+#   settle: 3s
+#   crop: capture_start="[branch]", capture_end="expand)"
+#   raw cropped upstream block:
+#
+#      [branch]
+#
+#      Branch summary (ctrl+o to expand)
+#
+# This scenario proves:
+#   1. CollectEntriesForBranchSummary extracts the right entries
+#   2. PrepareBranchEntries builds messages within token budget
+#   3. GenerateBranchSummary calls faux provider with BRANCH_SUMMARY_PROMPT
+#   4. BranchSummaryComponent renders the [branch] block
+#   5. utils.go: SerializeConversation serializes branch messages for LLM
+
+name = "03-branch-summarize-via-tree"
+description = "Tree navigation with 'Summarize' triggers branch summarization engine and renders [branch] block."
+covers = [
+  "packages/coding-agent/src/core/compaction/branch-summarization.ts",
+  "packages/coding-agent/src/core/compaction/utils.ts",
+  "packages/agent/src/harness/compaction/branch-summarization.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "[branch]"
+capture_end = "expand)"
+
+# Step 1: Send a message to create session content
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+settle_seconds = 4
+wait_contains = ["42"]
+wait_timeout_seconds = 10
+
+# Step 2: Open /tree
+[[tmux.steps]]
+keys = ["/tree", "Enter"]
+settle_seconds = 2
+wait_contains = ["Session Tree"]
+wait_timeout_seconds = 5
+
+# Step 3: Select the user message (one above current)
+[[tmux.steps]]
+keys = ["Up"]
+settle_seconds = 1
+
+# Step 4: Press Enter to navigate → Summarize dialog opens
+[[tmux.steps]]
+keys = ["Enter"]
+settle_seconds = 2
+wait_contains = ["Summarize branch?"]
+wait_timeout_seconds = 5
+
+# Step 5: Select "Summarize" (Down once from "No summary", then Enter)
+[[tmux.steps]]
+keys = ["Down", "Enter"]
+settle_seconds = 5
+wait_contains = ["[branch]", "Branch summary"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "error"]
+both_contain = ["[branch]", "Branch summary", "expand)"]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

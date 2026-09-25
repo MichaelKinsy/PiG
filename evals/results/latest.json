@@ -1,0 +1,120 @@
+{
+  "kind": "overhead",
+  "generated": "2026-09-23T11:11:39Z",
+  "host": {
+    "platform": "Linux-6.18.44-fc-v37-x86_64-with-glibc2.39",
+    "machine": "x86_64",
+    "cpus": 1,
+    "python": "3.12.3"
+  },
+  "runs": 10,
+  "warmup": 1,
+  "prompt": "Say hello",
+  "session_exchanges": 2000,
+  "harnesses": {
+    "pig": {
+      "name": "PiG",
+      "npm": [],
+      "version": null,
+      "version_output": "0.87.1",
+      "version_command": "pig --version"
+    },
+    "pi": {
+      "name": "Pi",
+      "npm": [
+        "@earendil-works/pi-coding-agent@0.87.1"
+      ],
+      "version": "0.87.1",
+      "version_output": "0.87.1",
+      "version_command": "pi --version"
+    }
+  },
+  "results": [
+    {
+      "scenario": "startup",
+      "title": "Startup (--version)",
+      "by": {
+        "pig": {
+          "runs": 10,
+          "wall_ms_median": 21.5,
+          "wall_ms_p90": 22.4,
+          "wall_ms_min": 20.1,
+          "cpu_ms_median": 21.0,
+          "rss_mib_median": 24.6
+        },
+        "pi": {
+          "runs": 10,
+          "wall_ms_median": 300.3,
+          "wall_ms_p90": 309.6,
+          "wall_ms_min": 284.6,
+          "cpu_ms_median": 299.0,
+          "rss_mib_median": 101.5
+        }
+      }
+    },
+    {
+      "scenario": "round-trip",
+      "title": "One prompt, streamed reply",
+      "by": {
+        "pig": {
+          "runs": 10,
+          "wall_ms_median": 29.1,
+          "wall_ms_p90": 30.7,
+          "wall_ms_min": 27.6,
+          "cpu_ms_median": 27.9,
+          "rss_mib_median": 29.8,
+          "requests": 1,
+          "request_bytes": 5655,
+          "bytes_sent": 5655,
+          "system_bytes": 2466,
+          "tools": 4
+        },
+        "pi": {
+          "runs": 10,
+          "wall_ms_median": 439.8,
+          "wall_ms_p90": 453.7,
+          "wall_ms_min": 424.7,
+          "cpu_ms_median": 436.6,
+          "rss_mib_median": 110.5,
+          "requests": 1,
+          "request_bytes": 5766,
+          "bytes_sent": 5766,
+          "system_bytes": 2656,
+          "tools": 4
+        }
+      }
+    },
+    {
+      "scenario": "resumed-session",
+      "title": "One prompt after resuming a large Session",
+      "by": {
+        "pig": {
+          "runs": 10,
+          "wall_ms_median": 128.7,
+          "wall_ms_p90": 135.1,
+          "wall_ms_min": 127.9,
+          "cpu_ms_median": 124.6,
+          "rss_mib_median": 49.4,
+          "requests": 1,
+          "request_bytes": 425203,
+          "bytes_sent": 425203,
+          "system_bytes": 2454,
+          "tools": 4
+        },
+        "pi": {
+          "runs": 10,
+          "wall_ms_median": 614.6,
+          "wall_ms_p90": 626.8,
+          "wall_ms_min": 585.9,
+          "cpu_ms_median": 608.4,
+          "rss_mib_median": 126.4,
+          "requests": 1,
+          "request_bytes": 425315,
+          "bytes_sent": 425315,
+          "system_bytes": 2645,
+          "tools": 4
+        }
+      }
+    }
+  ]
+}

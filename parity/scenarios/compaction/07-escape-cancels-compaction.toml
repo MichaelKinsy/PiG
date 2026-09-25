@@ -1,0 +1,56 @@
+# Behavior family: compaction
+# Escape cancels manual compaction while no agent turn is streaming.
+# Pinned upstream agent-session.ts marks compaction_end aborted; interactive-mode.ts
+# reports showError("Compaction cancelled"). The slow split-turn request gives
+# Escape a deterministic in-flight operation to cancel.
+# Upstream evidence (2026-09-23): re-probed against pinned Pi 0.87.1;
+# three declared paired runs pass.
+
+name = "07-escape-cancels-compaction"
+description = "Escape aborts manual compaction while the agent is otherwise idle"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/compaction/compaction.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent", "TEST_FAUX_SLOW_COMPACTION=1"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TEST_FAUX_SLOW_COMPACTION=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/compact-session"
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Error: Compaction cancelled"
+capture_end = "Error: Compaction cancelled"
+
+[[tmux.steps]]
+keys = ["/compact", "Enter"]
+wait_contains = ["Compacting context", "escape to cancel"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["Error: Compaction cancelled"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["Error: Compaction cancelled"]
+both_not_contain = [
+  "panic:",
+  "goroutine ",
+  "Compacted from",
+]
+escaped_output_equal = true
+runs = 3

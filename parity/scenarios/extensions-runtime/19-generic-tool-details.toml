@@ -1,0 +1,72 @@
+# Behavior family: extensions-runtime
+# Surface: generic extension tool arguments and Ctrl+O details expansion.
+#
+# D59 records the intentional difference. A registered upstream extension tool
+# with no renderCall uses createCallFallback(), which shows only the tool name;
+# Ctrl+O cannot reveal its arguments. Pig keeps the generic card compact, marks
+# hidden arguments as recoverable, and shows the complete retained value after
+# Ctrl+O. Both use the same extension tool and provider call.
+#
+# Upstream evidence (Pi 0.84.0): an interactive tmux probe with
+# parity-echo.mjs showed only `echo_bridge` plus its result before and after
+# Ctrl+O; the complete JSON argument never appeared.
+# lint-known-gap: D59 intentionally changes the generic fallback layout, so no
+# symmetric equality comparator can describe the accepted output difference;
+# the [diverge] block and complete-argument markers assert both sides.
+
+name = "19-generic-tool-details"
+description = "Generic extension tool details retain complete arguments behind the global expansion toggle (D59)"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/keybindings.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/parity-echo.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-echo.mjs",
+]
+
+[tmux]
+width = 72
+height = 28
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "echo_bridge"
+capture_end = "details-probe-done"
+
+[[tmux.steps]]
+keys = ["Run: extension details", "Enter"]
+wait_contains = ["details-probe-done"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["C-o"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["C-o"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["C-o"]
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["DETAILS_ALPHA_BRAVO_CHARLIE", "KILO_LIMA_TAIL", "details-probe-done"]
+both_not_contain = ["panic:", "goroutine ", "test-faux:"]
+runs = 3
+
+[diverge]
+pig_contains = ["Arguments:"]
+pi_contains = ["echo-bridge:"]
+reason = "D59 SCRUTINIZED:approved. PiG gives generic extension cards a width-aware, recoverable details toggle. Upstream's registered-tool fallback shows only the tool name, and Ctrl+O cannot reveal arguments."

@@ -1,0 +1,41 @@
+# Behavior family: cli-utils
+# Surface: CLI @file argument parsing + initial-message assembly in print mode.
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   command:
+#     PI_SKIP_VERSION_CHECK=1 \
+#       pi --no-extensions -e parity/testdata/test-faux-provider.ts \
+#       --model test-faux/faux-1 --print @testdata/cli-file.txt "prompt-after-file"
+#   output:
+#     cli-file-ok
+#
+# Faux returns cli-file-ok only when the final user prompt contains the
+# upstream-style <file name="..."> wrapper for the @file payload followed by
+# the first positional message with no extra separator inserted.
+
+name = "01-print-initial-message-file-args"
+description = "CLI @file args are wrapped into the initial prompt identically in print mode."
+covers = [
+  "packages/coding-agent/src/cli/args.ts",
+  "packages/coding-agent/src/cli/file-processor.ts",
+  "packages/coding-agent/src/cli/initial-message.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=../tools/testdata/pig-home"]
+pig_args = ["@testdata/cli-file.txt"]
+pi_args = ["@testdata/cli-file.txt"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "prompt-after-file"
+timeout_seconds = 30
+cwd = "."
+
+[assert]
+exit_code = 0
+both_contain = ["cli-file-ok"]
+output_equal = true

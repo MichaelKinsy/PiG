@@ -1,0 +1,34 @@
+# Behavior family: providers-faux-streaming
+# Scenario: faux provider emits TWO tool calls simultaneously (parallel dispatch),
+# both tools execute, results route back to faux, faux replies "parallel-done".
+#
+# This exercises parallel tool dispatch + result routing: faux emits read and
+# bash as a single batch, the agent runs them concurrently, both tool results
+# feed back to faux, faux replies with "parallel-done".
+# Exercises: parallel tool call dispatch, tool-result aggregation,
+# transform-messages (normalizing multiple tool results), agent-loop routing.
+
+name = "07-print-faux-parallel-tools"
+description = "Faux triggers read+bash in parallel → both results routed back → faux responds 'parallel-done', parity"
+covers = [
+  "packages/agent/src/agent-loop.ts",
+  "packages/ai/src/api/transform-messages.ts",
+  "packages/agent/src/types.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: parallel reads"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["parallel-done"]
+output_equal = true
+runs = 3

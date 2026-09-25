@@ -1,0 +1,75 @@
+# Behavior family: footer
+#
+# Surface: non-zero context percent rendering with color thresholds
+# (footer.ts:128-139). When usage tokens exceed 70% of context window
+# the percent display is wrapped in theme.fg("warning"); above 90% it
+# is wrapped in theme.fg("error").
+#
+# Hermeticity:
+#   - testdata/context-session/sessions holds a staged JSONL with a
+#     single assistant message containing usage.input=150000. Both
+#     binaries resume that session via `-c` and apply the usage when
+#     computing the footer percent.
+#   - --model github-copilot/claude-haiku-4.5 pins context_window =
+#     200000 so 150000 / 200000 = 75.0% → above the 70% warning
+#     threshold. (Re-pinned for pi 0.87.1, whose github-copilot catalog
+#     dropped gpt-4.1 and has no 128k model left; for an absent id both
+#     binaries warn and fall back to a custom model built from the
+#     provider default, whose 1.0M window moves the percent below the
+#     threshold. The usage moved from 96000 to 150000 with the window,
+#     keeping the asserted 75.0%.)
+#   - testdata/{multi-pig,multi-pi}-agent provides fake OAuth
+#     credentials so the model resolves without any network probe.
+#
+# Promoted from `deferred` 2026-05-21. The previous header speculated
+# that pig used truecolor while pi used basic SGR; re-probing upstream
+# theme dark.json showed warning="yellow" / error="red", both rendered
+# as basic SGR. The real divergence was that pig only coloured the
+# percent digits while upstream coloured the entire `pct%/window (auto)`
+# display string. Fixed in status_line.go::colorContextDisplay.
+#
+# Upstream evidence (pi v0.74.1, probed 2026-05-21; re-pinned to gpt-4.1
+# and re-verified against pi v0.78.1, 2026-06-08; re-pinned to
+# claude-haiku-4.5 and re-probed against pi v0.87.1, 2026-09-23):
+#   Footer line 2 left includes "↑150k 75.0%/200k" with the percent+
+#   window block wrapped in \x1b[33m...\x1b[0m (yellow).
+
+name = "04-footer-nonzero-context"
+description = "footer renders pct%/window in warning color above the 70% threshold"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/footer.ts",
+]
+
+tags = ["tui", "hermetic"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "75.0%/200k"
+ready_pattern_pi = "75.0%/200k"
+ready_timeout_seconds = 25
+capture_start = "75.0%"
+capture_end = "/200k"
+settle_seconds = 2
+cwd = "testdata/context-session"
+
+[env]
+pig = [
+  "PIG_CODING_AGENT_DIR=testdata/multi-pig-agent",
+  "PATH={{FAKE_BIN}}:{{PATH}}",
+]
+pi = [
+  "PI_CODING_AGENT_DIR=testdata/multi-pi-agent",
+  "PATH={{FAKE_BIN}}:{{PATH}}",
+]
+pig_args = ["--no-extensions", "--model", "github-copilot/claude-haiku-4.5", "--session-dir", "sessions", "-c"]
+pi_args = ["--no-extensions", "--model", "github-copilot/claude-haiku-4.5", "--session-dir", "sessions", "-c"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["75.0%/200k"]
+# Equality on the cropped warning block: must include the SGR yellow
+# wrapper to prove the colour threshold actually fires.
+escaped_output_equal = true
+runs = 3

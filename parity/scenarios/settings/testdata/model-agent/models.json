@@ -1,0 +1,12 @@
+{
+  "providers": {
+    "fixture": {
+      "api": "openai-completions",
+      "baseUrl": "http://127.0.0.1:1/v1",
+      "apiKey": "local-fixture-not-a-secret",
+      "models": [
+        {"id": "thinking-model", "name": "Thinking model", "reasoning": true, "input": ["text"], "contextWindow": 8000, "maxTokens": 2000}
+      ]
+    }
+  }
+}

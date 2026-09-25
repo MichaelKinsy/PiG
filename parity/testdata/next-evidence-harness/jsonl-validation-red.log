@@ -1,0 +1,36 @@
+$ go test ./agent/harness/session -run '^TestHarnessJSONLInvalidHeaderRepositoryOpen$' -count=1 -json
+exit: 1
+Go test Output events follow verbatim; top-level completion events retain elapsed seconds.
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen
+=== PAUSE TestHarnessJSONLInvalidHeaderRepositoryOpen
+=== CONT  TestHarnessJSONLInvalidHeaderRepositoryOpen
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/wrong-format
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/wrong-format (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/wrong-kind
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/wrong-kind (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/null-id
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/null-id (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/nonstring-cwd
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/nonstring-cwd (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/future-storage
+    team_harness_jsonl_types_test.go:86: repository accepted invalid header {"createdAt":1234,"cwd":"/workspace","id":"schema","kind":"header","storageVersion":2,"v":4}
+        {torn
+--- FAIL: TestHarnessJSONLInvalidHeaderRepositoryOpen/future-storage (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/zero-storage
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/zero-storage (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/fractional-storage
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/fractional-storage (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/negative-created
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/negative-created (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/zero-next-seq
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/zero-next-seq (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/null-parent
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/null-parent (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/nonstring-legacy-parent
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/nonstring-legacy-parent (0.00s)
+--- FAIL: TestHarnessJSONLInvalidHeaderRepositoryOpen (0.01s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/agent/harness/session	0.034s
+
+Top-level completion events:
+{"Time": "2026-09-24T22:01:15.134083376-07:00", "Action": "fail", "Package": "github.com/MichaelKinsy/PiG/agent/harness/session", "Test": "TestHarnessJSONLInvalidHeaderRepositoryOpen", "Elapsed": 0.01}

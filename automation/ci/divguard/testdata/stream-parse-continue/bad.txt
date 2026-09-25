@@ -1,0 +1,42 @@
+// divguard:path ai/openai.go
+
+package ai
+
+import (
+	"bufio"
+	"encoding/json"
+	"io"
+	"log"
+)
+
+type chunk struct{ Text string }
+
+// parseSSE reproduces AI-08: a corrupt chunk is skipped and the turn still
+// ends as a success with its text missing.
+func parseSSE(r io.Reader, emit func(chunk)) {
+	sc := bufio.NewScanner(r)
+	for sc.Scan() {
+		var c chunk
+		if err := json.Unmarshal(sc.Bytes(), &c); err != nil { // want
+			continue
+		}
+		emit(c)
+	}
+}
+
+func parseAnthropic(lines []string, emit func(chunk)) {
+	for _, line := range lines {
+		var c chunk
+		if json.Unmarshal([]byte(line), &c) != nil { // want
+			continue
+		}
+		var err error
+		err = json.Unmarshal([]byte(line), &c)
+		if err != nil { // want
+			log.Printf("bad chunk: %v", err.Error())
+			continue
+		}
+		_ = json.Unmarshal([]byte(line), &c) // want
+		emit(c)
+	}
+}

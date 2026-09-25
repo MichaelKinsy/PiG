@@ -1,0 +1,43 @@
+# Behavior family: tools
+# Scenario: print-mode read tool execution via faux provider.
+#
+# Faux provider receives "Run: read parity-read-target.txt", emits a read
+# tool call. The tool reads the testdata file, returns its content. Faux
+# sees the result and replies with text "done". Print mode outputs "done".
+#
+# Upstream evidence (2026-05-15):
+#   cd parity/scenarios/tools/testdata
+#   pi --no-extensions -e ../../../testdata/test-faux-provider.ts --model test-faux/faux-1 \
+#     --print "Run: read parity-read-target.txt"
+#   output: "done"
+#   exit: 0
+#
+#   PIG_TEST_FAUX=1 pig --no-extensions --model test-faux/faux-1 \
+#     --print "Run: read parity-read-target.txt"
+#   output: "done"
+#   exit: 0
+
+name = "02-print-read-tool-exec"
+description = "Faux triggers read(parity-read-target.txt), both produce done in print mode"
+covers = [
+  "packages/coding-agent/src/core/tools/read.ts",
+  "packages/agent/src/harness/tools/read.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--no-extensions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: read parity-read-target.txt"
+timeout_seconds = 30
+cwd = "testdata"
+
+[assert]
+exit_code = 0
+both_contain = ["done"]
+output_equal = true

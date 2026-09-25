@@ -1,0 +1,257 @@
+package source
+
+import (
+	"os"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+func TestResolveConventionalForms(t *testing.T) {
+	tests := []struct {
+		name     string
+		prepare  func(*testing.T, string) string
+		language string
+		form     Form
+		packable bool
+	}{
+		{
+			name: "go factory", language: "go", form: Factory, packable: true,
+			prepare: func(t *testing.T, root string) string {
+				writeSourceTestFile(t, filepath.Join(root, "go.mod"), "module example.com/review\n\ngo 1.26\n")
+				writeSourceTestFile(t, filepath.Join(root, "extension.go"), "package review\nimport sdk \"github.com/MichaelKinsy/PiG/extensions/sdk\"\nfunc Extension() *sdk.Extension { return nil }\n")
+				return root
+			},
+		},
+		{
+			name: "go standalone", language: "go", form: Standalone,
+			prepare: func(t *testing.T, root string) string {
+				writeSourceTestFile(t, filepath.Join(root, "go.mod"), "module example.com/review\n\ngo 1.26\n")
+				writeSourceTestFile(t, filepath.Join(root, "main.go"), "package main\nfunc main() {}\n")
+				return root
+			},
+		},
+		{
+			name: "rust factory", language: "rust", form: Factory, packable: true,
+			prepare: func(t *testing.T, root string) string {
+				writeSourceTestFile(t, filepath.Join(root, "Cargo.toml"), "[package]\nname = \"review-ext\"\nversion = \"0.1.0\"\n")
+				writeSourceTestFile(t, filepath.Join(root, "src", "lib.rs"), "pub fn new_extension() -> pig_sdk::Extension { todo!() }\n")
+				return root
+			},
+		},
+		{
+			name: "rust standalone", language: "rust", form: Standalone,
+			prepare: func(t *testing.T, root string) string {
+				writeSourceTestFile(t, filepath.Join(root, "Cargo.toml"), "[package]\nname = \"review-ext\"\nversion = \"0.1.0\"\n")
+				writeSourceTestFile(t, filepath.Join(root, "src", "main.rs"), "fn main() {}\n")
+				return root
+			},
+		},
+		{
+			name: "python factory", language: "python", form: Factory, packable: true,
+			prepare: func(t *testing.T, root string) string {
+				writeSourceTestFile(t, filepath.Join(root, "review_ext.py"), "def new_extension() -> Extension:\n    pass\n")
+				return root
+			},
+		},
+		{
+			name: "python standalone", language: "python", form: Standalone,
+			prepare: func(t *testing.T, root string) string {
+				path := filepath.Join(root, "main.py")
+				writeSourceTestFile(t, path, "#!/usr/bin/env python3\nprint('standalone')\n")
+				if err := os.Chmod(path, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				return root
+			},
+		},
+		{
+			name: "node factory stays isolated", language: "node", form: Factory,
+			prepare: func(t *testing.T, root string) string {
+				writeSourceTestFile(t, filepath.Join(root, "index.js"), "export default function extension(pi) {}\n")
+				return root
+			},
+		},
+		{
+			name: "node executable standalone", language: "node", form: Standalone,
+			prepare: func(t *testing.T, root string) string {
+				path := filepath.Join(root, "run.mjs")
+				writeSourceTestFile(t, path, "#!/usr/bin/env node\n")
+				if err := os.Chmod(path, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				return path
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			definition, err := Resolve(tc.prepare(t, t.TempDir()))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if definition.Language != tc.language || definition.Form != tc.form || definition.Packable != tc.packable {
+				t.Fatalf("definition = %#v", definition)
+			}
+		})
+	}
+}
+
+func TestResolveGoMultiFactoryModuleRequiresExactPackageSelection(t *testing.T) {
+	root := t.TempDir()
+	writeSourceTestFile(t, filepath.Join(root, "go.mod"), "module example.com/multi\n\ngo 1.26\n")
+	for _, name := range []string{"alpha", "beta"} {
+		writeSourceTestFile(t, filepath.Join(root, name, "extension.go"), "package "+name+"\nimport sdk \"github.com/MichaelKinsy/PiG/extensions/sdk\"\nfunc Extension() *sdk.Extension { return nil }\n")
+	}
+
+	if _, err := Resolve(root); err == nil || !strings.Contains(err.Error(), "example.com/multi/alpha") || !strings.Contains(err.Error(), "example.com/multi/beta") {
+		t.Fatalf("module-root ambiguity error = %v, want both exact candidates", err)
+	}
+	for _, name := range []string{"alpha", "beta"} {
+		definition, err := Resolve(filepath.Join(root, name))
+		if err != nil {
+			t.Fatalf("Resolve(%s): %v", name, err)
+		}
+		if definition.Root != root || definition.ModulePath != "example.com/multi" || definition.Package != "example.com/multi/"+name || definition.Form != Factory {
+			t.Fatalf("Resolve(%s) = %#v", name, definition)
+		}
+	}
+}
+
+func TestResolveRejectsAmbiguousAndNonstandardFactories(t *testing.T) {
+	tests := []struct {
+		name    string
+		prepare func(*testing.T, string)
+		want    string
+	}{
+		{
+			name: "multiple languages", want: "multiple extension languages",
+			prepare: func(t *testing.T, root string) {
+				writeSourceTestFile(t, filepath.Join(root, "go.mod"), "module example.com/x\n")
+				writeSourceTestFile(t, filepath.Join(root, "Cargo.toml"), "[package]\nname=\"x\"\n")
+			},
+		},
+		{
+			name: "go nonstandard", want: "func Extension() *sdk.Extension",
+			prepare: func(t *testing.T, root string) {
+				writeSourceTestFile(t, filepath.Join(root, "go.mod"), "module example.com/x\n")
+				writeSourceTestFile(t, filepath.Join(root, "extension.go"), "package x\nimport sdk \"github.com/MichaelKinsy/PiG/extensions/sdk\"\nfunc NewExtension() *sdk.Extension { return nil }\n")
+			},
+		},
+		{
+			name: "rust factory and standalone", want: "both factory and standalone",
+			prepare: func(t *testing.T, root string) {
+				writeSourceTestFile(t, filepath.Join(root, "Cargo.toml"), "[package]\nname=\"x\"\n")
+				writeSourceTestFile(t, filepath.Join(root, "src", "lib.rs"), "pub fn new_extension() -> Extension { todo!() }\n")
+				writeSourceTestFile(t, filepath.Join(root, "src", "main.rs"), "fn main() {}\n")
+			},
+		},
+		{
+			name: "rust nonstandard factory", want: "pub fn new_extension() -> Extension",
+			prepare: func(t *testing.T, root string) {
+				writeSourceTestFile(t, filepath.Join(root, "Cargo.toml"), "[package]\nname=\"x\"\n")
+				writeSourceTestFile(t, filepath.Join(root, "src", "lib.rs"), "pub fn make_extension() -> Extension { todo!() }\n")
+			},
+		},
+		{
+			name: "python nonstandard factory", want: "def new_extension() factory",
+			prepare: func(t *testing.T, root string) {
+				writeSourceTestFile(t, filepath.Join(root, "custom.py"), "def make_extension():\n    pass\n")
+			},
+		},
+		{
+			name: "node missing default export", want: "no Pi-compatible default export",
+			prepare: func(t *testing.T, root string) {
+				writeSourceTestFile(t, filepath.Join(root, "index.js"), "export function extension(pi) {}\n")
+			},
+		},
+		{
+			name: "node multiple package entries", want: "resolves to 2 entrypoints",
+			prepare: func(t *testing.T, root string) {
+				writeSourceTestFile(t, filepath.Join(root, "package.json"), `{"pi":{"extensions":["one.js","two.js"]}}`)
+				writeSourceTestFile(t, filepath.Join(root, "one.js"), "export default function one(pi) {}\n")
+				writeSourceTestFile(t, filepath.Join(root, "two.js"), "export default function two(pi) {}\n")
+			},
+		},
+		{
+			name: "python multiple factories", want: "multiple Python factory modules",
+			prepare: func(t *testing.T, root string) {
+				writeSourceTestFile(t, filepath.Join(root, "one.py"), "def new_extension() -> Extension:\n    pass\n")
+				writeSourceTestFile(t, filepath.Join(root, "two.py"), "def new_extension() -> Extension:\n    pass\n")
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			tc.prepare(t, root)
+			_, err := Resolve(root)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("Resolve error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func writeSourceTestFile(t *testing.T, path, content string) {
+	t.Helper()
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestResolvePythonRejectsUnimportableFactoryModuleName(t *testing.T) {
+	root := t.TempDir()
+	writeSourceTestFile(t, filepath.Join(root, "9-bad.py"), "def new_extension() -> Extension:\n    pass\n")
+	_, err := Resolve(root)
+	if err == nil || !strings.Contains(err.Error(), "not importable") || !strings.Contains(err.Error(), "do not start with a digit") {
+		t.Fatalf("Resolve error = %v", err)
+	}
+}
+
+// TestResolveGoFactoryRecordsSDKModulePath pins AK-001: a factory importing
+// the Pig 0.84 SDK module path is the same conventional factory as one
+// importing the current path, differing only in the recorded SDK identity.
+func TestResolveGoFactoryRecordsSDKModulePath(t *testing.T) {
+	tests := []struct {
+		name, imports, sdkModulePath string
+	}{
+		{name: "current", imports: `import sdk "github.com/MichaelKinsy/PiG/extensions/sdk"`, sdkModulePath: GoSDKModulePath},
+		{name: "legacy", imports: `import sdk "github.com/mainstai/pig/extensions/sdk"`, sdkModulePath: LegacyGoSDKModulePath},
+		{name: "legacy implicit name", imports: `import "github.com/mainstai/pig/extensions/sdk"`, sdkModulePath: LegacyGoSDKModulePath},
+		{name: "legacy alias", imports: "import (\n\t\"os\"\n\tpig \"github.com/mainstai/pig/extensions/sdk\"\n)\nvar _ = os.Getenv", sdkModulePath: LegacyGoSDKModulePath},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeSourceTestFile(t, filepath.Join(root, "go.mod"), "module example.com/ask\n\ngo 1.26\n\nrequire "+test.sdkModulePath+" v0.0.0\n")
+			result := "*sdk.Extension"
+			if strings.Contains(test.imports, "pig \"") {
+				result = "*pig.Extension"
+			}
+			writeSourceTestFile(t, filepath.Join(root, "main.go"), "package ask\n"+test.imports+"\nfunc Extension() "+result+" { return nil }\n")
+			definition, err := Resolve(root)
+			if err != nil {
+				t.Fatalf("Resolve: %v", err)
+			}
+			if definition.Language != "go" || definition.Form != Factory || definition.Factory != "Extension" || definition.Package != "example.com/ask" || !definition.Packable {
+				t.Fatalf("definition = %+v", definition)
+			}
+			if definition.SDKModulePath != test.sdkModulePath {
+				t.Fatalf("SDKModulePath = %q, want %q", definition.SDKModulePath, test.sdkModulePath)
+			}
+		})
+	}
+}
+
+func TestResolveGoFactoryRejectsUnrelatedExtensionType(t *testing.T) {
+	root := t.TempDir()
+	writeSourceTestFile(t, filepath.Join(root, "go.mod"), "module example.com/other\n\ngo 1.26\n")
+	writeSourceTestFile(t, filepath.Join(root, "main.go"), "package other\nimport sdk \"example.com/not/the/pig/sdk\"\nfunc Extension() *sdk.Extension { return nil }\n")
+	if _, err := Resolve(root); err == nil || !strings.Contains(err.Error(), "has no func Extension() *sdk.Extension factory") {
+		t.Fatalf("Resolve error = %v", err)
+	}
+}

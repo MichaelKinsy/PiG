@@ -1,0 +1,50 @@
+# Behavior family: extensions-runtime
+# Scenario: extension tool_result handler modifies bash tool output.
+#
+# parity-result-modifier.mjs registers a tool_result handler that appends
+# "[parity-modified]" to any bash tool result text. Faux provider calls
+# bash(echo parity-base), the modifier appends its marker, and faux detects
+# the marker in the round-tripped tool result.
+#
+# This exercises the runner.ts emitToolResult pipeline: content mutation
+# chains through handlers and round-trips back to the model.
+#
+# Upstream evidence (2026-05-16):
+#   cd parity/scenarios/extensions-runtime
+#   PI_CODING_AGENT_DIR=testdata/pi-agent \
+#     pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts \
+#     -e testdata/ext/parity-result-modifier.mjs \
+#     --model test-faux/faux-1 \
+#     --print "Run: bash modified"
+#   output: "modified:parity-modified"
+#   exit: 0
+
+name = "02-print-tool-result-modifier"
+description = "Extension tool_result handler mutates bash output, verified in print mode"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/parity-result-modifier.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-result-modifier.mjs",
+]
+
+[print]
+prompt = "Run: bash modified"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["modified:parity-modified"]
+output_equal = true
+runs = 3

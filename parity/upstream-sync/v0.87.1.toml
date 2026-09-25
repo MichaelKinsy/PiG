@@ -1,0 +1,2802 @@
+from = "0.84.0"
+to = "0.87.1"
+
+[[files]]
+path = "packages/agent/src/agent-loop.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta adds transcript-declared tool changes plus prepareRequest/finishTurn scheduling and continuation state. The cited faux tool-cycle scenarios do not isolate those new transitions or subscriber ordering, and no delta-specific Go regression on main closes them."
+
+[[files]]
+path = "packages/agent/src/agent.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta moves the system prompt and native tool loadout into the transcript and replaces shouldStopAfterTurn with finishTurn/prepareRequest behavior. Arithmetic and the existing broad agent tests do not prove that changed loadout, callback, and subscriber contract end to end."
+
+[[files]]
+path = "packages/agent/src/harness/agent-harness.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP maps this file to Go source (agent/harness/session/*.go, agent/*.go) that still implements the pre-0.87.1 API shape (coding/session.go's Runtime/Session wrapper); the 0.87.1 delta replaces it with a Storage/Write/Branch/CommitResult/Context model whose supporting TS files (packages/agent/src/harness/context.ts, harness/runtime/harness.ts, harness/runtime/types.ts) are marked `(new upstream by 0.87.1; not mapped)` elsewhere in PORT_MAP.md. The cited evidence exercises the existing pre-refactor behavior, not the new shape; no Go identifier for the new surface (LaneBusy, HarnessFault, SuspendedRun) exists anywhere in the tree."
+
+[[files]]
+path = "packages/agent/src/harness/compaction/branch-summarization.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/agent/src/harness/context.ts` (new `Context` parameter threaded through `generateBranchSummary`), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/agent/src/harness/compaction/compaction.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/agent/src/harness/context.ts` and `packages/agent/src/harness/utils/usage.ts` (new `Context`-threaded `createSummaryRequestOptions`/usage helpers), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/agent/src/harness/config.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/context.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/env/nodejs.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(Node-only execution environment)`"
+
+[[files]]
+path = "packages/agent/src/harness/events.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/execution/assistant.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/execution/effect-gate.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/execution/tools.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/hooks.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/messages.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `messages.ts` behavior. Existing evidence (`parity/scenarios/slash-commands/07-skill-command-system-prompt.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/agent/src/harness/pico3/bash.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/bounded.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/chord.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/context.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/harness.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/hooks.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/index.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/jsonl.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/collapse.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/entries.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/frames.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/generation.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/job.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/plugin.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/post-tools.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/task-api.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/kinds/tool.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/membrane.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/memory.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/scheduler.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/session.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/system.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/types.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/pico3/view.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/prompt-templates.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/agent/src/harness/context.ts` (every loader function now takes the new `Context` parameter), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/agent/src/harness/reducer.ts"
+change = "removed"
+disposition = "deferred"
+evidence = []
+rationale = "upstream refactored the harness session/storage layer into the new packages/agent/src/harness/pico3/ and packages/agent/src/harness/runtime/ subsystem in 0.87.1, which PORT_MAP tracks as ⬜ (not started, experimental Pico3 harness not reachable from pi's main CLI path); this predecessor file's behavior is superseded there, not independently portable."
+
+[[files]]
+path = "packages/agent/src/harness/result.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(TS Result<T,E> monad + TaggedError/matchError; pig uses Go-native (T,error)/(T,*Error) tuples and typed errors e.g. session.Error{Code}: language mechanics, designed out)`"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/boundary.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/checkpoint.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/deferred.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/generation.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/reconcile.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/recovery.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/response.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/retry.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/structural.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/terminal.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/tool-placement.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/drive/tools.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/harness.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/index.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(barrel)`"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/lane.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/progress.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/reducer.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/restore.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/transcript.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/runtime/types.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/commit.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/context.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The Go implementation (agent/harness/session/context.go) still exposes the pre-0.87.1 API (`SessionContext{thinkingLevel,model,activeToolNames}`, `deriveSessionContextState`, `defaultContextEntryTransform`, `CustomEntryProjector`) that this diff removes; there is no `EntryProjector`/`isContextMessage`/single-argument `buildContextEntries` in Go. context_test.go tests the old function names, not the 0.87.1 shape. Depends on `packages/agent/src/harness/context.ts`, marked not-mapped in PORT_MAP.md."
+
+[[files]]
+path = "packages/agent/src/harness/session/fork-policy.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/fork.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/in-memory-storage-state.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(barrel)`"
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl.ts"
+change = "removed"
+disposition = "deferred"
+evidence = []
+rationale = "upstream refactored the harness session/storage layer into the new packages/agent/src/harness/pico3/ and packages/agent/src/harness/runtime/ subsystem in 0.87.1, which PORT_MAP tracks as ⬜ (not started, experimental Pico3 harness not reachable from pi's main CLI path); this predecessor file's behavior is superseded there, not independently portable."
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/codec.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "agent/harness/session/codec.go still encodes/parses the pre-0.87.1 `Header`/`Metadata` shape (codec_test.go's TestHeaderRoundTrip/TestMetadataFromHeader construct `Header{...}`, not the 0.87.1 `JsonlStorageHeader{v,kind,storageVersion,nextSeq}` or `isLegacyV3SessionHeader`). Depends on `packages/agent/src/harness/session/jsonl/legacy-v3.ts` and `.../io.ts`, both marked not-mapped in PORT_MAP.md."
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/errors.ts"
+change = "removed"
+disposition = "deferred"
+evidence = []
+rationale = "upstream refactored the harness session/storage layer into the new packages/agent/src/harness/pico3/ and packages/agent/src/harness/runtime/ subsystem in 0.87.1, which PORT_MAP tracks as ⬜ (not started, experimental Pico3 harness not reachable from pi's main CLI path); this predecessor file's behavior is superseded there, not independently portable."
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/fork.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/index.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(barrel)`"
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/io.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/legacy-v3.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/repo.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/agent/src/harness/context.ts`, `session/jsonl/fork.ts`, `session/jsonl/io.ts`, and `session/jsonl/legacy-v3.ts` (the new `Storage`/fork/legacy-v3 model this file is rewritten around), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/storage.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/agent/src/harness/context.ts`, `session/commit.ts`, `session/in-memory-storage-state.ts`, `session/jsonl/io.ts`, `session/jsonl/legacy-v3.ts`, and `session/values.ts` (the new `Storage`/`Write`/value-list model this file is rewritten around), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/types.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Defines `JSONL_FORMAT_VERSION`/`JsonlStorageHeader`, which back the new Storage/Write model; agent/harness/session/*.go still implement the pre-0.87.1 `Header`/`Metadata`/`JsonlSessionRepoOptions` shape this diff removes, and the new shape has no Go counterpart."
+
+[[files]]
+path = "packages/agent/src/harness/session/memory.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ✅ ported (`agent/harness/session/memory.go (in-memory storage/repo; passes full upstream conformance suite)`) but neither a parity scenario nor a Go unit test currently exercises it; tracked as an open verification gap in parity/coverage.md's untested bucket; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/mutation-line.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/search.ts"
+change = "removed"
+disposition = "deferred"
+evidence = []
+rationale = "upstream refactored the harness session/storage layer into the new packages/agent/src/harness/pico3/ and packages/agent/src/harness/runtime/ subsystem in 0.87.1, which PORT_MAP tracks as ⬜ (not started, experimental Pico3 harness not reachable from pi's main CLI path); this predecessor file's behavior is superseded there, not independently portable."
+
+[[files]]
+path = "packages/agent/src/harness/session/session.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP maps this file to Go source (agent/harness/session/*.go, agent/*.go) that still implements the pre-0.87.1 API shape (`BranchBounds`, `LanePointer`, `LogOptions`, `RecordQuery`, `ProvisionedEntry`); the 0.87.1 delta replaces it with a Storage/Write/Branch/CommitResult/Context model whose supporting TS files (packages/agent/src/harness/context.ts, session/commit.ts, session/mutation-line.ts, session/values.ts) are marked `(new upstream by 0.87.1; not mapped)` elsewhere in PORT_MAP.md. The cited evidence exercises the existing pre-refactor behavior, not the new shape; no Go identifier for the new surface (`Storage`, `Write`, `Branch`, `CommitResult`, `SessionInvariantError`, `SessionInvalidBranchError`) exists anywhere in the tree."
+
+[[files]]
+path = "packages/agent/src/harness/session/state.ts"
+change = "removed"
+disposition = "deferred"
+evidence = []
+rationale = "upstream refactored the harness session/storage layer into the new packages/agent/src/harness/pico3/ and packages/agent/src/harness/runtime/ subsystem in 0.87.1, which PORT_MAP tracks as ⬜ (not started, experimental Pico3 harness not reachable from pi's main CLI path); this predecessor file's behavior is superseded there, not independently portable."
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/benchmark/datasets.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/benchmark/session-repo.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/benchmark/storage.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/conformance.ts"
+change = "removed"
+disposition = "deferred"
+evidence = []
+rationale = "upstream refactored the harness session/storage layer into the new packages/agent/src/harness/pico3/ and packages/agent/src/harness/runtime/ subsystem in 0.87.1, which PORT_MAP tracks as ⬜ (not started, experimental Pico3 harness not reachable from pi's main CLI path); this predecessor file's behavior is superseded there, not independently portable."
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/conformance/session-repo.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/conformance/storage.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/gating-storage.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(barrel)`"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/instrumented-storage.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/storage-decorator.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/types.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Renames the conformance fixture surface to `StorageFixture`/`ConformanceCase` around the new `Storage` model; agent/harness/session/conformance_suite_test.go still fixtures the pre-0.87.1 repository/backend shape, since the underlying session/storage/repo Go files were not migrated to the new model (see session.ts, jsonl/storage.ts, jsonl/repo.ts rows)."
+
+[[files]]
+path = "packages/agent/src/harness/session/types.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP maps this file to Go source (agent/harness/session/*.go, agent/*.go) that still implements the pre-0.87.1 API shape (`IdGenerator`, per-kind entry interfaces (`ModelChangeEntry`, `ThinkingLevelEntry`, `ActiveToolsEntry`), `RecordBase`); the 0.87.1 delta replaces it with a Storage/Write/Branch/CommitResult/Context model whose supporting TS files (packages/agent/src/harness/context.ts, session/values.ts) are marked `(new upstream by 0.87.1; not mapped)` elsewhere in PORT_MAP.md. The cited evidence exercises the existing pre-refactor behavior, not the new shape; no Go identifier for the new surface (`SettledAssistantMessage`, `EntryProjector`, `EntryType`, chord-sourced `JsonValue`) exists anywhere in the tree."
+
+[[files]]
+path = "packages/agent/src/harness/session/values.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/skills.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/agent/src/harness/context.ts` (every loader function now takes the new `Context` parameter), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/agent/src/harness/telemetry.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(not ported: telemetry is supplied through extensions)`"
+
+[[files]]
+path = "packages/agent/src/harness/tools/bash.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "internal/codingagent/tools/bash.go's `Execute` still uses the pre-0.87.1 4-argument signature (`ctx context.Context, toolCallID string, rawParams json.RawMessage, onUpdate agent.ToolUpdateCallback`); the 0.87.1 diff replaces the throttled onChunk streaming with `env.exec`'s checkpoint/capture/spill mechanism and a 6-argument tool signature (`toolContext, _invocation, context`). Neither the new signature nor the checkpoint-based progress streaming exists in Go. The cited scenario's prompt (`expr 20 + 22`) finishes in well under the 2s checkpoint interval and produces output far too small to exercise capture/spill."
+
+[[files]]
+path = "packages/agent/src/harness/tools/edit.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "internal/codingagent/tools/edit.go's `Execute` still uses the pre-0.87.1 4-argument signature; this diff's `execute(_toolCallId, input, _onUpdate, {env}, _invocation, context)` 6-argument shape (plus the new `isSingleEditInput` object-form-edit acceptance) has no Go counterpart."
+
+[[files]]
+path = "packages/agent/src/harness/tools/file-mutation-queue.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/agent/src/harness/context.ts` (the queue key and `withFileMutationQueue` now take the new `Context` parameter instead of no cancellation token), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/agent/src/harness/tools/image.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/image_detect_test.go", "test:internal/imageprocessing/images_test.go"]
+rationale = "The 0.87.1 delta adds `isBmp` header validation to `detectSupportedImageMimeType`. `imageprocessing.DetectSupportedImageMimeType` ports it and `tools.SupportedImageMime` delegates to it; `TestSupportedImageMime` checks valid 40- and 12-byte-header BMPs, BM-prefixed text, and bad bit depth, color planes and pixel offset, and `TestDetectSupportedImageMimeType` checks the shared detector."
+
+[[files]]
+path = "packages/agent/src/harness/tools/path-utils.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/agent/src/harness/context.ts` (`resolveToolPath`/`resolveReadToolPath` now take `Context` instead of `AbortSignal`), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/agent/src/harness/tools/read.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "internal/codingagent/tools/read.go's `Execute` still uses the pre-0.87.1 4-argument signature; this diff's 6-argument `execute(..., _onUpdate, {env}, _invocation, context)` shape, and the `imageProcessor` call's new `context` argument, have no Go counterpart. Depends on `packages/agent/src/harness/context.ts`, marked not-mapped in PORT_MAP.md."
+
+[[files]]
+path = "packages/agent/src/harness/tools/write.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "internal/codingagent/tools/write.go's `Execute` still uses the pre-0.87.1 4-argument signature; this diff's 6-argument `execute(_toolCallId, {path,content}, _onUpdate, {env}, _invocation, context)` shape has no Go counterpart."
+
+[[files]]
+path = "packages/agent/src/harness/types.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Defines `AgentHarnessToolUpdateCallback`/`AgentHarnessToolInvocation` (with `getMemo`/`setMemo`) and the new 6-argument tool-execute signature; internal/codingagent/tools/*.go's `Execute` methods all still use the pre-0.87.1 4-argument signature with no invocation-memo API. Also declares `TextLineReader`, which backs `packages/agent/src/harness/execution/effect-gate.ts` and `execution/assistant.ts`, both separately marked `(new upstream by 0.87.1; not mapped)` in PORT_MAP.md. Depends on `packages/agent/src/harness/context.ts`, also not-mapped."
+
+[[files]]
+path = "packages/agent/src/harness/utils/adaptive-publisher.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/utils/output-capture.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/harness/utils/shell-output.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "Rewrites `executeShellWithCapture` around `env.exec`'s new `capture`/`onUpdate` checkpoint API (`applyShellOutputUpdate`, `sanitizeShellOutput` from `packages/agent/src/harness/utils/output-capture.ts`, marked not-mapped in PORT_MAP.md); no Go implementation of this capture/spill model exists. The cited scenario's own prompt (`expr 20 + 22`, ~3 bytes of output) cannot exceed DEFAULT_MAX_BYTES/DEFAULT_MAX_LINES, so it never exercises truncation or spill despite its description claiming 'multi-line output' and a 'truncation pipeline' test."
+
+[[files]]
+path = "packages/agent/src/harness/utils/truncate.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `utf8ByteLength`. Existing evidence (`parity/scenarios/tools/08-print-tool-truncation-pipeline.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/agent/src/harness/utils/usage.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(Go has no barrel exports)`"
+
+[[files]]
+path = "packages/agent/src/proxy.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(not needed: no TS proxy)`"
+
+[[files]]
+path = "packages/agent/src/search/index.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/agent/src/types.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `AgentTurnContext`, `AgentTurnDecision`, `FinishTurn`, `PrepareRequestContext`, `AgentRequestUpdate`, and related changes. Existing evidence (`parity/scenarios/providers-faux-streaming/02-print-faux-tool-cycle.toml`, `parity/scenarios/providers-faux-streaming/07-print-faux-parallel-tools.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/api/anthropic-messages.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `ai/anthropic.go + ai/anthropic_client.go (createClient auth branches and header merge, getBetaFeatures and params.betas, Claude Code identity for sk-ant-oat tokens: Bearer auth, user-agent claude-cli/2.1.280, x-app: cli, claude-code-20250219 + oauth-2025-04-20 betas, Claude Code system block, toClaudeCodeName/fromClaudeCodeName on tools, history, and streamed tool calls; tests in ai/anthropic_oauth_test.go and agent/anthropic_oauth_history_test.go); missing: native mid-conversation tool changes (mid-conversation-tool-changes-2026-07-01 beta, tool_addition/tool_removal blocks, deferred placeholder tool), server-side fallback (allowedFallbackModels fallbacks param, server-side-fallback-2026-07-01 beta, fallback content block and cost), managed mid-conversation effort (supportsMidConvoEffort betas, adaptive block_binding, output_config and effort system messages, providerThinkingLevel), strict tool schemas (supportsStrictTools), toolChoice, metadata.user_id, the getPiUserAgent default User-Agent (utils/pi-user-agent.ts), and mapStopReason edge cases (sensitive error message, unknown stop reasons)`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/api/azure-openai-responses.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `base`, `headers`, `normalizedContext`, `params`, `supportsAdditionalTools`, and related changes. Existing evidence (`parity/scenarios/providers-registry/04-provider-wire-payloads.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/api/bedrock-converse-stream.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `Block`, `REDACTED_THINKING_PLACEHOLDER`, `isSmithyHttpResponse`, `toProviderResponse`, `addResponseHeadersMiddleware`, and related changes. Existing evidence (`parity/scenarios/providers-registry/04-provider-wire-payloads.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/api/cloudflare-ai-binding.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(designed out: fetch adapter over a Cloudflare Workers env.AI binding; PiG runs as a native process, not inside a Worker, so no AI binding exists; HTTPS AI Gateway stays in ai/cloudflare.go)`"
+
+[[files]]
+path = "packages/ai/src/api/constrained-sampling.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `UnsupportedStrictJsonSchemaError`, `UNSUPPORTED_STRICT_SCHEMA_KEYS`, `isJsonSchemaObject`, `isStructuredSchema`, `schemaAllowsNull`, and related changes. Existing evidence (`ai/constrained_sampling_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/api/google-generative-ai.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `base`, `budgets`, `currentTools`, `functionCallingMode`, `headers`, and related changes. Existing evidence (`parity/scenarios/providers-registry/04-provider-wire-payloads.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/api/google-shared.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `GoogleApiThinkingLevel`, `ResolvedGoogleThinkingLevel`, `GOOGLE_SDK_THINKING_LEVEL_MAP`, `resolveGoogleThinkingLevel`, `usesGoogleThinkingLevel`, and related changes. Existing evidence (`parity/scenarios/providers-registry/04-provider-wire-payloads.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/api/google-vertex.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `base`, `budgets`, `currentTools`, `functionCallingMode`, `headers`, and related changes. Existing evidence (`parity/scenarios/providers-registry/04-provider-wire-payloads.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/api/mistral-conversations.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `MistralContentChunk`, `MistralRequestToolCall`, `MistralChatMessage`, `MistralFunctionTool`, `MistralChatPayload`, and related changes. Existing evidence (`parity/scenarios/providers-registry/04-provider-wire-payloads.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/api/openai-codex-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:ai/openai_codex_terminal_test.go#TestOpenAICodexResponses_ResponseDoneNormalizesStatusAndEndTurn"]
+rationale = "PiG now mirrors the 0.87.1 mapCodexEvents delta: response.done terminates the stream, end_turn is retained, and statuses outside Codex's closed set are omitted before shared stop-reason mapping."
+
+[[files]]
+path = "packages/ai/src/api/openai-completions.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `isReasoningDetailObject`, `hasValidCommonReasoningDetailFields`, `isOpenAIReasoningDetail`, `OpenAIReasoningDetailBase`, `OpenAIReasoningSummaryDetail`, and related changes. Existing evidence (`parity/scenarios/providers-faux-streaming/01-print-faux-text-streaming.toml`, `parity/scenarios/providers-faux-streaming/09-orphaned-tool-result-wire.toml`, and 1 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/api/openai-responses-shared.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `appendSystemToolAdditions`, `callId`, `compat`, `includeInitialSystemMessage`, `instructionRole`, and related changes. Existing evidence (`parity/scenarios/providers-registry/04-provider-wire-payloads.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/api/openai-responses.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `getPromptCacheOptions`. Existing evidence (`parity/scenarios/providers-registry/04-provider-wire-payloads.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/api/pi-messages.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⏸ deferred: `(deferred: requires the PiG-owned hosted transport, authentication, privacy, and operational contract)`"
+
+[[files]]
+path = "packages/ai/src/api/simple-options.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `clampMaxTokensToContext`, `DEFAULT_THINKING_BUDGETS`, `thinkingBudgetForLevel`, `clampThinkingBudgetToAnswerRoom`. Existing evidence (`parity/scenarios/providers-faux-streaming/02-print-faux-tool-cycle.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/api/transform-messages.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `closePendingToolCalls`, `heldSystemMessages`. Existing evidence (`parity/scenarios/providers-faux-streaming/02-print-faux-tool-cycle.toml`, `parity/scenarios/providers-faux-streaming/07-print-faux-parallel-tools.toml`, and 1 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/auth/oauth/device-code.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `abortableSleep`. Existing evidence (`parity/scenarios/oauth/03-oauth-github-copilot.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/auth/oauth/github-copilot.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `parseGitHubCopilotModelCatalog`, `fetchWithRateLimitRetry`, `fetchGitHubCopilotModels`, `enableGitHubCopilotModels`. Existing evidence (`parity/scenarios/oauth/03-oauth-github-copilot.toml`, `parity/scenarios/oauth/07-oauth-github-copilot-env.toml`, and 1 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/auth/oauth/kimi-coding.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `kimi-coding.ts` behavior. Existing evidence (`ai/oauth_kimi_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/auth/oauth/load.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `loadMetaOAuth`. Existing evidence (`parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/auth/oauth/meta.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/oauth_meta_test.go"]
+rationale = "ai/oauth_meta_test.go ports the upstream Meta OAuth suite: registration, device polling, key minting, refresh, setup errors, API-key selection, dead sessions, and verification-URI validation."
+
+[[files]]
+path = "packages/ai/src/bun-oauth.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(Bun-only OAuth flow registration; Go links OAuth implementations directly)`"
+
+[[files]]
+path = "packages/ai/src/compat.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `transcript`. Existing evidence (`parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/env-api-keys.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `env-api-keys.ts` behavior. Existing evidence (`parity/scenarios/oauth/07-oauth-github-copilot-env.toml`, `parity/scenarios/providers-registry/01-list-models-env-builtins.toml`, and 1 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/image-models.generated.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `image-models.generated.ts` behavior. Existing evidence (`parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`ai/doc.go`"
+
+[[files]]
+path = "packages/ai/src/models.generated.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `models.generated.ts` behavior. Existing evidence (`parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/models.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This diff centralizes `normalizeContext` at the `Models.stream`/`streamSimple` call sites and replaces `fetchDeferred`'s implementation with a new `streamDeferred` method. No cited evidence calls `Models.stream`/`streamSimple`/`streamDeferred` directly: ai-sdk/01-ai-sdk-helpers.toml only exercises catalog/registry helpers (never streams), and model-resolver-selector/12 drives an offline `/model` picker that never reaches the stream path. `StreamDeferred`/`FetchDeferred` do not exist anywhere in ai/*.go (grep confirms zero matches), so the new deferred-fetch shape is unverified."
+
+[[files]]
+path = "packages/ai/src/providers/all.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `all.ts` behavior. Existing evidence (`parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/providers/cloudflare-ai-gateway.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `CloudflareAIGatewayApi`, `cloudflareAIGatewayProvider`. Existing evidence (`parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/providers/faux.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `serializeContext`. Existing evidence (`parity/scenarios/providers-faux-streaming/01-print-faux-text-streaming.toml`, `parity/scenarios/providers-faux-streaming/03-print-faux-error-stop.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/providers/meta.models.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "The added Meta text-model catalog is not asserted by ai/registry_test.go; that file only checks the unrelated OpenRouter Meta image entry. An exact Meta model ID/metadata catalog regression on main is missing."
+
+[[files]]
+path = "packages/ai/src/providers/meta.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `ai/models_generated.go + ai/openai_responses.go + ai/oauth_meta.go (catalog, openai-responses request shape, Muse subscription OAuth; ai/meta_provider_test.go); missing: META_API_KEY env resolution (ai/auth.go firstAuthEnvKey, internal/codingagent/model_registry.go resolveAPIKeyFromEnv)`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/providers/opencode-go.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `opencode-go.ts` behavior. Existing evidence (`parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/providers/opencode-headers.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:coding/opencode_headers_0871_test.go"]
+rationale = "coding/opencode_headers_0871_test.go exercises all changed header cases: session-ID mapping without cache retention, case-insensitive caller override (including deletion), and omission without a session ID."
+
+[[files]]
+path = "packages/ai/src/providers/opencode.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `opencode.ts` behavior. Existing evidence (`parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/providers/openrouter.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `openrouterProvider`. Existing evidence (`parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan-individual.models.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/qwen_token_plan_models_test.go"]
+rationale = "ai/qwen_token_plan_models_test.go checks the exact individual catalog, retired-model omission, thinking maps, and serialized reasoning fields for the added provider."
+
+[[files]]
+path = "packages/ai/src/providers/qwen-token-plan-individual.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `ai/models_generated.go + ai/openai.go (catalog base URL, openai-completions, qwen enable_thinking + reasoning_effort payload tested); missing: QWEN_TOKEN_PLAN_API_KEY env resolution (ai/auth.go firstAuthEnvKey, internal/codingagent/model_registry.go resolveAPIKeyFromEnv)`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/providers/radius.models.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "ai/registry_test.go explicitly asserts that Radius runtime models are not advertised and only retains a compatibility lookup. It does not prove the added upstream Radius catalog; exact model metadata and supported runtime behavior are missing."
+
+[[files]]
+path = "packages/ai/src/providers/radius.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `ai/models_generated.go + ai/registry.go (0.87.1 published catalog retained; runtime discovery and construction fail closed until the PiG-owned service and pi-messages transport are implemented)`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/providers/xai.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `xaiProvider`. Existing evidence (`parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/types.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `ToolChoice`, `ThinkingTokenBudgetField`, `ModelPromptCache`, `AnthropicAllowedFallbackModel`, `JsonValue`, and related changes. Existing evidence (`parity/scenarios/providers-faux-streaming/01-print-faux-text-streaming.toml`, `parity/scenarios/providers-faux-streaming/03-print-faux-error-stop.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/utils/assistant-message-frame.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/assistant_message_frame_test.go"]
+rationale = "ai/assistant_message_frame_test.go ports the upstream frame suite across text, thinking, tool-call checkpoints, reduction, mutation isolation, malformed sequences, and JSON serialization."
+
+[[files]]
+path = "packages/ai/src/utils/deferred-tools.ts"
+change = "removed"
+disposition = "designed-out"
+evidence = []
+rationale = "upstream removed this tool-name normalization utility by 0.87.1 with no replacement in the current tree; PiG's tool registry has no corresponding normalizer to port."
+
+[[files]]
+path = "packages/ai/src/utils/diagnostics.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `diagnostics.ts` behavior. Existing evidence (`parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/utils/estimate.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `estimateContextTokens`, `estimateToolsTokens`. Existing evidence (`parity/scenarios/compaction/04-overflow-retry.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/utils/event-stream.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `FifoQueue`. Existing evidence (`parity/scenarios/providers-faux-streaming/01-print-faux-text-streaming.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/utils/node-http-proxy.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `stripBrackets`, `parseNoProxyEntry`. Existing evidence (`parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/utils/overflow.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `CEREBRAS_BODYLESS_OVERFLOW_PATTERN`. Existing evidence (`internal/codingagent/auto_recovery_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/utils/pi-user-agent.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/ai/src/utils/retry.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `DEFAULT_MAX_AGENT_RETRY_DELAY_MS`, `retryDelayMs`. Existing evidence (`parity/scenarios/providers-faux-streaming/08-print-faux-auto-retry.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/utils/sleep.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/sleep_test.go"]
+rationale = "ai/sleep_test.go exercises the complete helper contract: normal delay, pre-cancelled context, and cancellation during the wait."
+
+[[files]]
+path = "packages/ai/src/utils/text.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `getSystemMessageText`, `renderSystemMessageUpdate`. Existing evidence (`agent/context_tokens_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/ai/src/utils/transcript.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:ai/transcript_test.go"]
+rationale = "ai/transcript_test.go exercises normalization, immutable JSON containers, system/tool replay order, declaration comparison, update rendering, tool-state changes, and mid-conversation system collapse."
+
+[[files]]
+path = "packages/ai/src/utils/uuid.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(stdlib crypto/rand UUID helpers inline)`"
+
+[[files]]
+path = "packages/ai/src/utils/validation.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `normalizeOptionalNulls`. Existing evidence (`parity/scenarios/providers-faux-streaming/05-print-faux-validation-reject.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/bun/cli.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(Bun-only entrypoint)`"
+
+[[files]]
+path = "packages/coding-agent/src/bun/register-bedrock.ts"
+change = "removed"
+disposition = "designed-out"
+evidence = []
+rationale = "Bun-runtime provider registration entrypoint; PiG has no Bun runtime target (Go binary, not a Node/Bun module host), matching the existing packages/agent/src/harness/env/nodejs.ts n/a treatment for runtime-specific entrypoints."
+
+[[files]]
+path = "packages/coding-agent/src/bun/runtime-setup.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(Bun-only runtime setup)`"
+
+[[files]]
+path = "packages/coding-agent/src/bun/sandbox-env-setup.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(Bun-only sandbox helper)`"
+
+[[files]]
+path = "packages/coding-agent/src/cli.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/coding-agent/src/cli/setup.ts` (`setupCli`), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/coding-agent/src/cli/args.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `normalizeSessionName`. Existing evidence (`parity/scenarios/cli-utils/01-print-initial-message-file-args.toml`, `parity/scenarios/cli-utils/03-startup-resume-picker.toml`, and 6 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/cli/auth-check.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/cli/auth-command.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/cli/config-selector.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `ui`. Existing evidence (`parity/scenarios/selectors/01-config-empty.toml`, `parity/scenarios/selectors/02-config-resources-list.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/cli/credential-print.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⏸ deferred: `deferred: security-sensitive auth print-api-key/print-bearer-token CLI; requires a model-runtime request-auth resolution surface (getAuth with OAuth refresh/persist, listCredentials, getProviders) pig does not yet expose. Port after that lands`"
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/auth.ts"
+change = "removed"
+disposition = "designed-out"
+evidence = []
+rationale = "successor experimental remote-session CLI surface (cli/experimental/cli.ts, command.ts, command-options.ts, commands/client.ts, commands/server.ts) is PORT_MAP n/a: not ported, remote-session capability via A2A, spec 482; pi-client cloud SDK not portable."
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/cli.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(not ported: remote-session capability via A2A, spec 482; pi-client cloud SDK not portable)`"
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/command-options.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(not ported: remote-session capability via A2A, spec 482; pi-client cloud SDK not portable)`"
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/command.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(not ported: remote-session capability via A2A, spec 482; pi-client cloud SDK not portable)`"
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/commands/client.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(not ported: remote-session capability via A2A, spec 482; pi-client cloud SDK not portable)`"
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/commands/pi.ts"
+change = "removed"
+disposition = "designed-out"
+evidence = []
+rationale = "successor experimental remote-session CLI surface (cli/experimental/cli.ts, command.ts, command-options.ts, commands/client.ts, commands/server.ts) is PORT_MAP n/a: not ported, remote-session capability via A2A, spec 482; pi-client cloud SDK not portable."
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/commands/server.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(not ported: remote-session capability via A2A, spec 482; pi-client cloud SDK not portable)`"
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/transport-address.ts"
+change = "removed"
+disposition = "designed-out"
+evidence = []
+rationale = "successor experimental remote-session CLI surface (cli/experimental/cli.ts, command.ts, command-options.ts, commands/client.ts, commands/server.ts) is PORT_MAP n/a: not ported, remote-session capability via A2A, spec 482; pi-client cloud SDK not portable."
+
+[[files]]
+path = "packages/coding-agent/src/cli/file-processor.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `content`. Existing evidence (`parity/scenarios/cli-utils/01-print-initial-message-file-args.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/cli/session-picker.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `SessionsLoader`. Existing evidence (`parity/scenarios/cli-utils/03-startup-resume-picker.toml`, `parity/scenarios/cli-utils/10-startup-resume-picker-cancel.toml`, and 1 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/cli/setup.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/cli/startup-ui.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `partial: ShowStartupSelector/ShowStartupInput ported in internal/codingagent/startup_ui.go. The upstream first-time setup branch is designed out because PiG is not the official Pi distribution, so upstream shouldRunFirstTimeSetup returns false for this binary. Remaining: interactive OSC-11 background query for startup selectors`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/client/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(not ported: remote-session capability via A2A, spec 482; pi-client cloud SDK not portable)`"
+
+[[files]]
+path = "packages/coding-agent/src/client/remote-session.ts"
+change = "removed"
+disposition = "designed-out"
+evidence = []
+rationale = "successor experimental remote-session client (client/index.ts) is PORT_MAP n/a: not ported, remote-session capability via A2A, spec 482; pi-client cloud SDK not portable."
+
+[[files]]
+path = "packages/coding-agent/src/client/transcript.ts"
+change = "removed"
+disposition = "designed-out"
+evidence = []
+rationale = "successor experimental remote-session client (client/index.ts) is PORT_MAP n/a: not ported, remote-session capability via A2A, spec 482; pi-client cloud SDK not portable."
+
+[[files]]
+path = "packages/coding-agent/src/config.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `isBundledNode`, `findNodePackageDir`. Existing evidence (`parity/scenarios/selectors/02-config-resources-list.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session-runtime.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `partial: coding/runtime.go, coding/session.go, and cmd/pig/rpc_mode.go; Session replacement retains the host-scoped extension runner (D30) and startup-project Services and Resources (D61)`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/coding-agent/src/core/cache-warmer.ts` (the new `CacheWarmer` lifecycle hooks `onAgentSettled`/`onModeChanged`/`onWarmed` wired into `AgentSession`), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/coding-agent/src/core/auth-storage.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `ReadOnlyAuthStorage`. Existing evidence (`parity/scenarios/oauth/07-oauth-github-copilot-env.toml`, `parity/scenarios/providers-registry/02-list-models-oauth-builtins.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/bug-report-upload.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(designed out: D62, PiG never uploads bug reports)`"
+
+[[files]]
+path = "packages/coding-agent/src/core/bug-report.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/bug_report_test.go"]
+rationale = "internal/codingagent/bug_report_test.go exercises redaction, archive/export shape, cancellation, summaries, metadata, issue links, session recording, and the no-network production path."
+
+[[files]]
+path = "packages/coding-agent/src/core/cache-stats.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ✅ ported (`internal/codingagent/cache_stats.go`) but neither a parity scenario nor a Go unit test currently exercises it; tracked as an open verification gap in parity/coverage.md's untested bucket; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/cache-warmer.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/compaction/branch-summarization.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `context`, `failure`, `maxTokens`, `requestOptions`. Existing evidence (`parity/scenarios/compaction/03-branch-summarize-via-tree.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/compaction/compaction.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `getMessagesFromProjectedEntryForCompaction`, `estimateProjectedContextTokens`, `UPDATE_SUMMARIZATION_INSTRUCTIONS`, `UPDATE_SUMMARIZATION_PROMPT`, `getSummarizationFailure`, and related changes. Existing evidence (`parity/scenarios/compaction/01-compact-command.toml`, `parity/scenarios/compaction/02-recompact-update-summary.toml`, and 4 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/crash-log.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `internal/codingagent/crash_log.go + interactive_crash.go (crash persistence, startup notice, /bug attachment and cleanup, fatal create/resume/import reporting, and loaded-extension stack attribution; permissive preservation of malformed and unknown crash-record fields remains)`; `internal/codingagent/crash_log_test.go#TestFindExtensionStackMatches` ports the complete upstream extension-attribution test file, while unknown-field preservation still lacks closure"
+
+[[files]]
+path = "packages/coding-agent/src/core/defaults.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `THINKING_LEVEL_OPTIONS`. Existing evidence (`parity/scenarios/footer/02-footer-thinking-indicator.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(barrel)`"
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/jiti-loader.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(barrel re-export)`"
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/jiti-static-loader.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(barrel re-export)`"
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/loader.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `isNodeSeaBinary`, `usesEmbeddedModules`, `createJitiPromise`, `getCreateJiti`, `virtualModulesPromise`, and related changes. Existing evidence (`parity/scenarios/extension-host/01-register-handshake.toml`, `parity/scenarios/extensions-runtime/04-slash-command.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/runner.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/coding-agent/src/core/cache-warmer.ts` (`CacheWarmingAction`), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/types.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `partial: coding/extension/*.go (Layer 0); subprocess setEditorComponent carries decoration instead of a full editor factory, and addAutocompleteProvider accepts only the async suggestion-source bridge; tracked in docs/extension-api-parity.md`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/virtual-modules.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/wrapper.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `wrapper.ts` behavior. Existing evidence (`parity/scenarios/extensions-runtime/01-print-extension-tool-bridge.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/footer-data-provider.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `footer-data-provider.ts` behavior. Existing evidence (`parity/scenarios/footer/01-footer-default.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/http-dispatcher.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `http-dispatcher.ts` behavior. Existing evidence (`parity/scenarios/tools/01-print-bash-tool-exec.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(barrel)`"
+
+[[files]]
+path = "packages/coding-agent/src/core/keybindings.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `useWindowsKeybindings`, `windowsKeybindings`. Existing evidence (`parity/scenarios/extensions-runtime/19-generic-tool-details.toml`, `parity/scenarios/tree/09-tree-filter-user-only.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/messages.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `messages.ts` behavior. Existing evidence (`parity/scenarios/providers-faux-streaming/02-print-faux-tool-cycle.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-config.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This diff adds `ModelInputLimitsSchema`/`inputLimits` config parsing. The cited internal/codingagent/model_registry_test.go has no `inputLimits` assertion (grep confirms zero matches); the complete input-limit configuration/merge test coverage exists only on a separate, unmerged candidate. Land that dependency and cite its exact regression tests before closing this row."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-registry.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `model-registry.ts` behavior. Existing evidence (`internal/codingagent/model_registry_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-resolver.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `perModel`, `scopedModel`. Existing evidence (`parity/scenarios/model-resolver-selector/03-model-invalid.toml`, `parity/scenarios/model-resolver-selector/05-model-direct-switch.toml`, and 2 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-runtime.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `transcript`. Existing evidence (`parity/scenarios/model-resolver-selector/08-scoped-models-selector.toml`, `parity/scenarios/model-resolver-selector/12-expired-credential-is-not-refresh-failure.toml`, and 3 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/models-store.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `models-store.ts` behavior. Existing evidence (`ai/models_store_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/package-manager.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `expandPackageGlob`. Existing evidence (`parity/scenarios/cli-utils/05-package-list-empty.toml`, `parity/scenarios/cli-utils/06-package-list-git-source.toml`, and 3 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/pi-manifest.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `pkg`. Existing evidence (`coding/packagecontent/pi_manifest_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/project-trust.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `project-trust.ts` behavior. Existing evidence (`parity/scenarios/project-trust/01-noninteractive-undecided-denies-project-extension.toml`, `parity/scenarios/project-trust/04-project-cannot-set-its-own-trust-default.toml`, and 2 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/prompt-templates.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `internal/codingagent/prompt_templates.go + prompt_diagnostics.go (file/YAML warnings reach interactive startup/reload and RPC; source labels, collision diagnostics, exact YAML error text and remaining loader semantics need correspondence)`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/provider-composer.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This diff adds `mergeInputLimits`/`inputLimits` passthrough to the model override merge. The cited internal/codingagent/model_registry_test.go has no `inputLimits` assertion (grep confirms zero matches); the complete input-limit configuration/merge test coverage exists only on a separate, unmerged candidate. Land that dependency and cite its exact regression tests before closing this row."
+
+[[files]]
+path = "packages/coding-agent/src/core/radius.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⏸ deferred: `(deferred: PiG-owned hosted service integration is not ratified)`"
+
+[[files]]
+path = "packages/coding-agent/src/core/remote-catalog-provider.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(not ported: pi.dev remote model catalog refresh)`"
+
+[[files]]
+path = "packages/coding-agent/src/core/resource-loader.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `deduped`, `loaded`. Existing evidence (`parity/scenarios/project-trust/01-noninteractive-undecided-denies-project-extension.toml`, `parity/scenarios/project-trust/02-no-approve-denies-project-extension.toml`, and 8 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/sdk.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/coding-agent/src/core/cache-warmer.ts` (`CacheWarmer`), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/coding-agent/src/core/session-export.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/session_export_test.go"]
+rationale = "internal/codingagent/session_export_test.go exercises current-branch serialization, parent chaining, empty branches, relative/default paths, /export integration, and write failures."
+
+[[files]]
+path = "packages/coding-agent/src/core/session-manager.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `UsageEntry`, `ContextEditableContent`, `ContextEditEntry`, `ProjectedSessionEntry`, `SessionProjection`, and related changes. Existing evidence (`parity/scenarios/extensions-runtime/16-resumed-session-identity.toml`, `parity/scenarios/rpc/21-rpc-extension-session-events.toml`, and 4 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/settings-diagnostics.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/settings_diagnostics_test.go"]
+rationale = "internal/codingagent/settings_diagnostics_test.go exercises path/scope diagnostics, deduplication, formatting, and startup rendering by diagnostic type."
+
+[[files]]
+path = "packages/coding-agent/src/core/settings-manager.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `CompactionModelOverride`, `DEFAULT_COMPACTION_TOKEN_SETTINGS`, `FullscreenExitOutput`, `CACHE_WARMING_MODES`, `CacheWarmingMode`, and related changes. Existing evidence (`parity/scenarios/project-trust/01-noninteractive-undecided-denies-project-extension.toml`, `parity/scenarios/project-trust/02-no-approve-denies-project-extension.toml`, and 4 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/skills.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `validateDescription`, `formatSkillsForPrompt`. Existing evidence (`parity/scenarios/slash-commands/07-skill-command-system-prompt.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/slash-commands.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `slash-commands.ts` behavior. Existing evidence (`parity/scenarios/slash-commands/01-session-info-empty.toml`, `parity/scenarios/slash-commands/02-name-set-get.toml`, and 2 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/system-prompt.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `NormalizedBuildSystemPromptOptions`, `SystemPromptSections`, `SYSTEM_PROMPT_SECTION_NAME`, `normalizeBuildSystemPromptOptions`, `renderProjectContext`, and related changes. Existing evidence (`parity/scenarios/slash-commands/07-skill-command-system-prompt.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/bash.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `bashToolSystemPromptContribution`, `createLocalShellOperations`, `createLocalBashOperations`, `BashRenderState`, `ShellToolConfig`, and related changes. Existing evidence (`parity/scenarios/interactive-rendering/07-visual-truncate-bash-collapse.toml`, `parity/scenarios/tools/01-print-bash-tool-exec.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/edit-diff.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `edit-diff.ts` behavior. Existing evidence (`parity/scenarios/interactive-rendering/10-edit-tool-diff.toml`, `parity/scenarios/tools/07-print-edit-tool-exec.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/edit.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `editToolSystemPromptContribution`, `SingleEditInput`, `isSingleEditInput`. Existing evidence (`parity/scenarios/tools/07-print-edit-tool-exec.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/find.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `findToolSystemPromptContribution`. Existing evidence (`parity/scenarios/tools/05-print-find-tool-exec.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/grep.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `grepToolSystemPromptContribution`. Existing evidence (`parity/scenarios/tools/04-print-grep-tool-exec.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(barrel)`"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/ls.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `lsToolSystemPromptContribution`. Existing evidence (`parity/scenarios/tools/06-print-ls-tool-exec.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/powershell.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tools/powershell_test.go"]
+rationale = "internal/codingagent/tools/powershell_test.go exercises platform/config resolution, schema, execution, command wrapping, timeout/abort errors, truncation, registry placement, and activation."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/read.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `readToolSystemPromptContribution`. Existing evidence (`parity/scenarios/tools/02-print-read-tool-exec.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/bash.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:tui/shell_renderers_test.go"]
+rationale = "tui/shell_renderers_test.go exercises the added shell renderer's duration boundaries, bash header, timeout rendering, and elapsed-footer rows."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/edit.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `partial: tui/tool_execution.go (FormatEditHeader) + internal/codingagent/tool_render.go (renderDiffString). Remaining: renderShell \"self\" call box with the async argsComplete preview diff and its pending/success/error header background, str() invalid-arg path, error text de-duplication against the preview error`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/find.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tool_render_list_test.go", "test:tui/list_headers_test.go"]
+rationale = "tui/list_headers_test.go exercises find call rendering, including path/default path, limit, and invalid arguments. internal/codingagent/tool_render_list_test.go TestFindAndLsBodyRenderers exercises the result body: the 20-line collapsed preview, expand hint, complete expanded output, and result-limit warning."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/grep.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tool_render_list_test.go", "test:tui/list_headers_test.go"]
+rationale = "tui/list_headers_test.go exercises grep call rendering, including path/default path, glob, limit, and invalid arguments. internal/codingagent/tool_render_list_test.go TestGrepBodyRenderer exercises the result body: the 15-line collapsed preview, expand hint, complete expanded output, and combined match/byte/line-truncation warning."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/index.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:tui/shell_renderers_test.go"]
+rationale = "tui/shell_renderers_test.go and tui/tool_execution_test.go exercise the added renderer registry for every built-in tool, including PowerShell."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/ls.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/tool_render_list_test.go", "test:tui/list_headers_test.go"]
+rationale = "tui/list_headers_test.go exercises ls call rendering, including linked/default paths, limits, and invalid arguments. internal/codingagent/tool_render_list_test.go TestFindAndLsBodyRenderers exercises the result body: collapsed/expanded output, expand hints, empty output, persisted detail decoding, and combined entry/byte-limit warning."
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/read.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `partial: tui/tool_execution.go (FormatReadHeader) + internal/codingagent/tool_render.go (renderReadLines). Remaining: compact read call for SKILL.md/AGENTS.md/CLAUDE.md/Pi docs, str() invalid-arg path, expanded result without the pig line-number gutter and path header, truncation warning rows, rendering persisted results from call args`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/renderers/write.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `partial: tui/tool_execution.go (FormatWriteHeader) + internal/codingagent/tool_render.go (renderWriteContent). Remaining: content preview in the call while arguments stream (incremental highlight cache), no pig \"@@ path created @@\" header, toolOutput styling of unhighlighted lines, invalid content-arg marker, error-only result`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/write.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `writeToolSystemPromptContribution`. Existing evidence (`parity/scenarios/tools/03-print-write-tool-exec.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/trust-manager.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `trust-manager.ts` behavior. Existing evidence (`parity/scenarios/project-trust/01-noninteractive-undecided-denies-project-extension.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/core/usage-totals.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `usage-totals.ts` behavior. Existing evidence (`parity/scenarios/slash-commands/08-session-info-populated-all-entries.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/experimental/cli.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending owner decision: source-only: tsconfig.build.json excludes src/experimental from Pi's npm package and binaries; this development entrypoint dispatches server/client when PI_EXPERIMENTAL=1, else falls through to main(). The published pi bin never dispatches them, pinned by cmd/pig/experimental_entry_test.go. A PiG analog needs a separate unshipped binary whose only targets are the pending server/client rows)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/client-runtime.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: opens unix or Radius server connections and Chord remote service sources for a presentation; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; pi-server/pi-client/pi-protocol are outside PORT_MAP package scope; its radius:// route is pending owner decision: Q1 Radius)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/client-tui-chat.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: snapshot-driven transcript view over LaneTranscriptSnapshot entries; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/client-tui.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: service-only alt-screen client TUI over replicated Transcript/Models/SessionDirectory services and a Chord FacetHost; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice; Radius reconnect status is pending owner decision: Q1 Radius)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/client.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: non-interactive \"client\" command (discover servers, list/attach/create Session, one-shot prompt) over client-runtime.ts; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; pi-server/pi-client/pi-protocol are outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/commands.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending owner decision: source-only: tsconfig.build.json excludes src/experimental from Pi's npm package and binaries; dispatches \"server\"/\"client\" for the development entrypoint only; \"server\" always starts RadiusRelayHost (pending owner decision: Q1 Radius); parser rows cli/experimental/* are n/a under spec 482)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/coordinator-entry.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: entry for the internal \"coordinator\" process role, spawned only by server.ts ensureCoordinator; no PiG caller until server.ts lands)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/coordinator.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: stable unix-socket endpoint and JSON-line message router between replaceable server generations and session workers; only callers are server.ts, session-worker*.ts, which are pending)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/micro/api.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: MicroView/MicroController boundary over Pico3 types; micro is a standalone source-only program (tsx micro/main.ts), not reachable from pi; experimental Pico3 harness (agent/src/harness/pico3) is ⬜, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/micro/main.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: standalone source-only \"micro\" program entry, not reachable from pi; experimental Pico3 harness (agent/src/harness/pico3) is ⬜, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/micro/models.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Pico3 model adapter over ModelRuntime; experimental Pico3 harness (agent/src/harness/pico3) is ⬜, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/micro/runtime.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: owns ModelRuntime, Pico3 harness, JSONL storage; default model openai-codex/gpt-5.6-sol; experimental Pico3 harness (agent/src/harness/pico3) is ⬜, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/micro/sessions.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: locked session directories under <agentDir>/experimental/micro-sessions/<cwd-hash>/; only consumer is micro/runtime.ts; experimental Pico3 harness (agent/src/harness/pico3) is ⬜, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/micro/tools.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: adapts coding tools to Pico3 tool definitions; experimental Pico3 harness (agent/src/harness/pico3) is ⬜, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/micro/tui.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: alt-screen micro TUI over MicroView; experimental Pico3 harness (agent/src/harness/pico3) is ⬜, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/main.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: standalone source-only \"mini\" program entry (node mini/main.ts), not reachable from pi; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/server/entry.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: mini server process entry; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/server/run.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: mini router, worker supervision, event fan-out over <agentDir>/experimental/mini.sock; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/shared/protocol.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: mini service tokens and wire types carrying LaneSnapshot/LaneWatchEvent; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/shared/rpc.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: harness-free call/emit RPC peer, but its only consumers are mini server/worker/tui; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/shared/transport.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: harness-free newline-delimited JSON connection, but its only consumers are mini server/worker/tui; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/tui/run.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: mini presentation host that spawns the detached mini server; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/tui/session.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: attach/watch/rebase over reduceLaneSnapshot; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/tui/view.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: alt-screen mini view over the replicated LaneSnapshot; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/worker/entry.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: mini session worker process entry; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/worker/lane-service.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Lane watch subscriptions and lane commands; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/worker/models-service.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: catalog, accounts, interactive login service; only consumer is mini/worker/run.ts; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/mini/worker/run.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: opens the Session and builds the AgentHarness for one mini worker; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/plugin.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(Node-runtime-only: the source-only \"@earendil-works/pi-coding-agent/experimental/plugin\" import specifier that plugins/bundled.ts resolvePluginExternal hands to in-process TypeScript facet bundles; PiG has no in-process JS module loader (AGENTS.md forbids an embedded-JS or in-process extension runtime))`"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/plugins/bundled.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(Node-runtime-only: loads Chord facet bundles (esbuild-built ESM) into the server, worker, and client processes by dynamic import; AGENTS.md forbids an embedded-JS or in-process extension runtime)`"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/plugins/package.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(Node-runtime-only: builds TypeScript plugin packages (src/session.ts, src/tui.ts) with @earendil-works/chord/bundler (esbuild) into facet bundles for in-process import; its plugin-package profile JSON only selects those bundles; AGENTS.md forbids an embedded-JS or in-process extension runtime)`"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/process.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: spawns detached coordinator/server/session-worker roles via __PI_INTERNAL_SPAWN for the server stack; its source-mode branch (--import source-resolver.ts) is Node-runtime-only; no PiG caller until server.ts lands)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/radius-auth.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending owner decision: Q1 Radius: resolves the relay Bearer token from --auth-token/--auth-token-file or the stored \"radius\" OAuth credential (5-minute minimum validity, may refresh) for gateway PI_RADIUS_GATEWAY, default https://radius.pi.dev, an Earendil-operated service)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/radius-relay.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending owner decision: Q1 Radius: WebSocket relay to wss://<gateway>/v1/session-relays/<serverId>/connect (default gateway radius.pi.dev, Earendil-operated), subprotocols pi-session-relay.host.v1/client.v1; \"server\" starts the host side unconditionally, \"client --connect radius://<id>\" uses the client side)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/server.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending owner decision: Q1 Radius: startServer always creates and starts RadiusRelayHost, which connects to radius.pi.dev whenever a Radius credential resolves; the rest (server profile under PI_SERVER_DIR or ~/.pi/server, coordinator, worker manager, plugin selection) needs Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope and pi-server/pi-client/pi-protocol are outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/agent-controller-provider.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: AgentController facade over AgentLane; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/agent-controller.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Chord service contract pi.agent-controller; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/connection.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: server and selected-Session remote service sources over pi-client; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; pi-server/pi-client/pi-protocol are outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/models-provider.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Models service facet over ModelRuntime and SettingsManager; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/models.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Chord service contract pi.models with ReplicatedState; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/plugins.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Chord service contracts pi.presentation-plugins and pi.session-plugins for TypeScript facet bundles; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/presentation-ui.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: local Chord service contract pi.local.presentation-ui; only consumer is client-tui.ts; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/server.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: SessionDirectory/SessionManagement/PresentationPlugins server facets; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; pi-server/pi-client/pi-protocol are outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/sessions.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Chord service contracts pi.session-directory and pi.session-management; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; pi-server/pi-client/pi-protocol are outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/slash-commands-provider.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: SlashCommandRegistry and built-in /model, /thinking, /compact, /reload, /hello facets; only consumer is client-tui.ts; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/slash-commands.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: local Chord service contract pi.local.slash-commands; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/transcript-provider.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: publishes the main-lane transcript as ReplicatedState; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/transcript.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: Chord service contract pi.transcript over LaneTranscriptSnapshot; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/services/worker.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: assembles a Session worker's built-in and plugin facets; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/session-worker-manager.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: server-side worker process bookkeeping over the coordinator; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope; pi-server/pi-client/pi-protocol are outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/session-worker.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(pending: per-Session worker process hosting the AgentHarness behind Chord services; 0.87.1 durable harness runtime (AgentLane, LaneTranscriptSnapshot, LaneWatchEvent, reduceLaneSnapshot) is ⬜ under agent/src/harness/runtime, harness slice; Chord service/facet/ReplicatedState runtime is outside PORT_MAP package scope)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/experimental/source-resolver.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(Node-runtime-only: a node:module registerHooks resolve hook that maps tsconfig @earendil-works/* path aliases to .ts sources so internal processes run from a source checkout; Go links packages at build time)`"
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/client.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `LlamaServerProps`. Existing evidence (`internal/codingagent/llama/client_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/index.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `index.ts` behavior. Existing evidence (`internal/codingagent/llama/index_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/provider.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `modelIsSelectable`, `routerAutoloadEnabled`, `toPiModel`. Existing evidence (`internal/codingagent/llama/provider_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/index.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ✅ ported (`coding/doc.go`) but neither a parity scenario nor a Go unit test currently exercises it; tracked as an open verification gap in parity/coverage.md's untested bucket; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/main.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/coding-agent/src/cli/auth-check.ts` and `cli/auth-command.ts` (the new structured auth CLI subcommands), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/coding-agent/src/migrations.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `EXTENSIONS_DOC_URL`. Existing evidence (`parity/scenarios/slash-commands/06-prompt-template-migration-expand.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/bug-report.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ✅ ported (`internal/codingagent/slash_bug.go, internal/codingagent/interactive_bug.go (consent flow, export-only; D62)`) but neither a parity scenario nor a Go unit test currently exercises it; tracked as an open verification gap in parity/coverage.md's untested bucket; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/chat-viewport.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/assistant-message.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `hidden`, `runIndex`, `thinkingComponent`, `thinkingRunIndex`. Existing evidence (`parity/scenarios/interactive-rendering/01-assistant-message-text.toml`, `parity/scenarios/interactive-rendering/04-conversation-layout.toml`, and 3 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `content`. Existing evidence (`parity/scenarios/interactive-rendering/13-branch-summary-message.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `content`. Existing evidence (`parity/scenarios/interactive-rendering/14-compaction-summary-message.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `internal/codingagent/interactive.go realizes the CustomEditor app-keybinding precedence (extension shortcuts -> paste-image -> interrupt with autocomplete/empty guards -> exit-on-empty -> app.session actions -> editor fallthrough) as InteractiveMode dispatch rather than an Editor subclass (structural, observably equivalent). NOT foundation-blocked. Fixed a Ctrl+D exit-guard divergence: app.exit exits only when the editor is empty; a non-empty editor deletes-char-forward (dual-bound tui.editor.deleteCharForward): pig was exiting unconditionally. Guarded by mutation-proven unit tests (TestResolveOutcome, TestResolveOutcomeMatrix). ✅ pending a hermetic precedence parity scenario`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/extension-editor.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `ExtensionEditorOptions`. Existing evidence (`parity/scenarios/selectors/10-extension-editor.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/extension-input.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `extension-input.ts` behavior. Existing evidence (`parity/scenarios/selectors/11-extension-input.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/extension-selector.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `extension-selector.ts` behavior. Existing evidence (`parity/scenarios/selectors/09-extension-selector-summarize-branch.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/footer.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `footer.ts` behavior. Existing evidence (`parity/scenarios/extensions-runtime/15-footer-status-reload-composition.toml`, `parity/scenarios/footer/01-footer-default.toml`, and 4 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(barrel)`"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts` (`refreshModelCatalogs`), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `normalizeEnabled`, `toggle`. Existing evidence (`parity/scenarios/model-resolver-selector/08-scoped-models-selector.toml`, `parity/scenarios/model-resolver-selector/13-scoped-models-fuzzy-filter.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/session-selector.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `SessionsLoader`. Existing evidence (`parity/scenarios/session/01-session-selector.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/settings-selector.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/coding-agent/src/modes/interactive/components/settings-submenu.ts` (`SelectSubmenu`/`SteppedSubmenu`), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `content`. Existing evidence (`parity/scenarios/interactive-rendering/11-skill-invocation-message.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/status-indicator.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The cited scenario (tui-components/10-loader-countdown-bordered-behavior.toml) instantiates and probes Loader/BorderedLoader/CountdownTimer only; its own description names those three components, never StatusIndicator or renderInBorder/renderSpinnerInBorder, which this diff adds. No scenario or test exercises StatusIndicator.renderInBorder or the new WorkingStatusIndicator colorFn override."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `ThinkingSelectorComponent`. Existing evidence (`parity/scenarios/settings/05-settings-thinking-submenu.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/tool-execution.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `ToolRenderers`, `FALLBACK_PREVIEW_LINES`. Existing evidence (`parity/scenarios/extensions-runtime/19-generic-tool-details.toml`, `parity/scenarios/interactive-rendering/03-tool-execution-bash.toml`, and 1 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/tree-selector.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `tree-selector.ts` behavior. Existing evidence (`parity/scenarios/tree/02-tree-empty-overlay.toml`, `parity/scenarios/tree/05-tree-nonempty-overlay.toml`, and 3 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/trust-selector.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `currentMarker`. Existing evidence (`internal/codingagent/slash_session_handlers_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/external-editor.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `external-editor.ts` behavior. Existing evidence (`internal/codingagent/external_editor_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `partial: internal/codingagent/interactive.go, internal/codingagent/interactive_input.go, internal/codingagent/interactive_turn.go, internal/codingagent/interactive_commands.go, internal/codingagent/interactive_auth.go, internal/codingagent/interactive_events.go, internal/codingagent/interactive_tui.go, internal/codingagent/interactive_models.go, internal/codingagent/interactive_extensions.go, internal/codingagent/interactive_chat.go, internal/codingagent/interactive_layout.go, internal/codingagent/interactive_editor.go, internal/codingagent/interactive_transcript.go, internal/codingagent/interactive_thinking.go, internal/codingagent/interactive_helpers.go; Esc does not cancel an active branch summary, and automatic Copilot reauthentication cannot prompt for an enterprise domain`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/session-share.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `internal/codingagent/session_share.go (pi.share entry on /bug transcripts; private-gist /share via the user's gh). Not ported: the Radius artifact upload and exportSessionForShare, pending an owner decision on contacting Earendil's gateway`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `autoTheme`, `result`, `settingsManager`, `themeSetting`. Existing evidence (`tui/scrollbar_theme_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme-json.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:tui/theme_json_test.go"]
+rationale = "tui/theme_json_test.go replays more than 40 upstream-derived schema cases and exercises file labels, slash-name rejection, BOM stripping, and built-in themes."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `ThemeJsonValidator`, `themeJsonValidator`, `setThemeJsonValidator`, `OptionalThemeColor`, `OptionalThemeBg`, and related changes. Existing evidence (`parity/scenarios/settings/04-settings-theme-submenu.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/tui-renderer.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/modes/json-event.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `ToJsonAssistantMessageEvent`, `MessageUpdateEvent`, `JsonMessageUpdateEvent`, `JsonAgentSessionEvent`, `toJsonAssistantMessageEvent`. Existing evidence (`parity/scenarios/json/01-json-mode-streams-events.toml`, `parity/scenarios/rpc/06-rpc-chat-faux.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-client.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⏸ deferred: `(deferred: PiG exposes the RPC server protocol but does not yet ship a Go subprocess client library)`"
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `rpc-mode.ts` behavior. Existing evidence (`parity/scenarios/rpc/01-rpc-malformed-input.toml`, `parity/scenarios/rpc/02-rpc-unknown-command.toml`, and 22 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-types.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `rpc-types.ts` behavior. Existing evidence (`parity/scenarios/rpc/02-rpc-unknown-command.toml`, `parity/scenarios/rpc/03-rpc-state-setters.toml`, and 10 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/package-manager-cli.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `DEFAULT_INSTALLER_API_BASE`, `MANAGED_INSTALL_MARKER`, `MANAGED_RELEASE_VERSION_RE`, `getActiveManagedInstallRoot`, `fetchInstallerArtifact`, and related changes. Existing evidence (`parity/scenarios/cli-utils/04-package-install-local.toml`, `parity/scenarios/cli-utils/05-package-list-empty.toml`, and 2 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/utils/clipboard-command.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/clipboard_copy_test.go"]
+rationale = "internal/codingagent/clipboard_copy_test.go TestRunClipboardCommand exercises success output, nonzero exit, output bounds, stdin, and timeout for the added command helper."
+
+[[files]]
+path = "packages/coding-agent/src/utils/clipboard-image.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ✅ ported (`internal/codingagent/clipboard_paste.go`) but neither a parity scenario nor a Go unit test currently exercises it; tracked as an open verification gap in parity/coverage.md's untested bucket; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/clipboard-native.ts"
+change = "removed"
+disposition = "designed-out"
+evidence = []
+rationale = "Node native clipboard module loader (createRequire dynamic .node binding); PiG's internal/codingagent/clipboard.go uses a portable Go clipboard library instead of the Node native-module mechanism, matching the language-mechanics treatment already applied to packages/coding-agent/src/utils/clipboard.ts."
+
+[[files]]
+path = "packages/coding-agent/src/utils/clipboard.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `isRemoteSession`, `copyViaWindowsClipboard`. Existing evidence (`internal/codingagent/clipboard_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/utils/exif-orientation.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `exif-orientation.ts` behavior. Existing evidence (`parity/scenarios/clipboard-images/04-image-processing-file-args.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/utils/frontmatter.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `normalized`. Existing evidence (`parity/scenarios/slash-commands/07-skill-command-system-prompt.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/utils/highlight-js-lib-index.d.ts"
+change = "removed"
+disposition = "designed-out"
+evidence = []
+rationale = "TypeScript ambient declarations; no runtime behavior (same rationale as the current packages/coding-agent/src/utils/highlight-js.d.ts PORT_MAP row)."
+
+[[files]]
+path = "packages/coding-agent/src/utils/highlight-js.d.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(TypeScript ambient declarations; no runtime behavior)`"
+
+[[files]]
+path = "packages/coding-agent/src/utils/management-http.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `attemptTimedOut`, `attemptTimeoutMs`, `attemptTimeoutSignal`, `parentSignal`, `signal`, and related changes. Existing evidence (`internal/managementhttp/managementhttp_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/utils/mime.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `mime.ts` behavior. Existing evidence (`parity/scenarios/cli-utils/08-mime-detection-deferred.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/utils/shell.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `findExecutableOnPath`, `POWERSHELL_ARGS`, `getPowerShellConfig`. Existing evidence (`parity/scenarios/tools/01-print-bash-tool-exec.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/utils/syntax-highlight.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `eagerLanguages`, `allLanguagesPromise`, `loadAllHighlightLanguages`. Existing evidence (`parity/scenarios/tui-components/01-text-wrap-long-response.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/utils/text.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/text/text_test.go"]
+rationale = "internal/text/text_test.go exercises every BOM split/strip boundary and the JSON-decoding caller behavior of the added helper."
+
+[[files]]
+path = "packages/coding-agent/src/utils/tool-result-images.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `processed`. Existing evidence (`internal/codingagent/images_test.go`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/coding-agent/src/utils/tools-manager.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file 🟡 partial: `internal/codingagent/tools/tools.go + tools_manager.go (asset table, releases/latest redirect version lookup, fetchWithRetry downloads, extraction per D14; tools_manager_test.go, tools_manager_latest_test.go ports the getLatestVersion cases); missing: ensureTool reports through an onStatus ToolStatus callback that interactive mode shows via showManagedToolStatus and grep/find keep silent, where PiG prints to stderr unless silent, and the failure message does not join the error cause chain`; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/coding-agent/src/utils/wsl.ts"
+change = "added"
+disposition = "ported"
+evidence = ["test:internal/codingagent/wsl_test.go"]
+rationale = "internal/codingagent/wsl_test.go exercises every added WSL signal: environment variables, Microsoft/WSL kernel markers, ordinary Linux, missing procfs, and WT_SESSION alone."
+
+[[files]]
+path = "packages/coding-agent/src/utils/zip.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "`(Go archive/zip, used by internal/codingagent/bug_report.go)`"
+
+[[files]]
+path = "packages/tui/src/alt-screen-search.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/tui/src/autocomplete.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `tokenStartRegex`. Existing evidence (`parity/scenarios/autocomplete/01-slash-popup.toml`, `parity/scenarios/autocomplete/02-slash-filter-model.toml`, and 5 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/components/box.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `childY`, `contentWidth`, `contentX`, `contentY`, `mouseChildren`. Existing evidence (`parity/scenarios/tui-components/02-box-tool-result-paint.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/components/editor.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `unquotedAutocompleteSuffixRegex`. Existing evidence (`parity/scenarios/autocomplete/02-slash-filter-model.toml`, `parity/scenarios/settings/06-settings-editor-padding-live.toml`, and 1 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/components/input.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `InputOptions`. Existing evidence (`parity/scenarios/autocomplete/01-slash-popup.toml`, `parity/scenarios/autocomplete/02-slash-filter-model.toml`, and 6 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/components/loader.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `indicator`, `renderedFrame`. Existing evidence (`parity/scenarios/tui-components/10-loader-countdown-bordered-behavior.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/components/markdown.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `lines`, `styleReset`. Existing evidence (`parity/scenarios/interactive-rendering/01-assistant-message-text.toml`, `parity/scenarios/interactive-rendering/18-latex-math-rendering.toml`, and 1 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/components/mouse-region.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/tui/src/components/scroll-view.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `ScrollViewScrollToOptions`. Existing evidence (`parity/scenarios/fullscreen/01-conversation-fullscreen.toml`, `parity/scenarios/fullscreen/02-keyboard-navigation-fullscreen.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/components/select-list.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `changed`, `clickedIndex`, `delta`, `itemIndex`, `previousIndex`, and related changes. Existing evidence (`parity/scenarios/settings/04-settings-theme-submenu.toml`, `parity/scenarios/tui-components/11-select-list-input-state.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/components/settings-list.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `delta`, `displayItems`, `id`, `index`, `item`, and related changes. Existing evidence (`parity/scenarios/settings/02-settings-selector.toml`, `parity/scenarios/settings/03-settings-filter-theme.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/components/text.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `contentWidth`, `leftMargin`, `paddingX`, `rightMargin`. Existing evidence (`parity/scenarios/interactive-rendering/20-bash-execution-long-line-wrap.toml`, `parity/scenarios/tui-components/01-text-wrap-long-response.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/fuzzy.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `i`, `isWordBoundary`. Existing evidence (`parity/scenarios/settings/03-settings-filter-theme.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "`(barrel)`"
+
+[[files]]
+path = "packages/tui/src/keybindings.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `keybindings.ts` behavior. Existing evidence (`parity/scenarios/settings/04-settings-theme-submenu.toml`, `parity/scenarios/tui-components/11-select-list-input-state.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/latex.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `RELATION_COMMANDS`, `FONT_SWITCH_COMMANDS`, `normalizeScriptValue`, `formatUnicodeScript`, `NAMED_OPERATOR_START`, and related changes. Existing evidence (`parity/scenarios/interactive-rendering/18-latex-math-rendering.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/layout.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `replaceScrollbarCell`, `getScrollbarGeometry`, `getLayoutBoxesAt`. Existing evidence (`parity/scenarios/fullscreen/01-conversation-fullscreen.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/native-modifiers.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:internal/nativeplatform/modifiers_darwin_test.go#TestDarwinModifierBridgeResolvesCoreGraphics", "test:tui/terminal_native_shift_enter_test.go#TestIsNativeModifierPressedUnknownKey", "test:tui/terminal_native_shift_enter_test.go#TestNormalizeProcessInputSequenceFor"]
+rationale = "The 0.87.1 delta routes isNativeModifierPressed through the shared native-platform helper. PiG calls the same system functions without Node addons: CGEventSourceFlagsState from a lazily dlopen'ed CoreGraphics on macOS and user32 GetAsyncKeyState on Windows, reporting false when unavailable or for an unknown key."
+
+[[files]]
+path = "packages/tui/src/native-module-path.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/tui/src/native-platform.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "PORT_MAP marks this file ⬜ not started (`(new upstream by 0.87.1; not mapped)`); delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+
+[[files]]
+path = "packages/tui/src/stdin-buffer.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `DEFAULT_SEQUENCE_TIMEOUT_MS`, `DEFAULT_ESCAPE_TIMEOUT_MS`. Existing evidence (`parity/scenarios/tree/09-tree-filter-user-only.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/terminal-image.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["test:tui/terminal_capability_overrides_test.go#TestDetectCapabilitiesFromEnvironmentMatchesPi", "test:tui/terminal_capability_overrides_test.go#TestDetectCapabilitiesEnvironmentOverrides", "test:tui/terminal_capability_overrides_test.go#TestGetCapabilitiesSettingOverridesBeatEnvironment", "test:tui/terminal_capability_overrides_test.go#TestSetCapabilityOverridesInvalidatesOnlyOnChange", "test:internal/codingagent/terminal_capability_wiring_test.go#TestReloadAppliesTerminalCapabilitySettings"]
+rationale = "PiG ports the 0.87.1 delta: detectCapabilitiesFromEnvironment (including zed and the tmux client_termfeatures probe), parseBooleanCapabilityOverride, detectCapabilities with PI_HYPERLINKS, PI_IMAGE_PROTOCOL, and PI_TRUE_COLOR, and setCapabilityOverrides/getCapabilities with settings overrides above the environment. D44 (Herdr) remains."
+
+[[files]]
+path = "packages/tui/src/terminal.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/tui/src/native-platform.ts` (`getNativePlatformHelper`), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/tui/src/tui-alt-screen.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "This row's new behavior imports from `packages/tui/src/alt-screen-search.ts` (the new alt-screen search overlay), which PORT_MAP.md marks `(new upstream by 0.87.1; not mapped)` (no Go implementation exists for it). The cited evidence does not exercise this new behavior; only the file's other, already-ported surface is covered."
+
+[[files]]
+path = "packages/tui/src/tui-main-screen.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `MAX_RENDER_WRITE_CHARS`, `BoundedTerminalWriter`. Existing evidence (`parity/scenarios/fullscreen/03-main-screen-history-redraw.toml`, `parity/scenarios/fullscreen/04-main-screen-assistant-streaming.toml`, and 7 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/tui.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `TuiMouseEventType`, `TuiMouseButton`, `TuiMouseEvent`, `TuiMouseEventResult`, `TuiMouseDispatchTarget`, and related changes. Existing evidence (`parity/scenarios/settings/02-settings-selector.toml`) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."
+
+[[files]]
+path = "packages/tui/src/utils.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "The 0.87.1 delta changes `cjkPunctuationRegex`, `autocompleteSeparatorRegex`, `autocompleteBoundaryRegex`, `getActiveBackgroundAnsi`. Existing evidence (`parity/scenarios/model-resolver-selector/13-scoped-models-fuzzy-filter.toml`, `parity/scenarios/model-resolver-selector/14-model-picker-fuzzy-filter.toml`, and 4 other existing evidence item(s)) covers the broader pre-existing path but does not assert these delta-specific semantics; no precise Go unit or parity regression for the changed behavior was identified on main."

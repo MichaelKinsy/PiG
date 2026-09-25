@@ -1,0 +1,5 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+prompt = "Rename the function area_of in geometry.py to polygon_area and update every caller in the project. test_shapes.py must pass. Do not change the tests."
+check = "python3 -m unittest -q test_shapes && ! grep -n area_of geometry.py shapes.py"
+protected = ["test_shapes.py"]

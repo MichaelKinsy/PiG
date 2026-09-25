@@ -1,0 +1,2733 @@
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+
+  PiG quickstart
+
+  Local rehearsal / unpublished release
+  Source build + credential-free faux provider
+  Real terminal, Bash tool, sessions and extension
+
+  Public install paths: see QUICKSTART.md
+$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+
+  PiG quickstart
+
+  Local rehearsal / unpublished release
+  Source build + credential-free faux provider
+  Real terminal, Bash tool, sessions and extension
+
+  Public install paths: see QUICKSTART.md
+$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 1. Build from a source checkout
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 1. Build from a source checkout
+$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 1. Build from a source checkout
+$ go build -o "$HOME/.local/bin/pig" ./cmd/pig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 1. Build from a source checkout
+$ go build -o "$HOME/.local/bin/pig" ./cmd/pig
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 1. Build from a source checkout
+$ go build -o "$HOME/.local/bin/pig" ./cmd/pig
+$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 1. Build from a source checkout
+$ go build -o "$HOME/.local/bin/pig" ./cmd/pig
+$ pig --version
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 1. Build from a source checkout
+$ go build -o "$HOME/.local/bin/pig" ./cmd/pig
+$ pig --version
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 1. Build from a source checkout
+$ go build -o "$HOME/.local/bin/pig" ./cmd/pig
+$ pig --version
+0.2.0+0.87.1
+$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 1. Build from a source checkout
+$ go build -o "$HOME/.local/bin/pig" ./cmd/pig
+$ pig --version
+0.2.0+0.87.1
+$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+0.0%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+0.0%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+What is 20+22?
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+0.0%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+Run: expr 20 + 22
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+ Took 0.0s
+
+
+ 42
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+ Took 0.0s
+
+
+ 42
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+ Took 0.0s
+
+
+ 42
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+ Took 0.0s
+
+
+ 42
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+/name Quickstart
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+ Took 0.0s
+
+
+ 42
+Session name set: Quickstart
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+ Took 0.0s
+
+
+ 42
+Session name set: Quickstart
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+ Took 0.0s
+
+
+ 42
+Session name set: Quickstart
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+/new
+─────────────────────────────────────────────────────────────────────────────────────────────
+→ new         Start a new session
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+✓ New session started
+
+
+
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+✓ New session started
+
+
+
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+✓ New session started
+
+
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+/resume
+─────────────────────────────────────────────────────────────────────────────────────────────
+→ resume      Resume a different session
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+✓ New session started
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+Resume Session (Current Folder)           ◉ Current Folder | ○ All  Name: All  Sort: Threaded
+tab scope · re:<pattern> regex · "phrase" exact
+ctrl+s sort · ctrl+n named · ctrl+d delete · ctrl+p path (off) · ctrl+r rename
+
+>
+
+› Quickstart                                                                            7 now
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+✓ New session started
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+Resume Session (Current Folder)           ◉ Current Folder | ○ All  Name: All  Sort: Threaded
+tab scope · re:<pattern> regex · "phrase" exact
+ctrl+s sort · ctrl+n named · ctrl+d delete · ctrl+p path (off) · ctrl+r rename
+
+>
+
+› Quickstart                                                                            7 now
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+✓ New session started
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+Resume Session (Current Folder)           ◉ Current Folder | ○ All  Name: All  Sort: Threaded
+tab scope · re:<pattern> regex · "phrase" exact
+ctrl+s sort · ctrl+n named · ctrl+d delete · ctrl+p path (off) · ctrl+r rename
+
+>
+
+› Quickstart                                                                            7 now
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+
+ 42
+Resumed session from
+/tmp/pig-quickstart.l4PZjN/home/.pig/agent/sessions/--tmp-pig-quickstart.l4PZjN-home-demo--/2
+026-09-25T13-26-34-213Z_01a0d8bf-0be5-745f-ae5e-1058d30c711b.jsonl
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+
+ 42
+Resumed session from
+/tmp/pig-quickstart.l4PZjN/home/.pig/agent/sessions/--tmp-pig-quickstart.l4PZjN-home-demo--/2
+026-09-25T13-26-34-213Z_01a0d8bf-0be5-745f-ae5e-1058d30c711b.jsonl
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+
+ 42
+Resumed session from
+/tmp/pig-quickstart.l4PZjN/home/.pig/agent/sessions/--tmp-pig-quickstart.l4PZjN-home-demo--/2
+026-09-25T13-26-34-213Z_01a0d8bf-0be5-745f-ae5e-1058d30c711b.jsonl
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+
+ 42
+Resumed session from
+/tmp/pig-quickstart.l4PZjN/home/.pig/agent/sessions/--tmp-pig-quickstart.l4PZjN-home-demo--/2
+026-09-25T13-26-34-213Z_01a0d8bf-0be5-745f-ae5e-1058d30c711b.jsonl
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+
+ 42
+Resumed session from
+/tmp/pig-quickstart.l4PZjN/home/.pig/agent/sessions/--tmp-pig-quickstart.l4PZjN-home-demo--/2
+026-09-25T13-26-34-213Z_01a0d8bf-0be5-745f-ae5e-1058d30c711b.jsonl
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+reply with exactly: Resumed.
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+
+ 42
+Resumed session from
+/tmp/pig-quickstart.l4PZjN/home/.pig/agent/sessions/--tmp-pig-quickstart.l4PZjN-home-demo--/2
+026-09-25T13-26-34-213Z_01a0d8bf-0be5-745f-ae5e-1058d30c711b.jsonl
+
+
+ reply with exactly: Resumed.
+
+
+ Resumed.
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+
+ 42
+Resumed session from
+/tmp/pig-quickstart.l4PZjN/home/.pig/agent/sessions/--tmp-pig-quickstart.l4PZjN-home-demo--/2
+026-09-25T13-26-34-213Z_01a0d8bf-0be5-745f-ae5e-1058d30c711b.jsonl
+
+
+ reply with exactly: Resumed.
+
+
+ Resumed.
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+
+ 42
+Resumed session from
+/tmp/pig-quickstart.l4PZjN/home/.pig/agent/sessions/--tmp-pig-quickstart.l4PZjN-home-demo--/2
+026-09-25T13-26-34-213Z_01a0d8bf-0be5-745f-ae5e-1058d30c711b.jsonl
+
+
+ reply with exactly: Resumed.
+
+
+ Resumed.
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+
+ 42
+Resumed session from
+/tmp/pig-quickstart.l4PZjN/home/.pig/agent/sessions/--tmp-pig-quickstart.l4PZjN-home-demo--/2
+026-09-25T13-26-34-213Z_01a0d8bf-0be5-745f-ae5e-1058d30c711b.jsonl
+
+
+ reply with exactly: Resumed.
+
+
+ Resumed.
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo • Quickstart
+1.1%/128k (auto)                                                                       faux-1
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+
+
+ $ expr 20 + 22
+
+ 42
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 3. Print mode: one answer, then exit
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 3. Print mode: one answer, then exit
+$
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 3. Print mode: one answer, then exit
+$ pig --model test-faux/faux-1 -p "What is 20+22?"
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 3. Print mode: one answer, then exit
+$ pig --model test-faux/faux-1 -p "What is 20+22?"
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 3. Print mode: one answer, then exit
+$ pig --model test-faux/faux-1 -p "What is 20+22?"
+42
+$
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 3. Print mode: one answer, then exit
+$ pig --model test-faux/faux-1 -p "What is 20+22?"
+42
+$
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+
+
+
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+[Extensions]  hello
+
+
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+0.0%/128k (auto)                                                                       faux-1
+hello loaded
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+[Extensions]  hello
+
+
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+0.0%/128k (auto)                                                                       faux-1
+hello loaded
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+[Extensions]  hello
+
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+/hello
+─────────────────────────────────────────────────────────────────────────────────────────────
+→ hello       Say hello from the hello extension.
+~/demo
+0.0%/128k (auto)                                                                       faux-1
+hello loaded
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+[Extensions]  hello
+
+ hello from hello
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+0.0%/128k (auto)                                                                       faux-1
+hello loaded
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+[Extensions]  hello
+
+ hello from hello
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+0.0%/128k (auto)                                                                       faux-1
+hello loaded
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+[Extensions]  hello
+
+ hello from hello
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+0.0%/128k (auto)                                                                       faux-1
+hello loaded
+────────────────────────────────────────────────────────────────────────────────
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+[Extensions]  hello
+
+ hello from hello
+
+
+
+
+
+
+
+
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+
+─────────────────────────────────────────────────────────────────────────────────────────────
+~/demo
+0.0%/128k (auto)                                                                       faux-1
+hello loaded
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────
+$ # 2. Select the local test model (not a live AI service)
+$ export PIG_TEST_FAUX=1 PIG_OFFLINE=1
+$ cd ~/demo && pig --tui-mode fullscreen --model test-faux/faux-1
+
+ pig v0.2.0+0.87.1
+ escape interrupt · ctrl+c/ctrl+d clear/exit · / commands · ! bash · ctrl+o more
+ Press ctrl+o to show full startup help and loaded resources.
+
+ PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.
+
+
+ What is 20+22?
+
+
+ 42
+
+
+ Run: expr 20 + 22
+
+$ # 4. Scaffold and explicitly load a Go extension
+$ pig extension init ./hello --lang go
+Created go extension "hello" in /tmp/pig-quickstart.l4PZjN/home/demo/hello
+  go.mod
+  extension.go
+
+────────────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,44 @@
+# Behavior family: tui-components
+# Surface: SelectList default input state machine and non-search action boundary.
+#
+# Upstream evidence (Pi 0.83.0): the shared harness sets selection to the final
+# item, proves PageDown is ignored, sends Down to wrap to `a`, confirms `a`, and
+# independently cancels another list. Pig drives its SelectList-compatible
+# FilterableList mode through the same raw inputs and reports the same result.
+
+name = "11-select-list-input-state"
+description = "SelectList wraps arrows, confirms/cancels, and ignores non-contract page input"
+covers = [
+  "packages/tui/src/components/select-list.ts",
+  "packages/tui/src/keybindings.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "select-list:render=true:pageIgnored=true:wrap=a:select=a:cancel=true"
+capture_end = "select-list:render=true:pageIgnored=true:wrap=a:select=a:cancel=true"
+
+[[tmux.steps]]
+keys = ["/probe-select-list", "Enter"]
+wait_contains = ["select-list:render=true:pageIgnored=true:wrap=a:select=a:cancel=true"]
+wait_timeout_seconds = 15
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../clipboard-images/testdata/pig-agent", "PIG_PARITY_HARNESS=1"]
+pi = ["PI_CODING_AGENT_DIR=../clipboard-images/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/batch2-ui-harness.ts"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["select-list:render=true:pageIgnored=true:wrap=a:select=a:cancel=true"]
+both_not_contain = ["panic:", "goroutine "]
+output_equal = true
+runs = 3

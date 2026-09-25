@@ -1,0 +1,35 @@
+# Behavior family: tools
+# Scenario: print-mode find tool execution via faux provider.
+#
+# Faux provider receives "Run: find txt files", emits a find tool call with
+# pattern "*.txt" and path ".". The tool finds files, returns matches. Faux
+# sees the result and replies with "listed".
+#
+# Upstream evidence (2026-05-15):
+#   cd parity/scenarios/tools/testdata
+#   Both binaries output: "listed"
+
+name = "05-print-find-tool-exec"
+description = "Faux triggers find(*.txt, .), both produce listed in print mode"
+covers = [
+  "packages/coding-agent/src/core/tools/find.ts",
+  "packages/coding-agent/src/utils/tools-manager.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--no-extensions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: find txt files"
+timeout_seconds = 30
+cwd = "testdata"
+
+[assert]
+exit_code = 0
+both_contain = ["listed"]
+output_equal = true

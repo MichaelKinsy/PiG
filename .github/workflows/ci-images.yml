@@ -1,0 +1,278 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+
+name: CI images
+
+on:
+  pull_request:
+    paths:
+      - go.mod
+      - .node-version
+      - coding/pigversion/pigversion.go
+      - .github/workflows/ci.yml
+      - .dockerignore
+      - automation/images/**
+      - automation/ci/build-ci-image.sh
+      - automation/ci/check-npm-lock-integrity.py
+      - automation/ci/seed-ci-image-bases.sh
+      - .github/workflows/ci-images.yml
+  push:
+    branches: [main]
+    paths:
+      - go.mod
+      - .node-version
+      - coding/pigversion/pigversion.go
+      - .github/workflows/ci.yml
+      - .dockerignore
+      - automation/images/**
+      - automation/ci/build-ci-image.sh
+      - automation/ci/check-npm-lock-integrity.py
+      - automation/ci/seed-ci-image-bases.sh
+      - .github/workflows/ci-images.yml
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish commit-addressed images after validation
+        type: boolean
+        required: true
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  REGISTRY: ghcr.io/michaelkinsy
+  SYFT_IMAGE: pig-ci-base-syft:1.45.1
+  GRYPE_IMAGE: pig-ci-base-grype:0.114.0
+
+jobs:
+  build:
+    name: Build ${{ matrix.image }} image
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: read
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        image: [go, parity]
+    steps:
+      - name: Require main for publication
+        if: github.event_name == 'workflow_dispatch' && inputs.publish == true && github.ref != 'refs/heads/main'
+        shell: bash
+        run: |
+          echo "CI images may be published only from main" >&2
+          exit 1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          path: ci-image-${{ matrix.image }}
+          persist-credentials: false
+      - name: Verify locked dependencies
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        run: |
+          ./automation/ci/check-npm-lock-integrity.py \
+            automation/images/ci-parity/package-lock.json \
+            automation/images/npm-runtime/package-lock.json
+      - name: Seed pinned base images
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        env:
+          IMAGE: ${{ matrix.image }}
+          CI_BASE_DIR: ${{ runner.temp }}/pig-ci-bases-${{ matrix.image }}
+        run: ./automation/ci/seed-ci-image-bases.sh "$IMAGE"
+      - name: Build and validate
+        id: build
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        env:
+          IMAGE: ${{ matrix.image }}
+          CI_BASE_DIR: ${{ runner.temp }}/pig-ci-bases-${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          case "$IMAGE" in
+            go) image_dir=ci-go ;;
+            parity) image_dir=ci-parity ;;
+            *) echo "unknown CI image: $IMAGE" >&2; exit 1 ;;
+          esac
+          # shellcheck source=/dev/null # image_dir comes from the closed case above.
+          source "automation/images/$image_dir/metadata.env"
+          ref="$REGISTRY/$IMAGE_NAME:$IMAGE_TAG-${GITHUB_SHA:0:12}"
+          ./automation/ci/build-ci-image.sh "$IMAGE"
+          echo "ref=$ref" >> "$GITHUB_OUTPUT"
+      - name: Generate SBOM
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        env:
+          IMAGE_REF: ${{ steps.build.outputs.ref }}
+          IMAGE: ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          mkdir -p "out/ci-images/$IMAGE"
+          docker run --rm \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            "$SYFT_IMAGE" "docker:$IMAGE_REF" -o spdx-json \
+            > "out/ci-images/$IMAGE/sbom.spdx.json"
+          python3 - "out/ci-images/$IMAGE/sbom.spdx.json" <<'PY'
+          import json
+          import sys
+
+          with open(sys.argv[1], encoding="utf-8") as stream:
+              packages = json.load(stream).get("packages")
+          if not isinstance(packages, list) or not packages:
+              raise SystemExit("SBOM contains no packages")
+          PY
+      - name: Scan vulnerabilities
+        shell: bash
+        working-directory: ${{ github.workspace }}/ci-image-${{ matrix.image }}
+        env:
+          IMAGE_REF: ${{ steps.build.outputs.ref }}
+          IMAGE: ${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          scan_args=(--only-fixed --output json)
+          if [ "$IMAGE" = go ]; then
+            scan_args+=(--fail-on high)
+          fi
+          docker run --rm \
+            -e HTTP_PROXY -e HTTPS_PROXY -e NO_PROXY \
+            -e http_proxy -e https_proxy -e no_proxy \
+            -v /var/run/docker.sock:/var/run/docker.sock \
+            "$GRYPE_IMAGE" "docker:$IMAGE_REF" "${scan_args[@]}" \
+            > "out/ci-images/$IMAGE/grype.json"
+      - name: Save validated image
+        if: github.event_name == 'workflow_dispatch' && inputs.publish == true && github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.build.outputs.ref }}
+          CANDIDATE: ${{ runner.temp }}/pig-ci-${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$CANDIDATE"
+          cd "$CANDIDATE"
+          docker image save "$IMAGE_REF" | gzip > image.tar.gz
+          printf '%s\n' "$IMAGE_REF" > image-ref.txt
+          docker image inspect --format '{{.Id}}' "$IMAGE_REF" > image-id.txt
+          sha256sum image.tar.gz image-ref.txt image-id.txt > SHA256SUMS
+      - name: Upload validated image
+        if: github.event_name == 'workflow_dispatch' && inputs.publish == true && github.ref == 'refs/heads/main'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pig-ci-${{ matrix.image }}-candidate
+          path: ${{ runner.temp }}/pig-ci-${{ matrix.image }}/
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+      - name: Upload image evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pig-ci-${{ matrix.image }}-evidence
+          path: ${{ github.workspace }}/ci-image-${{ matrix.image }}/out/ci-images/${{ matrix.image }}/
+          retention-days: 14
+      - name: Remove job images
+        if: always()
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.build.outputs.ref }}
+          IMAGE: ${{ matrix.image }}
+          CI_BASE_DIR: ${{ runner.temp }}/pig-ci-bases-${{ matrix.image }}
+        run: |
+          refs=(
+            "$IMAGE_REF"
+            pig-ci-base-buildkit:0.32.2
+            pig-ci-base-syft:1.45.1
+            pig-ci-base-grype:0.114.0
+          )
+          for ref in "${refs[@]}"; do
+            if [ -n "$ref" ]; then
+              docker image rm "$ref" >/dev/null 2>&1 || true
+            fi
+          done
+          rm -rf "$CI_BASE_DIR"
+
+  publish:
+    name: Publish ${{ matrix.image }} image
+    needs: build
+    if: github.event_name == 'workflow_dispatch' && inputs.publish == true && github.ref == 'refs/heads/main'
+    # Configure required reviewers and a main-only deployment rule on release.
+    environment:
+      name: release
+    permissions:
+      contents: read
+      packages: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      max-parallel: 1
+      matrix:
+        image: [go, parity]
+    steps:
+      - name: Download validated image
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: pig-ci-${{ matrix.image }}-candidate
+          path: ${{ runner.temp }}/pig-ci-${{ matrix.image }}/
+      - name: Verify and load validated image
+        id: load
+        shell: bash
+        working-directory: ${{ runner.temp }}/pig-ci-${{ matrix.image }}
+        run: |
+          set -euo pipefail
+          sha256sum -c SHA256SUMS
+          IFS= read -r ref < image-ref.txt
+          IFS= read -r expected_id < image-id.txt
+          docker load --input image.tar.gz
+          test "$(docker image inspect --format '{{.Id}}' "$ref")" = "$expected_id"
+          printf 'ref=%s\n' "$ref" >> "$GITHUB_OUTPUT"
+      - name: Log in to GHCR for publication
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish immutable image
+        shell: bash
+        working-directory: ${{ runner.temp }}/pig-ci-${{ matrix.image }}
+        env:
+          IMAGE_REF: ${{ steps.load.outputs.ref }}
+        run: |
+          set -euo pipefail
+          mkdir -p publication
+          manifest_error=publication/manifest-inspect.err
+          if docker manifest inspect "$IMAGE_REF" >/dev/null 2>"$manifest_error"; then
+            echo "refusing to replace existing image tag: $IMAGE_REF" >&2
+            exit 1
+          fi
+          if ! grep -Eqi 'manifest unknown|no such manifest|not found' "$manifest_error"; then
+            echo "cannot prove image tag is absent: $IMAGE_REF" >&2
+            cat "$manifest_error" >&2
+            exit 1
+          fi
+          rm "$manifest_error"
+          docker push "$IMAGE_REF" | tee publication/push.txt
+          digest=$(awk '/digest: sha256:/ {print $2}' publication/push.txt | tail -1)
+          test -n "$digest"
+          printf '%s@%s\n' "${IMAGE_REF%:*}" "$digest" > publication/image-ref.txt
+      - name: Upload publication evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pig-ci-${{ matrix.image }}-publication
+          path: ${{ runner.temp }}/pig-ci-${{ matrix.image }}/publication/
+          retention-days: 14
+      - name: Remove published image
+        if: always()
+        shell: bash
+        env:
+          IMAGE_REF: ${{ steps.load.outputs.ref }}
+        run: |
+          if [ -n "$IMAGE_REF" ]; then
+            docker image rm "$IMAGE_REF" >/dev/null 2>&1 || true
+          fi

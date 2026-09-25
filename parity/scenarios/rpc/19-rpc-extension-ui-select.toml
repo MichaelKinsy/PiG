@@ -1,0 +1,54 @@
+# Behavior family: rpc
+# Surface: a blocking extension select request resolves from an
+# extension_ui_response and lets the owning command complete. The staged driver
+# captures the random request ID from each binary before it sends the response.
+
+name = "19-rpc-extension-ui-select"
+description = "RPC extension select resolves through the request and response protocol."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+  "packages/coding-agent/src/core/extensions/types.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"ask","type":"prompt","message":"/ask"}'
+wait_contains = ['"method":"select"']
+wait_timeout_seconds = 5
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID}}","value":"B"}'
+wait_contains = ['"message":"selected:B"']
+wait_timeout_seconds = 5
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["../../../cmd/pig/testdata/rpc-ui.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../../cmd/pig/testdata/rpc-ui.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"method":"select"',
+  '"title":"Choose"',
+  '"options":["A","B"]',
+  '"method":"setWidget"',
+  '"widgetLines":["selected:B"]',
+  '"widgetPlacement":"belowEditor"',
+  '"method":"notify"',
+  '"message":"selected:B"',
+  '"id":"ask","type":"response","command":"prompt","success":true',
+]
+both_not_contain = [
+  '"success":false',
+  'extension_error',
+]
+runs = 3

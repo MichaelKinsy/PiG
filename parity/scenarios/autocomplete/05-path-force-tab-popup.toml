@@ -1,0 +1,52 @@
+# Behavior family: autocomplete
+# Surface: Tab force-opens path suggestions for './'
+#
+# Upstream evidence (Pi 0.83.0): in the immutable two-file CWD fixture,
+# typing `./` then Tab opens the shared path-completion popup with alpha.txt
+# selected before beta.txt. The runner snapshots this CWD independently for Pi
+# and Pig, so repository growth cannot change the assertion.
+
+name = "05-path-force-tab-popup"
+description = "Tab force-opens the exact path-completion popup for './'."
+covers = [
+  "packages/tui/src/autocomplete.ts",
+  "packages/tui/src/components/input.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/path-project"
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "./\n────────────────────────────────────────────────────────────────────────────────────────────────────"
+capture_end = "  beta.txt"
+
+[[tmux.steps]]
+keys = [".", "/"]
+wait_contains = ["./"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Tab"]
+wait_contains = ["→ alpha.txt", "  beta.txt"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../session/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../session/testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 1.5
+runs = 3

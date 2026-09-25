@@ -1,0 +1,86 @@
+# Behavior family: rpc
+# Surface: extension appendEntry and setSessionName events.
+#
+# Upstream evidence (Pi 0.84.0): AgentSession._bindExtensionCore persists the
+# custom entry before emitting entry_appended. AgentSession.setSessionName emits
+# session_info_changed before the command's prompt response. An empty extension
+# name clears the Session name and omits name from the event because JSON drops
+# undefined object properties. Entry IDs and timestamps are random, so this
+# scenario asserts the stable event and persisted-entry fields. The caller-path
+# integration test locks their ordering and the omitted name field.
+
+name = "21-rpc-extension-session-events"
+description = "RPC mode emits and persists extension-defined entries and Session name changes."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"events","type":"prompt","message":"/session-events"}'
+wait_contains = ['"id":"events","type":"response","command":"prompt","success":true']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"entries","type":"get_entries"}'
+wait_contains = ['"id":"entries","type":"response","command":"get_entries","success":true']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"state","type":"get_state"}'
+wait_contains = ['"id":"state","type":"response","command":"get_state","success":true']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"clear","type":"prompt","message":"/clear-session-name"}'
+wait_contains = ['"id":"clear","type":"response","command":"prompt","success":true']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"cleared-state","type":"get_state"}'
+wait_contains = [
+  '"id":"cleared-state","type":"response","command":"get_state","success":true',
+  '"method":"notify","message":"session-name:none","notifyType":"info"',
+]
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"direct-name","type":"set_session_name","name":"  direct-name  "}'
+wait_contains = [
+  '"id":"direct-name","type":"response","command":"set_session_name","success":true',
+  '"method":"notify","message":"session-name:direct-name","notifyType":"info"',
+]
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["../../../cmd/pig/testdata/rpc-ui.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../../cmd/pig/testdata/rpc-ui.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"type":"entry_appended","entry":{"type":"custom","customType":"rpc-entry","data":{"value":"hello"}',
+  '"type":"session_info_changed","name":"extension-name"',
+  '"type":"session_info_changed","name":"direct-name"',
+  '"type":"session_info_changed"}',
+  '"type":"custom","customType":"rpc-entry","data":{"value":"hello"}',
+  '"sessionName":"extension-name"',
+  '"method":"notify","message":"session-name:extension-name","notifyType":"info"',
+  '"method":"notify","message":"session-name:none","notifyType":"info"',
+  '"method":"notify","message":"session-name:direct-name","notifyType":"info"',
+]
+both_not_contain = [
+  '"success":false',
+  'extension_error',
+]
+runs = 3

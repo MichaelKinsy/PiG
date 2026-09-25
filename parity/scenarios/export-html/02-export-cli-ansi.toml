@@ -1,0 +1,50 @@
+# Behavior family: export-html
+# Scenario: CLI --export with ANSI-colored session content.
+#
+# Session JSONL contains assistant messages with ANSI escape codes
+# (red, bold cyan, underlined yellow, dim magenta). The --export CLI
+# path preserves ANSI in the base64-encoded session data payload;
+# the client-side template.js handles ANSI→HTML rendering at view time.
+#
+# This exercises the session data base64 encoding with binary-safe
+# content (ANSI escape bytes) and verifies the payload is identical.
+#
+# Upstream evidence (2026-05-17):
+#   pi --no-extensions --export <testdata>/ansi.jsonl /tmp/pi-ansi.html 2>&1
+#   → "Exported to: /tmp/pi-ansi.html"
+#   md5sum → identical to pig output
+#
+#   PIG_HOME=/tmp/h pig --export <testdata>/ansi.jsonl /tmp/pig-ansi.html 2>&1
+#   → "Exported to: /tmp/pig-ansi.html"
+#   diff pi vs pig → identical
+
+name = "02-export-cli-ansi"
+description = "CLI --export with ANSI-colored content produces identical HTML"
+covers = [
+  "packages/coding-agent/src/core/export-html/index.ts",
+  "packages/coding-agent/src/core/export-html/ansi-to-html.ts",
+  "packages/coding-agent/src/utils/ansi.ts",
+  "packages/coding-agent/src/utils/html.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_HOME=testdata/pig-home"]
+pig_args = ["--export", "testdata/sessions/ansi.jsonl", "{{TEMP}}/out.html"]
+pi_args = ["--export", "testdata/sessions/ansi.jsonl", "{{TEMP}}/out.html"]
+
+[cli]
+timeout_seconds = 15
+cwd = "."
+
+[assert]
+exit_code = 0
+both_contain = ["Exported to:"]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: Pig and Pi receive independent temporary export paths.
+[[assert.normalize_replace]]
+pattern = 'Exported to: .+'
+with = 'Exported to: <path>'

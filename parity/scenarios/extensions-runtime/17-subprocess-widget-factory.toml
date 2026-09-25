@@ -1,0 +1,49 @@
+# Behavior family: extensions-runtime
+# Surface: ctx.ui.setWidget component factories render through the production
+# widget slot and receive the current terminal width.
+#
+# Upstream evidence (Pi 0.83.0): the command installs an in-process component
+# factory. Pi calls render(width), applies the active theme, and displays the
+# returned line above the editor. Pig runs the same source in the Node
+# subprocess, renders the factory locally, and pushes the byte-identical frame
+# without invoking extension IPC from the host TUI Render path.
+
+name = "17-subprocess-widget-factory"
+description = "TypeScript setWidget factories render with current width through the subprocess cache"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/widget-factory.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/widget-factory.mjs",
+]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "factory-widget:width=100"
+capture_end = "factory-widget:second-line"
+
+[[tmux.steps]]
+keys = ["/widget-factory-probe", "Enter"]
+wait_contains = ["factory-widget:width=100", "factory-widget:second-line"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_contain = ["factory-widget:width=100", "factory-widget:second-line"]
+both_not_contain = ["panic:", "goroutine ", "connection closed"]
+escaped_output_equal = true
+runs = 3

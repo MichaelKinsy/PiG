@@ -1,0 +1,45 @@
+// divguard:path agent/agent.go
+
+package agent
+
+import (
+	"bufio"
+	"context"
+	"io"
+	"time"
+)
+
+type Options struct {
+	MaxTurns int
+	Timeout  time.Duration
+}
+
+// NewAgent reproduces the silent turn cap that shipped on main.
+func NewAgent(opts Options) Options {
+	if opts.MaxTurns == 0 {
+		opts.MaxTurns = 100 // want
+	}
+	return opts
+}
+
+const connectTimeout = 10 * time.Second // want
+
+func run(ctx context.Context, r io.Reader) {
+	ctx, cancel := context.WithTimeout(ctx, 250*time.Millisecond) // want
+	defer cancel()
+	sc := bufio.NewScanner(r)
+	sc.Buffer(make([]byte, 0, 1024), 16<<20)  // want
+	reader := bufio.NewReaderSize(r, 64*1024) // want
+	_ = reader
+	_ = Options{Timeout: time.Second} // want
+	turns := 0
+	if turns >= 50 { // want
+		return
+	}
+	// upstream: agent/src/agent-loop.ts:runLoop
+	retryDelay := 3 * time.Second // want
+	_ = retryDelay
+	maxQueue := 64 // want
+	_ = maxQueue
+	<-ctx.Done()
+}

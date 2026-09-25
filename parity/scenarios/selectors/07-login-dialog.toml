@@ -1,0 +1,102 @@
+# Behavior family: selectors
+# Scenario: /login → Sign in with an account → GitHub Copilot → LoginDialog.
+#
+# Upstream evidence (pi v0.81.1, re-probed 2026-07-22 with empty
+# PI_CODING_AGENT_DIR):
+#   keys: "/login" Enter, Enter, Down Enter
+#   stable crop contains:
+#     Login to GitHub Copilot
+#     https://github.com/login/device
+#     Cmd+click to open   (Ctrl+click on non-darwin; mirrors login-dialog.ts)
+#     Enter code: <device-code>
+#
+# Hermeticity:
+#   - No credentials are inherited from the host. Both binaries point at
+#     empty per-scenario agent dirs (testdata/{pig-home-noauth,pi-agent-noauth}).
+#   - {{FAKE_BIN}} PATH-shadows `open`/`xdg-open`/`start` so neither
+#     binary actually launches a browser tab during tests.
+#   - PIG/PI_PARITY_LOGIN_DIALOG installs process-local device-code stubs; no
+#     GitHub request or ambient proxy participates in the hermetic gate.
+#   - The OAuth device code contains random bytes, so normalize_replace strips
+#     it before comparing the LoginDialog layout.
+#
+# This scenario used to be deferred because pig silently imported
+# ~/.pi/agent/auth.json into fresh PIG_HOME via ImportLegacyPiAuthIfNeeded.
+# That import was removed (see DIVERGENCES.md / commit decoupling
+# MigrateLegacyAuth) so this path is now reachable on developer machines
+# without contamination from the user's real upstream pi credentials.
+
+name = "07-login-dialog"
+description = "/login subscription flow renders LoginDialog with GitHub Copilot device-code prompt"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "packages/ai/src/auth/oauth/github-copilot.ts",
+  "packages/coding-agent/src/core/auth-guidance.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+# Upstream readiness re-probed 2026-09-25 against the repository pin: the idle editor renders 0.0%/0 with unknown, not a Ready paragraph. Wait for that footer before /login.
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "Login to GitHub Copilot"
+capture_end = "Enter code:"
+settle_seconds = 2
+cwd = "testdata/login-empty-project"
+
+[[tmux.steps]]
+keys = ["/login", "Enter"]
+wait_contains = ["Select authentication method"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Select provider"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Down", "Enter"]
+wait_contains = ["Login to GitHub Copilot", "GitHub Enterprise URL/domain"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Login to GitHub Copilot", "Enter code:"]
+wait_timeout_seconds = 20
+
+[env]
+pig = [
+  "PIG_HOME=testdata/pig-home-noauth", # gitleaks:allow -- synthetic parity path
+  "PIG_PARITY_HARNESS=1",
+  "PIG_PARITY_LOGIN_DIALOG=1",
+  "HOME={{TEMP}}/home",
+  "PATH={{FAKE_BIN}}:{{PATH}}",
+]
+pi = [
+  "PI_CODING_AGENT_DIR=testdata/pi-agent-noauth",
+  "PI_PARITY_LOGIN_DIALOG=1",
+  "PATH={{FAKE_BIN}}:{{PATH}}",
+]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/oauth-harness.ts"]
+
+[assert]
+both_reach_ready = true
+both_contain = [
+  "Login to GitHub Copilot",
+  "https://github.com/login/device",
+  "Enter code:",
+]
+runs = 3
+output_normalized_equal = true
+
+# Strip the per-run random device code.
+# normalize-rationale: each hermetic OAuth flow generates an independent device code.
+[[assert.normalize_replace]]
+pattern = 'Enter code: [A-Z0-9-]+'
+with = 'Enter code: <DEVICE-CODE>'

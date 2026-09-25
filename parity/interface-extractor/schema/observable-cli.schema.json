@@ -1,0 +1,42 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/MichaelKinsy/PiG/main/parity/interface-extractor/schema/observable-cli.schema.json",
+  "title": "Pig upstream observable CLI interface inventory",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["upstreamVersion", "kind", "interfaces"],
+  "properties": {
+    "upstreamVersion": { "type": "string" },
+    "kind": { "const": "cli" },
+    "interfaces": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "kind", "shapeHash", "command", "flag", "aliases", "value", "parser", "help"],
+        "properties": {
+          "id": { "type": "string", "pattern": "^cli:" },
+          "kind": { "const": "cli-flag" },
+          "shapeHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+          "command": { "type": "string" },
+          "flag": { "type": "string" },
+          "aliases": { "type": "array", "items": { "type": "string" } },
+          "value": { "type": "string" },
+          "parser": { "$ref": "#/$defs/location" },
+          "help": { "anyOf": [{ "$ref": "#/$defs/location" }, { "type": "null" }] }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "location": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["path", "line"],
+      "properties": {
+        "path": { "type": "string" },
+        "line": { "type": "integer", "minimum": 1 }
+      }
+    }
+  }
+}

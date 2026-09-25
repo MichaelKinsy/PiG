@@ -1,0 +1,7 @@
+{
+  "lastChangelogVersion": "0.83.0",
+  "theme": "dark",
+  "compaction": {
+    "keepRecentTokens": 1
+  }
+}

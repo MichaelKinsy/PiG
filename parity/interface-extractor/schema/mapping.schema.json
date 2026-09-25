@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raw.githubusercontent.com/MichaelKinsy/PiG/main/parity/interface-extractor/schema/mapping.schema.json",
+  "title": "Pig semantic interface mapping",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["upstreamVersion", "mappings"],
+  "properties": {
+    "upstreamVersion": { "type": "string", "minLength": 1 },
+    "mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["id", "disposition", "upstreamShapeHash"],
+        "properties": {
+          "id": { "type": "string" },
+          "disposition": { "enum": ["ported", "partial", "deferred", "designed-out", "divergence", "pending"] },
+          "upstreamShapeHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$" },
+          "pigTargets": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+          "layers": {
+            "type": "object",
+            "propertyNames": { "enum": ["shape", "api", "parser", "help", "consumer", "wire", "host-dispatch", "sdk-go", "sdk-rust", "sdk-python", "isolated-conformance", "packed-conformance", "production", "behavior", "persistence", "tui", "async"] },
+            "additionalProperties": { "enum": ["complete", "partial", "pending", "n/a"] }
+          },
+          "production": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+          "evidence": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+          "behaviorContracts": { "type": "array", "uniqueItems": true, "items": { "type": "string", "minLength": 1 } },
+          "asyncContract": { "type": "string" },
+          "divergence": { "type": "string", "pattern": "^D[0-9]+$" },
+          "rationale": { "type": "string" }
+        }
+      }
+    }
+  }
+}

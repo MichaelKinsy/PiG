@@ -1,0 +1,66 @@
+# Behavior family: interactive-rendering
+# Surface: dynamic-border.ts: `DynamicBorder` width-adaptive horizontal
+#          rule rendered as the top + bottom of every bordered block.
+#
+# Contract: the border fills the FULL terminal width with U+2500 (─).
+# Asserting two different widths would be redundant (the same scenario
+# code path runs at any width); we assert at width=80, the smaller of
+# our two canonical widths, because the scenario 06 sibling already
+# proves the contract at width=100.
+#
+# Upstream evidence (pi v0.69.0, 2026-05-16, 80x30 tmux probe):
+#   pi --session-dir /tmp/probe-db-pi -e ../../testdata/test-faux-provider.ts
+#   send: "!echo hi" Enter
+#   wait: 3s
+#   crop: capture_start_regex='─{80}', capture_end_regex='─{80}'
+#   raw cropped upstream block:
+#
+#     ────────────────────────────────────────────────────────────────────────────────
+#      $ echo hi
+#
+#      hi
+#
+#     ────────────────────────────────────────────────────────────────────────────────
+#
+# Both top and bottom border rows are exactly 80 box-drawing U+2500
+# characters wide: proves dynamic-border.ts scales to the terminal
+# column count. ANSI-strip + equality on the asserted crop locks both
+# bytes in the asserted box-drawing string.
+
+name = "08-dynamic-border-width80"
+description = "DynamicBorder fills terminal width: at width=80, top + bottom rows are 80 ─ chars."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/dynamic-border.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 80
+height = 30
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "────────────────────────────────────────────────────────────────────────────────"
+capture_end_regex = '─{80}'
+
+[[tmux.steps]]
+keys = ["!echo hi", "Enter"]
+settle_seconds = 3
+wait_contains = ["$ echo hi", "hi"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3

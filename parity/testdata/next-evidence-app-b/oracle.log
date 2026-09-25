@@ -1,0 +1,32 @@
+{"selector":{"current":true,"width":20,"lines":["\u001b[90m────────────────────\u001b[39m","\u001b[36m→ Yes\u001b[39m","  No","\u001b[90m────────────────────\u001b[39m"]}}
+{"selector":{"current":true,"width":80,"lines":["\u001b[90m────────────────────────────────────────────────────────────────────────────────\u001b[39m","\u001b[36m→ Yes         Show images inline in terminal\u001b[39m","  No\u001b[90m          Show text placeholder instead\u001b[39m","\u001b[90m────────────────────────────────────────────────────────────────────────────────\u001b[39m"]}}
+{"selector":{"current":true,"selected":[false],"cancelled":1}}
+{"selector":{"current":false,"width":20,"lines":["\u001b[90m────────────────────\u001b[39m","  Yes","\u001b[36m→ No\u001b[39m","\u001b[90m────────────────────\u001b[39m"]}}
+{"selector":{"current":false,"width":80,"lines":["\u001b[90m────────────────────────────────────────────────────────────────────────────────\u001b[39m","  Yes\u001b[90m         Show images inline in terminal\u001b[39m","\u001b[36m→ No          Show text placeholder instead\u001b[39m","\u001b[90m────────────────────────────────────────────────────────────────────────────────\u001b[39m"]}}
+{"selector":{"current":false,"selected":[true],"cancelled":1}}
+{"clipboard":{"input":"BMP","mime":"image/png"}}
+{"clipboard":{"input":"corrupt BMP","mime":null}}
+{"flash":{"renders":9,"expired":[]}}
+{"flashRender":{"message":"","width":0,"lines":["\u001b[7m\u001b[27m"]}}
+{"flashRender":{"message":"","width":1,"lines":["\u001b[7m \u001b[0m\u001b[27m"]}}
+{"flashRender":{"message":"","width":4,"lines":["\u001b[7m  \u001b[27m"]}}
+{"flashRender":{"message":"","width":5,"lines":["\u001b[7m  \u001b[27m"]}}
+{"flashRender":{"message":"","width":80,"lines":["\u001b[7m  \u001b[27m"]}}
+{"flashRender":{"message":"abcdef","width":0,"lines":["\u001b[7m\u001b[27m"]}}
+{"flashRender":{"message":"abcdef","width":1,"lines":["\u001b[7m \u001b[0m\u001b[27m"]}}
+{"flashRender":{"message":"abcdef","width":4,"lines":["\u001b[7m abc\u001b[0m\u001b[27m"]}}
+{"flashRender":{"message":"abcdef","width":5,"lines":["\u001b[7m abcd\u001b[0m\u001b[27m"]}}
+{"flashRender":{"message":"abcdef","width":80,"lines":["\u001b[7m abcdef \u001b[27m"]}}
+{"flashRender":{"message":"界🙂é","width":0,"lines":["\u001b[7m\u001b[27m"]}}
+{"flashRender":{"message":"界🙂é","width":1,"lines":["\u001b[7m \u001b[0m\u001b[27m"]}}
+{"flashRender":{"message":"界🙂é","width":4,"lines":["\u001b[7m 界\u001b[0m\u001b[27m"]}}
+{"flashRender":{"message":"界🙂é","width":5,"lines":["\u001b[7m 界🙂\u001b[0m\u001b[27m"]}}
+{"flashRender":{"message":"界🙂é","width":80,"lines":["\u001b[7m 界🙂é \u001b[27m"]}}
+{"flashRender":{"message":"\u001b[31mred\u001b[39m","width":0,"lines":["\u001b[7m\u001b[27m"]}}
+{"flashRender":{"message":"\u001b[31mred\u001b[39m","width":1,"lines":["\u001b[7m \u001b[0m\u001b[27m"]}}
+{"flashRender":{"message":"\u001b[31mred\u001b[39m","width":4,"lines":["\u001b[7m \u001b[31mred\u001b[0m\u001b[27m"]}}
+{"flashRender":{"message":"\u001b[31mred\u001b[39m","width":5,"lines":["\u001b[7m \u001b[31mred\u001b[39m \u001b[27m"]}}
+{"flashRender":{"message":"\u001b[31mred\u001b[39m","width":80,"lines":["\u001b[7m \u001b[31mred\u001b[39m \u001b[27m"]}}
+{"imageConvert":{"name":"JPEG","dimensions":[2,2]}}
+{"imageConvert":{"name":"EXIF after XMP","dimensions":[1,2]}}
+PASS: pinned source selector, clipboard conversion, image conversion, and flash probes

@@ -1,0 +1,692 @@
+upstream_version = "0.87.1"
+
+# The generated startup owner is init. Its ExpandableText header receives subsequent expansion changes through setToolsExpanded; this contract closes that transition, not the complete init surface.
+[[contract]]
+id = "coding-agent/startup/verbose-header-collapse"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.init"
+family = "startup"
+kind = "boundary-transition"
+claim = "verbose expands startup help initially without expanding tools; a changed tool-expansion state subsequently selects the header state, while an unchanged state leaves initial help intact"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive.go#Run",
+  "internal/codingagent/interactive_editor.go#setAllToolsExpanded",
+  "internal/codingagent/startup_header.go#renderBuiltInHeader",
+]
+evidence = [
+  "internal/codingagent/startup_header_test.go#TestVerboseHeaderExpansionAndRestoration",
+  "internal/codingagent/startup_header_test.go#TestBuiltInHeaderInitialExpansion",
+  "parity/scenarios/startup/04-startup-verbose-collapse.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\tprivate setToolsExpanded(expanded: boolean): void {"
+end = "\t/** Update rendered assistant messages without rebuilding live tool components. */"
+sha256 = "c616d5de55de545f831efc875a3271f7323b003ebe8e806d2d6347f41cfd1839"
+keybindings = ["app.clear"]
+
+[[contract]]
+id = "coding-agent/model-selector/arrow-wrap"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput"
+family = "model-resolver-selector"
+kind = "boundary-transition"
+claim = "tui.select.up wraps first-to-last and tui.select.down wraps last-to-first within the filtered model list"
+status = "pending"
+pig_targets = [
+  "tui/model_select.go#moveCursor",
+]
+evidence = [
+  "tui/model_select_test.go#TestModelSelectorArrowNavigationWrapsAtBothEnds",
+  "parity/scenarios/model-resolver-selector/11-model-picker-arrow-wrap.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\tgetSearchInput(): Input {"
+sha256 = "5f10cf12b4d26b982551f7b1ef22363d1f913863e1fc8ee8378ed228f48b86fc"
+keybindings = [
+  "tui.input.tab",
+  "tui.select.up",
+  "tui.select.down",
+  "tui.select.confirm",
+  "tui.select.cancel",
+  "app.models.save",
+]
+
+[[contract]]
+id = "coding-agent/model-selector/explicit-default"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput"
+family = "model-resolver-selector"
+kind = "selection-persistence"
+claim = "Enter selects without saving global model defaults; app.models.save selects and saves the default, appending outside models to a nonempty scope in session order on reopen; empty selections and cancellation do not save"
+status = "ported"
+pig_targets = [
+  "tui/model_select.go#HandleInput",
+  "internal/codingagent/interactive_commands.go#buildSlashContext",
+  "internal/codingagent/model_picker.go#persistDefaultModel",
+  "coding/session.go#setModel",
+]
+evidence = [
+  "tui/model_select_default_test.go#TestModelSelectorCtrlSSelectsDefault",
+  "tui/model_select_default_test.go#TestModelSelectorRemappedDefaultAction",
+  "internal/codingagent/model_picker_parity_test.go#TestModelPickerPersistsOnlyExplicitDefault",
+  "internal/codingagent/model_picker_parity_test.go#TestModelPickerReopensInScopeOrderAfterSavingDefault",
+  "coding/session_model_default_test.go#TestSessionModelSwitchDoesNotRewriteGlobalDefault",
+  "parity/scenarios/model-resolver-selector/16-model-picker-enter-session-only.toml",
+  "parity/scenarios/model-resolver-selector/17-model-picker-save-default.toml",
+  "parity/scenarios/model-resolver-selector/18-model-picker-save-default-scope-order.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\tgetSearchInput(): Input {"
+sha256 = "5f10cf12b4d26b982551f7b1ef22363d1f913863e1fc8ee8378ed228f48b86fc"
+keybindings = [
+  "tui.input.tab",
+  "tui.select.up",
+  "tui.select.down",
+  "tui.select.confirm",
+  "tui.select.cancel",
+  "app.models.save",
+]
+
+[[contract]]
+id = "tui/wrap/cjk-token-breaks"
+upstream_id = "render:packages/tui/src/utils.ts#<module>.splitIntoTokensWithAnsi"
+family = "tui-components"
+kind = "unicode-line-break"
+claim = "Han, Hiragana, Katakana, Hangul, and Bopomofo graphemes form independent wrap tokens so a CJK word can fill the remaining line cells"
+status = "pending"
+pig_targets = [
+  "tui/widthx/wrap.go#splitIntoTokensWithAnsi",
+]
+evidence = [
+  "tui/widthx/wrap_test.go#TestWrapTextWithAnsi_CJKBreaksWithinRemainingLineWidth",
+  "parity/scenarios/tui-components/06-widthx-cjk-double-width.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/utils.ts"
+start = "function splitIntoTokensWithAnsi(text: string): string[] {"
+end = """/**
+ * Wrap text with ANSI codes preserved."""
+sha256 = "196c495c6915372f9d6f107a3594301c4d0f15369a91f2957356e102ac5ae74b"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/extensions/shortcut-reload-authority"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.onExtensionShortcut"
+family = "extensions-runtime"
+kind = "reload-dispatch-ownership"
+claim = "reload replaces the authoritative extension shortcut dispatch map so removed handlers stop, added handlers start, and no callback targets an obsolete runner"
+status = "pending"
+pig_targets = [
+  "internal/codingagent/interactive_helpers.go#setupExtensionShortcutListener",
+  "internal/codingagent/reload_resources.go#replaceExtensionRunner",
+]
+evidence = [
+  "internal/codingagent/reload_resources_test.go#TestReloadRefreshesExtensionShortcuts",
+  "internal/codingagent/reload_resources_test.go#TestReloadRefreshesRealSubprocessShortcuts",
+  "parity/scenarios/extensions-runtime/10-shortcut-reload-authority.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\tprivate setupExtensionShortcuts(extensionRunner: ExtensionRunner): void {"
+end = """
+	/**
+	 * Set extension status text in the footer."""
+sha256 = "c4e626462c7a6ded6b8af5d421b7ab9241d97fd03bac50fee82291558624cfb2"
+keybindings = [
+  "matchesKey:shortcutStr as KeyId",
+]
+
+[[contract]]
+id = "coding-agent/extensions/select-dialog-lifecycle"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionSelector"
+family = "extensions-runtime"
+kind = "async-dialog-lifecycle"
+claim = "a tool-time extension selector is installed and mutated on the owning TUI loop, blocks the tool until selection, and resolves cancellation distinctly from bridge failure"
+status = "pending"
+pig_targets = [
+  "internal/codingagent/ext_ui_context.go#runDialog",
+  "internal/codingagent/interactive_input.go#dispatchKey",
+  "internal/codingagent/interactive_input.go#syncExtensionSlashCommands",
+  "coding/extension/host/subprocess/ui_bridge.go#handleSelect",
+]
+evidence = [
+  "internal/codingagent/ext_ui_dialog_test.go#TestAC48SubprocessDialogsRunOnUILoop",
+  "internal/codingagent/ext_ui_dialog_test.go#TestExtUIContextDialogCancellationIsExplicit",
+  "internal/codingagent/ext_ui_dialog_test.go#TestExtensionSlashCommandDoesNotBlockUILoop",
+  "parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+  "parity/scenarios/extensions-runtime/12-subprocess-tool-ui-cancel.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\tprivate showExtensionSelector("
+end = """
+	/**
+	 * Hide the extension selector."""
+sha256 = "0b44fdf66330e1b95f474f4b0b9ea6ae2930c235be5412f0f47ad0036c7d0cdc"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/extensions/input-dialog-lifecycle"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionInput"
+family = "extensions-runtime"
+kind = "async-dialog-lifecycle"
+claim = "a tool-time extension input is installed and mutated on the owning TUI loop, blocks the tool until submission, preserves empty submission, and reports cancellation separately"
+status = "pending"
+pig_targets = [
+  "internal/codingagent/ext_ui_context.go#runDialog",
+  "internal/codingagent/interactive_input.go#dispatchKey",
+  "internal/codingagent/interactive_input.go#syncExtensionSlashCommands",
+  "coding/extension/host/subprocess/ui_bridge.go#handleInput",
+]
+evidence = [
+  "internal/codingagent/ext_ui_dialog_test.go#TestAC48SubprocessDialogsRunOnUILoop",
+  "internal/codingagent/ext_ui_dialog_test.go#TestExtUIContextDialogCancellationIsExplicit",
+  "internal/codingagent/ext_ui_dialog_test.go#TestExtensionSlashCommandDoesNotBlockUILoop",
+  "coding/extension/host/subprocess/push_proxy_test.go#TestUIBridge_EmptyDialogSubmissionIsSuccessful",
+  "parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\tprivate showExtensionInput("
+end = """
+	/**
+	 * Hide the extension input."""
+sha256 = "4becf8d1b5faee06f2d4ce428b330bee9b32abe0c0faf3f534acea13d65e2c78"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/extensions/editor-dialog-lifecycle"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionEditor"
+family = "extensions-runtime"
+kind = "async-dialog-lifecycle"
+claim = "a tool-time extension editor is installed and mutated on the owning TUI loop, blocks the tool until submission, and reports cancellation separately"
+status = "pending"
+pig_targets = [
+  "internal/codingagent/ext_ui_context.go#runDialog",
+  "internal/codingagent/interactive_input.go#dispatchKey",
+  "internal/codingagent/interactive_input.go#syncExtensionSlashCommands",
+  "coding/extension/host/subprocess/ui_bridge.go#handleEditor",
+]
+evidence = [
+  "internal/codingagent/ext_ui_dialog_test.go#TestAC48SubprocessDialogsRunOnUILoop",
+  "internal/codingagent/ext_ui_dialog_test.go#TestExtUIContextDialogCancellationIsExplicit",
+  "internal/codingagent/ext_ui_dialog_test.go#TestExtensionSlashCommandDoesNotBlockUILoop",
+  "parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\tprivate showExtensionEditor("
+end = """
+	/**
+	 * Hide the extension editor."""
+sha256 = "5a5429fb2c2027603e9b694eeb8598ea8867aad5ada9c686102968d1ceeffc42"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/compaction/retry-queue-flush"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.flushCompactionQueue"
+family = "compaction"
+kind = "async-queue-lifecycle"
+claim = "messages submitted during overflow compaction are moved in order into the imminent retry turn instead of remaining stranded until another user submission"
+status = "ported"
+pig_targets = [
+  "internal/codingagent/interactive_events.go#handleAgentEvent",
+  "coding/session.go#RunAgentPrompt",
+  "internal/codingagent/interactive_transcript.go#flushCompactionQueue",
+]
+evidence = [
+  "coding/session_run_agent_prompt_test.go#TestRunAgentPromptWaitsForTheEventConsumerBeforeContinuing",
+  "internal/codingagent/interactive_session_test.go#TestInteractiveMessageQueuedDuringEndOfTurnCompactionIsDelivered",
+  "internal/codingagent/interactive_test.go#TestAC49CompactionEndWillRetryQueuesMessageForRetryTurn",
+  "parity/scenarios/compaction/06-overflow-retry-flushes-queued-message.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\tprivate async flushCompactionQueue("
+end = """
+	/** Move pending bash components from pending area to chat */"""
+sha256 = "77f6d1d0adad51e84f94ee43225673534535daf8a9ae62295bbe332b0afc137b"
+keybindings = []
+
+[[contract]]
+id = "tui/terminal/keyboard-protocol-negotiation"
+upstream_id = "input:packages/tui/src/terminal.ts#ProcessTerminal.handleKeyboardProtocolNegotiationSequence"
+family = "tui-components"
+kind = "terminal-capability-negotiation"
+claim = "raw-mode startup requests Kitty flags 7 and uses Device Attributes as the no-Kitty sentinel before enabling modifyOtherKeys, while negotiation responses never reach application input"
+status = "pending"
+pig_targets = [
+  "tui/terminal.go#extendedKeyInit",
+  "tui/terminal.go#handleKeyboardProtocolNegotiationSequence",
+  "internal/codingagent/interactive_input.go#dispatchChunks",
+]
+evidence = [
+  "tui/raw_mode_test.go#TestExtendedKeyInitSequenceMatchesPi083",
+  "tui/raw_mode_test.go#TestKeyboardProtocolNegotiationUsesDeviceAttributesFallback",
+  "tui/raw_mode_test.go#TestAC50KeyboardProtocolNegotiationMatchesPi083",
+  "tui/key_match_test.go#TestMatchesKeyDynamic",
+  "internal/codingagent/stdin_buffer_test.go#TestStdinBuffer_SplitKittyNegotiationIsConsumedBeforeDispatch",
+]
+
+[contract.upstream]
+path = "packages/tui/src/terminal.ts"
+start = "const DESIRED_KITTY_KEYBOARD_PROTOCOL_FLAGS = 7;"
+end = "\n\nexport type KeyboardProtocolNegotiationSequence"
+sha256 = "d82727b6678184581a57d3c5b430d018a3df2bbc0823e6cdafd4a987b5fbeb8a"
+keybindings = []
+
+[[contract]]
+id = "tui/terminal/herdr-image-capability"
+upstream_id = "input:packages/tui/src/terminal-image.ts#<module>.detectCapabilities"
+family = "tui-components"
+kind = "nested-terminal-capability"
+claim = "Herdr image rendering requires HERDR_KITTY_GRAPHICS=1 and never inherits Kitty support solely from the outer terminal identity"
+status = "pending"
+pig_targets = [
+  "tui/terminal_image.go#DetectCapabilities",
+]
+evidence = [
+  "tui/terminal_image_test.go#TestDetectCapabilities",
+  "tui/terminal_image_test.go#TestAC51HerdrImageCapabilityOwnsRowReservation",
+  "tui/terminal_image_test.go#TestHerdrWithGraphicsSignalRendersKittyImage",
+  "DIVERGENCES.md#D44 Positive image capability for Herdr intermediaries",
+]
+
+[contract.upstream]
+path = "packages/tui/src/terminal-image.ts"
+start = "export function detectCapabilities("
+end = """
+
+/** Override the cached capabilities."""
+sha256 = "198fe503369adbf6a0eaced14156ef782d4bbfd8e5f0a1416dbd09ce6ffc09e8"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/extensions/custom-message-renderer"
+upstream_id = "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderInitialMessages"
+family = "extensions-runtime"
+kind = "custom-message-render-dispatch"
+claim = "displayed custom messages resolve the first registered renderer, preserve expanded state, fall back visibly on invalid output, and subprocess rendering never performs IPC or JSON work on the TUI render loop"
+status = "pending"
+pig_targets = [
+  "internal/codingagent/interactive_transcript.go#appendCustomMessage",
+  "coding/extension/host/subprocess/render_proxy.go#Render(width int)",
+  "coding/extension/host/subprocess/render_proxy.go#requestLoop",
+]
+evidence = [
+  "internal/codingagent/custom_message_renderer_test.go#TestCustomMessageUsesRegisteredProductionRenderer",
+  "coding/extension/host/subprocess/render_proxy_test.go#TestRenderProxyRenderNeverWaitsForIPC",
+  "coding/extension/host/subprocess/render_proxy_test.go#TestAC52RenderProxyRejectsStaleGeneration",
+  "tests/extension-conformance/conformance_test.go#TestConformance_TransportsMatch",
+  "parity/scenarios/extensions-runtime/14-subprocess-message-renderer.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t\tcase \"custom\": {"
+end = """
+			case "compactionSummary": {"""
+sha256 = "b13c4b57fec9c420327daff4cbb801126f61426e9aff096a789b9a697871dd02"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/extensions/footer-status-composition"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setExtensionFooter"
+family = "extensions-runtime"
+kind = "footer-composition-ownership"
+claim = "a subprocess custom footer replaces only the two standard footer rows while the host retains one sorted keyed-status row across repeated reload and footer clearing"
+status = "pending"
+pig_targets = [
+  "internal/codingagent/ext_ui_context.go#SetFooter",
+  "internal/codingagent/status_line.go#Render(width int)",
+]
+evidence = [
+  "internal/codingagent/status_line_test.go#TestAC53CustomFooterKeepsKeyedStatusesVisible",
+  "parity/scenarios/extensions-runtime/15-footer-status-reload-composition.toml",
+  "DIVERGENCES.md#D45 Host composition of keyed statuses with subprocess custom footers",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\tprivate setExtensionFooter("
+end = """
+	/**
+	 * Set a custom header"""
+sha256 = "206d78c478bb120c2f19f371172e185e6cf4d64daacac101f58e6416fef4d8fc"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/extensions/current-session-lifecycle-context"
+upstream_id = "input:packages/coding-agent/src/core/agent-session.ts#AgentSession._emitExtensionEvent"
+family = "extensions-runtime"
+kind = "session-replacement-lifecycle-order"
+claim = "resumed and replacement sessions expose their resolved current ID and absolute file to the current extension runner before session and agent lifecycle handlers execute"
+status = "pending"
+pig_targets = [
+  "internal/codingagent/session_manager.go#loadSessionFile",
+  "coding/session.go#ReplaceRunner",
+  "coding/session.go#currentRunner",
+  "internal/codingagent/reload_resources.go#replaceExtensionRunner",
+]
+evidence = [
+  "internal/codingagent/session_manager_test.go#TestSessionManagerLoadResolvesAbsoluteSessionPath",
+  "coding/session_test.go#TestAC54SessionReplaceRunnerRedirectsAgentLifecycle",
+  "parity/scenarios/extensions-runtime/16-resumed-session-identity.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/core/agent-session.ts"
+start = "\tprivate async _emitExtensionEvent("
+end = """
+	/**
+	 * Subscribe to agent events."""
+sha256 = "955e5ef042930395a89361e6cf05ce7ab3d1777b5baca681f10c1dba0bbd41cb"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/model-selector/refresh-result-status"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.refreshModels"
+family = "model-resolver-selector"
+kind = "refresh-result-error-status"
+claim = "model picker errors derive from the actual refresh result or registry error; OAuth credential expiry alone never fabricates a catalog refresh failure"
+status = "pending"
+pig_targets = [
+  "internal/codingagent/interactive_commands.go#PickModel",
+  "internal/codingagent/model_registry.go#Refresh",
+]
+evidence = [
+  "parity/scenarios/model-resolver-selector/03-model-invalid.toml",
+  "parity/scenarios/model-resolver-selector/12-expired-credential-is-not-refresh-failure.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
+start = "\tprivate async refreshModels()"
+end = "\n\tdispose(): void {"
+sha256 = "b344cf6948d2ec8ccada9de32f8918048a6798619c7315e10d07c700bfec0d08"
+keybindings = []
+
+[[contract]]
+id = "coding-agent/scoped-models/input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput"
+family = "model-resolver-selector"
+kind = "selector-input-state-machine"
+claim = "scoped-model input preserves wrap navigation, fuzzy search, filtered bulk actions, unavailable IDs, provider toggles, bounded reorder, session-only dirty/save state, configurable action bindings, and explicit cancellation"
+status = "pending"
+pig_targets = [
+  "tui/scoped_models_list.go#HandleInput",
+  "tui/scoped_models_list.go#refresh",
+  "internal/codingagent/keybindings.go#syncToTUI",
+]
+evidence = [
+  "tui/scoped_models_list_test.go#TestScopedModels_ArrowNavigationWraps",
+  "tui/scoped_models_list_test.go#TestScopedModels_SearchUsesFuzzySubsequenceOrdering",
+  "tui/scoped_models_list_test.go#TestScopedModels_FilteredClearAndEnableTargetOnlyMatches",
+  "tui/scoped_models_list_test.go#TestScopedModels_EnableAllPreservesUnavailableConfiguredIDs",
+  "tui/scoped_models_list_test.go#TestScopedModels_UsesConfiguredActionBindings",
+  "parity/scenarios/model-resolver-selector/08-scoped-models-selector.toml",
+  "parity/scenarios/model-resolver-selector/13-scoped-models-fuzzy-filter.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
+start = "\thandleInput(data: string): void {"
+end = "\n\tgetSearchInput(): Input {"
+sha256 = "ea8d93a09b36865b16a2fd68d5d6bdde88bcf4f4a757306f0ec89f725f347508"
+keybindings = [
+  "app.models.clearAll",
+  "app.models.enableAll",
+  "app.models.reorderDown",
+  "app.models.reorderUp",
+  "app.models.save",
+  "app.models.toggleProvider",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.up",
+  "matchesKey:Key.ctrl(\"c\")",
+  "matchesKey:Key.escape",
+]
+
+[[contract]]
+id = "coding-agent/model-selector/input-state-machine"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput"
+family = "model-resolver-selector"
+kind = "selector-input-state-machine"
+claim = "model picker preserves scope toggle guards, fuzzy Input editing, filter re-anchoring, wrapped arrows, clamped pages, selection, cancellation, and configured TUI action bindings"
+status = "pending"
+pig_targets = [
+  "tui/model_select.go#HandleInput",
+  "tui/model_select.go#applyFilter",
+]
+evidence = [
+  "tui/model_select_test.go#TestModelSelector_FilterResetsSelectionToBestMatch",
+  "tui/model_select_test.go#TestModelSelector_FilterUsesFuzzySubsequence",
+  "tui/model_select_test.go#TestModelSelector_SearchDelegatesCursorEditingToInput",
+  "tui/model_select_test.go#TestModelSelectorPageNavigationClampsWithoutWrapping",
+  "parity/scenarios/model-resolver-selector/06-model-scope-toggle.toml",
+  "parity/scenarios/model-resolver-selector/09-model-filter-resets-selection.toml",
+  "parity/scenarios/model-resolver-selector/14-model-picker-fuzzy-filter.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\tgetSearchInput(): Input {"
+sha256 = "5f10cf12b4d26b982551f7b1ef22363d1f913863e1fc8ee8378ed228f48b86fc"
+keybindings = [
+  "tui.input.tab",
+  "tui.select.up",
+  "tui.select.down",
+  "tui.select.confirm",
+  "tui.select.cancel",
+  "app.models.save",
+]
+
+[[contract]]
+id = "tui/cancellable-loader/cancel-input"
+upstream_id = "input:packages/tui/src/components/cancellable-loader.ts#CancellableLoader.handleInput"
+family = "tui-components"
+kind = "cancellation-input"
+claim = "the configured tui.select.cancel binding aborts once and invokes onAbort, while unrelated input leaves cancellation untouched"
+status = "pending"
+pig_targets = [
+  "tui/cancellable_loader.go#HandleInput",
+]
+evidence = [
+  "tui/loader_image_parity_test.go#TestCancellableLoader_HandleInput_RouteBindings",
+  "parity/scenarios/tui-components/09-cancellable-loader.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/cancellable-loader.ts"
+start = "\thandleInput(data: string): void {"
+end = "\n\tdispose(): void {"
+sha256 = "4e06f9cd81412f6a699fe3ced577b0885e41dc9d31dc503e01e4ae0bf3f672bc"
+keybindings = ["tui.select.cancel"]
+
+[[contract]]
+id = "tui/cancellable-loader/dispose-without-abort"
+upstream_id = "input:packages/tui/src/components/cancellable-loader.ts#CancellableLoader.dispose"
+family = "tui-components"
+kind = "resource-lifecycle"
+claim = "disposing loader animation does not abort the operation or invoke onAbort"
+status = "pending"
+pig_targets = [
+  "tui/cancellable_loader.go#Dispose",
+]
+evidence = [
+  "tui/loader_image_parity_test.go#TestCancellableLoaderDisposeStopsWithoutAborting",
+  "parity/scenarios/tui-components/09-cancellable-loader.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/cancellable-loader.ts"
+start = "\tdispose(): void {"
+end = "\n}"
+sha256 = "86b5f356983f93a95f5582cccc63a43665106ca4aa5b9502fa5f9cf0975cb7c6"
+keybindings = []
+
+[[contract]]
+id = "tui/select-list/input-state-machine"
+upstream_id = "input:packages/tui/src/components/select-list.ts#SelectList.handleInput"
+family = "tui-components"
+kind = "selector-input-state-machine"
+claim = "SelectList mode wraps arrows, reports selection changes, confirms/cancels through configured actions, and ignores search-selector-only Page/Home/End input"
+status = "pending"
+pig_targets = [
+  "tui/select_filterable.go#HandleInput",
+  "tui/select_submenu.go#HandleInput",
+]
+evidence = [
+  "tui/select_filterable_test.go#TestFilterableListUpWrapsToBottom",
+  "tui/select_filterable_test.go#TestFilterableListDownWrapsToTop",
+  "tui/select_filterable_test.go#TestFilterableList_DisabledSearchIgnoresNonSelectListNavigation",
+  "tui/select_submenu_test.go#TestSelectSubmenuDownWrapsLastToFirst",
+  "parity/scenarios/tui-components/11-select-list-input-state.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/select-list.ts"
+start = "\thandleInput(keyData: string): void {"
+end = "\n\tprivate renderItem("
+sha256 = "be8c40b865ef194372ed1c9e9a7f7f5de56bb8ccb0bd6b9f1f6ad8f371d04803"
+keybindings = [
+  "tui.select.cancel",
+  "tui.select.confirm",
+  "tui.select.down",
+  "tui.select.up",
+]
+
+[[contract]]
+id = "tui/input/edit-state-machine"
+upstream_id = "input:packages/tui/src/components/input.ts#Input.handleInput"
+family = "tui-components"
+kind = "single-line-input-state-machine"
+claim = "Input preserves configured submit/cancel/edit actions, grapheme cursor and deletion, word movement, kill/yank/undo chains, atomic cleaned paste, Kitty/modifyOtherKeys text, and C0/C1 rejection"
+status = "pending"
+pig_targets = [
+  "tui/text_input.go#HandleInput",
+]
+evidence = [
+  "tui/text_input_test.go#TestTextInputDeleteWordUndoAndYank",
+  "tui/text_input_test.go#TestTextInputConsecutiveCtrlWAccumulatesIntoOneKillEntry",
+  "tui/text_input_test.go#TestTextInputUndoCoalescesWordCharsAndSpacesSeparately",
+  "tui/text_input_test.go#TestTextInputBracketedPasteCleansInput",
+  "tui/keys_decode_test.go#TestTextInputDecodesKittyPrintable",
+  "tui/key_csiu_text_test.go#TestTextInput_InsertsCapitalFromModifyOtherKeys",
+  "parity/scenarios/extensions-runtime/11-subprocess-tool-ui-dialogs.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/components/input.ts"
+start = "\thandleInput(data: string): void {"
+end = "\n\tprivate insertCharacter("
+sha256 = "e70a6d1a1e91dbdab4b0a6f6a1ede4f827e003304e1b021e21f0b6f1532a535c"
+keybindings = [
+  "tui.editor.cursorLeft",
+  "tui.editor.cursorLineEnd",
+  "tui.editor.cursorLineStart",
+  "tui.editor.cursorRight",
+  "tui.editor.cursorWordLeft",
+  "tui.editor.cursorWordRight",
+  "tui.editor.deleteCharBackward",
+  "tui.editor.deleteCharForward",
+  "tui.editor.deleteToLineEnd",
+  "tui.editor.deleteToLineStart",
+  "tui.editor.deleteWordBackward",
+  "tui.editor.deleteWordForward",
+  "tui.editor.undo",
+  "tui.editor.yank",
+  "tui.editor.yankPop",
+  "tui.input.submit",
+  "tui.select.cancel",
+]
+
+[[contract]]
+id = "tui/keybindings/action-match"
+upstream_id = "input:packages/tui/src/keybindings.ts#KeybindingsManager.matches"
+family = "tui-components"
+kind = "keybinding-resolution"
+claim = "action matching uses the resolved ordered key list, replaces defaults with explicit user bindings including empty bindings, accepts every terminal encoding for each KeyId, and reports no match for unknown actions"
+status = "pending"
+pig_targets = [
+  "tui/keybindings.go#Matches",
+]
+evidence = [
+  "tui/keybindings_test.go#TestTUIKeybindingsManager_DefaultMatches",
+  "tui/keybindings_test.go#TestTUIKeybindingsManager_UserOverride",
+  "internal/codingagent/keybindings_test.go#TestKeybindingsManagerSyncsTuiOverridesToGlobal",
+  "parity/scenarios/tui-components/11-select-list-input-state.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/keybindings.ts"
+start = "\tmatches(data: string, keybinding: Keybinding): boolean {"
+end = "\n\tgetKeys("
+sha256 = "ec0f9d90513e7440523101e5687a746c16015e70d9a8d4ad82184ce43cdb8746"
+keybindings = ["matchesKey:key"]
+
+[[contract]]
+id = "coding-agent/compaction/escape-cancel"
+upstream_id = "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent"
+family = "compaction"
+kind = "lifecycle-input-override"
+claim = "compaction_start makes Escape call abortCompaction even while the agent is idle, and compaction_end restores normal dispatch while retaining manual cancellation in conversation output"
+status = "pending"
+pig_targets = [
+  "internal/codingagent/interactive_input.go#dispatchKey",
+  "internal/codingagent/interactive_events.go#handleAgentEvent",
+]
+evidence = [
+  "internal/codingagent/interactive_test.go#TestInteractiveMode_EscCancelsCompactionWhileAgentIsIdle",
+  "internal/codingagent/interactive_test.go#TestInteractiveMode_ManualCompactionCancellationPersistsInConversation",
+  "parity/scenarios/compaction/07-escape-cancels-compaction.toml",
+]
+
+[contract.upstream]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+start = "\t\t\tcase \"compaction_start\": {"
+end = "\n\t\t\tcase \"compaction_end\": {"
+sha256 = "52858975f8041cf1bc535886c3c30647c3258988930f272af877e3257e4abd7c"
+keybindings = []
+
+[[contract]]
+id = "tui/render/main-screen-full-redraw"
+upstream_id = "render:packages/tui/src/tui-main-screen.ts#TuiMainScreen.doRender"
+family = "fullscreen"
+kind = "viewport-shrink-redraw"
+claim = "when a changed row begins above the visible viewport, Pig matches Pi by clearing obsolete physical history and replaying the current logical transcript once"
+status = "ported"
+pig_targets = [
+  "tui/tui.go#doRender",
+]
+evidence = [
+  "tui/main_screen_upstream_parity_test.go#TestMainScreenFramesMatchPi084LogicalHistory",
+  "parity/scenarios/fullscreen/03-main-screen-history-redraw.toml",
+  "parity/scenarios/fullscreen/04-main-screen-assistant-streaming.toml",
+  "parity/scenarios/fullscreen/05-main-screen-tool-streaming.toml",
+  "parity/scenarios/fullscreen/06-main-screen-tool-settled.toml",
+  "parity/scenarios/fullscreen/07-main-screen-editor-growth.toml",
+  "parity/scenarios/fullscreen/08-main-screen-editor-shrink.toml",
+  "parity/scenarios/fullscreen/09-main-screen-compaction-in-progress.toml",
+  "parity/scenarios/fullscreen/10-main-screen-compaction-settled.toml",
+]
+
+[contract.upstream]
+path = "packages/tui/src/tui-main-screen.ts"
+start = "\tprotected doRender(): void {"
+end = "\n\tprivate positionHardwareCursor"
+sha256 = "bffeb491669e5ee1914c8f0a48614bd92578ebc3199d9787c9a64589a6a206e0"
+keybindings = []

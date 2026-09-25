@@ -1,0 +1,29 @@
+$ go test ./agent/harness/pico3 -run '^TestHarnessPicoJSONLPublicationRecovery$' -count=1 -json
+exit: 1
+Go test Output events follow verbatim; top-level completion events retain elapsed seconds.
+=== RUN   TestHarnessPicoJSONLPublicationRecovery
+=== PAUSE TestHarnessPicoJSONLPublicationRecovery
+=== CONT  TestHarnessPicoJSONLPublicationRecovery
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/intact
+--- PASS: TestHarnessPicoJSONLPublicationRecovery/intact (0.00s)
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/main
+    team_harness_jsonl_test.go:64: unpublished task status:
+         got: "running"
+        want: "pending"
+--- FAIL: TestHarnessPicoJSONLPublicationRecovery/main (0.00s)
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/task
+--- PASS: TestHarnessPicoJSONLPublicationRecovery/task (0.00s)
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/sticky
+--- PASS: TestHarnessPicoJSONLPublicationRecovery/sticky (0.00s)
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/torn-main-tail
+--- PASS: TestHarnessPicoJSONLPublicationRecovery/torn-main-tail (0.00s)
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/torn-task-tail
+--- PASS: TestHarnessPicoJSONLPublicationRecovery/torn-task-tail (0.00s)
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/torn-sticky-tail
+--- PASS: TestHarnessPicoJSONLPublicationRecovery/torn-sticky-tail (0.00s)
+--- FAIL: TestHarnessPicoJSONLPublicationRecovery (0.01s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/agent/harness/pico3	0.038s
+
+Top-level completion events:
+{"Time": "2026-09-24T22:01:25.326543726-07:00", "Action": "fail", "Package": "github.com/MichaelKinsy/PiG/agent/harness/pico3", "Test": "TestHarnessPicoJSONLPublicationRecovery", "Elapsed": 0.01}

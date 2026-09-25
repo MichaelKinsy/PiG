@@ -1,0 +1,74 @@
+[
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/components/trust-selector.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestTrustHandler_SavesSelectedDecision"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/components/trust-selector.ts TrustSelectorComponent confirm/cancel callback and interactive-mode.ts showTrustSelector saved updates",
+    "mutation": "internal/codingagent/slash_session_handlers.go: if len(selected.Updates) > 0 { -> if false && len(selected.Updates) > 0 {; targeted compiled test FAIL; codex-tests-modes/trust-red.log"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/chat-viewport.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestCreateChatViewportPinsDockUnderTranscript"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/chat-viewport.ts createChatViewport dock minSize and ordering; packages/coding-agent/test/chat-viewport.test.ts",
+    "mutation": "internal/codingagent/chat_viewport.go: shrinking(options.Editor, 3) -> shrinking(options.Editor, 2); targeted compiled test FAIL; codex-tests-modes/viewport-red.log"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-json.ts",
+    "package": "./tui",
+    "tests": [
+      "TestLoadThemeFileRejectsSlashInName"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/theme/theme-json.ts validateThemeJson rejects names containing slash",
+    "mutation": "tui/theme_json.go: if strings.Contains(name, \"/\") { -> if false && strings.Contains(name, \"/\") {; targeted compiled test FAIL; codex-tests-modes/theme-json-red.log"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/bug-report.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestBugPromptPreservesDescriptionLinesAndCancels"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/bug-report.ts description and cancellation flow; documented delivery divergence D62 retained",
+    "mutation": "internal/codingagent/slash_bug.go: description := choices.hint -> description := \"lost\"; targeted compiled test FAIL; codex-tests-modes/bug-red.log"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/tui-renderer.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestCreateInteractiveTuiRoutesOsc8ClickToInjectedOpener"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/tui-renderer.ts createTuiRenderer fullscreen OSC8 opener wiring",
+    "mutation": "internal/codingagent/interactive_tui.go: opts.OpenURL = func(url string) { _ = m.effectiveOpenURL()(url) } -> opts.OpenURL = func(string) {}; targeted compiled test FAIL; codex-tests-modes/renderer-red.log"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/rpc/rpc-client.ts",
+    "package": "./coding/rpcclient",
+    "tests": [
+      "TestRPCCommandWirePreservesOptionalValues"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/rpc/rpc-client.ts RpcClient.send serializeJsonLine({...command,id}); prompt/newSession optional fields",
+    "mutation": "coding/rpcclient/commands.go: enc.SetEscapeHTML(false) -> enc.SetEscapeHTML(true); targeted compiled test FAIL; codex-tests-modes/rpc-red.log"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/external-editor.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestOpenExternalEditorStripsOneTrailingNewline"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/external-editor.ts editInExternalEditor stripBom and exactly one trailing newline",
+    "mutation": "internal/codingagent/external_editor.go: strings.TrimSuffix(text.StripBom(string(data)), \"\\n\") -> strings.TrimSuffix(text.StripBom(string(data)), \"\"); targeted compiled test FAIL; codex-tests-modes/external-red.log"
+  },
+  {
+    "upstream": "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts",
+    "package": "./tui",
+    "tests": [
+      "TestResolveThemeSetting"
+    ],
+    "upstream_reference": "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts ThemeController.setTerminalTheme automatic light/dark selection",
+    "mutation": "tui/theme.go: terminalTheme == light -> terminalTheme == dark; targeted compiled test FAIL; codex-tests-modes/theme-red.log"
+  }
+]

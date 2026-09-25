@@ -1,0 +1,7 @@
+  filter: █
+
+→ alpha                           the first option
+  beta-long                       second option with newli
+  gamma                           third option
+
+

@@ -1,0 +1,68 @@
+# Behavior family: custom editor keybinding precedence.
+# Surface: CustomEditor.handleInput's ordered app-key dispatch.
+#
+# Upstream evidence (Pi 0.87.1): custom-editor.ts checks extension shortcuts
+# before paste-image, gives an open autocomplete popup first refusal on Escape,
+# otherwise dispatches interrupt, and only exits on Ctrl+D when getText() is
+# empty. This scenario binds an extension shortcut to Ctrl+V (the default
+# paste-image key), dismisses slash autocomplete with Escape, then proves
+# Ctrl+D deletes forward in nonempty text. The production dispatch regression
+# separately asserts that Escape reaches interrupt when autocomplete is closed.
+
+name = "custom-editor-precedence"
+description = "Extension, paste-image, autocomplete, interrupt, and nonempty Ctrl+D follow CustomEditor precedence."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/custom-editor.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=clipboard-images/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=clipboard-images/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/custom-editor-precedence.mjs"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = [
+  "../testdata/test-faux-provider.ts",
+  "testdata/custom-editor-precedence.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "CTRL-D-NONEMPTY-AX"
+capture_end = "CTRL-D-NONEMPTY-AX"
+
+[[tmux.steps]]
+keys = ["hex:16"]
+wait_contains = ["CUSTOM-EDITOR-EXTENSION-BEFORE-PASTE"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["/"]
+wait_contains = ["→ settings"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_visible_contains = ["/"]
+wait_not_contains = ["→ settings"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["C-c", "CTRL-D-NONEMPTY-AB", "Left", "C-d", "X"]
+wait_visible_contains = ["CTRL-D-NONEMPTY-AX"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+escaped_output_equal = true
+runtime_ratio_max = 4.0
+runs = 3

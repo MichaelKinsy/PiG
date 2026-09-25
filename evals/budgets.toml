@@ -1,0 +1,30 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# Ceilings that `make perf-check` applies to a fresh overhead run
+# (tmp/evals/overhead.json). They catch regressions, not noise, so they sit
+# well above the medians measured on a 1 vCPU sandbox. Tighten a ceiling only
+# with a run from the CI runner attached to the pull request.
+
+[pig.startup]
+wall_ms_median = 80
+rss_mib_median = 48
+
+[pig.round-trip]
+wall_ms_median = 250
+rss_mib_median = 80
+requests = 1
+
+[parity]
+# PiG's first request for the same prompt may exceed Pi's by at most this many
+# bytes. The allowance covers the product name and PiG's documentation paths.
+request_bytes_over_pi = 256
+
+# Ratchet on SlopCodeBench-style metrics over hand-written Go (make slop).
+# Set at the measured launch baseline: lower them as refactors land; never raise
+# them to admit new code. Go's explicit error branches raise cyclomatic
+# complexity, so compare these with PiG's own history, not other languages.
+[slop]
+max_verbosity = 0.050
+max_erosion = 0.660
+

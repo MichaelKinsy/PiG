@@ -1,0 +1,35 @@
+# Behavior family: print
+# PORT_MAP linkage is explicit in covers = [...].
+# Scenario: print mode arithmetic
+#
+# Both binaries answer a trivial arithmetic question through --print
+# mode. Tests the full agent loop: provider auth, request, streaming,
+# stop, exit. The cheapest meaningful end-to-end signal.
+#
+# Tagged `live` because it makes a real LLM call. Skipped by default
+# tag filters; included when running with `-pig-parity.tags=live`
+# or no tag filter.
+
+name = "01-print-mode-arithmetic"
+description = "Headless --print returns the correct answer from both systems"
+
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/agent/src/agent.ts",
+  "packages/ai/src/api/github-copilot-headers.ts",
+]
+
+tags = ["live", "real-llm"]
+driver = "print-mode"
+model = "github-copilot/gpt-5-mini"
+
+[print]
+prompt = "What is 2+2? Answer with just the number, nothing else."
+timeout_seconds = 60
+
+[assert]
+runs = 1
+exit_code = 0
+both_contain = ["4"]
+# Print mode is dominated by API latency; pig overhead should be small.
+runtime_ratio_max = 1.20

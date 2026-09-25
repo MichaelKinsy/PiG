@@ -1,0 +1,35 @@
+# Behavior family: rpc
+# Surface: complete model/thinking/retry command dispatch from rpc-types.ts.
+# The exact Pi 0.84 command handlers return a full model record, the model's
+# supported thinking levels, null for a one-model cycle, and an abort-retry
+# acknowledgement. The fixed faux provider keeps all values hermetic.
+
+name = "07-rpc-model-thinking-commands"
+description = "RPC model and thinking queries expose the full pinned Pi wire shape."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = [
+  '{"id":"models","type":"get_available_models"}',
+  '{"id":"levels","type":"get_available_thinking_levels"}',
+  '{"id":"cycle","type":"cycle_model"}',
+  '{"id":"abort-retry","type":"abort_retry"}',
+]
+timeout_seconds = 15
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_normalized_equal = true
+runs = 3

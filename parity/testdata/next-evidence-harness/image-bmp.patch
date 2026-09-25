@@ -1,0 +1,13 @@
+diff --git i/internal/imageprocessing/images.go w/internal/imageprocessing/images.go
+index f83b6490f..68e61b000 100644
+--- i/internal/imageprocessing/images.go
++++ w/internal/imageprocessing/images.go
+@@ -287,7 +287,7 @@ func isBMP(buffer []byte) bool {
+ 	default:
+ 		return false
+ 	}
+-	return colorPlanes == 1 && slices.Contains([]int{1, 4, 8, 16, 24, 32}, bitsPerPixel)
++	return colorPlanes != 1 && slices.Contains([]int{1, 4, 8, 16, 24, 32}, bitsPerPixel)
+ }
+ 
+ func readUint16LE(buffer []byte, offset int) int {

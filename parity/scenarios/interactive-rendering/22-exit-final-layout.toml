@@ -1,0 +1,57 @@
+# Upstream evidence: Pi's custom message is Spacer(1) + Box(1,1), status notifications
+# have their own spacer, and TuiMainScreen.beforeTerminalStop parks at
+# previousLines.length before CRLF. The complete final transcript/editor/footer
+# crop ends at the resume-hint label, retaining the blank row below the footer.
+# The command spelling and random/session-dir argument follow the crop and are
+# not this layout contract. All captured color and spacing bytes are retained.
+name = "22-exit-final-layout"
+description = "The final frame retains message box padding and parks below the footer before the resume hint"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "packages/tui/src/tui-main-screen.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pig_extensions = ["testdata/exit-notice.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/exit-notice.mjs"]
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/custom-msg-cwd"
+ready_pattern_pig = "Ready. Type a message"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Hello world"
+capture_end = "To resume this session:"
+
+[[tmux.steps]]
+keys = ["/exit-notice"]
+wait_contains = ["/exit-notice"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["chain finished: 4 steps in 4.6s"]
+wait_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["C-d"]
+wait_contains = ["To resume this session:"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["chain finished: 4 steps in 4.6s", "To resume this session:"]
+escaped_output_equal = true
+# normalize-rationale: each isolated run has its own generated snapshot CWD. Replace only that path;
+# every blank row, space, foreground/background escape and hint style remains.
+normalize_replace = [{ pattern = '/tmp/parity-snap-cwd-[0-9]+', with = '<cwd>' }]
+runs = 3

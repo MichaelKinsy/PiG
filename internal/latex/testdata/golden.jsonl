@@ -1,0 +1,441 @@
+{"input":"\\alpha","inline":"α","display":"α"}
+{"input":"\\beta","inline":"β","display":"β"}
+{"input":"\\gamma","inline":"γ","display":"γ"}
+{"input":"\\delta","inline":"δ","display":"δ"}
+{"input":"\\epsilon","inline":"ϵ","display":"ϵ"}
+{"input":"\\varepsilon","inline":"ε","display":"ε"}
+{"input":"\\zeta","inline":"ζ","display":"ζ"}
+{"input":"\\eta","inline":"η","display":"η"}
+{"input":"\\theta","inline":"θ","display":"θ"}
+{"input":"\\vartheta","inline":"ϑ","display":"ϑ"}
+{"input":"\\iota","inline":"ι","display":"ι"}
+{"input":"\\kappa","inline":"κ","display":"κ"}
+{"input":"\\varkappa","inline":"ϰ","display":"ϰ"}
+{"input":"\\lambda","inline":"λ","display":"λ"}
+{"input":"\\mu","inline":"μ","display":"μ"}
+{"input":"\\nu","inline":"ν","display":"ν"}
+{"input":"\\xi","inline":"ξ","display":"ξ"}
+{"input":"\\pi","inline":"π","display":"π"}
+{"input":"\\varpi","inline":"ϖ","display":"ϖ"}
+{"input":"\\rho","inline":"ρ","display":"ρ"}
+{"input":"\\varrho","inline":"ϱ","display":"ϱ"}
+{"input":"\\sigma","inline":"σ","display":"σ"}
+{"input":"\\varsigma","inline":"ς","display":"ς"}
+{"input":"\\tau","inline":"τ","display":"τ"}
+{"input":"\\upsilon","inline":"υ","display":"υ"}
+{"input":"\\phi","inline":"ϕ","display":"ϕ"}
+{"input":"\\varphi","inline":"φ","display":"φ"}
+{"input":"\\chi","inline":"χ","display":"χ"}
+{"input":"\\psi","inline":"ψ","display":"ψ"}
+{"input":"\\omega","inline":"ω","display":"ω"}
+{"input":"\\Gamma","inline":"Γ","display":"Γ"}
+{"input":"\\Delta","inline":"Δ","display":"Δ"}
+{"input":"\\Theta","inline":"Θ","display":"Θ"}
+{"input":"\\Lambda","inline":"Λ","display":"Λ"}
+{"input":"\\Xi","inline":"Ξ","display":"Ξ"}
+{"input":"\\Pi","inline":"Π","display":"Π"}
+{"input":"\\Sigma","inline":"Σ","display":"Σ"}
+{"input":"\\Upsilon","inline":"Υ","display":"Υ"}
+{"input":"\\Phi","inline":"Φ","display":"Φ"}
+{"input":"\\Psi","inline":"Ψ","display":"Ψ"}
+{"input":"\\Omega","inline":"Ω","display":"Ω"}
+{"input":"\\pm","inline":"±","display":"±"}
+{"input":"\\mp","inline":"∓","display":"∓"}
+{"input":"\\times","inline":"×","display":"×"}
+{"input":"\\div","inline":"÷","display":"÷"}
+{"input":"\\cdot","inline":"·","display":"·"}
+{"input":"\\ast","inline":"∗","display":"∗"}
+{"input":"\\star","inline":"⋆","display":"⋆"}
+{"input":"\\circ","inline":"∘","display":"∘"}
+{"input":"\\bullet","inline":"•","display":"•"}
+{"input":"\\oplus","inline":"⊕","display":"⊕"}
+{"input":"\\ominus","inline":"⊖","display":"⊖"}
+{"input":"\\otimes","inline":"⊗","display":"⊗"}
+{"input":"\\oslash","inline":"⊘","display":"⊘"}
+{"input":"\\odot","inline":"⊙","display":"⊙"}
+{"input":"\\bigcirc","inline":"○","display":"○"}
+{"input":"\\dagger","inline":"†","display":"†"}
+{"input":"\\ddagger","inline":"‡","display":"‡"}
+{"input":"\\amalg","inline":"⨿","display":"⨿"}
+{"input":"\\uplus","inline":"⊎","display":"⊎"}
+{"input":"\\sqcap","inline":"⊓","display":"⊓"}
+{"input":"\\sqcup","inline":"⊔","display":"⊔"}
+{"input":"\\triangleleft","inline":"◁","display":"◁"}
+{"input":"\\triangleright","inline":"▷","display":"▷"}
+{"input":"\\wr","inline":"≀","display":"≀"}
+{"input":"\\cap","inline":"∩","display":"∩"}
+{"input":"\\cup","inline":"∪","display":"∪"}
+{"input":"\\bigcap","inline":"⋂","display":"⋂"}
+{"input":"\\bigcup","inline":"⋃","display":"⋃"}
+{"input":"\\bigwedge","inline":"⋀","display":"⋀"}
+{"input":"\\bigvee","inline":"⋁","display":"⋁"}
+{"input":"\\bigsqcup","inline":"⨆","display":"⨆"}
+{"input":"\\biguplus","inline":"⨄","display":"⨄"}
+{"input":"\\bigoplus","inline":"⨁","display":"⨁"}
+{"input":"\\bigotimes","inline":"⨂","display":"⨂"}
+{"input":"\\bigodot","inline":"⨀","display":"⨀"}
+{"input":"\\setminus","inline":"∖","display":"∖"}
+{"input":"\\in","inline":"∈","display":"∈"}
+{"input":"\\notin","inline":"∉","display":"∉"}
+{"input":"\\ni","inline":"∋","display":"∋"}
+{"input":"\\subset","inline":"⊂","display":"⊂"}
+{"input":"\\supset","inline":"⊃","display":"⊃"}
+{"input":"\\subseteq","inline":"⊆","display":"⊆"}
+{"input":"\\supseteq","inline":"⊇","display":"⊇"}
+{"input":"\\sqsubset","inline":"⊏","display":"⊏"}
+{"input":"\\sqsupset","inline":"⊐","display":"⊐"}
+{"input":"\\sqsubseteq","inline":"⊑","display":"⊑"}
+{"input":"\\sqsupseteq","inline":"⊒","display":"⊒"}
+{"input":"\\prec","inline":"≺","display":"≺"}
+{"input":"\\preceq","inline":"≼","display":"≼"}
+{"input":"\\succ","inline":"≻","display":"≻"}
+{"input":"\\succeq","inline":"≽","display":"≽"}
+{"input":"\\ll","inline":"≪","display":"≪"}
+{"input":"\\gg","inline":"≫","display":"≫"}
+{"input":"\\le","inline":"≤","display":"≤"}
+{"input":"\\leq","inline":"≤","display":"≤"}
+{"input":"\\leqslant","inline":"≤","display":"≤"}
+{"input":"\\ge","inline":"≥","display":"≥"}
+{"input":"\\geq","inline":"≥","display":"≥"}
+{"input":"\\geqslant","inline":"≥","display":"≥"}
+{"input":"\\ne","inline":"≠","display":"≠"}
+{"input":"\\neq","inline":"≠","display":"≠"}
+{"input":"\\equiv","inline":"≡","display":"≡"}
+{"input":"\\approx","inline":"≈","display":"≈"}
+{"input":"\\sim","inline":"∼","display":"∼"}
+{"input":"\\simeq","inline":"≃","display":"≃"}
+{"input":"\\cong","inline":"≅","display":"≅"}
+{"input":"\\asymp","inline":"≍","display":"≍"}
+{"input":"\\doteq","inline":"≐","display":"≐"}
+{"input":"\\propto","inline":"∝","display":"∝"}
+{"input":"\\parallel","inline":"∥","display":"∥"}
+{"input":"\\perp","inline":"⊥","display":"⊥"}
+{"input":"\\mid","inline":"∣","display":"∣"}
+{"input":"\\vdash","inline":"⊢","display":"⊢"}
+{"input":"\\dashv","inline":"⊣","display":"⊣"}
+{"input":"\\models","inline":"⊨","display":"⊨"}
+{"input":"\\Vdash","inline":"⊩","display":"⊩"}
+{"input":"\\Vvdash","inline":"⊪","display":"⊪"}
+{"input":"\\nvdash","inline":"⊬","display":"⊬"}
+{"input":"\\nvDash","inline":"⊭","display":"⊭"}
+{"input":"\\forall","inline":"∀","display":"∀"}
+{"input":"\\exists","inline":"∃","display":"∃"}
+{"input":"\\nexists","inline":"∄","display":"∄"}
+{"input":"\\neg","inline":"¬","display":"¬"}
+{"input":"\\land","inline":"∧","display":"∧"}
+{"input":"\\wedge","inline":"∧","display":"∧"}
+{"input":"\\lor","inline":"∨","display":"∨"}
+{"input":"\\vee","inline":"∨","display":"∨"}
+{"input":"\\to","inline":"→","display":"→"}
+{"input":"\\rightarrow","inline":"→","display":"→"}
+{"input":"\\longrightarrow","inline":"→","display":"→"}
+{"input":"\\leftarrow","inline":"←","display":"←"}
+{"input":"\\longleftarrow","inline":"←","display":"←"}
+{"input":"\\gets","inline":"←","display":"←"}
+{"input":"\\leftrightarrow","inline":"↔","display":"↔"}
+{"input":"\\longleftrightarrow","inline":"↔","display":"↔"}
+{"input":"\\hookleftarrow","inline":"↩","display":"↩"}
+{"input":"\\hookrightarrow","inline":"↪","display":"↪"}
+{"input":"\\twoheadleftarrow","inline":"↞","display":"↞"}
+{"input":"\\twoheadrightarrow","inline":"↠","display":"↠"}
+{"input":"\\leftharpoonup","inline":"↼","display":"↼"}
+{"input":"\\leftharpoondown","inline":"↽","display":"↽"}
+{"input":"\\rightharpoonup","inline":"⇀","display":"⇀"}
+{"input":"\\rightharpoondown","inline":"⇁","display":"⇁"}
+{"input":"\\rightleftharpoons","inline":"⇌","display":"⇌"}
+{"input":"\\leftrightharpoons","inline":"⇋","display":"⇋"}
+{"input":"\\nearrow","inline":"↗","display":"↗"}
+{"input":"\\searrow","inline":"↘","display":"↘"}
+{"input":"\\swarrow","inline":"↙","display":"↙"}
+{"input":"\\nwarrow","inline":"↖","display":"↖"}
+{"input":"\\rightsquigarrow","inline":"⇝","display":"⇝"}
+{"input":"\\leadsto","inline":"⇝","display":"⇝"}
+{"input":"\\Rightarrow","inline":"⇒","display":"⇒"}
+{"input":"\\Longrightarrow","inline":"⇒","display":"⇒"}
+{"input":"\\Leftarrow","inline":"⇐","display":"⇐"}
+{"input":"\\Longleftarrow","inline":"⇐","display":"⇐"}
+{"input":"\\Leftrightarrow","inline":"⇔","display":"⇔"}
+{"input":"\\Longleftrightarrow","inline":"⇔","display":"⇔"}
+{"input":"\\implies","inline":"⇒","display":"⇒"}
+{"input":"\\iff","inline":"⇔","display":"⇔"}
+{"input":"\\mapsto","inline":"↦","display":"↦"}
+{"input":"\\longmapsto","inline":"↦","display":"↦"}
+{"input":"\\uparrow","inline":"↑","display":"↑"}
+{"input":"\\downarrow","inline":"↓","display":"↓"}
+{"input":"\\partial","inline":"∂","display":"∂"}
+{"input":"\\nabla","inline":"∇","display":"∇"}
+{"input":"\\int","inline":"∫","display":"∫"}
+{"input":"\\iint","inline":"∬","display":"∬"}
+{"input":"\\iiint","inline":"∭","display":"∭"}
+{"input":"\\oint","inline":"∮","display":"∮"}
+{"input":"\\sum","inline":"∑","display":"∑"}
+{"input":"\\prod","inline":"∏","display":"∏"}
+{"input":"\\coprod","inline":"∐","display":"∐"}
+{"input":"\\infty","inline":"∞","display":"∞"}
+{"input":"\\emptyset","inline":"∅","display":"∅"}
+{"input":"\\varnothing","inline":"∅","display":"∅"}
+{"input":"\\angle","inline":"∠","display":"∠"}
+{"input":"\\therefore","inline":"∴","display":"∴"}
+{"input":"\\because","inline":"∵","display":"∵"}
+{"input":"\\aleph","inline":"ℵ","display":"ℵ"}
+{"input":"\\beth","inline":"ℶ","display":"ℶ"}
+{"input":"\\gimel","inline":"ℷ","display":"ℷ"}
+{"input":"\\daleth","inline":"ℸ","display":"ℸ"}
+{"input":"\\top","inline":"⊤","display":"⊤"}
+{"input":"\\bot","inline":"⊥","display":"⊥"}
+{"input":"\\triangle","inline":"△","display":"△"}
+{"input":"\\square","inline":"□","display":"□"}
+{"input":"\\lozenge","inline":"◊","display":"◊"}
+{"input":"\\checkmark","inline":"✓","display":"✓"}
+{"input":"\\complement","inline":"∁","display":"∁"}
+{"input":"\\wp","inline":"℘","display":"℘"}
+{"input":"\\prime","inline":"′","display":"′"}
+{"input":"\\ldots","inline":"…","display":"…"}
+{"input":"\\dots","inline":"…","display":"…"}
+{"input":"\\cdots","inline":"⋯","display":"⋯"}
+{"input":"\\vdots","inline":"⋮","display":"⋮"}
+{"input":"\\ddots","inline":"⋱","display":"⋱"}
+{"input":"\\ell","inline":"ℓ","display":"ℓ"}
+{"input":"\\hbar","inline":"ℏ","display":"ℏ"}
+{"input":"\\Im","inline":"ℑ","display":"ℑ"}
+{"input":"\\Re","inline":"ℜ","display":"ℜ"}
+{"input":"\\langle","inline":"⟨","display":"⟨"}
+{"input":"\\rangle","inline":"⟩","display":"⟩"}
+{"input":"\\vert","inline":"|","display":"|"}
+{"input":"\\lvert","inline":"|","display":"|"}
+{"input":"\\rvert","inline":"|","display":"|"}
+{"input":"\\Vert","inline":"‖","display":"‖"}
+{"input":"\\lVert","inline":"‖","display":"‖"}
+{"input":"\\rVert","inline":"‖","display":"‖"}
+{"input":"\\lbrace","inline":"{","display":"{"}
+{"input":"\\rbrace","inline":"}","display":"}"}
+{"input":"\\backslash","inline":"\\","display":"\\"}
+{"input":"\\lfloor","inline":"⌊","display":"⌊"}
+{"input":"\\rfloor","inline":"⌋","display":"⌋"}
+{"input":"\\lceil","inline":"⌈","display":"⌈"}
+{"input":"\\rceil","inline":"⌉","display":"⌉"}
+{"input":"\\colon","inline":":","display":":"}
+{"input":"\\arccos","inline":"arccos","display":"arccos"}
+{"input":"\\arcsin","inline":"arcsin","display":"arcsin"}
+{"input":"\\arctan","inline":"arctan","display":"arctan"}
+{"input":"\\arg","inline":"arg","display":"arg"}
+{"input":"\\cos","inline":"cos","display":"cos"}
+{"input":"\\cosh","inline":"cosh","display":"cosh"}
+{"input":"\\cot","inline":"cot","display":"cot"}
+{"input":"\\coth","inline":"coth","display":"coth"}
+{"input":"\\csc","inline":"csc","display":"csc"}
+{"input":"\\deg","inline":"deg","display":"deg"}
+{"input":"\\det","inline":"det","display":"det"}
+{"input":"\\dim","inline":"dim","display":"dim"}
+{"input":"\\exp","inline":"exp","display":"exp"}
+{"input":"\\gcd","inline":"gcd","display":"gcd"}
+{"input":"\\hom","inline":"hom","display":"hom"}
+{"input":"\\inf","inline":"inf","display":"inf"}
+{"input":"\\ker","inline":"ker","display":"ker"}
+{"input":"\\lg","inline":"lg","display":"lg"}
+{"input":"\\lim","inline":"lim","display":"lim"}
+{"input":"\\liminf","inline":"liminf","display":"liminf"}
+{"input":"\\limsup","inline":"limsup","display":"limsup"}
+{"input":"\\ln","inline":"ln","display":"ln"}
+{"input":"\\log","inline":"log","display":"log"}
+{"input":"\\max","inline":"max","display":"max"}
+{"input":"\\min","inline":"min","display":"min"}
+{"input":"\\Pr","inline":"Pr","display":"Pr"}
+{"input":"\\sec","inline":"sec","display":"sec"}
+{"input":"\\sin","inline":"sin","display":"sin"}
+{"input":"\\sinh","inline":"sinh","display":"sinh"}
+{"input":"\\sup","inline":"sup","display":"sup"}
+{"input":"\\tan","inline":"tan","display":"tan"}
+{"input":"\\tanh","inline":"tanh","display":"tanh"}
+{"input":"\\argmax_{i=0}^{n}","inline":"argmax[i=0]ⁿ","display":"  n\nargmax\n i=0"}
+{"input":"\\argmin_{i=0}^{n}","inline":"argmin[i=0]ⁿ","display":"  n\nargmin\n i=0"}
+{"input":"\\inf_{i=0}^{n}","inline":"inf[i=0]ⁿ","display":" n\ninf\ni=0"}
+{"input":"\\injlim_{i=0}^{n}","inline":"injlim[i=0]ⁿ","display":"  n\ninjlim\n i=0"}
+{"input":"\\lim_{i=0}^{n}","inline":"lim[i=0]ⁿ","display":" n\nlim\ni=0"}
+{"input":"\\liminf_{i=0}^{n}","inline":"liminf[i=0]ⁿ","display":"  n\nliminf\n i=0"}
+{"input":"\\limsup_{i=0}^{n}","inline":"limsup[i=0]ⁿ","display":"  n\nlimsup\n i=0"}
+{"input":"\\max_{i=0}^{n}","inline":"max[i=0]ⁿ","display":" n\nmax\ni=0"}
+{"input":"\\min_{i=0}^{n}","inline":"min[i=0]ⁿ","display":" n\nmin\ni=0"}
+{"input":"\\projlim_{i=0}^{n}","inline":"projlim[i=0]ⁿ","display":"   n\nprojlim\n  i=0"}
+{"input":"\\sup_{i=0}^{n}","inline":"sup[i=0]ⁿ","display":" n\nsup\ni=0"}
+{"input":"\\acute{x}","inline":"x́","display":"x́"}
+{"input":"\\acute{xy}","inline":"acute(xy)","display":"acute(xy)"}
+{"input":"\\bar{x}","inline":"x̅","display":"x̅"}
+{"input":"\\bar{xy}","inline":"bar(xy)","display":"bar(xy)"}
+{"input":"\\breve{x}","inline":"x̆","display":"x̆"}
+{"input":"\\breve{xy}","inline":"breve(xy)","display":"breve(xy)"}
+{"input":"\\check{x}","inline":"x̌","display":"x̌"}
+{"input":"\\check{xy}","inline":"check(xy)","display":"check(xy)"}
+{"input":"\\ddot{x}","inline":"ẍ","display":"ẍ"}
+{"input":"\\ddot{xy}","inline":"ddot(xy)","display":"ddot(xy)"}
+{"input":"\\dot{x}","inline":"ẋ","display":"ẋ"}
+{"input":"\\dot{xy}","inline":"dot(xy)","display":"dot(xy)"}
+{"input":"\\grave{x}","inline":"x̀","display":"x̀"}
+{"input":"\\grave{xy}","inline":"grave(xy)","display":"grave(xy)"}
+{"input":"\\hat{x}","inline":"x̂","display":"x̂"}
+{"input":"\\hat{xy}","inline":"hat(xy)","display":"hat(xy)"}
+{"input":"\\mathring{x}","inline":"x̊","display":"x̊"}
+{"input":"\\mathring{xy}","inline":"mathring(xy)","display":"mathring(xy)"}
+{"input":"\\overleftarrow{x}","inline":"x⃖","display":"x⃖"}
+{"input":"\\overleftarrow{xy}","inline":"overleftarrow(xy)","display":"overleftarrow(xy)"}
+{"input":"\\overleftrightarrow{x}","inline":"x⃡","display":"x⃡"}
+{"input":"\\overleftrightarrow{xy}","inline":"overleftrightarrow(xy)","display":"overleftrightarrow(xy)"}
+{"input":"\\overline{x}","inline":"x̅","display":"x̅"}
+{"input":"\\overline{xy}","inline":"overline(xy)","display":"overline(xy)"}
+{"input":"\\overrightarrow{x}","inline":"x⃗","display":"x⃗"}
+{"input":"\\overrightarrow{xy}","inline":"overrightarrow(xy)","display":"overrightarrow(xy)"}
+{"input":"\\tilde{x}","inline":"x̃","display":"x̃"}
+{"input":"\\tilde{xy}","inline":"tilde(xy)","display":"tilde(xy)"}
+{"input":"\\underline{x}","inline":"x̲","display":"x̲"}
+{"input":"\\underline{xy}","inline":"underline(xy)","display":"underline(xy)"}
+{"input":"\\vec{x}","inline":"x⃗","display":"x⃗"}
+{"input":"\\vec{xy}","inline":"vec(xy)","display":"vec(xy)"}
+{"input":"\\widehat{x}","inline":"x̂","display":"x̂"}
+{"input":"\\widehat{xy}","inline":"widehat(xy)","display":"widehat(xy)"}
+{"input":"\\widetilde{x}","inline":"x̃","display":"x̃"}
+{"input":"\\widetilde{xy}","inline":"widetilde(xy)","display":"widetilde(xy)"}
+{"input":"\\mathbb{C}","inline":"ℂ","display":"ℂ"}
+{"input":"\\mathbb{H}","inline":"ℍ","display":"ℍ"}
+{"input":"\\mathbb{N}","inline":"ℕ","display":"ℕ"}
+{"input":"\\mathbb{P}","inline":"ℙ","display":"ℙ"}
+{"input":"\\mathbb{Q}","inline":"ℚ","display":"ℚ"}
+{"input":"\\mathbb{R}","inline":"ℝ","display":"ℝ"}
+{"input":"\\mathbb{Z}","inline":"ℤ","display":"ℤ"}
+{"input":"\\emph{abc}","inline":"abc","display":"abc"}
+{"input":"\\mathcal{abc}","inline":"abc","display":"abc"}
+{"input":"\\mathbf{abc}","inline":"abc","display":"abc"}
+{"input":"\\mathfrak{abc}","inline":"abc","display":"abc"}
+{"input":"\\mathit{abc}","inline":"abc","display":"abc"}
+{"input":"\\mathrm{abc}","inline":"abc","display":"abc"}
+{"input":"\\mathnormal{abc}","inline":"abc","display":"abc"}
+{"input":"\\mathscr{abc}","inline":"abc","display":"abc"}
+{"input":"\\mathsf{abc}","inline":"abc","display":"abc"}
+{"input":"\\mathtt{abc}","inline":"abc","display":"abc"}
+{"input":"\\mathup{abc}","inline":"abc","display":"abc"}
+{"input":"\\mbox{abc}","inline":"abc","display":"abc"}
+{"input":"\\overbrace{abc}","inline":"abc","display":"abc"}
+{"input":"\\pmb{abc}","inline":"abc","display":"abc"}
+{"input":"\\smash{abc}","inline":"abc","display":"abc"}
+{"input":"\\substack{abc}","inline":"abc","display":"abc"}
+{"input":"\\text{abc}","inline":"abc","display":"abc"}
+{"input":"\\textbf{abc}","inline":"abc","display":"abc"}
+{"input":"\\textit{abc}","inline":"abc","display":"abc"}
+{"input":"\\textmd{abc}","inline":"abc","display":"abc"}
+{"input":"\\textnormal{abc}","inline":"abc","display":"abc"}
+{"input":"\\textrm{abc}","inline":"abc","display":"abc"}
+{"input":"\\textsc{abc}","inline":"abc","display":"abc"}
+{"input":"\\textsf{abc}","inline":"abc","display":"abc"}
+{"input":"\\textsl{abc}","inline":"abc","display":"abc"}
+{"input":"\\texttt{abc}","inline":"abc","display":"abc"}
+{"input":"\\textup{abc}","inline":"abc","display":"abc"}
+{"input":"\\underbrace{abc}","inline":"abc","display":"abc"}
+{"input":"\\bm{abc}","inline":"abc","display":"abc"}
+{"input":"\\boldsymbol{abc}","inline":"abc","display":"abc"}
+{"input":"x^{0}","inline":"x⁰","display":"x⁰"}
+{"input":"x_{0}","inline":"x₀","display":"x₀"}
+{"input":"x^{1}","inline":"x¹","display":"x¹"}
+{"input":"x_{1}","inline":"x₁","display":"x₁"}
+{"input":"x^{2}","inline":"x²","display":"x²"}
+{"input":"x_{2}","inline":"x₂","display":"x₂"}
+{"input":"x^{3}","inline":"x³","display":"x³"}
+{"input":"x_{3}","inline":"x₃","display":"x₃"}
+{"input":"x^{4}","inline":"x⁴","display":"x⁴"}
+{"input":"x_{4}","inline":"x₄","display":"x₄"}
+{"input":"x^{5}","inline":"x⁵","display":"x⁵"}
+{"input":"x_{5}","inline":"x₅","display":"x₅"}
+{"input":"x^{6}","inline":"x⁶","display":"x⁶"}
+{"input":"x_{6}","inline":"x₆","display":"x₆"}
+{"input":"x^{7}","inline":"x⁷","display":"x⁷"}
+{"input":"x_{7}","inline":"x₇","display":"x₇"}
+{"input":"x^{8}","inline":"x⁸","display":"x⁸"}
+{"input":"x_{8}","inline":"x₈","display":"x₈"}
+{"input":"x^{9}","inline":"x⁹","display":"x⁹"}
+{"input":"x_{9}","inline":"x₉","display":"x₉"}
+{"input":"x^{+}","inline":"x⁺","display":"x⁺"}
+{"input":"x_{+}","inline":"x₊","display":"x₊"}
+{"input":"x^{-}","inline":"x⁻","display":"x⁻"}
+{"input":"x_{-}","inline":"x₋","display":"x₋"}
+{"input":"x^{=}","inline":"x⁼","display":"x⁼"}
+{"input":"x_{=}","inline":"x₌","display":"x₌"}
+{"input":"x^{(}","inline":"x⁽","display":"x⁽"}
+{"input":"x_{(}","inline":"x₍","display":"x₍"}
+{"input":"x^{)}","inline":"x⁾","display":"x⁾"}
+{"input":"x_{)}","inline":"x₎","display":"x₎"}
+{"input":"x^{a}","inline":"xᵃ","display":"xᵃ"}
+{"input":"x_{a}","inline":"xₐ","display":"xₐ"}
+{"input":"x^{e}","inline":"xᵉ","display":"xᵉ"}
+{"input":"x_{e}","inline":"xₑ","display":"xₑ"}
+{"input":"x^{i}","inline":"xⁱ","display":"xⁱ"}
+{"input":"x_{i}","inline":"xᵢ","display":"xᵢ"}
+{"input":"x^{o}","inline":"xᵒ","display":"xᵒ"}
+{"input":"x_{o}","inline":"xₒ","display":"xₒ"}
+{"input":"x^{x}","inline":"xˣ","display":"xˣ"}
+{"input":"x_{x}","inline":"xₓ","display":"xₓ"}
+{"input":"x^{n}","inline":"xⁿ","display":"xⁿ"}
+{"input":"x_{n}","inline":"xₙ","display":"xₙ"}
+{"input":"x^{j}","inline":"xʲ","display":"xʲ"}
+{"input":"x_{j}","inline":"xⱼ","display":"xⱼ"}
+{"input":"\\frac{a}{b}","inline":"a/b","display":"a\n─\nb"}
+{"input":"\\frac{a+b}{c+d}","inline":"(a+b)/(c+d)","display":"a+b\n───\nc+d"}
+{"input":"\\frac{\\frac{a}{b}}{\\frac{c}{d}}","inline":"(a/b)/(c/d)","display":"a/b\n───\nc/d"}
+{"input":"\\dfrac{1}{2}","inline":"1/2","display":"1\n─\n2"}
+{"input":"\\tfrac{1}{2}","inline":"1/2","display":"1/2"}
+{"input":"\\sqrt{2}","inline":"√2","display":"√2"}
+{"input":"\\sqrt[3]{x}","inline":"∛x","display":"∛x"}
+{"input":"\\sqrt[5]{y}","inline":"⁵√y","display":"⁵√y"}
+{"input":"\\binom{n}{k}","inline":"(n choose k)","display":"(n choose k)"}
+{"input":"\\boxed{x=1}","inline":"[x=1]","display":"[x=1]"}
+{"input":"\\not\\in","inline":"∉","display":"∉"}
+{"input":"\\not<","inline":"≮","display":"≮"}
+{"input":"\\not{R}","inline":"R̸","display":"R̸"}
+{"input":"\\overset{a}{b}","inline":"bᵃ","display":"bᵃ"}
+{"input":"\\underset{a}{b}","inline":"bₐ","display":"bₐ"}
+{"input":"\\stackrel{d}{=}","inline":"=ᵈ","display":"=ᵈ"}
+{"input":"\\operatorname{lcm}(a,b)","inline":"lcm (a,b)","display":"lcm (a,b)"}
+{"input":"\\operatorname*{argmax}_x f","inline":"argmax[x] f","display":"argmax f\n  x"}
+{"input":"\\pmod{p}","inline":"(mod p)","display":"(mod p)"}
+{"input":"a \\bmod b","inline":"a mod b","display":"a mod b"}
+{"input":"\\sum_{i=1}^{n} i^2","inline":"∑ᵢ₌₁ⁿ i²","display":" n\n ∑  i²\ni=1"}
+{"input":"\\int_0^1 f(x) dx","inline":"∫₀¹ f(x) dx","display":"1\n∫ f(x) dx\n0"}
+{"input":"\\lim_{x\\to\\infty} f","inline":"lim[x→∞] f","display":"lim f\nx→∞"}
+{"input":"\\prod_{k=1}^{n} k","inline":"∏ₖ₌₁ⁿ k","display":" n\n ∏  k\nk=1"}
+{"input":"\\begin{cases} a & x>0 \\\\ b & \\text{otherwise} \\end{cases}","inline":"⎧ a if x>0\n⎩ b otherwise","display":"⎧ a if x>0\n⎩ b otherwise"}
+{"input":"\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}","inline":"⎛ a │ b ⎞\n⎝ c │ d ⎠","display":"⎛ a │ b ⎞\n⎝ c │ d ⎠"}
+{"input":"\\begin{bmatrix} 1 & 0 \\\\ 0 & 1 \\end{bmatrix}","inline":"⎡ 1 │ 0 ⎤\n⎣ 0 │ 1 ⎦","display":"⎡ 1 │ 0 ⎤\n⎣ 0 │ 1 ⎦"}
+{"input":"\\begin{aligned} a &= b \\\\ c &= d \\end{aligned}","inline":"a = b\nc = d","display":"a = b\nc = d"}
+{"input":"\\begin{matrix} 1 & 2 \\\\ 3 & 4 \\end{matrix}","inline":"1 │ 2\n3 │ 4","display":"1 │ 2\n3 │ 4"}
+{"input":"\\vec{v} \\cdot \\hat{n}","inline":"v⃗ · n̂","display":"v⃗ · n̂"}
+{"input":"e^{i\\pi} + 1 = 0","inline":"e^(iπ) + 1 = 0","display":"e^(iπ) + 1 = 0"}
+{"input":"x \\geq 0 \\land y \\leq 1","inline":"x ≥ 0 ∧ y ≤ 1","display":"x ≥ 0 ∧ y ≤ 1"}
+{"input":"\\alpha_1 + \\alpha_2 + \\cdots + \\alpha_n","inline":"α₁ + α₂ + ⋯ + αₙ","display":"α₁ + α₂ + ⋯ + αₙ"}
+{"input":"\\left( \\frac{a}{b} \\right)","inline":"( a/b )","display":"  a\n( ─ )\n  b"}
+{"input":"\\big[ x \\big]","inline":"[ x ]","display":"[ x ]"}
+{"input":"a \\quad b \\, c","inline":"a b c","display":"a b c"}
+{"input":"\\frac{a}","inline":null,"display":null}
+{"input":"x^","inline":null,"display":null}
+{"input":"unbalanced{","inline":null,"display":null}
+{"input":"}","inline":null,"display":null}
+{"input":"{","inline":null,"display":null}
+{"input":"\\\\","inline":"","display":""}
+{"input":"\\unknown","inline":null,"display":null}
+{"input":"\\begin{foo} x \\end{foo}","inline":null,"display":null}
+{"input":"\\end{x}","inline":null,"display":null}
+{"input":"a & b","inline":"a b","display":"a b"}
+{"input":"{{{{{{{{{{x}}}}}}}}}}","inline":"x","display":"x"}
+{"input":"\\frac{\\frac{\\frac{\\frac{a}{b}}{c}}{d}}{e}","inline":"(((a/b)/c)/d)/e","display":"((a/b)/c)/d\n───────────\n     e"}
+{"input":"\\text{😀}","inline":"😀","display":"😀"}
+{"input":"😀","inline":"😀","display":"😀"}
+{"input":"x^{😀}","inline":"x^😀","display":"x^😀"}
+{"input":"\\text{日本語}","inline":"日本語","display":"日本語"}
+{"input":"日本語 + x","inline":"日本語 + x","display":"日本語 + x"}
+{"input":"\\hat{😀}","inline":"😀̂","display":"😀̂"}
+{"input":"\\mathbb{😀}","inline":"😀","display":"😀"}
+{"input":"café","inline":"café","display":"café"}
+{"input":"\\text{á}","inline":"á","display":"á"}
+{"input":"a \\\\  b","inline":"a\nb","display":"a\nb"}
+{"input":"x \\\\ \\\\ y","inline":"x\n\ny","display":"x\n\ny"}
+{"input":"\\begin{aligned}  a &= b \\\\   c &= d \\end{aligned}","inline":"a = b\nc = d","display":"a = b\nc = d"}
+{"input":"a \\\\   \\\\ b","inline":"a\n\nb","display":"a\n\nb"}
+{"input":"  x  \\\\  y  ","inline":"x\ny","display":"x\ny"}
+{"input":"\\text{a  b}","inline":"a b","display":"a b"}
+{"input":"p \\\\ q \\\\ r","inline":"p\nq\nr","display":"p\nq\nr"}

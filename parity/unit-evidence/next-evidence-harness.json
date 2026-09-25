@@ -1,0 +1,23 @@
+[
+  {
+    "upstream": "packages/agent/src/harness/tools/image.ts",
+    "package": "./internal/codingagent/tools",
+    "tests": ["TestHarnessImageMagicBoundaries", "TestHarnessImageBMPPlanesAndBitDepth"],
+    "upstream_reference": "packages/agent/src/harness/tools/image.ts:detectSupportedImageMimeType,isPng,isAnimatedPng,isBmp; packages/agent/test/harness/tools.test.ts",
+    "mutation": "Magic-byte detection only; no encodeBase64 claim. In internal/imageprocessing/images.go (mapped with tools/image_detect.go), invert buffer[3] == 0xf7 to != and independently colorPlanes == 1 to !=. Both mutations compile; the named tests FAIL on JPEG/JPEG-LS and BMP planes respectively through the detector/read-tool wrapper; restore both -> PASS. Exact patches and commands: parity/testdata/next-evidence-harness/image-{mime,bmp}.patch; red logs image-{mime,bmp}-red.log; initial green.log and restored-green.log in the same directory."
+  },
+  {
+    "upstream": "packages/agent/src/harness/session/jsonl/types.ts",
+    "package": "./agent/harness/session",
+    "tests": ["TestHarnessJSONLHeaderRepositoryRoundTrip", "TestHarnessJSONLInvalidHeaderRepositoryOpen"],
+    "upstream_reference": "packages/agent/src/harness/session/jsonl/types.ts:JSONL_FORMAT_VERSION,JSONL_STORAGE_VERSION,JsonlStorageHeader; packages/agent/src/harness/session/jsonl/codec.ts:isJsonlStorageHeader; packages/agent/test/harness/jsonl-storage.test.ts; packages/agent/test/harness/jsonl-session-repo.test.ts",
+    "mutation": "Persisted schema only. Change JsonlStorageHeader.V JSON tag from v to format in mapped agent/harness/session/jsonl_types.go: compiling mutation FAILS the exact repository-emitted header assertion. Independently change the direct header consumer openV4JsonlStorage storageVersion guard from != to <: compiling mutation makes JsonlSessionRepo.Open accept a future schema and FAILS InvalidHeaderRepositoryOpen/future-storage. Restore -> both PASS. Exact patches and commands: parity/testdata/next-evidence-harness/jsonl-{header,validation}.patch; jsonl-{header,validation}-red.log; green.log and restored-green.log in the same directory."
+  },
+  {
+    "upstream": "packages/agent/src/harness/pico3/jsonl.ts",
+    "package": "./agent/harness/pico3",
+    "tests": ["TestHarnessPicoJSONLPublicationRecovery", "TestHarnessPicoJSONLRetirementAndHighWater"],
+    "upstream_reference": "packages/agent/src/harness/pico3/jsonl.ts:JsonlStorage.commit,replay,nextIdAfter,retireTaskSidecar,truncateTornTail; packages/agent/test/harness/pico3/atomicity.test.ts; packages/agent/test/harness/pico3/spec-storage-history.test.ts; packages/agent/test/harness/pico3/spec-transactions.test.ts; packages/agent/test/harness/pico3/retention.test.ts",
+    "mutation": "Storage publication/reopen only, not the index.ts barrel or Chord facade. In mapped agent/harness/pico3/jsonl.go, bypass !state.confirmed[record.Seq][file]: compiling mutation FAILS PublicationRecovery/main (unpublished running task instead of pending). Independently persist maxId := Id(0) instead of nextIdAfterLocked(writes): compiling mutation FAILS RetirementAndHighWater (next ID 3 instead of 4). Restore -> both PASS. Exact patches and commands: parity/testdata/next-evidence-harness/pico-{publication,highwater}.patch; pico-{publication,highwater}-red.log; green.log and restored-green.log in the same directory."
+  }
+]

@@ -1,0 +1,58 @@
+# Behavior family: fullscreen
+# Surface: Pi 0.84.0 main-screen ordinary differential assistant streaming.
+#
+# Upstream evidence (exact Pi v0.84.0, isolated tmux 80x12): ordinary text
+# deltas retain the settled assistant tail once and do not require a clearing
+# full replay. The independent full-history model is
+# tui/main_screen_upstream_parity_test.go.
+
+name = "03-main-screen-assistant-settled"
+description = "Main-screen assistant streaming settles to the same visible history tail as Pi."
+covers = [
+  "packages/tui/src/tui-main-screen.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent", "TUI_LIVE_PROBE=1"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TUI_LIVE_PROBE=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 80
+height = 12
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "../compaction/testdata/compact-session"
+capture_start = "LIVE-STREAM-21"
+capture_end = "faux-1"
+
+[[tmux.steps]]
+keys = ["TUI_LIVE_STREAM", "Enter"]
+wait_contains = ["LIVE-STREAM-24"]
+wait_timeout_seconds = 15
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["LIVE-STREAM-21", "LIVE-STREAM-22", "LIVE-STREAM-23", "LIVE-STREAM-24"]
+both_not_contain = ["panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3
+
+# normalize-rationale: the driver gives each process a distinct temporary
+# working directory, and faux transports report different footer usage totals.
+# No transcript marker, row, whitespace, or ordering is normalized.
+[[assert.normalize_replace]]
+pattern = '(?m)^.*[/\\]parity-snap-cwd-[^\n]*$'
+with = "<CWD>"
+
+[[assert.normalize_replace]]
+pattern = '(?m)^.*?/128k \(auto\)\s+faux-1$'
+with = "<STATUS>"

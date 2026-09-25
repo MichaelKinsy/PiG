@@ -1,0 +1,36 @@
+# Behavior family: cli-utils
+# Surface: package-manager install command for a local path source.
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   command:
+#     PI_HOME={{TEMP}}/pi-home pi install ./testdata/local-package
+#   output contains:
+#     Installed ./testdata/local-package
+#
+# Local package installs are the honest CLI path that exercise package-command
+# parsing plus local-path classification without network access.
+
+name = "04-package-install-local"
+description = "Installing a local package source succeeds with matching CLI output."
+covers = [
+  "packages/coding-agent/src/package-manager-cli.ts",
+  "packages/coding-agent/src/utils/paths.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_HOME=testdata/package-home"]
+pi = ["PI_HOME=testdata/package-home", "PI_CODING_AGENT_DIR=testdata/package-home/agent", "PI_SKIP_VERSION_CHECK=1"]
+override_base_args = true
+
+[cli]
+args = ["install", "./testdata/local-package"]
+cwd = "."
+timeout_seconds = 20
+
+[assert]
+exit_code = 0
+both_contain = ["Installed ./testdata/local-package"]
+output_normalized_equal = true
+runs = 3

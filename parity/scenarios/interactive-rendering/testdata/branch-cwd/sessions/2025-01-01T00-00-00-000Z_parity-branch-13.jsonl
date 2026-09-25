@@ -1,0 +1,4 @@
+{"type":"session","version":1,"id":"parity-branch-13","timestamp":"2025-01-01T00:00:00.000Z","cwd":"/tmp"}
+{"type":"message","id":"e1","parentId":null,"timestamp":"2025-01-01T00:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"Hello world"}]}}
+{"type":"message","id":"e2","parentId":"e1","timestamp":"2025-01-01T00:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Hi there! How can I help you today?"}],"usage":{"input":10,"output":8,"cacheRead":0,"cacheWrite":0,"totalTokens":18,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop"}}
+{"type":"branch_summary","id":"e3","parentId":"e2","timestamp":"2025-01-01T00:00:03.000Z","fromId":"e1","summary":"The user explored a different conversation branch about error handling."}

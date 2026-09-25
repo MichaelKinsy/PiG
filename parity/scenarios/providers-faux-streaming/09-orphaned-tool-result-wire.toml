@@ -1,0 +1,55 @@
+# Behavior family: providers-faux-streaming
+# Surface: transform-messages orphaned tool-result handling on poisoned history.
+#
+# Documented divergence D48. When the assistant turn that made a tool call is
+# dropped during normalization (an aborted/errored turn whose tool ran and
+# persisted its result before the abort, a truncated/hand-built session, or a
+# model switch), the persisted tool-result is left orphaned. Upstream
+# transformMessages (packages/ai/src/api/transform-messages.ts) drops the
+# aborted assistant but never strips the orphaned tool-result: convertMessages
+# then emits it as a role:"tool" message, and the provider rejects the whole
+# request ("No tool call found for function call output with call_id ..."). pig's
+# NormalizeMessages (agent/transform.go) adds a second pass that strips the
+# orphan so poisoned-history requests stay valid.
+#
+# Both harnesses build the identical poisoned conversation (user "run it";
+# aborted assistant holding the only tool_use call_x; a persisted tool-result
+# for call_x), stream it through the real openai-completions provider against a
+# hermetic endpoint, and print the tool_call_ids the serialized request carries.
+# pig sends none (call_x stripped); pinned pi 0.84 sends call_x (would be
+# rejected by a real API). The [diverge] block is D48's parity coverage.
+#
+# Upstream evidence: pi harness imports the pinned @earendil-works/pi-ai dist
+# openai-completions.stream and reads the captured request body; the Go harness
+# drives agent.NormalizeMessages then the real ai.OpenAIProvider.Stream.
+
+name = "09-orphaned-tool-result-wire"
+description = "Poisoned history with an orphaned tool-result: pig strips it from the provider request (D48); pinned pi sends it."
+covers = [
+  "packages/ai/src/api/transform-messages.ts",
+  "packages/ai/src/api/openai-completions.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./parity/testdata/orphaned-tool-result-pig"]
+pi_args = ["node", "./parity/testdata/orphaned-tool-result-pi.mjs"]
+
+[cli]
+cwd = "../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+both_contain = ["tool_call_ids_in_request:"]
+both_not_contain = ["panic:", "unparseable", "UnhandledPromiseRejection", "ERR_MODULE_NOT_FOUND"]
+runs = 1
+
+[diverge]
+pig_contains = ["tool_call_ids_in_request: []"]
+pi_contains = ["tool_call_ids_in_request: [call_x]"]
+reason = "D48 SCRUTINIZED:approved. PiG's NormalizeMessages removes an orphaned tool result so poisoned-history requests remain valid. Upstream transformMessages sends it, and the provider rejects the request."

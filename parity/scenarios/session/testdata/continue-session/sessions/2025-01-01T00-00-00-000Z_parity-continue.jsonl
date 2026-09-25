@@ -1,0 +1,3 @@
+{"type":"session","version":1,"id":"parity-continue","timestamp":"2025-01-01T00:00:00.000Z","cwd":"/tmp/parity-continue-probe"}
+{"type":"message","id":"e1","parentId":null,"timestamp":"2025-01-01T00:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"remember zulu-3120"}]}}
+{"type":"message","id":"e2","parentId":"e1","timestamp":"2025-01-01T00:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"noted zulu-3120"}],"usage":{"input":100,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":100,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop"}}

@@ -1,0 +1,1234 @@
+from = "0.83.0"
+to = "0.84.0"
+
+[[files]]
+path = "packages/agent/src/agent.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig ports and maps this surface (PORT_MAP checkmark, coverage.md behavioral); the specific 0.83 to 0.84 delta is not independently diff-proven yet -- accepted tracked risk under the ratified loosened bar (foundation-acceptance-redefinition.md); scheduled for the coverage/risk-core campaign."
+
+[[files]]
+path = "packages/agent/src/harness/agent-harness.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/extensions-runtime/05-session-lifecycle.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/harness/compaction/branch-summarization.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/compaction/03-branch-summarize-via-tree.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/harness/compaction/compaction.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/compaction/01-compact-command.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/harness/env/nodejs.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "TypeScript/Node/test/build mechanic with no observable Go runtime behavior; Go handles the equivalent structurally."
+
+[[files]]
+path = "packages/agent/src/harness/messages.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/slash-commands/07-skill-command-system-prompt.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/harness/prompt-templates.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/slash-commands/07-skill-command-system-prompt.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/harness/reducer.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/result.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/context.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/index.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl-repo.ts"
+change = "removed"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/session/01-session-selector.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl-storage.ts"
+change = "removed"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/session/01-session-selector.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/codec.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/errors.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/repo.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/storage.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/jsonl/types.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/memory-repo.ts"
+change = "removed"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/extensions-runtime/05-session-lifecycle.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/harness/session/memory-storage.ts"
+change = "removed"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/extensions-runtime/05-session-lifecycle.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/harness/session/memory.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/repo-utils.ts"
+change = "removed"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/session/01-session-selector.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/harness/session/search.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/session.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/extensions-runtime/05-session-lifecycle.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/harness/session/state.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/conformance.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/index.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/testing/types.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/session/types.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/agent/src/harness/skills.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/slash-commands/07-skill-command-system-prompt.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/harness/telemetry.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/agent/src/harness/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/extensions-runtime/05-session-lifecycle.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/agent/src/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/agent/src/proxy.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/ai/src/api/anthropic-messages.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-registry/04-provider-wire-payloads.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/azure-openai-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-registry/04-provider-wire-payloads.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/bedrock-converse-stream.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-registry/04-provider-wire-payloads.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/google-generative-ai.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-registry/04-provider-wire-payloads.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/google-shared.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-registry/04-provider-wire-payloads.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/google-vertex.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-registry/04-provider-wire-payloads.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/lazy.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/ai/src/api/openai-codex-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-registry/04-provider-wire-payloads.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-completions.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-faux-streaming/01-print-faux-text-streaming.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-responses-shared.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-registry/04-provider-wire-payloads.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/openai-responses.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-registry/04-provider-wire-payloads.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/api/simple-options.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-faux-streaming/02-print-faux-tool-cycle.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/credential-store.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-registry/02-list-models-oauth-builtins.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/helpers.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/anthropic.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/oauth/02-oauth-anthropic.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/device-code.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/oauth/03-oauth-github-copilot.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/github-copilot.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/oauth/07-oauth-github-copilot-env.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/kimi-coding.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig ports and maps this surface (PORT_MAP checkmark, coverage.md behavioral); the specific 0.83 to 0.84 delta is not independently diff-proven yet -- accepted tracked risk under the ratified loosened bar (foundation-acceptance-redefinition.md); scheduled for the coverage/risk-core campaign."
+
+[[files]]
+path = "packages/ai/src/auth/oauth/openai-codex.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/oauth/05-oauth-openai-codex.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/oauth/openrouter.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/ai/src/auth/oauth/radius.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/ai/src/auth/oauth/xai.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/ai/src/auth/resolve.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-registry/02-list-models-oauth-builtins.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/auth/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/oauth/01-oauth-shared.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/cli.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/cli-utils/07-login-github-copilot.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/env-api-keys.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/oauth/07-oauth-github-copilot-env.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/image-models.generated.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/images-models.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/models-store.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig ports and maps this surface (PORT_MAP checkmark, coverage.md behavioral); the specific 0.83 to 0.84 delta is not independently diff-proven yet -- accepted tracked risk under the ratified loosened bar (foundation-acceptance-redefinition.md); scheduled for the coverage/risk-core campaign."
+
+[[files]]
+path = "packages/ai/src/models.generated.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/models.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/model-resolver-selector/12-expired-credential-is-not-refresh-failure.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/all.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/amazon-bedrock.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/anthropic.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/baseten.models.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/ai/src/providers/baseten.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/ai/src/providers/cloudflare-auth.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/faux.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-faux-streaming/01-print-faux-text-streaming.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/github-copilot.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/google-vertex.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/kimi-coding.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/openai-codex.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/opencode-go.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/providers/radius.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig ports and maps this surface (PORT_MAP checkmark, coverage.md behavioral); the specific 0.83 to 0.84 delta is not independently diff-proven yet -- accepted tracked risk under the ratified loosened bar (foundation-acceptance-redefinition.md); scheduled for the coverage/risk-core campaign."
+
+[[files]]
+path = "packages/ai/src/providers/xai.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/ai-sdk/01-ai-sdk-helpers.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-faux-streaming/01-print-faux-text-streaming.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/abort.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/ai/src/utils/error-body.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-registry/04-provider-wire-payloads.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/overflow.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-faux-streaming/04-print-faux-overflow-error.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/ai/src/utils/validation.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-faux-streaming/05-print-faux-validation-reject.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/startup/01-version-flag.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/args.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/project-trust/03-approve-loads-project-extension.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/config-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/selectors/02-config-resources-list.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/credential-print.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/auth.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/cli.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/command-options.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/command.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/commands/client.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/commands/pi.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/commands/server.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/cli/experimental/transport-address.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/cli/list-models.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/model-resolver-selector/02-list-models-search.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/cli/startup-ui.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/project-trust/07-resume-picker-selects-cwd-before-resources.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/client/index.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/client/remote-session.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/client/transcript.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session-services.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/extensions-runtime/05-session-lifecycle.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/agent-session.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/providers-faux-streaming/08-print-faux-auto-retry.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/auth-storage.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/oauth/07-oauth-github-copilot-env.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/loader.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/extension-host/01-register-handshake.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/runner.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/project-trust/08-global-extension-decides-project-trust.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/extensions/types.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/extension-host/01-register-handshake.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/http-dispatcher.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/tools/01-print-bash-tool-exec.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/model-config.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig ports and maps this surface (PORT_MAP checkmark, coverage.md behavioral); the specific 0.83 to 0.84 delta is not independently diff-proven yet -- accepted tracked risk under the ratified loosened bar (foundation-acceptance-redefinition.md); scheduled for the coverage/risk-core campaign."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-registry.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig ports and maps this surface (PORT_MAP checkmark, coverage.md behavioral); the specific 0.83 to 0.84 delta is not independently diff-proven yet -- accepted tracked risk under the ratified loosened bar (foundation-acceptance-redefinition.md); scheduled for the coverage/risk-core campaign."
+
+[[files]]
+path = "packages/coding-agent/src/core/model-resolver.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/model-resolver-selector/07-model-spec-thinking-suffix.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/model-runtime.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/model-runtime-store-catalog/10-model-picker-refresh-status.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/models-store.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig ports and maps this surface (PORT_MAP checkmark, coverage.md behavioral); the specific 0.83 to 0.84 delta is not independently diff-proven yet -- accepted tracked risk under the ratified loosened bar (foundation-acceptance-redefinition.md); scheduled for the coverage/risk-core campaign."
+
+[[files]]
+path = "packages/coding-agent/src/core/package-manager.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/project-trust/03-approve-loads-project-extension.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/pi-manifest.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/core/provider-composer.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig ports and maps this surface (PORT_MAP checkmark, coverage.md behavioral); the specific 0.83 to 0.84 delta is not independently diff-proven yet -- accepted tracked risk under the ratified loosened bar (foundation-acceptance-redefinition.md); scheduled for the coverage/risk-core campaign."
+
+[[files]]
+path = "packages/coding-agent/src/core/remote-catalog-provider.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/core/resource-loader.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/project-trust/03-approve-loads-project-extension.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/runtime-credentials.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig ports and maps this surface (PORT_MAP checkmark, coverage.md behavioral); the specific 0.83 to 0.84 delta is not independently diff-proven yet -- accepted tracked risk under the ratified loosened bar (foundation-acceptance-redefinition.md); scheduled for the coverage/risk-core campaign."
+
+[[files]]
+path = "packages/coding-agent/src/core/session-manager.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/extensions-runtime/16-resumed-session-identity.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/settings-manager.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/settings/02-settings-selector.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/find.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/tools/05-print-find-tool-exec.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/core/tools/read.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/tools/02-print-read-tool-exec.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/index.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig ports and maps this surface (PORT_MAP checkmark, coverage.md behavioral); the specific 0.83 to 0.84 delta is not independently diff-proven yet -- accepted tracked risk under the ratified loosened bar (foundation-acceptance-redefinition.md); scheduled for the coverage/risk-core campaign."
+
+[[files]]
+path = "packages/coding-agent/src/extensions/llama/provider.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/index.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig ports and maps this surface (PORT_MAP checkmark, coverage.md behavioral); the specific 0.83 to 0.84 delta is not independently diff-proven yet -- accepted tracked risk under the ratified loosened bar (foundation-acceptance-redefinition.md); scheduled for the coverage/risk-core campaign."
+
+[[files]]
+path = "packages/coding-agent/src/main.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/project-trust/03-approve-loads-project-extension.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/assistant-message.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/interactive-rendering/04-conversation-layout.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/footer.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/footer/04-footer-nonzero-context.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/markdown-transform.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/mermaid.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/model-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/model-runtime-store-catalog/10-model-picker-refresh-status.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/model-resolver-selector/13-scoped-models-fuzzy-filter.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/settings-selector.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/settings/05-settings-thinking-submenu.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/components/user-message.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/interactive-rendering/02-user-message-box.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/interactive-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/tree/05-tree-nonempty-overlay.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig ports and maps this surface (PORT_MAP checkmark, coverage.md behavioral); the specific 0.83 to 0.84 delta is not independently diff-proven yet -- accepted tracked risk under the ratified loosened bar (foundation-acceptance-redefinition.md); scheduled for the coverage/risk-core campaign."
+
+[[files]]
+path = "packages/coding-agent/src/modes/interactive/theme/theme.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/settings/04-settings-theme-submenu.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/modes/json-event.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/coding-agent/src/modes/print-mode.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig ports and maps this surface (PORT_MAP checkmark, coverage.md behavioral); the specific 0.83 to 0.84 delta is not independently diff-proven yet -- accepted tracked risk under the ratified loosened bar (foundation-acceptance-redefinition.md); scheduled for the coverage/risk-core campaign."
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-client.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/rpc/01-rpc-malformed-input.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/package-manager-cli.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/cli-utils/04-package-install-local.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/rpc-entry.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/utils/abort.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/coding-agent/src/utils/clipboard.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/clipboard-images/01-clipboard-read-deferred.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/management-http.ts"
+change = "added"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/coding-agent/src/utils/paths.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/cli-utils/04-package-install-local.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/tool-result-images.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/coding-agent/src/utils/tools-manager.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/tools/05-print-find-tool-exec.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/coding-agent/src/utils/version-check.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/tui/src/components/alt-screen-flash.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/tui/src/components/editor.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/settings/06-settings-editor-padding-live.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/h-stack.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/tui/src/components/markdown.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/interactive-rendering/01-assistant-message-text.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/scroll-view.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/tui/src/components/settings-list.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/settings/03-settings-filter-theme.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/components/stack.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/tui/src/components/v-stack.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/tui/src/index.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/tui/src/keybindings.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/settings/04-settings-theme-submenu.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/latex.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/tui/src/layout-node.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/tui/src/layout.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/tui/src/native-modifiers.ts"
+change = "modified"
+disposition = "designed-out"
+evidence = []
+rationale = "Designed out in PORT_MAP (no Go equivalent by intent)."
+
+[[files]]
+path = "packages/tui/src/terminal-colors.ts"
+change = "modified"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/tui/src/terminal-image.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/clipboard-images/03-image-rendering-deferred.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/terminal.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/settings/02-settings-selector.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/tui-alt-screen.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/tui/src/tui-main-screen.ts"
+change = "added"
+disposition = "deferred"
+evidence = []
+rationale = "pig target for this surface is pending or partial in PORT_MAP; the 0.83 to 0.84 delta is not yet ported -- accepted tracked risk under the ratified loosened bar; scheduled for the porting campaign."
+
+[[files]]
+path = "packages/tui/src/tui.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/settings/02-settings-selector.toml"]
+rationale = ""
+
+[[files]]
+path = "packages/tui/src/utils.ts"
+change = "modified"
+disposition = "ported"
+evidence = ["scenario:parity/scenarios/model-resolver-selector/13-scoped-models-fuzzy-filter.toml"]
+rationale = ""

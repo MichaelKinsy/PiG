@@ -1,0 +1,20 @@
+diff --git i/AGENTS.md w/AGENTS.md
+index 46001170d..cca0acf62 100644
+--- i/AGENTS.md
++++ w/AGENTS.md
+@@ -263 +263 @@ make async-contracts` or `make verify` from `PORT_MAP.md` and `parity/scenarios/
+-**Porting:** 445 / 536 intended-portable entries ✅ (83.0%); **Verification:** 414 behavioral (93.0%), 7 weak-only (no behavioral verification), 24 untested.
++**Porting:** 445 / 536 intended-portable entries ✅ (83.0%); **Verification:** 416 behavioral (93.5%), 6 weak-only (no behavioral verification), 23 untested.
+diff --git i/parity/coverage.md w/parity/coverage.md
+index 38e7ab11f..42e84293e 100644
+--- i/parity/coverage.md
++++ w/parity/coverage.md
+@@ -5 +5 @@ Generated from `616` PORT_MAP entries and `224` parity scenarios.
+-**Porting:** 445 / 536 intended-portable entries ✅ (83.0%); **Verification:** 414 behavioral (93.0%), 7 weak-only (no behavioral verification), 24 untested.
++**Porting:** 445 / 536 intended-portable entries ✅ (83.0%); **Verification:** 416 behavioral (93.5%), 6 weak-only (no behavioral verification), 23 untested.
+@@ -430 +430 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
+-| `packages/coding-agent/src/utils/image-convert.ts` | ✅ | 1 (02-image-convert-deferred) | **0 (weak-only)** | not run |  |
++| `packages/coding-agent/src/utils/image-convert.ts` | ✅ | 1 (02-image-convert-deferred) | 3 (unit:./internal/codingagent:TestConvertToPngReturnsNilWhenConversionFails, unit:./internal/codingagent:TestConvertToPngReturnsOriginalDataForPNG, unit:./internal/codingagent:TestImageConvertDecodedPixels) | not run | ./internal/codingagent:TestConvertToPngReturnsNilWhenConversionFails, ./internal/codingagent:TestConvertToPngReturnsOriginalDataForPNG, ./internal/codingagent:TestImageConvertDecodedPixels |
+@@ -614 +614 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
+-| `packages/tui/src/components/alt-screen-flash.ts` | ✅ | **0 (untested)** | **0** | not run |  |
++| `packages/tui/src/components/alt-screen-flash.ts` | ✅ | 0 | 3 (unit:./tui:TestFlashExactRender, unit:./tui:TestFlashNonPositiveExpiryRequestsRender, unit:./tui:TestFlashOrderedExpiryAndDispose) | not run | ./tui:TestFlashExactRender, ./tui:TestFlashNonPositiveExpiryRequestsRender, ./tui:TestFlashOrderedExpiryAndDispose |

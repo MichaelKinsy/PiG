@@ -1,0 +1,57 @@
+// divguard:path coding/session.go
+
+package coding
+
+import (
+	"bytes"
+	"crypto/sha256"
+	"fmt"
+	"os"
+)
+
+type store struct{}
+
+func (store) AppendMessage(msg string) (string, error) { return msg, nil }
+
+type Session struct {
+	inner store
+	ids   []string
+}
+
+// persistMessage fails the run when the transcript cannot be saved.
+func (s *Session) persistMessage(msg string) error {
+	id, err := s.inner.AppendMessage(msg)
+	if err != nil {
+		return fmt.Errorf("persist message: %w", err)
+	}
+	s.ids = append(s.ids, id)
+	return nil
+}
+
+func (s *Session) tryPersist(msg string) {
+	if id, err := s.inner.AppendMessage(msg); err == nil {
+		s.ids = append(s.ids, id)
+	} else {
+		panic(err)
+	}
+}
+
+// cleanup and hashing are not persistence.
+func cleanup(tmp string, data []byte) [32]byte {
+	defer func() { _ = os.Remove(tmp) }()
+	h := sha256.New()
+	_, _ = h.Write(data)
+	var sum [32]byte
+	copy(sum[:], h.Sum(nil))
+	return sum
+}
+
+type block struct{ out []string }
+
+// AppendOutput returns no error, so a bare call loses nothing.
+func (b *block) AppendOutput(text string) { b.out = append(b.out, text) }
+
+func render(b *block, buf *bytes.Buffer) {
+	b.AppendOutput("done")
+	buf.Truncate(buf.Len() - 1)
+}

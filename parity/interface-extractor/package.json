@@ -1,0 +1,17 @@
+{
+  "name": "@michaelkinsy/pig-interface-extractor",
+  "private": true,
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "extract": "node src/extract.mjs"
+  },
+  "dependencies": {
+    "typescript": "5.9.3"
+  }
+}

@@ -1,0 +1,64 @@
+# Behavior family: interactive-rendering
+# Surface: countdown-timer.ts: 1Hz ticking timer used by dialog
+#          components (extension-input, login, oauth) to count remaining
+#          seconds and fire onExpire when it hits zero.
+#
+# Why this scenario is boot-only:
+#
+#   The CountdownTimer surface lives exclusively inside dialog components
+#   that are NOT reachable hermetically: extension-input requires an
+#   extension to register an input prompt, login/oauth dialogs require
+#   live provider auth flows. No faux stimulus can drive tmux to a state
+#   that visibly renders the timer string in either binary.
+#
+#   AGENTS.md ("Authorized Option C / countdown-timer") explicitly permits
+#   a Go-side parity test as honest coverage in this case. The actual
+#   behavioral contract is locked by:
+#
+#     tui/countdown_timer_parity_test.go
+#
+#   which transliterates upstream countdown-timer.ts (38 LOC, .upstream/
+#   current/packages/coding-agent/src/modes/interactive/components/
+#   countdown-timer.ts) into four parity tests:
+#
+#     1. remainingSeconds := Math.ceil(timeoutMs / 1000)   [initial value]
+#     2. onTick fires immediately then once per second decrementing
+#     3. onExpire fires when remainingSeconds <= 0
+#     4. dispose() halts further ticks (idempotent)
+#
+#   This boot-only scenario only proves that pig (which links the
+#   CountdownTimer type) starts cleanly with no panic and reaches Ready -
+#   i.e. the package is wired and the binary builds with it on the path.
+#   The substantive behavioral parity claim is in the Go test above.
+#
+# boot-only: per AGENTS.md "boot-only scenarios may claim at most 1
+# covers entry": claim is restricted to countdown-timer.ts and the
+# scenario description prefix names the limitation.
+
+name = "09-countdown-timer"
+description = "boot-only: pig reaches Ready with CountdownTimer linked; behavioral parity is locked by tui/countdown_timer_parity_test.go."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/countdown-timer.ts",
+]
+tags = ["fast", "hermetic", "tui", "boot-only"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "nil pointer"]
+runs = 1

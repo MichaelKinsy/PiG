@@ -1,0 +1,78 @@
+# Behavior family: export-html
+# Scenario: Interactive /export slash command writes HTML and reports status.
+#
+# Exercises the /export handler in slash_session_handlers.go which calls
+# export.FromJSONL + export.ToHTML + export.RenderCustomTools (for any
+# registered custom tools). With built-in tools only (no custom extensions),
+# RenderCustomTools is a no-op but the full export pipeline runs.
+#
+# The scenario boots with the faux provider, sends a message to create
+# session content, then types /export to trigger the export. The status
+# message "Session exported to: ..." is asserted.
+#
+# Upstream evidence (2026-05-17):
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   send: "reply with exactly: Hello" Enter
+#   wait for "Hello"
+#   send: /export {{TEMP}}/test.html Enter
+#   status line shows: "Session exported to: ..." (flashed, not in chat)
+#
+#   pig --no-extensions --model test-faux/faux-1
+#   same steps → "Session exported to: ..."
+
+name = "05-export-interactive-slash"
+description = "Interactive /export slash command runs export pipeline and reports status"
+covers = [
+  "packages/coding-agent/src/core/export-html/tool-renderer.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+cwd = "testdata/cwd-empty"
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Session exported to:"
+capture_end = "Session exported to:"
+
+[[tmux.steps]]
+keys = ["reply with exactly: Hello", "Enter"]
+settle_seconds = 3
+wait_contains = ["Hello"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["/export", "Enter"]
+settle_seconds = 3
+wait_contains = ["Session exported to:"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["Session exported to:"]
+# lint-known-gap: The status message contains a non-deterministic timestamp
+# in the default export filename (session-<millis>.html). Using
+# output_normalized_equal with path normalization.
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1
+
+# normalize-rationale: independent temporary paths and generated filenames differ per run.
+[[assert.normalize_replace]]
+pattern = 'Session exported to: .+'
+with = 'Session exported to: <path>'
+
+[[assert.normalize_replace]]
+pattern = 'session-\d+\.html'
+with = 'session-<ts>.html'

@@ -1,0 +1,28 @@
+# Behavior family: extension-host
+# Surface: Pig subprocess extension validation path.
+#
+# Downstream evidence: docs/additive-features.md D19/D20 define Pig's subprocess SDK bridges and packed
+# runtime-cell host as intentional downstream mechanics. The quality-control
+# contract is still production-path: this scenario shells through
+# `pig install <source> --validate-only --json`, not a test-only host shim.
+
+name = "01-register-handshake"
+description = "Pig extension host validates a factory SDK extension and reports registered tools."
+covers = [
+  "packages/coding-agent/src/core/extensions/types.ts",
+  "packages/coding-agent/src/core/extensions/loader.ts",
+]
+tags = ["hermetic", "extension"]
+driver = "extension-host"
+
+[extension_host]
+sources = ["../../../examples/extensions/go-factory"]
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+runs = 1
+
+[assert.extensions]
+registered_tools = ["hello"]
+no_diagnostics = true

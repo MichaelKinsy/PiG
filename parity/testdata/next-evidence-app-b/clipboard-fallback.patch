@@ -1,0 +1,5 @@
+--- a/internal/codingagent/clipboard.go
++++ b/internal/codingagent/clipboard.go
+@@ -208 +208 @@
+-	if result == clipboardImageFailed && (hasX11 || wayland || wsl) {
++	if result != clipboardImageFound && (hasX11 || wayland || wsl) {

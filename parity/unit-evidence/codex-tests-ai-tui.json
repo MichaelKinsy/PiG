@@ -1,0 +1,227 @@
+[
+  {
+    "upstream": "packages/tui/src/terminal-colors.ts",
+    "package": "./tui",
+    "tests": [
+      "TestParseOsc11BackgroundColor"
+    ],
+    "upstream_reference": "packages/tui/src/terminal-colors.ts",
+    "mutation": "tui/theme.go: replace 'math.Round((float64(value) / maxValue) * 255)' with 'math.Round((float64(value) / maxValue) * 254)'; compiling go test -overlay colors-overlay.json -run exact test -count=1 fails TestParseOsc11BackgroundColor."
+  },
+  {
+    "upstream": "packages/tui/src/word-navigation.ts",
+    "package": "./tui",
+    "tests": [
+      "TestEditor_WordBoundaryHelpers"
+    ],
+    "upstream_reference": "packages/tui/src/word-navigation.ts",
+    "mutation": "tui/editor.go: replace 'func prevWordStart(line string, c int) int {' with 'func prevWordStart(line string, c int) int {\\n if c > 0 { return c }'; compiling go test -overlay word-overlay.json -run exact test -count=1 fails TestEditor_WordBoundaryHelpers."
+  },
+  {
+    "upstream": "packages/tui/src/components/truncated-text.ts",
+    "package": "./tui",
+    "tests": [
+      "TestTruncatedText_PreservesANSI"
+    ],
+    "upstream_reference": "packages/tui/src/components/truncated-text.ts",
+    "mutation": "tui/truncated_text.go: replace 'text = text[:idx]' with 'text = text[idx+1:]'; compiling go test -overlay truncate-overlay.json -run exact test -count=1 fails TestTruncatedText_PreservesANSI."
+  },
+  {
+    "upstream": "packages/tui/src/components/h-stack.ts",
+    "package": "./tui",
+    "tests": [
+      "TestHStackRenderAlignEndOffsetsShorterChild"
+    ],
+    "upstream_reference": "packages/tui/src/components/h-stack.ts",
+    "mutation": "tui/stack.go: replace 'offset = height - len(lines)' with 'offset = 0'; compiling go test -overlay hstack-overlay.json -run exact test -count=1 fails TestHStackRenderAlignEndOffsetsShorterChild."
+  },
+  {
+    "upstream": "packages/tui/src/alt-screen-search.ts",
+    "package": "./tui",
+    "tests": [
+      "TestAltScreenSearchNormalizesAcrossRows"
+    ],
+    "upstream_reference": "packages/tui/src/alt-screen-search.ts",
+    "mutation": "tui/alt_screen_search.go: replace 'regexp.MustCompile(\"(?i)\" + regexp.QuoteMeta(normalizedQuery))' with 'regexp.MustCompile(regexp.QuoteMeta(normalizedQuery))'; compiling go test -overlay search-overlay.json -run exact test -count=1 fails TestAltScreenSearchNormalizesAcrossRows."
+  },
+  {
+    "upstream": "packages/tui/src/components/mouse-region.ts",
+    "package": "./tui",
+    "tests": [
+      "TestMouseRegionPrefersNestedHandlers"
+    ],
+    "upstream_reference": "packages/tui/src/components/mouse-region.ts",
+    "mutation": "tui/mouse_region.go: replace 'if result := DispatchMouseEvent(r.child, event); result != nil {' with 'if result := DispatchMouseEvent(r.child, event); result != nil && false {'; compiling go test -overlay mouse-overlay.json -run exact test -count=1 fails TestMouseRegionPrefersNestedHandlers."
+  },
+  {
+    "upstream": "packages/ai/src/models-store.ts",
+    "package": "./ai",
+    "tests": [
+      "TestInMemoryModelsStoreClonesAndDeletes"
+    ],
+    "upstream_reference": "packages/ai/src/models-store.ts",
+    "mutation": "ai/models_store.go: replace 's.entries[providerID] = entry.Clone()' with 's.entries[providerID] = entry'; compiling go test -overlay models-overlay.json -run exact test -count=1 fails TestInMemoryModelsStoreClonesAndDeletes."
+  },
+  {
+    "upstream": "packages/ai/src/api/constrained-sampling.ts",
+    "package": "./ai",
+    "tests": [
+      "TestResolveJSONSchemaStrictSampling"
+    ],
+    "upstream_reference": "packages/ai/src/api/constrained-sampling.ts",
+    "mutation": "ai/constrained_sampling.go: replace 'if supportsStrictMode {' with 'if !supportsStrictMode {'; compiling go test -overlay grammar-overlay.json -run exact test -count=1 fails TestResolveJSONSchemaStrictSampling."
+  },
+  {
+    "upstream": "packages/ai/src/utils/provider-retry.ts",
+    "package": "./ai",
+    "tests": [
+      "TestIsRetryableProviderResponse"
+    ],
+    "upstream_reference": "packages/ai/src/utils/provider-retry.ts",
+    "mutation": "ai/provider_retry.go: replace 'case \"false\":\\n\\t\\treturn false' with 'case \"false\":\\n\\t\\treturn true'; compiling go test -overlay retry-overlay.json -run exact test -count=1 fails TestIsRetryableProviderResponse."
+  },
+  {
+    "upstream": "packages/ai/src/utils/sleep.ts",
+    "package": "./ai",
+    "tests": [
+      "TestAbortableSleepRejectsWhenAlreadyAborted"
+    ],
+    "upstream_reference": "packages/ai/src/utils/sleep.ts",
+    "mutation": "ai/provider_retry.go: replace 'case <-ctx.Done():\\n\\t\\t\\treturn ctx.Err()' with 'case <-ctx.Done():\\n\\t\\t\\treturn nil'; compiling go test -overlay sleep-overlay.json -run exact test -count=1 fails TestAbortableSleepRejectsWhenAlreadyAborted."
+  },
+  {
+    "upstream": "packages/ai/src/utils/hash.ts",
+    "package": "./ai",
+    "tests": [
+      "TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape"
+    ],
+    "upstream_reference": "packages/ai/test/openai-responses-foreign-toolcall-id.test.ts",
+    "mutation": "ai/openai.go: replace 'var h1 uint32 = 0xdeadbeef' with 'var h1 uint32 = 0xdeadbeee'; compiling go test -overlay hash-overlay.json -run exact test -count=1 fails TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape."
+  },
+  {
+    "upstream": "packages/ai/src/utils/transcript.ts",
+    "package": "./ai",
+    "tests": [
+      "TestSystemMessageReplayReplaysContentSectionsAndToolsIntoOneLeadingMessage"
+    ],
+    "upstream_reference": "packages/ai/test/system-message-replay.test.ts",
+    "mutation": "ai/transcript.go: replace 'ToolsAdded: tools,\\n\\t\\tTimestamp:  timestamp,' with 'ToolsAdded: nil,\\n\\t\\tTimestamp:  timestamp,'; compiling go test -overlay transcript-overlay.json -run exact test -count=1 fails TestSystemMessageReplayReplaysContentSectionsAndToolsIntoOneLeadingMessage."
+  },
+  {
+    "upstream": "packages/ai/src/utils/assistant-message-frame.ts",
+    "package": "./ai",
+    "tests": [
+      "TestAssistantMessageFrameUsesAuthoritativeTextEndContentAndSignature"
+    ],
+    "upstream_reference": "packages/ai/test/assistant-message-frame.test.ts",
+    "mutation": "ai/assistant_message_frame.go: replace 'block.Text = frame.Content' with 'block.Text += frame.Content'; compiling go test -overlay frames-overlay.json -run exact test -count=1 fails TestAssistantMessageFrameUsesAuthoritativeTextEndContentAndSignature."
+  },
+  {
+    "upstream": "packages/ai/src/auth/oauth/kimi-coding.ts",
+    "package": "./ai",
+    "tests": [
+      "TestKimiRefreshRejectsInvalidGrantWithoutRetry"
+    ],
+    "upstream_reference": "packages/ai/src/auth/oauth/kimi-coding.ts",
+    "mutation": "ai/oauth_kimi.go: replace 'response.Error == \"invalid_grant\"' with 'response.Error == \"mutated_invalid_grant\"'; compiling go test -overlay kimi-overlay.json -run exact test -count=1 fails TestKimiRefreshRejectsInvalidGrantWithoutRetry."
+  },
+  {
+    "upstream": "packages/ai/src/auth/oauth/meta.ts",
+    "package": "./ai",
+    "tests": [
+      "TestMetaOAuthRefreshReMintsKeyFromStoredIdentityToken"
+    ],
+    "upstream_reference": "packages/ai/test/meta-oauth.test.ts",
+    "mutation": "ai/oauth_meta.go: replace '\"x-api-version\": \"1.0.0\",' with '\"x-api-version\": \"mutant\",'; compiling go test -overlay meta-oauth-overlay.json -run exact test -count=1 fails TestMetaOAuthRefreshReMintsKeyFromStoredIdentityToken."
+  },
+  {
+    "upstream": "packages/ai/src/providers/meta.models.ts",
+    "package": "./ai",
+    "tests": [
+      "TestMetaCatalogMatchesPinnedProviderDefinition"
+    ],
+    "upstream_reference": "packages/ai/src/providers/meta.models.ts",
+    "mutation": "ai/models_generated.go: replace 'ID:                   \"muse-spark-1.1\",\\n\\t\\tProvider:             \"meta\",' with 'ID:                   \"mutant\",\\n\\t\\tProvider:             \"meta\",'; compiling go test -overlay meta-model-overlay.json -run exact test -count=1 fails TestMetaCatalogMatchesPinnedProviderDefinition."
+  },
+  {
+    "upstream": "packages/ai/src/providers/qwen-token-plan.models.ts",
+    "package": "./ai",
+    "tests": [
+      "TestQwenTokenPlanExposesTextModelsAndOmitsImageModels"
+    ],
+    "upstream_reference": "packages/ai/test/qwen-token-plan-models.test.ts",
+    "mutation": "ai/models_generated.go: replace 'ID:                   \"MiniMax-M2.5\",\\n\\t\\tProvider:             \"qwen-token-plan\",' with 'ID:                   \"mutant\",\\n\\t\\tProvider:             \"qwen-token-plan\",'; compiling go test -overlay qwen-token-plan-model-overlay.json -run exact test -count=1 fails TestQwenTokenPlanExposesTextModelsAndOmitsImageModels."
+  },
+  {
+    "upstream": "packages/ai/src/providers/qwen-token-plan-cn.models.ts",
+    "package": "./ai",
+    "tests": [
+      "TestQwenTokenPlanExposesTextModelsAndOmitsImageModels"
+    ],
+    "upstream_reference": "packages/ai/test/qwen-token-plan-models.test.ts",
+    "mutation": "ai/models_generated.go: replace 'ID:                   \"MiniMax-M2.5\",\\n\\t\\tProvider:             \"qwen-token-plan-cn\",' with 'ID:                   \"mutant\",\\n\\t\\tProvider:             \"qwen-token-plan-cn\",'; compiling go test -overlay qwen-token-plan-cn-model-overlay.json -run exact test -count=1 fails TestQwenTokenPlanExposesTextModelsAndOmitsImageModels."
+  },
+  {
+    "upstream": "packages/ai/src/providers/qwen-token-plan-individual.models.ts",
+    "package": "./ai",
+    "tests": [
+      "TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels"
+    ],
+    "upstream_reference": "packages/ai/test/qwen-token-plan-models.test.ts",
+    "mutation": "ai/models_generated.go: replace 'ID:                   \"deepseek-v4-flash-0731\",\\n\\t\\tProvider:             \"qwen-token-plan-individual\",' with 'ID:                   \"mutant\",\\n\\t\\tProvider:             \"qwen-token-plan-individual\",'; compiling go test -overlay qwen-token-plan-individual-model-overlay.json -run exact test -count=1 fails TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels."
+  },
+  {
+    "upstream": "packages/ai/src/providers/qwen-token-plan.ts",
+    "package": "./ai",
+    "tests": [
+      "TestQwenTokenPlanCatalogRoutes"
+    ],
+    "upstream_reference": "packages/ai/src/providers/qwen-token-plan.ts",
+    "mutation": "ai/models_generated.go: replace 'ID:                   \"qwen3.8-max\",\\n\\t\\tProvider:             \"qwen-token-plan\",\\n\\t\\tDisplayName:          \"Qwen3.8 Max\",\\n\\t\\tAPI:                  \"openai-completions\",\\n\\t\\tBaseURL:              \"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1\",' with 'ID:                   \"qwen3.8-max\",\\n\\t\\tProvider:             \"qwen-token-plan\",\\n\\t\\tDisplayName:          \"Qwen3.8 Max\",\\n\\t\\tAPI:                  \"mutant\",\\n\\t\\tBaseURL:              \"https://token-plan.ap-southeast-1.maas.aliyuncs.com/compatible-mode/v1\",'; compiling go test -overlay qwen-token-plan-route-overlay.json -run exact test -count=1 fails TestQwenTokenPlanCatalogRoutes."
+  },
+  {
+    "upstream": "packages/ai/src/providers/qwen-token-plan-cn.ts",
+    "package": "./ai",
+    "tests": [
+      "TestQwenTokenPlanCatalogRoutes"
+    ],
+    "upstream_reference": "packages/ai/src/providers/qwen-token-plan-cn.ts",
+    "mutation": "ai/models_generated.go: replace 'ID:                   \"qwen3.8-max\",\\n\\t\\tProvider:             \"qwen-token-plan-cn\",\\n\\t\\tDisplayName:          \"Qwen3.8 Max\",\\n\\t\\tAPI:                  \"openai-completions\",\\n\\t\\tBaseURL:              \"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1\",' with 'ID:                   \"qwen3.8-max\",\\n\\t\\tProvider:             \"qwen-token-plan-cn\",\\n\\t\\tDisplayName:          \"Qwen3.8 Max\",\\n\\t\\tAPI:                  \"mutant\",\\n\\t\\tBaseURL:              \"https://token-plan.cn-beijing.maas.aliyuncs.com/compatible-mode/v1\",'; compiling go test -overlay qwen-token-plan-cn-route-overlay.json -run exact test -count=1 fails TestQwenTokenPlanCatalogRoutes."
+  },
+  {
+    "upstream": "packages/ai/src/providers/radius.models.ts",
+    "package": "./ai",
+    "tests": [
+      "TestRadiusProviderShipsPublicCatalogForDefaultGateway"
+    ],
+    "upstream_reference": "packages/ai/src/providers/radius.models.ts",
+    "mutation": "ai/models_generated.go: replace 'ID:                   \"balanced\",\\n\\t\\tProvider:             \"radius\",' with 'ID:                   \"mutant\",\\n\\t\\tProvider:             \"radius\",'; compiling go test -overlay radius-model-overlay.json -run exact test -count=1 fails TestRadiusProviderShipsPublicCatalogForDefaultGateway."
+  },
+  {
+    "upstream": "packages/ai/src/auth/oauth/radius.ts",
+    "package": "./ai",
+    "tests": [
+      "TestRadiusOAuthDeviceLoginUsesGatewayEndpoints"
+    ],
+    "upstream_reference": "packages/ai/test/radius-oauth.test.ts",
+    "mutation": "ai/oauth_radius.go: replace 'Access: data.AccessToken, Refresh: data.RefreshToken' with 'Access: data.RefreshToken, Refresh: data.RefreshToken'; compiling go test -overlay radius-oauth-overlay.json -run exact test -count=1 fails TestRadiusOAuthDeviceLoginUsesGatewayEndpoints."
+  },
+  {
+    "upstream": "packages/ai/src/providers/opencode-headers.ts",
+    "package": "./coding",
+    "tests": [
+      "TestOpenCodeSessionHeaderMapsSessionIDWithoutCacheRetention"
+    ],
+    "upstream_reference": "packages/ai/test/opencode-provider-headers.test.ts",
+    "mutation": "coding/model.go: replace 'set(\"x-opencode-session\", sessionID)' with 'set(\"x-opencode-session\", \"mutant\")'; compiling go test -overlay opencode-overlay.json -run exact test -count=1 fails TestOpenCodeSessionHeaderMapsSessionIDWithoutCacheRetention."
+  },
+  {
+    "upstream": "packages/ai/src/api/pi-messages.ts",
+    "package": "./ai",
+    "tests": [
+      "TestPiMessagesInMemoryPrematureEnd"
+    ],
+    "upstream_reference": "packages/ai/test/pi-messages.test.ts",
+    "mutation": "ai/pi_messages.go: replace '%s stream ended without a terminal event' with '%s mutant premature EOF'; compiling go test -overlay pi-messages-overlay.json -run exact test -count=1 fails TestPiMessagesInMemoryPrematureEnd."
+  }
+]

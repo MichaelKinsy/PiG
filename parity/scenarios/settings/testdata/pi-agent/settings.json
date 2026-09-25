@@ -1,0 +1,6 @@
+{
+  "lastChangelogVersion": "0.83.0",
+  "compaction": {
+    "enabled": true
+  }
+}

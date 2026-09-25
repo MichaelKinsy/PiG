@@ -1,0 +1,67 @@
+# Behavior family: export-html
+# Scenario: CLI --export with all message types (full mix).
+#
+# Session JSONL carries a comprehensive mix: user messages, assistant text,
+# thinking blocks, toolCall blocks with flat toolResult-role messages (bash +
+# write), error results, and ANSI escape codes. This exercises the full
+# FromJSONL parser and ToHTML template assembly across the entry-type spectrum.
+#
+# Upstream evidence (2026-08-16, pi 0.81.1):
+#   pi --no-extensions --export <testdata>/full-mix.jsonl /tmp/pi.html
+#   PIG_HOME=/tmp/h pig --export <testdata>/full-mix.jsonl /tmp/pig.html
+#   → embedded #session-data identical (3152 chars); full HTML differs only
+#     in the vendored template assets.
+#
+# Coverage limit: template-rendered tools only, so export-html's custom
+# extension tool pre-render path is not exercised here.
+
+name = "04-export-cli-full-mix"
+description = "CLI --export with thinking + tools + errors + ANSI produces identical HTML"
+covers = [
+  "packages/coding-agent/src/core/export-html/index.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_HOME=testdata/pig-home"]
+pig_args = ["--export", "testdata/sessions/full-mix.jsonl", "{{TEMP}}/out.html"]
+pi_args = ["--export", "testdata/sessions/full-mix.jsonl", "{{TEMP}}/out.html"]
+
+[cli]
+timeout_seconds = 15
+cwd = "."
+# The command's real output is the file, not the stdout line.
+artifact_path = "{{TEMP}}/out.html"
+
+[assert]
+exit_code = 0
+both_contain = ["Exported to:"]
+output_normalized_equal = true
+runs = 3
+
+# Compare the embedded session payload rather than the whole page: the payload
+# is what the export is responsible for and is byte-identical between pig and
+# pinned pi, while the surrounding template shell differs because pig vendors
+# its own port of the assets. The replacements below reduce each artifact to
+# that payload; they cannot match stdout, so output_normalized_equal is
+# unaffected.
+artifact_normalized_equal = true
+
+# Guards the reduction against a vacuous pass: if the extraction stops
+# matching, both sides normalize to empty and would compare equal on nothing.
+artifact_both_contain = ["eyJoZWFkZXIiOnsidHlwZSI6InNlc3Npb24iLCJpZCI6InRlc3QtZnVsbCIs"]
+
+# normalize-rationale: Pig and Pi receive independent temporary export paths.
+[[assert.normalize_replace]]
+pattern = 'Exported to: .+'
+with = 'Exported to: <path>'
+
+# normalize-rationale: reduce the artifact to the embedded session payload.
+[[assert.normalize_replace]]
+pattern = '(?s)^.*<script id="session-data"[^>]*>'
+with = ''
+
+[[assert.normalize_replace]]
+pattern = '(?s)</script>.*$'
+with = ''

@@ -1,0 +1,82 @@
+import { getRuntime } from "../state.mjs";
+import { Type } from "./typebox.mjs";
+
+export { Type };
+
+let lastTimestamp = -Infinity;
+let sequence = 0;
+
+export function uuidv7() {
+  const random = new Uint8Array(16);
+  if (globalThis.crypto?.getRandomValues) globalThis.crypto.getRandomValues(random);
+  else for (let index = 0; index < random.length; index++) random[index] = Math.floor(Math.random() * 256);
+  const timestamp = Date.now();
+  if (timestamp > lastTimestamp) {
+    sequence = random[6] * 0x1000000 + random[7] * 0x10000 + random[8] * 0x100 + random[9];
+    lastTimestamp = timestamp;
+  } else {
+    sequence = (sequence + 1) >>> 0;
+    if (sequence === 0) lastTimestamp++;
+  }
+  const bytes = new Uint8Array(16);
+  bytes[0] = (lastTimestamp / 0x10000000000) & 0xff;
+  bytes[1] = (lastTimestamp / 0x100000000) & 0xff;
+  bytes[2] = (lastTimestamp / 0x1000000) & 0xff;
+  bytes[3] = (lastTimestamp / 0x10000) & 0xff;
+  bytes[4] = (lastTimestamp / 0x100) & 0xff;
+  bytes[5] = lastTimestamp & 0xff;
+  bytes[6] = 0x70 | ((sequence >>> 28) & 0x0f);
+  bytes[7] = (sequence >>> 20) & 0xff;
+  bytes[8] = 0x80 | ((sequence >>> 14) & 0x3f);
+  bytes[9] = (sequence >>> 6) & 0xff;
+  bytes[10] = ((sequence & 0x3f) << 2) | (random[10] & 0x03);
+  bytes.set(random.subarray(11), 11);
+  const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, "0"));
+  return `${hex.slice(0, 4).join("")}-${hex.slice(4, 6).join("")}-${hex.slice(6, 8).join("")}-${hex.slice(8, 10).join("")}-${hex.slice(10, 16).join("")}`;
+}
+
+export function StringEnum(values, options = {}) {
+  return { type: "string", enum: [...values], ...options };
+}
+
+export function contentText(content, separator = "\n") {
+  if (typeof content === "string") return content;
+  return (content ?? []).filter((block) => block.type === "text").map((block) => block.text).join(separator);
+}
+
+export function stream(model, context = {}, options = {}) {
+  const runtime = getRuntime();
+  if (!runtime) throw new Error("pi-ai.stream: runtime not initialized");
+  return runtime.startModelStream(model, context, options);
+}
+
+export function streamSimple(model, context = {}, options = {}) {
+  const runtime = getRuntime();
+  if (!runtime) throw new Error("pi-ai.streamSimple: runtime not initialized");
+  return runtime.startModelStream(model, context, options);
+}
+
+export async function complete(model, context = {}, options = {}) {
+  return stream(model, context, options).result();
+}
+
+export class UserMessage {
+  constructor(content) {
+    this.role = "user";
+    this.content = content;
+  }
+}
+
+export class AssistantMessage {
+  constructor(content) {
+    this.role = "assistant";
+    this.content = content;
+  }
+}
+
+export class Message {
+  constructor(role, content) {
+    this.role = role;
+    this.content = content;
+  }
+}

@@ -1,0 +1,26 @@
+// divguard:path internal/codingagent/interactive_turn.go
+
+package codingagent
+
+import "context"
+
+type Session struct{}
+
+func (*Session) SendContent(context.Context, string) error { return nil }
+
+type Tx struct{}
+
+func (*Tx) Send(id, input string) error { return nil }
+
+type InteractiveMode struct {
+	session  *Session
+	abortCtx context.Context
+}
+
+// runTurn goes through the session layer, which owns the post-run loop.
+func (m *InteractiveMode) runTurn(text string, tx *Tx) error {
+	if err := m.session.SendContent(m.abortCtx, text); err != nil {
+		return err
+	}
+	return tx.Send("conversation", text)
+}

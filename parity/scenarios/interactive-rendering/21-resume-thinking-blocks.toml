@@ -1,0 +1,68 @@
+# Behavior family: interactive-rendering
+# Surface: AssistantMessageComponent thinking blocks rendered from persisted
+#          session content when resuming (renderInitialMessages).
+#
+# Upstream evidence (pi v0.87.1, tmux 100x35 probe):
+#   Session fixture: testdata/thinking-cwd/sessions/...jsonl
+#   (user + assistant[thinking "  alpha  ", thinking "bravo\n", text charlie,
+#    thinking delta, thinking "   "] + user end marker)
+#   pi -e test-faux-provider.ts --model test-faux/faux-1 --session-dir sessions -c
+#   crop: capture_start="Pick a color", capture_end="Resume marker end"
+#   raw cropped upstream block (normalized; pi 0.87.1, 2026-09-25):
+#
+#     Pick a color
+#
+#
+#      Resumed reasoning alpha
+#
+#      Resumed reasoning bravo
+#
+#      Resumed answer charlie
+#      Resumed reasoning delta
+#
+#
+#      Resume marker end
+#
+# Pre-fix pig (main 2056d20ef) rendered only "Resumed answer charlie": every
+# thinking line was missing, and the resumed user message lacked upstream's
+# Spacer(1) (addMessageToChat case "user").
+#
+# Root cause: the resume/rebuild renderer read the runtime-only
+# AssistantMessage.Thinking accumulator, which is not serialized, so every
+# thinking block vanished from a resumed, /tree-navigated, forked, or
+# compacted chat. It now renders the persisted content blocks in order.
+
+name = "21-resume-thinking-blocks"
+description = "Resumed assistant thinking blocks render from persisted content in order, trimmed, with consecutive runs joined."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/assistant-message.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/thinking-cwd"
+capture_start = "Pick a color"
+capture_end = "Resume marker end"
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "unknown command", "Thinking..."]
+both_contain = ["Resumed reasoning alpha", "Resumed reasoning bravo", "Resumed answer charlie", "Resumed reasoning delta"]
+escaped_output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

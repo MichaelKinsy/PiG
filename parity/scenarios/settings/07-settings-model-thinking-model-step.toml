@@ -1,0 +1,50 @@
+# Behavior family: settings
+# Upstream evidence: exact pinned Pi settings-selector.ts sorts the current model first and renders
+# its override beside the muted provider label. settings-submenu.ts adds the
+# step counter, search input, and filter hint. This local fixture requires no
+# credentials or provider request; escaped equality includes the entire step.
+name = "07-settings-model-thinking-model-step"
+description = "Both binaries render the searchable model step of per-model thinking settings exactly."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "fixture/thinking-model"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 25
+capture_start = "Per-Model Thinking Level"
+capture_start_last = true
+capture_end = "Type to filter · Enter to select · Esc to go back"
+
+[[tmux.steps]]
+keys = ["/settings", "Enter"]
+wait_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Default thinking level per model", "Enter"]
+wait_contains = ["Per-Model Thinking Level", "Step 1/2 · Select a model to configure"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/model-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-agent"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+escaped_output_equal = true
+runtime_ratio_max = 1.25
+runs = 3

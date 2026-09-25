@@ -1,0 +1,51 @@
+# Behavior family: export-html
+# Scenario: CLI --export with plain text session.
+#
+# Both binaries export a plain-text session JSONL to HTML via --export.
+# Output is captured from combined stdout+stderr; both produce "Exported to: <path>".
+# The actual HTML files are proven byte-identical by upstream probes (see below).
+#
+# This exercises the full export pipeline: JSONL parsing → template assembly
+# (CSS with theme vars, JS injection, vendor script embedding) → session data
+# base64 encoding → file writing. Also verifies the jsReplace fix for $&/$$
+# patterns in vendor scripts.
+#
+# Upstream evidence (2026-05-17):
+#   cd /tmp && pi --no-extensions --export <testdata>/plain.jsonl /tmp/pi.html 2>&1
+#   → "Exported to: /tmp/pi.html" (on stderr)
+#   md5sum /tmp/pi.html → 988352c7e8af6525dfb334716bbae1ab  (258944 bytes)
+#
+#   PIG_HOME=/tmp/h pig --export <testdata>/plain.jsonl /tmp/pig.html 2>&1
+#   → "Exported to: /tmp/pig.html" (on stderr)
+#   md5sum /tmp/pig.html → 988352c7e8af6525dfb334716bbae1ab  (258944 bytes)
+#
+# HTML files are byte-identical (same md5, same size).
+
+name = "01-export-cli-plain"
+description = "CLI --export with plain text session produces matching status and byte-identical HTML"
+covers = [
+  "packages/coding-agent/src/core/export-html/index.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_HOME=testdata/pig-home"]
+pig_args = ["--export", "testdata/sessions/plain.jsonl", "{{TEMP}}/out.html"]
+pi_args = ["--export", "testdata/sessions/plain.jsonl", "{{TEMP}}/out.html"]
+
+[cli]
+timeout_seconds = 15
+cwd = "."
+
+[assert]
+exit_code = 0
+both_contain = ["Exported to:"]
+output_normalized_equal = true
+runs = 3
+
+# Normalize the temp dir paths so the "Exported to: /path" messages compare equal.
+# normalize-rationale: Pig and Pi receive independent temporary export paths.
+[[assert.normalize_replace]]
+pattern = 'Exported to: .+'
+with = 'Exported to: <path>'

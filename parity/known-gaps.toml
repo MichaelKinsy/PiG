@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# Known parity gaps against the pinned Pi version.
+#
+# Each gate downgrades exactly the keys listed for its scope from failures to
+# logged notes (parity/knowngaps). Any gap NOT listed here fails its gate, and
+# any key listed here that the gate no longer observes (because the gap was
+# fixed) also fails, so this file can only shrink. Remove an entry in the same
+# change that closes it. pi_version must equal coding.UpstreamVersion.
+#
+# Scopes: "upstream-parity" (tests/upstream-parity), "correspondence"
+# (parity/cmd/correspondence compare; keys are report finding IDs), and
+# "tui-keybindings" and "app-keybindings" (the keybinding inventory tests).
+#
+# Each entry needs: scope, key (what the gate reports), tracking (issue URL once
+# the repository is public; until then the delivery/unresolved.tsv row), and why.
+
+pi_version = "0.87.1"
+
+[[gap]]
+scope = "upstream-parity"
+key = "api:OnCacheWarmingDecision"
+tracking = "unresolved.tsv: Extension boundary events"
+why = "The cache warmer is ported; the cache_warming_decision event and its registration ship with the extension-event slice, wired at coding.Session.decideCacheWarming."
+
+[[gap]]
+scope = "upstream-parity"
+key = "api-count"
+tracking = "unresolved.tsv: Extension boundary events"
+why = "Total extension.API method count trails upstream by the api:* entries above."

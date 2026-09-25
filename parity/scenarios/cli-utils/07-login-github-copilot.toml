@@ -1,0 +1,58 @@
+# Behavior family: cli-utils
+# Surface: ai CLI login command (`packages/ai/src/cli.ts`) against a hermetic
+# GitHub Copilot device-code stub.
+#
+# Upstream evidence (pi-ai v0.87.1, current loop probe via
+# `parity/testdata/pi-ai-copilot-wrapper.mjs`):
+#   args: login github-copilot
+#   stdin: <blank line for enterprise-domain prompt>
+#   output contains, in order:
+#     GitHub Enterprise URL/domain (blank for github.com) (company.ghe.com):
+#     Open this URL in your browser:
+#     https://github.com/login/device
+#     Enter code: ABCD-EFGH
+#     Credentials saved to auth.json
+#
+# The wrapper's fixture model (gpt-4o, policy.state="enabled") is already
+# model_picker_enabled, so 0.87.1's parseGitHubCopilotModelCatalog leaves
+# policyModelIds empty and loginGitHubCopilot never prints "Enabling
+# models...": it only does so when a catalog model's policy is
+# "unconfigured" (github-copilot.ts:471-480). v0.81.1 evidence recorded the
+# line because pi (and pig, until it matched this) posted a policy update to
+# a fixed model list unconditionally.
+#
+# pig now exposes the same login surface as a first-class subcommand and the
+# parity harness stubs the same Copilot device-code endpoints locally via
+# PIG_PARITY_HARNESS=1, so this surface is behaviorally assertable.
+
+name = "07-login-github-copilot"
+description = "GitHub Copilot CLI login saves OAuth credentials to auth.json with matching prompt/output flow."
+covers = [
+  "packages/ai/src/cli.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=.", "PIG_PARITY_HARNESS=1"]
+pi = ["PI_SKIP_VERSION_CHECK=1"]
+pi_bin = "../../testdata/pi-ai-copilot-wrapper.mjs"
+override_base_args = true
+
+[cli]
+args = ["login", "github-copilot"]
+input_lines = [""]
+timeout_seconds = 15
+cwd = "{{TEMP}}"
+
+[assert]
+exit_code = 0
+both_contain = [
+  "GitHub Enterprise URL/domain (blank for github.com) (company.ghe.com):",
+  "Open this URL in your browser:",
+  "https://github.com/login/device",
+  "Enter code: ABCD-EFGH",
+  "Credentials saved to auth.json",
+]
+output_equal = true
+runs = 3

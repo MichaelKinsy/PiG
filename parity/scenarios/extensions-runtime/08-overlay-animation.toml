@@ -1,0 +1,73 @@
+# Behavior family: extensions-runtime
+# Surface: ui.custom overlay: frame advance via keypress
+#
+# overlay-animation.mjs registers a "/anim" command whose handler opens
+# a ui.custom overlay. Each keypress increments a frame counter. The
+# render function returns "ANIM frame=N width=W".
+#
+# Upstream evidence (pi v0.69.0, tmux 100×35):
+#   send: "/anim" Enter → wait "ANIM frame=0"
+#   send: "k" → wait "ANIM frame=1"
+#   send: "k" → wait "ANIM frame=2"
+#   send: "q" → overlay closes
+#   raw cropped block:
+#     ANIM frame=2 width=100
+#
+# This scenario proves ui.custom overlays render and advance frames on
+# both binaries. The tui shim fix (requestRender/width/height) enables
+# extensions to explicitly trigger re-renders; the runtime also calls
+# renderFrame() after each handleInput, so frames advance regardless.
+
+name = "08-overlay-animation"
+description = "ui.custom overlay advances frames on keypress via handleInput + renderFrame"
+covers = [
+  "packages/coding-agent/src/core/sdk.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/overlay-animation.mjs"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/overlay-animation.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "ANIM frame="
+capture_end = "ANIM frame="
+
+[[tmux.steps]]
+# Re-dispatch until the overlay opens: /anim is dropped if it beats the pig
+# extension subprocess's register/connect handshake (see 04-slash-command). Once
+# ANIM frame=0 renders the loop stops, so the later k-navigation steps run once.
+keys = ["/anim", "Enter"]
+wait_contains = ["ANIM frame=0"]
+wait_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["k"]
+wait_contains = ["ANIM frame=1"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["k"]
+wait_contains = ["ANIM frame=2"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "unknown command"]
+both_contain = ["ANIM frame="]
+output_normalized_equal = true
+runs = 1

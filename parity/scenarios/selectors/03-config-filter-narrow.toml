@@ -1,0 +1,92 @@
+# Behavior family: selectors
+# Surface: `pi config` / `pig config` filter narrowing via typed query
+#
+# Upstream evidence (pi v0.81.1, probed in tmux 100×35):
+#   command: PI_CODING_AGENT_DIR=testdata/pi-agent-full pi config
+#   keys: a l p h a
+#   crop: start="Global Resources" end="alpha.md"
+#   raw cropped upstream block:
+#
+#     Global Resources                                          tab switch mode · space toggle · esc close
+#     ~/.pi/agent/settings.json
+#
+#     > alpha
+#
+#       User (~/.pi/agent/)
+#         Prompts
+#     >     [x] alpha.md
+#
+# Exercising: typed-character → filterItems() flow. The substring match
+# runs across DisplayName, ResourceType, and Path (config-selector.ts:213-217
+# upstream); typing "alpha" must keep only items whose name contains
+# `alpha`, hide the Skills/Themes subgroups whose items don't match, and
+# update the cursor to the first surviving item. The Input prompt
+# echoes `> alpha` (live TextInput render).
+#
+# This scenario fails as a regression test if any of these break:
+#   - input dispatching (TextInput.HandleInput): previously the
+#     selector consumed only ASCII printable chars inline and ignored
+#     paste / word-move chords
+#   - filterItems() substring search across the three fields
+#   - matchingSubgroups / matchingGroups pruning
+#   - selectFirstItem() landing on the first surviving item index
+#   - Input render echo (was previously `filter: █`, the bug fixed here)
+
+name = "03-config-filter-narrow"
+description = "Typing into the config-selector filter narrows the visible list to matching items only."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/config-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "sample-skill"
+ready_pattern_pi = "sample-skill"
+ready_timeout_seconds = 15
+keys = ["a", "l", "p", "h", "a"]
+settle_seconds = 1
+capture_start = "Global Resources"
+capture_end = "alpha.md"
+cwd = "testdata/empty-project"
+
+[env]
+override_base_args = true
+pig = ["PIG_HOME=testdata/pig-home-full", "HOME=testdata/home-empty"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-full", "HOME=testdata/home-empty"]
+pig_args = ["config"]
+pi_args = ["config"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "Skills", "Themes", "beta.md", "zinc.json", "sample-skill"]
+both_contain = [
+  "Global Resources",
+  "> alpha",
+  "Prompts",
+  "alpha.md",
+  "[x]",
+]
+output_normalized_equal = true
+runtime_ratio_max = 1.40
+runs = 1
+
+# D2: fold pig's config-root label to upstream's.
+# normalize-rationale: D2 config-root names and isolated snapshot suffixes differ by binary.
+[[assert.normalize_replace]]
+pattern = '~/\.pig/agent/'
+with    = '~/.pi/agent/'
+
+# Snapshot dirs: the parity runner snapshots PIG_HOME/PI_CODING_AGENT_DIR
+# to temp dirs whose names include the env key and a random suffix.
+# The absolute paths differ between pig and pi and may wrap to the next
+# line, so we fold the entire "User (path)" label to a canonical form.
+[[assert.normalize_replace]]
+pattern = 'User \([^\n)]*parity-snap-PIG_HOME-[^\n)]*/agent/\)'
+with    = 'User (~/.pi/agent/)'
+
+[[assert.normalize_replace]]
+pattern = 'User \([^\n]*parity-snap-PI_CODING_AGENT_DIR-[^\n]*'
+with    = 'User (~/.pi/agent/)'

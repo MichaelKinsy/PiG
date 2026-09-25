@@ -1,0 +1,37 @@
+# Behavior family: startup
+# Surface: executable entrypoint --version passthrough
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   command: pi --version
+#   raw upstream output:
+#     0.69.0
+#
+# This locks the cli.ts entrypoint contract to the strongest observable
+# available without entering the TUI: invoking the executable with
+# --version must hand argv through to main and exit immediately. pi prints
+# its bare version; pig prints its composite version (D63).
+
+name = "01-version-flag"
+description = "Both binaries print their version string and exit immediately; pig prints the composite PiG+Pi version (D63)."
+covers = [
+  "packages/coding-agent/src/cli.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[cli]
+args = ["--version"]
+timeout_seconds = 15
+
+[assert]
+exit_code = 0
+both_not_contain = ["panic:", "goroutine ", "Error:"]
+runtime_ratio_max = 0.25
+runs = 3
+
+# D63: pig prints its composite version PigVersion+UpstreamVersion; pi prints
+# its bare version. The tokens expand from coding/pigversion/pigversion.go.
+[diverge]
+pig_contains = ["{{VERSION}}"]
+pi_contains = ["{{UPSTREAM_VERSION}}"]
+reason = "D63 SCRUTINIZED:approved. pig --version prints PiG's composite version (the PiG release with the Pi release it ports as semver build metadata, PiG+Pi) so one string names both; pi prints its bare version."

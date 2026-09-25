@@ -1,0 +1,86 @@
+# Behavior family: json
+# Surface: `--mode json` streams the session's AgentSessionEvent stream as
+# JSONL while the turn runs.
+#
+# Upstream evidence (Pi 0.84.0, probed 2026-08-16): print-mode.ts runs text and
+# json from one function. The json branch writes the session header as line 1,
+# then subscribes and writes every event as it arrives:
+#
+#   unsubscribe = session.subscribe((event) => {
+#     if (mode === "json") writeRawStdout(`${JSON.stringify(toJsonEvent(event))}\n`);
+#   });
+#
+# Observed sequence for this prompt, identical in both binaries:
+#   session (header)
+#   agent_start
+#   turn_start
+#   message_start(user) / message_end(user)
+#   message_start(assistant)
+#   message_update(text_start) / message_update(text_delta) / message_update(text_end)
+#   message_end(assistant)
+#   turn_end
+#   agent_end
+#   agent_settled
+#
+# pig previously collected the turn and printed a single non-upstream object
+# ({mode, model, text, messages, session, session_id}) at exit, so no consumer
+# could observe progress without polling the session JSONL. That is fixed:
+# json_mode.go now forwards the same rpcAgentEvent wire shapes --mode rpc uses.
+#
+# This scenario asserts the structural event stream rather than
+# output_normalized_equal, because session ids, timestamps, and JSON object key
+# order differ between Node's insertion-order serializer and Go's encoding/json
+# map ordering. The both_not_contain entries are the regression guards: the
+# retired batch payload's `"mode":"json"` key, and the cumulative `partial`
+# snapshot toJsonEvent strips from every message_update.
+
+name = "01-json-mode-streams-events"
+description = "--mode json emits the upstream AgentSessionEvent JSONL stream, delimited text run included"
+
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  # toJsonEvent's observable contract: message_update carries deltas only, with
+  # the cumulative `partial` snapshot removed.
+  "packages/coding-agent/src/modes/json-event.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--mode", "json", "--model", "test-faux/echo", "What is 20+22?"]
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+runs = 1
+both_contain = [
+  # Line 1 is the session header, so a consumer can bind the stream to a session.
+  '"type":"session"',
+  '"type":"agent_start"',
+  '"type":"turn_start"',
+  '"type":"message_start"',
+  '"role":"user"',
+  '"role":"assistant"',
+  # The text run is delimited, not just a bare delta.
+  '"type":"text_start"',
+  '"type":"text_delta"',
+  '"delta":"42"',
+  '"type":"text_end"',
+  '"content":"42"',
+  '"type":"message_end"',
+  '"type":"turn_end"',
+  '"type":"agent_end"',
+  # Terminal quiesce event: the run will not retry, compact, or continue.
+  '"type":"agent_settled"',
+]
+both_not_contain = [
+  '"partial":',
+  '"mode":"json"',
+]

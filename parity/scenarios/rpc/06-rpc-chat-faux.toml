@@ -1,0 +1,86 @@
+# Behavior family: rpc
+# Surface: prompt command through faux provider with upstream-compatible
+# AgentSessionEvent stream.
+#
+# Upstream evidence (Pi 0.84.0, re-probed 2026-08-07): JSON/RPC applies
+# toJsonEvent to every message_update, removing cumulative `partial` snapshots;
+# message_start supplies the initial message, deltas build it, and message_end is
+# authoritative.
+#
+# Observed event sequence after the prompt response:
+#   response(prompt success)
+#   agent_start
+#   turn_start
+#   message_start(user)
+#   message_end(user)
+#   message_start(assistant)
+#   message_update(assistantMessageEvent.type=text_start)
+#   message_update(assistantMessageEvent.type=text_delta, delta="42")
+#   message_update(assistantMessageEvent.type=text_end)
+#   message_end(assistant)
+#   turn_end
+#   agent_end
+#
+# pig previously emitted a simplified stream (message_start, text_delta,
+# message_end, tool_use, tool_result). That gap has been fixed: rpc_mode.go
+# now forwards upstream-shaped AgentSessionEvent JSON objects using
+# rpcAgentEvent.
+#
+# Re-probed against Pi 0.84.0 on 2026-08-16: upstream delimits each streamed
+# content run (text_start/text_delta/text_end, toolcall_start/toolcall_delta/
+# toolcall_end). pig emitted only the bare deltas, and this scenario asserted
+# only text_delta, so the missing delimiters passed unnoticed. rpc_events.go
+# now synthesizes the run boundaries and the assertions below pin them.
+#
+# This scenario asserts the structural event stream, not just the command
+# response. It does not use output_equal because timestamps and JSON object
+# key order differ between Node's insertion-order serializer and Go's
+# encoding/json map key ordering. The required event types and nested
+# assistantMessageEvent text_delta payload must be present in both outputs.
+
+name = "06-rpc-chat-faux"
+description = "Prompt through faux provider emits upstream AgentSessionEvent stream and assistant text '42'"
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  # toJsonEvent's observable contract: message_update on the JSON/RPC wire
+  # carries deltas only, with the cumulative `partial` snapshot removed. pig
+  # realizes this in rpc_events.go by constructing delta-only events directly.
+  # The both_not_contain '"partial":' assertion below exercises exactly that.
+  "packages/coding-agent/src/modes/json-event.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = [
+  '{"id":"p1","type":"prompt","message":"What is 20+22?"}',
+]
+timeout_seconds = 15
+settle_seconds = 5
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/echo", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/echo", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"p1","type":"response","command":"prompt","success":true',
+  '"type":"agent_start"',
+  '"type":"turn_start"',
+  '"type":"message_start"',
+  '"type":"message_update"',
+  '"type":"message_end"',
+  '"type":"turn_end"',
+  '"type":"agent_end"',
+  '"role":"user"',
+  '"role":"assistant"',
+  '"type":"text_start"',
+  '"type":"text_delta"',
+  '"delta":"42"',
+  '"type":"text_end"',
+]
+both_not_contain = ['"partial":']
+runs = 1

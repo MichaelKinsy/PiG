@@ -1,0 +1,120 @@
+# Behavior family: interactive-rendering
+# Surface: diff.ts (`components/diff.ts:renderDiff`): the diff body
+#          rendered by the edit tool's ToolExecutionComponent.
+#
+# Upstream evidence (pi v0.69.0, 2026-05-16, 100x35 tmux probe):
+#   cd /tmp/probe-edit-pi-cwd  (parity-edit-target.txt = before/REPLACE_ME/after)
+#   pi -e $repo/parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   send: "Run: edit parity-edit-target.txt" Enter
+#   wait: 5s
+#   crop: capture_start='edit parity-edit-target.txt',
+#         capture_end='edited'
+#   raw cropped upstream block:
+#
+#     edit parity-edit-target.txt
+#
+#       1 before line
+#      -2 REPLACE_ME
+#      +2 REPLACED
+#       3 after line
+#
+#
+#     edited
+#
+# Bugs caught by this scenario:
+#
+#   1. (FIXED, root) pig's edit tool schema-rejected the legacy flat
+#      input shape `{path, oldText, newText}` that the faux provider
+#      (and Opus 4.6 / GLM-5.1 in production) emit. Validation ran
+#      BEFORE upstream-equivalent prepareArguments would have rewritten
+#      the input to `{path, edits:[{oldText, newText}]}`. Fix landed
+#      in this loop:
+#        - new agent.ArgumentPreparer optional interface
+#        - dispatch invokes preparer.PrepareArguments(args) BEFORE
+#          validateToolArgs, mirroring upstream edit.ts:308
+#          `parameters: editSchema, prepareArguments: prepareEditArguments`
+#        - EditTool implements PrepareArguments via existing
+#          prepareEditArguments helper.
+#
+#   2. (FIXED, root) pig rendered the edit diff body in a different
+#      shape than upstream. pig previously emitted:
+#
+#        @@ parity-edit-target.txt hunk 1/1 @@
+#        - REPLACE_ME
+#        + REPLACED
+#
+#      upstream (and now pig):
+#
+#         1 before line
+#        -2 REPLACE_ME
+#        +2 REPLACED
+#         3 after line
+#
+#      Fixed by porting generateDiffString from upstream edit-diff.ts:266
+#      to tools.GenerateDiffString (byte-exact vs jsdiff, oracle-tested)
+#      and routing renderEditDiff through it. pig's `tui.RenderDiff`
+#      already consumed the line-numbered format; the missing piece was
+#      the diff-string generator, now landed. Its divergence entry was
+#      removed from DIVERGENCES.md.
+#
+# This scenario asserts BOTH the legacy-shape input fix (no validation
+# error) AND the diff body bytes (output_normalized_equal over the
+# cropped block).
+
+name = "10-edit-tool-diff"
+description = "Edit-tool legacy `{path, oldText, newText}` input shape is normalized by EditTool.PrepareArguments before schema validation, and the line-numbered diff body (ported generateDiffString) matches upstream byte-for-byte."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/diff.ts",
+  "packages/coding-agent/src/core/tools/edit-diff.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+# Per-binary CWD snapshot: both pi and pig get an independent ephemeral
+# copy of testdata/edit-cwd/ so concurrent mutation of parity-edit-target.txt
+# cannot race. Required for any scenario that mutates fixture files.
+cwd = "testdata/edit-cwd"
+capture_start = "edit parity-edit-target.txt"
+capture_end = "edited"
+
+[[tmux.steps]]
+keys = ["Run: edit parity-edit-target.txt", "Enter"]
+settle_seconds = 5
+wait_contains = ["edit parity-edit-target.txt", "edited"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+# The cropped block (edit header through "edited") must match byte-for-byte
+# after normalization: this locks the ported generateDiffString diff body
+# (line-numbered with 4 lines of context) against real pi.
+output_normalized_equal = true
+# Guard the legacy-shape fix: if dispatch reverts to validating before
+# preparing arguments, these strings reappear and the scenario fails.
+both_not_contain = [
+  "panic:",
+  "goroutine ",
+  "Validation failed for tool",
+  "additional properties",
+]
+# Both binaries must reach the post-tool assistant reply ("edited"),
+# proving the edit tool actually ran to completion in both. The faux
+# provider emits "edited" only on the tool-result follow-up, so its
+# presence proves the tool call dispatched without aborting.
+both_contain = ["edit parity-edit-target.txt", "edited"]
+runtime_ratio_max = 2.0
+runs = 1

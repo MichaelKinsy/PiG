@@ -1,0 +1,5 @@
+--- a/internal/imageprocessing/images.go
++++ b/internal/imageprocessing/images.go
+@@ -436 +436 @@
+-	return fixOrientation(img, getExifOrientation(data)), nil
++	return img, nil

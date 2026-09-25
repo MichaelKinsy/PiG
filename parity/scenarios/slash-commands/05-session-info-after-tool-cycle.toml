@@ -1,0 +1,79 @@
+# Behavior family: slash-commands
+# Surface: /session info output AFTER a tool round-trip
+#
+# Regression test for the bug where Pig's sessionHandler counted entries
+# by Base.Type ("user", "assistant", "tool_result"): which never matched
+# because all session entries use type="message" with role inside the
+# message payload.  The fix uses AsMessage().Message.Role.
+#
+# After a single faux tool cycle (user → bash → tool_result → assistant text),
+# /session should report non-zero message counts.
+#
+# Pi 0.87.1 counts the transcript system message, so the Messages total is 5,
+# and /session gains a "Cache Warming" block. The faux model declares no
+# prompt cache lifetime, so the session request cannot be warmed (probed
+# against Pi 0.87.1 with the parity runner, 2026-09-23):
+#
+#   Cache Warming
+#   Mode: streaming
+#   Status: Inactive (cache lifetime unavailable)
+#
+# Upstream evidence (pi v0.75.4, 2026-05-26):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts --model test-faux/faux-1 \
+#     --session-dir /tmp/pi-session-info
+#   keys: "Run: expr 20 + 22" Enter  (wait for "42")
+#   keys: "/session" Enter
+#   crop: start="Messages" end="Total:"
+#   output includes "User: 1", "Assistant: 2", "Tool Calls: 1", "Tool Results: 1", "Total: 4"
+
+name = "05-session-info-after-tool-cycle"
+description = "Both binaries show the /session message counts and cache-warming status after a tool round-trip."
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/cache-warmer.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 120
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+# Crop to the /session block from Messages through the cache-warming status;
+# the tool-cycle transcript above it is covered by other families.
+capture_start = "Messages"
+capture_end = "Status: Inactive (cache lifetime unavailable)"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["Run: expr 20 + 22", "Enter"]
+wait_contains = ["42"]
+wait_timeout_seconds = 15
+settle_seconds = 3
+
+[[tmux.steps]]
+keys = ["/session", "Enter"]
+wait_contains = ["Messages", "Total:", "Status: Inactive"]
+wait_timeout_seconds = 5
+settle_seconds = 2
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+# Both must show non-zero message counts ("Total: 5" is the Messages total:
+# system, user, two assistants, and the tool result) and the same
+# cache-warming status for a model without a prompt cache lifetime.
+both_contain = ["User: 1", "Total: 5", "Cache Warming", "Mode: streaming", "Status: Inactive (cache lifetime unavailable)"]
+output_equal = true
+runs = 3
