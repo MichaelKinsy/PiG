@@ -1,0 +1,65 @@
+# Behavior family: model-resolver-selector
+# Surface: typing a model query resets selection to the best first match.
+#
+# Upstream evidence: exact Pi 0.87.1 re-probe (2026-09-23) and upstream regression #7209:
+#   PI_CODING_AGENT_DIR=testdata/pi-agent-local pi --no-extensions --offline
+#   keys: /model Enter, Down, "model"
+#   result: selection moves from model-one back to model-two, the first fuzzy
+#   match, while both matching rows remain visible.
+#
+#   Only showing models from configured providers. Use /login to add providers.
+#
+#   > model
+#
+#   → ✓ model-two [fixture]
+#       model-one [fixture]
+#
+#     Model Name: Model Two
+#
+# The crop excludes background refresh status, owned by the runtime family.
+
+name = "09-model-filter-resets-selection"
+description = "Typing a picker query resets selection to the first fuzzy match."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 20
+capture_start = "Only showing models"
+capture_end = "Model Name: Model Two"
+
+[[tmux.steps]]
+keys = ["/model", "Enter"]
+wait_contains = ["model-two [fixture]"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Down"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["model"]
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-local"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-local"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["> model", "→ ✓ model-two [fixture]", "model-one [fixture]", "Model Name: Model Two"]
+both_not_contain = ["panic:", "goroutine ", "No matching models"]
+output_equal = true
+runtime_ratio_max = 1.30
+runs = 3

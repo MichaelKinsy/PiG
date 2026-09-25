@@ -1,0 +1,13 @@
+diff --git i/agent/harness/session/jsonl_storage.go w/agent/harness/session/jsonl_storage.go
+index 56997197a..df9bdeb4d 100644
+--- i/agent/harness/session/jsonl_storage.go
++++ w/agent/harness/session/jsonl_storage.go
+@@ -77,7 +77,7 @@ func openV4JsonlStorage(ctx context.Context, options JsonlStorageOptions, header
+ 	if err != nil {
+ 		return nil, fmt.Errorf("Failed to read JSONL storage %s: %w", options.Path, err)
+ 	}
+-	if header.StorageVersion != JSONLStorageVersion {
++	if header.StorageVersion < JSONLStorageVersion {
+ 		return nil, fmt.Errorf("Session %s uses unsupported storage version %d", header.ID, header.StorageVersion)
+ 	}
+ 	complete := strings.LastIndexByte(content, '\n')

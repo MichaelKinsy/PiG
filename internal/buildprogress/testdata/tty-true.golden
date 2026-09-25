@@ -1,0 +1,1 @@
+"⠋ Resolving manifest (0s)\n\x1b[2m  small.yaml\x1b[0m\r\x1b[2K\x1b[1A\r\x1b[2K⠋ Compiling Go members (2s)\n\x1b[2m  hello\x1b[0m\r\x1b[2K\x1b[1A\r\x1b[2K⠙ Compiling Go members (2s)\n\x1b[2m  hello\x1b[0m\r\x1b[2K\x1b[1A\r\x1b[2K[hello]   compiler line\n⠙ Compiling Go members (2s)\n\x1b[2m  hello\x1b[0m\r\x1b[2K\x1b[1A\r\x1b[2KBuilt /out/pig-small (1024 bytes) in 3s\n"

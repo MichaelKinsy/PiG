@@ -1,0 +1,36 @@
+package agent_test
+
+import (
+	"testing"
+
+	"github.com/MichaelKinsy/PiG/ai"
+)
+
+// The upstream contentText default separator is a newline, including system blocks.
+func TestHarnessTextSystemBlockSeparator(t *testing.T) {
+	message := ai.SystemMessage{Content: ai.SystemTextBlocks{{Text: "first"}, {Text: "second"}}}
+	if got := ai.RenderSystemMessageUpdate(message); got != "first\nsecond" {
+		t.Fatalf("system block update = %q, want %q", got, "first\nsecond")
+	}
+}
+
+// getSystemMessageText drops empty content/sections as well as null sections.
+func TestHarnessTextEmptySystemSection(t *testing.T) {
+	message := ai.SystemMessage{Content: ai.SystemText("base"), Sections: ai.OrderedSections{
+		{Name: "empty", Value: new("")}, {Name: "removed", Value: nil}, {Name: "last", Value: new("last")},
+	}}
+	if got := ai.GetCurrentSystemPrompt([]ai.Message{message}); got != "base\n\nlast" {
+		t.Fatalf("system prompt = %q, want %q", got, "base\n\nlast")
+	}
+}
+
+// renderSystemMessageUpdate interpolates names literally, not as JSON/Go strings.
+func TestHarnessTextSystemUpdateLiteralNames(t *testing.T) {
+	message := ai.SystemMessage{Content: ai.SystemText(""), Sections: ai.OrderedSections{
+		{Name: "a\"b", Value: new("new")}, {Name: "x\ny", Value: nil},
+	}}
+	want := "Updated system prompt section \"a\"b\":\n\nnew\n\nRemoved system prompt section \"x\ny\"."
+	if got := ai.RenderSystemMessageUpdate(message); got != want {
+		t.Fatalf("update = %q, want %q", got, want)
+	}
+}

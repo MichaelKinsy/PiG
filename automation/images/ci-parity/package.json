@@ -1,0 +1,12 @@
+{
+  "name": "pig-ci-parity-oracle",
+  "private": true,
+  "version": "0.0.0",
+  "dependencies": {
+    "@earendil-works/pi-agent-core": "0.87.1",
+    "@earendil-works/pi-ai": "0.87.1",
+    "@earendil-works/pi-coding-agent": "0.87.1",
+    "@earendil-works/pi-tui": "0.87.1",
+    "@types/node": "22.19.19"
+  }
+}

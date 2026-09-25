@@ -1,0 +1,57 @@
+# Behavior family: session
+# Surface: `--continue` / `-c` resumes the most recent cwd-matching session.
+#
+# Upstream evidence (pi v0.79.4, interactive resume probe):
+#   command:
+#     PI_SKIP_VERSION_CHECK=1 PI_CODING_AGENT_DIR=testdata/pi-agent \
+#       pi --no-extensions --session-dir sessions -c
+#   (run with cwd = testdata/continue-session, whose sessions/ holds one
+#    staged session; the runner rewrites its header cwd to the snapshot dir
+#    so continueRecent's filterCwd branch matches: see snapshot.go)
+#   raw cropped upstream block (the resumed transcript):
+#     remember zulu-3120
+#     noted zulu-3120
+#
+# This exercises session_resume.go's continue path end to end: the
+# --continue branch in main, continueRecent's custom-dir cwd filter
+# (sessionDirIsCwdScoped / sessionCwdMatches), the newest-first recency
+# sort (compareSessionRecencyDesc), and loading the selected session so its
+# prior turns render. The equal-mtime tie-break that compareSessionRecencyDesc
+# adds is upstream-unspecified (pi sorts by mtime alone via a stable JS sort)
+# and so is covered by unit tests, not asserted here; a parity scenario must
+# use distinct/unambiguous recency to stay faithful, so it stages one session.
+
+name = "03-session-continue-resume"
+description = "Both binaries resume the staged session under -c and re-render its prior turns."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+  "packages/coding-agent/src/core/session-cwd.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "No models available"
+ready_timeout_seconds = 25
+capture_start = "remember zulu-3120"
+capture_end = "noted zulu-3120"
+settle_seconds = 2
+cwd = "testdata/continue-session"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["remember zulu-3120", "noted zulu-3120"]
+both_not_contain = ["panic:", "goroutine ", "No sessions in current folder"]
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 1

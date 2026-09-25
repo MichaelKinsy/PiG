@@ -1,0 +1,4 @@
+{"type":"session","version":3,"id":"parity-skill-11","timestamp":"2025-01-01T00:00:00.000Z","cwd":"/tmp"}
+{"type":"message","id":"110c322f","parentId":null,"timestamp":"2025-01-01T00:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"<skill name=\"testskill\" location=\"/tmp/skills/testskill\">\nReferences are relative to /tmp/skills/testskill.\n\nThis is the test skill body content.\n</skill>\n\nRun the test"}]}}
+{"type":"message","id":"ce8e87bb","parentId":"110c322f","timestamp":"2025-01-01T00:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"I will run the test skill for you."}],"usage":{"input":10,"output":8,"cacheRead":0,"cacheWrite":0,"totalTokens":18,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop"}}
+{"type":"thinking_level_change","id":"6e27f0a1","parentId":"ce8e87bb","timestamp":"2026-05-17T21:02:12.385Z","thinkingLevel":"off"}

@@ -1,0 +1,61 @@
+# Behavior family: rpc
+# Surface: prompt preflight while manual compaction is active.
+#
+# Upstream evidence (Pi 0.84.0): compact runs asynchronously from the JSONL
+# reader. Once session_before_compact is active, a prompt fails before input or
+# agent events with the pinned compaction-in-progress message. Resolving the
+# extension dialog lets compaction finish normally.
+
+name = "24-rpc-prompt-during-compaction"
+description = "RPC rejects a prompt during active compaction and keeps the compact command live."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+cwd = "../compaction/testdata/compact-session"
+timeout_seconds = 25
+
+[[rpc.steps]]
+line = '{"id":"arm","type":"prompt","message":"/block-compaction"}'
+wait_contains = ['"id":"arm","type":"response","command":"prompt","success":true']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"compact","type":"compact"}'
+wait_contains = ['"type":"extension_ui_request"', '"method":"select","title":"Compacting"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"prompt","type":"prompt","message":"must reject"}'
+wait_contains = ['"id":"prompt","type":"response","command":"prompt","success":false,"error":"Cannot submit a prompt while compaction is in progress. Wait for compaction to finish and retry."']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID}}","value":"continue"}'
+wait_contains = ['"id":"compact","type":"response","command":"compact","success":true']
+wait_timeout_seconds = 15
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_extensions = ["../../../cmd/pig/testdata/rpc-ui.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "sessions", "-c"]
+pi_extensions = ["../../../cmd/pig/testdata/rpc-ui.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "sessions", "-c"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"prompt","type":"response","command":"prompt","success":false',
+  'Cannot submit a prompt while compaction is in progress.',
+  '"id":"compact","type":"response","command":"compact","success":true',
+]
+both_not_contain = [
+  '"id":"prompt","type":"response","command":"prompt","success":true',
+]
+runs = 3

@@ -1,0 +1,36 @@
+// divguard:path agent/agent.go
+
+package agent
+
+import "context"
+
+type Event struct{}
+
+type Agent struct {
+	closed  chan struct{}
+	EventCh chan Event
+}
+
+// emit delivers every event and stops only when the session closes.
+func (a *Agent) emit(ev Event) {
+	select {
+	case a.EventCh <- ev:
+	case <-a.closed:
+	}
+}
+
+// produce may stop on cancellation: its channel carries work, not events.
+func produce(ctx context.Context, lines chan<- []byte, line []byte) {
+	select {
+	case lines <- line:
+	case <-ctx.Done():
+	}
+}
+
+// pig divergence (D56): a recorded divergence allows the drop.
+func heartbeat(ctx context.Context, eventCh chan<- Event) {
+	select {
+	case eventCh <- Event{}:
+	case <-ctx.Done():
+	}
+}

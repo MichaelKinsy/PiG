@@ -1,0 +1,47 @@
+# Behavior family: interactive-rendering
+# Surface: bordered-loader.ts: BorderedLoader component
+#          (DynamicBorder + Loader + optional cancel hint + DynamicBorder).
+#
+# BorderedLoader is an extension-facing API component exported for extensions
+# that need async operations with cancel. It is NOT used by the interactive
+# mode's own tool execution path (which uses ToolExecutionComponent). Triggering
+# it hermetically requires a custom extension that calls the pi SDK to create
+# a BorderedLoader.
+#
+# Coverage: Go unit tests in tui/bordered_loader_test.go verify:
+#   - Structural output: top border, loader message, cancel hint, bottom border
+#   - NextFrame advances the spinner animation
+#   - Cancellable vs non-cancellable rendering
+#
+# This boot-only scenario verifies the component exists in pig's TUI package
+# and that the binary boots without regressions. A follow-up loop should add
+# a test extension that exercises BorderedLoader through the extension API.
+
+name = "15-bordered-loader"
+description = "boot-only: BorderedLoader exists in pig TUI package; structural parity verified by Go unit tests (bordered_loader_test.go)."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/bordered-loader.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "Error"]
+runtime_ratio_max = 2.0
+runs = 1

@@ -1,0 +1,62 @@
+# Behavior family: session
+# Surface: multi-turn session context survives across turns in one live session.
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   command:
+#     PI_SKIP_VERSION_CHECK=1 \
+#     pi --no-extensions -e parity/testdata/test-faux-provider.ts \
+#       --model test-faux/faux-1 --session-dir {{TEMP}}/sessions
+#   keys:
+#     Remember this exact code: letters A L P H A and digits 7 7 4 9 Enter
+#     What was the code I told you to remember? Enter
+#   raw cropped upstream block:
+#     ALPHA-7749
+#
+# Faux returns ALPHA-7749 only when the second turn sees the first turn's user
+# message in session history. This exercises the agent session send/persist/
+# context-build path rather than a hard-coded single-turn response.
+
+name = "02-session-memory-context"
+description = "A second turn can recall user data from the first turn through the persisted session context."
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/agent/src/harness/session/session.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "ALPHA-7749"
+capture_end = "ALPHA-7749"
+
+[[tmux.steps]]
+keys = ["Remember this exact code: letters A L P H A and digits 7 7 4 9", "Enter"]
+settle_seconds = 3
+wait_contains = ["Alpha"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["What was the code I told you to remember?", "Enter"]
+settle_seconds = 3
+wait_contains = ["ALPHA-7749"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["test-faux: missing memory context for code recall", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

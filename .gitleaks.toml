@@ -1,0 +1,21 @@
+# Gitleaks: the default rules, plus an allowlist for the values below. Each
+# one matches the generic-api-key rule but is not a credential.
+title = "PiG gitleaks configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Test fixtures and data that are not credentials"
+regexes = [
+  # Unsigned test JWTs: header {"alg":"none"}, signature "sig".
+  '''^eyJhbGciOiJub25lIn0\.[A-Za-z0-9_-]+\.sig$''',
+  # Anthropic beta header names.
+  '''^interleaved-thinking-\d{4}-\d{2}-\d{2}$''',
+  # Prose in the upstream test mapping.
+  '''^SSE-and-UTF-8-chunk-splitting$''',
+]
+paths = [
+  # Upstream test-file SHA-256 digests.
+  '''^parity/upstream-sync/[^/]+\.tsv$''',
+]

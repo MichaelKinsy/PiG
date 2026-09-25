@@ -1,0 +1,30 @@
+# Pi's processResponsesStream preserves the ID/name assigned to an output slot
+# at output_item.added. output_item.done only finalizes arguments and namespace.
+# Probed against the pinned Pi package: repeated, missing and different final
+# identity fields all emit call_original|fc_original/read through toolcall_end.
+# Before the fix PiG emitted |/read or call_final|fc_final/other at the end.
+# The interactive caller then stranded a pending card and added a success card.
+# TestInteractiveResponsesToolUpdatesOneCard covers that agent-to-TUI boundary;
+# this exact comparator covers the provider source of the duplicate.
+name = "10-responses-tool-identity"
+description = "Responses output-slot identity survives finalization while arguments and namespace update."
+covers = ["packages/ai/src/api/openai-responses-shared.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./parity/testdata/responses-tool-identity-pig"]
+pi_args = ["node", "./parity/testdata/responses-tool-identity-pi.mjs"]
+
+[cli]
+cwd = "../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["omitted:end call_original|fc_original read", "different:final functions final.go"]
+runs = 3

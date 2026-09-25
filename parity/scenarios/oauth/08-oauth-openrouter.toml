@@ -1,0 +1,48 @@
+# Behavior family: oauth
+# Surface: OpenRouter OAuth PKCE flow (loopback callback raced against manual
+# paste; permanent-key exchange).
+#
+# Upstream evidence (pi v0.84.0, current loop probe):
+#   /probe-oauth-openrouter
+#   output: openrouter-oauth:access=or-key:refresh=none:pkce=true:s256=true:exp=true
+#
+# The parity harness stubs the token endpoint locally and drives the login
+# helper through its manual-code path (the callback server is never hit), proving
+# code parsing, the PKCE-carrying key exchange, and the permanent (non-expiring)
+# credential without live credentials.
+
+name = "08-oauth-openrouter"
+description = "OpenRouter OAuth login exchanges a code for a permanent key against a hermetic token stub via manual code input."
+covers = [
+  "packages/ai/src/auth/oauth/openrouter.ts",
+]
+tags = ["hermetic", "tui", "serial"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 160
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "openrouter-oauth:access="
+capture_end = "exp=true"
+
+[[tmux.steps]]
+keys = ["/probe-oauth-openrouter", "Enter"]
+wait_contains = ["openrouter-oauth:access=or-key", "pkce=true", "s256=true", "exp=true"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../clipboard-images/testdata/pig-agent", "PIG_PARITY_HARNESS=1"]
+pi = ["PI_CODING_AGENT_DIR=../clipboard-images/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/oauth-harness.ts"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

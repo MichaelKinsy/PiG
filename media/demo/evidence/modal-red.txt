@@ -1,0 +1,13 @@
+--- FAIL: TestDrawBoxClipsColoredCellsWithoutDiscardingSGR (0.00s)
+    --- FAIL: TestDrawBoxClipsColoredCellsWithoutDiscardingSGR/overflow (0.00s)
+        overlay_compositor_test.go:31: clipping discarded SGR "\x1b[38;2;180;20;30m": "│▀▀▀▀│"
+    --- FAIL: TestDrawBoxClipsColoredCellsWithoutDiscardingSGR/wide_boundary (0.00s)
+        overlay_compositor_test.go:26: visible cells = "│abc界│", want "│abc │"
+--- FAIL: TestModalOverlayClipsRemoteFrameWithoutLosingColors (0.00s)
+    --- FAIL: TestModalOverlayClipsRemoteFrameWithoutLosingColors/regular (0.00s)
+        overlay_compositor_test.go:50: modal compositor removed remote frame colors: ["" "\x1b[0m  ┌─────────────┐\x1b[0m   " "\x1b[0m  │▀▀▀▀▀▀▀▀▀▀▀▀▀│\x1b[0m   " "\x1b[0m  │             │\x1b[0m   " "\x1b[0m  │             │\x1b[0m   " "\x1b[0m  └─────────────┘\x1b[0m   " "" ""]
+    --- FAIL: TestModalOverlayClipsRemoteFrameWithoutLosingColors/fullscreen (0.00s)
+        overlay_compositor_test.go:50: modal compositor removed remote frame colors: ["" "\x1b[0m  ┌─────────────┐\x1b[0m   " "\x1b[0m  │▀▀▀▀▀▀▀▀▀▀▀▀▀│\x1b[0m   " "\x1b[0m  │             │\x1b[0m   " "\x1b[0m  │             │\x1b[0m   " "\x1b[0m  └─────────────┘\x1b[0m   " "" ""]
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/tui	0.046s
+FAIL

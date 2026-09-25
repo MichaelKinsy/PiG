@@ -1,0 +1,5 @@
+--- a/internal/codingagent/image_convert.go
++++ b/internal/codingagent/image_convert.go
+@@ -32 +32 @@
+-		return nil
++		return &tui.ConvertedImage{Data: base64Data, MimeType: "image/png"}

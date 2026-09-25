@@ -1,0 +1,59 @@
+# Behavior family: settings
+# Surface: per-model thinking override, not the separate /thinking selector.
+# Upstream evidence: exact pinned Pi settings-selector.ts/settings-submenu.ts: filter the settings
+# row, select a model, then browse its levels. The configured medium marker
+# stays checked while the cursor moves to high. Steps, descriptions, and the
+# clear-override row are part of the byte-faithful crop.
+# The local credential-complete model never sends a provider request.
+
+name = "05-settings-thinking-submenu"
+description = "Both binaries render the per-model thinking step with its configured marker and clear-override action."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "fixture/thinking-model"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 25
+capture_start = "Thinking Level for"
+capture_start_last = true
+capture_end = "Enter to select · Esc to go back"
+
+[[tmux.steps]]
+keys = ["/settings", "Enter"]
+wait_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Default thinking level per model", "Enter"]
+wait_contains = ["Per-Model Thinking Level", "Step 1/2 · Select a model to configure"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter", "Down"]
+wait_contains = ["Thinking Level for thinking-model [fixture]", "Step 2/2 · Select default thinking level for this model", "(clear override)"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/model-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-agent"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+escaped_output_equal = true
+runtime_ratio_max = 1.25
+runs = 3

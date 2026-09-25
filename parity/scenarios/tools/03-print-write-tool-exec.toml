@@ -1,0 +1,44 @@
+# Behavior family: tools
+# Scenario: print-mode write tool execution via faux provider.
+#
+# Faux provider receives "Run: write parity-write-output.txt", emits a write
+# tool call with content "hello from faux\nline two\n". The tool writes the
+# file, returns success. Faux sees the result and replies with "wrote".
+#
+# Upstream evidence (2026-05-15):
+#   cd /tmp/faux-write-test
+#   pi --no-extensions -e <faux> --model test-faux/faux-1 \
+#     --print "Run: write parity-write-output.txt"
+#   output: "wrote"
+#   exit: 0
+#   cat parity-write-output.txt → "hello from faux\nline two\n"
+#
+#   PIG_TEST_FAUX=1 pig --no-extensions --model test-faux/faux-1 \
+#     --print "Run: write parity-write-output.txt"
+#   output: "wrote"
+#   exit: 0
+
+name = "03-print-write-tool-exec"
+description = "Faux triggers write(parity-write-output.txt), both produce wrote in print mode"
+covers = [
+  "packages/coding-agent/src/core/tools/write.ts",
+  "packages/agent/src/harness/tools/write.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--no-extensions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: write parity-write-output.txt"
+timeout_seconds = 30
+cwd = "testdata"
+
+[assert]
+exit_code = 0
+both_contain = ["wrote"]
+output_equal = true

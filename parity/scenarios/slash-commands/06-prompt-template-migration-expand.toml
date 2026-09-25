@@ -1,0 +1,59 @@
+# Behavior family: slash-commands
+# Surface: legacy commands/ prompt-template migration plus /alpha expansion.
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   command:
+#     PI_CODING_AGENT_DIR=parity/scenarios/slash-commands/testdata/prompt-migrate-pi-agent \
+#       pi --no-extensions -e parity/testdata/test-faux-provider.ts \
+#       --model test-faux/faux-1 --session-dir {{TEMP}}/sessions
+#   keys: /alpha first "two words" Enter
+#   wait: prompt-template-ok
+#   raw cropped upstream block:
+#     prompt-template-ok
+#
+# The fixture intentionally stages only commands/alpha.md (no prompts/).
+# Upstream migrates commands/ → prompts/ on startup, then loads /alpha as a
+# prompt template. The body expands PT_ARGS:$1|${@:2}; faux returns
+# prompt-template-ok only when the expanded user message is exactly
+# PT_ARGS:first|two words.
+
+name = "06-prompt-template-migration-expand"
+description = "Legacy commands/ migrates to prompts/ and /alpha expands positional args identically."
+covers = [
+  "packages/coding-agent/src/core/prompt-templates.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+  "packages/coding-agent/src/migrations.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/prompt-migrate-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/prompt-migrate-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[tmux]
+width = 100
+height = 60
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "prompt-template-ok"
+capture_end = "prompt-template-ok"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["/alpha first \"two words\"", "Enter"]
+settle_seconds = 3
+wait_contains = ["prompt-template-ok"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "system-skill-missing", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

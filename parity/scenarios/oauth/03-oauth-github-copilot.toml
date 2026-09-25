@@ -1,0 +1,50 @@
+# Behavior family: oauth
+# Surface: GitHub Copilot OAuth device-code flow.
+#
+# Upstream evidence (pi v0.87.1, current loop probe):
+#   /probe-oauth-copilot
+#   output: copilot-oauth:refresh=ghu_refresh:base=https://api.individual.githubcopilot.com:polls=2:policy=false:exp=true
+#
+# The fixture model (gpt-4o, policy.state="enabled") is already
+# model_picker_enabled, so 0.87.1's parseGitHubCopilotModelCatalog puts it in
+# pickerModelIds/availableModelIds and leaves policyModelIds empty: no
+# model needs a policy POST, so `policy=false`. Pre-0.87.1 evidence recorded
+# `policy=true` because pi (and pig, until it matched this) posted a policy
+# update to a fixed model list unconditionally. See github-copilot.ts:93-133.
+
+name = "03-oauth-github-copilot"
+description = "GitHub Copilot OAuth device flow succeeds against hermetic HTTP stubs."
+covers = [
+  "packages/ai/src/auth/oauth/github-copilot.ts",
+  "packages/ai/src/auth/oauth/device-code.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 160
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "copilot-oauth:refresh="
+capture_end = "exp=true"
+
+[[tmux.steps]]
+keys = ["/probe-oauth-copilot", "Enter"]
+wait_contains = ["copilot-oauth:refresh=ghu_refresh", "policy=false", "exp=true"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../clipboard-images/testdata/pig-agent", "PIG_PARITY_HARNESS=1"]
+pi = ["PI_CODING_AGENT_DIR=../clipboard-images/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/oauth-harness.ts"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

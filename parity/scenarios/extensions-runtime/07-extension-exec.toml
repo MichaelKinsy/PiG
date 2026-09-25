@@ -1,0 +1,62 @@
+# Behavior family: extensions-runtime
+# Scenario: extension API.exec() executes a shell command.
+#
+# parity-exec.mjs registers /exec-probe that calls pi.exec("echo", ["exec-ok"])
+# and surfaces the result stdout via ctx.ui.notify.
+#
+# This exercises core/exec.ts (ExecCommand) through the extension API.
+#
+# Upstream evidence (2026-05-17, tmux probe):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent PI_SKIP_VERSION_CHECK=1 \
+#     pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts \
+#     -e testdata/ext/parity-exec.mjs \
+#     --model test-faux/faux-1 \
+#     --session-dir /tmp/parity-exec-pi
+#   send: "/exec-probe" Enter
+#   wait: "exec-stdout:exec-ok"
+#   crop: start="exec-stdout:exec-ok" end="exec-stdout:exec-ok"
+#   raw cropped upstream block:
+#     exec-stdout:exec-ok
+
+name = "07-extension-exec"
+description = "Extension pi.exec() runs echo and surfaces stdout via notification"
+covers = [
+  "packages/coding-agent/src/core/exec.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/parity-exec.mjs"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-exec.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "exec-stdout:exec-ok"
+capture_end = "exec-stdout:exec-ok"
+
+[[tmux.steps]]
+keys = ["/exec-probe", "Enter"]
+settle_seconds = 3
+wait_contains = ["exec-stdout:exec-ok"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

@@ -1,0 +1,77 @@
+# Behavior family: interactive-rendering
+# Surface: Multi-turn conversation spacing: two user+assistant exchanges
+#
+# Upstream evidence (pi v0.69.0, 2026-05-15):
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   send: "reply with exactly: Hello world" Enter
+#   wait: 4s
+#   send: "reply with exactly: Second turn" Enter
+#   wait: 4s
+#   crop: start="reply with exactly: Hello world" end="Second turn" (last occurrence)
+#   raw cropped upstream block:
+#     reply with exactly: Hello world
+#
+#
+#     Hello world
+#
+#     reply with exactly: Second turn
+#
+#
+#     Second turn
+#
+# This exercises the vertical rhythm between consecutive user→assistant
+# turns. Each user message is in a bg-painted box; each assistant reply
+# is left-padded with a leading spacer. The gap between turns (assistant
+# reply → next user message) must be consistent.
+
+name = "05-multi-turn-spacing"
+description = "Two consecutive user→assistant turns render with correct inter-turn spacing."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/assistant-message.ts",
+  "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "packages/tui/src/tui-main-screen.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+# CI tmux servers may not have extended-keys enabled. Upstream and pig both
+# warn in that environment, but this scenario tests message spacing, not tmux
+# setup diagnostics. Set TMUX= for both binaries so the diagnostic does not
+# enter the captured conversation crop.
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent", "TMUX="]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TMUX="]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "reply with exactly: Hello world"
+capture_end = "Second turn"
+
+[[tmux.steps]]
+keys = ["reply with exactly: Hello world", "Enter"]
+settle_seconds = 4
+wait_contains = ["Hello world"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["reply with exactly: Second turn", "Enter"]
+settle_seconds = 4
+wait_contains = ["Second turn"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+# lint-known-gap: bg-paint SGR encoding differs between pig (paintBgWith) and
+# upstream (Box delegation). Visible content and spacing are identical.
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

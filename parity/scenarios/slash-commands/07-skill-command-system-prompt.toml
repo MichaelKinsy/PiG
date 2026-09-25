@@ -1,0 +1,79 @@
+# Behavior family: slash-commands
+# Surface: loaded skill appears in system prompt and /skill:name expands.
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   command:
+#     PI_CODING_AGENT_DIR=parity/scenarios/slash-commands/testdata/skill-system-pi-agent \
+#       PI_SKIP_VERSION_CHECK=1 \
+#       pi --no-extensions -e parity/testdata/test-faux-provider.ts \
+#       -e parity/scenarios/slash-commands/testdata/ext/parity-system.mjs \
+#       --skill sample-skill --model test-faux/faux-1 --session-dir {{TEMP}}/sessions
+#   keys:
+#     /parity-system Enter
+#     /skill:sample-skill extra words Enter
+#   wait: system-skill-ok, skill-command-ok
+#   raw cropped upstream block:
+#     skill-command-ok
+#
+# The extension slash command inspects ctx.getSystemPrompt() and notifies
+# system-skill-ok only when the loaded skill appears in the effective system
+# prompt. That check is asserted via wait_contains in the first tmux step.
+# The final crop isolates the assistant response from the second step so the
+# scenario does not over-claim parity for the user-message rendering surface.
+# Faux returns skill-command-ok only when /skill:sample-skill expands to the
+# upstream XML skill block plus trailing user text.
+
+name = "07-skill-command-system-prompt"
+description = "Loaded skills surface in the effective system prompt and /skill:name expands identically."
+covers = [
+  "packages/coding-agent/src/core/skills.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+  "packages/coding-agent/src/core/system-prompt.ts",
+  "packages/coding-agent/src/utils/frontmatter.ts",
+  "packages/agent/src/harness/messages.ts",
+  "packages/agent/src/harness/prompt-templates.ts",
+  "packages/agent/src/harness/system-prompt.ts",
+  "packages/agent/src/harness/skills.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/skill-system-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/skill-system-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--skill", "sample-skill", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/parity-system.mjs"]
+pi_args = ["--skill", "sample-skill", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-system.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "skill-command-ok"
+capture_end = "skill-command-ok"
+
+[[tmux.steps]]
+keys = ["/parity-system", "Enter"]
+settle_seconds = 2
+wait_contains = ["system-skill-ok"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["/skill:sample-skill extra words", "Enter"]
+settle_seconds = 3
+wait_contains = ["skill-command-ok"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "system-skill-missing", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

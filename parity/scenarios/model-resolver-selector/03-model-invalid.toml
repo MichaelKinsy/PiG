@@ -1,0 +1,65 @@
+# Behavior family: model-resolver-selector
+# PORT_MAP linkage is explicit in covers = [...].
+#
+# Upstream evidence: exact Pi 0.83.0 (2026-08-04, same fixture/command/keys):
+#   command: PI_CODING_AGENT_DIR=parity/scenarios/model-resolver-selector/testdata/pi-agent-hermetic pi --no-extensions --offline --session-dir /tmp/reprobe-pi-03h
+#   keys: /model nonexistent/fake-model-xyz Enter
+#   ready: (auto): upstream startup footer/prompt
+#   crop: start="Only showing models" end="No matching models"
+#   raw cropped upstream block:
+#
+#     Only showing models from configured providers. Use /login to add providers.
+#
+#     > nonexistent/fake-model-xyz
+#
+#       No matching models
+#
+# pi 0.81.1 opens the model picker with the unmatched query in the input instead
+# of appending a bare "No matching models" line outside the picker.
+#
+# Hermeticity: Pi 0.83.0 refreshes its runtime snapshot on picker open. The
+# fixture uses --offline symmetrically so availability stays cache-backed and
+# no provider can add a network variable. GitHub Copilot's static provider has
+# no refreshModels callback in 0.83.0; credential expiry alone is not a catalog
+# error. Scenario 12 pins that boundary separately. This crop ends at the stable
+# unmatched-query result.
+
+name = "03-model-invalid"
+description = "Both binaries open the model picker with an unmatched /model target as the filter query."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+  "packages/coding-agent/src/core/model-resolver.ts",
+]
+tags = [
+  "fast",
+  "hermetic",
+  "tui",
+  "fixture-auth",
+]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 15
+keys = ["/model nonexistent/fake-model-xyz", "Enter"]
+settle_seconds = 2
+capture_start = "Only showing models"
+capture_end = "No matching models"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-hermetic"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-hermetic"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 1.20
+runs = 3

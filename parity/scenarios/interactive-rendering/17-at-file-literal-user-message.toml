@@ -1,0 +1,54 @@
+# Behavior family: interactive-rendering
+# Surface: interactive @file tokens in submitted user messages
+#
+# Upstream evidence (pi v0.69.0 source + tmux probe, 2026-06-05):
+#   interactive-mode.ts setupEditorSubmitHandler forwards submitted text to
+#   session.prompt(text); agent-session.ts prompt expands only extension
+#   commands, skill commands, and prompt templates. CLI @file expansion lives in
+#   cli/file-processor.ts and is not used for interactive editor submissions.
+#   Probe with CWD fixture attached.txt = INLINE_FILE_PAYLOAD:
+#     send: "@attached.txt reply with exactly: ok" Enter
+#   The visible user message remains the literal @attached.txt token and the
+#   file payload is not rendered into the transcript.
+
+name = "17-at-file-literal-user-message"
+description = "Interactive @file-looking tokens stay literal in the submitted user message, matching upstream."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/atfile-cwd"
+capture_start = "@attached.txt reply with exactly: ok"
+capture_end = "ok"
+
+[[tmux.steps]]
+keys = ["@attached.txt reply with exactly: ok", "Enter"]
+settle_seconds = 4
+wait_contains = ["@attached.txt reply with exactly: ok"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["INLINE_FILE_PAYLOAD", "<file name=", "unknown command", "panic:", "goroutine "]
+# lint-known-gap: this scenario asserts the stable visible text only; bg-paint
+# ANSI differs between Pig's UserMessageBlock and upstream's Box component.
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

@@ -1,0 +1,49 @@
+# Behavior family: rpc
+# Surface: abort_retry cancels the active retry backoff and emits its terminal
+# event before the prompt run settles. The staged driver waits for the retry
+# start event, so cancellation does not depend on a fixed input delay.
+
+name = "17-rpc-abort-retry"
+description = "RPC abort_retry cancels an active retry delay and reports cancellation."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"prompt","type":"prompt","message":"Trigger: retryable provider error"}'
+wait_contains = ['"type":"auto_retry_start"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"abort","type":"abort_retry"}'
+wait_contains = ['"id":"abort","type":"response","command":"abort_retry","success":true']
+wait_timeout_seconds = 5
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"prompt","type":"response","command":"prompt","success":true',
+  '"type":"auto_retry_start"',
+  '"attempt":1',
+  '"type":"auto_retry_end"',
+  '"success":false',
+  '"finalError":"Retry cancelled"',
+  '"id":"abort","type":"response","command":"abort_retry","success":true',
+]
+both_not_contain = [
+  'retry-ok',
+]
+runs = 3

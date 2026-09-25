@@ -1,0 +1,228 @@
+$ go test ./internal/codingagent/tools -run '^TestHarnessImageBMPPlanesAndBitDepth$' -count=1 -json
+exit: 1
+Go test Output events follow verbatim; top-level completion events retain elapsed seconds.
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth
+=== PAUSE TestHarnessImageBMPPlanesAndBitDepth
+=== CONT  TestHarnessImageBMPPlanesAndBitDepth
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp0/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp0/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp0/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp0/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp0/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp0/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp1/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp1/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp1/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp1/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp1/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp1/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp4/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp4/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp4/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp4/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp4/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp4/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp7/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp7/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp7/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp7/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp7/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp7/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp8/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp8/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp8/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp8/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp8/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp8/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp16/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp16/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp16/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp16/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp16/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp16/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp24/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp24/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp24/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp24/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp24/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp24/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp32/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp32/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp32/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp32/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp32/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp32/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp64/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp64/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp64/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp64/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp64/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp64/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp0/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp0/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp0/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp0/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp0/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp0/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp1/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp1/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp1/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp1/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp1/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp1/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp4/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp4/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp4/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp4/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp4/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp4/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp7/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp7/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp7/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp7/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp7/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp7/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp8/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp8/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp8/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp8/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp8/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp8/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp16/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp16/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp16/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp16/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp16/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp16/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp24/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp24/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp24/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp24/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp24/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp24/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp32/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp32/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp32/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp32/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp32/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp32/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp64/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp64/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp64/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp64/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp64/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp64/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp0/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp0/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp0/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp0/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp0/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp0/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp1/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp1/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp1/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp1/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp1/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp1/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp4/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp4/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp4/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp4/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp4/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp4/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp7/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp7/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp7/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp7/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp7/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp7/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp8/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp8/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp8/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp8/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp8/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp8/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp16/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp16/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp16/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp16/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp16/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp16/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp24/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp24/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp24/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp24/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp24/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp24/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp32/planes0
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp32/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp32/planes1
+    team_harness_image_test.go:85: SupportedImageMime = "", want "image/bmp"
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp32/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp32/planes2
+    team_harness_image_test.go:85: SupportedImageMime = "image/bmp", want ""
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp32/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp64/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp64/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp64/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp64/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp64/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp64/planes2 (0.00s)
+--- FAIL: TestHarnessImageBMPPlanesAndBitDepth (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/internal/codingagent/tools	0.032s
+
+Top-level completion events:
+{"Time": "2026-09-24T22:00:37.458074817-07:00", "Action": "fail", "Package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools", "Test": "TestHarnessImageBMPPlanesAndBitDepth", "Elapsed": 0}

@@ -1,0 +1,46 @@
+# Behavior family: oauth
+# Surface: Anthropic OAuth authorization-code + PKCE flow.
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   /probe-oauth-anthropic
+#   output: anthropic-oauth:refresh=anth-refresh:access=anth-access:grant=true:pkce=true:exp=true
+#
+# The parity harness stubs the token endpoint locally and drives the login
+# helper through its manual code path, proving code parsing, token exchange,
+# and expiry computation without live credentials.
+
+name = "02-oauth-anthropic"
+description = "Anthropic OAuth login succeeds against a hermetic token stub via manual code input."
+covers = [
+  "packages/ai/src/auth/oauth/anthropic.ts",
+]
+tags = ["hermetic", "tui", "serial"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 160
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "anthropic-oauth:name="
+capture_end = "exp=true"
+
+[[tmux.steps]]
+keys = ["/probe-oauth-anthropic", "Enter"]
+wait_contains = ["anthropic-oauth:name=Anthropic (Claude Pro/Max)", "refresh=anth-refresh", "exp=true"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../clipboard-images/testdata/pig-agent", "PIG_PARITY_HARNESS=1"]
+pi = ["PI_CODING_AGENT_DIR=../clipboard-images/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/oauth-harness.ts"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

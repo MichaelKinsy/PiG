@@ -1,0 +1,62 @@
+# Behavior family: model-runtime-store-catalog
+# Source contract: interactive-mode.ts:updateAvailableProviderCount uses the
+# distinct providers in getAvailableSnapshot, including a restored Radius
+# catalog. ModelSelectorComponent retains the active current model on refresh.
+# The fixture defines exactly two providers (fixture and radius-dev). Radius
+# imports its fake legacy credential catalog locally; PI_OFFLINE forbids fetches.
+# Open /model, wait for refresh, confirm the current model, then read the footer.
+# PiG readiness uses the active-model footer, not the obsolete startup help banner.
+# Upstream evidence: exact pinned Pi, probed on 2026-09-25. The final line is
+# "catalog-providers:2", read through the extension host's ReadonlyFooterDataProvider.
+# A compiling mutation excluding radius-dev from the count yields
+# "catalog-providers:1" and fails this scenario. The pre-fix footer counted
+# only built-in auth sources and reported zero instead of these two providers.
+
+name = "12-model-refresh-radius-footer"
+description = "An offline model-picker refresh preserves the current selection and exposes Radius in the footer provider count."
+covers = [
+  "packages/coding-agent/src/modes/interactive/model-catalog-refresh.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/footer-data-provider.ts",
+]
+tags = ["fast", "hermetic", "tui", "fixture-auth"]
+driver = "interactive-tmux"
+model = "fixture/current"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-radius", "PI_OFFLINE=1"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-radius", "PI_SKIP_VERSION_CHECK=1", "PI_OFFLINE=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/catalog-footer.mjs"]
+pi_extensions = ["testdata/catalog-footer.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(fixture) current"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 25
+capture_start = "catalog-providers:"
+capture_end = "catalog-providers:2"
+
+[[tmux.steps]]
+keys = ["/model", "Enter"]
+wait_contains = ["→ ✓ current [fixture]", "auto [radius-dev]", "Model catalogs refreshed."]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["Enter"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/catalog-footer", "Enter"]
+wait_contains = ["catalog-providers:2"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_contain = ["catalog-providers:2"]
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runs = 3

@@ -1,0 +1,10 @@
+#!/bin/sh
+if [ "$1" = "-selection" ] && [ "$2" = "clipboard" ] && [ "$3" = "-t" ] && [ "$4" = "TARGETS" ]; then
+  printf 'TARGETS\nimage/png\n'
+  exit 0
+fi
+if [ "$1" = "-selection" ] && [ "$2" = "clipboard" ] && [ "$3" = "-t" ] && [ "$5" = "-o" ]; then
+  cat "$(dirname "$0")/clipboard-sample.png"
+  exit 0
+fi
+exit 1

@@ -1,0 +1,46 @@
+# Upstream evidence: Pi InteractiveMode.showExtensionNotify delegates info to
+# showStatus: Spacer(1), theme.fg("dim", message), and Text paddingX=1. Real 100x35 tmux
+# oracle captures were recorded against pinned Pi during development.
+# The base PiG prints this at column zero with no color. Exact escaped cell
+# comparison detects both defects; no whitespace or color normalization applies.
+name = "21-extension-notify-style"
+description = "Extension info notifications use Pi's padded theme-dim status component"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=../extensions-runtime/testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../extensions-runtime/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--no-session"]
+pi_args = ["--no-extensions", "--no-session"]
+pig_extensions = ["testdata/exit-notice.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/exit-notice.mjs"]
+
+[tmux]
+width = 100
+height = 35
+# Re-probed against the pinned Pi on 2026-09-25: wait for the model footer,
+# not the removed PiG compact-startup Ready banner. The escaped crop is unchanged.
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "NOTICE-BEGIN"
+capture_end_regex = 'chain finished: 4 steps in 4\.6s[^\n]*'
+
+[[tmux.steps]]
+keys = ["/exit-notice probe"]
+wait_contains = ["/exit-notice probe"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["chain finished: 4 steps in 4.6s"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["chain finished: 4 steps in 4.6s"]
+escaped_output_equal = true
+runs = 3

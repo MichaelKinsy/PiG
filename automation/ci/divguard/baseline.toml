@@ -1,0 +1,480 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# Divergence-guard ratchet (automation/ci/divguard, `make divergence-guard`).
+#
+# Every [[hit]] is a place where a divergence-guard check matches today. Each
+# names the finding that owns it: an id from the divergence hunt (AGENT-01,
+# AI-07, ...), a GUARD-NN finding this guard reported first, or a recorded
+# divergence D<N> whose call-site marker is not yet next to the code. Each
+#
+
+[[finding]]
+id = "GUARD-02"
+owner = "next-div-ai-oauth"
+summary = "OAuth HTTP deadlines with no upstream counterpart: Codex token post 30 s, xAI requests 30 s, Radius callback ReadHeaderTimeout 10 s, OpenRouter callback shutdown 2 s. Upstream passes only the caller signal."
+
+[[finding]]
+id = "GUARD-12"
+owner = "div-modes-interactive"
+summary = "Windows resize is polled every 120 ms; upstream reacts to the stdout resize event."
+
+[[finding]]
+id = "AGENT-01"
+owner = "div-agent-core"
+summary = "agent.emit drops events once the run context is cancelled: the event send races a Done case, so aborted message_end, turn_end and agent_end are lost."
+
+[[finding]]
+id = "AGENT-05"
+owner = "div-agent-core"
+summary = "Session persistence errors are swallowed: AppendMessage and AppendBashExecution failures only skip bookkeeping, so a full disk loses the transcript silently."
+
+[[finding]]
+id = "AGENT-15"
+owner = "div-agent-core"
+summary = "Session.Close does not abort the active run; the 64-event raw buffer then fills and Send hangs."
+
+[[finding]]
+id = "AGENT-16"
+owner = "div-agent-core"
+summary = "recover() calls in session event dispatch discard the panic value: the ordered-event paths swallow listener panics, and emitExtensionError drops a panic from the error listener itself."
+
+[[finding]]
+id = "AI-08"
+owner = "next-div-ai-sse"
+summary = "Stream chunks that are not valid JSON are skipped silently, so a turn ends as a success with content or the stop reason missing."
+
+[[finding]]
+id = "AI-23"
+owner = "next-div-ai-sse"
+summary = "SSE lines have a 32/64 MiB size cap that upstream does not have."
+
+[[finding]]
+id = "AI-28"
+owner = "next-div-ai-anthropic"
+summary = "Anthropic falls back to max_tokens 8192, a default upstream does not have."
+
+[[finding]]
+id = "AI-29"
+owner = "next-div-ai-providers-misc"
+summary = "Shared HTTP infrastructure limits (pool sizes, keep-alive, lock polling) that differ from upstream undici and proper-lockfile."
+
+[[finding]]
+id = "EXT-17"
+owner = "div-ext-host"
+summary = "A full outbound queue makes sends fail fast and drops call results silently."
+
+[[finding]]
+id = "EXT-20"
+owner = "div-ext-host"
+summary = "Crash restart keeps the old handler table, and some exits disappear silently (restart policy, reaper and wait deadlines)."
+
+[[finding]]
+id = "TUI-03"
+owner = "next-div-tui-uiqueue"
+summary = "postUITask drops UI tasks silently when the queue is full."
+
+[[finding]]
+id = "TUI-13"
+owner = "next-div-tui-autocomplete"
+summary = "Smaller TUI extras: a 500 ms synchronous fd timeout and a 20-row default window in FilterableList."
+
+[[finding]]
+id = "D18"
+owner = "div-ext-host"
+summary = "Piglet build tooling (pig setup) timeouts; add `pig additive (D18)` at the literal."
+
+[[finding]]
+id = "D19"
+owner = "div-ext-host"
+summary = "Subprocess protocol frame limits; add `pig additive (D19)` at the literal."
+
+[[finding]]
+id = "D20"
+owner = "div-ext-host"
+summary = "Runtime-cell cache retention and lock timings; add `pig additive (D20)` at the literal."
+
+[[finding]]
+id = "D28"
+owner = "div-ext-host"
+summary = "Extension validation deadline; add `pig additive (D28)` at the literal."
+
+[[finding]]
+id = "D39"
+owner = "div-modes-headless"
+summary = "Self-update deadlines and size limits; add `pig divergence (D39)` at the literal."
+
+[[finding]]
+id = "D56"
+owner = "div-ext-host"
+summary = "Subprocess heartbeat interval and timeout; add `pig divergence (D56)` at the literal."
+
+[[finding]]
+id = "D60"
+owner = "div-ext-host"
+summary = "Extension login preview deadline; add `pig additive (D60)` at the literal."
+
+[[hit]]
+check = "bare-recover"
+file = "coding/session.go"
+func = "Session.emitOrderedEvent"
+snippet = "defer func() { _ = recover() }()"
+finding = "AGENT-16"
+
+[[hit]]
+check = "bare-recover"
+file = "coding/session.go"
+func = "Session.emitOrderedEventSync"
+snippet = "defer func() { _ = recover() }()"
+finding = "AGENT-16"
+
+[[hit]]
+check = "bare-recover"
+file = "coding/session.go"
+func = "emitExtensionError"
+snippet = "if recover() != nil {"
+finding = "AGENT-16"
+
+[[hit]]
+check = "cancel-drop-send"
+file = "coding/session_event_barrier.go"
+func = "Session.FlushEvents"
+snippet = "case s.rawEvents <- marker:"
+finding = "AGENT-01"
+
+[[hit]]
+check = "default-drop-send"
+file = "coding/extension/host/subprocess/conn.go"
+func = "Conn.Close"
+snippet = "case c.outCh <- outboundFrame{data: shutdown, result: writeResult, work: true}:"
+finding = "EXT-17"
+
+[[hit]]
+check = "default-drop-send"
+file = "coding/extension/host/subprocess/conn.go"
+func = "Conn.Close"
+snippet = "case ch <- &Envelope{"
+finding = "EXT-17"
+
+[[hit]]
+check = "default-drop-send"
+file = "coding/extension/host/subprocess/conn.go"
+func = "Conn.readLoop"
+snippet = "case ch <- *env.RequestState:"
+finding = "D56"
+
+[[hit]]
+check = "default-drop-send"
+file = "coding/extension/host/subprocess/conn.go"
+func = "Conn.readLoop"
+snippet = "case c.pongCh <- env.Pong.Nonce:"
+finding = "D56"
+
+[[hit]]
+check = "default-drop-send"
+file = "coding/extension/host/subprocess/conn.go"
+func = "Conn.readLoop"
+snippet = "case ch <- &env:"
+finding = "EXT-17"
+
+[[hit]]
+check = "default-drop-send"
+file = "coding/extension/host/subprocess/conn.go"
+func = "Conn.fail"
+snippet = "case ch <- &Envelope{Type: MsgResponse, ID: id, Response: &ResponsePayload{Error: &ErrorInfo{Code: code, Message: err.Error()}}}:"
+finding = "EXT-17"
+
+[[hit]]
+check = "default-drop-send"
+file = "internal/codingagent/interactive.go"
+func = "InteractiveMode.postUITask"
+snippet = "case m.uiTaskCh <- fn:"
+finding = "TUI-03"
+
+[[hit]]
+check = "discarded-io-error"
+file = "coding/extension/host/subprocess/builder.go"
+func = "Builder.BuildContext"
+snippet = "_ = os.WriteFile(marker, []byte(fp), 0o644)"
+finding = "D20"
+
+[[hit]]
+check = "discarded-io-error"
+file = "coding/session.go"
+func = "Session.appendBashLocked"
+snippet = "if _, err := s.inner.AppendBashExecution("
+finding = "AGENT-05"
+
+[[hit]]
+check = "magic-literal"
+file = "ai/anthropic.go"
+func = "anthropicProvider.buildParams"
+snippet = "maxTokens = 8192"
+finding = "AI-28"
+
+[[hit]]
+check = "magic-literal"
+file = "ai/http_transport.go"
+func = "baseStreamingHTTPClient"
+snippet = "KeepAlive: 15 * time.Second,"
+finding = "AI-29"
+
+[[hit]]
+check = "magic-literal"
+file = "ai/http_transport.go"
+func = "baseStreamingHTTPClient"
+snippet = "MaxIdleConns: 100,"
+finding = "AI-29"
+
+[[hit]]
+check = "magic-literal"
+file = "ai/http_transport.go"
+func = "baseStreamingHTTPClient"
+snippet = "MaxIdleConnsPerHost: 4,"
+finding = "AI-29"
+
+[[hit]]
+check = "magic-literal"
+file = "ai/models_store.go"
+func = "withSidecarLock"
+snippet = "time.Sleep(20 * time.Millisecond)"
+finding = "AI-29"
+
+[[hit]]
+check = "magic-literal"
+file = "ai/oauth_openai_codex.go"
+func = "postCodexTokenForm"
+snippet = "ctx2, cancel := context.WithTimeout(ctx, 30*time.Second)"
+finding = "GUARD-02"
+
+[[hit]]
+check = "magic-literal"
+file = "ai/oauth_openrouter.go"
+func = "openRouterCallback.close"
+snippet = "shutCtx, cancel := context.WithTimeout(context.Background(), 2*time.Second)"
+finding = "GUARD-02"
+
+[[hit]]
+check = "magic-literal"
+file = "ai/oauth_radius.go"
+func = "RadiusOAuth.startCallbackServer"
+snippet = "callback.server = &http.Server{Handler: radiusCallbackHandler(expectedState, callback.finish), ReadHeaderTimeout: 10 * time.Second}"
+finding = "GUARD-02"
+
+[[hit]]
+check = "magic-literal"
+file = "ai/oauth_xai.go"
+func = "xaiRequestTimeout"
+snippet = "xaiRequestTimeout = 30 * time.Second"
+finding = "GUARD-02"
+
+[[hit]]
+check = "magic-literal"
+file = "ai/pi_messages.go"
+func = "readPiMessagesEvents"
+snippet = "scanner.Buffer(make([]byte, 0, 64*1024), 64*1024*1024)"
+finding = "AI-23"
+
+[[hit]]
+check = "magic-literal"
+file = "cmd/pig/extension_login_preview_command.go"
+func = "extensionLoginPreviewTimeout"
+snippet = "var extensionLoginPreviewTimeout = 30 * time.Second"
+finding = "D60"
+
+[[hit]]
+check = "magic-literal"
+file = "cmd/pig/extension_validate_command.go"
+func = "validateExtensionRuntimes"
+snippet = "ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)"
+finding = "D28"
+
+[[hit]]
+check = "magic-literal"
+file = "cmd/pig/extensions_cache_command.go"
+func = "runExtensionsCommand"
+snippet = "retention := 30 * 24 * time.Hour"
+finding = "D20"
+
+[[hit]]
+check = "magic-literal"
+file = "cmd/pig/self_update.go"
+func = "selfUpdateTimeout"
+snippet = "const selfUpdateTimeout = 5 * time.Minute"
+finding = "D39"
+
+[[hit]]
+check = "magic-literal"
+file = "cmd/pig/setup_command.go"
+func = "setupGo"
+snippet = "client := &http.Client{Timeout: 15 * time.Minute}"
+finding = "D18"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/host/runtimecell/cache_lifecycle.go"
+func = "defaultRetention"
+snippet = "defaultRetention = 30 * 24 * time.Hour"
+finding = "D20"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/host/runtimecell/cache_lifecycle.go"
+func = "defaultCrashGrace"
+snippet = "defaultCrashGrace = 24 * time.Hour"
+finding = "D20"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/host/runtimecell/cellcache.go"
+func = "staleScratchAge"
+snippet = "const staleScratchAge = 24 * time.Hour"
+finding = "D20"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/host/subprocess/conn.go"
+func = "frameSkewWindow"
+snippet = "const frameSkewWindow = 5 * time.Second"
+finding = "D19"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/host/subprocess/protocol.go"
+func = "MaxFrameSize"
+snippet = "const MaxFrameSize = 128 * 1024 * 1024"
+finding = "D19"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/host/subprocess/protocol.go"
+func = "legacyFrameSize"
+snippet = "const legacyFrameSize = 16 * 1024 * 1024"
+finding = "D19"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/host/subprocess/supervisor.go"
+func = "NewSupervisor"
+snippet = "cfg.MaxCrashes = 5"
+finding = "EXT-20"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/host/subprocess/supervisor.go"
+func = "NewSupervisor"
+snippet = "cfg.CrashWindow = 60 * time.Second"
+finding = "EXT-20"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/host/subprocess/supervisor.go"
+func = "NewSupervisor"
+snippet = "cfg.InitialDelay = 2 * time.Second"
+finding = "EXT-20"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/host/subprocess/supervisor.go"
+func = "NewSupervisor"
+snippet = "cfg.MaxDelay = 30 * time.Second"
+finding = "EXT-20"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/host/subprocess/supervisor.go"
+func = "NewSupervisor"
+snippet = "cfg.BackoffFactor = 2.0"
+finding = "EXT-20"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/session.go"
+func = "NewSession"
+snippet = "bufSize = 64"
+finding = "AGENT-15"
+
+[[hit]]
+check = "magic-literal"
+file = "internal/codingagent/interactive_signals_windows.go"
+func = "resizePollInterval"
+snippet = "const resizePollInterval = 120 * time.Millisecond"
+finding = "GUARD-12"
+
+[[hit]]
+check = "magic-literal"
+file = "internal/codingagent/selfupdate.go"
+func = "maxUpdateBinaryBytes"
+snippet = "const maxUpdateBinaryBytes = 512 << 20"
+finding = "D39"
+
+[[hit]]
+check = "magic-literal"
+file = "internal/codingagent/selfupdate.go"
+func = "readUpdateTransportCA"
+snippet = "data, err := io.ReadAll(io.LimitReader(file, (1<<20)+1))"
+finding = "D39"
+
+[[hit]]
+check = "magic-literal"
+file = "internal/codingagent/selfupdate.go"
+func = "FetchUpdateManifest"
+snippet = "data, err := io.ReadAll(io.LimitReader(resp.Body, (1<<20)+1))"
+finding = "D39"
+
+[[hit]]
+check = "magic-literal"
+file = "internal/codingagent/selfupdate_receipt.go"
+func = "readStandaloneReceipt"
+snippet = "scanner := bufio.NewScanner(io.LimitReader(file, 64<<10))"
+finding = "D39"
+
+[[hit]]
+check = "magic-literal"
+file = "internal/codingagent/selfupdate_tier.go"
+func = "packageManagerProbeTimeout"
+snippet = "const packageManagerProbeTimeout = 5 * time.Second"
+finding = "D39"
+
+[[hit]]
+check = "magic-literal"
+file = "internal/codingagent/selfupdate_tier.go"
+func = "packageManagerUpdateTimeout"
+snippet = "const packageManagerUpdateTimeout = 10 * time.Minute"
+finding = "D39"
+
+[[hit]]
+check = "magic-literal"
+file = "tui/select_filterable.go"
+func = "FilterableList.Render"
+snippet = "maxRows = 20"
+finding = "TUI-13"
+
+[[hit]]
+check = "magic-literal"
+file = "tui/select_filterable.go"
+func = "FilterableList.fixScroll"
+snippet = "const window = 20"
+finding = "TUI-13"
+
+[[hit]]
+check = "magic-literal"
+file = "tui/terminal_windows.go"
+func = "resizePollInterval"
+snippet = "const resizePollInterval = 120 * time.Millisecond"
+finding = "GUARD-12"
+
+[[hit]]
+check = "stream-parse-continue"
+file = "ai/openai_responses.go"
+func = "openAIResponsesProvider.parseResponsesSSE"
+snippet = "if err := json.Unmarshal(event.Item, &item); err != nil {"
+finding = "AI-08"
+count = 2
+
+[[hit]]
+check = "stream-parse-continue"
+file = "ai/openai_responses.go"
+func = "openAIResponsesProvider.parseResponsesSSE"
+snippet = "if json.Unmarshal([]byte(block.ThinkingSignature), &stored) != nil {"
+finding = "AI-08"

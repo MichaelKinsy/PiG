@@ -1,0 +1,57 @@
+# Behavior family: interactive-rendering
+# Surface: UserMessageBlock: bg-painted box with markdown content
+#
+# Upstream evidence (pi v0.69.0, 2026-05-15):
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   send: "reply with exactly: Hello world" Enter
+#   wait: 4s
+#   crop: start="reply with exactly" end="Hello world" (includes user msg box + assistant reply)
+#   raw cropped upstream block (user message in bg-painted box):
+#     reply with exactly: Hello world
+#
+#     Hello world
+#
+# This exercises the user-message rendering: Box bg-paint with paddingX=1,
+# paddingY=1 (top/bottom padding rows), markdown content inside. The
+# assistant reply follows to confirm the full user→assistant layout.
+
+name = "02-user-message-box"
+description = "User message renders in bg-painted box with top/bottom padding, matching upstream."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "reply with exactly: Hello world"
+capture_end = "Hello world"
+
+[[tmux.steps]]
+keys = ["reply with exactly: Hello world", "Enter"]
+settle_seconds = 4
+wait_contains = ["Hello world"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+# lint-known-gap: bg-paint SGR encoding paths differ between pig (paintBgWith
+# with truecolor reset re-application) and upstream (Box class with theme.bg).
+# Visible content identical; ANSI wrapping sequences may differ.
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

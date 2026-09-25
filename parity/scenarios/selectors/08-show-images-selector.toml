@@ -1,0 +1,62 @@
+# Behavior family: selectors
+# Surface: ShowImagesSelectorComponent (show-images-selector.ts)
+#
+# Upstream evidence (pi v0.69.0, probe + source audit):
+#
+#   1. Source search: ShowImagesSelectorComponent is never instantiated:
+#      $ grep -rn "ShowImagesSelectorComponent\|new ShowImagesSelector" \
+#          .upstream/current/packages/coding-agent/src/
+#      # only the component definition (show-images-selector.ts:13) and
+#      # the public re-export (index.ts:325) hit. No internal use site.
+#
+#   2. The /settings show-images toggle uses inline values cycle:
+#      settings-selector.ts:288-296 adds a SettingsList item with
+#      values: ["true","false"], gated on `supportsImages =
+#      getCapabilities().images`. Under tmux, getCapabilities()
+#      returns `images: null` unconditionally (tui/src/terminal-image.ts),
+#      so the show-images entry never appears in /settings.
+#
+#   3. The component is reachable only from extensions importing it
+#      directly via pi.import("@mariozechner/pi-coding-agent"). This
+#      import path is not available through pig's subprocess extension
+#      bridge (Go types cannot be constructed from TypeScript).
+#
+# pig has a faithful port in tui/show_images_selector.go
+# (FilterableList-backed bordered selector) but also never
+# instantiates it in any user-facing flow.
+#
+# Status: deferred coverage (not a divergence: no behavioral difference).
+# The surface is not assertable through any tmux-driveable flow in either
+# binary. Will be promoted to an asserting scenario when upstream adds a
+# user-facing entry point.
+
+# Not tmux-assertable: ShowImagesSelectorComponent is never instantiated by a
+# user-facing flow in either binary, so pig and upstream are identical here.
+
+name = "08-show-images-selector"
+description = "show-images-selector.ts is an upstream-only public component with no user-facing entry point in tmux (faithful port, not assertable)."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/show-images-selector.ts",
+]
+tags = ["deferred", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "Show Images"
+capture_end = "Show text placeholder"
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+runs = 1

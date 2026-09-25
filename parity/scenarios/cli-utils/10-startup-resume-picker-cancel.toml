@@ -1,0 +1,41 @@
+# Behavior family: cli-utils
+# Surface: cancelling the bare --resume startup picker exits before runtime
+# construction instead of falling through to a fresh interactive Session.
+#
+# Upstream evidence: re-probed against the pinned Pi on 2026-09-25 at 100x35 with an empty session
+# directory: Esc retains the picker, leaves one blank row below its border,
+# prints the terminal-faint "No session selected" on stdout, and exits 0.
+# Compare the complete escaped screen, including the input cursor and hint style.
+
+name = "10-startup-resume-picker-cancel"
+description = "Escape cancels bare --resume before runtime startup."
+covers = [
+  "packages/coding-agent/src/cli/session-picker.ts",
+  "packages/coding-agent/src/cli/startup-ui.ts",
+  "packages/coding-agent/src/main.ts",
+]
+tags = ["hermetic", "fast", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "Resume Session (Current Folder)"
+ready_pattern_pi = "Resume Session (Current Folder)"
+ready_timeout_seconds = 25
+keys = ["Escape"]
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../session/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../session/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions", "--resume"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions", "--resume"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["No session selected"]
+both_not_contain = ["Ready. Type a message", "No models available", "panic:", "goroutine "]
+escaped_output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

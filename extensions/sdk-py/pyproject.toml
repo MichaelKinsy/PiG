@@ -1,0 +1,39 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+
+[project]
+name = "pig-sdk"
+version = "0.1.0"
+description = "Python SDK for building pig subprocess extensions"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Michael Kinsy", email = "mrkinsy5@gmail.com" }]
+keywords = ["pig", "extensions", "sdk", "subprocess"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Software Development :: Libraries",
+]
+dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/MichaelKinsy/PiG"
+Repository = "https://github.com/MichaelKinsy/PiG"
+
+[build-system]
+requires = ["uv_build>=0.11.0,<0.12.0"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "pig_sdk"
+module-root = ""
+
+[dependency-groups]
+dev = ["pytest>=8"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

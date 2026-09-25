@@ -1,0 +1,63 @@
+# Behavior family: slash-commands
+# Surface: /session info output on empty session
+#
+# Upstream evidence (pinned pi v0.84.0, resolved by the parity runner from the
+# mise install dir, not $PATH):
+#   command: PI_CODING_AGENT_DIR=testdata/pi-agent pi --session-dir {{TEMP}}/sessions
+#   keys: /session Enter
+#   ready_pattern: "Warning: No models available."
+#   crop: start=last "Messages", end="Tools: 0 calls, 0 results"
+#
+# The crop is the STATIC message-count block, which excludes the dynamic
+# File-path and ID lines (those precede "Messages"):
+#
+#     Messages
+#     Total: 0
+#     User: 0
+#     Assistant: 0
+#     Tools: 0 calls, 0 results
+#
+# Pig and pinned pi 0.84 produce this crop with EXACT plain-cell equality, so the
+# scenario asserts output_equal (byte parity of the captured cells). This is the
+# behavioral evidence supporting the retirement of the former "line renderer
+# instead of full-screen TUI" divergence: upstream's default tuiMode is "regular"
+# and its regular renderer (TuiMainScreen) writes into the main screen + scrollback
+#: the same inline model pig's TUI ports: so there is no rendering divergence to
+# bless here.
+
+name = "01-session-info-empty"
+description = "Both binaries render the /session info structure with correct counts on an empty session."
+covers = [
+  "packages/coding-agent/src/core/slash-commands.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "Messages"
+capture_end = "Tools: 0 calls, 0 results"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["/session", "Enter"]
+wait_contains = ["Messages", "Total: 0"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runs = 3

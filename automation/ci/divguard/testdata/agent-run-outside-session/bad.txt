@@ -1,0 +1,25 @@
+// divguard:path internal/codingagent/interactive_turn.go
+
+package codingagent
+
+import "context"
+
+type Agent struct{}
+
+func (*Agent) SendContent(context.Context, string) error { return nil }
+func (*Agent) Continue(context.Context) error            { return nil }
+
+type InteractiveMode struct {
+	agent    *Agent
+	abortCtx context.Context
+}
+
+// runTurn reproduces MODES-01 and MODES-08: the mode drives the agent
+// itself, so nothing drains the follow-up queue after the run, and retries
+// fork the session's recovery loop.
+func (m *InteractiveMode) runTurn(text string) error {
+	if err := m.agent.SendContent(m.abortCtx, text); err != nil { // want
+		return m.agent.Continue(m.abortCtx) // want
+	}
+	return nil
+}

@@ -1,0 +1,31 @@
+# Behavior family: rpc
+# Surface: new_session command from rpc-types.ts.
+# Pi emits one success response after session_before_switch permits replacement.
+
+name = "08-rpc-new-session"
+description = "RPC new_session replaces the active Session and reports cancellation state."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"new","type":"new_session"}'
+wait_contains = ['"id":"new","type":"response","command":"new_session"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_normalized_equal = true
+runs = 3

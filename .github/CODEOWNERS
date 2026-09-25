@@ -1,0 +1,29 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+
+# The core committee in MAINTAINERS.md reviews general source. A code owner
+# needs write access to this repository. Samarth Boranna joins this list once
+# a GitHub account is recorded in MAINTAINERS.md.
+* @MichaelKinsy @adwaraki @Element115 @zekdevs @nicholas-recht
+
+# Keep governance, release, security, provenance, and parity controls under
+# review by the release authority and security-response owner.
+/.github/ @MichaelKinsy
+/AGENTS.md @MichaelKinsy
+/CODE_OF_CONDUCT.md @MichaelKinsy
+/docs/project/CONTEXT.md @MichaelKinsy
+/DIVERGENCES.md @MichaelKinsy
+/GOVERNANCE.md @MichaelKinsy
+/LICENSE @MichaelKinsy
+/MAINTAINERS.md @MichaelKinsy
+/NOTICE @MichaelKinsy
+/PORT_MAP.md @MichaelKinsy
+/docs/project/PROVENANCE.md @MichaelKinsy
+/docs/project/RELEASING.md @MichaelKinsy
+/SECURITY.md @MichaelKinsy
+/THIRD_PARTY_NOTICES.md @MichaelKinsy
+/docs/supply-chain.md @MichaelKinsy
+/docs/threat-model.md @MichaelKinsy
+/parity/ @MichaelKinsy
+/automation/ci/check-dco.sh @MichaelKinsy
+/automation/release/validate-sbom.py @MichaelKinsy

@@ -1,0 +1,46 @@
+# Behavior family: providers-faux-streaming
+# Scenario: faux provider streams a pure text response in print mode.
+#
+# The faux provider receives "What is 20+22?", emits text deltas
+# that assemble to "42", then sends EventDone. Print mode outputs
+# only the final assistant text. This exercises the streaming
+# protocol (event-stream.ts), SDK types (types.ts), and the
+# stream dispatch (stream.ts): all through the faux provider.
+#
+# Upstream evidence (2026-05-17):
+#   cd /tmp/parity-probe-faux
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts \
+#     --model test-faux/faux-1 --print "What is 20+22?"
+#   output: "42"
+#   exit: 0
+#
+#   PIG_TEST_FAUX=1 PIG_HOME=testdata/pig-home PIG_QUIET_STARTUP=1 \
+#     pig --no-extensions --model test-faux/faux-1 --print "What is 20+22?"
+#   output: "42"
+#   exit: 0
+
+name = "01-print-faux-text-streaming"
+description = "Faux streams text deltas for '42', both produce identical print output"
+covers = [
+  "packages/ai/src/types.ts",
+  "packages/ai/src/api/openai-completions.ts",
+  "packages/ai/src/utils/event-stream.ts",
+  "packages/ai/src/providers/faux.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "What is 20+22?"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["42"]
+output_equal = true
+runs = 3

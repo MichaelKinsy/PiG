@@ -1,0 +1,12 @@
+{"name":"jpeg-prefix-only","actual":"image/jpeg"}
+{"name":"jpeg-ls","actual":null}
+{"name":"png-minimal-ihdr","actual":"image/png"}
+{"name":"png-actl-before-idat","actual":null}
+{"name":"png-actl-after-idat","actual":"image/png"}
+{"name":"png-truncated-chunk","actual":"image/png"}
+{"name":"png-overflow-length","actual":"image/png"}
+{"JSONL_FORMAT_VERSION":4,"JSONL_STORAGE_VERSION":1}
+{"name":"contentText","default":"first\nsecond","custom":"firstsecond"}
+{"name":"system-block-separator","actual":"first\nsecond"}
+{"name":"empty-system-section","actual":"base\n\nlast"}
+{"name":"literal-section-name","actual":"Updated system prompt section \"a\"b\":\n\nnew\n\nRemoved system prompt section \"x\ny\"."}

@@ -1,0 +1,70 @@
+# Behavior family: compaction
+# Surface: /compact on a session that is too small to compact. Upstream pi
+#          0.79.10 added an empty-compaction guard: when keepRecentTokens
+#          retains every message there is nothing to summarize, so
+#          prepareCompaction returns undefined and the manual /compact throws
+#          "Nothing to compact (session too small)", surfaced as
+#          "Error: Compaction failed: Nothing to compact (session too small)".
+#
+# Upstream evidence (pi v0.79.10, 2026-07-07, 100x35 tmux probe):
+#   Session fixture: testdata/compact-session/sessions/...jsonl (6 message
+#   entries, ~450 estimated tokens). Agent settings use the DEFAULT
+#   keepRecentTokens (20000), so findCutPoint keeps the whole session and
+#   messagesToSummarize is empty.
+#   pi -e test-faux-provider.ts --model test-faux/faux-1 --session-dir sessions -c
+#   keys: /compact Enter
+#   captured error line:
+#     Error: Compaction failed: Nothing to compact (session too small)
+#
+# Upstream source:
+#   core/compaction/compaction.ts : guard: messagesToSummarize.length===0 &&
+#                                    turnPrefixMessages.length===0 → undefined
+#   core/agent-session.ts         : throw "Nothing to compact (session too
+#                                    small)"; catch → "Compaction failed: <msg>"
+#   modes/interactive/interactive-mode.ts: showError(event.errorMessage)
+#
+# Companion: 01-compact-command and 02-recompact-update-summary run the SAME
+# fixtures with a small keepRecentTokens (100) so compaction actually fires;
+# this scenario keeps the default so the guard fires. Do not merge the agent
+# dirs: the keepRecentTokens difference is the whole point.
+
+name = "05-nothing-to-compact-too-small"
+description = "/compact on a too-small session hits the 0.79.10 guard and reports 'Nothing to compact (session too small)'."
+covers = [
+  "packages/coding-agent/src/core/compaction/compaction.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/toosmall-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/toosmall-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/compact-session"
+capture_start = "Error: Compaction failed"
+capture_end = "too small)"
+
+[[tmux.steps]]
+keys = ["/compact", "Enter"]
+settle_seconds = 5
+wait_contains = ["Nothing to compact (session too small)"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "unknown command", "[compaction]"]
+both_contain = ["Error: Compaction failed: Nothing to compact (session too small)"]
+output_layout_equal = true
+runtime_ratio_max = 2.0
+runs = 3

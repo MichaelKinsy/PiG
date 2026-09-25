@@ -1,0 +1,53 @@
+# Behavior family: extensions-runtime
+# Surface: registered custom-entry renderers execute on the production
+# appendEntry path (upstream addCustomEntryToChat) without blocking the TUI
+# render loop.
+#
+# Upstream evidence (Pi 0.84.0): /entry-probe calls pi.appendEntry with
+# customType=parity-entry. Pi appends a custom session entry, fires
+# "entry_appended", and CustomEntryComponent renders the registered renderer's
+# line `entryrenderer:hello:expanded=false`. Pig loads the same source through
+# its Node subprocess bridge; the appendEntry host action renders live via
+# addCustomEntryToChat (marshalled through runOnMain), and the async entry
+# render proxy invalidates the TUI to the same final line.
+
+name = "18-subprocess-entry-renderer"
+description = "Custom session entries use the registered entry renderer through the real Node subprocess bridge"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/custom-entry.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/entry-renderer.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/entry-renderer.mjs",
+]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "entryrenderer:hello:expanded=false"
+capture_end = "entryrenderer:hello:expanded=false"
+
+[[tmux.steps]]
+keys = ["/entry-probe", "Enter"]
+wait_contains = ["entryrenderer:hello:expanded=false"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_contain = ["entryrenderer:hello:expanded=false"]
+both_not_contain = ["panic:", "goroutine ", "connection closed"]
+output_equal = true
+runs = 3

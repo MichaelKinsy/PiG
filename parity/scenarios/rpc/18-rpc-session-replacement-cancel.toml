@@ -1,0 +1,42 @@
+# Behavior family: rpc
+# Surface: new_session honors cancellable session_before_switch handlers.
+# The extension notification proves that the lifecycle event runs before the
+# response reports cancellation.
+
+name = "18-rpc-session-replacement-cancel"
+description = "RPC new_session remains on the active Session when an extension cancels replacement."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = [
+  '{"id":"new","type":"new_session"}',
+]
+timeout_seconds = 15
+settle_seconds = 2
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["../../testdata/rpc-cancel-switch.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/rpc-cancel-switch.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"method":"notify"',
+  '"message":"before-switch:new"',
+  '"notifyType":"info"',
+  '"id":"new","type":"response","command":"new_session","success":true,"data":{"cancelled":true}',
+]
+both_not_contain = [
+  '"success":false',
+  'extension_error',
+]
+runs = 3

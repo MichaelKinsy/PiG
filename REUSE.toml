@@ -1,0 +1,111 @@
+version = 1
+
+# PiG-authored files use the project MIT license unless a more specific
+# annotation or an in-file SPDX declaration applies.
+[[annotations]]
+path = "**"
+precedence = "closest"
+SPDX-FileCopyrightText = "Copyright Hewlett Packard Enterprise Development LP"
+SPDX-License-Identifier = "MIT"
+
+# Public website documents adapt Pi documentation. PiG-authored revisions
+# retain the same MIT license.
+[[annotations]]
+path = "docs/site/docs/**"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright (c) 2025 Mario Zechner",
+]
+SPDX-License-Identifier = "MIT"
+
+# The project banner contains an adapted Go gopher. The remaining composition
+# is PiG-authored artwork.
+[[annotations]]
+path = "docs/assets/pig-project-banner.png"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Hewlett Packard Enterprise Development LP",
+  "Go gopher designed by Renee French",
+]
+SPDX-License-Identifier = "MIT AND CC-BY-4.0"
+
+# PiG core is a Go port of Pi. These paths contain translated or adapted Pi
+# implementation and generated data, with PiG changes under the same license.
+[[annotations]]
+path = [
+  "agent/**",
+  "ai/**",
+  "cmd/gen-image-models/**",
+  "cmd/gen-models/**",
+  "cmd/pig/**",
+  "coding/**",
+  "internal/codingagent/**",
+  "internal/configvalue/**",
+  "internal/latex/**",
+  "tui/**",
+]
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright (c) 2025 Mario Zechner",
+]
+SPDX-License-Identifier = "MIT"
+
+# PiG-only composition and distribution mechanics live under coding but do not
+# contain translated Pi implementation.
+[[annotations]]
+path = [
+  "coding/piglet/**",
+  "coding/pigletbuild/**",
+  "coding/extension/pigsdk/**",
+]
+precedence = "closest"
+SPDX-FileCopyrightText = "Copyright Hewlett Packard Enterprise Development LP"
+SPDX-License-Identifier = "MIT"
+
+# The Mermaid renderer is a Go port of grok-mermaid 0.2.2. Files with more
+# exact in-file declarations, including unicode-width data, take precedence.
+[[annotations]]
+path = "internal/mermaid/**"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright 2023-2026 SpaceXAI",
+  "Copyright 2026 Alexey Zaytsev",
+]
+SPDX-License-Identifier = "Apache-2.0 AND MIT"
+
+# Tests covering these translated utilities retain the same upstream notices
+# as their implementations. In-file declarations take precedence where present.
+[[annotations]]
+path = [
+  "internal/codingagent/stdin_buffer*.go",
+]
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright (c) 2025 Mario Zechner",
+  "Copyright (c) 2025 opentui",
+]
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = [
+  "internal/codingagent/export/ansi_html.go",
+  "internal/codingagent/tools/sanitize*.go",
+]
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright (c) 2025 Mario Zechner",
+  "Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)",
+]
+SPDX-License-Identifier = "MIT"
+
+# Unicode character data embedded in the generated width tables.
+[[annotations]]
+path = "tui/widthx/unicode_tables.go"
+precedence = "aggregate"
+SPDX-FileCopyrightText = "Copyright © 1991-2026 Unicode, Inc."
+SPDX-License-Identifier = "Unicode-3.0"

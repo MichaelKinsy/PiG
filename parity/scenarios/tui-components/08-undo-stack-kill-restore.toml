@@ -1,0 +1,73 @@
+# Behavior family: tui-components
+# Surface: Ctrl+- (undo) restores editor state after Ctrl+U (kill to line start).
+#
+# Upstream evidence (pi v0.69.0, probed in tmux 100×35):
+#   command: PI_SKIP_VERSION_CHECK=1 PI_CODING_AGENT_DIR=testdata/pi-agent \
+#     pi --no-extensions --session-dir /tmp/probe-undo \
+#     -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   keys: type "undo test", C-u, hex:1f (undo = 0x1f)
+#   observable: after C-u the prompt is empty; after undo it shows "undo test"
+#
+# This exercises undo-stack.ts (UndoStack.push + UndoStack.pop) and the
+# editor's saveHistory + undo paths.
+#
+# Note: undo keybinding is ctrl+- which emits 0x1f. tmux send-keys C-/
+# is unreliable, so we use "hex:1f" to send the raw byte.
+
+name = "08-undo-stack-kill-restore"
+description = "Ctrl+- (undo) restores editor content after Ctrl+U kill-to-start."
+covers = [
+  "packages/tui/src/undo-stack.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+# Undo is ctrl+- only in the non-Windows keybinding column: upstream
+# core/keybindings.ts binds tui.editor.undo to alt+z when
+# useWindowsKeybindings() sees WSL_DISTRO_NAME or WSL_INTEROP, and to ctrl+z
+# on win32. Both tools read those variables, so a WSL host moved both to
+# alt+z and this ctrl+- scenario failed for Pi and PiG alike. Clearing them
+# keeps both on the column this scenario asserts; the expected Pi behavior is
+# unchanged. Native Windows still needs a platform-aware keystroke.
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent", "WSL_DISTRO_NAME=", "WSL_INTEROP="]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "WSL_DISTRO_NAME=", "WSL_INTEROP="]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "undo test"
+capture_end = "undo test"
+
+# Step 1: type text
+[[tmux.steps]]
+keys = ["undo test"]
+settle_seconds = 1
+wait_contains = ["undo test"]
+wait_timeout_seconds = 5
+
+# Step 2: kill to line start (Ctrl+U)
+[[tmux.steps]]
+keys = ["C-u"]
+settle_seconds = 1
+
+# Step 3: undo (hex:1f = Ctrl+- = 0x1f)
+[[tmux.steps]]
+keys = ["hex:1f"]
+settle_seconds = 1
+wait_contains = ["undo test"]
+wait_timeout_seconds = 5
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3

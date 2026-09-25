@@ -1,0 +1,48 @@
+# Behavior family: rpc
+# Surface: compact waits for completion and returns the pinned CompactionResult.
+# The shared Session fixture and low keepRecentTokens setting force a real faux
+# summarization instead of the small-session refusal path.
+
+name = "15-rpc-compaction-result"
+description = "RPC compact returns the completed compaction result and usage fields."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/compaction/compaction.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+cwd = "../compaction/testdata/compact-session"
+timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"compact","type":"compact","customInstructions":"Keep exact Go details."}'
+wait_contains = ['"id":"compact","type":"response","command":"compact"']
+wait_timeout_seconds = 15
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--model", "test-faux/faux-1", "--session-dir", "sessions", "-c"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "sessions", "-c"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"compact","type":"response","command":"compact","success":true',
+  '"summary":"## Goal',
+  '"firstKeptEntryId":',
+  '"tokensBefore":450',
+  '"estimatedTokensAfter":294',
+  '"usage":',
+  '"details":',
+]
+both_not_contain = [
+  '"success":false',
+  'Nothing to compact',
+  'Context overflow recovery failed',
+]
+runs = 3

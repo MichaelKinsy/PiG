@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+
+# Local rehearsal only; game-footage redistribution not cleared.
+/demo-f.*
+/demo-full.*
+/evidence/doom-*.png
+/media-rehearsal.json

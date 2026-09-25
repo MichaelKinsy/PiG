@@ -1,0 +1,124 @@
+9326e42399f6812c14d7c8aad6e7e6dd69091bd1 extensions: support native Windows runtimes
+573c96460a6a8e3552fabd2a11ff95e210f92123 ci: exercise extension hosting on Windows
+a9299cde4491b5ba9122c125e6e5e8d2be48aa6c tests: identify early packed process exits by cause
+8680f1d9e332f24b6ea34cc66d21415654bc6c3f extensions: assign suspended Windows process jobs
+b9651756c6ca71ca08b62242fb50211a877d84ae tests: reach Windows job assignment failures
+d33422dbb9ce12293d00ed423d129b93c751b6cd tests: synchronize Windows cancellation regression
+555a72e80f4d77dff396fff9b162efb71f6a3ec4 extensions: import the Node loader by file URL
+a150adfb0ae4e60de4db93b0e16f4dd48095e90a ci: resolve npm through PATH in the locked installer
+639003b19278e6f9e0015b4f2e7200e016ce8137 extensions: name duplicate identity files portably
+641adf4dfa05813ec9d15288bbff804f71f505b3 source: treat backslash-relative sources as local on Windows
+10bbcb6ff8091dff0d2d7f791b83fec910fdabad config: persist project overrides with the platform separator
+0234b0e89ea81e3150da7ae3d3bd4446fd347e49 sdk-rs: bundle the transport module in the staged SDK
+95b97d83d4812607411dea539aa527bd7cf96927 extensions: recognize and launch script standalones on Windows
+c59ddc17639670873e7ddfc2200e1f602261c40f runtimecell: quote go.mod paths in generated packed cells
+4aa99567a807c90a15d6f34c55bfd02a3835acf1 cellpack: extract Windows cell binaries with an .exe name
+26c8646747804dbbbbe777e56b4d2fb681e7c01a tools: resolve tool paths like Pi on Windows
+ed88e10654d5e2ef1ac06ac08fa065f59507d525 tests: state Pi's Windows shell behavior in tool tests
+4d461f8a4df3a9dde89cf5d4af647db6364105b1 extensions: report exec timeouts as killed on Windows
+77b05959ce4ab7adcc38793bcb9615a406747a33 tests: quote go.mod paths and run built artifacts
+a95339e607e15ec94578527ef1d73c435f77f366 build: install pig.exe by default on Windows
+3e2476f3a04eb27ec957806fb0a112874323daba tests: name test executables and home directories portably
+f3905c4d3a81c89e0dc068a172bfc9fd992b2725 tests: cover Windows self-update refusal at the command
+ad5e29a1cc33d0ded3120513e28e843c2c8f6c83 tests: use native skill paths in RPC source info tests
+acc80176fab7046a31428e891c3ec3e485be05c6 tests: check socket-dir rules per GOOS and set USERPROFILE
+0976ffa9a8eb823bf04cb5f15be4af693130ac48 tests: run package-manager stubs through Git's sh on Windows
+ed3159837a05e9710b724b14f00aa2ae2d1c1a87 tests: fail instead of hanging when a fixture never connects
+04ddad0e8821f3446250081f2bed2587bad765d2 tests: use each platform's key defaults in tui tests
+fd67b4a7988fdfbbc331f881efa1408a7304f95b tests: make the Windows escaping-descendant fixture run
+31f39198bf52d66f4bd46bde8fa152a63f87e63d packages: spawn package managers like cross-spawn on Windows
+fba0a95183381b93d412b52d5b5b454e47d9c4fe tests: drop an unused git stub path
+8e52a1c83f63952fcc2e11e2e631e27f0cd117f6 packages: drop the whitespace-split npm command test seam
+f8e9f9607cb639cb90322403cdc06ee91bb40c6e tests: start the tui fd stub through an exe launcher on Windows
+c2f9afcca3ee7be3fcf8a5392915597a2e0475bc tests: isolate the SDK root tests from the Windows profile
+62703ec87e4cb7fa66b6e621e4c0baf3740bb109 sdk-py: connect to the host's AF_UNIX socket on Windows
+d3182774374a53a17b34a87facb71c8945acab11 tests: build the Python packed cell against the checkout's SDK
+484a00d45bf057fd0a3218a7caee5225498a2cd8 tests: drop the unused itoa helper
+4139f839a7a50611b50c06ed16308d03e049822a extensions: give Node extensions a named pipe on Windows
+ee355acfcaa233061b19c7179e9f66843fc2a0a7 extensions: resolve exec of a program that cannot start with code 1
+c58228f3c0f95aa88cffa6f6b674ebb34c7c552f extensions: reap stopped extension processes before Shutdown returns
+1e474018eb2aea70cc49a6158ee2294db120be14 source: accept local locators that contain spaces
+037144aa2984518768673c3b162d2a6e4a1bd682 packages: reject rooted paths in Package content on every host
+c9dc539e1c353098ea118e6640a92c721171f8fb tests: check missing Package files with errors.Is
+386de79e28d3ba380cc002965ae27c68487b202b harness: map Windows file errors to the codes Node reports
+99943b185c6335b620aa8f40dffe74edc0fd4e4a harness: resolve paths like Node's path.win32 on Windows
+6184724bec70ebb98063f944abc96a19812c76c4 harness: report an unstartable Windows shell as spawn ENOENT
+c71db08581feb944f121d24fb7082c6458a54cc2 tests: run the harness exec tests on Windows with Node's values
+72a98dbdef3a4d23772bb52cf8b5ab2a2b5b299a parity: regenerate the Go interface inventory for the Windows lane
+00db83e0f391014cddcb8ae27cd49a931ea74012 docs: record the Windows lane's questions for the lead
+456167cb9bdb7bc28e016570ce532b4fc67f47f7 ci: make the npm-locked PATH fixture self-contained (CW-003)
+fba22935671deba41e3555d2c20b2f2045ba6b30 extensions: parse UNC hosts in Node file URLs like Node (CW-004)
+b7425b7696e4ab78a6c12353559f16d6adf16165 tests: read fixture output only after the child is reaped (CW-005)
+48fa9107415bc4aa6567bab965e78d80a9559612 tests: skip symlink tests only where the host forbids symlinks
+d735f9bcbf22705d72be64ff805f7a0d9b12b863 tests: avoid a misspell false positive in the Windows path table
+8c90221356b7af35fb833b0499a043d6aed2718e editor: launch the external editor through cmd.exe on Windows
+e01e9436563aba941dd54501dfc2043085d39eef update: check the release before refusing an installation
+ce760f0642a66991d389f9777426fe44c5573a60 tests: run liveness conformance over the production transport
+fb75d6b3238efba82e074bea3739ac5da772705c go: sync go.work.sum with the x/net requirement
+18675dd845c8064c6ac015caaacdbf51b31b372b piglet: treat agent container paths as Linux paths on every host
+ce4ec310a106e82ae3d7e75f5fa748aada1c1d46 pigletbuild: join container build paths as Linux paths
+a459175ceaf32342b309597019aaa90317eb83a7 pigletbuild: run Windows container builds as the image's user (D67)
+dcf8cc5223bf81a7c73282dd7bc901b18786ac5e Merge origin/main (fa8024b0) into team/win/windows-main
+868d10d7dcef808ae83bbc66079efa34d7c3e6ee tests: fake node with node.cmd on Windows in the preflight tests
+f7c8e79692616fd2dbc92c6226e85280262277c1 piglet: enforce owner-only secret files with DACLs on Windows (D68)
+87934ff775941a8bfda439d2597a2211c8a709cc pigletbuild: name Windows Piglet Binaries with .exe
+62c3750f31a3565e627bb07f097a0388f54b6ad7 tests: check Piglet build records portably on Windows
+447bfa4bcd789be683b493f14bf59209c3127ce3 tests: point piglet list at the temp home on Windows too
+57e78b63fb078e5fefca591811d3cf8600caece2 tests: build the RPC client's pig as pig.exe on Windows
+a45bb4ca0720351c3b4ec4f61616015cc77687bb config: run !command values through bash on Windows, like Pi
+67823568fce5e99ce0ee72c3fa5ef238866d0adf tools: move bash shell resolution into internal/shellconfig
+0363ab218c8a2fffc36bd7ae9eea4096c03a7787 docs: update the Windows lane's questions for the lead
+f948bd02712b7f65754daeb15aac464242f569fd docs: list D67 and D68 in the shipped divergence page
+db7e0b5163cad63e09fb1204fcb557e3feb173ab tests: refuse an outdated immutable binary without downloading
+93f19b459fa5a209c064fde67808fdb2bc7ba917 tests: wait for the shell's pid before killing it
+2579f8399628ddb317ca85c83c01d81ca3c0844e tests: run main's Node floor and Rust cell tests on Windows
+fe3f472fd342a4f479b2a43cb88f329fc0dc9fde settings: normalize path settings like Pi's normalizePath on Windows
+7d2c995750ef251d2629839a919a93412ad3c049 interactive: shorten Windows display paths after either separator
+696a018a1c94a01bdb23e398297965dc214b1104 tests: gate the mutable self-update tiers on Windows
+9c6f734687592e4276cf81a8b4b2cb5eec81c14c ownerfile: enforce owner-only files by DACL on Windows everywhere (D68)
+f2a1f0efc350d1636dd3edd08f2731bfd9d9c3e9 tests: assert Windows keybinding defaults per platform
+95d93353ef09271af71656609db15688c41a96cf docs: ask the lead about Windows Terminal backspace (Q9)
+6867dfa2d5afdc44548919cee62595ffb3313f8c docs: spell the backspace byte in Q9 as \x08
+cab5b152bfb2d15db5e60de8df1cbb16ec5a5cd6 tests: pin the Windows Terminal session in the measured-encodings test
+5bfe38d389555d8bc7b12415a9abc372dd911eb5 selfupdate: uninstall first only when the release renames the package
+4dae0815bf3d5f0ff50a3a4369cb75411aa75f0c selfupdate: update npm and pnpm installs on Windows as upstream does
+35ad7bd2d2cfdf00ac3f136eec48d81c3f857ead ci: decode the coverage generator's output as UTF-8
+a47824760fb48082838d1499c735a54fbcb16159 pigletbuild: write a cmd.exe launcher for --format script on Windows
+06c265f49ff6cd156ea7d378c1f189a553d0df0c tests: run the Piglet npm add fixture on Windows and fix the local git URL
+6ce3222a938cedd4c9887cdb68f3b1ba38204829 interactive: keep the SIGHUP terminal-gone shutdown with the unix handler
+bb374c97edc1d442d4e82976e79877a62c98ac2e docs: record Q7-Q9 as done and ask Q10 (drive-letter git file URLs)
+da06a22fa7ff2ab22f1db9fe78ad8a1c6cbaf141 tests: run the clipboard, migration and export tests natively on Windows
+b2def3b782bbc2e9896142396ebdcf12546fff7b statusline: stop holding open handles on the repository and .git
+67c4f07503b6cd38eb5b5670b52873ef07f3d189 tests: point the ADC and bash-prefix tests at Windows paths correctly
+113717d54dc00b9786eb3864d0e7f60fb73b2ab7 tools: show Took on a finished shell card whenever its start was recorded
+74540ebdddc2f59576cf0fb1a2fa6b3e3d3c26a2 toolchain: name the installed go command for the archive's OS
+7a8433b31b0146ed5bf1ca46e68d962813405b81 pico3: stat each JSONL file by path in Sizes, as upstream does
+32e4a338fd1f70581948c0fc7ccd5c17adfb990b closure: keep mutation and patch checkouts byte-exact on Windows
+e30c19a5ac153b52949e9499262c333eb2cfa593 tests: run the extension corpus validation fixture on Windows
+79439e43a1ce6961a4be6472c2d2cb82b2acf39b release: write SHA256SUMS with LF line endings on every platform
+042cc59dbf0960b0a9da0ccba2c3c4d5056c61cd tests: run the repository script tests natively on Windows
+1363375a1d4aa2660b32aa4522c94b001bd2345d piglet: support drive-letter git file URLs on Windows
+fcf9518f6bcfc23e3137841919b5f0ed55b66997 report: native Windows test counts for team/win/windows-main (READY)
+f6a355f11cc8ab5424d685080cbd9d5435375941 lint: explain the unsafe Win32 buffers so Windows lint is clean
+f98a2fa90a789015a565eaf401434e52b89e706c tests: stop the Windows escaping-descendant control from leaking ping
+90d8936a7cb6611508fa1d5cc64665063eb48781 divguard: map the signal handler files to interactive-mode.ts
+f2ccd5f2174ffecd03d6b60aa1acb52439db2d6f tui: deliver Ctrl+Z from the Windows console instead of ending input
+e7ba2f376bdb71421e5a050c1d24eeb3216cd254 questions: note the divergence-guard and Ctrl+Z follow-ups
+b04ee211c2502069ae8171511022f34c32a96ac2 interactive: show the Windows suspend refusal as a status, as upstream
+d5446ee40062a63152ed7ba0f89a06375be535d5 interactive: restore the Windows title after the package update check
+b682c018a51ccf5545e6c54716cdbf8c278b1d0c footer: abbreviate the cwd relative to HOME, then USERPROFILE, as upstream
+571c247c345507a4cd8ee0489a26ce91a6c3c836 footer: keep the "." placeholder and truncate lines like upstream
+ed74eaacae9c35091ade6f93525876d2abcd9ab0 tests: bound the packed Rust fission reloads by the test deadline
+4e0aa4891fb008481ba4723eed86d26b9e5a3502 tests: test the post-exit stdio grace in virtual time, as upstream
+8d10f5b76c3b9afaa5a29f56e29b456d08b2d42d questions: hold the windows-main follow-ups for the review verdict
+714d6525760aa0a948e3276be65c343d5d0f9c36 tui: deliver buffered console input without waiting, and never block on a key release
+69b94274484cdbd56d2f42a3635e86b211b7d1dc ownerfile: create owner-only files protected, not restrict them afterwards
+a51150ab6545c25ea03eca138cf554018b5cf41e nodeurl: convert file URLs as Node's fileURLToPath, IDNA hosts included
+c882f24a6d6634fbc67719d923b2d955bd724472 update: plan a same-version package rename as upstream does
+60189e058ca60646d384032e7a896ecafce816a9 pigletbuild: keep ! literal in the Windows launcher under delayed expansion
+cb5a85e30679561b3f87e79bc63c12da2b2d72bc parity: regenerate the Go interface inventory and recommendations
+44a2d6c164dbdaa6e5d0bee4fde837fa12cb9dda questions: report the review-windows-final fixes and evidence
+791d73d8a09ddc53d6c6fb02b47bee6bf2437f20 fix(tui): keep negotiation-only reads behind cancellable readiness
+d043e0b69e08cfcc8ffb2ed230c431c169212bb9 merge: compose Windows fixes with current main and native Node cells
+54c83e86c4ee6f600b64e310bc2d3b1c40bb200e report: Windows review fixes, composition, and outstanding native approval
+8a5483899cc7a6bd60a52e931ac4c16344ce528e merge: compose Windows main with absent-duration call corrections

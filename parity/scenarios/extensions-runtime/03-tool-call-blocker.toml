@@ -1,0 +1,66 @@
+# Behavior family: extensions-runtime
+# Scenario: extension tool_call handler blocks bash execution.
+#
+# parity-blocker.mjs registers a tool_call handler that returns
+# {block: true, reason: "parity-blocked"} when the bash command
+# contains "BLOCK_ME". The faux provider detects the blocked result
+# in the conversation and responds "blocked:parity-blocked".
+#
+# This exercises runner.ts emitToolCall → block semantics and the
+# wire roundtrip through types.ts ToolCallEventResult.
+#
+# Upstream evidence (2026-05-16, tmux probe):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent PI_SKIP_VERSION_CHECK=1 \
+#     pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts \
+#     -e testdata/ext/parity-blocker.mjs \
+#     --model test-faux/faux-1 \
+#     --session-dir /tmp/parity-blocker-pi
+#   send: "Run: bash BLOCK_ME" Enter
+#   wait: "blocked:parity-blocked"
+#   crop: start="blocked:parity-blocked" end="blocked:parity-blocked"
+#   raw cropped upstream block:
+#     blocked:parity-blocked
+
+name = "03-tool-call-blocker"
+description = "Extension tool_call handler blocks bash tool, faux detects blocked result"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/core/extensions/types.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/parity-blocker.mjs"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-blocker.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "blocked:parity-blocked"
+capture_end = "blocked:parity-blocked"
+
+[[tmux.steps]]
+keys = ["Run: bash BLOCK_ME", "Enter"]
+settle_seconds = 6
+wait_contains = ["blocked:parity-blocked"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

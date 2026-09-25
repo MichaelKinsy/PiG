@@ -1,0 +1,65 @@
+# Behavior family: selectors
+# Surface: /login (no args) → top-level auth-method picker overlay
+#
+# Upstream evidence (pi v0.81.1, this loop probe in tmux 100×35
+# with PI_CODING_AGENT_DIR=testdata/pi-agent which has github-copilot
+# OAuth credentials):
+#
+#     ────────────────────────────────────────────────────────────────────
+#
+#      Select authentication method:
+#
+#      → Sign in with an account
+#        Sign in with an API key
+#
+#      ↑↓ navigate  enter select  escape/ctrl+c cancel
+#
+#     ────────────────────────────────────────────────────────────────────
+#
+# Surface is the auth-method picker: bordered
+# overlay, title "Select authentication method:", two options. pi v0.81.1
+# reworded the labels to "Sign in with an account" / "Sign in with an API
+# key" (interactive-mode.ts:4925-4926). The subscription label defaults to
+# "Sign in with an account" but an oauth provider method may override it
+# via method.loginLabel (provider-machinery, slice 7); the default is what
+# this scenario asserts. Cursor "→ " on first item, hint line with
+# navigation help. Pi v0.71.0 removed the legacy Google OAuth helpers, so the
+# deeper OAuth-provider list lives one step beyond this picker.
+
+name = "06-oauth-selector"
+description = "/login opens the top-level auth-method picker with Use-a-subscription / Use-an-API-key options"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+keys = ["/login", "Enter"]
+settle_seconds = 2
+capture_start = "Select authentication method"
+capture_end = "escape/ctrl+c cancel"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[assert]
+both_reach_ready = true
+output_normalized_equal = true
+both_contain = [
+  "Select authentication method",
+  "Sign in with an account",
+  "Sign in with an API key",
+  "navigate",
+]
+runs = 3

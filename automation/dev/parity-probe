@@ -1,0 +1,140 @@
+#!/usr/bin/env bash
+# parity-probe: launch upstream pi or pig in tmux for upstream-first
+# parity probing.
+#
+# Why this exists:
+#
+#   Manual tmux probing was a recurring tax on every family loop.
+#   Agents reinvented the launch incantation, used inconsistent
+#   geometry, forgot to set PIG_CODING_AGENT_DIR, and ended up
+#   debugging tmux instead of the actual surface under test.
+#
+#   This script wraps the canonical pattern.
+#
+# Usage:
+#
+#   parity-probe pi   [--session NAME] [--cols N] [--rows N] [--agent-dir DIR]
+#   parity-probe pig [--session NAME] [--cols N] [--rows N] [--agent-dir DIR]
+#   parity-probe both [--session NAME] [--cols N] [--rows N]
+#
+#   parity-probe capture NAME           # capture-pane -p of the session
+#   parity-probe send    NAME "keys"    # send-keys to the session
+#   parity-probe kill    NAME           # kill-session (not kill-server!)
+#
+# Defaults:
+#
+#   --session   parity-probe-<binary>
+#   --cols      100
+#   --rows      35
+#   --agent-dir for `pi`:   $HOME/.pi
+#               for `pig`: $HOME/.pig
+#
+# Geometry matches what parity scenarios use so the same crop windows
+# work in both probe and runtime.
+
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+UPSTREAM_VERSION="${UPSTREAM_VERSION:-$(sed -n 's/^const UpstreamVersion = "\([^"]*\)"/\1/p' "$ROOT/coding/pigversion/pigversion.go" 2>/dev/null)}"
+PI_BIN="${PI_BIN:-$ROOT/extensions/sdk-ts/node_modules/.bin/pi}"
+PIG_BIN="${PIG_BIN:-$HOME/.local/bin/pig}"
+
+usage() {
+  sed -n '3,33p' "$0" | sed 's/^# \{0,1\}//'
+  exit 2
+}
+
+[[ $# -ge 1 ]] || usage
+cmd="$1"; shift
+
+case "$cmd" in
+  pi|pig|both)
+    binary="$cmd"
+    session=""
+    cols=100
+    rows=35
+    agent_dir=""
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --session)   session="$2"; shift 2 ;;
+        --cols)      cols="$2"; shift 2 ;;
+        --rows)      rows="$2"; shift 2 ;;
+        --agent-dir) agent_dir="$2"; shift 2 ;;
+        *) echo "unknown flag: $1" >&2; usage ;;
+      esac
+    done
+
+    launch_one() {
+      local b="$1" sn="$2" bin envvar dir
+      if [[ "$b" == "pi" ]]; then
+        bin="$PI_BIN"
+        envvar="PI_CODING_AGENT_DIR"
+        dir="${agent_dir:-$HOME/.pi}"
+      else
+        bin="$PIG_BIN"
+        envvar="PIG_CODING_AGENT_DIR"
+        dir="${agent_dir:-$HOME/.pig}"
+      fi
+      [[ -x "$bin" ]] || { echo "binary not executable: $bin" >&2; exit 1; }
+
+      if tmux has-session -t "$sn" 2>/dev/null; then
+        echo "session $sn already exists; killing it first" >&2
+        tmux kill-session -t "$sn"
+      fi
+
+      # Use env to inject the agent dir so the binary itself picks it
+      # up at startup. Geometry matches parity scenarios.
+      tmux new-session -d -s "$sn" -x "$cols" -y "$rows" \
+        "env $envvar='$dir' '$bin'"
+      echo "launched: $sn ($b @ ${cols}x${rows}, $envvar=$dir)"
+      echo "  capture: parity-probe capture $sn"
+      echo "  send:    parity-probe send    $sn 'text\\n'"
+      echo "  kill:    parity-probe kill    $sn"
+    }
+
+    case "$binary" in
+      pi)
+        sn="${session:-parity-probe-pi}"
+        launch_one pi "$sn"
+        ;;
+      pig)
+        sn="${session:-parity-probe-pig}"
+        launch_one pig "$sn"
+        ;;
+      both)
+        base="${session:-parity-probe}"
+        launch_one pi   "${base}-pi"
+        launch_one pig "${base}-pig"
+        echo
+        echo "diff capture (after both reach ready):"
+        echo "  diff <(parity-probe capture ${base}-pi) <(parity-probe capture ${base}-pig)"
+        ;;
+    esac
+    ;;
+
+  capture)
+    [[ $# -eq 1 ]] || { echo "usage: parity-probe capture NAME" >&2; exit 2; }
+    tmux capture-pane -p -t "$1"
+    ;;
+
+  send)
+    [[ $# -eq 2 ]] || { echo "usage: parity-probe send NAME 'keys'" >&2; exit 2; }
+    # -l = literal; combined with separate \r/Enter for clarity.
+    # Caller controls newlines with explicit \n in their string.
+    tmux send-keys -t "$1" "$2"
+    ;;
+
+  kill)
+    [[ $# -eq 1 ]] || { echo "usage: parity-probe kill NAME" >&2; exit 2; }
+    tmux kill-session -t "$1"
+    ;;
+
+  -h|--help)
+    usage
+    ;;
+
+  *)
+    echo "unknown subcommand: $cmd" >&2
+    usage
+    ;;
+esac

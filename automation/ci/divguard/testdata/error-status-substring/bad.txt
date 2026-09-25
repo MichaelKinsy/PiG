@@ -1,0 +1,17 @@
+// divguard:path internal/codingagent/interactive_turn.go
+
+package codingagent
+
+import "strings"
+
+// describe reproduces MODES-14: "used 401 tokens" reads as an auth failure.
+func describe(err error) string {
+	errStr := err.Error()
+	switch {
+	case strings.Contains(errStr, "401"): // want
+		return "Authentication failed. Run /login."
+	case strings.HasPrefix(err.Error(), "413"): // want
+		return "Context overflow."
+	}
+	return errStr
+}

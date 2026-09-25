@@ -1,0 +1,49 @@
+# Behavior family: providers-registry
+# Surface: a model provider registered by a loaded extension appears in
+# --list-models, on both pi and pig.
+#
+# Upstream evidence (main.ts): createAgentSessionServices builds the
+# extension-populated modelRuntime (main.ts:634) and listModels runs against
+# that same runtime (main.ts:760). So a provider registered by a `-e` extension
+# is visible in `pi --list-models`.
+#
+# pig parity fix: pig previously handled --list-models before its extension host
+# loaded, and registered the extension provider through the public registration contract,
+# so a generic extension provider never appeared in --list-models. pig now loads
+# extensions and registers their providers before the --list-models handler
+# (cmd/pig/main.go), matching upstream. Proven red locally: listing against a
+# registry built before extensions load omits parity-prov; after the reorder it
+# appears.
+#
+# testdata/ext/parity-provider.mjs registers provider "parity-prov" with model
+# "parity-model" with the complete upstream Model fields consumed by
+# --list-models. apiKey "x" satisfies hasConfiguredAuth so the provider passes
+# the auth filter in getAvailable() on both binaries. both_contain is used
+# rather than output_equal because the surrounding built-in catalog depends on
+# ambient auth and is not under test here.
+
+name = "05-list-models-extension-provider"
+description = "an extension-registered provider (parity-prov/parity-model) appears in --list-models on both pi and pig."
+covers = [
+  "packages/coding-agent/src/main.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/noauth-agent"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/noauth-agent"]
+pig_args = ["--no-extensions"]
+pi_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/parity-provider.mjs"]
+pi_extensions = ["testdata/ext/parity-provider.mjs"]
+
+[cli]
+args = ["--list-models"]
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["parity-prov", "parity-model"]
+both_not_contain = ["panic:", "goroutine "]
+runs = 3

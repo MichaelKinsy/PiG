@@ -1,0 +1,37 @@
+# Behavior family: interactive-rendering
+# Upstream evidence: RRT-001 in independent review c22f27062 reproduces this
+# thinking/toolCall/thinking/text session at 100x35 with thinking hidden.
+# Pi renders two Thinking... labels, separated by a blank line, then the answer.
+# Reuse that vector and crop before the separately rendered tool card; no tool
+# executes. Probe: pi -e test-faux-provider.ts --model test-faux/faux-1
+# --session-dir sessions -c, at coding.UpstreamVersion.
+name = "25-review-thinking-tool-boundary"
+description = "RRT-001: a persisted tool call remains a boundary between hidden thinking runs."
+covers = ["packages/coding-agent/src/modes/interactive/components/assistant-message.ts", "packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent-hide-thinking"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-hide-thinking", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/review-boundary-cwd"
+capture_start = "Review thinking boundary"
+capture_end = "Review answer"
+
+[assert]
+both_reach_ready = true
+both_contain = ["Thinking...", "Review answer"]
+both_not_contain = ["before tool", "after tool", "unused"]
+escaped_output_equal = true
+runs = 3

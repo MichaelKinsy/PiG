@@ -1,0 +1,12 @@
+**
+!automation/
+!automation/images/
+!automation/images/ci-go/
+!automation/images/ci-go/packages.lock
+!automation/images/ci-parity/
+!automation/images/ci-parity/package.json
+!automation/images/ci-parity/package-lock.json
+!automation/images/ci-parity/packages.lock
+!automation/images/npm-runtime/
+!automation/images/npm-runtime/package.json
+!automation/images/npm-runtime/package-lock.json

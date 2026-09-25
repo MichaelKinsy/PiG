@@ -1,0 +1,65 @@
+# Behavior family: extensions-runtime
+# Scenario: extension EventBus pub/sub round-trip via pi.events.
+#
+# parity-eventbus.mjs subscribes to "parity-test-topic", publishes
+# to it on session_start, and verifies the subscriber received the
+# payload. The result is surfaced via ctx.ui.notify.
+#
+# This exercises event-bus.ts (EventBus interface: emit + on).
+# group-rationale: serial: under full-suite parallel load the node-extension
+# launcher for this startup-only pub/sub probe flakes before ready; run it in
+# isolation so `make parity` encodes the scheduler knowledge instead of relying
+# on ad hoc low-concurrency invocations. Four runs give the performance median
+# two Pig-first and two Pi-first pairs, cancelling launch-order cache warming.
+# The process cwd is an ephemeral copy of this scenario's testdata so the
+# runtime ratio measures extension startup rather than checkout trust, context,
+# and Git discovery that the EventBus assertion does not exercise.
+#
+# Upstream evidence (2026-05-17, tmux probe):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent PI_SKIP_VERSION_CHECK=1 \
+#     pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts \
+#     -e testdata/ext/parity-eventbus.mjs \
+#     --model test-faux/faux-1 \
+#     --session-dir /tmp/parity-eventbus-pi
+#   wait: "eventbus:round-trip:ok"
+#   crop: start="eventbus:round-trip:ok" end="eventbus:round-trip:ok"
+#   raw cropped upstream block:
+#     eventbus:round-trip:ok
+
+name = "06-eventbus-pubsub"
+description = "Extension EventBus pub/sub round-trip: publish + subscribe within same extension"
+covers = [
+  "packages/coding-agent/src/core/event-bus.ts",
+]
+tags = ["fast", "hermetic", "tui", "serial"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/parity-eventbus.mjs"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-eventbus.mjs",
+]
+
+[tmux]
+cwd = "testdata"
+width = 100
+height = 35
+ready_pattern_pig = "eventbus:round-trip:ok"
+ready_pattern_pi = "eventbus:round-trip:ok"
+ready_timeout_seconds = 25
+capture_start = "eventbus:round-trip:ok"
+capture_end = "eventbus:round-trip:ok"
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["FAIL", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 4

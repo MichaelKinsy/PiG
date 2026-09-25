@@ -1,0 +1,79 @@
+# Behavior family: providers-registry
+# Surface: --list-models exposes built-in env-backed providers registered via register-builtins.
+#
+# Upstream evidence: re-probed the pinned Pi on 2026-09-25 with the env below.
+# The complete table includes all seven configured providers and matches PiG.
+# A pipe capture intermittently loses Pi's queued stdout at main.ts process.exit(0)
+# after listModels prints the table. The CLI driver captures both binaries through
+# a regular file so Node's synchronous file writes preserve every row. This is
+# transport setup, not catalog filtering or output normalization.
+# Repeated raw pipe captures and the exact regular-file oracle were verified
+# against pinned Pi during development.
+
+name = "01-list-models-env-builtins"
+description = "registration-only: env-backed built-in providers appear in --list-models with exact upstream table output."
+covers = [
+  "packages/ai/src/env-api-keys.ts",
+  "packages/ai/src/auth/context.ts",
+  "packages/ai/src/auth/helpers.ts",
+  "packages/ai/src/auth/resolve.ts",
+  "packages/ai/src/auth/types.ts",
+  "packages/coding-agent/src/core/resolve-config-value.ts",
+]
+# resolve-config-value.ts: env vars like OPENAI_API_KEY=x are resolved through
+# configvalue.Resolve during provider registration (model_registry.go:346,415,469).
+# If resolve-config-value broke, the env-backed providers would not appear.
+# verification-quality: registration-only. This scenario proves provider
+# catalog registration/listing only. It must not claim provider stream or
+# payload-conversion files such as openai-completions.ts/openai-responses.ts.
+tags = ["fast", "hermetic", "registration-only"]
+driver = "cli-mode"
+
+[env]
+pi = [
+  "ANTHROPIC_API_KEY=x",
+  "GEMINI_API_KEY=x",
+  "MISTRAL_API_KEY=x",
+  "OPENAI_API_KEY=x",
+  "AZURE_OPENAI_API_KEY=x",
+  "AZURE_OPENAI_BASE_URL=https://example.invalid",
+  "GOOGLE_CLOUD_API_KEY=x",
+  "GOOGLE_CLOUD_PROJECT=p",
+  "GOOGLE_CLOUD_LOCATION=us-central1",
+  "AWS_ACCESS_KEY_ID=x",
+  "AWS_SECRET_ACCESS_KEY=x",
+  "PI_CODING_AGENT_DIR=testdata/env-agent",
+]
+pig = [
+  "ANTHROPIC_API_KEY=x",
+  "GEMINI_API_KEY=x",
+  "MISTRAL_API_KEY=x",
+  "OPENAI_API_KEY=x",
+  "AZURE_OPENAI_API_KEY=x",
+  "AZURE_OPENAI_BASE_URL=https://example.invalid",
+  "GOOGLE_CLOUD_API_KEY=x",
+  "GOOGLE_CLOUD_PROJECT=p",
+  "GOOGLE_CLOUD_LOCATION=us-central1",
+  "AWS_ACCESS_KEY_ID=x",
+  "AWS_SECRET_ACCESS_KEY=x",
+  "PIG_CODING_AGENT_DIR=testdata/env-agent",
+]
+
+[cli]
+args = ["--list-models"]
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = [
+  "amazon-bedrock",
+  "anthropic",
+  "azure-openai-responses",
+  "google",
+  "google-vertex",
+  "mistral",
+  "openai",
+]
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

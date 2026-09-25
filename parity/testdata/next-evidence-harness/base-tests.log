@@ -1,0 +1,3 @@
+ok  	github.com/MichaelKinsy/PiG/internal/codingagent/tools	3.659s	coverage: 88.2% of statements
+ok  	github.com/MichaelKinsy/PiG/agent/harness/session	0.388s	coverage: 84.9% of statements
+ok  	github.com/MichaelKinsy/PiG/agent/harness/pico3	8.614s	coverage: 83.7% of statements

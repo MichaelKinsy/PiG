@@ -1,0 +1,67 @@
+# Behavior family: extensions-runtime
+# Surface: extension shortcut ownership across atomic reload.
+#
+# Upstream evidence (Pi 0.83.0): interactive-mode.handleReloadCommand calls
+# setupExtensionShortcuts with the replacement ExtensionRunner, assigning one
+# new defaultEditor.onExtensionShortcut callback. This fixture first proves the
+# initial shortcut is active, rewrites its own snapshotted source, reloads, then
+# invokes the same key. The asserted final notification can only come from the
+# replacement registration.
+
+name = "10-shortcut-reload-authority"
+description = "Atomic reload replaces extension shortcut dispatch with the current registration."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/reload-shortcut.mjs"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/reload-shortcut.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "shortcut-new"
+capture_end = "shortcut-new"
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 31 3b 36 43"]
+wait_contains = ["shortcut-old"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["/parity-swap-shortcut", "Enter"]
+settle_seconds = 2
+wait_contains = ["shortcut-source-swapped"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+wait_contains = ["Reloaded"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 31 3b 36 43"]
+wait_contains = ["shortcut-new"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["connection closed", "unknown command", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 3.0
+runs = 1

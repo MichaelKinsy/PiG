@@ -1,0 +1,2605 @@
+[
+  {
+    "name": "tree",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "sibling",
+          "parentId": "root",
+          "seq": 8,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "sibling"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": [
+              {
+                "id": "pending"
+              }
+            ]
+          },
+          "seq": 12
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        }
+      ]
+    },
+    "options": {
+      "scope": "tree"
+    },
+    "want": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "sibling",
+          "parentId": "root",
+          "seq": 8,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "sibling"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "currentOperationId": null,
+            "lastOperationId": null,
+            "inbox": []
+          },
+          "seq": 12
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "currentOperationId": null,
+            "lastOperationId": null,
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        }
+      ],
+      "nextSeq": 19
+    }
+  },
+  {
+    "name": "branch",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "sibling",
+          "parentId": "root",
+          "seq": 8,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "sibling"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": [
+              {
+                "id": "pending"
+              }
+            ]
+          },
+          "seq": 12
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        }
+      ]
+    },
+    "options": {
+      "scope": "branch",
+      "branch": "main"
+    },
+    "want": {
+      "entries": [
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 6
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 7
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 8
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "currentOperationId": null,
+            "lastOperationId": null,
+            "inbox": []
+          },
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 10
+        }
+      ],
+      "nextSeq": 11
+    }
+  },
+  {
+    "name": "before child",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "sibling",
+          "parentId": "root",
+          "seq": 8,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "sibling"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": [
+              {
+                "id": "pending"
+              }
+            ]
+          },
+          "seq": 12
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        }
+      ]
+    },
+    "options": {
+      "scope": "branch",
+      "branch": "main",
+      "entryId": "child",
+      "position": "before"
+    },
+    "want": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 3
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "root",
+          "seq": 4
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 5
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "currentOperationId": null,
+            "lastOperationId": null,
+            "inbox": []
+          },
+          "seq": 6
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 7
+        }
+      ],
+      "nextSeq": 8
+    }
+  },
+  {
+    "name": "at root",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "sibling",
+          "parentId": "root",
+          "seq": 8,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "sibling"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": [
+              {
+                "id": "pending"
+              }
+            ]
+          },
+          "seq": 12
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        }
+      ]
+    },
+    "options": {
+      "scope": "branch",
+      "branch": "main",
+      "entryId": "root",
+      "position": "at"
+    },
+    "want": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 3
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "root",
+          "seq": 4
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 5
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "currentOperationId": null,
+            "lastOperationId": null,
+            "inbox": []
+          },
+          "seq": 6
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 7
+        }
+      ],
+      "nextSeq": 8
+    }
+  },
+  {
+    "name": "duplicate entry last value first position",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "sibling",
+          "parentId": "root",
+          "seq": 8,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "sibling"
+        },
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 20,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "replacement"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": [
+              {
+                "id": "pending"
+              }
+            ]
+          },
+          "seq": 12
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        }
+      ]
+    },
+    "options": {
+      "scope": "tree"
+    },
+    "want": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 20,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "replacement"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "sibling",
+          "parentId": "root",
+          "seq": 8,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "sibling"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 21
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 22
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 23
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "currentOperationId": null,
+            "lastOperationId": null,
+            "inbox": []
+          },
+          "seq": 24
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 25
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 26
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "currentOperationId": null,
+            "lastOperationId": null,
+            "inbox": []
+          },
+          "seq": 27
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 28
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 29
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 30
+        }
+      ],
+      "nextSeq": 31
+    }
+  },
+  {
+    "name": "missing tip",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "sibling",
+          "parentId": "root",
+          "seq": 8,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "sibling"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": [
+              {
+                "id": "pending"
+              }
+            ]
+          },
+          "seq": 12
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        }
+      ]
+    },
+    "options": {
+      "scope": "tree"
+    },
+    "error": "Source session branch \"main\" is missing branch.tip"
+  },
+  {
+    "name": "incomplete lane",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "sibling",
+          "parentId": "root",
+          "seq": 8,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "sibling"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        }
+      ]
+    },
+    "options": {
+      "scope": "tree"
+    },
+    "error": "Source session branch \"main\" has incomplete lane state"
+  },
+  {
+    "name": "unconfigured branch",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "sibling",
+          "parentId": "root",
+          "seq": 8,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "sibling"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        }
+      ]
+    },
+    "options": {
+      "scope": "branch",
+      "branch": "main"
+    },
+    "error": "Source branch \"main\" is not a configured AgentLane"
+  },
+  {
+    "name": "unknown tip",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": [
+              {
+                "id": "pending"
+              }
+            ]
+          },
+          "seq": 12
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        }
+      ]
+    },
+    "options": {
+      "scope": "tree"
+    },
+    "error": "Source session branch \"other\" has an unknown tip"
+  },
+  {
+    "name": "partial branch permits other unknown tip",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": [
+              {
+                "id": "pending"
+              }
+            ]
+          },
+          "seq": 12
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        }
+      ],
+      "entriesComplete": false
+    },
+    "options": {
+      "scope": "branch",
+      "branch": "main"
+    },
+    "want": {
+      "entries": [
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 6
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 7
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 8
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "currentOperationId": null,
+            "lastOperationId": null,
+            "inbox": []
+          },
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 10
+        }
+      ],
+      "nextSeq": 11
+    }
+  },
+  {
+    "name": "partial tree rejects other unknown tip",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": [
+              {
+                "id": "pending"
+              }
+            ]
+          },
+          "seq": 12
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        }
+      ],
+      "entriesComplete": false
+    },
+    "options": {
+      "scope": "tree"
+    },
+    "error": "Source session branch \"other\" has an unknown tip"
+  },
+  {
+    "name": "unknown reserved state",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "sibling",
+          "parentId": "root",
+          "seq": 8,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "sibling"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": [
+              {
+                "id": "pending"
+              }
+            ]
+          },
+          "seq": 12
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        },
+        {
+          "address": {
+            "namespace": "pi.unknown",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": 1,
+          "seq": 21
+        }
+      ]
+    },
+    "options": {
+      "scope": "tree"
+    },
+    "error": "Unknown reserved fork namespace: pi.unknown"
+  },
+  {
+    "name": "unknown source branch",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "sibling",
+          "parentId": "root",
+          "seq": 8,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "sibling"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": [
+              {
+                "id": "pending"
+              }
+            ]
+          },
+          "seq": 12
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        }
+      ]
+    },
+    "options": {
+      "scope": "branch",
+      "branch": "absent"
+    },
+    "error": "Unknown source branch: absent"
+  },
+  {
+    "name": "entry outside branch",
+    "source": {
+      "entries": [
+        {
+          "id": "root",
+          "parentId": null,
+          "seq": 2,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "root"
+        },
+        {
+          "id": "child",
+          "parentId": "root",
+          "seq": 5,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "child"
+        },
+        {
+          "id": "sibling",
+          "parentId": "root",
+          "seq": 8,
+          "timestamp": 1700000000000,
+          "type": "custom",
+          "customType": "sibling"
+        }
+      ],
+      "scalarValues": [
+        {
+          "address": {
+            "namespace": "pi.session.name",
+            "key": "",
+            "kind": "value"
+          },
+          "value": "source",
+          "seq": 9
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": "child",
+          "seq": 10
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "model": "test"
+          },
+          "seq": 11
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "main",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": [
+              {
+                "id": "pending"
+              }
+            ]
+          },
+          "seq": 12
+        },
+        {
+          "address": {
+            "namespace": "pi.branch.tip",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": "sibling",
+          "seq": 13
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.config",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {},
+          "seq": 14
+        },
+        {
+          "address": {
+            "namespace": "pi.lane.state",
+            "key": "other",
+            "kind": "value"
+          },
+          "value": {
+            "inbox": []
+          },
+          "seq": 15
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "root",
+            "kind": "value"
+          },
+          "value": "root label",
+          "seq": 16
+        },
+        {
+          "address": {
+            "namespace": "pi.entry.label",
+            "key": "sibling",
+            "kind": "value"
+          },
+          "value": "sibling label",
+          "seq": 17
+        },
+        {
+          "address": {
+            "namespace": "custom.state",
+            "key": "x",
+            "kind": "value"
+          },
+          "value": {
+            "nested": true
+          },
+          "seq": 18
+        },
+        {
+          "address": {
+            "namespace": "pi.result",
+            "key": "work",
+            "kind": "value"
+          },
+          "value": {
+            "done": true
+          },
+          "seq": 19
+        }
+      ]
+    },
+    "options": {
+      "scope": "branch",
+      "branch": "main",
+      "entryId": "sibling"
+    },
+    "error": "Fork entry sibling is not on source branch \"main\""
+  },
+  {
+    "name": "empty tree",
+    "source": {
+      "entries": [],
+      "scalarValues": []
+    },
+    "options": {
+      "scope": "tree"
+    },
+    "want": {
+      "entries": [],
+      "scalarValues": [],
+      "nextSeq": 1
+    }
+  }
+]

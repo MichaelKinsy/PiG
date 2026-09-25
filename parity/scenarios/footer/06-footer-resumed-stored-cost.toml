@@ -1,0 +1,61 @@
+# Behavior family: footer
+#
+# Surface: footer usage totals on a resumed session (footer.ts:84-146,
+# usage-totals.ts addUsageToTotals). The footer sums every session entry's
+# stored usage, including usage.cost.total, and never re-prices it with the
+# active model. The "(sub)" marker follows the active model's subscription
+# login, and CH<rate>% is the latest assistant message's cache-hit rate.
+#
+# Hermeticity:
+#   - testdata/stored-cost-session/sessions holds one assistant message
+#     priced under anthropic/claude-opus-4-8 (stored cost.total 0.115).
+#     Both binaries resume it via `-c`.
+#   - --model github-copilot/claude-haiku-4.5 is a different, subscription
+#     model: testdata/{multi-pig,multi-pi}-agent hold fake Copilot OAuth
+#     credentials, so both show "(sub)". PiG formerly re-priced the stored
+#     tokens with the active model and printed a different cost.
+#
+# Upstream evidence (pi v0.87.1, probed 2026-09-23 with this fixture):
+#   Footer line 2 reads "↑10k ↓2.0k R30k CH75.0% $0.115 (sub) 21.0%/200k
+#   (auto)    (github-copilot) claude-haiku-4.5 • medium". PiG before this
+#   fix printed "↑10k ↓2.0k R30k $0.023 (sub)": the tokens re-priced at the
+#   active model's rates and no cache-hit segment.
+
+name = "06-footer-resumed-stored-cost"
+description = "footer sums the stored usage cost of a resumed session under a different active model"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/footer.ts",
+  "packages/coding-agent/src/core/usage-totals.ts",
+]
+
+tags = ["tui", "hermetic", "fixture-auth"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "$0.115 (sub)"
+ready_pattern_pi = "$0.115 (sub)"
+ready_timeout_seconds = 25
+capture_start = "↑10k"
+capture_end = "(sub)"
+settle_seconds = 2
+cwd = "testdata/stored-cost-session"
+
+[env]
+pig = [
+  "PIG_CODING_AGENT_DIR=testdata/multi-pig-agent",
+  "PATH={{FAKE_BIN}}:{{PATH}}",
+]
+pi = [
+  "PI_CODING_AGENT_DIR=testdata/multi-pi-agent",
+  "PATH={{FAKE_BIN}}:{{PATH}}",
+]
+pig_args = ["--no-extensions", "--model", "github-copilot/claude-haiku-4.5", "--session-dir", "sessions", "-c"]
+pi_args = ["--no-extensions", "--model", "github-copilot/claude-haiku-4.5", "--session-dir", "sessions", "-c"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["↑10k ↓2.0k R30k CH75.0% $0.115 (sub)"]
+escaped_output_equal = true
+runs = 3

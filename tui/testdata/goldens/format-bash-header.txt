@@ -1,0 +1,10 @@
+simple:
+[38;2;212;212;212m[1m$ ls -la[22m[39m
+ampersand:
+[38;2;212;212;212m[1m$ git add . && git commit -m 'fix'[22m[39m
+long:
+[38;2;212;212;212m[1m$ find /usr/local/lib -name '*.go' -type f -exec grep -l 'context' {} \; | sort | head -20[22m[39m
+empty:
+[38;2;212;212;212m[1m$ [38;2;128;128;128m...[39m[22m[39m
+timeout:
+[38;2;212;212;212m[1m$ sleep 10[22m[39m[38;2;128;128;128m (timeout 30s)[39m

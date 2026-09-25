@@ -1,0 +1,240 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Go comes from go.mod, Node from .node-version, and Pi from
+# coding/pigversion/pigversion.go. make compliance checks every other copy
+# of these pins.
+env:
+  NPM_VERSION: 12.0.2
+  RUST_VERSION: 1.97.1
+
+jobs:
+  dco:
+    name: DCO
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Check commit sign-offs
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: ./automation/ci/check-dco.sh "$BASE_SHA" "$HEAD_SHA"
+
+  linux:
+    name: Linux / ${{ matrix.shard }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [build, test-fast, test-cli, test-subprocess, test-conformance, sdk, extensions, race, integration, parity, drift, contracts, closure]
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: |
+            extensions/sdk-ts/package-lock.json
+            parity/interface-extractor/package-lock.json
+            automation/images/ci-parity/package-lock.json
+            automation/images/npm-runtime/package-lock.json
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Install parity toolchains
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes tmux fd-find ripgrep
+          rustup toolchain install "$RUST_VERSION" --profile minimal
+          rustup default "$RUST_VERSION"
+      - name: Install pinned npm
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --ignore-scripts "npm@$NPM_VERSION"
+          test "$(npm --version)" = "$NPM_VERSION"
+      - name: Prepare pinned Pi oracle
+        run: make upstream-mirror
+      - name: Verify toolchain identities
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(go env GOVERSION)" = "$(awk '$1 == "toolchain" { print $2; exit }' go.mod)"
+          test "$(node --version)" = "v$(cat .node-version)"
+          test "$(npm --version)" = "$NPM_VERSION"
+          test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
+          test "$(extensions/sdk-ts/node_modules/.bin/pi --version)" = "$(awk -F'"' '/^const UpstreamVersion = "/ { print $2; exit }' coding/pigversion/pigversion.go)"
+      - name: Run PiG verification shard
+        env:
+          CI: '1'
+          SHARD: ${{ matrix.shard }}
+        run: make "ci-$SHARD"
+
+  verify:
+    name: Linux verification
+    needs: [linux]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every Linux shard
+        env:
+          RESULT: ${{ needs.linux.result }}
+        run: test "$RESULT" = success
+
+  windows:
+    name: Windows extensions and native paths
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: extensions/sdk-ts/package-lock.json
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Select the qualified Rust toolchain
+        shell: pwsh
+        run: |
+          rustup toolchain install $env:RUST_VERSION --profile minimal
+          if ($LASTEXITCODE -ne 0) { throw "Rust toolchain installation failed" }
+          rustup default $env:RUST_VERSION
+          if ($LASTEXITCODE -ne 0) { throw "Rust toolchain selection failed" }
+      - name: Install native test tools
+        shell: pwsh
+        run: |
+          choco install fd ripgrep --yes --no-progress
+          if ($LASTEXITCODE -ne 0) { throw "Native test tool installation failed" }
+          # Chocolatey puts shims on PATH that find the real binary relative to
+          # their own location, so a copied or linked shim cannot run. Put the
+          # real binaries first, as users install them.
+          foreach ($tool in @('fd', 'ripgrep')) {
+            $exe = Get-ChildItem "$env:ChocolateyInstall\lib\$tool" -Recurse -Include fd.exe, rg.exe | Select-Object -First 1
+            if (-not $exe) { throw "$tool binary not found under Chocolatey lib" }
+            Add-Content -Path $env:GITHUB_PATH -Value $exe.DirectoryName
+          }
+          fd --version
+          if ($LASTEXITCODE -ne 0) { throw "fd is not available" }
+          rg --version
+          if ($LASTEXITCODE -ne 0) { throw "ripgrep is not available" }
+      - name: Install pinned Pi test oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install --global --ignore-scripts "npm@$NPM_VERSION"
+          test "$(npm --version)" = "$NPM_VERSION"
+          npm ci --prefix extensions/sdk-ts --ignore-scripts --no-audit --no-fund
+      - name: Mirror the pinned Pi source
+        # The extension host's parity tests read Pi's source from
+        # .upstream/current, as on Linux (make upstream-mirror).
+        shell: bash
+        env:
+          MSYS: winsymlinks:nativestrict
+        run: ./automation/gen/mirror-upstream.sh
+      - name: Build and test native Windows paths
+        shell: pwsh
+        run: |
+          $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig native acceptance'
+          New-Item -ItemType Directory -Force -Path $acceptanceRoot | Out-Null
+          $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
+          $env:PIG_CODING_AGENT_DIR = Join-Path $env:PIG_HOME 'agent'
+          go build -trimpath -o bin/pig.exe ./cmd/pig
+          if ($LASTEXITCODE -ne 0) { throw "Windows build failed" }
+          & .\bin\pig.exe --help | Out-Null
+          if ($LASTEXITCODE -ne 0) { throw "pig.exe --help failed" }
+          & .\bin\pig.exe --version
+          if ($LASTEXITCODE -ne 0) { throw "pig.exe --version failed" }
+          $env:PIG_TEST_FAUX = '1'
+          $printOutput = & .\bin\pig.exe --model test-faux/faux-1 --no-session --no-extensions --print 'What is 20+22?'
+          if ($LASTEXITCODE -ne 0 -or $printOutput -notmatch '42') { throw "Windows print smoke failed: $printOutput" }
+          '{"id":"state","type":"get_state"}' | & .\bin\pig.exe --mode rpc --model test-faux/faux-1 --no-session --no-extensions | Out-File -Encoding utf8 (Join-Path $acceptanceRoot 'rpc.jsonl')
+          if ($LASTEXITCODE -ne 0) { throw "Windows RPC smoke failed" }
+          if ((Get-Content -Raw (Join-Path $acceptanceRoot 'rpc.jsonl')) -notmatch '"type":"response"') { throw "Windows RPC response missing" }
+          go test ./ai ./internal/codingagent/tools ./tui
+          if ($LASTEXITCODE -ne 0) { throw "Windows tests failed" }
+      - name: Test Windows extension hosting and every SDK
+        shell: pwsh
+        env:
+          CARGO_BUILD_JOBS: '2'
+          PIG_REQUIRE_EXTENSION_TOOLCHAINS: '1'
+        run: |
+          $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig extension acceptance'
+          New-Item -ItemType Directory -Force -Path $acceptanceRoot | Out-Null
+          $env:TEMP = $acceptanceRoot
+          $env:TMP = $acceptanceRoot
+          $env:TMPDIR = $acceptanceRoot
+          $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
+          go test -v -timeout 30m ./coding/extension/host/runtimecell ./coding/extension/host/subprocess
+          if ($LASTEXITCODE -ne 0) { throw "Windows extension host tests failed" }
+          go test -v -timeout 30m ./tests/extension-conformance
+          if ($LASTEXITCODE -ne 0) { throw "Windows Go, Node, Rust, Python, or fused-Go extension conformance failed" }
+
+  macos:
+    name: macOS native
+    runs-on: macos-15
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: extensions/sdk-ts/package-lock.json
+      - name: Install native test tools and pinned Pi oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          brew install fd ripgrep
+          npm install --global --ignore-scripts "npm@$NPM_VERSION"
+          test "$(npm --version)" = "$NPM_VERSION"
+          npm ci --prefix extensions/sdk-ts --ignore-scripts --no-audit --no-fund
+      - name: Build and test native macOS paths
+        run: |
+          set -euo pipefail
+          go build -trimpath -o bin/pig ./cmd/pig
+          ./bin/pig --version
+          go test ./ai ./internal/codingagent/tools ./tui

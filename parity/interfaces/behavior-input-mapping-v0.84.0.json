@@ -1,0 +1,1254 @@
+{
+  "upstreamVersion": "0.84.0",
+  "mappings": [
+    {
+      "id": "input:packages/coding-agent/src/core/agent-session.ts#AgentSession._emitExtensionEvent",
+      "ownerFamily": "extensions-runtime",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/extensions/llama/ui.ts#HuggingFaceSearch.handleInput",
+      "ownerFamily": "llama-runtime",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/extensions/llama/ui.ts#LlamaView.handleInput",
+      "ownerFamily": "llama-runtime",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/bordered-loader.ts#BorderedLoader.handleInput",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.handleInput",
+      "ownerFamily": "selectors",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/custom-editor.ts#CustomEditor.handleInput",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/extension-editor.ts#ExtensionEditorComponent.handleInput",
+      "ownerFamily": "selectors",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/extension-input.ts#ExtensionInputComponent.handleInput",
+      "ownerFamily": "selectors",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/extension-selector.ts#ExtensionSelectorComponent.handleInput",
+      "ownerFamily": "selectors",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/first-time-setup.ts#FirstTimeSetupComponent.handleInput",
+      "ownerFamily": "startup",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/login-dialog.ts#LoginDialogComponent.handleInput",
+      "ownerFamily": "selectors",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.handleInput",
+      "ownerFamily": "model-resolver-selector",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/model-selector.ts#ModelSelectorComponent.refreshModels",
+      "ownerFamily": "model-resolver-selector",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/oauth-selector.ts#OAuthSelectorComponent.handleInput",
+      "ownerFamily": "selectors",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts#ScopedModelsSelectorComponent.handleInput",
+      "ownerFamily": "model-resolver-selector",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.handleInput",
+      "ownerFamily": "session",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionSelectorComponent.handleInput",
+      "ownerFamily": "session",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/settings-selector.ts#SelectSubmenu.handleInput",
+      "ownerFamily": "settings",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/settings-selector.ts#ThemeSubmenu.handleInput",
+      "ownerFamily": "settings",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/settings-selector.ts#WarningSettingsSubmenu.handleInput",
+      "ownerFamily": "settings",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.handleInput",
+      "ownerFamily": "tree",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#SearchLine.handleInput",
+      "ownerFamily": "tree",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.handleInput",
+      "ownerFamily": "tree",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeSelectorComponent.handleInput",
+      "ownerFamily": "tree",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/trust-selector.ts#TrustSelectorComponent.handleInput",
+      "ownerFamily": "project-trust",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/components/user-message-selector.ts#UserMessageList.handleInput",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.flushCompactionQueue",
+      "ownerFamily": "compaction",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.handleEvent",
+      "ownerFamily": "compaction",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.onExtensionShortcut",
+      "ownerFamily": "extensions-runtime",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setExtensionFooter",
+      "ownerFamily": "extensions-runtime",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.setupKeyHandlers",
+      "ownerFamily": "interactive-input",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionEditor",
+      "ownerFamily": "extensions-runtime",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionInput",
+      "ownerFamily": "extensions-runtime",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.showExtensionSelector",
+      "ownerFamily": "extensions-runtime",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/tui/src/components/cancellable-loader.ts#CancellableLoader.dispose",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/tui/src/components/cancellable-loader.ts#CancellableLoader.handleInput",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/tui/src/components/editor.ts#Editor.handleInput",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/tui/src/components/editor.ts#Editor.shouldSubmitOnBackslashEnter",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/tui/src/components/input.ts#Input.handleInput",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/tui/src/components/select-list.ts#SelectList.handleInput",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/tui/src/components/settings-list.ts#SettingsList.handleInput",
+      "ownerFamily": "settings",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/tui/src/keybindings.ts#KeybindingsManager.matches",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/tui/src/terminal-image.ts#<module>.detectCapabilities",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/tui/src/terminal.ts#ProcessTerminal.handleKeyboardProtocolNegotiationSequence",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.handleViewportInput",
+      "ownerFamily": "fullscreen",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "input:packages/tui/src/tui.ts#TuiBase.handleTerminalInput",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Input handler on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the state-machine contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    }
+  ],
+  "renderMappings": [
+    {
+      "id": "render:packages/ai/src/auth/oauth/oauth-page.ts#<module>.renderPage",
+      "ownerFamily": "oauth",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/export-html/tool-renderer.ts#<module>.renderCall",
+      "ownerFamily": "export-html",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/export-html/tool-renderer.ts#<module>.renderResult",
+      "ownerFamily": "export-html",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/bash.ts#<module>.render",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/bash.ts#<module>.renderCall",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/bash.ts#<module>.renderResult",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/edit.ts#<module>.renderCall",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/edit.ts#<module>.renderResult",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/find.ts#<module>.renderCall",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/find.ts#<module>.renderResult",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/grep.ts#<module>.renderCall",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/grep.ts#<module>.renderResult",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/ls.ts#<module>.renderCall",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/ls.ts#<module>.renderResult",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/read.ts#<module>.renderCall",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/read.ts#<module>.renderResult",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/render-utils.ts#<module>.renderToolPath",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/write.ts#<module>.renderCall",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/core/tools/write.ts#<module>.renderResult",
+      "ownerFamily": "tools",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/extensions/llama/ui.ts#LlamaView.render",
+      "ownerFamily": "llama-runtime",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/armin.ts#ArminComponent.render",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/assistant-message.ts#AssistantMessageComponent.render",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/bash-execution.ts#BashExecutionComponent.render",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ConfigSelectorHeader.render",
+      "ownerFamily": "selectors",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.render",
+      "ownerFamily": "selectors",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/config-selector.ts#ResourceList.renderCheckbox",
+      "ownerFamily": "selectors",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/daxnuts.ts#DaxnutsComponent.render",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/diff.ts#<module>.renderDiff",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/diff.ts#<module>.renderIntraLineDiff",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/dynamic-border.ts#DynamicBorder.render",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/footer.ts#FooterComponent.render",
+      "ownerFamily": "footer",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionList.render",
+      "ownerFamily": "session",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/session-selector.ts#SessionSelectorHeader.render",
+      "ownerFamily": "session",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/status-indicator.ts#IdleStatus.render",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/tool-execution.ts#ToolExecutionComponent.render",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#<module>.renderHorizontalViewport",
+      "ownerFamily": "tree",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#LabelInput.render",
+      "ownerFamily": "tree",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#SearchLine.render",
+      "ownerFamily": "tree",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeHelp.render",
+      "ownerFamily": "tree",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/tree-selector.ts#TreeList.render",
+      "ownerFamily": "tree",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/user-message-selector.ts#UserMessageList.render",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/components/user-message.ts#UserMessageComponent.render",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderCurrentSessionState",
+      "ownerFamily": "interactive-input",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderInitialMessages",
+      "ownerFamily": "extensions-runtime",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderProjectTrustWarningIfNeeded",
+      "ownerFamily": "interactive-input",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderSessionEntries",
+      "ownerFamily": "interactive-input",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderSessionItems",
+      "ownerFamily": "interactive-input",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderWidgetContainer",
+      "ownerFamily": "interactive-input",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/modes/interactive/interactive-mode.ts#InteractiveMode.renderWidgets",
+      "ownerFamily": "interactive-input",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/coding-agent/src/utils/syntax-highlight.ts#<module>.renderHighlightedHtml",
+      "ownerFamily": "interactive-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/alt-screen-flash.ts#AltScreenFlashContainer.render",
+      "ownerFamily": "fullscreen",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/box.ts#Box.render",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/editor.ts#Editor.render",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/h-stack.ts#HStack.render",
+      "ownerFamily": "fullscreen",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/image.ts#Image.render",
+      "ownerFamily": "clipboard-images",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/input.ts#Input.render",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/loader.ts#Loader.render",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/markdown.ts#Markdown.render",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderInlineTokens",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderList",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderTable",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/markdown.ts#Markdown.renderToken",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/scroll-view.ts#ScrollView.render",
+      "ownerFamily": "fullscreen",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/select-list.ts#SelectList.render",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/select-list.ts#SelectList.renderItem",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/settings-list.ts#SettingsList.render",
+      "ownerFamily": "settings",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/settings-list.ts#SettingsList.renderMainList",
+      "ownerFamily": "settings",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/spacer.ts#Spacer.render",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/text.ts#Text.render",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/truncated-text.ts#TruncatedText.render",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/components/v-stack.ts#VStack.render",
+      "ownerFamily": "fullscreen",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/latex.ts#<module>.renderLatex",
+      "ownerFamily": "markdown-rich-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/latex.ts#<module>.renderLayout",
+      "ownerFamily": "markdown-rich-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/latex.ts#LatexParser.render",
+      "ownerFamily": "markdown-rich-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/latex.ts#LatexParser.renderMatrix",
+      "ownerFamily": "markdown-rich-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/latex.ts#LatexParser.renderNested",
+      "ownerFamily": "markdown-rich-rendering",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/layout.ts#<module>.renderCached",
+      "ownerFamily": "fullscreen",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/layout.ts#<module>.renderLayoutFrame",
+      "ownerFamily": "fullscreen",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/terminal-image.ts#<module>.renderImage",
+      "ownerFamily": "clipboard-images",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.doRender",
+      "ownerFamily": "fullscreen",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.implicitDocument.render",
+      "ownerFamily": "fullscreen",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/tui-alt-screen.ts#TuiAltScreen.render",
+      "ownerFamily": "fullscreen",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/tui-main-screen.ts#TuiMainScreen.doRender",
+      "ownerFamily": "fullscreen",
+      "disposition": "ported",
+      "pigTargets": [
+        "tui/tui.go#doRender"
+      ],
+      "evidence": [
+        "tui/main_screen_upstream_parity_test.go#TestMainScreenFramesMatchPi084LogicalHistory",
+        "parity/scenarios/fullscreen/03-main-screen-history-redraw.toml",
+        "parity/scenarios/fullscreen/04-main-screen-assistant-streaming.toml",
+        "parity/scenarios/fullscreen/05-main-screen-tool-streaming.toml",
+        "parity/scenarios/fullscreen/06-main-screen-tool-settled.toml",
+        "parity/scenarios/fullscreen/07-main-screen-editor-growth.toml",
+        "parity/scenarios/fullscreen/08-main-screen-editor-shrink.toml",
+        "parity/scenarios/fullscreen/09-main-screen-compaction-in-progress.toml",
+        "parity/scenarios/fullscreen/10-main-screen-compaction-settled.toml"
+      ],
+      "contracts": [
+        "tui/render/main-screen-full-redraw"
+      ],
+      "rationale": "Pig matches Pi 0.84.0: a change above the visible viewport clears obsolete physical history and replays the current logical transcript once."
+    },
+    {
+      "id": "render:packages/tui/src/tui.ts#Container.render",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/tui.ts#TuiBase.renderNow",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/utils.ts#<module>.breakLongWord",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/utils.ts#<module>.splitIntoTokensWithAnsi",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/utils.ts#<module>.truncateToWidth",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/utils.ts#<module>.visibleWidth",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/utils.ts#<module>.wrapSingleLine",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    },
+    {
+      "id": "render:packages/tui/src/utils.ts#<module>.wrapTextWithAnsi",
+      "ownerFamily": "tui-components",
+      "disposition": "deferred",
+      "pigTargets": [],
+      "evidence": [],
+      "contracts": [],
+      "rationale": "Render surface on a reconciled surface with an assigned owner family. Under the ratified loosened bar this interaction row is accepted tracked risk -- the owning pig target is mapped and file-level covered but the render contract is not yet independently proven -- to tighten toward ported with a failing regression and scenario over time."
+    }
+  ]
+}

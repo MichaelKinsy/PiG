@@ -1,0 +1,75 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+
+name: Feature request
+description: Propose a PiG capability or compatibility improvement
+title: "feature: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Explain the user problem before proposing implementation details.
+        PiG follows observable upstream Pi behavior unless an approved divergence applies.
+        Do not include credentials, customer data, private configuration, or internal-only endpoints.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Describe the user problem and who encounters it.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Required outcome
+      description: Describe the observable result that would solve the problem.
+    validations:
+      required: true
+  - type: dropdown
+    id: scope
+    attributes:
+      label: Scope
+      description: Identify the project boundary this proposal changes.
+      options:
+        - Upstream-parity core behavior
+        - Intentional PiG divergence
+        - Additive extension or optional resource
+        - Build, release, documentation, or project infrastructure
+        - Unsure
+    validations:
+      required: true
+  - type: textarea
+    id: upstream
+    attributes:
+      label: Upstream relationship
+      description: Link the corresponding pinned Pi source or observed behavior. If no equivalent exists, explain why the feature belongs outside parity-bound core.
+    validations:
+      required: true
+  - type: textarea
+    id: divergence
+    attributes:
+      label: Divergence impact
+      description: Identify an existing DIVERGENCES.md entry, propose why a new reviewed divergence is necessary, or state “None.”
+    validations:
+      required: true
+  - type: textarea
+    id: verification
+    attributes:
+      label: Acceptance evidence
+      description: Describe the user-path test, parity scenario, comparator, invalid inputs, and failure paths that would prove the outcome.
+    validations:
+      required: true
+  - type: textarea
+    id: supply_chain
+    attributes:
+      label: Security, licensing, and supply-chain impact
+      description: List new dependencies, copied or generated material, network access, secrets, permissions, persisted formats, release artifacts, and supported platforms. State “None” only after checking each category.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: List existing behavior or simpler options that do not solve the problem.

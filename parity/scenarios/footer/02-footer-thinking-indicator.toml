@@ -1,0 +1,83 @@
+# Behavior family: footer
+#
+# Surface: thinking level indicator on footer line 2 right side.
+#
+# When the active model has reasoning capability, the footer appends
+# the thinking level to the model name. For level "medium" (the default):
+#   "<model> • medium"
+# For level "off":
+#   "<model> • thinking off"
+#
+# Upstream evidence (pi v0.69.0, this loop 2026-05-15):
+# ──────────────────────────────────────────────────────────────────────
+#
+#   command: PI_CODING_AGENT_DIR=parity/scenarios/footer/testdata/thinking-pi-agent \
+#            pi --no-extensions --model github-copilot/claude-sonnet-4
+#   tmux:    100×35
+#   keys:    none (idle capture after boot)
+#   ready:   "$0.000"
+#   crop:    capture_start = "parity-snap-cwd-", capture_start_last = true
+#
+#   raw cropped upstream block (plain, ANSI stripped):
+#
+#     <working-directory>
+#     $0.000 (sub) 0.0%/216k (auto)                                               claude-sonnet-4 • medium
+#
+#   Upstream renders the thinking level as plain text; no per-level
+#   coloring. The entire line 2 is wrapped in theme.fg("dim").
+#
+# Bug fixed this loop: pig's initThinkingLevel() was not updating the
+# status line's thinkingLevel field, leaving it at "" which defaulted
+# to "off" in renderFooter. Fixed by adding statusLine.SetThinkingLevel
+# in initThinkingLevel().
+#
+# Bug fixed this loop: pig was coloring the thinking level text with
+# per-level theme colors (ThinkingOff, ThinkingMedium, etc.) but
+# upstream footer.ts does NOT color the thinking level: it's plain
+# text wrapped in the overall dim. Removed per-level coloring from
+# renderFooter.
+#
+# The runner launches both binaries in same-length copies of the default cwd fixture and masks only the random digits. The crop retains both complete footer rows. The canonical cwd plus configured branch must fit the terminal width without HOME abbreviation; the runner rejects longer roots before launch and asks for a shorter TMPDIR or wider tmux.width. Re-probing pinned Pi with a long external TMPDIR confirms that its cwd row truncates before the snapshot-name anchor, while the stats row remains unchanged.
+
+name = "02-footer-thinking-indicator"
+description = "Reasoning model shows thinking level ('medium') on the footer right side."
+
+covers = [
+  "packages/coding-agent/src/core/defaults.ts",
+  "packages/coding-agent/src/modes/interactive/components/footer.ts",
+]
+# defaults.ts: the DefaultThinkingLevel = "medium" constant is used as the
+# initial thinking level when no settings override is set. The footer asserts
+# "medium" appears; if the default changed, the assertion would break.
+
+tags = ["fast", "tui", "requires-auth"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 20
+capture_start = "parity-snap-cwd-"
+capture_start_last = true
+settle_seconds = 2
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../footer/testdata/thinking-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../footer/testdata/thinking-pi-agent"]
+pig_args = ["--no-extensions", "--model", "github-copilot/claude-sonnet-4.6"]
+pi_args = ["--no-extensions", "--model", "github-copilot/claude-sonnet-4.6"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["claude-sonnet-4.6", "medium", "0.0%/1.0M (auto)"]
+both_match_regex = ['claude-sonnet-4\.6 . medium']
+both_not_contain = [
+  "thinking medium",    # level "medium" renders as "model • medium", not "model • thinking medium"
+  "panic:",
+  "goroutine ",
+]
+escaped_output_equal = true
+runtime_ratio_max = 1.50
+runs = 3

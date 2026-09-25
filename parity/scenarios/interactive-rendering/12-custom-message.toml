@@ -1,0 +1,58 @@
+# Behavior family: interactive-rendering
+# Surface: CustomMessageComponent: `[customType]` block rendered when
+#          resuming a session containing a custom_message entry with display=true.
+#
+# Upstream evidence (pi v0.69.0, 2026-05-16, 100x35 tmux probe):
+#   Session fixture: testdata/custom-msg-cwd/sessions/...jsonl
+#   (header + user:Hello world + assistant:Hi there + custom_message:testNotice)
+#   pi -e test-faux-provider.ts --model test-faux/faux-1 --session-dir sessions -c
+#   wait: ready
+#   crop: capture_start="[testNotice]", capture_end="extension."
+#   raw cropped upstream block:
+#
+#      [testNotice]
+#
+#      This is a custom notice from an extension.
+#
+# Root-cause fix in this loop:
+#   pig's rebuildChatFromSession session-entry walker had no case for
+#   "custom_message" entries. Added rendering via CustomMessageComponent
+#   (mirroring upstream addMessageToChat case "custom" check for
+#   message.display → CustomMessageComponent).
+#   Also fixed CustomMessageComponent.Render() to apply paintBgWith +
+#   paddingX=1 indent matching upstream's Box(1,1,bgFn) pattern.
+
+name = "12-custom-message"
+description = "CustomMessageComponent renders [customType] block on session resume with pre-staged custom_message entry (display=true)."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/custom-msg-cwd"
+capture_start = "[testNotice]"
+capture_end = "extension."
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "unknown command"]
+both_contain = ["[testNotice]", "custom notice from an extension"]
+# The theme-owned background and foreground now match the exact Pi cell styles.
+escaped_output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

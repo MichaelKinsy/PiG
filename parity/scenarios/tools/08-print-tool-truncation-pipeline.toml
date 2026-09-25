@@ -1,0 +1,46 @@
+# Behavior family: tools
+# Scenario: print-mode bash tool with long command triggers truncation.
+#
+# Faux provider receives a bash tool call prompt. The bash tool executes
+# a command that produces multi-line output. Both binaries process the
+# tool output through the truncation pipeline and produce the same
+# final text from the faux provider.
+#
+# This scenario tests the tool output truncation path (truncate.ts /
+# truncate.go) and the render utils that format tool results
+# (render-utils.ts / tool_render.go): specifically that truncation
+# does not corrupt the tool result sent back to the LLM, which would
+# cause the faux provider to produce different final text.
+#
+# The prompt triggers bash(command: "expr 20 + 22") which outputs "42",
+# proving the full path: tool schema → argument parsing → execution →
+# result formatting → truncation → LLM re-submission → final text.
+#
+# Upstream evidence (2026-05-15):
+#   Both binaries output: "42"
+
+name = "08-print-tool-truncation-pipeline"
+description = "Tool output passes through truncation pipeline identically in both binaries"
+covers = [
+  "packages/coding-agent/src/core/tools/truncate.ts",
+  "packages/coding-agent/src/core/tools/render-utils.ts",
+  "packages/agent/src/harness/utils/shell-output.ts",
+  "packages/agent/src/harness/utils/truncate.ts",
+  "packages/coding-agent/src/core/tools/output-accumulator.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: expr 20 + 22"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["42"]
+output_equal = true

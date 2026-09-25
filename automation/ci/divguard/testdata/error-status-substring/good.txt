@@ -1,0 +1,23 @@
+// divguard:path internal/codingagent/interactive_turn.go
+
+package codingagent
+
+import (
+	"errors"
+	"strings"
+)
+
+type statusError struct{ Status int }
+
+func (e *statusError) Error() string { return "request failed" }
+
+// describe classifies by the provider's status field.
+func describe(err error, modelID string) string {
+	if se, ok := errors.AsType[*statusError](err); ok && se.Status == 401 {
+		return "Authentication failed. Run /login."
+	}
+	if strings.Contains(modelID, "400") {
+		return "model id mentions 400"
+	}
+	return err.Error()
+}

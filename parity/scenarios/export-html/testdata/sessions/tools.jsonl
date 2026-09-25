@@ -1,0 +1,7 @@
+{"type":"session","id":"test-tools","cwd":"/tmp","timestamp":"2026-05-10T12:00:00Z","model":"test/model","version":"0.69.0"}
+{"type":"message","id":"u1","parentId":null,"timestamp":"2026-05-10T12:00:01Z","message":{"role":"user","content":[{"type":"text","text":"List files and read one"}]}}
+{"type":"message","id":"a1","parentId":"u1","timestamp":"2026-05-10T12:00:02Z","message":{"role":"assistant","content":[{"type":"text","text":"I'll list the files."},{"type":"toolCall","id":"call-ls","name":"bash","arguments":{"command":"ls /tmp/test"}}]}}
+{"type":"message","id":"r1","parentId":"a1","timestamp":"2026-05-10T12:00:03Z","message":{"role":"toolResult","toolCallId":"call-ls","toolName":"bash","content":[{"type":"text","text":"file1.txt\nfile2.txt\n"}],"isError":false}}
+{"type":"message","id":"a2","parentId":"r1","timestamp":"2026-05-10T12:00:04Z","message":{"role":"assistant","content":[{"type":"text","text":"Now reading file1."},{"type":"toolCall","id":"call-read","name":"read","arguments":{"path":"file1.txt"}}]}}
+{"type":"message","id":"r2","parentId":"a2","timestamp":"2026-05-10T12:00:05Z","message":{"role":"toolResult","toolCallId":"call-read","toolName":"read","content":[{"type":"text","text":"Hello from file1.\nSecond line.\n"}],"isError":false}}
+{"type":"message","id":"a3","parentId":"r2","timestamp":"2026-05-10T12:00:06Z","message":{"role":"assistant","content":[{"type":"text","text":"Found 2 files. file1.txt contains a greeting."}]}}

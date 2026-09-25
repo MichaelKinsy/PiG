@@ -1,0 +1,3 @@
+before line
+REPLACE_ME
+after line

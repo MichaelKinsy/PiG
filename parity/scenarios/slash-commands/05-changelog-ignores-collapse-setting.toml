@@ -1,0 +1,64 @@
+# Behavior family: slash-commands
+# Surface: /changelog ignores collapse-changelog and still renders parsed release entries
+#
+# Upstream evidence (Pi 0.84.0, 2026-08-07, single-scenario probe):
+#   command: PI_CODING_AGENT_DIR=parity/scenarios/slash-commands/testdata/pi-agent-collapse pi --no-extensions --session-dir {{TEMP}}/sessions
+#   keys: /changelog Enter
+#   ready_pattern: "Warning: No models available."
+#   pane size: 200x300 (wide enough that the 0.84.0 entry and header coexist)
+#   wait: rendered changelog header prefix "[0."
+#   raw upstream markers:
+#     - output does NOT contain startup-style condensed text like "Updated to v..."
+#     - output DOES contain parsed release-entry headers such as "[0.84.0]"
+#     - output does NOT contain "Unreleased"
+#
+# The bundled CHANGELOG.md differs between pig and pi, so equality on the
+# full rendered block is impossible. The strongest honest shared comparator is:
+#   - both outputs must match a semantic-version changelog header from parsed content
+#   - neither output may fall back to startup-style condensed changelog text
+#   - neither output may leak the skipped "Unreleased" header
+# lint-known-gap: output_equal/output_normalized_equal would compare two different
+# bundled changelog documents, not the shared parser behavior this scenario asserts.
+
+name = "05-changelog-ignores-collapse-setting"
+description = "With collapse-changelog enabled, /changelog still renders parsed release entries instead of condensed startup text."
+covers = [
+  "packages/coding-agent/src/utils/changelog.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 200
+height = 300
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+
+[[tmux.steps]]
+keys = ["/changelog", "Enter"]
+settle_seconds = 2
+wait_contains = ["[0."]
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-collapse"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-collapse"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = [
+  "unknown command",
+  "panic:",
+  "goroutine ",
+  "Updated to v",
+  "Disable collapse-changelog",
+  "Unreleased",
+  "No changelog entries found",
+]
+both_match_regex = [
+  "(?m)^\\s*\\[\\d+\\.\\d+\\.\\d+\\]",
+]
+runs = 1

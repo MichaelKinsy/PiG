@@ -1,0 +1,33 @@
+# Behavior family: providers-faux-streaming
+# Surface: retryable assistant-error classification and print-mode retry loop.
+#
+# Upstream evidence (pi v0.80.3): retry.ts classifies provider messages such as
+# "please retry your request" as retryable. With retry.enabled and maxRetries=1,
+# the faux provider fails the first identical prompt and returns retry-ok on the
+# retry. Both binaries must print only the successful final text.
+
+name = "08-print-faux-auto-retry"
+description = "Retryable provider errors are classified and retried once before print-mode output."
+covers = [
+  "packages/ai/src/utils/retry.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/retry-pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/retry-pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Trigger: retryable provider error"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["retry-ok"]
+both_not_contain = ["please retry your request", "test-faux: unhandled request", "panic:"]
+output_equal = true
+runs = 3

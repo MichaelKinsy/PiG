@@ -1,0 +1,56 @@
+# Behavior family: tui-components
+# Surface: widthx.VisibleWidth + WrapTextWithAnsi with CJK double-width chars
+#
+# Upstream evidence (Pi 0.83.0):
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   send: "reply with exactly: 日本語テスト hello world 你好世界 test" Enter
+#   wait: 3s
+#   CJK characters are 2 columns each. The 32-column terminal forces wrapping;
+#   counting them as one column produces a different line boundary.
+#
+# "日本語テスト" = 6 chars × 2 cols = 12 cols
+# " hello world " = 12 cols
+# "你好世界" = 4 chars × 2 cols = 8 cols
+# " test" = 5 cols
+# Total: 12+12+8+5 = 37 cells before renderer margins.
+#
+# The narrow terminal makes the assertion sensitive to CJK cell width rather
+# than merely checking that an ample-width line is preserved.
+
+name = "06-widthx-cjk-double-width"
+description = "CJK double-width characters render at correct column positions via widthx."
+covers = [
+  "packages/tui/src/utils.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 32
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "日本語テスト"
+capture_end = "test"
+
+[[tmux.steps]]
+keys = ["reply with exactly: 日本語テスト hello world 你好世界 test", "Enter"]
+settle_seconds = 4
+wait_contains = ["日本語テスト", "你好世界"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3

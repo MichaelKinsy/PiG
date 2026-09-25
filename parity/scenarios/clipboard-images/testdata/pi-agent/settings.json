@@ -1,0 +1,8 @@
+{
+  "lastChangelogVersion": "0.83.0",
+  "defaultProjectTrust": "always",
+  "compaction": {
+    "enabled": false
+  },
+  "theme": "light"
+}

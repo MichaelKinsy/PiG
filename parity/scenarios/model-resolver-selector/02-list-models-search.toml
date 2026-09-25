@@ -1,0 +1,36 @@
+# Behavior family: model-resolver-selector
+# Surface: --list-models <search> fuzzy filtering.
+#
+# Exact Pi 0.83.0 probe (2026-08-04):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent-local pi --no-extensions --offline --list-models two
+#
+#   provider  model      context  max-out  thinking  images
+#   fixture   model-two  200K     8.2K     yes       yes
+#
+# This local fixture avoids auth/network variability and equality proves the
+# production fuzzy-filter path plus table formatting for the selected result.
+
+name = "02-list-models-search"
+description = "Both binaries fuzzy-filter the local model catalog to the same exact table."
+covers = [
+  "packages/coding-agent/src/cli/args.ts",
+  "packages/coding-agent/src/cli/list-models.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[cli]
+args = ["--list-models", "two"]
+timeout_seconds = 15
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-local"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-local"]
+pig_args = ["--no-extensions", "--offline"]
+pi_args = ["--no-extensions", "--offline"]
+
+[assert]
+output_equal = true
+both_not_contain = ["model-one", "panic:", "goroutine ", "Warning:"]
+runtime_ratio_max = 2.0
+runs = 3

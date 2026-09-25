@@ -1,0 +1,52 @@
+# Behavior family: slash-commands
+# Surface: /new creates a fresh session with confirmation message
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   command: PI_CODING_AGENT_DIR=parity/scenarios/slash-commands/testdata/pi-agent pi --no-extensions --session-dir /tmp/pi-probe-new
+#   keys: /new Enter
+#   ready_pattern: "Warning: No models available."
+#   raw upstream output (after /new):
+#
+#     ✓ New session started
+#
+# Both binaries show "✓ New session started" after /new.
+# Upstream renders it as accent-colored text via
+# Text(`${theme.fg("accent", "✓ New session started")}`, 1, 1).
+# PiG renders via sc.Append("✓ New session started").
+# The text content is identical.
+
+name = "03-new-session"
+description = "Both binaries show '✓ New session started' after /new."
+covers = [
+  "packages/coding-agent/src/core/slash-commands.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "✓ New session started"
+capture_end = "✓ New session started"
+
+[[tmux.steps]]
+keys = ["/new", "Enter"]
+wait_contains = ["✓ New session started"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
+runs = 1

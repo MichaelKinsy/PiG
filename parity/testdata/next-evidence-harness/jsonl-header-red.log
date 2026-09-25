@@ -1,0 +1,15 @@
+$ go test ./agent/harness/session -run '^TestHarnessJSONLHeaderRepositoryRoundTrip$' -count=1 -json
+exit: 1
+Go test Output events follow verbatim; top-level completion events retain elapsed seconds.
+=== RUN   TestHarnessJSONLHeaderRepositoryRoundTrip
+=== PAUSE TestHarnessJSONLHeaderRepositoryRoundTrip
+=== CONT  TestHarnessJSONLHeaderRepositoryRoundTrip
+    team_harness_jsonl_types_test.go:34: mismatch
+         got: {"createdAt":1234,"cwd":"/workspace","format":4,"id":"schema","kind":"header","parentSessionId":"parent","storageVersion":1}
+        want: {"createdAt":1234,"cwd":"/workspace","id":"schema","kind":"header","parentSessionId":"parent","storageVersion":1,"v":4}
+--- FAIL: TestHarnessJSONLHeaderRepositoryRoundTrip (0.00s)
+FAIL
+FAIL	github.com/MichaelKinsy/PiG/agent/harness/session	0.031s
+
+Top-level completion events:
+{"Time": "2026-09-24T22:01:01.426655242-07:00", "Action": "fail", "Package": "github.com/MichaelKinsy/PiG/agent/harness/session", "Test": "TestHarnessJSONLHeaderRepositoryRoundTrip", "Elapsed": 0}

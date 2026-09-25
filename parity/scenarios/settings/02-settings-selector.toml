@@ -1,0 +1,49 @@
+# Behavior family: settings
+# Surface: main /settings selector overlay
+#
+# Upstream evidence (Pi 0.84.0, 2026-08-07, re-probed through the
+# interactive-tmux production path at 100×35): `/settings`, Enter. The current
+# selector contains 28 non-image-capability entries; the crop from Auto-compact
+# through the help line is byte- and escape-equal to Pig.
+
+name = "02-settings-selector"
+description = "Both binaries render the main /settings selector block exactly."
+covers = [
+  "packages/coding-agent/src/core/settings-manager.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+  "packages/tui/src/components/settings-list.ts",
+  "packages/tui/src/terminal.ts",
+  "packages/tui/src/tui.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "Auto-compact"
+capture_end = "Type to search · Enter/Space to change · Esc to cancel"
+
+[[tmux.steps]]
+keys = ["/settings", "Enter"]
+wait_contains = [">", "Type to search · Enter/Space to change · Esc to cancel"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+escaped_output_equal = true
+runtime_ratio_max = 1.25
+runs = 1

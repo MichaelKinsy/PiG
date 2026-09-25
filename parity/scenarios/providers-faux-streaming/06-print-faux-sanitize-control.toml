@@ -1,0 +1,44 @@
+# Behavior family: providers-faux-streaming
+# Scenario: faux provider triggers bash with control-char output.
+# The bash tool executor runs `printf 'hello\x01\x02world'` which
+# produces bytes with control characters (0x01, 0x02). Both binaries
+# sanitize the output via SanitizeBinaryOutput / sanitizeBinaryOutput
+# before passing it back as a tool result. Faux sees the sanitized
+# result and responds "sanitized".
+#
+# This exercises sanitize-unicode.ts (upstream) / sanitize.go (pig).
+#
+# Upstream evidence (2026-05-17):
+#   cd /tmp/parity-probe-faux
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts \
+#     --model test-faux/faux-1 --print "Run: bash control-chars"
+#   output: "sanitized"
+#   exit: 0
+#
+#   PIG_TEST_FAUX=1 PIG_HOME=testdata/pig-home PIG_QUIET_STARTUP=1 \
+#     pig --no-extensions --model test-faux/faux-1 --print "Run: bash control-chars"
+#   output: "sanitized"
+#   exit: 0
+
+name = "06-print-faux-sanitize-control"
+description = "Bash outputs control chars → both sanitize identically → faux responds 'sanitized'"
+covers = [
+  "packages/ai/src/utils/sanitize-unicode.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: bash control-chars"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["sanitized"]
+output_equal = true
+runs = 3

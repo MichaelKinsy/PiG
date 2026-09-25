@@ -1,0 +1,13 @@
+>
+
+→ Auto-compact  false
+  Show images   true
+  Theme         auto
+  Thinking      off
+  Transport     sse
+
+  Automatically compact context when it gets too
+  large
+
+  Type to search · Enter/Space to change · Esc to canc
+

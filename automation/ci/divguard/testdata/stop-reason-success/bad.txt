@@ -1,0 +1,40 @@
+// divguard:path ai/anthropic.go
+
+package ai
+
+type StopReason string
+
+const (
+	StopReasonStop   StopReason = "stop"
+	StopReasonLength StopReason = "length"
+	StopReasonError  StopReason = "error"
+)
+
+// mapAnthStopReason reproduces AI-01: model_context_window_exceeded ends the
+// turn as a clean stop with no error and no compaction.
+func mapAnthStopReason(reason string) StopReason {
+	switch reason {
+	case "end_turn":
+		return StopReasonStop
+	case "max_tokens":
+		return StopReasonLength
+	default: // want
+		return StopReasonStop
+	}
+}
+
+type builder struct{}
+
+func (b *builder) done(StopReason, string) {}
+
+// finish reproduces AI-05 and AI-06.
+func finish(b *builder, reason StopReason, data string) {
+	if reason == "" { // want
+		reason = StopReasonStop
+	}
+	if data == "[DONE]" { // want
+		b.done(StopReasonStop, "")
+		return
+	}
+	b.done(reason, "")
+}

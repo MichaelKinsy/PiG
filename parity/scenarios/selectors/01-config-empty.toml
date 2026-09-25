@@ -1,0 +1,72 @@
+# Behavior family: selectors
+# Surface: `pi config` / `pig config` with no resources
+#
+# Upstream evidence (pi v0.81.1, probed in tmux 100×35):
+#   command: PI_CODING_AGENT_DIR=testdata/pi-agent pi config
+#   ready: "Global Resources"
+#   crop: start="Global Resources" end="No resources found"
+#   raw cropped upstream block:
+#
+#     Global Resources                                          tab switch mode · space toggle · esc close
+#     ~/.pi/agent/settings.json
+#
+#     >
+#
+#       No resources found
+#
+# The top-level `pi config` command is the user-facing entry into the
+# `ConfigSelectorComponent`. Both binaries open the overlay, render the
+# 0.81 write-scope header line ("Global Resources … tab switch mode · space
+# toggle · esc close"), the global settings subtitle, an empty Input prompt
+# (`>`), and the empty-state message. The borders frame the overlay top and
+# bottom.
+
+name = "01-config-empty"
+description = "Both binaries open the resource configuration overlay with an empty agent dir."
+covers = [
+  "packages/coding-agent/src/cli/config-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/config-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "Global Resources"
+ready_pattern_pi = "Global Resources"
+ready_timeout_seconds = 15
+capture_start = "Global Resources"
+capture_end = "No resources found"
+settle_seconds = 1
+cwd = "testdata/empty-project"
+
+[env]
+override_base_args = true
+pig = ["PIG_HOME=testdata/pig-home", "HOME=testdata/home-empty"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "HOME=testdata/home-empty"]
+pig_args = ["config"]
+pi_args = ["config"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "unknown command"]
+both_contain = [
+  "Global Resources",
+  "tab switch mode",
+  "space",
+  "toggle",
+  "esc",
+  "close",
+  "No resources found",
+]
+output_normalized_equal = true
+runtime_ratio_max = 1.40
+runs = 1
+
+# D2: Pig reports its real config root while Pi reports its own. Fold only the
+# product name so the complete selector output remains compared.
+# normalize-rationale: D2 config-root names differ by binary.
+[[assert.normalize_replace]]
+pattern = '~/\.pig/agent/'
+with    = '~/.pi/agent/'

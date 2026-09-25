@@ -1,0 +1,5 @@
+--- a/tui/alt_screen_flash.go
++++ b/tui/alt_screen_flash.go
+@@ -91 +91 @@
+-		message := widthx.TruncateToWidth(" "+entry.message+" ", width, "", false)
++		message := widthx.TruncateToWidth(" "+entry.message+" ", width+1, "", false)

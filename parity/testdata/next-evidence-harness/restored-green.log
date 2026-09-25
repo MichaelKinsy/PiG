@@ -1,0 +1,305 @@
+$ go test ./internal/codingagent/tools ./agent/harness/session ./agent/harness/pico3 -run '^TestHarness(Image|JSONL|Pico)' -count=1 -json
+exit: 0
+Go test Output events follow verbatim; top-level completion events retain elapsed seconds.
+=== RUN   TestHarnessJSONLHeaderRepositoryRoundTrip
+=== PAUSE TestHarnessJSONLHeaderRepositoryRoundTrip
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen
+=== PAUSE TestHarnessJSONLInvalidHeaderRepositoryOpen
+=== CONT  TestHarnessJSONLHeaderRepositoryRoundTrip
+=== CONT  TestHarnessJSONLInvalidHeaderRepositoryOpen
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/wrong-format
+=== RUN   TestHarnessImageMagicBoundaries
+=== PAUSE TestHarnessImageMagicBoundaries
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth
+=== PAUSE TestHarnessImageBMPPlanesAndBitDepth
+=== CONT  TestHarnessImageMagicBoundaries
+=== RUN   TestHarnessImageMagicBoundaries/empty
+=== CONT  TestHarnessImageBMPPlanesAndBitDepth
+--- PASS: TestHarnessImageMagicBoundaries/empty (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/jpeg-prefix-short
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp0/planes0
+--- PASS: TestHarnessImageMagicBoundaries/jpeg-prefix-short (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/jpeg-prefix-only
+--- PASS: TestHarnessImageMagicBoundaries/jpeg-prefix-only (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/jpeg
+--- PASS: TestHarnessImageMagicBoundaries/jpeg (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/jpeg-ls
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp0/planes0 (0.00s)
+--- PASS: TestHarnessImageMagicBoundaries/jpeg-ls (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp0/planes1
+=== RUN   TestHarnessImageMagicBoundaries/png-signature-only
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp0/planes1 (0.00s)
+--- PASS: TestHarnessImageMagicBoundaries/png-signature-only (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp0/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp0/planes2 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/png-short-ihdr
+--- PASS: TestHarnessImageMagicBoundaries/png-short-ihdr (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp1/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp1/planes0 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/png-minimal-ihdr
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp1/planes1
+--- PASS: TestHarnessImageMagicBoundaries/png-minimal-ihdr (0.00s)
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp1/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp1/planes2
+=== RUN   TestHarnessImageMagicBoundaries/png-wrong-length
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp1/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp4/planes0
+--- PASS: TestHarnessImageMagicBoundaries/png-wrong-length (0.00s)
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp4/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp4/planes1
+=== RUN   TestHarnessImageMagicBoundaries/png-wrong-first-chunk
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp4/planes1 (0.00s)
+--- PASS: TestHarnessImageMagicBoundaries/png-wrong-first-chunk (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp4/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp4/planes2 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/png-actl-before-idat
+--- PASS: TestHarnessImageMagicBoundaries/png-actl-before-idat (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp7/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp7/planes0 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/png-actl-after-idat
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp7/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp7/planes1 (0.00s)
+--- PASS: TestHarnessImageMagicBoundaries/png-actl-after-idat (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp7/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp7/planes2 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/png-skips-other-chunks
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp8/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp8/planes0 (0.00s)
+--- PASS: TestHarnessImageMagicBoundaries/png-skips-other-chunks (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp8/planes1
+=== RUN   TestHarnessImageMagicBoundaries/png-truncated-chunk
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp8/planes1 (0.00s)
+--- PASS: TestHarnessImageMagicBoundaries/png-truncated-chunk (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp8/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp8/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp16/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp16/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp16/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp16/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp16/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp16/planes2 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/png-overflow-length
+--- PASS: TestHarnessImageMagicBoundaries/png-overflow-length (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/gif87
+--- PASS: TestHarnessImageMagicBoundaries/gif87 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/gif89
+--- PASS: TestHarnessImageMagicBoundaries/gif89 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp24/planes0
+=== RUN   TestHarnessImageMagicBoundaries/gif-short
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp24/planes0 (0.00s)
+--- PASS: TestHarnessImageMagicBoundaries/gif-short (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp24/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp24/planes1 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/gif-text
+--- PASS: TestHarnessImageMagicBoundaries/gif-text (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp24/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp24/planes2 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/webp
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp32/planes0
+--- PASS: TestHarnessImageMagicBoundaries/webp (0.00s)
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp32/planes0 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/webp-short
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp32/planes1
+--- PASS: TestHarnessImageMagicBoundaries/webp-short (0.00s)
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp32/planes1 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/riff-not-webp
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp32/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp32/planes2 (0.00s)
+--- PASS: TestHarnessImageMagicBoundaries/riff-not-webp (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp64/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp64/planes0 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/webp-not-riff
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp64/planes1
+--- PASS: TestHarnessImageMagicBoundaries/webp-not-riff (0.00s)
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp64/planes1 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/bmp-short
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp64/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib12/bpp64/planes2 (0.00s)
+--- PASS: TestHarnessImageMagicBoundaries/bmp-short (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp0/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp0/planes0 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/bmp-info-short
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp0/planes1
+--- PASS: TestHarnessImageMagicBoundaries/bmp-info-short (0.00s)
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp0/planes1 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/bmp-core-minimal
+--- PASS: TestHarnessImageMagicBoundaries/bmp-core-minimal (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp0/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp0/planes2 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/bmp-declared-small
+--- PASS: TestHarnessImageMagicBoundaries/bmp-declared-small (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp1/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp1/planes0 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/bmp-offset-overlaps-header
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp1/planes1
+--- PASS: TestHarnessImageMagicBoundaries/bmp-offset-overlaps-header (0.00s)
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp1/planes1 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/bmp-offset-equals-file-size
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp1/planes2
+--- PASS: TestHarnessImageMagicBoundaries/bmp-offset-equals-file-size (0.00s)
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp1/planes2 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/bmp-offset-beyond-file-size
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp4/planes0
+--- PASS: TestHarnessImageMagicBoundaries/bmp-offset-beyond-file-size (0.00s)
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp4/planes0 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/bmp-unsupported-dib
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp4/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp4/planes1 (0.00s)
+--- PASS: TestHarnessImageMagicBoundaries/bmp-unsupported-dib (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp4/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp4/planes2 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/bmp-dib-too-large
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp7/planes0
+--- PASS: TestHarnessImageMagicBoundaries/bmp-dib-too-large (0.00s)
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp7/planes0 (0.00s)
+=== RUN   TestHarnessImageMagicBoundaries/bmp-header-arithmetic
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp7/planes1
+--- PASS: TestHarnessImageMagicBoundaries/bmp-header-arithmetic (0.00s)
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp7/planes1 (0.00s)
+--- PASS: TestHarnessImageMagicBoundaries (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp7/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp7/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp8/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp8/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp8/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp8/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp8/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp8/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp16/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp16/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp16/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp16/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp16/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp16/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp24/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp24/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp24/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp24/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp24/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp24/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp32/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp32/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp32/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp32/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp32/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp32/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp64/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp64/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp64/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp64/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp64/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib40/bpp64/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp0/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp0/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp0/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp0/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp0/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp0/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp1/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp1/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp1/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp1/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp1/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp1/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp4/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp4/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp4/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp4/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp4/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp4/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp7/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp7/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp7/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp7/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp7/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp7/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp8/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp8/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp8/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp8/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp8/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp8/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp16/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp16/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp16/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp16/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp16/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp16/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp24/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp24/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp24/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp24/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp24/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp24/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp32/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp32/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp32/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp32/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp32/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp32/planes2 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp64/planes0
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp64/planes0 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp64/planes1
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp64/planes1 (0.00s)
+=== RUN   TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp64/planes2
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth/dib124/bpp64/planes2 (0.00s)
+--- PASS: TestHarnessImageBMPPlanesAndBitDepth (0.00s)
+PASS
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/wrong-format (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/wrong-kind
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/wrong-kind (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/null-id
+--- PASS: TestHarnessJSONLHeaderRepositoryRoundTrip (0.00s)
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/null-id (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/nonstring-cwd
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/nonstring-cwd (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/future-storage
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/future-storage (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/zero-storage
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/zero-storage (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/fractional-storage
+ok  	github.com/MichaelKinsy/PiG/internal/codingagent/tools	0.030s
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/fractional-storage (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/negative-created
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/negative-created (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/zero-next-seq
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/zero-next-seq (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/null-parent
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/null-parent (0.00s)
+=== RUN   TestHarnessJSONLInvalidHeaderRepositoryOpen/nonstring-legacy-parent
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen/nonstring-legacy-parent (0.00s)
+--- PASS: TestHarnessJSONLInvalidHeaderRepositoryOpen (0.01s)
+PASS
+ok  	github.com/MichaelKinsy/PiG/agent/harness/session	0.035s
+=== RUN   TestHarnessPicoJSONLPublicationRecovery
+=== PAUSE TestHarnessPicoJSONLPublicationRecovery
+=== RUN   TestHarnessPicoJSONLRetirementAndHighWater
+=== PAUSE TestHarnessPicoJSONLRetirementAndHighWater
+=== CONT  TestHarnessPicoJSONLPublicationRecovery
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/intact
+=== CONT  TestHarnessPicoJSONLRetirementAndHighWater
+--- PASS: TestHarnessPicoJSONLRetirementAndHighWater (0.00s)
+--- PASS: TestHarnessPicoJSONLPublicationRecovery/intact (0.00s)
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/main
+--- PASS: TestHarnessPicoJSONLPublicationRecovery/main (0.00s)
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/task
+--- PASS: TestHarnessPicoJSONLPublicationRecovery/task (0.00s)
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/sticky
+--- PASS: TestHarnessPicoJSONLPublicationRecovery/sticky (0.00s)
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/torn-main-tail
+--- PASS: TestHarnessPicoJSONLPublicationRecovery/torn-main-tail (0.00s)
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/torn-task-tail
+--- PASS: TestHarnessPicoJSONLPublicationRecovery/torn-task-tail (0.00s)
+=== RUN   TestHarnessPicoJSONLPublicationRecovery/torn-sticky-tail
+--- PASS: TestHarnessPicoJSONLPublicationRecovery/torn-sticky-tail (0.00s)
+--- PASS: TestHarnessPicoJSONLPublicationRecovery (0.01s)
+PASS
+ok  	github.com/MichaelKinsy/PiG/agent/harness/pico3	0.035s
+
+Top-level completion events:
+{"Time": "2026-09-24T22:02:12.20660295-07:00", "Action": "pass", "Package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools", "Test": "TestHarnessImageMagicBoundaries", "Elapsed": 0}
+{"Time": "2026-09-24T22:02:12.207664494-07:00", "Action": "pass", "Package": "github.com/MichaelKinsy/PiG/internal/codingagent/tools", "Test": "TestHarnessImageBMPPlanesAndBitDepth", "Elapsed": 0}
+{"Time": "2026-09-24T22:02:12.207740599-07:00", "Action": "pass", "Package": "github.com/MichaelKinsy/PiG/agent/harness/session", "Test": "TestHarnessJSONLHeaderRepositoryRoundTrip", "Elapsed": 0}
+{"Time": "2026-09-24T22:02:12.212460877-07:00", "Action": "pass", "Package": "github.com/MichaelKinsy/PiG/agent/harness/session", "Test": "TestHarnessJSONLInvalidHeaderRepositoryOpen", "Elapsed": 0.01}
+{"Time": "2026-09-24T22:02:12.308490311-07:00", "Action": "pass", "Package": "github.com/MichaelKinsy/PiG/agent/harness/pico3", "Test": "TestHarnessPicoJSONLRetirementAndHighWater", "Elapsed": 0}
+{"Time": "2026-09-24T22:02:12.315289761-07:00", "Action": "pass", "Package": "github.com/MichaelKinsy/PiG/agent/harness/pico3", "Test": "TestHarnessPicoJSONLPublicationRecovery", "Elapsed": 0.01}

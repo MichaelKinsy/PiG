@@ -1,0 +1,19 @@
+name: pig-porter
+description: "Local interactive and headless workbench for upstream-first Pi-to-PiG porting and parity verification."
+
+tools: [read, write, edit, bash, grep, find, ls]
+
+extensions:
+  - name: pig-porter
+    origins:
+      - local:extensions/pig-porter
+    tools: [pig_porter]
+
+skills:
+  - name: pig-porter
+    origins:
+      - local:skills/pig-porter
+
+discovery:
+  extensions: []
+  skills: []

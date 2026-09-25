@@ -1,0 +1,39 @@
+# Behavior family: cli-utils
+# Surface: MIME detection for image @file arguments in print mode.
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   PI_SKIP_VERSION_CHECK=1 \
+#     pi --no-extensions -e parity/testdata/test-faux-provider.ts \
+#     --model test-faux/faux-1 @testdata/sample.png --print "describe sample image"
+#   output:
+#     cli-image-mime-ok
+#
+# Faux returns cli-image-mime-ok only when the initial prompt contains the
+# upstream `<file name="...">...</file>` placeholder AND the user message also
+# carries one image attachment with MIME type image/png.
+
+name = "08-mime-detection-image-file-args"
+description = "CLI @image args detect MIME type and attach image/png content in print mode."
+covers = [
+  "packages/coding-agent/src/utils/mime.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=../tools/testdata/pig-home"]
+pig_args = ["@testdata/sample.png"]
+pi_args = ["@testdata/sample.png"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "describe sample image"
+timeout_seconds = 30
+cwd = "."
+
+[assert]
+exit_code = 0
+both_contain = ["cli-image-mime-ok"]
+output_equal = true
+runs = 3

@@ -1,0 +1,35 @@
+{
+  "step": "b",
+  "recording_wall_seconds": 30.01,
+  "faux_provider": true,
+  "status": "PASS",
+  "chain": [
+    "[chain 1/4 · scout]",
+    "[chain 2/4 · plan]",
+    "[chain 3/4 · build]",
+    "[chain 4/4 · test]"
+  ],
+  "tools": [
+    {
+      "name": "bash",
+      "isError": false,
+      "output": "stats.py\ntest_stats.py\n8:    return [sum(values[i:i + window]) / window for i in range(len(values) - window)]\n"
+    },
+    {
+      "name": "read",
+      "isError": false,
+      "output": "\"\"\"Small statistics helpers.\"\"\"\n\n\ndef moving_average(values, window):\n    \"\"\"Return the mean of each consecutive run of `window` values.\"\"\"\n    if window <= 0:\n        raise ValueError(\"window must be positive\")\n    return [sum(values[i:i + window]) / window for i in range(len(values) - window)]\n"
+    },
+    {
+      "name": "edit",
+      "isError": false,
+      "output": "Successfully replaced 1 block(s) in stats.py."
+    },
+    {
+      "name": "bash",
+      "isError": false,
+      "output": "test_includes_last_window (test_stats.MovingAverageTest.test_includes_last_window) ... ok\ntest_rejects_zero_window (test_stats.MovingAverageTest.test_rejects_zero_window) ... ok\ntest_single_window (test_stats.MovingAverageTest.test_single_window) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n"
+    }
+  ],
+  "raw_sha256": "6e6b02f39ab0a43b8c98bd716d81d878fe433d94f4b2ffa3d07555a63d8e9af8"
+}

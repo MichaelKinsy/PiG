@@ -1,0 +1,360 @@
+{
+  "provenance": {
+    "cli-integration.md": "adapted-pi",
+    "cli.md": "adapted-pi",
+    "compaction.md": "adapted-pi",
+    "concepts.md": "pig-authored",
+    "configuration.md": "adapted-pi",
+    "containerization.md": "pig-authored",
+    "custom-provider.md": "adapted-pi",
+    "derivative-harnesses.md": "pig-authored",
+    "development.md": "pig-authored",
+    "environment-variables.md": "adapted-pi",
+    "evals.md": "pig-authored",
+    "extensions.md": "adapted-pi",
+    "how-pig-works.md": "adapted-pi",
+    "index.md": "pig-authored",
+    "install-troubleshooting.md": "pig-authored",
+    "json.md": "adapted-pi",
+    "keybindings.md": "adapted-pi",
+    "knowledge-graph.md": "pig-authored",
+    "llama-cpp.md": "adapted-pi",
+    "message-types.md": "adapted-pi",
+    "models.md": "adapted-pi",
+    "packages.md": "adapted-pi",
+    "piglet-binaries.md": "pig-authored",
+    "piglets.md": "pig-authored",
+    "prompt-templates.md": "adapted-pi",
+    "providers.md": "adapted-pi",
+    "quickstart.md": "pig-authored",
+    "rpc-commands.md": "adapted-pi",
+    "rpc-extension-ui.md": "adapted-pi",
+    "rpc.md": "adapted-pi",
+    "sdk.md": "pig-authored",
+    "security.md": "pig-authored",
+    "session-format.md": "adapted-pi",
+    "sessions.md": "adapted-pi",
+    "settings.md": "adapted-pi",
+    "shell-aliases.md": "adapted-pi",
+    "skills.md": "adapted-pi",
+    "slash-commands.md": "adapted-pi",
+    "terminal-setup.md": "adapted-pi",
+    "termux.md": "adapted-pi",
+    "themes.md": "adapted-pi",
+    "tmux.md": "adapted-pi",
+    "tui.md": "adapted-pi",
+    "usage.md": "adapted-pi",
+    "windows.md": "adapted-pi"
+  },
+  "navigation": [
+    {
+      "title": "Get Started",
+      "items": [
+        {
+          "title": "Overview",
+          "path": "index.md"
+        },
+        {
+          "title": "Quickstart",
+          "path": "quickstart.md"
+        },
+        {
+          "title": "How PiG Works",
+          "path": "how-pig-works.md"
+        }
+      ]
+    },
+    {
+      "title": "Guides",
+      "items": [
+        {
+          "title": "Run PiG",
+          "items": [
+            {
+              "title": "Use PiG in the Terminal",
+              "path": "usage.md"
+            },
+            {
+              "title": "Choose a Model",
+              "path": "models.md"
+            },
+            {
+              "title": "Manage Sessions and Context",
+              "path": "sessions.md"
+            },
+            {
+              "title": "Run PiG Safely",
+              "path": "security.md"
+            },
+            {
+              "title": "Isolate PiG",
+              "path": "containerization.md"
+            },
+            {
+              "title": "Run Local Models",
+              "path": "llama-cpp.md"
+            },
+            {
+              "title": "Configure Your Terminal",
+              "path": "terminal-setup.md"
+            },
+            {
+              "title": "Configure Shell Commands",
+              "path": "shell-aliases.md"
+            },
+            {
+              "title": "Run PiG in tmux",
+              "path": "tmux.md"
+            },
+            {
+              "title": "Run PiG on Windows",
+              "path": "windows.md"
+            },
+            {
+              "title": "Run PiG on Android",
+              "path": "termux.md"
+            }
+          ]
+        },
+        {
+          "title": "Customize PiG",
+          "items": [
+            {
+              "title": "Configure PiG",
+              "path": "configuration.md"
+            },
+            {
+              "title": "Create Prompt Templates",
+              "path": "prompt-templates.md"
+            },
+            {
+              "title": "Add Skills",
+              "path": "skills.md"
+            },
+            {
+              "title": "Create Themes",
+              "path": "themes.md"
+            },
+            {
+              "title": "Use PiG Packages",
+              "path": "packages.md"
+            }
+          ]
+        },
+        {
+          "title": "Build on PiG",
+          "items": [
+            {
+              "title": "Build Extensions",
+              "path": "extensions.md"
+            },
+            {
+              "title": "Add Custom Providers",
+              "path": "custom-provider.md"
+            },
+            {
+              "title": "Build Terminal UI Components",
+              "path": "tui.md"
+            },
+            {
+              "title": "Integrate with the CLI",
+              "path": "cli-integration.md"
+            },
+            {
+              "title": "Use the SDK",
+              "path": "sdk.md"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "title": "Reference",
+      "items": [
+        {
+          "title": "CLI",
+          "path": "cli.md"
+        },
+        {
+          "title": "Slash Commands",
+          "path": "slash-commands.md"
+        },
+        {
+          "title": "Settings",
+          "path": "settings.md"
+        },
+        {
+          "title": "Environment Variables",
+          "path": "environment-variables.md"
+        },
+        {
+          "title": "Keybindings",
+          "path": "keybindings.md"
+        },
+        {
+          "title": "Provider Authentication",
+          "path": "providers.md"
+        },
+        {
+          "title": "Session File Format",
+          "path": "session-format.md"
+        },
+        {
+          "title": "Compaction and Branch Summaries",
+          "path": "compaction.md"
+        },
+        {
+          "title": "JSON Event Stream",
+          "path": "json.md"
+        },
+        {
+          "title": "RPC Protocol",
+          "path": "rpc.md"
+        },
+        {
+          "title": "RPC Commands",
+          "path": "rpc-commands.md"
+        },
+        {
+          "title": "RPC Extension UI",
+          "path": "rpc-extension-ui.md"
+        },
+        {
+          "title": "Message Types",
+          "path": "message-types.md"
+        }
+      ]
+    },
+    {
+      "title": "PiG",
+      "items": [
+        {
+          "title": "PiG Concepts",
+          "path": "concepts.md"
+        },
+        {
+          "title": "Piglets",
+          "path": "piglets.md"
+        },
+        {
+          "title": "Piglet Binaries",
+          "path": "piglet-binaries.md"
+        },
+        {
+          "title": "Derivative Harnesses",
+          "path": "derivative-harnesses.md"
+        },
+        {
+          "title": "Install and Troubleshooting",
+          "path": "install-troubleshooting.md"
+        },
+        {
+          "title": "Knowledge Graph",
+          "path": "knowledge-graph.md"
+        },
+        {
+          "title": "Harness Benchmarks",
+          "path": "evals.md"
+        },
+        {
+          "title": "Develop PiG",
+          "path": "development.md"
+        }
+      ]
+    }
+  ],
+  "redirects": [
+    {
+      "from": "session.md",
+      "to": "session-format.md"
+    },
+    {
+      "from": "tree.md",
+      "to": "sessions.md"
+    },
+    {
+      "from": "usage.md#cli-verbs",
+      "to": "cli.md#cli-verbs"
+    },
+    {
+      "from": "usage.md#generic-subcommands",
+      "to": "cli.md#generic-subcommands"
+    },
+    {
+      "from": "usage.md#pig-docs",
+      "to": "cli.md#pig-docs"
+    },
+    {
+      "from": "usage.md#slash-commands-tui",
+      "to": "slash-commands.md"
+    },
+    {
+      "from": "usage.md#core",
+      "to": "slash-commands.md#core"
+    },
+    {
+      "from": "usage.md#piglet-composition",
+      "to": "slash-commands.md#piglet-composition"
+    },
+    {
+      "from": "usage.md#parity-harness-only-when-pig_parity_harness1",
+      "to": "slash-commands.md#parity-harness-only-when-pig_parity_harness1"
+    },
+    {
+      "from": "rpc.md#supported-commands",
+      "to": "rpc-commands.md#supported-commands"
+    },
+    {
+      "from": "rpc.md#prompt",
+      "to": "rpc-commands.md#prompt"
+    },
+    {
+      "from": "rpc.md#abort",
+      "to": "rpc-commands.md#abort"
+    },
+    {
+      "from": "rpc.md#state",
+      "to": "rpc-commands.md#state"
+    },
+    {
+      "from": "rpc.md#select-a-model",
+      "to": "rpc-commands.md#select-a-model"
+    },
+    {
+      "from": "rpc.md#thinking-level",
+      "to": "rpc-commands.md#thinking-level"
+    },
+    {
+      "from": "rpc.md#compaction-and-retry",
+      "to": "rpc-commands.md#compaction-and-retry"
+    },
+    {
+      "from": "rpc.md#steer-and-follow-up",
+      "to": "rpc-commands.md#steer-and-follow-up"
+    },
+    {
+      "from": "rpc.md#bash",
+      "to": "rpc-commands.md#bash"
+    },
+    {
+      "from": "rpc.md#session-data",
+      "to": "rpc-commands.md#session-data"
+    },
+    {
+      "from": "rpc.md#session-replacement-and-export",
+      "to": "rpc-commands.md#session-replacement-and-export"
+    },
+    {
+      "from": "rpc.md#command-catalogue",
+      "to": "rpc-commands.md#command-catalogue"
+    },
+    {
+      "from": "rpc.md#extension-ui-records",
+      "to": "rpc-extension-ui.md"
+    },
+    {
+      "from": "process-integration.md",
+      "to": "cli-integration.md"
+    }
+  ]
+}

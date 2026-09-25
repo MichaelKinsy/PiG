@@ -1,0 +1,56 @@
+// divguard:path internal/codingagent/session_manager.go
+
+package codingagent
+
+import (
+	"encoding/json"
+	"fmt"
+)
+
+type entry struct{ Type string }
+
+// parse fails the stream on the first bad chunk.
+func parse(lines [][]byte) ([]entry, error) {
+	var out []entry
+	for _, line := range lines {
+		var e entry
+		if err := json.Unmarshal(line, &e); err != nil {
+			return nil, fmt.Errorf("parse chunk: %w", err)
+		}
+		out = append(out, e)
+	}
+	return out, nil
+}
+
+// reply reports each bad command to the client and keeps serving.
+func reply(cmds [][]byte, send func(string)) {
+	for _, raw := range cmds {
+		var e entry
+		if err := json.Unmarshal(raw, &e); err != nil {
+			send(err.Error())
+			continue
+		}
+		send(e.Type)
+	}
+}
+
+// load skips malformed lines exactly as upstream session loading does.
+func load(lines [][]byte) []entry {
+	var out []entry
+	for _, line := range lines {
+		var e entry
+		// upstream: coding-agent/src/core/session-manager.ts:parseSessionEntries
+		if err := json.Unmarshal(line, &e); err != nil {
+			continue
+		}
+		out = append(out, e)
+	}
+	return out
+}
+
+// decodeOnce is outside any loop.
+func decodeOnce(raw []byte) entry {
+	var e entry
+	_ = json.Unmarshal(raw, &e)
+	return e
+}

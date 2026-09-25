@@ -1,0 +1,77 @@
+# mermaid markdown-transformer differential corpus (render/gating/warnings/width/identity)
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nsequenceDiagram\n  A->>B: hi\n  B-->>A: yo\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A[\u65e5\u672c\u8a9e] --> B[\ud83c\udf89]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "Here is a diagram:\n\n```mermaid\ngraph TD\n  A[Start] --> B[End]\n```\n\nDone.", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```\n\n```js\nconsole.log(1)\n```\n\n```mermaid\nsequenceDiagram\n  A->>B: hi\n  B-->>A: yo\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid  extra info\ngraph TD\n  A --> B\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "off", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant-thinking", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "final", "messageType": "assistant", "isStreaming": true, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": true, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "final", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 5}
+{"md": "```mermaid\nnot a diagram at all\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A -->\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A -->\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": true, "availableWidth": 80}
+{"md": "```js\nconsole.log(1)\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "Just text, no diagram.\n\nA paragraph.", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "text\n```mermaid\ngraph LR\n  A --> B\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nclassDiagram\n  class A {\n    +x()\n  }\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nerDiagram\n  A ||--o{ B : has\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+# extended: backtick labels, multi-warning, indented/long fences, structure, boundary
+{"md": "```mermaid\ngraph TD\n  A[has ` tick] --> B[two `` ticks]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A -->\n  B -->\n  C -->\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "   ```mermaid\n   graph TD\n     A --> B\n   ```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph TD\n  A --> B\n`````", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nerDiagram\n  CUSTOMER {\n    string name\n    int id\n  }\n  CUSTOMER ||--o{ ORDER : has\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\nstateDiagram-v2\n  [*] --> A\n  A --> B\n  B --> [*]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph LR\n  A --> B\n```\n```mermaid\ngraph LR\n  C --> D\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "# Title\n\nSome text.\n\n```mermaid\ngraph TD\n  A --> B\n```\n\n- item\n- item2", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 80}
+{"md": "```mermaid\ngraph LR\n  A --> B\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 13}
+# screen-size sweep: same diagrams across availableWidth (raw-fallback gate boundary)
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 1}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 3}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 5}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 8}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 9}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 10}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 11}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 12}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 13}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 15}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 20}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 30}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 50}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 100}
+{"md": "```mermaid\ngraph TD\n  A[Start] --> B[End]\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 200}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 1}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 3}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 5}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 8}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 9}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 10}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 11}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 12}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 13}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 15}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 20}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 30}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 50}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 100}
+{"md": "```mermaid\ngraph LR\n  A --> B --> C --> D --> E --> F\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 200}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 1}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 3}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 5}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 8}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 9}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 10}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 11}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 12}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 13}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 15}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 20}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 30}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 50}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 100}
+{"md": "```mermaid\nsequenceDiagram\n  participant Alice\n  participant Bob\n  Alice->>Bob: hello there\n```", "mode": "streaming", "messageType": "assistant", "isStreaming": false, "availableWidth": 200}

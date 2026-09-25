@@ -1,0 +1,75 @@
+# Behavior family: export-html
+# Scenario: CLI --export with tool call session (bash + read).
+#
+# The session JSONL carries toolCall blocks and flat toolResult-role messages -
+# the format pi writes and pig has written since the 2026-08-15 cutover. The
+# --export path embeds the session as base64 in #session-data; template.js
+# renders tool blocks client-side for built-in tools (bash, read, write, edit,
+# ls). This verifies the tool call/result structures survive the export
+# pipeline byte-for-byte.
+#
+# Upstream evidence (2026-08-16, pi 0.81.1):
+#   pi --no-extensions --export <testdata>/tools.jsonl /tmp/pi.html
+#   PIG_HOME=/tmp/h pig --export <testdata>/tools.jsonl /tmp/pig.html
+#   → embedded #session-data identical (2004 chars); full HTML differs
+#     (260396 vs 269874 bytes) in the vendored template assets only.
+#
+# Coverage limit: these fixtures use template-rendered tools, so they do not
+# exercise export-html's custom/extension tool pre-render path. A scenario with
+# a registered extension tool is needed to cover that.
+
+name = "03-export-cli-tools"
+description = "CLI --export with tool call/result entries produces identical HTML"
+covers = [
+  "packages/coding-agent/src/core/export-html/index.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_HOME=testdata/pig-home"]
+pig_args = ["--export", "testdata/sessions/tools.jsonl", "{{TEMP}}/out.html"]
+pi_args = ["--export", "testdata/sessions/tools.jsonl", "{{TEMP}}/out.html"]
+
+[cli]
+timeout_seconds = 15
+cwd = "."
+# The command's real output is the file, not the stdout line. Capture it so
+# the assertions below can compare what was written.
+artifact_path = "{{TEMP}}/out.html"
+
+[assert]
+exit_code = 0
+both_contain = ["Exported to:"]
+output_normalized_equal = true
+runs = 3
+
+# The exported page carries the whole session as base64 in #session-data and
+# renders it client-side, so this is the payload the export is responsible for.
+# It is byte-identical between pig and pinned pi (2004 chars, measured
+# 2026-08-16); the surrounding template shell is not (260396 vs 269874 bytes),
+# because pig's vendored assets are its own port. Comparing the full HTML would
+# therefore assert asset-bundling sameness, not export correctness, so the
+# replacements below reduce each artifact to the embedded session before the
+# compare. They cannot match stdout, so they leave output_normalized_equal
+# untouched.
+artifact_normalized_equal = true
+
+# Guards the reduction: if the extraction ever stops matching, both artifacts
+# normalize to the empty string and artifact_normalized_equal passes on
+# nothing. Requiring the known session prefix makes that vacuous pass fail.
+artifact_both_contain = ["eyJoZWFkZXIiOnsidHlwZSI6InNlc3Npb24iLCJpZCI6InRlc3QtdG9vbHMi"]
+
+# normalize-rationale: Pig and Pi receive independent temporary export paths.
+[[assert.normalize_replace]]
+pattern = 'Exported to: .+'
+with = 'Exported to: <path>'
+
+# normalize-rationale: reduce the artifact to the embedded session payload.
+[[assert.normalize_replace]]
+pattern = '(?s)^.*<script id="session-data"[^>]*>'
+with = ''
+
+[[assert.normalize_replace]]
+pattern = '(?s)</script>.*$'
+with = ''

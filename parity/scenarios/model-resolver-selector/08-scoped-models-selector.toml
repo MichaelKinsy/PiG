@@ -1,0 +1,61 @@
+# Behavior family: model-resolver-selector
+# Surface: /scoped-models opens the model enable/order selector.
+#
+# Upstream evidence: exact Pi 0.84.0 probe (2026-08-06, tmux 100×35):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent-local pi --no-extensions --offline
+#   keys: /scoped-models Enter
+#   crop: "Model Configuration" through "all enabled"
+#
+#   Model Configuration
+#   Session-only. ctrl+s to save to settings.
+#
+#   >
+#
+#   → model-two [fixture]
+#     model-one [fixture]
+#
+#     Model Name: Model Two
+#
+#     Model catalogs refreshed.
+#
+#     enter toggle · ctrl+a all · ctrl+x clear · ctrl+p provider · option+up/option+down reorder ·
+#   ctrl+s save · all enabled
+#
+# The exact crop is asserted byte-for-byte. It exercises the cached model order,
+# asynchronous refresh publication, search input, selected row, model detail,
+# key hints, and all-enabled state.
+
+name = "08-scoped-models-selector"
+description = "Both binaries render the exact local scoped-model configuration selector."
+covers = [
+  "packages/coding-agent/src/core/model-runtime.ts",
+  "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 20
+keys = ["/scoped-models", "Enter"]
+settle_seconds = 2
+capture_start = "Model Configuration"
+capture_end = "all enabled"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-local"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-local"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Model Configuration", "model-two", "model-one", "Model Name: Model Two", "Model catalogs refreshed.", "all enabled"]
+both_not_contain = ["panic:", "goroutine ", "No matching models"]
+output_equal = true
+runtime_ratio_max = 1.30
+runs = 3

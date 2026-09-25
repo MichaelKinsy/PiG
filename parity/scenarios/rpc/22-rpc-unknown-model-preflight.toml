@@ -1,0 +1,61 @@
+# Behavior family: rpc
+# Surface: prompt preflight without a configured model or provider credential.
+#
+# Upstream evidence (Pi 0.84.0): RPC mode starts with the Agent's unknown model
+# sentinel. get_state exposes that full model record with thinking off. A prompt
+# fails before agent_start and before a success response because AgentSession
+# validates provider authentication during prompt preflight.
+
+name = "22-rpc-unknown-model-preflight"
+description = "RPC mode exposes Pi's unknown model and rejects an unauthenticated prompt during preflight."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"state","type":"get_state"}'
+wait_contains = ['"id":"state","type":"response","command":"get_state","success":true']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"prompt","type":"prompt","message":"hello"}'
+wait_contains = ['"id":"prompt","type":"response","command":"prompt","success":false']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-home/agent"]
+pig_args = ["--offline", "--no-session"]
+pi_args = ["--offline", "--no-session"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"model":{"id":"unknown","name":"unknown","api":"unknown","provider":"unknown","baseUrl":"","reasoning":false,"input":[]',
+  '"thinkingLevel":"off"',
+  '"id":"prompt","type":"response","command":"prompt","success":false,"error":"No API key found for the selected model.',
+]
+both_not_contain = [
+  '"id":"prompt","type":"response","command":"prompt","success":true',
+  '"type":"agent_start"',
+]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: Session IDs are random and use different valid generators.
+[[assert.normalize_replace]]
+pattern = '"sessionId":"[^"]+"'
+with = '"sessionId":"<SESSION_ID>"'
+
+# normalize-rationale: Pi reports package-local documentation paths while PiG
+# reports its materialized embedded-documentation paths. Both paths identify the
+# same provider and model guidance in their respective distributions.
+[[assert.normalize_replace]]
+pattern = '  [^\"]*/docs/providers\.md\\n  [^\"]*/docs/models\.md'
+with = '  <DOCS>/providers.md\\n  <DOCS>/models.md'

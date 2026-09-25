@@ -1,0 +1,43 @@
+{
+  "entities": [
+    {"id": "pi", "label": "Pi", "kind": "project", "summary": "Upstream TypeScript coding agent; the behavior oracle.", "where": "https://github.com/earendil-works/pi", "inspect": "pig version", "doc": "divergences.md"},
+    {"id": "pig", "label": "PiG", "kind": "project", "summary": "The Go implementation; executable pig.", "where": "coding/pigversion/pigversion.go pins Pi", "inspect": "pig verify", "doc": "README.md"},
+    {"id": "stock", "label": "Stock PiG", "kind": "artifact", "summary": "Product-neutral pig binary with no Piglet selected.", "where": "cmd/pig", "inspect": "pig version", "doc": "built-in-extensions.md"},
+    {"id": "session", "label": "Session", "kind": "runtime", "summary": "Append-only JSONL tree of entries for one conversation.", "where": "~/.pig/agent/sessions", "inspect": "/tree, /session", "doc": "sessions.md"},
+    {"id": "model_runtime", "label": "Model Runtime", "kind": "runtime", "summary": "Session-owned model lookup, auth, completion, and streaming used by every mode.", "where": "coding/", "inspect": "/model, pig --list-models", "doc": "models.md"},
+    {"id": "provider", "label": "Provider", "kind": "runtime", "summary": "Turns a Transcript into one Event Stream for one API.", "where": "ai/", "inspect": "pig --list-models", "doc": "providers.md"},
+    {"id": "mode", "label": "Mode", "kind": "runtime", "summary": "Interactive TUI, print, JSON event stream, or RPC over stdin/stdout.", "where": "cmd/pig", "inspect": "pig --mode rpc", "doc": "commands.md"},
+    {"id": "resource", "label": "Resource", "kind": "concept", "summary": "One capability: extension, skill, prompt, hook, MCP definition, theme, or environment.", "where": "~/.pig/agent, .pig/ in a project", "inspect": "pig status --json", "doc": "concepts.md"},
+    {"id": "extension", "label": "Extension", "kind": "resource", "summary": "Code Resource in Go, Rust, Python, or Node/TypeScript that registers tools, commands, events, and UI.", "where": "extensions/sdk*, ~/.pig/agent/extensions", "inspect": "pig install --validate-only <dir>", "doc": "extensions.md"},
+    {"id": "sdk", "label": "Extension SDK", "kind": "library", "summary": "One extension contract per language: Go, Rust, Python, TypeScript declarations.", "where": "extensions/sdk, sdk-rs, sdk-py, sdk-ts", "inspect": "pig extension init", "doc": "extension-api.md"},
+    {"id": "realization", "label": "Extension realization", "kind": "concept", "summary": "How an extension runs: isolated process, packed runtime cell, or fused into a Piglet Binary (Go only).", "where": "coding/extension/host", "inspect": "pig status --json", "doc": "runtime-cells.md"},
+    {"id": "extension_host", "label": "Extension Host", "kind": "runtime", "summary": "Loads, isolates, reloads, and shuts down extension realizations over one wire contract.", "where": "coding/extension/host/subprocess", "inspect": "/reload", "doc": "runtime-cells.md"},
+    {"id": "package", "label": "Package", "kind": "distribution", "summary": "Versioned collection of Resources from npm, git, or a local path; never owns a Piglet.", "where": "~/.pig/agent/npm, ~/.pig/agent/git", "inspect": "pig list", "doc": "packages.md"},
+    {"id": "piglet", "label": "Piglet", "kind": "composition", "summary": "One named agent: selects and scopes Resources and sets defaults.", "where": "*.yaml Piglet file", "inspect": "pig piglet validate <file>", "doc": "piglets.md"},
+    {"id": "standard", "label": "PiG Standard", "kind": "composition", "summary": "The optional curated Piglet: login identity, PiG Runner, Angry Pigs.", "where": "piglets/standard/pig-standard.yaml", "inspect": "pig piglet validate piglets/standard/pig-standard.yaml", "doc": "built-in-extensions.md"},
+    {"id": "piglet_release", "label": "Piglet release", "kind": "artifact", "summary": "Pins the exact Resource closure and component plan of a Piglet.", "where": "release.version and managed records", "inspect": "pig piglet show --record <path>", "doc": "piglets.md"},
+    {"id": "piglet_binary", "label": "Piglet Binary", "kind": "artifact", "summary": "Target-native pig executable for one Piglet release; verifies its closure at startup.", "where": "pig piglet build --format binary", "inspect": "pig verify", "doc": "piglets.md"},
+    {"id": "builder", "label": "Builder", "kind": "tool", "summary": "Produces Piglet Binaries: native (needs Go and PiG source) or container (needs Docker or Podman).", "where": "coding/pigletbuild", "inspect": "pig setup", "doc": "piglets.md"},
+    {"id": "porter", "label": "Pig Porter", "kind": "resource", "summary": "Parity workbench Piglet Resource; proposes ports, never accepts its own work.", "where": "piglets/porter", "inspect": "make porter-check (source checkout)", "doc": "divergences.md"},
+    {"id": "divergence", "label": "Divergence", "kind": "record", "summary": "A numbered, approved, user-visible difference from pinned Pi.", "where": "DIVERGENCES.md", "inspect": "pig docs show divergences", "doc": "divergences.md"}
+  ],
+  "relations": [
+    ["pig", "implements", "pi", "exact pinned release"],
+    ["stock", "builds", "pig", "one binary per target"],
+    ["session", "owns", "model_runtime", "one per Session"],
+    ["model_runtime", "streams_through", "provider", "one Provider per request"],
+    ["mode", "drives", "session", "TUI, print, JSON, RPC share one Session path"],
+    ["package", "distributes", "resource", "one to many"],
+    ["extension", "is_a", "resource", ""],
+    ["extension", "written_with", "sdk", "one language per extension"],
+    ["extension", "realized_as", "realization", "isolated, packed, or fused"],
+    ["extension_host", "hosts", "realization", "same contract in every realization"],
+    ["piglet", "selects", "resource", "and scopes discovery"],
+    ["standard", "is_a", "piglet", "explicit, never active in Stock"],
+    ["piglet_release", "pins", "piglet", "exact closure"],
+    ["piglet_binary", "realizes", "piglet_release", "per target"],
+    ["builder", "produces", "piglet_binary", "no silent fallback between builders"],
+    ["porter", "is_a", "resource", "selected by the Porter Piglet"],
+    ["divergence", "documents_difference_from", "pi", "numbered D<N>"]
+  ]
+}

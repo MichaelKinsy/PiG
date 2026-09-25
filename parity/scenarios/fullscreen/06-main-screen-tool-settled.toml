@@ -1,0 +1,70 @@
+# Behavior family: fullscreen
+# Surface: Pi 0.84.0 main-screen tall tool completion and collapse.
+# Upstream evidence: the isolated Pi 0.84.0 live probe settled to
+# LIVE-TOOL-24, Took, then LIVE-TOOL-DONE in that order.
+
+name = "06-main-screen-tool-settled"
+description = "Tall tool completion collapses to the same settled visible tail as Pi."
+covers = [
+  "packages/tui/src/tui-main-screen.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 80
+height = 12
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "../compaction/testdata/compact-session"
+capture_start = "LIVE-TOOL-24"
+capture_end = "faux-1"
+
+[[tmux.steps]]
+keys = ["Run: tui live tool pause", "Enter"]
+wait_contains = ["LIVE-TOOL-08"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+wait_contains = ["LIVE-TOOL-24"]
+wait_timeout_seconds = 15
+settle_seconds = 1
+
+[[tmux.steps]]
+wait_contains = ["LIVE-TOOL-DONE"]
+wait_visible_contains = ["LIVE-TOOL-24", "LIVE-TOOL-DONE"]
+wait_not_contains = ["Working..."]
+wait_timeout_seconds = 15
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["LIVE-TOOL-24", "Took", "LIVE-TOOL-DONE"]
+both_not_contain = ["Working...", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3
+
+# normalize-rationale: tool duration, temporary working-directory identity, and
+# faux footer usage are independent of transcript rows. Marker identity, row
+# count, whitespace, and ordering remain unmasked.
+[[assert.normalize_replace]]
+pattern = 'Took [0-9]+\.[0-9]+s'
+with = "Took Ns"
+
+[[assert.normalize_replace]]
+pattern = '(?m)^.*[/\\]parity-snap-cwd-[^\n]*$'
+with = "<CWD>"
+
+[[assert.normalize_replace]]
+pattern = '(?m)^.*?/128k \(auto\)\s+faux-1$'
+with = "<STATUS>"

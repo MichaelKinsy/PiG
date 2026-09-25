@@ -1,0 +1,5 @@
+{"type":"session","version":3,"id":"parity-compaction-14","timestamp":"2025-01-01T00:00:00.000Z","cwd":"/tmp"}
+{"type":"message","id":"119b4b97","parentId":null,"timestamp":"2025-01-01T00:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"Hello world"}]}}
+{"type":"message","id":"8e775032","parentId":"119b4b97","timestamp":"2025-01-01T00:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"Hi there! How can I help you today?"}],"usage":{"input":10,"output":8,"cacheRead":0,"cacheWrite":0,"totalTokens":18,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop"}}
+{"type":"compaction","id":"3992928c","parentId":"8e775032","timestamp":"2025-01-01T00:00:03.000Z","summary":"The user greeted the assistant and received a friendly response.","firstKeptEntryId":"e1","tokensBefore":87432}
+{"type":"thinking_level_change","id":"77ad4ec9","parentId":"3992928c","timestamp":"2026-05-17T21:09:43.634Z","thinkingLevel":"off"}

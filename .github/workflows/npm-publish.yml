@@ -1,0 +1,125 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+
+name: Publish npm packages
+
+# Runs only after the owner publishes the draft GitHub Release that
+# release-candidate.yml created, so nothing reaches npm before a human presses
+# Publish. workflow_dispatch re-runs a published release (the job is
+# idempotent: versions already on npm are skipped).
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Published release tag, e.g. v0.2.0
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  npm:
+    name: Publish @pi-in-go/pig
+    permissions:
+      contents: read
+      id-token: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: .node-version
+      - name: Resolve the release
+        id: release
+        shell: bash
+        env:
+          EVENT_TAG: ${{ github.event.release.tag_name }}
+          INPUT_TAG: ${{ inputs.tag }}
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag=${EVENT_TAG:-$INPUT_TAG}
+          [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]
+          read -r draft prerelease < <(gh release view "$tag" --repo "$GITHUB_REPOSITORY" \
+            --json isDraft,isPrerelease --jq '"\(.isDraft) \(.isPrerelease)"')
+          if [ "$draft" != false ]; then
+            echo "Release $tag is still a draft; npm publishes only published releases" >&2
+            exit 1
+          fi
+          dist_tag=latest
+          if [ "$prerelease" = true ]; then dist_tag=next; fi
+          {
+            printf 'tag=%s\n' "$tag"
+            printf 'version=%s\n' "${tag#v}"
+            printf 'dist_tag=%s\n' "$dist_tag"
+          } >> "$GITHUB_OUTPUT"
+      - name: Download and verify the published release archives
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ steps.release.outputs.tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p release
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir release \
+            --pattern SHA256SUMS --pattern 'pig-*.tar.gz' --pattern 'pig-*.zip'
+          cd release
+          # Verify every downloaded archive; pack_npm.py re-verifies each one
+          # it extracts from.
+          sha256sum -c --ignore-missing SHA256SUMS
+      - name: Generate and pack the npm packages
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+        run: |
+          set -euo pipefail
+          python3 automation/release/npm/pack_npm.py --archives release --version "$VERSION" --out npm-out
+          cat npm-out/publish-order.txt
+      - name: Use an npm with trusted publishing (OIDC)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # npm trusted publishing needs npm >= 11.5.1.
+          npm install -g npm@^11.5.1
+          npm --version
+      - name: Publish platform packages, then the launcher
+        # Trusted publishing: npm exchanges this job's OIDC token (id-token:
+        # write) for a short-lived publish credential and adds provenance
+        # automatically. No npm token or secret is used.
+        shell: bash
+        env:
+          VERSION: ${{ steps.release.outputs.version }}
+          DIST_TAG: ${{ steps.release.outputs.dist_tag }}
+        run: |
+          set -euo pipefail
+          npm_version=${VERSION%%+*}
+          # publish-order.txt lists the six platform packages first and the
+          # launcher last, so the launcher never points at missing packages.
+          while read -r name tarball; do
+            if npm view "${name}@${npm_version}" version >/dev/null 2>&1; then
+              echo "${name}@${npm_version} already on npm; skipping"
+              continue
+            fi
+            npm publish "npm-out/${tarball}" --access public --tag "$DIST_TAG"
+            echo "Published ${name}@${npm_version}"
+          done < npm-out/publish-order.txt
+      - name: Upload the npm tarballs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: npm-packages-${{ steps.release.outputs.version }}
+          path: npm-out/*.tgz
+          retention-days: 30

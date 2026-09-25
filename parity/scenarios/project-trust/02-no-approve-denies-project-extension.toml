@@ -1,0 +1,45 @@
+# Behavior family: project-trust
+# group-rationale: serial: the three scenarios compile identical auto-discovered
+# extension sources; concurrent Pig builds contend on the same content cache key.
+# Surface: --no-approve/-na explicitly denies project trust for this run.
+#
+# Upstream probe (exact Pi 0.83.0, 2026-08-03):
+#   cwd: testdata/project-02
+#   PI_CODING_AGENT_DIR=<empty-agent> pi --no-approve --list-models trust-probe
+#   stdout begins "No models available" and contains no trust-probe model.
+#
+# The run override has highest precedence. It must prevent project settings,
+# Packages, and Resources from loading without consulting the store, default, or
+# startup selector.
+#
+# Red proof before P1: Pig does not parse --no-approve and executes the project
+# extension, so both_contain/both_not_contain fail.
+
+name = "02-no-approve-denies-project-extension"
+description = "--no-approve denies project Resources for this run before any project extension executes."
+covers = [
+  "packages/coding-agent/src/cli/args.ts",
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/core/settings-manager.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+  "packages/coding-agent/src/core/package-manager.ts",
+]
+tags = ["hermetic", "fast", "security", "serial"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+override_base_args = true
+
+[cli]
+args = ["--no-approve", "--list-models", "trust-probe"]
+cwd = "testdata/project-02"
+snapshot_cwd = true
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["No models available"]
+both_not_contain = ["trust-probe", "must-not-load-before-trust", "panic:", "goroutine "]
+runs = 3

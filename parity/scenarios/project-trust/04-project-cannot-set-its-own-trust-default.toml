@@ -1,0 +1,42 @@
+# Behavior family: project-trust
+# group-rationale: serial: project-trust extension fixtures compile to the same
+# Pig content-cache identity and must not build concurrently.
+# Surface: defaultProjectTrust is global-only and cannot bootstrap itself from
+# untrusted project settings.
+#
+# Upstream probe (exact Pi 0.83.0, 2026-08-03): project-04 writes
+# defaultProjectTrust="always" in .pi/settings.json and contains an auto project
+# extension. With an empty global agent dir and --list-models trust-probe, Pi
+# returns "No models available". SettingsManager.getDefaultProjectTrust reads
+# globalSettings, not the untrusted project or merged layer.
+#
+# Red proof before P1: Pig merges the project setting and executes the project
+# extension before any trust resolution.
+
+name = "04-project-cannot-set-its-own-trust-default"
+description = "An untrusted project defaultProjectTrust setting cannot grant that project trust."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/core/project-trust.ts",
+  "packages/coding-agent/src/core/settings-manager.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+]
+tags = ["hermetic", "fast", "security", "serial"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+override_base_args = true
+
+[cli]
+args = ["--list-models", "trust-probe"]
+cwd = "testdata/project-04"
+snapshot_cwd = true
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["No models available"]
+both_not_contain = ["trust-probe", "must-not-load-before-trust", "panic:", "goroutine "]
+runs = 3

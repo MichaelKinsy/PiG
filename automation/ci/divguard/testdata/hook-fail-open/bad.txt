@@ -1,0 +1,30 @@
+// divguard:path coding/runtime.go
+
+package coding
+
+import "context"
+
+type ToolCallHookResult struct {
+	Block  bool
+	Reason string
+}
+
+type emitResult struct {
+	Block  bool
+	Reason string
+}
+
+type runner interface {
+	EmitToolCall(ctx context.Context, name string) (*emitResult, error)
+}
+
+// toolCallHook reproduces AGENT-04: a handler that throws lets the tool run.
+func toolCallHook(r runner) func(ctx context.Context, name string) ToolCallHookResult {
+	return func(ctx context.Context, name string) ToolCallHookResult {
+		result, err := r.EmitToolCall(ctx, name)
+		if err != nil || result == nil { // want
+			return ToolCallHookResult{}
+		}
+		return ToolCallHookResult{Block: result.Block, Reason: result.Reason}
+	}
+}

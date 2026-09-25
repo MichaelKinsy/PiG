@@ -1,0 +1,13 @@
+
+────────────────────────────────────────────────────────────
+/
+────────────────────────────────────────────────────────────
+  help        Show available slash commands
+→ clear       Clear the chat transcript
+  quit        Quit pig
+  model       Show or switch the active model
+  models      List available models matching a pattern
+  (2/14)
+
+
+

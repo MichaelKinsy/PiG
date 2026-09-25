@@ -1,0 +1,56 @@
+# Behavior family: session
+# Surface: /resume empty-state selector block
+#
+# Upstream evidence (pi v0.69.0, modal selector, current loop probe):
+#   command: PI_CODING_AGENT_DIR=parity/scenarios/session/testdata/pi-agent pi --session-dir {{TEMP}}/sessions
+#   keys: /resume Enter
+#   crop: start="Resume Session (Current Folder)" end="  No sessions in current folder. Press Tab to view all."
+#   raw cropped upstream block:
+#
+#     Resume Session (Current Folder)                  ◉ Current Folder | ○ All  Name: All  Sort: Threaded
+#     tab scope · re:<pattern> regex · "phrase" exact
+#     ctrl+s sort · ctrl+n named · ctrl+d delete · ctrl+p path (off) · ctrl+r rename
+#
+#     >
+#
+#       No sessions in current folder. Press Tab to view all.
+
+name = "01-session-selector"
+description = "Both binaries render the empty /resume selector block exactly."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+  "packages/coding-agent/src/core/session-cwd.ts",
+  "packages/coding-agent/src/modes/interactive/components/session-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "Resume Session (Current Folder)"
+capture_end = "  No sessions in current folder. Press Tab to view all."
+
+[[tmux.steps]]
+keys = ["/resume", "Enter"]
+wait_contains = ["Resume Session (Current Folder)", "  No sessions in current folder. Press Tab to view all."]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../session/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../session/testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 1.25
+runs = 1

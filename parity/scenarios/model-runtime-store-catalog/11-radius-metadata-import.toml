@@ -1,0 +1,62 @@
+# Behavior family: model-runtime-store-catalog
+# Surface: a legacy Radius OAuth gatewayConfig is sanitized, imported into the
+# model store, restored as a current catalog model, and exposed with complete metadata.
+#
+# Upstream evidence: exact Pi 0.87.1 (2026-09-24), with the fixture OAuth
+# credential and PI_OFFLINE=1:
+#   pi --no-extensions --model fixture/current \
+#     -e testdata/radius-metadata.mjs
+#   keys: /radius-metadata Enter
+#   output: radius-metadata:1000:4096:800:120:0.75:catalog:false
+#
+# The fixture intentionally starts without models-store.json. Startup imports
+# gatewayConfig through radius-config.ts and radius.ts before this command reads
+# the Radius model from the extension-facing registry. This makes every reported
+# value depend on the legacy catalog import rather than a models.json definition
+# or a static generated model.
+
+name = "11-radius-metadata-import"
+description = "Both binaries preserve Radius pricing, limits, cache, sampling, header, and compat metadata through legacy catalog import."
+covers = [
+  "packages/ai/src/providers/radius-config.ts",
+  "packages/ai/src/providers/radius.ts",
+]
+tags = ["fast", "hermetic", "tui", "fixture-auth"]
+driver = "interactive-tmux"
+model = "fixture/current"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-radius", "PI_OFFLINE=1"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-radius", "PI_SKIP_VERSION_CHECK=1", "PI_OFFLINE=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/radius-metadata.mjs"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["testdata/radius-metadata.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 25
+capture_start = "radius-metadata:"
+capture_end = "radius-metadata:1000:4096:800:120:0.75:catalog:false"
+
+[[tmux.steps]]
+keys = ["/radius-metadata"]
+wait_contains = ["/radius-metadata"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["radius-metadata:1000:4096:800:120:0.75:catalog:false"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_contain = ["radius-metadata:1000:4096:800:120:0.75:catalog:false"]
+both_not_contain = ["undefined", "unknown command", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

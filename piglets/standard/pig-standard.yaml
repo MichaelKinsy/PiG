@@ -1,0 +1,23 @@
+name: pig-standard
+description: "Explicit PiG composition built from ordinary extension Resources."
+
+release:
+  version: 0.2.0-dev
+
+build:
+  extensionRealization: fused
+
+extensions:
+  - name: piglogin
+    origins:
+      - local:extensions/piglogin
+  - name: pigrunner
+    origins:
+      - local:extensions/pigrunner
+  - name: angrypigs
+    origins:
+      - local:extensions/angrypigs
+
+discovery:
+  extensions: []
+  skills: []

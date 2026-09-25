@@ -1,0 +1,450 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+
+name: Release candidate evidence
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: PiG semantic version without the v prefix
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-candidate-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  binary:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }} candidate
+    needs: source
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            format: tar
+          - goos: linux
+            goarch: arm64
+            format: tar
+          - goos: darwin
+            goarch: amd64
+            format: tar
+          - goos: darwin
+            goarch: arm64
+            format: tar
+          - goos: windows
+            goarch: amd64
+            format: zip
+          - goos: windows
+            goarch: arm64
+            format: zip
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Download source candidate
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: pig-${{ inputs.version }}-source
+          path: source-candidate
+      - name: Extract source candidate
+        id: source
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          source_root="$RUNNER_TEMP/pig-source"
+          mkdir -p "$source_root"
+          tar -xzf "source-candidate/pig-${VERSION}-source.tar.gz" -C "$source_root" --strip-components=1
+          printf 'root=%s\n' "$source_root" >> "$GITHUB_OUTPUT"
+      - name: Validate requested version
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          SOURCE_ROOT: ${{ steps.source.outputs.root }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]
+          source_version=$(sed -nE 's/^const PigVersion = "([^"]+)"$/\1/p' "$SOURCE_ROOT/coding/pigversion/pigversion.go")
+          test "$VERSION" = "$source_version"
+      - name: Build archive
+        id: build
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          FORMAT: ${{ matrix.format }}
+          SOURCE_ROOT: ${{ steps.source.outputs.root }}
+        run: |
+          set -euo pipefail
+          name="pig-${VERSION}-${GOOS}-${GOARCH}"
+          stage="$RUNNER_TEMP/$name"
+          source_root="$SOURCE_ROOT"
+          mkdir -p "$stage" "$GITHUB_WORKSPACE/out/evidence"
+          binary=pig
+          if [ "$GOOS" = windows ]; then binary=pig.exe; fi
+          (
+            cd "$source_root"
+            CGO_ENABLED=0 go build -trimpath \
+              -ldflags "-s -w -X main.Build=$GITHUB_SHA" \
+              -o "$stage/$binary" ./cmd/pig
+          )
+          cp "$source_root/LICENSE" "$source_root/NOTICE" "$source_root/THIRD_PARTY_NOTICES.md" "$stage/"
+          cp -R "$source_root/LICENSES" "$stage/"
+          if [ "$FORMAT" = zip ]; then
+            (cd "$RUNNER_TEMP" && zip -qr "$GITHUB_WORKSPACE/out/$name.zip" "$name")
+            artifact="out/$name.zip"
+          else
+            tar -C "$RUNNER_TEMP" -czf "$GITHUB_WORKSPACE/out/$name.tar.gz" "$name"
+            artifact="out/$name.tar.gz"
+          fi
+          printf 'artifact=%s\n' "$artifact" >> "$GITHUB_OUTPUT"
+          printf 'stage=%s\n' "$stage" >> "$GITHUB_OUTPUT"
+      - name: Generate SPDX SBOM
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          path: ${{ steps.build.outputs.stage }}
+          format: spdx-json
+          output-file: out/evidence/sbom.spdx.json
+          upload-artifact: false
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          path: ${{ steps.build.outputs.stage }}
+          format: cyclonedx-json
+          output-file: out/evidence/sbom.cyclonedx.json
+          upload-artifact: false
+      - name: Validate inventory
+        shell: bash
+        env:
+          STAGE: ${{ steps.build.outputs.stage }}
+        run: |
+          set -euo pipefail
+          python automation/release/validate-sbom.py \
+            --spdx out/evidence/sbom.spdx.json \
+            --cyclonedx out/evidence/sbom.cyclonedx.json \
+            --root "$STAGE" \
+            --licenses out/evidence/licenses.csv \
+            --out out/evidence/inventory-validation.json
+      - name: Scan artifact SBOM
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
+        with:
+          sbom: out/evidence/sbom.spdx.json
+          fail-build: true
+          output-format: sarif
+          output-file: out/evidence/grype-report.sarif
+          severity-cutoff: high
+          only-fixed: false
+      - name: Write and verify checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd out
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/SHA256SUMS"
+          mv "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
+          sha256sum -c SHA256SUMS
+      - name: Attest binary archive
+        id: attest
+        if: github.event.repository.private == false
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.build.outputs.artifact }}
+      - name: Ship the Sigstore bundle beside the archive
+        # Release assets named *.sigstore.json satisfy OpenSSF Scorecard's
+        # Signed-Releases check; users can verify offline with
+        # `gh attestation verify <archive> --bundle <archive>.sigstore.json`.
+        if: steps.attest.outcome == 'success'
+        shell: bash
+        env:
+          BUNDLE: ${{ steps.attest.outputs.bundle-path }}
+          ARTIFACT: ${{ steps.build.outputs.artifact }}
+        run: cp "$BUNDLE" "out/$(basename "$ARTIFACT").sigstore.json"
+      - name: Upload candidate and evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pig-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: out/
+          retention-days: 30
+
+  native-smoke:
+    name: ${{ matrix.goos }}/${{ matrix.goarch }} packaged candidate smoke
+    needs: binary
+    permissions:
+      actions: read
+      contents: read
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            goos: linux
+            goarch: amd64
+            format: tar
+          - runner: macos-15
+            goos: darwin
+            goarch: arm64
+            format: tar
+          - runner: windows-2025
+            goos: windows
+            goarch: amd64
+            format: zip
+    steps:
+      - name: Download packaged candidate
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: pig-${{ inputs.version }}-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: candidate
+      - name: Verify and run packaged candidate
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          FORMAT: ${{ matrix.format }}
+        run: |
+          set -euo pipefail
+          cd candidate
+          sha256sum -c SHA256SUMS
+          archive="pig-${VERSION}-${GOOS}-${GOARCH}.tar.gz"
+          binary="extracted/pig-${VERSION}-${GOOS}-${GOARCH}/pig"
+          mkdir -p extracted
+          if [ "$FORMAT" = zip ]; then
+            archive="pig-${VERSION}-${GOOS}-${GOARCH}.zip"
+            binary="extracted/pig-${VERSION}-${GOOS}-${GOARCH}/pig.exe"
+            ARCHIVE_PATH="$(cygpath -w "$archive")"
+            DESTINATION_PATH="$(cygpath -w extracted)"
+            export ARCHIVE_PATH DESTINATION_PATH
+            # shellcheck disable=SC2016 # PowerShell, not bash, expands $env: variables.
+            powershell.exe -NoProfile -NonInteractive -Command \
+              'Expand-Archive -LiteralPath $env:ARCHIVE_PATH -DestinationPath $env:DESTINATION_PATH -Force'
+          else
+            tar -xzf "$archive" -C extracted
+          fi
+          "$binary" --help >/dev/null
+          "$binary" --version
+          "$binary" version
+          PIG_HOME="$RUNNER_TEMP/pig-home" "$binary" docs show install >/dev/null
+
+  source:
+    name: Source candidate
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: '3.12'
+      - name: Validate requested version
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]
+          source_version=$(sed -nE 's/^const PigVersion = "([^"]+)"$/\1/p' coding/pigversion/pigversion.go)
+          test "$VERSION" = "$source_version"
+          # go install github.com/MichaelKinsy/PiG/cmd/pig@v<version> needs a
+          # go.mod with no replace or exclude directive that requires every
+          # nested PiG module at v<version>; publish tags each one.
+          automation/release/module-tags.sh "$VERSION" go.mod
+      - name: Build source archive
+        id: source
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          mkdir -p out/evidence
+          archive="out/pig-${VERSION}-source.tar.gz"
+          stage="$RUNNER_TEMP/pig-${VERSION}-source"
+          git archive --format=tar.gz --prefix="pig-${VERSION}/" --output="$archive" HEAD
+          mkdir -p "$stage"
+          tar -xzf "$archive" -C "$stage" --strip-components=1
+          printf 'artifact=%s\n' "$archive" >> "$GITHUB_OUTPUT"
+          printf 'stage=%s\n' "$stage" >> "$GITHUB_OUTPUT"
+      - name: Generate source SPDX SBOM
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          path: ${{ steps.source.outputs.stage }}
+          format: spdx-json
+          output-file: out/evidence/source.spdx.json
+          upload-artifact: false
+      - name: Generate source CycloneDX SBOM
+        uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+        with:
+          path: ${{ steps.source.outputs.stage }}
+          format: cyclonedx-json
+          output-file: out/evidence/source.cyclonedx.json
+          upload-artifact: false
+      - name: Validate source inventory
+        shell: bash
+        env:
+          STAGE: ${{ steps.source.outputs.stage }}
+        run: |
+          set -euo pipefail
+          python automation/release/validate-sbom.py \
+            --spdx out/evidence/source.spdx.json \
+            --cyclonedx out/evidence/source.cyclonedx.json \
+            --root "$STAGE" \
+            --licenses out/evidence/licenses.csv \
+            --out out/evidence/inventory-validation.json
+      - name: Scan source SBOM
+        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
+        with:
+          sbom: out/evidence/source.spdx.json
+          fail-build: false
+          output-format: sarif
+          output-file: out/evidence/grype-report.sarif
+          severity-cutoff: high
+          only-fixed: false
+      - name: Write and verify source checksums
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd out
+          find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > "$RUNNER_TEMP/SHA256SUMS"
+          mv "$RUNNER_TEMP/SHA256SUMS" SHA256SUMS
+          sha256sum -c SHA256SUMS
+      - name: Attest source archive
+        id: source-attest
+        if: github.event.repository.private == false
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: ${{ steps.source.outputs.artifact }}
+      - name: Retain source signing bundle
+        if: steps.source-attest.outcome == 'success'
+        shell: bash
+        env:
+          BUNDLE: ${{ steps.source-attest.outputs.bundle-path }}
+          ARTIFACT: ${{ steps.source.outputs.artifact }}
+        run: cp "$BUNDLE" "out/$(basename "$ARTIFACT").sigstore.json"
+      - name: Upload source candidate and evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: pig-${{ inputs.version }}-source
+          path: out/
+          retention-days: 30
+
+  publish:
+    name: Publish release v${{ inputs.version }}
+    # Every target's binary evidence and its native smoke test must pass
+    # before anything reaches a GitHub Release. This is the only job with a
+    # write permission and the only one gated by the release environment:
+    # RELEASING.md requires a publication job to run in an approved
+    # protected environment and forbids publishing before every release
+    # gate is complete.
+    needs: [binary, native-smoke, source]
+    permissions:
+      contents: write
+    environment:
+      name: release
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Download every platform candidate
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: pig-${{ inputs.version }}-*
+          path: candidates
+      - name: Assemble the release archives
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          python3 -B -m unittest discover -s automation/release -p test_assemble_evidence.py
+          python3 automation/release/assemble-evidence.py candidates release "$VERSION"
+      - name: Combine and verify the release checksums
+        shell: bash
+        run: python3 automation/release/combine-checksums.py release
+      - name: Cross-verify with sha256sum
+        shell: bash
+        working-directory: release
+        run: |
+          sha256sum -c SHA256SUMS
+          sha256sum -c EVIDENCE-SHA256SUMS
+      - name: Tag the nested Go modules on the release commit
+        # go install github.com/MichaelKinsy/PiG/cmd/pig@v<version> resolves
+        # each nested module the root go.mod requires (extensions/sdk) through
+        # its own <dir>/v<version> tag, which must name the same commit as the
+        # root tag v<version> that publishing the draft below creates.
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          automation/release/module-tags.sh "$VERSION" go.mod > "$RUNNER_TEMP/module-tags"
+          while read -r tag; do
+            ref=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '.object.type + " " + .object.sha' 2>/dev/null || true)
+            if [ -n "$ref" ]; then
+              read -r kind sha <<<"$ref"
+              if [ "$kind" = tag ]; then
+                sha=$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$sha" --jq .object.sha)
+              fi
+              if [ "$sha" != "$GITHUB_SHA" ]; then
+                echo "Tag $tag already names $sha, not the release commit $GITHUB_SHA" >&2
+                exit 1
+              fi
+              echo "Tag $tag already names the release commit $GITHUB_SHA"
+              continue
+            fi
+            if [ "$tag" = "v${VERSION}" ]; then
+              echo "Root tag $tag is created on $GITHUB_SHA when the draft release is published"
+              continue
+            fi
+            tag_object=$(gh api "repos/$GITHUB_REPOSITORY/git/tags" \
+              -f tag="$tag" -f message="PiG Go module $tag" \
+              -f object="$GITHUB_SHA" -f type=commit --jq .sha)
+            gh api "repos/$GITHUB_REPOSITORY/git/refs" \
+              -f ref="refs/tags/$tag" -f sha="$tag_object" >/dev/null
+            echo "Created annotated tag $tag on $GITHUB_SHA"
+          done < "$RUNNER_TEMP/module-tags"
+      - name: Create the draft GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          gh release create "v${VERSION}" release/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "PiG v${VERSION}" \
+            --target "$GITHUB_SHA" \
+            --draft \
+            --generate-notes

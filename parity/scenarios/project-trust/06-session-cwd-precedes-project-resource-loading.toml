@@ -1,0 +1,52 @@
+# Behavior family: project-trust
+# group-rationale: serial: auto-discovered JS extension compilation shares Pig's
+# content-addressed build cache with the other project-trust fixtures.
+# Surface: the selected session cwd is resolved before cwd-bound Resources and
+# project trust, rather than loading Resources from the process launch cwd.
+#
+# session-target-cwd launches from a directory containing a malicious auto
+# extension but opens sessions/target.jsonl, whose portable {{SNAPSHOT}} marker
+# resolves to the nested target/ cwd. target/ contains no project Resources.
+# Exact Pi 0.83.0 with --no-approve constructs runtime services for target/ and
+# never loads launch-cwd trust-probe. Current Pig constructs Services and loads
+# extensions before resolving --session, so its startup output exposes
+# trust-probe. This is the U3 ordering prerequisite for P1.
+#
+# Manual upstream-first tmux probe (Pi 0.83.0, 2026-08-03): the session opens
+# under target/, reaches the no-model editor, and contains neither trust-probe
+# identifier. Pig reaches its editor with trust-probe loaded from launch cwd.
+# lint-known-gap: no equality comparator because this assertion spans unlike
+# documented Pi/Pig startup banners and asymmetric ready text; the unique
+# malicious provider identifiers are the independent security oracle.
+
+name = "06-session-cwd-precedes-project-resource-loading"
+description = "Session target cwd is selected before project trust and Resource loading."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/core/session-cwd.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+]
+tags = ["hermetic", "fast", "security", "tui", "serial"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "No models available"
+ready_timeout_seconds = 30
+settle_seconds = 2
+cwd = "testdata/session-target-cwd"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-session", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-session"]
+override_base_args = true
+pi_args = ["--session", "sessions/target.jsonl", "--no-approve", "--verbose"]
+pig_args = ["--session", "sessions/target.jsonl", "--no-approve", "--verbose"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["trust-probe", "must-not-load-before-trust", "panic:", "goroutine "]
+runs = 1

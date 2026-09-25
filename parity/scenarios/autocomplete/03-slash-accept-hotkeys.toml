@@ -1,0 +1,54 @@
+# Behavior family: autocomplete
+# Surface: Tab accepts the highlighted '/he' suggestion
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   keys: / h e Tab
+#   crop: start="/hotkeys" end="/hotkeys"
+#   raw cropped upstream block:
+#
+#     /hotkeys
+
+name = "03-slash-accept-hotkeys"
+description = "Tab accepts the highlighted '/he' suggestion and inserts '/hotkeys'."
+covers = [
+  "packages/tui/src/autocomplete.ts",
+  "packages/tui/src/components/input.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "/hotkeys"
+capture_end = "/hotkeys"
+
+[[tmux.steps]]
+keys = ["/", "h", "e"]
+# D64 changes /share's destination text and tmux steps have no per-binary wait fields. The Go builtin test locks PiG's wording; this step still requires the common selected command before the byte-equal accepted-command crop.
+wait_contains = ["→ hotkeys"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Tab"]
+wait_contains = ["/hotkeys"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../session/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../session/testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 1.5
+runs = 1

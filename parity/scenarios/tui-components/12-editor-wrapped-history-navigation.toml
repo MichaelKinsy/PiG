@@ -1,0 +1,49 @@
+# Behavior family: tui-components
+# Surface: wrapped prompt-history cursor navigation.
+# Upstream evidence: Pi 0.86.1 editor.ts:922-946 uses first/last visual lines
+# when deciding whether Up/Down moves within wrapped text or enters/leaves
+# prompt history. This scenario drives that production path through tmux.
+
+name = "12-editor-wrapped-history-navigation"
+description = "Up moves within a wrapped history entry before changing prompt-history entries."
+covers = [
+  "packages/tui/src/components/editor.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../clipboard-images/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../clipboard-images/testdata/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "WRAPNAV-BEGIN-"
+capture_start_last = true
+capture_end = "reply with exactly: history-ready"
+
+[[tmux.steps]]
+keys = ["WRAPNAV-BEGIN-aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa-WRAPNAV-END reply with exactly: history-ready", "Enter"]
+wait_contains = ["history-ready"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["Up", "C-e", "Up", "WRAPPED_CURSOR_MARKER"]
+settle_seconds = 1
+wait_contains = ["WRAPPED_CURSOR_MAR"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3

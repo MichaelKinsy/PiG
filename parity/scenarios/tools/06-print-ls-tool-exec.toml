@@ -1,0 +1,34 @@
+# Behavior family: tools
+# Scenario: print-mode ls tool execution via faux provider.
+#
+# Faux provider receives "Run: ls here", emits an ls tool call with
+# path ".". The tool lists directory contents. Faux sees the result
+# and replies with "listed-ls".
+#
+# Upstream evidence (2026-05-15):
+#   cd parity/scenarios/tools/testdata
+#   Both binaries output: "listed-ls"
+
+name = "06-print-ls-tool-exec"
+description = "Faux triggers ls(.), both produce listed-ls in print mode"
+covers = [
+  "packages/coding-agent/src/core/tools/ls.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--no-extensions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: ls here"
+timeout_seconds = 30
+cwd = "testdata"
+
+[assert]
+exit_code = 0
+both_contain = ["listed-ls"]
+output_equal = true

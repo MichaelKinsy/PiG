@@ -1,0 +1,48 @@
+# Behavior family: rpc
+# Surface: unknown command type → error response shape
+#
+# Upstream evidence (re-probed pi v0.79.10, 2026 #196 AC-2):
+#   $ printf '{"type":"hello"}\n{"type":"does_not_exist","id":"test-id"}\n' | pi --mode rpc --no-extensions 2>/dev/null
+#   {"type":"response","command":"hello","success":false,"error":"Unknown command: hello"}
+#   {"id":"test-id","type":"response","command":"does_not_exist","success":false,"error":"Unknown command: does_not_exist"}
+#
+# 0.79.x changed the unknown-command branch from error(undefined, ...) to
+# error(id, ...): the request id is now echoed first when the command
+# carried one, and omitted (omitempty) when it did not. pig matched the
+# old undefined behavior and went red here at the 0.79.10 pin; the fix in
+# cmd/pig/rpc_mode.go threads env.ID into rpcError.
+#
+# Tests that the error envelope for unknown commands is byte-identical:
+# optional leading id, then type=response, command=<original type>,
+# success=false, error="Unknown command: <type>".
+
+name = "02-rpc-unknown-command"
+description = "Unknown command types produce byte-equal error responses"
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = [
+  '{"type":"hello"}',
+  '{"type":"nonexistent"}',
+  '{"type":"does_not_exist","id":"test-id"}',
+]
+timeout_seconds = 15
+# Pi 0.84 dispatches JSONL handlers asynchronously; closing stdin immediately
+# races command publication with runtime disposal.
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/echo", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

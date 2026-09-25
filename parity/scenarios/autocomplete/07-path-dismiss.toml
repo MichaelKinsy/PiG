@@ -1,0 +1,61 @@
+# Behavior family: autocomplete
+# Surface: Escape leaves the accepted path unchanged after completion
+#
+# Upstream evidence (pi v0.75.4, current loop probe):
+#   keys: . / a r t i f Tab Escape
+#   crop: start="./artifacts.go" end="./artifacts.go"
+#   raw cropped upstream block:
+#
+#     ./artifacts.go
+
+name = "07-path-dismiss"
+description = "Escape after accepting a path leaves the completed './artifacts.go' text unchanged."
+covers = [
+  "packages/tui/src/autocomplete.ts",
+  "packages/tui/src/components/input.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+# Fixed project: artifacts.go and asserts.go, so "./artif" is a unique
+# partial path as it was in parity/runner, without depending on the runner
+# sources.
+cwd = "testdata/artifacts-project"
+capture_start = "./artifacts.go"
+capture_end = "./artifacts.go"
+
+[[tmux.steps]]
+keys = [".", "/", "a", "r", "t", "i", "f"]
+wait_contains = ["./artif"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Tab"]
+wait_contains = ["./artifacts.go"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Escape"]
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../session/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../session/testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 1.5
+runs = 1

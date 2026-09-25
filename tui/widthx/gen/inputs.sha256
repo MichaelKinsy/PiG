@@ -1,0 +1,19 @@
+# Pinned inputs of unicode_tables.go (see gen/gen_tables.mjs).
+# Format: <sha256> <root>:<path>  # provenance
+# Roots: ucd = Unicode Character Database 17.0.0 (https://www.unicode.org/Public/17.0.0/ucd/,
+# emoji files from https://www.unicode.org/Public/17.0.0/emoji/ ... emoji 17.0);
+# eaw = tui/widthx/testdata/pi/get-east-asian-width (get-east-asian-width 1.6.0, the
+# version upstream pi-tui 0.87.1 pins); gen = tui/widthx/gen.
+# Node must report this Unicode version (V8/ICU property escapes incl. RGI_Emoji,
+# the same engine Pi runs on; generated with Node v24.14.1, ICU 78.2).
+node-unicode 17.0
+d6b51d1d2ae5c33b451b7ed994b48f1f4dc62b2272a5831e7fd418514a6bae89 ucd:auxiliary/GraphemeBreakProperty.txt  # GraphemeBreakProperty-17.0.0.txt
+24c7fed1195c482faaefd5c1e7eb821c5ee1fb6de07ecdbaa64b56a99da22c08 ucd:DerivedCoreProperties.txt  # DerivedCoreProperties-17.0.0.txt (InCB)
+2cb2bb9455cda83e8481541ecf5b6dfda66a3bb89efa3fa7c5297eccf607b72b ucd:emoji/emoji-data.txt  # emoji-data.txt 17.0 (Extended_Pictographic)
+5b25441daed2322b068c5e70cda522946a4f0274df864445a1965a92e5fc5cad ucd:emoji/emoji-zwj-sequences.txt  # emoji-zwj-sequences.txt 17.0
+d7b1ba05914c0fc311c20e5618bf8d0893c9c74078a07975e2df981445e64887 eaw:index.js  # get-east-asian-width 1.6.0
+c80ecc22b120b27ef5ea9facb7000b8fd4ec037a84d9231d215f1c44bc9c21d0 eaw:lookup.js
+f6b40f86c9a2a6808ec808fa8ddcb8da261254cc6121d37ffaeb2bf35dad1d5b eaw:lookup-data.js
+4b08a7e9e3ffacbcf198a6abceb2338d52ac671899e52ccc2851c898bfccac42 eaw:utilities.js
+d263e50dd1a43aee9acda4d7f066e66b0d0bde1f2852ea6e7153750a5e3a3e52 eaw:package.json
+79b8e70d5ac6ed5ab4d44c54b61839a145b3289b5f3f738f0dc1e920f882ed4d gen:gen_tables.mjs

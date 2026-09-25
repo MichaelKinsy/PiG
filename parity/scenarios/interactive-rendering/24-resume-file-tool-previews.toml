@@ -1,0 +1,37 @@
+# Behavior family: interactive-rendering
+# Upstream evidence: interactive-mode.ts renderSessionItems constructs each card
+# from the persisted tool call and result. write.ts renders call content, read.ts
+# hides successful collapsed bodies, and edit.ts restores result.details.diff.
+# Probe: pi -e test-faux-provider.ts --model test-faux/faux-1 --session-dir sessions -c
+# using testdata/file-tools-cwd at coding.UpstreamVersion, tmux 100x40.
+# Exact ANSI crop spans all three cards, excluding the unrelated header/footer.
+name = "24-resume-file-tool-previews"
+description = "Resumed write, read and edit cards use persisted call arguments and result details, not success acknowledgements."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/file-tools-cwd"
+capture_start = "File tool redraw start"
+capture_end = "File tool redraw end"
+
+[assert]
+both_reach_ready = true
+both_contain = ["Preview first line", "Preview second line", "read.txt", "before", "after"]
+both_not_contain = ["Successfully wrote", "Successfully replaced", "Read first line"]
+escaped_output_equal = true
+runs = 3

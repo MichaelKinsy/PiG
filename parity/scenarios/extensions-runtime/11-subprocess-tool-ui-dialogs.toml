@@ -1,0 +1,62 @@
+# Behavior family: extensions-runtime
+# Scenario: a tool executing in a real extension subprocess opens Select, Input,
+# and Editor on the owning TUI loop and receives each submitted value.
+#
+# Upstream evidence (Pi 0.83.0): a real interactive-tmux probe with this
+# fixture displayed all three editor-slot dialogs during the active tool call
+# and returned `dialogs-ok:production|Ada|note:ready` after the final submit.
+# The tool call remained pending until each dialog Promise resolved.
+# Escape returns undefined; a separate focused Pig regression binds that cancellation to context.Canceled and protocol ok=false.
+
+name = "11-subprocess-tool-ui-dialogs"
+description = "Subprocess extension tool opens Select, Input, and Editor and receives submitted values"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/core/tools/tool-definition-wrapper.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/ui-dialogs.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/ui-dialogs.mjs",
+]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "dialogs-ok:"
+capture_end = "note:ready"
+
+[[tmux.steps]]
+keys = ["Run: extension UI dialogs", "Enter"]
+wait_contains = ["Pick a deployment"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["Down", "Enter"]
+wait_contains = ["Deployment owner"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Ada", "Enter"]
+wait_contains = ["Deployment note"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["ready", "Enter"]
+wait_contains = ["dialogs-ok:production|Ada|note:ready"]
+wait_timeout_seconds = 20
+
+[assert]
+output_equal = true
+runs = 1

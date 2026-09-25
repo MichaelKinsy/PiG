@@ -1,0 +1,53 @@
+# Behavior family: autocomplete
+# Surface: slash popup filters to model-related commands for '/mo'
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   keys: / m o
+#   crop: start="/mo\n────────────────────────────────────────────────────────────────────────────────────────────────────" end="  import         Import and resume a session from a JSONL file"
+#   raw cropped upstream block:
+#
+#     /mo
+#     ────────────────────────────────────────────────────────────────────────────────────────────────────
+#     → model          Select model (opens selector UI)
+#       scoped-models  Enable/disable models for Ctrl+P cycling
+#       import         Import and resume a session from a JSONL file
+
+name = "02-slash-filter-model"
+description = "Typing '/mo' narrows the slash popup to the exact model-related subset."
+covers = [
+  "packages/tui/src/autocomplete.ts",
+  "packages/tui/src/components/input.ts",
+  "packages/tui/src/components/editor.ts",
+  "packages/tui/src/editor-component.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "/mo\n────────────────────────────────────────────────────────────────────────────────────────────────────"
+capture_end = "  import         Import and resume a session from a JSONL file"
+
+[[tmux.steps]]
+keys = ["/", "m", "o"]
+wait_contains = ["→ model", "  import         Import and resume a session from a JSONL file"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../session/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../session/testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_equal = true
+runtime_ratio_max = 1.5
+runs = 1

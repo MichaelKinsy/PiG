@@ -1,0 +1,46 @@
+# Behavior family: tui-components
+# Surface: Markdown rendering through wrapTextWithAnsi when text fits.
+#
+# Upstream evidence (Pi 0.83.0): Markdown.render passes ordinary text blocks
+# through wrapTextWithAnsi. This fixed 62-cell ASCII response fits within the
+# 100-column terminal in both Pi and Pig, proving the passthrough branch without
+# claiming the separate TruncatedText component.
+
+name = "05-markdown-text-fits"
+description = "Markdown text shorter than the available width renders unchanged."
+covers = [
+  "packages/tui/src/components/markdown.ts",
+  "packages/tui/src/utils.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "ABCDEFGHIJKLMNOP"
+capture_end = "uvwxyz"
+
+[[tmux.steps]]
+keys = ["reply with exactly: ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz", "Enter"]
+settle_seconds = 4
+wait_contains = ["ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789abcdefghijklmnopqrstuvwxyz"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3

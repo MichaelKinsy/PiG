@@ -1,0 +1,70 @@
+# Behavior family: extensions-runtime
+# Surface: custom extension footer composes deterministically with keyed status
+# across repeated atomic reload.
+#
+# Upstream evidence (Pi 0.87.1): a custom footer receives the footer data
+# provider and renders keyed statuses itself. Pig's subprocess bridge replicates
+# the current footer-data snapshot into the extension runtime before rendering,
+# so the extension-owned footer is also the only status-rendering surface. The
+# reload path publishes its `Reloaded` status before the replacement footer's
+# deferred render is guaranteed visible. Upstream /reload invokes every
+# extension factory again (a fresh instance even for an unchanged extension),
+# so the fixture's factory advances a generation counter persisted next to its
+# own snapshotted extension file (the runner gives pig and pi, and every
+# declared run, independent per-binary copies of the extension; see
+# parity/runner/snapshot.go snapshotExtensionPath) and publishes that
+# generation through the replacement footer. Each reload waits for its unique
+# value, so neither an earlier footer nor a kept pre-reload instance can
+# satisfy the assertion. Both produce the
+# same final lines before and after repeated /reload.
+
+name = "15-footer-status-reload-composition"
+description = "Custom footer and keyed status remain readable exactly once across repeated reload"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/components/footer.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/footer-status.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/footer-status.mjs",
+]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+# Capture through the pane bottom instead of ending at the first status-probe.
+# Ending at that first match hid a second host-composed status row below the
+# custom footer. The full tail makes output_equal reject that duplication.
+capture_start = "footer-probe"
+
+[[tmux.steps]]
+wait_contains = ["footer-probe", "status-probe-1"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+wait_contains = ["Reloaded", "footer-probe", "status-probe-2"]
+wait_timeout_seconds = 30
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+wait_contains = ["Reloaded", "footer-probe", "status-probe-3"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["footer-probe", "status-probe-3"]
+both_not_contain = ["panic:", "goroutine ", "connection closed"]
+output_equal = true
+runs = 3

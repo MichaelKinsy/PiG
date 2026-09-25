@@ -1,0 +1,108 @@
+# Behavior family: selectors
+# Surface: `pi config` / `pig config` with a populated agent dir
+#
+# Upstream evidence (pi v0.81.1, probed in tmux 100×35,
+# PI_CODING_AGENT_DIR=testdata/pi-agent-full):
+#
+#     Global Resources                                          tab switch mode · space toggle · esc close
+#     ~/.pi/agent/settings.json
+#
+#     >
+#
+#       User (~/.pi/agent/)
+#         Skills
+#     >     [x] sample-skill
+#         Prompts
+#           [x] alpha.md
+#           [x] beta.md
+#         Themes
+#           [x] zinc.json
+#
+# Mirrors pig exactly modulo the group label which carries the binary's
+# config-root name. Upstream prints `User (~/.pi/agent/)`; pig prints
+# `User (~/.pig/agent/)`. This is the documented D2 divergence (separate
+# binary, separate config root). normalize_replace folds both to a
+# canonical form so the rest of the overlay can be asserted with
+# output_normalized_equal.
+#
+# What this scenario exercises and asserts (a single crop covers all of
+# it): the buildFlatList ordering (group → subgroups → items in
+# resource-type order), the User-scope/auto-source label format, initial
+# cursor placement on the first item (the bug fixed in this loop), the
+# enabled-state checkbox marker `[x]`, the per-subgroup type labels
+# Skills/Prompts/Themes, and item naming (SKILL.md → parent dirname).
+
+name = "02-config-resources-list"
+description = "Both binaries open the resource configuration overlay listing skills/prompts/themes from a populated agent dir."
+covers = [
+  "packages/coding-agent/src/config.ts",
+  "packages/coding-agent/src/cli/config-selector.ts",
+  "packages/coding-agent/src/core/diagnostics.ts",
+  "packages/coding-agent/src/core/source-info.ts",
+  "packages/coding-agent/src/modes/interactive/components/config-selector.ts",
+]
+# source-info.ts: the User scope label "User (~/.pi/agent/)" in the config
+# overlay is built from SourceInfo tracking. If source-info broke, the scope
+# label would be missing or wrong, failing the assertion.
+# diagnostics.ts: ResourceDiagnostic types are consumed by the resource loader
+# which builds the config overlay's flat list. Resource collision tracking
+# depends on these types; the config overlay exercises the loading path.
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "sample-skill"
+ready_pattern_pi = "sample-skill"
+ready_timeout_seconds = 15
+capture_start = "Global Resources"
+capture_end = "zinc.json"
+settle_seconds = 1
+cwd = "testdata/empty-project"
+
+[env]
+override_base_args = true
+pig = ["PIG_HOME=testdata/pig-home-full", "HOME=testdata/home-empty"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-full", "HOME=testdata/home-empty"]
+pig_args = ["config"]
+pi_args = ["config"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+both_contain = [
+  "Global Resources",
+  "tab switch mode",
+  "Skills",
+  "Prompts",
+  "Themes",
+  "sample-skill",
+  "alpha.md",
+  "beta.md",
+  "zinc.json",
+  "[x]",
+]
+output_normalized_equal = true
+runtime_ratio_max = 1.40
+runs = 1
+
+# D2: fold pig's config-root label to upstream's so the rest of the
+# overlay (groups, subgroups, items, checkboxes, cursor) is asserted
+# byte-for-byte under normalize().
+# normalize-rationale: D2 config-root names and isolated snapshot suffixes differ by binary.
+[[assert.normalize_replace]]
+pattern = '~/\.pig/agent/'
+with    = '~/.pi/agent/'
+
+# Snapshot dirs: the parity runner snapshots PIG_HOME/PI_CODING_AGENT_DIR
+# to temp dirs whose names include the env key and a random suffix.
+# The absolute paths differ between pig and pi and may wrap to the next
+# line, so we fold the entire "User (path)" label to a canonical form.
+[[assert.normalize_replace]]
+pattern = 'User \([^\n)]*parity-snap-PIG_HOME-[^\n)]*/agent/\)'
+with    = 'User (~/.pi/agent/)'
+
+[[assert.normalize_replace]]
+pattern = 'User \([^\n]*parity-snap-PI_CODING_AGENT_DIR-[^\n]*'
+with    = 'User (~/.pi/agent/)'

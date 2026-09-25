@@ -1,0 +1,87 @@
+# Behavior family: interactive-rendering
+# Surface: visual-truncate.ts: collapsed-preview hint emitted by bash tool
+#          result rendering when output exceeds BASH_PREVIEW_LINES (=5).
+#
+# Upstream evidence (pi v0.69.0, 2026-05-16, 100x35 tmux probe):
+#   pi --session-dir /tmp/probe-vt-pi -e ../../testdata/test-faux-provider.ts \
+#      --model test-faux/faux-1
+#   send: "Run: bash long output" Enter            (faux → bash tool, `seq 1 30`)
+#   wait: 6s
+#   crop: capture_start='$ seq 1 30',
+#         capture_end_regex='Took \d+\.\d+s'
+#   raw cropped upstream block (inside tool bg box):
+#
+#     $ seq 1 30
+#
+#     ... (25 earlier lines, ctrl+o to expand)
+#     26
+#     27
+#     28
+#     29
+#     30
+#
+#     Took 0.0s
+#
+# Bugs fixed at root in this loop (root-cause fixes diagnosed from this probe):
+#
+#   1. tui/tool_execution.go:Render: when a per-tool BodyRenderer
+#      was wired, the Collapsed branch returned early and the body was
+#      hidden entirely. Upstream's tool-execution.ts NEVER hides the body
+#      based on collapse state; the renderer chooses preview-vs-full via
+#      its `expanded` flag. Without the fix, pig showed an empty tool box
+#      for any bash tool result >8 lines (the auto-collapse threshold).
+#      Fix: skip-body short-circuit now requires `BodyRenderer == nil`.
+#
+# Divergence numbered in this loop:
+#
+#   (none: the prior keybinding-case divergence was removed once pig was
+#   made faithful: collapse hints now render lowercase `ctrl+o` like
+#   upstream's keyHint/keyText.)
+
+name = "07-visual-truncate-bash-collapse"
+description = "Bash tool result >5 lines renders visual-truncate hint + last 5 lines (collapsed preview)."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/visual-truncate.ts",
+  "packages/coding-agent/src/modes/interactive/components/keybinding-hints.ts",
+  "packages/coding-agent/src/core/tools/bash.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/bash-wrap-cwd"
+capture_start = "$ seq 1 30"
+capture_end_regex = 'Took \d+\.\d+s'
+
+[[tmux.steps]]
+keys = ["Run: bash long output", "Enter"]
+settle_seconds = 6
+wait_contains = ["$ seq 1 30", "earlier lines", "Took"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+# runs=3 because bash tool completion timing has natural sub-second jitter.
+runs = 3
+
+# Mask sub-second "Took Xs" timing: the bash tool can finish in 0.0s vs 0.1s.
+# normalize-rationale: only the sub-second tool duration varies with scheduling.
+[[assert.normalize_replace]]
+pattern = 'Took \d+\.\d+s'
+with = "Took Ns"

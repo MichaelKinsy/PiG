@@ -1,0 +1,236 @@
+[
+  {
+    "upstream": "packages/coding-agent/src/core/cache-stats.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestCodexCacheWasteBoundaries"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/cache-stats.ts",
+    "mutation": "internal/codingagent/cache_stats.go: missedTokens <= cacheNoiseFloorTokens -> missedTokens < cacheNoiseFloorTokens; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/settings-diagnostics.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestDeduplicateDiagnosticsByTypeAndMessage"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/settings-diagnostics.ts",
+    "mutation": "internal/codingagent/settings_diagnostics.go: if seen[diagnostic] { -> if false {; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/session-export.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestSerializeSessionBranchChainsTheCurrentBranch"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/session-export.ts",
+    "mutation": "internal/codingagent/session_export.go: parentID = &id -> parentID = nil; _ = id; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/wsl.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestIsWSL"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/wsl.ts",
+    "mutation": "internal/codingagent/wsl.go: (?i)microsoft|wsl -> (?i)nevermatches; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/text.ts",
+    "package": "./internal/text",
+    "tests": [
+      "TestSplitBom"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/text.ts",
+    "mutation": "internal/text/text.go: return bom, content[len(bom):] -> return bom, content; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/pi-manifest.ts",
+    "package": "./coding/packagecontent",
+    "tests": [
+      "TestReadPiManifest"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/pi-manifest.ts",
+    "mutation": "coding/packagecontent/pi_manifest.go: if !ok { -> if !ok { entry = \"\" }; if false {; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/llama/ui.ts",
+    "package": "./internal/codingagent/llama",
+    "tests": [
+      "TestCompactCountAndContextLabels"
+    ],
+    "upstream_reference": "packages/coding-agent/src/extensions/llama/ui.ts",
+    "mutation": "internal/codingagent/llama/ui.go: jsToFixed(value/1_000_000, digits) + \"M\" -> jsToFixed(value/1_000_000, digits) + \"k\"; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/llama/client.ts",
+    "package": "./internal/codingagent/llama",
+    "tests": [
+      "TestNormalizeLlamaServerURL"
+    ],
+    "upstream_reference": "packages/coding-agent/src/extensions/llama/client.ts",
+    "mutation": "internal/codingagent/llama/client.go: path = strings.TrimSuffix(path, \"/v1\") -> path = strings.TrimSuffix(path, \"/never\"); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/llama/index.ts",
+    "package": "./internal/codingagent/llama",
+    "tests": [
+      "TestParseHuggingFaceModel"
+    ],
+    "upstream_reference": "packages/coding-agent/src/extensions/llama/index.ts",
+    "mutation": "internal/codingagent/llama/index.go: value[start+colon+1:] -> value[start+colon:]; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/llama/provider.ts",
+    "package": "./internal/codingagent/llama",
+    "tests": [
+      "TestSetCatalogExposesLoadedAndSleepingModelsWithRouterMetadata"
+    ],
+    "upstream_reference": "packages/coding-agent/src/extensions/llama/provider.ts",
+    "mutation": "internal/codingagent/llama/provider.go: case LlamaModelStatusSleeping:\n\t\t// llama.cpp reports idle-slept models as \"sleeping\"; requests wake them automatically.\n\t\treturn true -> case LlamaModelStatusSleeping:\n\t\treturn false; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/llama/huggingface.ts",
+    "package": "./internal/codingagent/llama",
+    "tests": [
+      "TestFindHuggingFaceTokenReadsTokenFiles"
+    ],
+    "upstream_reference": "packages/coding-agent/src/extensions/llama/huggingface.ts",
+    "mutation": "internal/codingagent/llama/huggingface.go: filepath.Join(home, \"token\") -> filepath.Join(home, \"wrong-token\"); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/models-store.ts",
+    "package": "./ai",
+    "tests": [
+      "TestFileModelsStoreCreatesFilePreservesOrderAndRoundTrips"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/models-store.ts",
+    "mutation": "ai/models_store.go: return append(entries, storedModels{providerID: providerID, raw: raw}), nil -> return entries, nil; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/bug-report.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestRedactBugReportJSONKeepsTokenCounts"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/bug-report.ts",
+    "mutation": "internal/codingagent/bug_report.go: if child != nil && isBugReportSensitiveKey(key) { -> if false {; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/tool-result-images.ts",
+    "package": "./internal/imageprocessing",
+    "tests": [
+      "TestNormalizeToolResultImagesUsesProfileAndRetainsFailures"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/tool-result-images.ts",
+    "mutation": "internal/imageprocessing/images.go: ProcessImage(decoded, image.MimeType, autoResize, options) -> ProcessImage(decoded, image.MimeType, autoResize, nil); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/tools/renderers/grep.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestGrepBodyRenderer"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/tools/renderers/grep.ts",
+    "mutation": "internal/codingagent/tool_render_list.go: return 15 -> return 16; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/tools/renderers/find.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestFindAndLsBodyRenderers"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/tools/renderers/find.ts",
+    "mutation": "internal/codingagent/tool_render_list.go: return 20 -> return 19; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/tools/renderers/ls.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestFindAndLsBodyRenderers"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/tools/renderers/ls.ts",
+    "mutation": "internal/codingagent/tool_render_list.go: strconv.Itoa(d.EntryLimitReached)+\" entries limit\" -> strconv.Itoa(d.EntryLimitReached)+\" wrong limit\"; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/tools/renderers/bash.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestShellBodyRendererCollapsedPreview"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/tools/renderers/bash.ts",
+    "mutation": "internal/codingagent/tool_render_shell.go: tui.TruncateToVisualLines(styledOutput, bashPreviewLines, width) -> tui.TruncateToVisualLines(styledOutput, bashPreviewLines+1, width); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/management-http.ts",
+    "package": "./internal/managementhttp",
+    "tests": [
+      "TestFetchWithRetryRetriesTransientTransportFailure"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/management-http.ts",
+    "mutation": "internal/managementhttp/managementhttp.go: maxRetries := 2 -> maxRetries := 1; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/tools/renderers/index.ts",
+    "package": "./tui",
+    "tests": [
+      "TestBuiltinToolHeaderUsesShellPrompts"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/tools/renderers/index.ts",
+    "mutation": "tui/tool_renderers.go: return \"PS>\", true -> return \"$\", true; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/provider-composer.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestModelRegistrySamplingParamsMergePerKey"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/provider-composer.ts",
+    "mutation": "internal/codingagent/model_registry.go: maps.Copy(e.SamplingParams, ovr.SamplingParams) -> e.SamplingParams = maps.Clone(ovr.SamplingParams); compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/radius.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestGetRadiusGatewayURLHonorsOverride"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/radius.ts",
+    "mutation": "internal/codingagent/radius.go: if !ok { -> if ok {; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/model-registry.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestModelRegistry_RefreshReloadsModelsJSON"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/model-registry.ts",
+    "mutation": "internal/codingagent/model_registry.go: r.config = config\n\tr.loadError = loadError -> _ = config\n\tr.loadError = loadError; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/model-config.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestModelRegistryInputLimitsValidation"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/model-config.ts",
+    "mutation": "internal/codingagent/model_input_limits.go: name == \"jpegQuality\" && value > 100 -> name == \"jpegQuality\" && value > 101; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/extensions/index.ts",
+    "package": "./cmd/pig",
+    "tests": [
+      "TestStartBuiltInLlamaRestoresTheStoredCatalog"
+    ],
+    "upstream_reference": "packages/coding-agent/src/extensions/index.ts; core/agent-session-services.ts cache-only modelRuntime.refresh at initialization",
+    "mutation": "cmd/pig/llama.go: host.Refresh(ctx, false) -> _ = ctx; compiled test FAIL (go test -overlay without -cover), baseline PASS"
+  },
+  {
+    "upstream": "packages/coding-agent/src/utils/sleep.ts",
+    "package": "./ai",
+    "tests": [
+      "TestRetryAssistantCallAbortsBackoffSleepViaContext"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/sleep.ts",
+    "mutation": "ai/assistant_retry.go: change sleepContext's ctx.Done branch to return nil; go test ./ai -run '^TestRetryAssistantCallAbortsBackoffSleepViaContext$' fails because the cancelled retry continues instead of returning aborted."
+  }
+]

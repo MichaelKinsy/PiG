@@ -1,0 +1,31 @@
+# Behavior family: rpc
+# Surface: switch_session loads a persisted Session after the cancellable event.
+
+name = "11-rpc-switch-session"
+description = "RPC switch_session loads a named Session file."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+cwd = "testdata/session"
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"switch","type":"switch_session","sessionPath":"sessions/source.jsonl"}'
+wait_contains = ['"id":"switch","type":"response","command":"switch_session"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_normalized_equal = true
+runs = 3

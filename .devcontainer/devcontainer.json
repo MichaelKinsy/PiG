@@ -1,0 +1,16 @@
+{
+  "name": "PiG",
+  "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+  "features": {
+    "ghcr.io/devcontainers/features/go:1": { "version": "1.27.1" },
+    "ghcr.io/devcontainers/features/node:1": { "version": "24.19.0" },
+    "ghcr.io/devcontainers/features/python:1": { "version": "3.12" },
+    "ghcr.io/devcontainers/features/rust:1": { "version": "1.97.1" }
+  },
+  "postCreateCommand": "sudo apt-get update && sudo apt-get install -y tmux && (cd extensions/sdk-ts && npm ci --ignore-scripts) && PI_PACKAGE_ROOT=$PWD/extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent ./automation/gen/mirror-upstream.sh && corepack enable",
+  "forwardPorts": [5173],
+  "portsAttributes": { "5173": { "label": "Documentation site" } },
+  "customizations": {
+    "vscode": { "extensions": ["golang.go", "rust-lang.rust-analyzer", "ms-python.python"] }
+  }
+}

@@ -1,0 +1,72 @@
+// divguard:path internal/codingagent/interactive.go
+
+package codingagent
+
+import "time"
+
+type InteractiveMode struct {
+	renderCh   chan struct{}
+	intervalCh chan time.Duration
+}
+
+// requestRender coalesces wake-ups; a pending one already covers this call.
+func (m *InteractiveMode) requestRender() {
+	select {
+	case m.renderCh <- struct{}{}:
+	default:
+	}
+}
+
+// setInterval replaces the latest value after draining the old one.
+func (m *InteractiveMode) setInterval(d time.Duration) {
+	select {
+	case <-m.intervalCh:
+	default:
+	}
+	select {
+	case m.intervalCh <- d:
+	default:
+	}
+}
+
+// firstResult sends once on a fresh capacity-1 channel.
+func firstResult(v int, ok bool) int {
+	result := make(chan int, 1)
+	if ok {
+		select {
+		case result <- v:
+		default:
+		}
+	}
+	return <-result
+}
+
+// perRequest makes a fresh one-shot channel each iteration.
+func perRequest(values []int) {
+	for _, v := range values {
+		reply := make(chan int, 1)
+		select {
+		case reply <- v:
+		default:
+		}
+		<-reply
+	}
+}
+
+// waitFirst keeps the first callback result, like resolving a promise
+// twice; the callback may run again, so the allow is explicit.
+func waitFirst(start func(func(int))) int {
+	result := make(chan int, 1)
+	start(func(v int) {
+		select {
+		case result <- v: // upstream: ai/src/auth/oauth/anthropic.ts:settled
+		default:
+		}
+	})
+	return <-result
+}
+
+// post blocks instead of dropping.
+func (m *InteractiveMode) post(fn func(), tasks chan func()) {
+	tasks <- fn
+}

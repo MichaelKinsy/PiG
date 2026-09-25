@@ -1,0 +1,39 @@
+# Behavior family: tui-components / interactive-rendering
+# Surface: Loader, BorderedLoader, and CountdownTimer component behavior.
+#
+# Upstream evidence: parity/testdata/tui-components-pi.mjs imports the pinned
+# upstream pi-tui Loader and coding-agent BorderedLoader/CountdownTimer modules.
+# The pig probe imports the matching Go TUI components. Both probes render the
+# components and summarize stable observable behavior: loader padding/width,
+# spinner advancement, bordered loader structure/cancel hint/borders, and the
+# countdown timer's initial ceil + first decrement.
+
+name = "10-loader-countdown-bordered-behavior"
+description = "Loader, BorderedLoader, and CountdownTimer component behavior matches upstream normalized probes."
+covers = [
+  "packages/tui/src/components/loader.ts",
+  "packages/coding-agent/src/modes/interactive/components/status-indicator.ts",
+  "packages/coding-agent/src/modes/interactive/components/bordered-loader.ts",
+  "packages/coding-agent/src/modes/interactive/components/countdown-timer.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./parity/testdata/tui-components-pig"]
+pi_args = ["node", "./parity/testdata/tui-components-pi.mjs"]
+
+[cli]
+cwd = "../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["componentOK"]
+both_not_contain = ["panic:", "Theme not initialized", "ERR_MODULE_NOT_FOUND"]
+runtime_ratio_max = 5.0
+runs = 1

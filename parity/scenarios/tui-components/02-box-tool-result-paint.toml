@@ -1,0 +1,56 @@
+# Behavior family: tui-components
+# Surface: Box-like bg-painted tool result rendering
+#
+# Upstream evidence (Pi 0.83.0):
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+#   send: "Run: expr 20 + 22" Enter
+#   wait: 5s (tool executes, faux responds "42")
+#   crop: start="$ expr 20 + 22" end="42"
+#   raw cropped upstream block (tool execution box):
+#     $ expr 20 + 22
+#     42
+#
+# This exercises the bg-painted tool result container (Box-pattern with
+# paddingX=1 applied by ToolExecutionComponent) and verifies the content
+# width calculation uses widthx.VisibleWidth for padding.
+
+name = "02-box-tool-result-paint"
+description = "Tool result box renders identically after faux bash tool execution."
+covers = [
+  "packages/tui/src/components/box.ts",
+  "packages/tui/src/utils.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "$ expr 20 + 22"
+capture_end = "42"
+
+[[tmux.steps]]
+keys = ["Run: expr 20 + 22", "Enter"]
+settle_seconds = 6
+wait_contains = ["42"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+# Exact escaped terminal output now matches, including background paint and
+# scoped SGR resets around the padded result rows.
+escaped_output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

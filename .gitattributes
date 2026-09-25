@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+
+* text=auto eol=lf
+
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+*.bmp binary
+*.gz binary
+*.ico binary
+*.jpg binary
+*.jpeg binary
+*.pdf binary
+*.png binary
+*.webp binary
+*.zip binary
+
+# Terminal goldens preserve blank screen rows and mixed space/tab indentation.
+tui/**/testdata/** whitespace=-blank-at-eof,-space-before-tab
+
+# Keep generated and vendored material out of GitHub language statistics and
+# review navigation without excluding it from source archives.
+ai/*_generated.go linguist-generated=true
+coding/extension/host/fusepack/registry_generated.go linguist-generated=true
+internal/mermaid/width_data.go linguist-generated=true
+parity/interfaces/*.json linguist-generated=true

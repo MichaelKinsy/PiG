@@ -1,0 +1,370 @@
+# Behavior family scope.
+#
+# Each family declares the upstream PORT_MAP paths that fall under
+# its responsibility. `go run ./parity/cmd/familygaps -family <name>`
+# uses this to report which entries in family scope are untested.
+#
+# Pattern semantics:
+#   - exact path:       matches that PORT_MAP entry only
+#   - trailing slash:   matches every PORT_MAP entry whose upstream
+#                       path starts with this prefix
+#
+# A PORT_MAP entry may legitimately belong to multiple families
+# (e.g., `interactive-mode.ts` shows up under slash-commands AND
+# autocomplete AND tree). `familygaps` reports coverage from any
+# scenario; cross-family coverage is allowed and visible.
+#
+# When you start a new family loop, add a row here FIRST. The act of
+# declaring scope before producing scenarios prevents silent skipping.
+
+[families.experimental-client]
+description = "Experimental client, mini, and micro terminal presentations over replicated or remote Session state."
+includes = [
+  "packages/coding-agent/src/experimental/client-tui.ts",
+  "packages/coding-agent/src/experimental/micro/tui.ts",
+  "packages/coding-agent/src/experimental/mini/tui/view.ts",
+]
+
+[families.experimental-pico3]
+description = "Experimental Pico3 agent harness, including managed system-section rendering."
+includes = [
+  "packages/agent/src/harness/pico3/",
+]
+
+[families.autocomplete]
+description = "Autocomplete popup: slash menu and path completion."
+includes = [
+  "packages/tui/src/autocomplete.ts",
+]
+
+[families.footer]
+description = "Footer/status line: cwd, session id, model, token counters, cost, hints."
+includes = [
+  "packages/coding-agent/src/core/footer-data-provider.ts",
+  "packages/coding-agent/src/modes/interactive/components/footer.ts",
+]
+
+[families.model-resolver-selector]
+description = "Model CLI parsing/listing, resolution diagnostics, and interactive selector/scope behavior."
+require_in_family = true
+includes = [
+  "packages/coding-agent/src/cli/args.ts",
+  "packages/coding-agent/src/cli/list-models.ts",
+  "packages/coding-agent/src/core/model-resolver.ts",
+  "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts",
+]
+
+[families.model-runtime-store-catalog]
+description = "Model catalog refresh, persisted stores, remote catalog providers, credentials, and runtime lifecycle."
+require_in_family = true
+includes = [
+  "packages/ai/src/model-catalog.ts",
+  "packages/ai/src/models.generated.ts",
+  "packages/ai/src/models-store.ts",
+  "packages/ai/src/models.ts",
+  "packages/coding-agent/src/core/model-config.ts",
+  "packages/coding-agent/src/core/model-registry.ts",
+  "packages/coding-agent/src/core/model-runtime.ts",
+  "packages/coding-agent/src/core/models-store.ts",
+  "packages/coding-agent/src/core/remote-catalog-provider.ts",
+]
+
+[families.model]
+description = "Model registry, resolver, selector overlays, scope toggling."
+includes = [
+  "packages/ai/src/models.ts",
+  "packages/ai/src/models.generated.ts",
+  "packages/coding-agent/src/core/model-registry.ts",
+  "packages/coding-agent/src/core/model-resolver.ts",
+  "packages/coding-agent/src/cli/list-models.ts",
+  "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/scoped-models-selector.ts",
+]
+
+[families.print]
+description = "Headless --print mode: non-interactive single-turn execution."
+includes = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+]
+
+[families.session]
+description = "Session manager, selector, cwd resolution, persistence."
+includes = [
+  "packages/coding-agent/src/core/session-manager.ts",
+  "packages/coding-agent/src/core/session-cwd.ts",
+  "packages/coding-agent/src/modes/interactive/components/session-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts",
+]
+
+[families.settings]
+description = "Settings manager and settings overlay UI."
+includes = [
+  "packages/coding-agent/src/core/settings-manager.ts",
+  "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/settings-submenu.ts",
+  "packages/tui/src/components/settings-list.ts",
+]
+
+[families.slash-commands]
+description = "Slash command registry, dispatch, and individual command handlers."
+includes = [
+  "packages/coding-agent/src/core/slash-commands.ts",
+  "packages/coding-agent/src/utils/changelog.ts",
+]
+
+[families.startup]
+description = "Cold-boot path: cli entry, main loop initialization."
+includes = [
+  "packages/coding-agent/src/cli.ts",
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/modes/interactive/components/first-time-setup.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+
+[families.tools]
+description = "Built-in tool handlers (bash, read, write, edit, grep, find, ls) and their formatting plumbing."
+includes = [
+  "packages/coding-agent/src/core/tools/",
+]
+
+[families.tree]
+description = "Session tree overlay: nested entry rendering and folding."
+includes = [
+  "packages/coding-agent/src/modes/interactive/components/tree-selector.ts",
+]
+
+[families.tui-components]
+description = "Primitive TUI rendering and input components, terminal dispatch, and the widthx utility layer."
+includes = [
+  "packages/tui/src/components/box.ts",
+  "packages/tui/src/components/loader.ts",
+  "packages/tui/src/components/markdown.ts",
+  "packages/tui/src/components/mouse-region.ts",
+  "packages/tui/src/components/spacer.ts",
+  "packages/tui/src/components/text.ts",
+  "packages/tui/src/components/truncated-text.ts",
+  "packages/tui/src/components/cancellable-loader.ts",
+  "packages/tui/src/components/editor.ts",
+  "packages/tui/src/components/input.ts",
+  "packages/tui/src/components/select-list.ts",
+  "packages/tui/src/components/settings-list.ts",
+  "packages/tui/src/keybindings.ts",
+  "packages/tui/src/terminal.ts",
+  "packages/tui/src/terminal-image.ts",
+  "packages/tui/src/tui.ts",
+  "packages/tui/src/utils.ts",
+]
+
+[families.fullscreen]
+description = "Pi 0.84 fullscreen/alternate-screen layout, scrolling, sticky dock, scrollbar, and terminal lifecycle."
+require_in_family = true
+includes = [
+  "packages/tui/src/alt-screen-search.ts",
+  "packages/tui/src/components/alt-screen-flash.ts",
+  "packages/tui/src/components/h-stack.ts",
+  "packages/tui/src/components/scroll-view.ts",
+  "packages/tui/src/components/v-stack.ts",
+  "packages/tui/src/layout.ts",
+  "packages/tui/src/layout-node.ts",
+  "packages/tui/src/tui-alt-screen.ts",
+  "packages/tui/src/tui-main-screen.ts",
+]
+
+[families.markdown-rich-rendering]
+description = "Pi 0.84 LaTeX, Mermaid, and display-only Markdown transformation behavior."
+require_in_family = true
+includes = [
+  "packages/tui/src/latex.ts",
+  "packages/coding-agent/src/modes/interactive/components/markdown-transform.ts",
+  "packages/coding-agent/src/modes/interactive/components/mermaid.ts",
+]
+
+[families.interactive-rendering]
+description = "Interactive-mode rendering components: assistant messages, tool execution, bash output, user messages, diff, structural messages (bordered-loader, branch-summary, etc.)."
+includes = [
+  "packages/coding-agent/src/modes/interactive/components/assistant-message.ts",
+  "packages/coding-agent/src/modes/interactive/components/armin.ts",
+  "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+  "packages/coding-agent/src/modes/interactive/components/bash-execution.ts",
+  "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+  "packages/coding-agent/src/modes/interactive/components/diff.ts",
+  "packages/coding-agent/src/modes/interactive/components/bordered-loader.ts",
+  "packages/coding-agent/src/modes/interactive/components/custom-editor.ts",
+  "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+  "packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts",
+  "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+  "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+  "packages/coding-agent/src/modes/interactive/components/user-message-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/countdown-timer.ts",
+  "packages/coding-agent/src/modes/interactive/components/daxnuts.ts",
+  "packages/coding-agent/src/modes/interactive/components/dynamic-border.ts",
+  "packages/coding-agent/src/modes/interactive/components/keybinding-hints.ts",
+  "packages/coding-agent/src/modes/interactive/components/status-indicator.ts",
+  "packages/coding-agent/src/utils/syntax-highlight.ts",
+]
+
+[families.llama-runtime]
+description = "Built-in llama.cpp extension provider, manager UI, download client, and Hugging Face integration."
+includes = [
+  "packages/coding-agent/src/extensions/llama/",
+]
+
+[families.selectors]
+description = "Interactive overlay selector components beyond model/tree: config, extension, login, OAuth, show-images, theme, thinking."
+includes = [
+  "packages/coding-agent/src/modes/interactive/components/config-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/extension-editor.ts",
+  "packages/coding-agent/src/modes/interactive/components/extension-input.ts",
+  "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/login-dialog.ts",
+  "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/show-images-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/theme-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/thinking-selector.ts",
+  "packages/coding-agent/src/cli/config-selector.ts",
+]
+
+[families.extensions-runtime]
+description = "Pi extension SDK runtime: SDK lifecycle, extension types, in-proc runner, loader, and tool-bridge wrapper."
+includes = [
+  "packages/coding-agent/src/core/sdk.ts",
+  "packages/coding-agent/src/core/extensions/types.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/core/extensions/loader.ts",
+  "packages/coding-agent/src/core/extensions/wrapper.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+
+[families.interactive-input]
+description = "Global interactive editor action registration, extension shortcuts, and input dispatch precedence."
+includes = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+
+[families.compaction]
+description = "Session compaction: summarization triggers, branch summarization on fork, and shared compaction utilities."
+includes = [
+  "packages/coding-agent/src/core/compaction/compaction.ts",
+  "packages/coding-agent/src/core/compaction/branch-summarization.ts",
+  "packages/coding-agent/src/core/compaction/utils.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+
+[families.export-html]
+description = "HTML session export: ANSI→HTML converter, tool block renderer, and the export entrypoint."
+includes = [
+  "packages/coding-agent/src/core/export-html/ansi-to-html.ts",
+  "packages/coding-agent/src/core/export-html/tool-renderer.ts",
+  "packages/coding-agent/src/core/export-html/index.ts",
+]
+
+[families.providers-faux-streaming]
+description = "AI provider layer: SDK types, OpenAI streaming, faux provider, message transform, simple options, SSE event stream, overflow recovery, Unicode sanitization, validation, and system-message rendering."
+includes = [
+  "packages/ai/src/types.ts",
+  "packages/ai/src/stream.ts",
+  "packages/ai/src/providers/faux.ts",
+  "packages/ai/src/providers/transform-messages.ts",
+  "packages/ai/src/providers/simple-options.ts",
+  "packages/ai/src/utils/event-stream.ts",
+  "packages/ai/src/utils/overflow.ts",
+  "packages/ai/src/utils/sanitize-unicode.ts",
+  "packages/ai/src/utils/text.ts",
+  "packages/ai/src/utils/validation.ts",
+]
+
+[families.providers-registry]
+description = "Built-in provider registration and auth-gated --list-models exposure across env-key and OAuth-backed providers."
+includes = [
+  "packages/ai/src/api-registry.ts",
+  "packages/ai/src/bedrock-provider.ts",
+  "packages/ai/src/env-api-keys.ts",
+  "packages/ai/src/providers/amazon-bedrock.ts",
+  "packages/ai/src/providers/anthropic.ts",
+  "packages/ai/src/providers/azure-openai-responses.ts",
+  "packages/ai/src/providers/google-shared.ts",
+  "packages/ai/src/providers/google-vertex.ts",
+  "packages/ai/src/providers/google.ts",
+  "packages/ai/src/providers/mistral.ts",
+  "packages/ai/src/providers/openai-codex-responses.ts",
+  "packages/ai/src/providers/openai-completions.ts",
+  "packages/ai/src/providers/openai-responses-shared.ts",
+  "packages/ai/src/providers/openai-responses.ts",
+  "packages/ai/src/providers/register-builtins.ts",
+]
+
+[families.oauth]
+description = "OAuth browser/device auth helpers and provider-specific PKCE/callback plumbing."
+includes = [
+  "packages/ai/src/oauth.ts",
+  "packages/ai/src/auth/oauth/anthropic.ts",
+  "packages/ai/src/auth/oauth/github-copilot.ts",
+  "packages/ai/src/auth/oauth/oauth-page.ts",
+  "packages/ai/src/auth/oauth/openai-codex.ts",
+  "packages/ai/src/auth/oauth/pkce.ts",
+  "packages/ai/src/auth/types.ts",
+]
+
+[families.cli-utils]
+description = "Remaining CLI parsing, startup picker, package-command, and utility surfaces outside the main interactive/platform families."
+includes = [
+  "packages/ai/src/cli.ts",
+  "packages/coding-agent/src/cli/args.ts",
+  "packages/coding-agent/src/cli/file-processor.ts",
+  "packages/coding-agent/src/cli/initial-message.ts",
+  "packages/coding-agent/src/cli/session-picker.ts",
+  "packages/coding-agent/src/package-manager-cli.ts",
+  "packages/coding-agent/src/utils/frontmatter.ts",
+  "packages/coding-agent/src/utils/git.ts",
+  "packages/coding-agent/src/utils/mime.ts",
+  "packages/coding-agent/src/utils/paths.ts",
+  "packages/coding-agent/src/utils/shell.ts",
+  "packages/coding-agent/src/utils/tools-manager.ts",
+]
+
+[families.clipboard-images]
+description = "Clipboard image ingestion, image transforms, and terminal-image rendering surfaces gated on platform capabilities."
+includes = [
+  "packages/coding-agent/src/utils/clipboard-image.ts",
+  "packages/coding-agent/src/utils/clipboard.ts",
+  "packages/coding-agent/src/utils/exif-orientation.ts",
+  "packages/coding-agent/src/utils/image-convert.ts",
+  "packages/coding-agent/src/utils/image-resize.ts",
+  "packages/tui/src/components/image.ts",
+  "packages/tui/src/terminal-image.ts",
+]
+
+[families.rpc]
+description = "RPC mode (--rpc): JSONL request/response protocol for programmatic agent control."
+includes = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+  "packages/coding-agent/src/modes/rpc/jsonl.ts",
+]
+
+[families.project-trust]
+description = "Workspace trust resolution, persistence, startup gating, resource/package filtering, writes, and interactive trust decisions."
+require_in_family = true
+includes = [
+  "packages/coding-agent/src/cli/project-trust.ts",
+  "packages/coding-agent/src/cli/startup-ui.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/extensions/index.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/core/extensions/types.ts",
+  "packages/coding-agent/src/core/package-manager.ts",
+  "packages/coding-agent/src/core/project-trust.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+  "packages/coding-agent/src/core/settings-manager.ts",
+  "packages/coding-agent/src/core/system-prompt.ts",
+  "packages/coding-agent/src/core/trust-manager.ts",
+  "packages/coding-agent/src/index.ts",
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/trust-selector.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/package-manager-cli.ts",
+]

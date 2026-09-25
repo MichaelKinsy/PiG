@@ -1,0 +1,56 @@
+# Behavior family: interactive-rendering
+# Surface: BranchSummaryMessageComponent: collapsed `[branch]` block
+#          rendered when resuming a session that contains a branch_summary entry.
+#
+# Upstream evidence (pi v0.69.0, 2026-05-16, 100x35 tmux probe):
+#   Session fixture: testdata/branch-cwd/sessions/...jsonl
+#   (header + user:Hello world + assistant:Hi there + branch_summary:fromId=e1,summary=...)
+#   pi -e test-faux-provider.ts --model test-faux/faux-1 --session-dir sessions -c
+#   wait: ready
+#   crop: capture_start="[branch]", capture_end="expand)"
+#   raw cropped upstream block:
+#
+#      [branch]
+#
+#      Branch summary (ctrl+o to expand)
+#
+# pig renders the collapse hint lowercase (`ctrl+o`) natively, matching upstream.
+#
+# Root-cause fix shared with scenario 14:
+#   pig lacked the initial-session-render call on resume. Fixed by
+#   adding rebuildChatFromSession() after the welcome banner when
+#   ResumePath is set (mirroring upstream renderInitialMessages).
+
+name = "13-branch-summary-message"
+description = "BranchSummaryComponent renders collapsed [branch] block on session resume with pre-staged branch_summary entry."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/branch-summary-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/branch-cwd"
+capture_start = "[branch]"
+capture_end = "expand)"
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "unknown command"]
+both_contain = ["[branch]", "Branch summary", "expand)"]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3

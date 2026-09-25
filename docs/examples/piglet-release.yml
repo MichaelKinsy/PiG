@@ -1,0 +1,179 @@
+# Reusable workflow: build a signed Piglet Binary on a native runner for each
+# target, attest each Binary's build provenance, and publish them as one GitHub
+# Release with `pig piglet publish --to github`.
+#
+# Copy this file to .github/workflows/piglet-release.yml in the repository that
+# holds the Piglet. Create the signing key once with `pig piglet keygen`, store
+# the private key as a repository secret, and publish the .pub file. Call the
+# workflow from a workflow that runs when you push the tag v<release.version>:
+#
+#   on:
+#     push:
+#       tags: ["v*"]
+#   jobs:
+#     release:
+#       uses: ./.github/workflows/piglet-release.yml
+#       permissions:
+#         contents: write
+#         id-token: write
+#         attestations: write
+#       with:
+#         piglet: agents/reviewer.yaml
+#         pig-ref: <PiG release tag or full commit SHA>
+#       secrets:
+#         piglet-signing-key: ${{ secrets.PIGLET_SIGNING_KEY }}
+#
+# Users install the release with `pig piglet pull github:<owner>/<repo>@<version>`
+# and can check a Binary's provenance with `pig verify --provenance --repo
+# <owner>/<repo> --signer-workflow <owner>/<repo>/.github/workflows/piglet-release.yml`.
+#
+# Add toolchain setup steps to the build job when the Piglet's extensions need
+# Rust or Python to build.
+name: Piglet release
+
+on:
+  workflow_call:
+    inputs:
+      piglet:
+        description: Path of the Piglet YAML in this repository
+        required: true
+        type: string
+      pig-ref:
+        description: PiG tag or full commit SHA that builds and publishes the Binaries
+        required: true
+        type: string
+      pig-repository:
+        description: Repository that holds the PiG source
+        required: false
+        type: string
+        default: MichaelKinsy/PiG
+      targets:
+        description: JSON list of build targets, each with goos, goarch, and a native runner label
+        required: false
+        type: string
+        default: >-
+          [{"goos":"linux","goarch":"amd64","runner":"ubuntu-24.04"},
+          {"goos":"linux","goarch":"arm64","runner":"ubuntu-24.04-arm"},
+          {"goos":"darwin","goarch":"arm64","runner":"macos-15"},
+          {"goos":"windows","goarch":"amd64","runner":"windows-2025"}]
+    secrets:
+      piglet-signing-key:
+        description: Ed25519 private key PEM from `pig piglet keygen`
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+    runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    timeout-minutes: 60
+    strategy:
+      fail-fast: true
+      matrix:
+        include: ${{ fromJSON(inputs.targets) }}
+    steps:
+      # Every target must hash the same Piglet source bytes.
+      - name: Keep checked-out line endings
+        shell: bash
+        run: git config --global core.autocrlf false
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check out PiG
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ inputs.pig-repository }}
+          ref: ${{ inputs.pig-ref }}
+          path: .pig-src
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: .pig-src/go.mod
+          cache-dependency-path: .pig-src/go.sum
+      - name: Build PiG
+        shell: bash
+        run: mkdir -p .pig-bin && go -C .pig-src build -trimpath -o "../.pig-bin/pig$(go env GOEXE)" ./cmd/pig
+      - name: Build the signed Piglet Binary
+        shell: bash
+        env:
+          PIGLET: ${{ inputs.piglet }}
+          PIGLET_SIGNING_KEY: ${{ secrets.piglet-signing-key }}
+          PIG_HOME: ${{ runner.temp }}/pig-home
+          PIG_SOURCE_ROOT: ${{ github.workspace }}/.pig-src
+          TARGET_OS: ${{ matrix.goos }}
+          TARGET_ARCH: ${{ matrix.goarch }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/piglet-signing.key"
+          trap 'rm -f "$key"' EXIT
+          umask 077
+          printf '%s\n' "$PIGLET_SIGNING_KEY" > "$key"
+          exe="$(go env GOEXE)"
+          mkdir -p dist
+          "./.pig-bin/pig$exe" piglet build "$PIGLET" --format binary --builder native \
+            --targets "$TARGET_OS/$TARGET_ARCH" --sign-key "$key" \
+            --out "dist/piglet-$TARGET_OS-$TARGET_ARCH$exe" --no-input
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*
+      - name: Keep the Binary for publication
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: piglet-binary-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Publish the GitHub Release
+    needs: build
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - name: Check out PiG
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          repository: ${{ inputs.pig-repository }}
+          ref: ${{ inputs.pig-ref }}
+          path: .pig-src
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: .pig-src/go.mod
+          cache-dependency-path: .pig-src/go.sum
+      - name: Build PiG
+        shell: bash
+        run: mkdir -p .pig-bin && go -C .pig-src build -trimpath -o ../.pig-bin/pig ./cmd/pig
+      - name: Collect every target's Binary
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: piglet-binary-*
+          path: dist
+          merge-multiple: true
+      - name: Publish
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PIGLET: ${{ inputs.piglet }}
+          PIGLET_SIGNING_KEY: ${{ secrets.piglet-signing-key }}
+          PIG_HOME: ${{ runner.temp }}/pig-home
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/piglet-signing.key"
+          trap 'rm -f "$key"' EXIT
+          umask 077
+          printf '%s\n' "$PIGLET_SIGNING_KEY" > "$key"
+          ./.pig-bin/pig piglet publish "$PIGLET" --to github --repo "$GITHUB_REPOSITORY" \
+            --sign-key "$key" --artifacts dist --commit "$GITHUB_SHA" --yes --no-input

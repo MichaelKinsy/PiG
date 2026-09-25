@@ -1,0 +1,47 @@
+# Behavior family: providers-faux-streaming
+# Scenario: faux provider emits tool call → tool executes → faux sees result → text reply.
+#
+# This exercises the full round-trip: faux emits a bash tool_use delta,
+# the agent executes it, the tool result feeds back to faux (via
+# transform-messages normalization), faux replies with "42".
+# Exercises: transform-messages (NormalizeMessages on replay),
+# simple-options (default StreamOptions construction).
+#
+# Upstream evidence (2026-05-17):
+#   cd /tmp/parity-probe-faux
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts \
+#     --model test-faux/faux-1 --print "Run: expr 20 + 22"
+#   output: "42"
+#   exit: 0
+#
+#   PIG_TEST_FAUX=1 PIG_HOME=testdata/pig-home PIG_QUIET_STARTUP=1 \
+#     pig --no-extensions --model test-faux/faux-1 --print "Run: expr 20 + 22"
+#   output: "42"
+#   exit: 0
+
+name = "02-print-faux-tool-cycle"
+description = "Faux triggers bash(expr 20+22) → tool result → faux responds '42', round-trip parity"
+covers = [
+  "packages/ai/src/api/transform-messages.ts",
+  "packages/ai/src/api/simple-options.ts",
+  "packages/agent/src/agent-loop.ts",
+  "packages/agent/src/types.ts",
+  "packages/coding-agent/src/core/messages.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: expr 20 + 22"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["42"]
+output_equal = true
+runs = 3

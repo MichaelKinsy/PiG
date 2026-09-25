@@ -1,0 +1,53 @@
+# Upstream evidence: pinned Pi, 2026-09-25: start with singleton scope model-one and a catalog ordered model-two, model-one. Switch to all, save model-two, and reopen. AgentSession appends the saved default; ModelSelectorComponent maps the scope without sorting, so model-one remains above the selected/default model-two.
+# The visible refresh barrier prevents an earlier selector's status from satisfying the final capture.
+name = "18-model-picker-save-default-scope-order"
+description = "Saving outside a singleton scope appends the default without reordering the reopened rows"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 40
+# Quiet startup has no banner; use the same footer/prompt readiness contract as Pi.
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 20
+capture_start = "Scope:"
+capture_start_last = true
+capture_end = "to cancel"
+
+[[tmux.steps]]
+keys = ["/model", "Enter"]
+wait_visible_contains = ["Scope:", "Model Name: Model One", "Model catalogs refreshed."]
+wait_not_contains = ["Refreshing model catalogs…"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["Tab", "model-two", "hex:13"]
+wait_contains = ["Default model: fixture/model-two"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["/model", "Enter"]
+wait_visible_contains = ["Scope:", "model-one [fixture]", "→ ✓ model-two [fixture] · default", "Model catalogs refreshed."]
+wait_not_contains = ["Refreshing model catalogs…"]
+wait_timeout_seconds = 15
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/model-picker-scope-order"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-picker-scope-order", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--models", "fixture/model-one", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--models", "fixture/model-one", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["    model-one [fixture]\n→ ✓ model-two [fixture] · default", "Model Name: Model Two", "Enter to select · Ctrl+S to set as default · Escape/Ctrl+C to cancel"]
+both_not_contain = ["Refreshing model catalogs…", "No matching models"]
+output_equal = true
+escaped_output_equal = true
+runs = 3

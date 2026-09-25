@@ -1,0 +1,74 @@
+# Behavior family: fullscreen
+# Surface: Pi 0.87.1 main-screen tall tool output while the tool is running.
+# Upstream evidence: the isolated Pi 0.87.1 live probe retained a LIVE-TOOL row
+# above Elapsed and the animated Working border while the command was running.
+
+# Pi 0.87.1 re-check (launch-dry-run-f2416f71, clone/parity/artifacts/
+# 05-main-screen-tool-streaming/20260924T154621Z): pi.stdout has no
+# "Working..." row. Pi 0.87.1 draws the loader in the editor top border as
+# "── ⠦ Working ───", and both sides failed the stale "Working..."
+# both_contain. The assertion now names the border form.
+name = "05-main-screen-tool-streaming"
+description = "Tall in-progress tool output matches Pi without stale or blank transcript rows."
+covers = [
+  "packages/tui/src/tui-main-screen.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 80
+height = 12
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "../compaction/testdata/compact-session"
+capture_end = "faux-1"
+
+[[tmux.steps]]
+keys = ["Run: tui live tool pause", "Enter"]
+wait_contains = ["LIVE-TOOL-08"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_contain = ["LIVE-TOOL-08", "Elapsed", "Working ─"]
+both_not_contain = ["LIVE-TOOL-09", "LIVE-TOOL-DONE", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3
+
+# normalize-rationale: tool elapsed time, spinner glyph selection, temporary
+# working-directory identity, and faux footer usage vary independently of rows.
+# The complete bordered status row, transcript markers, rows, whitespace, and
+# ordering remain unmasked.
+[[assert.normalize_replace]]
+pattern = 'Elapsed [0-9]+\.[0-9]+s'
+with = "Elapsed Ns"
+
+# Pi 0.87.1 also embeds the same animated loader in the editor top border
+# while a tool is still running (see diff.txt at f2416f71's
+# 05-main-screen-tool-streaming artifact: pig showed "── ⠸ Working ────" and
+# pi showed "── ⠦ Working ────" in the same run, proving both sides pick an
+# arbitrary frame at capture and the existing standalone-line pattern above
+# does not match this bordered form). Normalize only the spinner code point,
+# mirroring 09-main-screen-compaction-in-progress's equivalent rule.
+[[assert.normalize_replace]]
+pattern = '(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Working ─*)$'
+with = '${1}<SPINNER>${2}'
+
+[[assert.normalize_replace]]
+pattern = '(?m)^.*[/\\]parity-snap-cwd-[^\n]*$'
+with = "<CWD>"
+
+[[assert.normalize_replace]]
+pattern = '(?m)^.*?/128k \(auto\)\s+faux-1$'
+with = "<STATUS>"

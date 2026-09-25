@@ -1,0 +1,5 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+prompt = "Add a --json flag to report.py. With the flag, print the report as one JSON object that maps each word to its count. Without the flag, keep the current output. test_report.py must pass. Do not change the tests."
+check = "python3 -m unittest -q test_report"
+protected = ["test_report.py"]

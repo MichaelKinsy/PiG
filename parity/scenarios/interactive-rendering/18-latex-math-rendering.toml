@@ -1,0 +1,55 @@
+# Behavior family: interactive-rendering
+# Surface: LaTeX math in assistant markdown (latex.ts + markdown.ts latex render
+# case). The faux provider echoes "reply with exactly: <text>", so the assistant
+# renders the inline math "$E = mc^2$" through the markdown pipeline. Upstream pi
+# and pig must both render it to the Unicode form "E = mc²".
+#
+# Upstream evidence (pi v0.84.0):
+#   inline latex tokenizer (tokenizeInlineLatex) recognizes $...$, renderLatex
+#   maps ^2 -> superscript ² via the SUPERSCRIPTS table. The asserted crop line
+#   contains "mc²", exercising latex.ts (parser + superscript table) and the
+#   markdown.ts inline latex render seam, not just startup.
+#
+# The engine and markdown differentials (internal/latex, tui markdown
+# latex tests) prove byte-faithfulness broadly; this scenario proves the same
+# rendering fires in a live interactive TUI session identically to pi.
+
+name = "18-latex-math-rendering"
+description = "Assistant message renders inline LaTeX math as Unicode, matching upstream."
+covers = [
+  "packages/tui/src/latex.ts",
+  "packages/tui/src/components/markdown.ts",
+  "packages/coding-agent/src/modes/interactive/components/assistant-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "reply with exactly: energy"
+capture_end = "mc²"
+
+[[tmux.steps]]
+keys = ["reply with exactly: energy $E = mc^2$ done", "Enter"]
+settle_seconds = 4
+wait_contains = ["mc²"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

@@ -1,0 +1,74 @@
+# Behavior family: extensions-runtime
+# Scenario: extension-registered slash command is discovered and invoked.
+#
+# parity-cmd.mjs registers a "/parity-ping" command whose handler calls
+# ctx.ui.notify("PONG", "info"). Typing "/parity-ping" Enter dispatches
+# the handler and the notification "PONG" appears.
+#
+# This exercises loader.ts (extension discovery and command registration)
+# and sdk.ts (registerCommand API + command dispatch).
+#
+# Upstream evidence (2026-05-16, tmux probe):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent PI_SKIP_VERSION_CHECK=1 \
+#     pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts \
+#     -e testdata/ext/parity-cmd.mjs \
+#     --model test-faux/faux-1 \
+#     --session-dir /tmp/parity-cmd-pi
+#   send: "/parity-ping" Enter
+#   wait: "PONG"
+#   crop: start="PONG" end="PONG"
+#   raw cropped upstream block:
+#     PONG
+
+name = "04-slash-command"
+description = "Extension-registered slash command /parity-ping fires and shows PONG notification"
+covers = [
+  "packages/coding-agent/src/core/extensions/loader.ts",
+  "packages/coding-agent/src/core/sdk.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/parity-cmd.mjs"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-cmd.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "PONG"
+capture_end = "PONG"
+
+[[tmux.steps]]
+# Prove the editor accepted the command before dispatch. Under parallel load the
+# Ready render can precede the input loop by a scheduling quantum.
+keys = ["/parity-ping"]
+wait_contains = ["/parity-ping"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+# Dispatch exactly once. A missing PONG is a registration/dispatch failure and
+# must not be retried into a pass.
+keys = ["Enter"]
+wait_contains = ["PONG"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

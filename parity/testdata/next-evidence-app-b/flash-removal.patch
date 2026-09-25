@@ -1,0 +1,5 @@
+--- a/tui/alt_screen_flash.go
++++ b/tui/alt_screen_flash.go
+@@ -59 +59 @@
+-				c.entries = append(c.entries[:i], c.entries[i+1:]...)
++				c.entries = append(c.entries[:i], c.entries[i:]...)

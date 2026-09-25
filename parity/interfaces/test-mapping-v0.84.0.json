@@ -1,0 +1,2201 @@
+{
+  "upstreamVersion": "0.84.0",
+  "entries": [
+    {
+      "path": "packages/agent/test/agent-loop.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e6ff6e3c3a63e02beaa77e24c8d7367709fd69809e9eb90ff71cfaf773a0522d"
+    },
+    {
+      "path": "packages/agent/test/agent.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:1a16a5c5047252d157aa9aab5afa968f16e423cf9f007729cc53fbcedd7ff5fb"
+    },
+    {
+      "path": "packages/agent/test/e2e.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:d2b271070d22ff2bdace2135f1cb4709345515e7e63d0f05d7c8b435a1cc9361"
+    },
+    {
+      "path": "packages/agent/test/harness/agent-harness-scaffold.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a680a7a12e21d79b0ece529b1812d042cb8cca1dc6e08fd700b39203bef7333d"
+    },
+    {
+      "path": "packages/agent/test/harness/branch-summarization.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:cef5c955d65f062462cf788cb3d911c950b27112d9aea66dcac52ae1c0970199"
+    },
+    {
+      "path": "packages/agent/test/harness/compaction.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:3d6fabf6d537812e9b86ff9d09e275530e7ad2217fe7528a047c17f0faee5834"
+    },
+    {
+      "path": "packages/agent/test/harness/nodejs-env.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:28559342f728d2b71ee59b72cbd4ae10e028cd53010d65fea195a3047c192ebb"
+    },
+    {
+      "path": "packages/agent/test/harness/prompt-templates.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a9b4834539edf0d9e89340c995f908490a6b2b9823af815460e0fadabd7b0e68"
+    },
+    {
+      "path": "packages/agent/test/harness/reducer.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:79badbc842ddfc9ddd6c5e5adce221dc09c6aedb203eb72e09a2433ab3a092ea"
+    },
+    {
+      "path": "packages/agent/test/harness/resource-formatting.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7bc3d164339f2642327a576a905389e12b7081bec77e4315712c9f7576115a15"
+    },
+    {
+      "path": "packages/agent/test/harness/session/context.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:20a0d1cd2a822f5860436017b3d2e1c9f120a5278bd94ad3aa5e0a7b3b318254"
+    },
+    {
+      "path": "packages/agent/test/harness/session/jsonl-codec.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:0b62bb55023498ec4182d86644dbdf289d024dd8ebc3bb358bac1afe0667bb8e"
+    },
+    {
+      "path": "packages/agent/test/harness/session/jsonl-storage.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a8b46d5e50e20bb9b508c8b19a9605ef3df55d673cc920c164e095d4cf5ebbe3"
+    },
+    {
+      "path": "packages/agent/test/harness/session/jsonl.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:450bcabc115fbd3077cb010745ad0cf11752ac8a41818678ca8f2994c7de2ffc"
+    },
+    {
+      "path": "packages/agent/test/harness/session/memory.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a5d6f609d45be4d4964ce7d0edc6fe3fb13f1a4b98b0bd9b79af798d67785ce1"
+    },
+    {
+      "path": "packages/agent/test/harness/skills.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:5cb717a1c0fdad7ce4a5ddea6c4d51aa91fc4a5863af4aaf543519f6a3f39af3"
+    },
+    {
+      "path": "packages/agent/test/harness/system-prompt.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:40dafee3aedf176cd02c19c932fbc16442e016a5b29b254d7c76bd0197db3c5f"
+    },
+    {
+      "path": "packages/agent/test/harness/telemetry.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:01d33465b90aac24e5dbc2b7a43574ce230c991aaaf703f07810c6ee84fa75cf"
+    },
+    {
+      "path": "packages/agent/test/harness/tools.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e09131e8137c76ff3daed4c57f63b4087c4bad231fb61797d997a2fb01f7b154"
+    },
+    {
+      "path": "packages/agent/test/harness/truncate.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4fe8d6155d468a7843c6831a83af1b79a50edd54f69160b14e893b2bb49f8aaa"
+    },
+    {
+      "path": "packages/ai/test/abort.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:2af7288e0babd2dad181b926b017aa3bc89c563dd5ca7326a56f39b19aa487b3"
+    },
+    {
+      "path": "packages/ai/test/anthropic-adaptive-thinking-models.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f0f6c8b7c495e16b088e2db90590c9ce113fd5d3200e39e9a596969dead34798"
+    },
+    {
+      "path": "packages/ai/test/anthropic-auth-token.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e9e37c348c74411d6b25d07ecb9110a1e11db64cbf8eef3a010d4fa5b5117ed0"
+    },
+    {
+      "path": "packages/ai/test/anthropic-cache-write-1h-cost.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:302e89654ef6d1c36401848be2774f0a6c3f402d82986e729d14e3ad4b6d0425"
+    },
+    {
+      "path": "packages/ai/test/anthropic-eager-tool-input-compat.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:66fcf97c33a481e347c0c7b1aa0e95b28b5594f55d3e1c25ca695c75f37c32ea"
+    },
+    {
+      "path": "packages/ai/test/anthropic-eager-tool-input-e2e.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:eb688671b4b704daaff591b7fe02b7b9b4138553e710487ff64222d5ac6c1f63"
+    },
+    {
+      "path": "packages/ai/test/anthropic-empty-thinking-signature-compat.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:6f63433b6e747285dc35ab8a6b5b2f7842c5a5d4224bb96bae773815400f5c78"
+    },
+    {
+      "path": "packages/ai/test/anthropic-force-adaptive-thinking.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:eb35967e76ef1232eb9d1acd4467f9b657dc821dbf5763447a0952c1d0b7ecfa"
+    },
+    {
+      "path": "packages/ai/test/anthropic-long-cache-retention-e2e.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:21e093fb3d734a1b19656b4820cc39f02d3ce3720cbd283b5e7c9e13e57668f9"
+    },
+    {
+      "path": "packages/ai/test/anthropic-oauth.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:8671f7f284a6927770dc5bc71f4783b8e753102932c8d91b8747b633ff6aaad5"
+    },
+    {
+      "path": "packages/ai/test/anthropic-opus-4-8-smoke.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:8a35c1127e5ee30e0f1b3ad868bf7244cc6815373b840d7beac154b0a04b7844"
+    },
+    {
+      "path": "packages/ai/test/anthropic-sse-parsing.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c58248ad7d439f5fffebd9363638805cce955d03c5aa95615a8663222d127ac6"
+    },
+    {
+      "path": "packages/ai/test/anthropic-temperature-compat.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:68c99075b68609c1c4d306525bd142b58eab41f349847bcd531d99f75a5735e6"
+    },
+    {
+      "path": "packages/ai/test/anthropic-thinking-disable.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:dc9f94f9df2b2f57aabb47b33dbd94de7c6da776719ada066606a232ae6eabc8"
+    },
+    {
+      "path": "packages/ai/test/anthropic-tool-name-normalization.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f603925db12079ff9849317214de2d51ec947df9de54e504ab910f8ac209b7df"
+    },
+    {
+      "path": "packages/ai/test/azure-openai-base-url.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:5e36e1e77669782bed5492787e2eecbfad0c2cc4a99c8782ebdbe2a5875ca4a0"
+    },
+    {
+      "path": "packages/ai/test/azure-openai-responses-reasoning-replay.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a08df4a268fe070399b541dccfbfac6becde29a088b60b35d22a8aaf91d80150"
+    },
+    {
+      "path": "packages/ai/test/baseten-models.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7a42988d4b308b47a563aa1a8e7821cc6dd87730e504805fbf905cd02e120596"
+    },
+    {
+      "path": "packages/ai/test/bedrock-convert-messages.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c4d5b4509d5032985ef45d86768919591862c0b05c8b3c12e676cf56ca121409"
+    },
+    {
+      "path": "packages/ai/test/bedrock-credentials.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:fc662838b0e0562546aa7a41fe16a80ee3be45104a120624e0ddbc9ffe4b042f"
+    },
+    {
+      "path": "packages/ai/test/bedrock-custom-headers.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:dbb01e96d63cd1c91556f595577dbd75636772145be5e076d9dbd1f3ab0dbd82"
+    },
+    {
+      "path": "packages/ai/test/bedrock-endpoint-resolution.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:256644a52f42da4000520be9bb97f72bb996c2805650118e020d2d065d9c99aa"
+    },
+    {
+      "path": "packages/ai/test/bedrock-error-metadata.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:65619481f91cd1289fb20813342cf047c9583cb6552e0e15df176f5df5912552"
+    },
+    {
+      "path": "packages/ai/test/bedrock-models.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:adb580d3fd5fba8e916f540bdd6711bdc65a977714bc411115cf5fff6f008550"
+    },
+    {
+      "path": "packages/ai/test/bedrock-raw-stop-reason.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:76eb85e0a94d50d91776a04bc976292db7d605b34a1f347df1abe6bed39d16f8"
+    },
+    {
+      "path": "packages/ai/test/bedrock-thinking-payload.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:fb2fa7cce248e6bbdd6f0f2e02542309bfa7ffad99d6ca90c76a4541d15e553b"
+    },
+    {
+      "path": "packages/ai/test/cache-retention.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a0bafa33af67218a8e43d74c88e74d474d1b9faaecfa8ebff30b7337ba0c857a"
+    },
+    {
+      "path": "packages/ai/test/cloudflare-stream.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4084fc082752688154e4c910a533284f611caa1e8d8ab3b0eb5490c242dc68b5"
+    },
+    {
+      "path": "packages/ai/test/compat-env.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:d21e59ead5d900fabab11e8625633e7f827df6be7ef5f3ef6d720cb4af5ab1bf"
+    },
+    {
+      "path": "packages/ai/test/constrained-sampling.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:edd6327caea7dcb1082f0dc4870954544497314e194573231df95c8b1831e284"
+    },
+    {
+      "path": "packages/ai/test/context-estimate.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e2cd7ca0026cc365586da4b7700b4f612e904803b1b92c143568c8646427d958"
+    },
+    {
+      "path": "packages/ai/test/context-overflow.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:b2edb2ce8fe395674c0c87ef75d0c12e28ae96f463dfd78b17ebc59737d360ec"
+    },
+    {
+      "path": "packages/ai/test/cross-provider-handoff.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:25a6d50933bf78cfa154f6b82a4ecb38de2330c49cdd5d906c746f00371df07a"
+    },
+    {
+      "path": "packages/ai/test/deferred-tools.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f48460abc5363e35602d0bc250689e04f80c71a3f04cd8b48f54dc6ae0d67dd6"
+    },
+    {
+      "path": "packages/ai/test/empty.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7f646660ef123bbea2d7472b1f9ac840beb5d1a142c5eaf1698f2fb15c641800"
+    },
+    {
+      "path": "packages/ai/test/env-api-keys.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:2c45db2fa2cc09996f22ae8d0e576d04f4b542ce353f87bb9b29f73238e3ff44"
+    },
+    {
+      "path": "packages/ai/test/error-body.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:1f1a91106e10f8d9f5cec797a3cc2dc69f834e435fbc95f391b4ac94e90c2be1"
+    },
+    {
+      "path": "packages/ai/test/faux-provider.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:fea06efc607060cbad9885d7cc9bff5151f0a0510d3631e7bb8bbc7e547ab999"
+    },
+    {
+      "path": "packages/ai/test/fetch-option.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e22b1c83ff9ee6d718626019fe71929bc3ac6920bad60de8c7d9915a215ed7db"
+    },
+    {
+      "path": "packages/ai/test/fireworks-models.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:72c316e06e8be58ef033476b6fac62eab43253b6bfc5cbca01a311b43589a6ff"
+    },
+    {
+      "path": "packages/ai/test/github-copilot-anthropic.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:99cd1aec759c6e3b28a54d843ba4f1243537cccd549fb8ba361ddc9f0075d1bf"
+    },
+    {
+      "path": "packages/ai/test/github-copilot-oauth.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:883fb787b562b3dd72d39d21f4a28d498f034d4a877484916c341ede2b94095e"
+    },
+    {
+      "path": "packages/ai/test/google-raw-stop-reason.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:33f3469a72892c62fcabcefa1b0f9ecea28510005794f6aa66d028aa20239a88"
+    },
+    {
+      "path": "packages/ai/test/google-shared-convert-tools.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:238bf9aa3985bcec2cd6463fe84026144e687779700f4ddbb19310bb538baa64"
+    },
+    {
+      "path": "packages/ai/test/google-shared-gemini3-unsigned-tool-call.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:755b941ad446a3373e623162f93be59c2d339cd069c5673f0ee5fbde4867f9f7"
+    },
+    {
+      "path": "packages/ai/test/google-shared-image-tool-result-routing.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:2a4d8af59d52f5420a505e0826514908655180661272375426c1344dacebf37d"
+    },
+    {
+      "path": "packages/ai/test/google-shared-retry.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:de24f8ea13e0a83f7913a2741902550f53bbbe5200dc9494af52c0a1fbb49a78"
+    },
+    {
+      "path": "packages/ai/test/google-shared-signed-empty-blocks.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:3c9abb748f52d37d2e4674bc86ec0abf8ead48443a982592e03ce187cc6086e1"
+    },
+    {
+      "path": "packages/ai/test/google-thinking-disable.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:dc899136ae7d5c367b846aa68fc693cbe20fe12a85dfd8b41ff97fb8e6f22b10"
+    },
+    {
+      "path": "packages/ai/test/google-thinking-signature.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:81d47d5851bb3b9fa8cfc879df0a26747dd2ffd7c7093d22ce8bac74fb241dc1"
+    },
+    {
+      "path": "packages/ai/test/google-vertex-api-key-resolution.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7f206be97b94a2a3eb8627bcc542d65063b223642925223c6e203c2dc5a817a3"
+    },
+    {
+      "path": "packages/ai/test/image-model-data.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:6232831b8b2759f4017ba5b6ece41a5537763f955d9c0b4c7130c0e9f7ee50a1"
+    },
+    {
+      "path": "packages/ai/test/image-tool-result.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:d6490e96d74f1bd7856eb543785674048fe15871611ad18ecbaa7d1cac9603d8"
+    },
+    {
+      "path": "packages/ai/test/images-models.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:81e706c209a74725ef75d4b15271975039dba4281a55b7ee9f7a9c39c18b8a4a"
+    },
+    {
+      "path": "packages/ai/test/images.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:d44702aa4d1b5186a833e7f4c844ee996c08d303a8d8dc79ed0d513960f27ff8"
+    },
+    {
+      "path": "packages/ai/test/interleaved-thinking.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4144ecf2389eaa13fd967c84112fdb4d61580cc8b2101ce6999baed231e84292"
+    },
+    {
+      "path": "packages/ai/test/kimi-coding-oauth.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a0cce566b219ce880c0559f1cede8aec295c694166d595595d2075c4300872f0"
+    },
+    {
+      "path": "packages/ai/test/lax-message-content.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:2a8ee2048658a1a0a2a8928cc9570c7db41ed295ca20b1d23098b70d4d39e196"
+    },
+    {
+      "path": "packages/ai/test/lazy-module-load.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a350f84b5e7583467d75c15c03ed64c770830366992fd8d19737241689330c61"
+    },
+    {
+      "path": "packages/ai/test/max-thinking.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:5a8af2f83653248d5d2cbbc41c35389c1b49cc4d0c047bbe974baa3ffa66879e"
+    },
+    {
+      "path": "packages/ai/test/mistral-raw-stop-reason.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c77dc819018bd6fd2d5f4ea37aa0c8fc59584400e28cd26329c3f65ad2b65728"
+    },
+    {
+      "path": "packages/ai/test/mistral-reasoning-mode.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:70391fa299ead87e46fd116d41c21fd6269295c3e2b8b8f48e9d286abe8ad711"
+    },
+    {
+      "path": "packages/ai/test/mistral-tool-schema.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:9e913e9c49c2a9a2d1cfd4dc8d137a154e005b9291d06489e52136b92e5db24e"
+    },
+    {
+      "path": "packages/ai/test/model-catalog-types.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:8acfd837de0419bc9da5ccdeb98da55b3e64703da40eb3823d6413efe919e126"
+    },
+    {
+      "path": "packages/ai/test/model-data-validation.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:17332c95c05116f6f944ab508de9d21c137214e1a97ed77468436b2a725928c9"
+    },
+    {
+      "path": "packages/ai/test/models-runtime.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:49c86cd856972ee8453da6a3d0e546a8465e1426f48e0a1220f5756707e07dc8"
+    },
+    {
+      "path": "packages/ai/test/node-http-proxy.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c94e805c6a4033b85b5b02c6e6e8ec635cf545f58911823e579364c98deb495d"
+    },
+    {
+      "path": "packages/ai/test/oauth-auth.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:8e9cc6baa15e44dcebca1318ad0cec161364a3e04ad3e10bc3c96cd8c8504e84"
+    },
+    {
+      "path": "packages/ai/test/oauth-device-code.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:0402a6238bf9ab3be4ce8879f9068e2383475cb2a6a9fad9da33f3acbd8e0f1e"
+    },
+    {
+      "path": "packages/ai/test/openai-codex-cache-affinity-e2e.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:40233cf9f1936bf2970fdcb977cdeb414d0b8411c2ea724e3f28ba3ebbe11d59"
+    },
+    {
+      "path": "packages/ai/test/openai-codex-oauth.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:82d9746892b5e8a8b8bef1037dd6cca40f37427a3a317a43d8028f5cb7031f8e"
+    },
+    {
+      "path": "packages/ai/test/openai-codex-stream.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:fcda642e0b38c14572e2cb14604a3efb465c61e50aeeb1a3f2efe83efadc7b6d"
+    },
+    {
+      "path": "packages/ai/test/openai-completions-cache-control-format.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:29e50a558e940f7b1e0bfc4ae15eb455eb6e1cfe88555f8ced13d0e27fb22329"
+    },
+    {
+      "path": "packages/ai/test/openai-completions-empty-tools.test.ts",
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:297bfae5c78453d3916c767ce00d73e09d77befec428bd1ffb9b9a2cadaf78c4",
+      "evidence": [
+        "ai/openai_test.go#openai-completions-empty-tools.test.ts"
+      ],
+      "rationale": "empty-tools serialization ported (omit when no active tools and no history; explicit tools:[] once the conversation carries tool history for Anthropic-via-proxy backends); maxTokens clamping and Cloudflare AI Gateway cases pending"
+    },
+    {
+      "path": "packages/ai/test/openai-completions-prompt-cache.test.ts",
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:38b5f2d361da9f21d510fc52c97db896d91b78ebc2d567ed7d6befdb7b7f387a",
+      "evidence": [
+        "ai/openai_test.go#openai-completions-prompt-cache.test.ts"
+      ],
+      "rationale": "prompt-cache breakpoint ordering ported"
+    },
+    {
+      "path": "packages/ai/test/openai-completions-raw-stop-reason.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:697c7a3e183e9e0775341688081905441553b1178df530bf9bd58b8a33cd1e14"
+    },
+    {
+      "path": "packages/ai/test/openai-completions-reasoning-details.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:dacb476300a3b755e55f0e9cf893ce81e918cd0def2b0e4877f45cd9eaaf33d4"
+    },
+    {
+      "path": "packages/ai/test/openai-completions-response-model.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:9657044e00ef3a46bf1c60b69afc876ad6b88827c3d1cb278cd3db2fc5ae214b"
+    },
+    {
+      "path": "packages/ai/test/openai-completions-retry.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:b7ee67710e1d262b860d3baeed977cb5cab5beb592513f1e7b20803ab7400300"
+    },
+    {
+      "path": "packages/ai/test/openai-completions-thinking-as-text.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:6c4d68865cd69bd265ac0633ea13a27312306a0782571c0b7d89eb0ec39002ef"
+    },
+    {
+      "path": "packages/ai/test/openai-completions-thinking-token-budget.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:33f1103f9499b30c9eb9dc83ae2bcbbe1cca0287f4ebb0c183bb2cf35bb17203"
+    },
+    {
+      "path": "packages/ai/test/openai-completions-tool-choice.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:2706c1d0e6fa873537b15948c372a41b8e561b13bd714373cd26cac4d068b106"
+    },
+    {
+      "path": "packages/ai/test/openai-completions-tool-result-images.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:9b13d522c3e227070e2378a43d2c868fa7db2ff40b493276b89fd2287a93587b"
+    },
+    {
+      "path": "packages/ai/test/openai-responses-cache-affinity-e2e.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:6e3abfbf6c720a80e801357dfbd1cef776aa874c9692bfeab0c265a01a8f751c"
+    },
+    {
+      "path": "packages/ai/test/openai-responses-compat.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ccdf32cade926cc7f59e900c71d753360ea664e1047df74f703dbb611a26ca49"
+    },
+    {
+      "path": "packages/ai/test/openai-responses-empty-tool-result.test.ts",
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:81e85eb7b80c80b93c8eb0abc6dcd8c3e97e6b8bcadcbd2fccdb96ce5fe0ac48",
+      "evidence": [
+        "ai/openai_responses_tool_result_output_test.go#openai-responses-empty-tool-result.test.ts"
+      ],
+      "rationale": "empty tool result maps to the (no tool output) placeholder on the responses function_call_output; drives production convertMessages via ported convertToolResultOutput"
+    },
+    {
+      "path": "packages/ai/test/openai-responses-foreign-toolcall-id.test.ts",
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:91dd00ef0d4cd937915c1787d1782d2362966701d8113c8ecfb4f3a3a63032fe",
+      "evidence": [
+        "ai/openai_responses_foreign_toolcall_test.go#openai-responses-foreign-toolcall-id.test.ts"
+      ],
+      "rationale": "foreign copilot tool-call id normalized to bounded fc_<shortHash> shape on the openai-responses convert path; drives production convertMessages"
+    },
+    {
+      "path": "packages/ai/test/openai-responses-message-id.test.ts",
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:a5375480a3c215d82e80973503afe051ef8c4562e07f0c37534ada49d2cfb794",
+      "evidence": [
+        "ai/openai_responses_message_id_test.go#openai-responses-message-id.test.ts"
+      ],
+      "rationale": "unique fallback message ids across multiple text blocks in one assistant turn (msg_pi_<n>, then msg_pi_<n>_<k>) verified on production convertMessages; the upstream fixture's thinking->text conversion is pig's separately-ported NormalizeMessages (agent/transform.go), which upstream runs inside convertResponsesMessages"
+    },
+    {
+      "path": "packages/ai/test/openai-responses-partial-json-cleanup.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:6c575f362fa83ca91d4d6d9e2e8eade06756dbf85c7ca698bf091df57ca03df6",
+      "rationale": "the persisted-block partialJson leak the upstream test guards cannot occur in pig: ToolUseContent has no partialJson field and the streamed argument buffer (cur.argsJSON) is a local strings.Builder never persisted. The observable contract (final tool-call arguments equal the parsed JSON with no duplicate re-emission at function_call_arguments.done) is verified by ai/openai_responses_test.go#TestResponsesSSE_ToolCall, mutation-proven to bite the double-emit path (.done re-emitting full args -> doubled args -> red)"
+    },
+    {
+      "path": "packages/ai/test/openai-responses-reasoning-replay-e2e.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e166ebc6d8933c4e880ee71df6c10c9cffe9de4eda4c12f5cdd63a18a9d23df1"
+    },
+    {
+      "path": "packages/ai/test/openai-responses-terminal-event.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4e360125967c10a5a0c13db61a4d961647af3940332d2317de2a2bd6dce1d1c0"
+    },
+    {
+      "path": "packages/ai/test/openai-responses-tool-result-images.test.ts",
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:62894b12f0fdaf060f93528b196ce01bccd25cb8313a02730a40ddd5912544b4",
+      "evidence": [
+        "ai/openai_responses_tool_result_output_test.go#openai-responses-tool-result-images.test.ts"
+      ],
+      "rationale": "payload-shape contract ported as a unit test driving convertMessages (tool-result images ride inside function_call_output as an input_text/input_image array, no trailing user turn); the live model-behavior assertions across openai/azure/github-copilot/openai-codex stay unported (network + credentials)"
+    },
+    {
+      "path": "packages/ai/test/openrouter-cache-control-models.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:262ce84e4f793236b8b2e6cafbb0809ceef38ea14aa17e5ff1729b4c577422a6"
+    },
+    {
+      "path": "packages/ai/test/openrouter-cache-write-repro.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:aa175f29ec3677e3bd87deeddf49677cfdeca93880adf9733090c1a8d866e616"
+    },
+    {
+      "path": "packages/ai/test/openrouter-images.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:83a507fb213f4b38340f22b9b9a89b5909685093e7535bdbff979d1858c7a79e"
+    },
+    {
+      "path": "packages/ai/test/openrouter-oauth.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:b68283ffe9b5f5bd2b328145b58ca0c02b89e1c8c6beb1b5e66465a2657724ee"
+    },
+    {
+      "path": "packages/ai/test/overflow.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:079fa15d056a6187d3a1507f1f4a67d88e6b686e1d380ec4fe2b3f6c650bd219"
+    },
+    {
+      "path": "packages/ai/test/pi-messages.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:570e26432d78b64bc47721d4d1a08aa48d9f295a7e31cd6c7c710805b0876210"
+    },
+    {
+      "path": "packages/ai/test/provider-error-body-passthrough.test.ts",
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:477e3a30169999bff87bd1f82e66befaca10ab693f6132e9ba5527612aa42688",
+      "evidence": [
+        "ai/openrouter_images_error_body_test.go#provider-error-body-passthrough.test.ts"
+      ],
+      "rationale": "error-body passthrough contract verified on the production OpenRouter image provider (non-2xx surfaces the response body reason, never an opaque message). The upstream defect is the openai JS SDK APIError body-blindness; pig reads resp.Body directly on every provider path (completions, responses, openrouter images), so the mechanism is designed out and the behavior is guarded"
+    },
+    {
+      "path": "packages/ai/test/provider-error-body-regression.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:af225fb685018861042ac30cdec3bb3e61a3360253ea1c45972d9b1d69fc6e47"
+    },
+    {
+      "path": "packages/ai/test/provider-retry.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c5070cb70ce88a21102fa7588da49c94937b86f098bac4d26b9dc0d38988304e"
+    },
+    {
+      "path": "packages/ai/test/providers.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:bbbce040bb11994d58c9ef87046735c3ed9d630fa51d949a79bca740b7608baf"
+    },
+    {
+      "path": "packages/ai/test/qwen-token-plan-models.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c26e61be97487fba9caf1074ec6d4f9784bddceab1db7e8942190ee8ce2a28b3"
+    },
+    {
+      "path": "packages/ai/test/radius-oauth.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7e744c72d5b94e6a7d270665401824dd6f30cd871dc9a2e8df34895d9727c286"
+    },
+    {
+      "path": "packages/ai/test/reasoning-options.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:54eb1cd0a26bfa457c0c4cde5f5a5c6d98068e46ce9945fca9118b4cdc3ed10b"
+    },
+    {
+      "path": "packages/ai/test/responseid.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:86ee611befd27221de3183c568b0534603efdfd378d4783e940e93ff6b55f8e4"
+    },
+    {
+      "path": "packages/ai/test/retry.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:6c2ec5b4c125bd0e759c405ab2c1956d2be1f25c82089240fdabe9a2970f149f"
+    },
+    {
+      "path": "packages/ai/test/sampling-options.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:38d3f0411a39570d800abf32bea871ba863b66974c3321b4390cc3a26cff3f65"
+    },
+    {
+      "path": "packages/ai/test/stream.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:8a2b3d608b8b6663f68d40d4fb1e9c280f988ef91604602649e08051a42229e4"
+    },
+    {
+      "path": "packages/ai/test/supports-xhigh.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:b30a44707f978cadf96e8d12b4d1c33a9e05735c97781e0c6b732432e5d51581"
+    },
+    {
+      "path": "packages/ai/test/telemetry-options.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:2445f7d6e4e23229fd40de58ce7b579985c05d56061d8e18a51dd05e06beccf9"
+    },
+    {
+      "path": "packages/ai/test/text.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e731172d854c7d603705fb43be143c98dfb4a722f7b4e98a8866d92e85d54a67"
+    },
+    {
+      "path": "packages/ai/test/together-models.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:49a7b4bdce46b0d0a6c338900cae2ba5cd41c92d7c02971a9086d71460291190"
+    },
+    {
+      "path": "packages/ai/test/tokens.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:40b8684726152c9dfd372f8a431f4f95bcc667ae8950ed87e5d436c38a130829"
+    },
+    {
+      "path": "packages/ai/test/tool-call-id-normalization.test.ts",
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:a6bc6bf19a9fb1c0cac991d5b7a533e83b88df7d8d1edf693e5157d43b52194f",
+      "evidence": [
+        "ai/openai_test.go#tool-call-id-normalization.test.ts"
+      ],
+      "rationale": "pipe-separated tool-call-id normalization ported and verified hermetically against upstream goldens (parse call_id|item_id, sanitize, 40-char hash fallback via ported shortHash) plus a production-path call/result consistency test; the four upstream cases are live cross-provider handoffs (github-copilot/openrouter/openai-codex) that require network keys and are not reproduced hermetically"
+    },
+    {
+      "path": "packages/ai/test/tool-call-without-result.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:1c3f6354b44d34dbcb39fd0928b5aebfb226707a5ad5585870466f678a1f6aad"
+    },
+    {
+      "path": "packages/ai/test/total-tokens.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:79d2ab2a0d3947b6090dcfff54eebe202918d64f7149838e725c24bad55083d3"
+    },
+    {
+      "path": "packages/ai/test/transform-messages-copilot-openai-to-anthropic.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:9ca82608662c28f5b23ee353b9b9ad0d93313895141ebfe948fca195e599f11d"
+    },
+    {
+      "path": "packages/ai/test/unicode-surrogate.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:603cfd66d6795ef8b96db4eccb3c6e3667dad9e5544494c90b6e64c7565b2239"
+    },
+    {
+      "path": "packages/ai/test/uuid.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:377d2c10a94d748a92af2c96f06eeeef9a35781d770d266f0458c879052bed37"
+    },
+    {
+      "path": "packages/ai/test/validation.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:3aafed50be5806d03d6116c89a2eb8e75b6ac7f933c7958ca219c379791e09ad"
+    },
+    {
+      "path": "packages/ai/test/xai-oauth.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a586d75d51ed09c41bdf0f84a91147c0adcd13f922bb603f49d042995cc310d7"
+    },
+    {
+      "path": "packages/ai/test/xai-responses.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:1bc03944ced15825233181103ef27392fb4f968179c0384ba5d179f7d7e37903"
+    },
+    {
+      "path": "packages/ai/test/xhigh.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:bff409de7c2374a433fb6e701f258cf9e98e001943201196c37f27fb9e1d0df3"
+    },
+    {
+      "path": "packages/ai/test/xiaomi-models.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ffe9191f89eb71ea307a7bc764bd6caa414bf3efaef6b7a5456bd2a00c96ecf3"
+    },
+    {
+      "path": "packages/ai/test/xiaomi-token-plan-ams-anthropic-empty-signature-smoke.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:188097e471bd41919e3f3bfafc65dea01576bc83c1bbd98fce74cba4bc8b0dbe"
+    },
+    {
+      "path": "packages/ai/test/zen.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:0e2d865917f5644ed326e5763eded26fb63700a41f8eeb1007dc4bb4fbb25f9a"
+    },
+    {
+      "path": "packages/client/test/connection.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:a164217e90b418d562c8676c7fc13c5d844da3ce69216413215c63b68373c7a7",
+      "rationale": "upstream client package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/client/test/disposal.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:a4e89a89d88723464af4183576b51bbe5c94048e8aa6b917e2667e4f111bf1f3",
+      "rationale": "upstream client package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/client/test/requests.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:9277c6768d0c185910ed23bc12fc5709bc02645a3b26a5019f287af56080f875",
+      "rationale": "upstream client package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/client/test/sessions.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:513e8988ad341e2bd9259f4f80e66e39b64aab0eed1d0f1418508eced6b89170",
+      "rationale": "upstream client package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/client/test/state.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:8bd0007b2664de389f581693aece53903deb5b35e007d954ec1974021329c73e",
+      "rationale": "upstream client package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/client/test/unix.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:4ccbc3d29b25662092bd5389647199bcdca9e6b1b83c00af09f60e597e26621a",
+      "rationale": "upstream client package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/coding-agent/test/agent-session-auto-compaction-queue.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c3dd09c31206891c764498d55606b044cea83767f7cefcac5f98ed0fdd70b0b4"
+    },
+    {
+      "path": "packages/coding-agent/test/agent-session-branching.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ef1ef21bbebdd5381badb81eefd3a331c66bd640404c8d3ad90c7745c18a7671"
+    },
+    {
+      "path": "packages/coding-agent/test/agent-session-compaction.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:13520564c4a3b70d0f6bd125d1fab07ae7ca148fbecd12cecc5c0e8651a0a146"
+    },
+    {
+      "path": "packages/coding-agent/test/agent-session-concurrent.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:bddf52772d35d99cbf6107cf87aa5f70bcfb03c5fbb6c0b9153f56fafe143a47"
+    },
+    {
+      "path": "packages/coding-agent/test/agent-session-dynamic-provider.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:34724f24c570e7c6822e864f23374f9aa7d65ef2167980c5fa21708072c03141"
+    },
+    {
+      "path": "packages/coding-agent/test/agent-session-dynamic-tools.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:3e35e506e0348182f13346796e259dd3aae6d617ca6e0af66e139dc077c772bf"
+    },
+    {
+      "path": "packages/coding-agent/test/agent-session-retry.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:5338d3b0ad1c334c1e9eb3c7b620e8151ccf22ebe2374cb612bf6b0d0dd2ec8a"
+    },
+    {
+      "path": "packages/coding-agent/test/agent-session-runtime-events.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:96f8d2678b03949a60ffc5ac82f9d992b0cda3832c2c9c1073d8ae28e3a8817b"
+    },
+    {
+      "path": "packages/coding-agent/test/agent-session-stats.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:71970b299c1f94783874ba1d6228ec584bcd435b5db859564750c72524bda3af"
+    },
+    {
+      "path": "packages/coding-agent/test/agent-session-tree-navigation.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:26030678b0a8e9044bb3c021477eb1e7b4945eb2f7f06328544ce93eac7471d7"
+    },
+    {
+      "path": "packages/coding-agent/test/ansi-utils.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c0deb09e3f927314fbd60a5484d961497826254279398aaadaa3517567053cec"
+    },
+    {
+      "path": "packages/coding-agent/test/args.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:34fb320ed5ea6ba442ac807ee20fe2afe1bbf1959d2033e27badbdde22953697"
+    },
+    {
+      "path": "packages/coding-agent/test/assistant-message.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:00fdcf0264f7a3c11c7e18b9ac77440e35388e752c0ecc78a9ac6e8a49023263"
+    },
+    {
+      "path": "packages/coding-agent/test/auth-storage.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7f0d82d450e39ae4d0f8fd19d9c6115064aef216e30757e3983815a007ae940f"
+    },
+    {
+      "path": "packages/coding-agent/test/bash-close-hang-windows.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:1d2230b25129a365cbae417269b65c1724772104328f584ee521cb5c255b49fb"
+    },
+    {
+      "path": "packages/coding-agent/test/bash-execution-width.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:83b750fbcf7d491a36cbaf28f01c4b034c66d1d25e4b911dca4d23dfd8b6e5ba"
+    },
+    {
+      "path": "packages/coding-agent/test/block-images.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:739ffc6dc4c9cc9de971e8bac12cd73e3e6e5b9f266a56228238f66ccb4673b8"
+    },
+    {
+      "path": "packages/coding-agent/test/branch-summary-extensions.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:97d3463b0da653d4f3de824d2eedc014f0d126787ee07e074616aa0987ef0d1b"
+    },
+    {
+      "path": "packages/coding-agent/test/cache-stats.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4bfc836f78eef10c16e4a3c018945021b62a40973719247a0ab09ee4ff82a603"
+    },
+    {
+      "path": "packages/coding-agent/test/changelog.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:55db7ba3be898b7871448c98b4f737d444672031b41372ff6d2e437a6e25b40b"
+    },
+    {
+      "path": "packages/coding-agent/test/client/remote-session-lifecycle.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:8fd4427fb6a32f760a1ce3c9ccb7dce93c3a0bdc1bf5247ab04b3e4f4b2af70f"
+    },
+    {
+      "path": "packages/coding-agent/test/client/remote-session-ownership.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:039285e2c3aeacd095eefafd5e2c3b517471fea69cce159ae2f85a08afad9af9"
+    },
+    {
+      "path": "packages/coding-agent/test/client/remote-session.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:93fb843f8eab685e741f58e7fca9c8835df6ecd0b45f3cc90996d1cb62f94027"
+    },
+    {
+      "path": "packages/coding-agent/test/client/transcript.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:00ed06646f3d5462c32911b1b16f061a46e0f0e3772e0f3f760fe4704f19d024"
+    },
+    {
+      "path": "packages/coding-agent/test/clipboard-image-bmp-conversion.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c30fe0331c549fd2556eb80a30b8ad7d249d14b76bb2732fe7573d90b23e280b"
+    },
+    {
+      "path": "packages/coding-agent/test/clipboard-image.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ee868865072c38a2d7f492366c7e1a5325ec8670521fbf690c8d794dc335810a"
+    },
+    {
+      "path": "packages/coding-agent/test/clipboard-native.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:049d3967de5fcc42db91f812d0ee64c40466d4f5a61eff0b557e1ec16cd4f159"
+    },
+    {
+      "path": "packages/coding-agent/test/clipboard.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:aa2c0ace907e7f3836f571af2921b4d4c621a5fa6d96674d56d7949c0018dcfb"
+    },
+    {
+      "path": "packages/coding-agent/test/compaction-extensions-example.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:73c0c9cac5cc35c4113d3ff5819aa8b5fcbfc8c53816699123294a6798f35481"
+    },
+    {
+      "path": "packages/coding-agent/test/compaction-extensions.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:318be143ecdfc18b85d98c67d17128fb612e98d06bf023a65f37869a98844158"
+    },
+    {
+      "path": "packages/coding-agent/test/compaction-serialization.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:df31e877e71f47217acf1e2e730eab258f849869b1e282eeea567caa03f6ec54"
+    },
+    {
+      "path": "packages/coding-agent/test/compaction-summary-reasoning.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a69f63c543cdf3d56c5a3e104bffaa598939b717dd6beaf17480463fc5a08d61"
+    },
+    {
+      "path": "packages/coding-agent/test/compaction.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:0ce2ffe723b6c8ee2b0ab177d49d81dc7e7460fd2edb9b92a574b892f84f89ce"
+    },
+    {
+      "path": "packages/coding-agent/test/config-value-migration.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c6813b0c9217ce396c7f5725b387d8c0cea80282181fd99fc361c52a3ca41a3b"
+    },
+    {
+      "path": "packages/coding-agent/test/config.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a5e0f53e01dc8eec880ea842d6fce8737ba07d8e5ee0843cc992609c3cabaf0c"
+    },
+    {
+      "path": "packages/coding-agent/test/credential-print.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f270a12049585e4f2bf9280034e83dfe009fca9723f84f0db75d65e95663f932"
+    },
+    {
+      "path": "packages/coding-agent/test/custom-editor-history-keybindings.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:dc3ac027822c55a662bdb3401f56d163490b3131df294cb0fecf4284aed6bf5d"
+    },
+    {
+      "path": "packages/coding-agent/test/custom-message.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:345716cc20a80dbe8072a3ed92bbff232f36ec83cfd02241b2ea4cb54945cc20"
+    },
+    {
+      "path": "packages/coding-agent/test/edit-tool-legacy-input.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f1db5bc4684c9d148a1c65160d097f617c5613716196a23442146b669ba163a7"
+    },
+    {
+      "path": "packages/coding-agent/test/edit-tool-no-full-redraw.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7ba2d75282846b177e31e9e1d1dafd34c62b92cf93426883bebd3f9291e73bd6"
+    },
+    {
+      "path": "packages/coding-agent/test/experimental-cli-command.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:1846f7d17931754374daa7489b8e1da283967e9e0792be18e7056906ae2bdb9b"
+    },
+    {
+      "path": "packages/coding-agent/test/experimental-cli-resolution.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c20a1d80c0e6c6ffc421adab1adab6b6f0b44ddbc5cdfb11d86596faf38b751d"
+    },
+    {
+      "path": "packages/coding-agent/test/experimental.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4abd9d1a639085e0aa7607239494e5f0de8fa07d7ee6b322bbcc199c276bc7c2"
+    },
+    {
+      "path": "packages/coding-agent/test/export-html-skill-block.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:1050bd9e8e0ba42bf8d3a35ad596fc0364d4621dd576ff26a93e6c6987a37f3f"
+    },
+    {
+      "path": "packages/coding-agent/test/export-html-whitespace.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:aa471e8d88300857497d9458c975d662181bab5bcaa96105c3633f15bf36e142"
+    },
+    {
+      "path": "packages/coding-agent/test/export-html-xss.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:61b68968b6f1f4f0181e3fafaf5e34064e59dae7980f3280d8499d9e8f182454"
+    },
+    {
+      "path": "packages/coding-agent/test/extensions-discovery.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4a29f3acb8737d70515afede622cf3505df206dec4ab58c1e863b77975aee4ed"
+    },
+    {
+      "path": "packages/coding-agent/test/extensions-input-event.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:2ef2e816ee616f2632b4e0bfe33325c91295589913ab956fe0027df27b7574fc"
+    },
+    {
+      "path": "packages/coding-agent/test/extensions-runner.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c8989edd7e39276f42c1468d71d447d719a8dc8c6a8dbb8148a76ef5907dbbd8"
+    },
+    {
+      "path": "packages/coding-agent/test/external-editor.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7d3b01cd6f9962710d0ce1a3c6910627142b5fefd506232e72c511ec143e3713"
+    },
+    {
+      "path": "packages/coding-agent/test/file-mutation-queue.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:d65f903a056b4cbfd33850986b5a5ffec394b8340a1db491737f892d0e2d4462"
+    },
+    {
+      "path": "packages/coding-agent/test/first-time-setup-fork.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:38ae7d0f1aeb002ddbe6d0f9f0820b4b09b7d25d0656bde664c88d36694eabfa"
+    },
+    {
+      "path": "packages/coding-agent/test/first-time-setup.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4d76184e78fba400d2bd7ba2d593d0fde6bc20a87c28d29cc11fec6fb338e035"
+    },
+    {
+      "path": "packages/coding-agent/test/footer-data-provider.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:055059cd9385ee8d41c0571b4e3cc6bbabb8a52986fd5e1fb5ff1b34899c618b"
+    },
+    {
+      "path": "packages/coding-agent/test/footer-width.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:1b9823a70848bacaee7c5f201a754aed7ee8ee8a28bf17a7fb5dec76ca5b5aa9"
+    },
+    {
+      "path": "packages/coding-agent/test/format-resume-command.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:910fedad6564980f3ee9369a798c90ca04647512f9a161a43b1997108bd7b271"
+    },
+    {
+      "path": "packages/coding-agent/test/frontmatter.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:88309e13d75cec874a1fa43b921c4bb3dbcbce55c6ace5acf9742e81667ad2dd"
+    },
+    {
+      "path": "packages/coding-agent/test/git-merge-and-resolve-extension.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:80ad9e089a32b843336834120be78d671e9b89ae5f29f45af86a4fea3f966be1"
+    },
+    {
+      "path": "packages/coding-agent/test/git-ssh-url.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:2f502b173e2bf6c6e4d52b4f0bf3da74ebf63f6d9a2b1155ad9b8677ce058d5b"
+    },
+    {
+      "path": "packages/coding-agent/test/git-update.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ddbf272d072c39c7c31cce52f61b1872c3f8ec411803a4fece5f6a8a00c90006"
+    },
+    {
+      "path": "packages/coding-agent/test/http-dispatcher.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:2ff8d68349599801eca65c8fd2f22f01699234e282dfb8da43bb6385820e3f38"
+    },
+    {
+      "path": "packages/coding-agent/test/image-process.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f224c8f9d567594d7013f0ea158d2c2863cfddce0e346cff7e0b0e16bf7583dd"
+    },
+    {
+      "path": "packages/coding-agent/test/image-processing.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:eb5d070b5855627e1c6d4a53f1908efee8bbc4d6b8f09da967e9f5709cb03dda"
+    },
+    {
+      "path": "packages/coding-agent/test/image-resize-callers.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f77a92109158e558cc26430a80f82351bd1ef4884d494ab643c29652c00bc25c"
+    },
+    {
+      "path": "packages/coding-agent/test/initial-message.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:8b95eb212ced64c20423f7dd5ffa9a972652f6d5ab1abb205a424cff2e17b356"
+    },
+    {
+      "path": "packages/coding-agent/test/input-transform-streaming-example.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ee8ea69628597b524ac8fe548586417658ba742ae51f1cd99aac4b57fbf9c6db"
+    },
+    {
+      "path": "packages/coding-agent/test/interactive-mode-anthropic-warning.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:b79e2811be061f8b73b96fee80d8a1cd54197ff80f1ae873edd3bc9d59db06fd"
+    },
+    {
+      "path": "packages/coding-agent/test/interactive-mode-clone-command.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:9a1a93c08797b54f8819021b6283f43ad34699faea211fa091cf8aa91176dc20"
+    },
+    {
+      "path": "packages/coding-agent/test/interactive-mode-compaction.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:03d2bbcb89a17df63b2da790247909bef1f59601c146219770f6e99e48ee7fcd"
+    },
+    {
+      "path": "packages/coding-agent/test/interactive-mode-import-command.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4d1efb74cdc71799ddf9374b411dccac233997e6a6e7f362dd35628a7925627e"
+    },
+    {
+      "path": "packages/coding-agent/test/interactive-mode-startup-input.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:b95c495797fa2cf852b34e1e69ee24c30ff1caef25c23be00adcdd56c0ae5374"
+    },
+    {
+      "path": "packages/coding-agent/test/interactive-mode-status.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c785ec34e2aa31c04ee3d7b52f87a55b3c2bd7e0e4bf3a738e143d375c21ea9d"
+    },
+    {
+      "path": "packages/coding-agent/test/interactive-mode-suspend.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a98127e3c150d941cb452159b64526919c27760020226253be987ceb6522bd93"
+    },
+    {
+      "path": "packages/coding-agent/test/interactive-tui.test.ts",
+      "disposition": "partial",
+      "upstreamTestHash": "sha256:73ba08b5ae2d412e70010deff57bf6c0af0742b2866a6209bc5e0196cdb83681",
+      "evidence": [
+        "internal/codingagent/interactive_test.go#interactive-tui.test.ts"
+      ],
+      "rationale": "alt-screen switch ordering ported; renderer focus model is N/A for pig; remaining cases pending"
+    },
+    {
+      "path": "packages/coding-agent/test/keybindings-migration.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e83d8d2f8ab68d0b775feb3b818ee1748d36ba4bb8834a45a536acede00868ac"
+    },
+    {
+      "path": "packages/coding-agent/test/llama-extension.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e3cbec614b496dabc5d3941f5151b191eb21730a6abe196e7d7cc91c0fc3344d"
+    },
+    {
+      "path": "packages/coding-agent/test/management-http.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:3bb2e6370201392824eeba143fadb7fe95c34bfadfac8fcad20bf5964ef77b09"
+    },
+    {
+      "path": "packages/coding-agent/test/max-thinking.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:01c76a966d964388bce071842d0cefc79408d43de04cef0eddecd3033a225ed5"
+    },
+    {
+      "path": "packages/coding-agent/test/mermaid.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:3fdd02c934038020a8d1c1749303b07b55be5379da24c2585e01d20b49590faf"
+    },
+    {
+      "path": "packages/coding-agent/test/model-registry.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e972a4981a001d20ac371eebb0ae024245e543f3dee8c1ba24babd83b734623c"
+    },
+    {
+      "path": "packages/coding-agent/test/model-resolver.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ff4077914b436dc0149d26d2838d939be95d298903bc42477d24f8352c3901f5"
+    },
+    {
+      "path": "packages/coding-agent/test/model-runtime-auth-options.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:eabf6f097a74406dc4db5fe189016b38797c676b0b267f0147f510c027783f27"
+    },
+    {
+      "path": "packages/coding-agent/test/model-runtime-cloudflare-compat.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ebaf0ef8c0a0dded34116da981860b9e128be7d56014e40c1d95a593f34526f5"
+    },
+    {
+      "path": "packages/coding-agent/test/model-runtime-credential-sync.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:275163af35dfa1e53393736c9c510607fc7b8121cd13e7101e347ae953c63103"
+    },
+    {
+      "path": "packages/coding-agent/test/model-runtime-modify-models-compat.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:49bd6c5f4c7129085e8a613eb2d685301589d70312b801f2d358d97734d6b280"
+    },
+    {
+      "path": "packages/coding-agent/test/model-selector.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:2f29bc1c1053321cd9f662970b11d3f1b8239f09c48c5cbba8f79b6fb558b564"
+    },
+    {
+      "path": "packages/coding-agent/test/models-store.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:9217ef5d91d098b1284d5883c80c7660b2638d0f0dec8014d68433063282649f"
+    },
+    {
+      "path": "packages/coding-agent/test/oauth-selector.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:d147cfa4fe88abdd663ae8abe6a56a40bdfb9a31128adcb16baf038cc1dbf250"
+    },
+    {
+      "path": "packages/coding-agent/test/package-command-paths.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:60a95df7688923abee431f00f85b94a0301cc92359341a28b76051a96b66ebb2"
+    },
+    {
+      "path": "packages/coding-agent/test/package-manager-ssh.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:963d17222f4b23acdf67598de2aea4126ef1eebb488b8ceac276aa552fdf7a3a"
+    },
+    {
+      "path": "packages/coding-agent/test/package-manager.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:43b2a5d4f924ba6ae3f57aae361827b45c86c23c94ac846fc5b285357f55213c"
+    },
+    {
+      "path": "packages/coding-agent/test/path-utils.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:08bb88574596a43e2364ee3b2655e071593822417ef8937693744174e9615f3e"
+    },
+    {
+      "path": "packages/coding-agent/test/paths.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c12c0fa1d77a05fc150986ce2ab6a132d2c56f86fbcd82b2b59b75922f0b9dac"
+    },
+    {
+      "path": "packages/coding-agent/test/pi-user-agent.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:d90ac6970564ba4f4a67759795ec6153e153a1135c036873a1b8656cd8e34a2a"
+    },
+    {
+      "path": "packages/coding-agent/test/plan-mode-extension.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c04b3602f3b11f30578f9ab3d440095ad92433e463d34b03b24b9cec4e24c13a"
+    },
+    {
+      "path": "packages/coding-agent/test/plan-mode-utils.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:392e5a603b3a83e13fec88bc2958af33f1d71c7242b84d34efc8f13c433b1091"
+    },
+    {
+      "path": "packages/coding-agent/test/print-mode.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e8eeb3e47b86659cb1ceb0c1bab32fc95d9318bfbda05db127d404fd2e4d52a7"
+    },
+    {
+      "path": "packages/coding-agent/test/prompt-templates.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:b926313ab33852fe61bbbfe4813d0806dabe2cdbd9d0a697ebcb913b6aec84c3"
+    },
+    {
+      "path": "packages/coding-agent/test/radius.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:788a11a2184fdfc25566f4d84457363b3560db25dbac0607807dadf1f034ae0f"
+    },
+    {
+      "path": "packages/coding-agent/test/remote-catalog-provider.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:865f1fc88157ce16c5e409971ed2e386f74d7c56d0e96f8108e3c58dbf7fc93f"
+    },
+    {
+      "path": "packages/coding-agent/test/resolve-config-value.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:da87e84e5a4aae4b671140ad33b19b4438bb3b97e8699acf5c13c97bf403608c"
+    },
+    {
+      "path": "packages/coding-agent/test/resource-loader.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4d7043fbae033b5398db34046feea2ac3e910079e8def6a1d198b7c840190fb0"
+    },
+    {
+      "path": "packages/coding-agent/test/restore-sandbox-env.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:14485f0f5f478475206f15ebd48191090c437f40b79ebfdf2d652d4681e71d02"
+    },
+    {
+      "path": "packages/coding-agent/test/rpc-client-clone.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4402c2a7b168016cd0d2fbb578843d27181a8b55353d56f607d293060aee8d6c"
+    },
+    {
+      "path": "packages/coding-agent/test/rpc-client-process-exit.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7469f8683c0f227985e908cce021922e64ee85dcede7e49df6a1fe0e8cbc6cc8"
+    },
+    {
+      "path": "packages/coding-agent/test/rpc-jsonl.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4a5a9738d39bb226e12535e6acdcebcd92ea675e9b1fd5ffadbdc0d7ea4babb6"
+    },
+    {
+      "path": "packages/coding-agent/test/rpc-prompt-response-semantics.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f75b5b5cfe876523c2ea4c73ed9a39735831bfd25be6195115bd3e78ef495641"
+    },
+    {
+      "path": "packages/coding-agent/test/rpc.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:28bb4f005cac1803df42abae071301824efe481598d25f1fabd0ce144203887f"
+    },
+    {
+      "path": "packages/coding-agent/test/runtime-credentials.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:dbc0fab5e3f7e6f59c0a9947feaa16a574ae03783d7510894096e02cf1ceb409"
+    },
+    {
+      "path": "packages/coding-agent/test/scrollbar-theme.test.ts",
+      "disposition": "ported",
+      "upstreamTestHash": "sha256:e7ddf2e8f7d4d941ef1cd484ba42835d7f6b92d36bd9bba0ca2119462361f010",
+      "evidence": [
+        "tui/scrollbar_theme_test.go#scrollbar-theme.test.ts"
+      ],
+      "rationale": "scrollbar thumb theme fallback ported"
+    },
+    {
+      "path": "packages/coding-agent/test/sdk-openrouter-attribution.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:15f4b72883bd0a9148bb3798b662400b71b12aadb2024800cd111ee9e6b3d392"
+    },
+    {
+      "path": "packages/coding-agent/test/sdk-session-manager.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c7cd1da548c0a74cd5cb01f0a9d65db87098a7baa1650c7a17e9b6b8610a34b0"
+    },
+    {
+      "path": "packages/coding-agent/test/sdk-skills.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:fdba99833bf6dd8346c3acdc7c77e156fab5ff451c3cc2b7a93295de60ac2307"
+    },
+    {
+      "path": "packages/coding-agent/test/sdk-stream-options.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:b2c22f9373964b7b2ae5da4893b21575a83bb300cd7e8600ae77cd49eaf90a79"
+    },
+    {
+      "path": "packages/coding-agent/test/session-cwd.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:2e8d17d803f72089efbd6aff8458c9307532425952060515bde2052d3f8e8089"
+    },
+    {
+      "path": "packages/coding-agent/test/session-file-invalid.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:de1fc90a1fe3106e379efa903b300c081e4253380e19bb931b9b179a0292eb13"
+    },
+    {
+      "path": "packages/coding-agent/test/session-id-readonly.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c465696d0434794f3c69f95318b44c0efd419e118489e86478ef6f85fcca9d69"
+    },
+    {
+      "path": "packages/coding-agent/test/session-info-modified-timestamp.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:eda6144dda92760ec70f2e3dc1da518e63826cbf52bb9b3346b3ee332be62a80"
+    },
+    {
+      "path": "packages/coding-agent/test/session-manager/build-context.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e4f1c5ef931609100a5350129151d147f7d58bea4df0d9e1676fe60d06aed6c0"
+    },
+    {
+      "path": "packages/coding-agent/test/session-manager/custom-session-id.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:551b05e9d0081ed678bf1af4e4854dd1784ed81c651ff8caf6ea6bffe73a1ae9"
+    },
+    {
+      "path": "packages/coding-agent/test/session-manager/file-operations.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:62504b3ccbeb7d81940b78c9e9dc1eda2aa7ae9875a064f60d7ecbe799765b93"
+    },
+    {
+      "path": "packages/coding-agent/test/session-manager/labels.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:072829ad416a5c73c1618c8761bb63bcd8d4b80b589f742ef768ee822714234d"
+    },
+    {
+      "path": "packages/coding-agent/test/session-manager/migration.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7e936fe5402e4225854eeaf4fb0505ece574e3774e1aef97a8c121c34fd48877"
+    },
+    {
+      "path": "packages/coding-agent/test/session-manager/save-entry.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:530b961602e351e7d3ff987487350888218e8e51be3f8e6eebf12677b2dd622e"
+    },
+    {
+      "path": "packages/coding-agent/test/session-manager/tree-traversal.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:9de95f21edc19892fa7a0352c5c49c0559d40d5c474e7b210715f267a5a11342"
+    },
+    {
+      "path": "packages/coding-agent/test/session-selector-path-delete.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7b7ed0b973d06169c7b83acaa42063ac57ef459f3deaece7e38cd739fd02a1e2"
+    },
+    {
+      "path": "packages/coding-agent/test/session-selector-rename.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:065648e89d3898fa6a5ebfac26fb606cea21b1aa54b8f189afc1d504943f6791"
+    },
+    {
+      "path": "packages/coding-agent/test/session-selector-search.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f2ca2bb06f27e62416b66680b50310fa0ada051fdb97d67fbf4ac36b09fdd55a"
+    },
+    {
+      "path": "packages/coding-agent/test/settings-manager-bug.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e39903068d13ee29f8d235a485829a418b7ca1613b92058fca8a9b3c7f69e546"
+    },
+    {
+      "path": "packages/coding-agent/test/settings-manager.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c73bd60057af367727cc54de2553e21c18f58cde832b3bcb535b7781380c60ce"
+    },
+    {
+      "path": "packages/coding-agent/test/settings-selector.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7bfbd7478cedada3c2b0db2045cabc93f0f4dc30508b525fba470a101fde564f"
+    },
+    {
+      "path": "packages/coding-agent/test/skills.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f7d5fe8633df112c10c61c4ee17748ad1f7069f76d71fb8357d7e27a17b2a533"
+    },
+    {
+      "path": "packages/coding-agent/test/startup-session-name.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:df9188ac03c727b056d38e5766bb395070d5ded75bd7ac2a99f5927c79429f1f"
+    },
+    {
+      "path": "packages/coding-agent/test/status-indicator.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:07c8241e60cd0280163f572102d4c7541a8f384b6d9648ae104feca8f6fb7f0d"
+    },
+    {
+      "path": "packages/coding-agent/test/stdout-cleanliness.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:58885c4d2bdbb773309d88e3f134cea86e1be5977eb44777f0201a26369b168a"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/agent-session-bash-persistence.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:55082b8466fb1a53ef5f384f745b31bf1fc01dd87dba3fe4598ed26bb732c017"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/agent-session-compaction.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:063d793de57c8278e515685d945194dbf6ed6d85b48a6134b69a04032d5414f7"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/agent-session-model-extension.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7e41597392709a129c84574fdc98320049696130a5f9a0685b9e5aac212f8283"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/agent-session-prompt.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:b301f27242bc7e2f84e862653bc90582664eb27187e0e2047ccda000affda791"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/agent-session-queue.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:dfb2ae45f55c3b1331fc6f9794512e2b4f5437d467fe96666bec5a1f118283dd"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/agent-session-retry-events.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:98f1097d8c2bbb9a0b134301a2146941d0127d4d735857dcd473ff88f5926eae"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/agent-session-runtime.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:506467a7a37b30ead2444342a39e459693910e237d861f9674a18ae53a496a9f"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/agent-session-tool-result-images.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:8c40e44314f5ee575b8fa93f36e0c1669a2ed4b18d7775bb4c5702c77d97ad6b"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/lax-message-content.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:5ca581a592613b50c167adb877a9d509cfd88358ebb3adbe6064cd5df38e094b"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/1717-2113-agent-session-event-settlement.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4c9b00cb3dc81edbc2ab07afcb8f3425c58f48197ed15054a776a7a5b6ce82a1"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/2023-queued-slash-command-followup.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:6a2d8d0992ed8065b4162d64e8c70019b02def0c20e51c3a1ea3544c42e17fc4"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/2753-reload-stale-resource-settings.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:92f54641e61424c2e97b7155a55b9e895d4b9c6d134bd61efaec9f8ac1a85db3"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/2781-skill-collision-precedence.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:df64c1c98cbdf0e62ace26ec78bece41116105aef866463f2d85f3e29cc02b20"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/2791-fswatch-error-crash.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:9bed3fdd1c650408e7ec991023e2eea22278861ac6b6b18ba9a1daadc6697bd7"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/2835-tools-allowlist-filters-extension-tools.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7de36a2e89b69d90c345665708774cdf92bfc2d877fed2300d916e027f3544bc"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/2860-replaced-session-context.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ed75acf62273fd163222ac60bb0d97f349f97d2231b203f52d50a8d5148c9d9a"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/3217-scoped-model-order.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:aaf7056625155a8d0a7d0c40dfa3a1eb7004fcad5b0ddeb4fe986bb2d9bec700"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/3302-find-path-glob.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:d8816a5ed1f3033439e7866dc9c7b87b7e7a265caf186bae3817443b597e1d02"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/3303-find-nested-gitignore.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:bcc7517366d11bf9cc3b8dade9d54bfbe6cd482a23deb9d6d966d1b2e09c6982"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/3317-network-connection-lost-retry.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:284f28f007e337c75709cfd54593295ea0fcbacdd4bb2bce83ee1b165b73f663"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/3592-no-builtin-tools-keeps-extension-tools.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e16e50f75c6cd2a43c8ff87c6367444c257847e173fd4128ef551f5ba4d31fba"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/3616-settings-inmemory-reload.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f70380b8bfa385cf648745405522b92378b9c73d039879995337973dddc167ba"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/3686-session-name-event.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:71fca90399b614893741b8e0bc28dd976b20134939cd5d44997bd4e02cb25f7c"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/3688-tree-cancel-compacting.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:22b3ba0b21f63194979e1178f0d04b5c07977bb0fe1ed157db3ebd0743d0ca65"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/3982-message-end-cost-override.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:6ab24cf7cac37f88ef18ad946f3ea32f35e5d6b70bd578d91d42a71ac54a6e8e"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/4167-thinking-toggle-pending-tool-render.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:0967aa6caeaa544fd7259b6c1e842e7a2f5d820810d78956583fbbf67b7180b5"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/5080-signal-shutdown-extension-cleanup.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:3d8757525011c1294b87ad8615e153e99b04a5e7fd5a17dbba339aef1b16c6e3"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/5109-exclude-tools.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:3fa0f1a92fd7fb8a5a72c64bdc4ce86959e98b1fdc9a5dfe046f02600f8dcef1"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/5208-late-bash-output.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:9d6fc0d457e6d7470246d821deec9937d428e86fdad6858d05e7d5c956802f8c"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/5217-compaction-reason.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:376c9329976962af494917b8f066d504391a793653739593738b6303aa9278b5"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/5303-bash-output-truncation.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:d38754f1abadb955553f0d2ce3276f580fb07ca9b937e0d4abe3b6226d2e3b87"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/5433-extension-oauth-prompt-input.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:9ce8881c1d2f5454449993c4382aea2fecfe583f75f51f545b8e3ad3c4445389"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/5596-missing-theme-export.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:358e48a430ee9e06e94e2d4d040447d0aab4cf751f6020d8820455b398ebb692"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/5661-uppercase-header-values.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:0ffc9a48b0f980339bd8748d7064ea2e832e7a817441de29f68ad94695ac7149"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/5724-sigterm-signal-exit.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:914334ad9376b15ddf30e0d9f5e2576955bf66f3602aed557216b47ae6a968ef"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/5868-rpc-unknown-command-id.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:8d820e03ede2d75f422a26ff68c060e58c79e34d2e22a76fb6961c39448ad3c0"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/5943-session-start-notify.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:95b1525ebdc048e4723ef5e9b72dfd20db8593aa252d9f4b2085ba77ccaa5b9d"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/5996-session-name-newlines.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:2d95a395a3ef2bbe1847908b0066dd3745ef691685e07b29bf6520f3ff8a65a4"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/6019-explicit-provider-retry-message.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:375b8630dc3646c479664325e5db590bfdd1ed4a703235ca9aab257edd99d6b9"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/6104-find-root-relativization.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:5868521c64a301d49b018b82749f74b69bbe26c35a68122816398fbf7d33ea63"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/6162-extension-active-tools-next-turn.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f2ed7ba880cdb50557b401444f0f10c8617f9897ad7e7f125cdd4e64b59befbd"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/6260-inline-extension-naming.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ce7692b1620f0ab49da896d123a263903a6e531a2659f20c4ce36c0996b7e218"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/6324-branch-summary-ambient-auth.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:6d35ff8fdce4b909a53b027b9cda24f71e7bcb03af625dd04512d4f81f500ef3"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/6363-agent-settled-event.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e35475a593becf602a424f3e511a07cfc9be27ac7eaf4aa025de2cc8aaaf185e"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/6647-compaction-retries-transient-stream-drop.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4ba72ecdf3b3f008b6a11971bbe850fc1681d7a7fb2298e7970d8c4f265b9a9a"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/6768-copilot-compaction-base-url.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:8a8c424bb9bea4328dd7dcb6e65cfd5da229ecaef8957122a4bb29fe891bbc5b"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/6904-dns-transport-retry.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f16d09bdf5ef2d2538bac38c7a3250e13ef19a9227ef81191387d281fa803ef0"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/6949-unavailable-scoped-model.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f3b1879e8c0273088054b123c06e43c272845c20e7b49e519ae55e4a13ddb44e"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/6999-models-json-hot-reload.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ee13671652703fe9239af11979a400174996e9c08e35803a73bf11ba0b7903ae"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/7027-credential-refresh-hang.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:bb8afe631c8883fd99af7d5c67c924c9a079315ae1085d788b425e012bc9a5b2"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/7150-rpc-prompt-during-compaction.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:bde1a3c51d6867ff2c453357dd07516b423b5c26aae4f30933553aa28328019b"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/7153-scoped-models-refresh.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:b36f86e6b9734e92033af0e566f746041d1561ca5fcac39a123e09965b995b39"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/7187-malformed-package-manifest.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7faca11638d719a5434fb5a8178ba2750060f9d80d1b687eda04494b499b0a1e"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/7193-event-bus-lifecycle.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:18bc4f3388b37bffd7b48779a1242228f6b25ef2b6765362ed2dcf7fc9798508"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/7209-model-selector-filter-resets-selection.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e9be6a08dad5b9a4efc466fb1ac5cfac66e945ce61475b1028da41b81635398e"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/7253-manual-compact-during-response.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:bee6f09941c8f2d420bdbad0c65e9169e32263e5da9577b3a23f903d70332c4b"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/7290-json-stream-linear.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:51353e72b7bd93fbade029e8c411e05f3104ffdba5bb2ff161764181df722e41"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/7301-stalled-availability-refresh.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:5f505f4177e4da8e14a5796cce26f53fc7db727a3461a963674384bc82aa2b70"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/7443-model-command-cached-match.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f338ec3e03e046629206afe930c46182ba91ee1aa22fdd78a0f31cdf7066ad2c"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/7497-session-discovery-symlink.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:2fbcbf5838dd6e82ace283aac992f5aced0a09fc60093469d7766386e4916782"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/7572-provider-retry-settings-merge.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:7b50e25746f36f0118df8f7931a772166da8656618768bd6ff094f873c02936a"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/extension-factory-cache.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:94f0bcf7de660cb25729676e32b1518e92b8542c08ffeb61add27034a2874222"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/pre-prompt-compaction-no-continue.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:1eb3a140e8be50683ab91d3ee85561f8d050d2ce802bcc1677f8903a2a28fd4b"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/startup-session-rebind-duplicate-subscription.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:19ae20c79b22e4401a1165f99e384ecdd5fd19dc7f702525f2515e5337c983c9"
+    },
+    {
+      "path": "packages/coding-agent/test/suite/regressions/tree-during-streaming.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:1b37324e37da5a293e598ff1912e5e56b3e30212cf87afe0c351db04c75e4023"
+    },
+    {
+      "path": "packages/coding-agent/test/syntax-highlight.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4d4c97ad7704c0db8fe75b147d7f5145882507281048fc65c9ffaa1bb1d2cb4b"
+    },
+    {
+      "path": "packages/coding-agent/test/system-prompt.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:367c22015ba708eef1730c6b7ea8181ca091eda8bb419d6408c2266b65876157"
+    },
+    {
+      "path": "packages/coding-agent/test/test-harness.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:77caa901fb888c0f7b8c1d416ccc3df039c36dbd83aeaa6cf9c479240bf53550"
+    },
+    {
+      "path": "packages/coding-agent/test/theme-detection.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:85edf22f3f4c0902ce9dbdb77e6dfa9e160c84237561f44941725493eb987be3"
+    },
+    {
+      "path": "packages/coding-agent/test/theme-export.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:3b53f9a7b20e0a7abde0e99f9afc9706d8d990fc52b1160ccd26728312428f5c"
+    },
+    {
+      "path": "packages/coding-agent/test/theme-picker.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:5973d39c837eb762eb2bf3b83adc2de52741fcb65c91c9e91df4d26f64cee57c"
+    },
+    {
+      "path": "packages/coding-agent/test/tool-execution-component.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:1ad05e4519ab4932803b8d6bd23d08228a5445335bfcaf63ecf8782ef7381df1"
+    },
+    {
+      "path": "packages/coding-agent/test/tool-result-images.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ea6be817dd453b2c3c35051b829b5c9df890a4a9dfeb77ea20ff3abe3036cd11"
+    },
+    {
+      "path": "packages/coding-agent/test/tools.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4aee8f60b046d2005d9d03120d0499226d75a83ee4ddd534df4e733bc17eb536"
+    },
+    {
+      "path": "packages/coding-agent/test/tree-selector.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:4593cd80a2e52fa1e2329b31df17ba5b1c8bab6c6608b029303799aed5b96853"
+    },
+    {
+      "path": "packages/coding-agent/test/trigger-compact-extension.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:1d3323f8c98caa0192717f6de8b72053af8423c13db88d722859e34a330545f0"
+    },
+    {
+      "path": "packages/coding-agent/test/truncate-to-width.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e7f65fa6d913a8d51f74a65f08765a82b2115922a877b3b651cf124a36a977fa"
+    },
+    {
+      "path": "packages/coding-agent/test/trust-manager.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a7e10cbd3acc3550bd1d355ecf64cf3c47628ac9c78248df38f49f431f8e91b9"
+    },
+    {
+      "path": "packages/coding-agent/test/trust-selector.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:6aa09bc83b63f61cff334e7396152bda4f66b21a966e076706166c18d815a949"
+    },
+    {
+      "path": "packages/coding-agent/test/user-message.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:0bcfcb88a1fdbcee065acd15f0bbc8b3d3bcfa23420743777aa154e6b2f0d831"
+    },
+    {
+      "path": "packages/coding-agent/test/version-check.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:cba6b39e9767019aebe0277ab580cb603927258652afcb2b9967387f1e8d6aa7"
+    },
+    {
+      "path": "packages/evals/test/pi-harness.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:955647db0a57776c27318d1eb15e5d6722611205b649429be776ebf61c9357ab",
+      "rationale": "upstream evals package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/evals/test/vitest-evals/artifacts.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:62118543cba4dad7ef83e1c17d0c327bcba7f2c2e3e7c247fd1faa622e63b848",
+      "rationale": "upstream evals package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/evals/test/vitest-evals/harness-table.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:db83515d89049259b01fe5f3bb22fd4e82b755514a6fb33be3554ccf73d39ba8",
+      "rationale": "upstream evals package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/evals/test/vitest-evals/summary.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:4e0cc0c06ad807b20a00a6690612396294f35bb1fb6fac0a3310e12b0e62d26e",
+      "rationale": "upstream evals package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/protocol/test/cbor/cbor.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:9e1edc0e0eb3b88a8e8df03fb9e29e57c68f285a77052165e21c0a363a7152c9",
+      "rationale": "upstream protocol package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/protocol/test/framing.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:3bd3c9dc843d97f929596a4bae8249c2c3bac9087499de2f2230ccbac23e4ea8",
+      "rationale": "upstream protocol package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/protocol/test/protocol.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:5583e688e5113cc4731722ed37a36d74c20dcc005da812d4fc1f965ba3a586dd",
+      "rationale": "upstream protocol package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/server/test/conformance.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:38f86b7a8818975cc9362f9f3faa10214e39cce31c5fa35329b139fa98e08e84",
+      "rationale": "upstream server package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/server/test/listener.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:1a7b81c2aeb55b78b8baa6be446ec7cf2340c253243254e9cad346ff5556939d",
+      "rationale": "upstream server package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/server/test/protocol.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:0324a587ff77a268b34227c817ab70a913211c018f9f88e35ccb5ecaacd8e85a",
+      "rationale": "upstream server package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/server/test/server.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:ace1887d17ae0ad1bac8ab6b3b6faa771177395422507adb4f3f72b1f42be88b",
+      "rationale": "upstream server package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/server/test/sessions.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:c736a3a7515b2a1a31fb762bdba7057955ab77b76698bb6b92d2568cbfa3be7e",
+      "rationale": "upstream server package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/server/test/unix-connection.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:93f52cbf853ea97ab39de6b5b2b16bef65e3850bb110854aeaa5967628851da3",
+      "rationale": "upstream server package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/server/test/unix.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:6b4759221642c32c261002d6b598b0b76363d96978118c8f9714491208dd344d",
+      "rationale": "upstream server package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/session-backends/sqlite-node/test/adapter.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:b14ecb55dc4c12f1f5209d596901e6330b1ecbab17e2a2ca6a4344329afa5f4d",
+      "rationale": "upstream session-backends package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/session-backends/sqlite-node/test/branch-cache.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:eef70216942939d95005ddfaf92b3ba73fd1dba9ed2d44fd664402eae060a0dc",
+      "rationale": "upstream session-backends package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/session-backends/sqlite-node/test/branch-query.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:44b0d36802304d47fc72fb452af5e4cb860fd0e769d5ed3279450136699bf011",
+      "rationale": "upstream session-backends package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/session-backends/sqlite-node/test/conformance.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:f5e6867995b8d35d801556312a1d02432615d2566c7bd5bd7033bf03b872d8c0",
+      "rationale": "upstream session-backends package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/session-backends/sqlite-node/test/migrations.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:52639a28d8c09004682bee0a3eec381d3f883bea61fc188cef8a970509b8c62f",
+      "rationale": "upstream session-backends package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/session-backends/sqlite-node/test/repository.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:aa02f8eb3c57c84a23050801be069927a9ca54d30a69a2d125d93d6ea23fdd81",
+      "rationale": "upstream session-backends package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/session-backends/sqlite-node/test/search.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:a80c820bd0272d54f252db40a532344de8173d7cc8372b54b9abf33a0157d424",
+      "rationale": "upstream session-backends package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/session-backends/sqlite-node/test/writer-leases.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:aca10432525d693e48f9c3585cc5572142ea5da25453651fc4c64227c307bda2",
+      "rationale": "upstream session-backends package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/telemetry/test/conformance.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:3ce5c7ec47fbd4055bae5cf54764bc989d4bc2543b4ba1842f3fc848bafaa6ca",
+      "rationale": "upstream telemetry package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/telemetry/test/telemetry.test.ts",
+      "disposition": "designed-out",
+      "upstreamTestHash": "sha256:663e7d3b42332dccffc96c3b79c599918a67bd67dd8ae3f3d951ac12f21c1dad",
+      "rationale": "upstream telemetry package is outside pig parity scope (tracked upstream packages: agent, ai, coding-agent, tui)"
+    },
+    {
+      "path": "packages/tui/test/autocomplete.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:494a179d48ff66aa6aa78c4a13ffd08c6f308b829104907acf1861a937a8ad17"
+    },
+    {
+      "path": "packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:89f2ce2cf538aedb404b872aba345309b92c6f44375ea1882e0540c4900dfb00"
+    },
+    {
+      "path": "packages/tui/test/editor-history-keybindings.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a055311e76a141062038a1a835fae1271108d29034fe0d0eec7521c6c79cb948"
+    },
+    {
+      "path": "packages/tui/test/editor.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:bcf0b5316a432854a0e34e0c45e432dc7a93268b9356a2c612d15ac55354bfa6"
+    },
+    {
+      "path": "packages/tui/test/fuzzy.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:5945d422c5728860dff14331a69f56a30f781d0343c87ab18b4e1a2454766798"
+    },
+    {
+      "path": "packages/tui/test/input.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:92272f165be9592c5794f56b3928234a2a8db8db56bc7a573fa8a783c6d53657"
+    },
+    {
+      "path": "packages/tui/test/keybindings.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:9656b59789831d5362e8b45b611a405bad4297ff11bef1aa577ecc22a3e28396"
+    },
+    {
+      "path": "packages/tui/test/keys.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a5fd7e9285669f79a5ee5d242e05e5d5b90e9fc358913f3175b9d393461750d9"
+    },
+    {
+      "path": "packages/tui/test/latex.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:d8ddc9370a66ab2de845f4df254869b6a03450e62c98b7ac1a9909d164324970"
+    },
+    {
+      "path": "packages/tui/test/layout.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:065127bd8a0a125b182f6f8a14a7771064fed73c8fd759388963902077d58627"
+    },
+    {
+      "path": "packages/tui/test/markdown.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:e46b8a8dfd86c243baa846ba1224df010756f35b750d620c6082c21f6858695d"
+    },
+    {
+      "path": "packages/tui/test/overlay-non-capturing.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:353c51e18e087c648addf59316455e8fa923e8b0bcebab1be217ea3ed0ea1cef"
+    },
+    {
+      "path": "packages/tui/test/overlay-options.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:45b9a7cb0245dfd6f4e65dabe94c1094827fb540f980f05a154e22f8199c99f6"
+    },
+    {
+      "path": "packages/tui/test/overlay-short-content.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:f26889d16c098a5f389d7f0e03c8ff2a89e2db5e661072904fc862dfa124923b"
+    },
+    {
+      "path": "packages/tui/test/regression-overlay-cjk-boundary.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:51438c36784bb4ffb6304e1d179eb9daa046b8b93c80582c87c41f6415449b20"
+    },
+    {
+      "path": "packages/tui/test/regression-regional-indicator-width.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:a057bc5b61cd287e2f2f554e878222ebace84a515e6cf67b87191eba5c91ae47"
+    },
+    {
+      "path": "packages/tui/test/select-list.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:0135b531ef8dfe52de6625c2004a4ed95566214bc9860068106c862efcf22376"
+    },
+    {
+      "path": "packages/tui/test/settings-list.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:36418fe2495b92835c24a15129c5371f2dcffdfb72d0ecce7208b1ab0056062d"
+    },
+    {
+      "path": "packages/tui/test/stdin-buffer.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:75f5070c9c6617f1be9e2e5c69c7c44564678396a67b3e51dbf818021c59cba4"
+    },
+    {
+      "path": "packages/tui/test/tab-width.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:59fff93aeecb3809f41f7bf68d88ef8ba9f0f38cd3a2db785a1f16a0ac114419"
+    },
+    {
+      "path": "packages/tui/test/terminal-colors.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:83299038dbb51f1496c2985f0d7f95c8e67c3e1d1be0f65dd1d214277d888566"
+    },
+    {
+      "path": "packages/tui/test/terminal-image.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:8afe1e33ebc668794bbf18ade25e28c021d986026eabba9584405366f441b839"
+    },
+    {
+      "path": "packages/tui/test/terminal.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:769ab78b767fdb55849dcb7bf6b307c7a78f8e8e8f6ec7dcd0f8b7b021a9d5b7"
+    },
+    {
+      "path": "packages/tui/test/truncate-to-width.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:fd75a99d47ff465d56a1f3ede16e37ca7d29aa910e2322881e824e6c2937b7b8"
+    },
+    {
+      "path": "packages/tui/test/truncated-text.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ba67883169e19dcb2013498d4b6659daa82b63daf01399f8471dc2b88b598141"
+    },
+    {
+      "path": "packages/tui/test/tui-alt-screen.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:9718f48f473ebc6c77270f431615889dd12f51a7382e46f29c86ac3dd380279b"
+    },
+    {
+      "path": "packages/tui/test/tui-cell-size-input.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:156fc72cd71f7ad65a11b300baaf2a37a2e6bc2ec7498d66f52ac6a0e17ab2d8"
+    },
+    {
+      "path": "packages/tui/test/tui-overlay-style-leak.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:ef6da1f722856ab3a1d5543b7ed80a2be8bf3df70d9c17f910ad9289998c669e"
+    },
+    {
+      "path": "packages/tui/test/tui-render.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:898f97b45f767bfa0ae6d96222927933a88dc0cfec41ff832f111996e5d2bab7"
+    },
+    {
+      "path": "packages/tui/test/tui-shrink.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:c136db2c4e886c43509f48e36a74bdf2c0897cd3c989b4cca1bd689697a3bf03"
+    },
+    {
+      "path": "packages/tui/test/word-navigation.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:63ad66c3b23643ef248292a8c72cbf38e8126bc43da3df69a83b71397bc635ac"
+    },
+    {
+      "path": "packages/tui/test/wrap-ansi.test.ts",
+      "disposition": "pending",
+      "upstreamTestHash": "sha256:9c238d85ad676ca6d4e063caa8d44d493b0c220dd9aba9ea11a31d51c92d791d"
+    }
+  ]
+}

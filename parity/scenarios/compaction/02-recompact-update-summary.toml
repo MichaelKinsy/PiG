@@ -1,0 +1,73 @@
+# Behavior family: compaction
+# Surface: /compact on a session with a prior compaction entry exercises
+#          the UPDATE_SUMMARIZATION_PROMPT path in compaction.go: the
+#          "previous summary" is extracted from the existing compaction entry
+#          and wrapped in <previous-summary> tags for the LLM.
+#
+# Upstream evidence (pi v0.69.0, 2026-05-17, 100x35 tmux probe):
+#   Session fixture: testdata/recompact-session/sessions/...jsonl
+#   (8 entries: session header + 2 user/assistant pairs + compaction + 2 more
+#    user/assistant pairs; prior compaction summary exists with firstKeptEntryId=e1)
+#   pi -e test-faux-provider.ts --model test-faux/faux-1 --session-dir sessions -c
+#   wait: ready
+#   keys: /compact Enter
+#   wait: "[compaction]"
+#   settle: 3s
+#   crop: capture_start_last="[compaction]", capture_end="expand)"
+#   raw cropped upstream block (last [compaction] block):
+#
+#      [compaction]
+#
+#      Compacted from 450 tokens (ctrl+o to expand)
+#
+# This scenario proves:
+#   1. PrepareCompaction finds the prior compaction entry and extracts PreviousSummary
+#   2. generateSummary uses UPDATE_SUMMARIZATION_PROMPT (not initial SUMMARIZATION_PROMPT)
+#   3. The compaction chain works: prior firstKeptEntryId anchors the boundary
+
+name = "02-recompact-update-summary"
+description = "/compact on session with prior compaction uses UPDATE_SUMMARIZATION_PROMPT path."
+covers = [
+  "packages/coding-agent/src/core/compaction/compaction.ts",
+  "packages/coding-agent/src/core/compaction/utils.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+# Depends on testdata/{pig,pi}-agent/settings.json setting
+# compaction.keepRecentTokens=100 so the recompaction actually fires (messages
+# fall outside the recent-keep window). Under the default (20000) the 0.79.10
+# empty-compaction guard would refuse and only the prior summary would remain
+# (see 05-nothing-to-compact-too-small).
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/recompact-session"
+capture_start = "[compaction]"
+capture_end = "expand)"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["/compact", "Enter"]
+settle_seconds = 5
+wait_contains = ["[compaction]", "450 tokens"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine ", "unknown command"]
+both_contain = ["[compaction]", "450 tokens", "expand)"]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3

@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+# Measures waiting behavior: the build takes about 20 seconds. Compare polling
+# calls per task across harnesses, not only the pass rate.
+prompt = "Run ./build.sh. It takes a while. When it has finished, write the SHA-256 hex digest of dist/app.bin, and nothing else, to RESULT.txt."
+check = "test -s RESULT.txt && test \"$(tr -d ' \\n' < RESULT.txt)\" = \"$(sha256sum dist/app.bin | cut -d' ' -f1)\""
+protected = ["build.sh"]

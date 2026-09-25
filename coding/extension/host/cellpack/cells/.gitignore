@@ -1,0 +1,4 @@
+# Piglet Binary builds stage cell binaries here; only the empty default manifest is committed.
+*
+!.gitignore
+!manifest.json

@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+
+version: 2
+updates:
+  - package-ecosystem: gomod
+    directory: /
+    schedule:
+      interval: weekly
+  - package-ecosystem: gomod
+    directory: /extensions/sdk
+    schedule:
+      interval: weekly
+  - package-ecosystem: gomod
+    directory: /piglets/porter/extensions/pig-porter
+    schedule:
+      interval: weekly
+  - package-ecosystem: gomod
+    directory: /piglets/standard
+    schedule:
+      interval: weekly
+  - package-ecosystem: gomod
+    directory: /cmd/pig/testdata/login-preview
+    schedule:
+      interval: weekly
+  - package-ecosystem: gomod
+    directory: /coding/extension/host/subprocess/testdata/sdk-fixture
+    schedule:
+      interval: weekly
+  - package-ecosystem: gomod
+    directory: /examples/extensions/go-factory
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /automation/images/ci-parity
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /automation/images/npm-runtime
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /extensions/sdk-ts
+    schedule:
+      interval: weekly
+  - package-ecosystem: npm
+    directory: /parity/interface-extractor
+    schedule:
+      interval: weekly
+  - package-ecosystem: pip
+    directory: /extensions/sdk-py
+    schedule:
+      interval: weekly
+  - package-ecosystem: cargo
+    directory: /extensions/sdk-rs
+    schedule:
+      interval: weekly
+  - package-ecosystem: cargo
+    directory: /examples/extensions/rust-factory
+    schedule:
+      interval: weekly
+  - package-ecosystem: cargo
+    directory: /tests/extension-conformance/testdata/rust-sdk-fixture
+    schedule:
+      interval: weekly
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

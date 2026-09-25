@@ -1,0 +1,85 @@
+# Behavior family: footer
+#
+# Surface: experimental-features footer badge (footer.ts:162-164 +
+# core/experimental.ts areExperimentalFeaturesEnabled).
+#
+# When PI_EXPERIMENTAL=1, upstream footer.ts pushes a dim "•" separator plus a
+# bold warning "xp" badge onto the stats line, right after the context-percent
+# token:
+#
+#   $0.000 (sub) 0.0%/1.0M (auto) • xp          ...          gpt-5.4 • medium
+#
+# The gate is areExperimentalFeaturesEnabled() = (process.env.PI_EXPERIMENTAL
+# === "1"). pig mirrors this in internal/codingagent/experimental.go, reading
+# the same PI_EXPERIMENTAL variable (kept, like PI_HARDWARE_CURSOR /
+# PI_CLEAR_ON_SHRINK / PI_OFFLINE, because it gates an observable pi behavior on
+# the exact variable pi uses). The badge bytes are
+# chalk.bold(theme.fg("warning","xp")) = \x1b[1m<warning>xp\x1b[39m\x1b[22m; for
+# the dark theme warning is #ffff00 → \x1b[38;2;255;255;0m.
+#
+# Reuses the 01-footer-default testdata (far-future OAuth auth.json, gpt-5.4
+# model) so the whole footer is byte-stable; the only difference from
+# 01-footer-default is PI_EXPERIMENTAL=1 on both sides, which adds the "• xp"
+# badge to both binaries identically. escaped_output_equal asserts the badge -
+# including its bold/warning ANSI: is byte-identical between pig and pi.
+#
+# Unit coverage: TestRenderFooterExperimentalIndicator (status_line_test.go)
+# proves the gate and the exact badge bytes, mutation-proven.
+#
+# Upstream evidence (pi v0.84.0, probed 2026-08-12):
+# ──────────────────────────────────────────────────────────────────────
+#   command: PI_CODING_AGENT_DIR=testdata/pi-agent PI_EXPERIMENTAL=1 \
+#            pi --no-extensions
+#   tmux:    100×35
+#   keys:    none (idle capture after boot)
+#
+#   raw cropped upstream footer (plain, ANSI stripped):
+#
+#     <working-directory>
+#     $0.000 (sub) 0.0%/1.0M (auto) • xp                             gpt-5.4 • medium
+#
+#   ANSI (tmux -e) shows the badge bold + warning-yellow:
+#     \x1b[1m\x1b[38;2;255;255;0mxp...  (bold on, fg #ffff00)
+#
+#   The badge appears only with PI_EXPERIMENTAL=1; 01-footer-default (same
+#   testdata, no PI_EXPERIMENTAL) renders the identical footer without it.
+#
+# The runner launches both binaries in same-length copies of the default cwd fixture and masks only the random digits. The crop retains both complete footer rows. The canonical cwd plus configured branch must fit the terminal width without HOME abbreviation; the runner rejects longer roots before launch and asks for a shorter TMPDIR or wider tmux.width. Re-probing pinned Pi with a long external TMPDIR confirms that its cwd row truncates before the snapshot-name anchor, while the stats row remains unchanged.
+
+name = "05-footer-experimental-indicator"
+description = "With PI_EXPERIMENTAL=1 both binaries render the '• xp' experimental badge in the footer identically including ANSI."
+
+covers = [
+  "packages/coding-agent/src/core/experimental.ts",
+  "packages/coding-agent/src/modes/interactive/components/footer.ts",
+]
+
+tags = ["fast", "tui", "hermetic", "fixture-auth"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 20
+capture_start = "parity-snap-cwd-"
+capture_start_last = true
+settle_seconds = 2
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../footer/testdata/pig-agent", "PI_EXPERIMENTAL=1"]
+pi = ["PI_CODING_AGENT_DIR=../footer/testdata/pi-agent", "PI_EXPERIMENTAL=1"]
+pig_args = ["--no-extensions"]
+pi_args = ["--no-extensions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["$0.000 (sub)", "0.0%/1.0M (auto)", "• xp", "gpt-5.4"]
+both_not_contain = [
+  "panic:",
+  "goroutine ",
+]
+escaped_output_equal = true
+runtime_ratio_max = 1.50
+runs = 3

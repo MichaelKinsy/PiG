@@ -1,0 +1,24 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+cff-version: 1.2.0
+message: If you use PiG in research or benchmarks, please cite it as below, and cite Pi, the upstream it translates.
+title: "PiG: Pi in Go"
+type: software
+authors:
+  - family-names: Kinsy
+    given-names: Michael
+  - name: PiG contributors
+repository-code: https://github.com/MichaelKinsy/PiG
+url: https://github.com/MichaelKinsy/PiG
+license: MIT
+keywords:
+  - coding agent
+  - go
+  - pi
+  - llm
+references:
+  - type: software
+    title: Pi
+    authors:
+      - name: Earendil Works
+    repository-code: https://github.com/earendil-works/pi

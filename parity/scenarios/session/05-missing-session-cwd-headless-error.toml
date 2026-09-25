@@ -1,0 +1,41 @@
+# Behavior family: session
+# Surface: print/json/rpc startup fails loudly when the selected session's stored
+# cwd is missing; no interactive startup selector is available.
+#
+# Upstream evidence (exact Pi 0.83.0, 2026-08-04):
+#   pi --no-extensions --offline --session sessions/missing.jsonl --print probe
+#   exits 1 before model/runtime creation and prints the stored cwd, session file,
+#   and current fallback cwd.
+# normalize_replace substitutes only independent randomized snapshot suffixes.
+
+name = "05-missing-session-cwd-headless-error"
+description = "Headless startup rejects a selected session whose stored cwd is missing."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/core/session-cwd.ts",
+]
+tags = ["fast", "hermetic", "cli"]
+driver = "cli-mode"
+
+[cli]
+args = ["--no-extensions", "--offline", "--session", "sessions/missing.jsonl", "--print", "probe"]
+cwd = "testdata/missing-session-cwd"
+timeout_seconds = 20
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+
+# normalize-rationale: independent cwd snapshots differ only in their random numeric suffix.
+[assert]
+exit_code = 1
+both_contain = [
+  "Stored session working directory does not exist:",
+  "Session file:",
+  "Current working directory:",
+]
+both_not_contain = ["No API key found", "panic:", "goroutine "]
+output_normalized_equal = true
+normalize_replace = [{ pattern = "parity-snap-cwd-[0-9]+", with = "parity-snap-cwd-<RUN>" }]
+runtime_ratio_max = 1.5
+runs = 3

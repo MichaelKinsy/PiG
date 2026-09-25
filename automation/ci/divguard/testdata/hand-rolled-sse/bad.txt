@@ -1,0 +1,27 @@
+// divguard:path ai/openai.go
+
+package ai
+
+import (
+	"bufio"
+	"io"
+	"strings"
+)
+
+// readSSE reproduces AI-07: `data:{...}` without the space is dropped and
+// multi-line data is never joined.
+func readSSE(r io.Reader, emit func(event, data string)) {
+	sc := bufio.NewScanner(r)
+	event := ""
+	for sc.Scan() {
+		line := sc.Text()
+		if strings.HasPrefix(line, "event: ") { // want
+			event = strings.TrimPrefix(line, "event: ") // want
+			continue
+		}
+		if !strings.HasPrefix(line, "data: ") { // want
+			continue
+		}
+		emit(event, strings.TrimPrefix(line, "data: ")) // want
+	}
+}

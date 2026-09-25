@@ -1,0 +1,52 @@
+# Behavior family: oauth
+# Surface: OAuth callback page HTML renderer.
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   /probe-oauth-callback-page
+#   output: oauth-page:success=true:error=true:escaped=true:details=true
+#
+# The probe renders both success and error pages and asserts the escaped
+# message/details content directly, which is the observable behavior of the
+# callback-page helper independent of any live browser auth.
+
+name = "06-oauth-callback-page"
+description = "OAuth callback success and error pages render the same escaped HTML markers in both binaries."
+covers = [
+  "packages/ai/src/auth/oauth/oauth-page.ts",
+]
+tags = ["hermetic", "fast", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "oauth-page:success="
+capture_end = "details=true"
+
+[[tmux.steps]]
+keys = ["/probe-oauth-callback-page", "Enter"]
+wait_contains = ["oauth-page:success=true:error=true:escaped=true:details=true"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = [
+  "PIG_CODING_AGENT_DIR=../clipboard-images/testdata/pig-agent",
+  "PIG_PARITY_HARNESS=1",
+]
+pi = [
+  "PI_CODING_AGENT_DIR=../clipboard-images/testdata/pi-agent",
+  "PI_SKIP_VERSION_CHECK=1",
+]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/oauth-harness.ts"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

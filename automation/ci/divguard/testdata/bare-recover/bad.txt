@@ -1,0 +1,40 @@
+// divguard:path coding/session.go
+
+package coding
+
+type Session struct {
+	events    chan int
+	listeners []func(int)
+}
+
+// forwardAgentEvents reproduces AGENT-16: a panicking listener silently
+// ends forwarding, and the next run blocks on a full channel.
+func (s *Session) forwardAgentEvents() {
+	defer func() {
+		_ = recover() // want
+		close(s.events)
+	}()
+	for ev := range s.events {
+		for _, l := range s.listeners {
+			l(ev)
+		}
+	}
+}
+
+func (s *Session) emit(ev int) {
+	defer func() {
+		if r := recover(); r != nil { // want
+			return
+		}
+	}()
+	defer recover() // want
+	for _, l := range s.listeners {
+		l(ev)
+	}
+}
+
+func (s *Session) guard(fn func()) (failed bool) {
+	defer func() { failed = recover() != nil }() // want
+	fn()
+	return false
+}

@@ -1,0 +1,65 @@
+# Behavior family: footer
+#
+# Surface: multi-provider prefix on footer model name (footer.ts:165-170).
+# When >1 provider has reachable+authenticated models, the footer prepends
+# "(provider) " to the model name on line 2.
+#
+# Hermeticity:
+#   - testdata/multi-{pig,pi}-agent/auth.json stage TWO fake OAuth
+#     credentials (github-copilot + openai-codex) with refresh tokens
+#     and far-future expiry. Both binaries see two authenticated
+#     providers without any network probe: model registry reads
+#     auth.json offline and returns models for each provider's
+#     hard-coded catalog.
+#   - `--model github-copilot/claude-haiku-4.5` forces both sides to the same
+#     model so the asserted right-side rendering is byte-identical.
+#   - {{FAKE_BIN}} PATH-shadows `open` to keep any incidental OAuth
+#     refresh calls from launching browsers (the access token expiry
+#     is far in the future, so no refresh should fire, but defense in
+#     depth).
+#
+# Promoted from `deferred` 2026-05-21: the multi-provider rendering
+# path is now exercised end-to-end. Unit coverage
+# (TestRenderFooterMultiProvider in status_line_test.go) remains.
+#
+# Upstream evidence (pi v0.74.1, probed 2026-05-21):
+#   With dual OAuth auth.json + --model github-copilot/claude-haiku-4.5, pi's
+#   footer line 2 right side renders "(github-copilot) claude-haiku-4.5" in dim.
+
+name = "03-footer-multi-provider-prefix"
+description = "footer renders (provider) prefix when >1 provider is authenticated"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/footer.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+
+tags = ["tui", "hermetic", "fixture-auth"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(github-copilot) claude-haiku-4.5"
+ready_pattern_pi = "(github-copilot) claude-haiku-4.5"
+ready_timeout_seconds = 25
+capture_start = "(github-copilot)"
+capture_end = "claude-haiku-4.5"
+settle_seconds = 2
+
+[env]
+pig = [
+  "PIG_CODING_AGENT_DIR=testdata/multi-pig-agent",
+  "PATH={{FAKE_BIN}}:{{PATH}}",
+]
+pi = [
+  "PI_CODING_AGENT_DIR=testdata/multi-pi-agent",
+  "PATH={{FAKE_BIN}}:{{PATH}}",
+]
+pig_args = ["--no-extensions", "--model", "github-copilot/claude-haiku-4.5", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--model", "github-copilot/claude-haiku-4.5", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["(github-copilot) claude-haiku-4.5"]
+output_normalized_equal = true
+runs = 3

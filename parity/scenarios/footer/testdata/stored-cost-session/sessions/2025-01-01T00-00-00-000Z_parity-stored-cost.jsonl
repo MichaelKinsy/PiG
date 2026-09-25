@@ -1,0 +1,3 @@
+{"type":"session","version":1,"id":"parity-stored-cost","timestamp":"2025-01-01T00:00:00.000Z","cwd":"/tmp"}
+{"type":"message","id":"e1","parentId":null,"timestamp":"2025-01-01T00:00:01.000Z","message":{"role":"user","content":[{"type":"text","text":"hello"}],"timestamp":1735689601000}}
+{"type":"message","id":"e2","parentId":"e1","timestamp":"2025-01-01T00:00:02.000Z","message":{"role":"assistant","content":[{"type":"text","text":"hi"}],"api":"anthropic-messages","provider":"anthropic","model":"claude-opus-4-8","usage":{"input":10000,"output":2000,"cacheRead":30000,"cacheWrite":0,"totalTokens":42000,"cost":{"input":0.05,"output":0.05,"cacheRead":0.015,"cacheWrite":0,"total":0.115}},"stopReason":"stop","timestamp":1735689602000}}

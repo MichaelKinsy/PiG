@@ -1,0 +1,59 @@
+# Behavior family: compaction
+# Surface: messages queued while overflow recovery compacts are delivered into
+# the imminent retry turn.
+#
+# Upstream evidence (Pi 0.83.0): flushCompactionQueue({ willRetry: true })
+# drains compactionQueuedMessages through session.steer/session.followUp before
+# the retry Continue call. This fixture slows only the deterministic faux
+# summarization request long enough to type a second message while the
+# compaction indicator is visible. Pi then retries with that queued message and
+# renders `queued-after-compaction-ok`.
+
+name = "06-overflow-retry-flushes-queued-message"
+description = "A message queued during overflow compaction is delivered by the retry turn"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent", "TEST_FAUX_SLOW_COMPACTION=1"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TEST_FAUX_SLOW_COMPACTION=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/compact-session"
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "queued-after-compaction-ok"
+capture_end = "queued-after-compaction-ok"
+
+[[tmux.steps]]
+keys = ["Trigger: overflow error with queued message", "Enter"]
+wait_contains = ["Context overflow detected", "Auto-compacting"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["Send after overflow compaction", "Enter"]
+wait_contains = ["queued-after-compaction-ok"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["queued-after-compaction-ok"]
+both_not_contain = [
+  "panic:",
+  "goroutine ",
+  "Context overflow recovery failed",
+  "test-faux: unhandled request",
+]
+output_equal = true
+runs = 3

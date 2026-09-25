@@ -1,0 +1,13 @@
+diff --git i/agent/harness/pico3/jsonl.go w/agent/harness/pico3/jsonl.go
+index 8069e60e0..5da795ebf 100644
+--- i/agent/harness/pico3/jsonl.go
++++ w/agent/harness/pico3/jsonl.go
+@@ -269,7 +269,7 @@ func (state *replayState) readSidecar(file string) error {
+ 	sawUnconfirmed := false
+ 	for _, read := range records {
+ 		record := read.record
+-		if !state.confirmed[record.Seq][file] {
++		if false && !state.confirmed[record.Seq][file] {
+ 			sawUnconfirmed = true
+ 			continue
+ 		}

@@ -1,0 +1,52 @@
+# Behavior family: model-resolver-selector
+# Surface: /model picker search delegates to Pi's shared Input and fuzzyFilter.
+#
+# Upstream evidence (Pi 0.83.0): typing `mtw` after opening `/model` in the local fixture selects
+# `model-two` by ordered subsequence, excludes `model-one`, and shows Model Two
+# details. Pig previously used token substring matching and returned no models.
+#
+# Pi 0.87.1 (re-probed 2026-09-23) marks the current model with a "✓ " prefix
+# column, so the opening step waits for "→ ✓ model-two".
+
+name = "14-model-picker-fuzzy-filter"
+description = "Model picker search matches ordered fuzzy subsequences identically"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+  "packages/coding-agent/src/modes/interactive/model-search.ts",
+  "packages/tui/src/components/input.ts",
+  "packages/tui/src/utils.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 20
+capture_start = "> mtw"
+capture_end = "Model Name: Model Two"
+
+[[tmux.steps]]
+keys = ["/model", "Enter"]
+wait_contains = ["→ ✓ model-two", "Model Name: Model Two"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["mtw"]
+wait_contains = ["> mtw", "model-two", "Model Name: Model Two"]
+wait_timeout_seconds = 15
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-local"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-local", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["> mtw", "model-two", "Model Name: Model Two"]
+both_not_contain = ["model-one", "No matching models", "panic:", "goroutine "]
+output_equal = true
+runs = 3

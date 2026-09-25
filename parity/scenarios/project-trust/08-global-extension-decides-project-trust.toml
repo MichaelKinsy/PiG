@@ -1,0 +1,38 @@
+# Behavior family: project-trust
+# group-rationale: serial: project-trust fixtures compile into shared Pig cache entries.
+# Surface: a user/global extension may decide project trust before project Resources load.
+#
+# Upstream probe (exact Pi 0.83.0, 2026-08-04): a global extension registered
+# project_trust and returned { trusted: "yes" }. Noninteractive --list-models
+# then loaded the otherwise-untrusted project provider without --approve.
+# The project extension cannot participate in the decision because it is loaded
+# only after the global handler grants trust.
+
+name = "08-global-extension-decides-project-trust"
+description = "A decisive global project_trust handler runs before and may permit project Resources."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/cli/project-trust.ts",
+  "packages/coding-agent/src/core/project-trust.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+]
+tags = ["hermetic", "fast", "security", "serial"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-handler", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-handler"]
+override_base_args = true
+
+[cli]
+args = ["--list-models", "trust-probe"]
+cwd = "testdata/project-01"
+snapshot_cwd = true
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ["trust-probe", "must-not-load-before-trust"]
+both_not_contain = ["panic:", "goroutine "]
+runs = 3

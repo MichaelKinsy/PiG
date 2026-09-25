@@ -1,0 +1,82 @@
+# Behavior family: extensions-runtime
+# Upstream evidence: custom-message.ts sends {expanded:false, outputPad:1}, then
+# {expanded:false, outputPad:0} after setOutputPad(0). Its default Box(1,1)
+# remains unchanged. This scenario drives the setting through /settings, then
+# expands the existing message. The exact crop asserts the extension's options
+# and rendered inset, not unrelated transcript spacing or startup output.
+# Re-probed 2026-09-25: both pinned Pi and PiG reach the (auto) footer without
+# the removed PiG-only "Ready. Type a message" banner. The readiness anchor
+# synchronizes input only; the exact plain and escaped renderer crops stay intact.
+name = "20-message-output-padding"
+description = "Custom renderer options follow live output padding and expansion changes"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-home/agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/message-padding.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/message-padding.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "padding-render:pad=0:expanded=true:width=100"
+capture_end = "padding-render:pad=0:expanded=true:width=100"
+
+[[tmux.steps]]
+keys = ["/padding-probe", "Enter"]
+wait_contains = ["padding-render:pad=1:expanded=false:width=100"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/settings", "Enter"]
+wait_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+# Synchronize the modal input-owner handoff before entering the filter.
+[[tmux.steps]]
+keys = ["Space"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["output padding"]
+wait_contains = ["> output padding"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+settle_seconds = 1
+
+# The setting may update the transcript while the selector is still open.
+# Escape only closes it; a separate wait does not require a duplicate redraw.
+[[tmux.steps]]
+keys = ["Escape"]
+settle_seconds = 1
+
+[[tmux.steps]]
+wait_contains = ["padding-render:pad=0:expanded=false:width=100"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["C-o"]
+wait_contains = ["padding-render:pad=0:expanded=true:width=100"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["padding-render:pad=0:expanded=true:width=100"]
+both_not_contain = ["panic:", "goroutine ", "connection closed"]
+output_equal = true
+escaped_output_equal = true
+runs = 3

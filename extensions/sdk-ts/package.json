@@ -1,0 +1,32 @@
+{
+  "name": "@michaelkinsy/pig-extension-types",
+  "version": "0.0.0",
+  "private": true,
+  "description": "TypeScript declarations for Pi-compatible extensions running on PiG",
+  "type": "module",
+  "types": "./index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./index.d.ts"
+    }
+  },
+  "files": [
+    "index.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node scripts/check-upstream-pin.mjs && node scripts/check-runtime-compat.mjs && tsc --noEmit -p tsconfig.json"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": "0.87.1"
+  },
+  "devDependencies": {
+    "@earendil-works/pi-coding-agent": "0.87.1",
+    "typescript": "5.9.3"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "license": "MIT"
+}

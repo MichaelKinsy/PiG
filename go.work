@@ -1,0 +1,9 @@
+go 1.26.0
+
+toolchain go1.27.1
+
+use (
+	.
+	./extensions/sdk
+	./piglets/porter/extensions/pig-porter
+)

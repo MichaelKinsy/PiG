@@ -1,0 +1,62 @@
+# Behavior family: model-resolver-selector
+# Surface: /model renders the immediate local snapshot with current-model
+# pinning and stable provider order. Background catalog refresh/status is owned
+# by model-runtime-store-catalog and is intentionally outside this crop.
+#
+# Upstream evidence: exact Pi 0.87.1 re-probe (2026-09-23, tmux 100×35):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent-local pi --no-extensions --offline
+#   keys: /model Enter
+#   ready: $0.000
+#   crop: "Only showing models" through "Model Name: Model Two"
+#
+#   Only showing models from configured providers. Use /login to add providers.
+#
+#   >
+#
+#   → ✓ model-two [fixture]
+#       model-one [fixture]
+#
+#     Model Name: Model Two
+#
+# The fixture is credential-complete and network-free. Equality proves immediate
+# snapshot rendering, first-available initial selection, current-model pinning,
+# and stable source order within one provider.
+
+name = "04-model-picker-overlay"
+description = "Both binaries render the exact local model picker snapshot and current selection."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 15
+keys = ["/model", "Enter"]
+settle_seconds = 2
+capture_start = "Only showing models"
+capture_end = "Model Name: Model Two"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/pig-agent-local"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/pi-agent-local"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = [
+  "Only showing models from configured providers. Use /login to add providers.",
+  "model-two [fixture]",
+  "model-one [fixture]",
+  "Model Name: Model Two",
+]
+both_not_contain = ["panic:", "goroutine ", "Could not refresh"]
+output_equal = true
+runtime_ratio_max = 1.30
+runs = 3

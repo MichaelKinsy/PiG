@@ -1,0 +1,51 @@
+# Behavior family: providers-registry
+# Surface: --list-models honors staged agent-dir auth.json for OAuth-backed built-ins.
+#
+# Upstream evidence (pi v0.79.1, verified pig==pi this loop):
+#   command:
+#     PI_CODING_AGENT_DIR=testdata/oauth-agent pi --list-models 2>&1
+#   testdata/oauth-agent/auth.json stages a non-secret openai-codex OAuth
+#   credential. Registration gates on the presence of a refresh token; the
+#   access token is never validated for listing, so the fixture carries no
+#   real secret. Both binaries then list the openai-codex built-ins:
+#     provider      model                context  max-out  thinking  images
+#     openai-codex  gpt-5.3-codex-spark  128K     128K     yes       no
+#     openai-codex  gpt-5.4              272K     128K     yes       yes
+#     openai-codex  gpt-5.4-mini         272K     128K     yes       yes
+#     openai-codex  gpt-5.5              272K     128K     yes       yes
+#
+# This locks the OAuth-backed registrations that only appear when list-models
+# reads auth.json from the staged agent directory: openai-codex. It proves both
+# the builtin registry wiring and the list-models auth path use the requested
+# agent dir rather than the default config tree.
+
+name = "02-list-models-oauth-builtins"
+description = "registration-only: OAuth-backed built-in providers appear in --list-models from staged auth.json."
+covers = [
+  "packages/ai/src/env-api-keys.ts",
+  "packages/ai/src/auth/credential-store.ts",
+  "packages/ai/src/auth/resolve.ts",
+  "packages/ai/src/auth/types.ts",
+  "packages/coding-agent/src/core/auth-storage.ts",
+]
+# verification-quality: registration-only. This proves auth-backed provider
+# catalog visibility, not OpenAI Codex Responses payload conversion/streaming.
+tags = ["fast", "hermetic", "registration-only", "fixture-auth"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/oauth-agent"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/oauth-agent"]
+
+[cli]
+args = ["--list-models"]
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = [
+  "openai-codex",
+]
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

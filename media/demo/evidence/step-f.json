@@ -1,0 +1,36 @@
+{
+  "step": "f",
+  "recording_wall_seconds": 55.06,
+  "faux_provider": true,
+  "status": "BLOCKED",
+  "blocker": "Rust chain and reload execute; Node overlay sizing crops Doom. See DEMO-BLOCKERS.md.",
+  "chain": [
+    "[chain 1/4 · scout]",
+    "[chain 2/4 · plan]",
+    "[chain 3/4 · build]",
+    "[chain 4/4 · test]"
+  ],
+  "tools": [
+    {
+      "name": "bash",
+      "isError": false,
+      "output": "stats.py\ntest_stats.py\n8:    return [sum(values[i:i + window]) / window for i in range(len(values) - window)]\n"
+    },
+    {
+      "name": "read",
+      "isError": false,
+      "output": "\"\"\"Small statistics helpers.\"\"\"\n\n\ndef moving_average(values, window):\n    \"\"\"Return the mean of each consecutive run of `window` values.\"\"\"\n    if window <= 0:\n        raise ValueError(\"window must be positive\")\n    return [sum(values[i:i + window]) / window for i in range(len(values) - window)]\n"
+    },
+    {
+      "name": "edit",
+      "isError": false,
+      "output": "Successfully replaced 1 block(s) in stats.py."
+    },
+    {
+      "name": "bash",
+      "isError": false,
+      "output": "test_includes_last_window (test_stats.MovingAverageTest.test_includes_last_window) ... ok\ntest_rejects_zero_window (test_stats.MovingAverageTest.test_rejects_zero_window) ... ok\ntest_single_window (test_stats.MovingAverageTest.test_single_window) ... ok\n\n----------------------------------------------------------------------\nRan 3 tests in 0.000s\n\nOK\n"
+    }
+  ],
+  "raw_sha256": "cc6a12c27a414f7852ede6a0c06c9774c5268c23889bee56ead5d136e5630fda"
+}

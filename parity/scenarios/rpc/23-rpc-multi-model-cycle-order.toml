@@ -1,0 +1,44 @@
+# Behavior family: rpc
+# Surface: repeated cycle_model ordering over multiple available models.
+#
+# Upstream evidence (Pi 0.84.0): each cycle_model command waits for the prior
+# mutation. Three pipelined commands over model-one, model-two, model-three
+# therefore return model-two, model-three, model-one in input order. The
+# response preserves each configured model display name.
+
+name = "23-rpc-multi-model-cycle-order"
+description = "Pipelined model cycles mutate and respond in input order."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = [
+  '{"id":"one","type":"cycle_model"}',
+  '{"id":"two","type":"cycle_model"}',
+  '{"id":"three","type":"cycle_model"}',
+]
+timeout_seconds = 15
+settle_seconds = 1
+
+[env]
+pig = ["PIG_HOME=testdata/multi-model"]
+pi = ["PI_CODING_AGENT_DIR=testdata/multi-model/agent"]
+pig_args = ["--offline", "--no-session", "--model", "fixture/model-one"]
+pi_args = ["--offline", "--no-session", "--model", "fixture/model-one"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"id":"one","type":"response","command":"cycle_model","success":true,"data":{"model":{"id":"model-two","name":"Model Two"',
+  '"id":"two","type":"response","command":"cycle_model","success":true,"data":{"model":{"id":"model-three","name":"Model Three"',
+  '"id":"three","type":"response","command":"cycle_model","success":true,"data":{"model":{"id":"model-one","name":"Model One"',
+]
+both_not_contain = [
+  '"success":false',
+]
+output_normalized_equal = true
+runs = 3

@@ -1,0 +1,57 @@
+# Behavior family: compaction
+# Surface: an ordinary Enter submission made during manual compaction starts a
+# new turn automatically after compaction ends.
+#
+# Upstream evidence (Pi 0.84.0): interactive-mode.ts checks
+# session.isCompacting before its streaming branch, stores the message in
+# compactionQueuedMessages, then compaction_end calls flushCompactionQueue().
+# With no retrying run, the first model-bound message becomes session.prompt().
+
+name = "08-manual-compaction-flushes-entered-message"
+description = "A message entered during manual compaction starts after compaction completes"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent", "TEST_FAUX_SLOW_COMPACTION=1"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TEST_FAUX_SLOW_COMPACTION=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/compact-session"
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "queued-after-compaction-ok"
+capture_end = "queued-after-compaction-ok"
+
+[[tmux.steps]]
+keys = ["/compact", "Enter"]
+wait_contains = ["Compacting context"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["Send after overflow compaction", "Enter"]
+wait_contains = ["queued-after-compaction-ok"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["queued-after-compaction-ok"]
+both_not_contain = [
+  "panic:",
+  "goroutine ",
+  "Failed to send queued message",
+  "test-faux: unhandled request",
+]
+output_equal = true
+runs = 3

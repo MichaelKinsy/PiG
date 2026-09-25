@@ -1,0 +1,49 @@
+# Behavior family: session
+# Surface: an interactive session whose stored cwd is missing is resolved by the
+# reusable startup selector before cwd-bound runtime services are constructed.
+#
+# Manual upstream-first tmux probe (exact Pi 0.83.0, 2026-08-04, 100x35):
+#   pi --no-extensions --offline --session sessions/missing.jsonl
+#   cwd = testdata/missing-session-cwd
+#   crop = "cwd from session file does not exist" through "Cancel"
+#
+# Both binaries must show Continue/Cancel against the current snapshot cwd. The
+# normalize_replace substitutes only the runner's independently randomized
+# snapshot directory suffix; path shape and the /gone suffix remain compared.
+
+name = "04-missing-session-cwd-startup-selector"
+description = "A missing stored session cwd opens the exact pre-runtime Continue/Cancel selector."
+covers = [
+  "packages/coding-agent/src/main.ts",
+  "packages/coding-agent/src/cli/startup-ui.ts",
+  "packages/coding-agent/src/core/session-cwd.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "cwd from session file does not exist"
+ready_pattern_pi = "cwd from session file does not exist"
+ready_timeout_seconds = 25
+capture_start = "cwd from session file does not exist"
+capture_end = "Cancel"
+settle_seconds = 1
+cwd = "testdata/missing-session-cwd"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--session", "sessions/missing.jsonl"]
+pi_args = ["--no-extensions", "--offline", "--session", "sessions/missing.jsonl"]
+
+# normalize-rationale: independent cwd snapshots differ only in their random numeric suffix.
+[assert]
+both_reach_ready = true
+both_contain = ["cwd from session file does not exist", "continue in current cwd", "Continue", "Cancel"]
+both_not_contain = ["panic:", "goroutine "]
+output_normalized_equal = true
+normalize_replace = [{ pattern = "parity-snap-cwd-[0-9]+", with = "parity-snap-cwd-<RUN>" }]
+runtime_ratio_max = 1.5
+runs = 3

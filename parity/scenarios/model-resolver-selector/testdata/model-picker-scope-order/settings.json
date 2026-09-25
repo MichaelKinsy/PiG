@@ -1,0 +1,5 @@
+{
+  "defaultProvider": "fixture",
+  "defaultModel": "model-one",
+  "quietStartup": true
+}

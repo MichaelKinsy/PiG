@@ -1,0 +1,92 @@
+# Behavior family: fullscreen
+# Surface: alternate-screen renderer (TuiAltScreen) driving a full conversation
+#
+# Upstream evidence (pi v0.84.0):
+#   pi --no-extensions -e parity/testdata/test-faux-provider.ts \
+#      --model test-faux/faux-1   (with settings.json tuiMode="fullscreen")
+#   send: "Run: expr 20 + 22" Enter
+#   The alternate-screen renderer paints a full-height frame: a scrollable
+#   transcript (user message -> tool box -> assistant reply) over a pinned dock
+#   (editor + footer). tmux capture-pane -p reports the resulting screen state,
+#   so this compares the rendered fullscreen layout, not the differential escapes.
+#
+# This is the end-to-end proof for Phase A: mode selection constructs the
+# alt-screen renderer, the fullscreen layout root (transcript ScrollView over
+# the dock VStack) renders, Start() enters the alt buffer, and the editor-slot /
+# input path work in fullscreen. Both pig and pi run the same fullscreen setting,
+# so the comparison is alt-screen vs alt-screen.
+#
+# height = 24 is deliberate: it makes the transcript content overflow the
+# viewport so both renderers follow=end and bottom-align the conversation against
+# the dock. The crop from a conversation line to the dock is then identical
+# regardless of startup-content height (banner/notices differ between pig and pi
+# above the crop, but the bottom-aligned conversation does not). At height=40 the
+# short conversation top-aligns and the crop rides the follow-end scroll boundary,
+# which is startup-content-height sensitive and not a rendering-parity signal.
+#
+# Verified separately at height = 40 (real full-screen): pig and pi render the
+# byte-identical conversation structure and inter-line spacing
+# (Run -> $expr +4, -> 42 +2, -> Took +2, -> 42 +3, dock separator same row).
+# The only full-height difference is the transcript scroll offset, driven by
+# pig's banner vs pi's startup content height (a product difference above the
+# crop), so height = 40 is not a skipped case: the same doRender/layout/scroll
+# path runs at every height. runs = 3 because tmux capture timing on a live
+# render is non-trivial (stress-verified 5/5 stable).
+
+name = "01-conversation-fullscreen"
+description = "Fullscreen alt-screen renderer paints the conversation identically to pi."
+covers = [
+  "packages/tui/src/tui-alt-screen.ts",
+  "packages/tui/src/layout.ts",
+  "packages/tui/src/layout-node.ts",
+  "packages/tui/src/components/scroll-view.ts",
+  "packages/tui/src/components/stack.ts",
+  "packages/tui/src/components/v-stack.ts",
+]
+tags = ["fast", "hermetic", "tui", "fullscreen"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 24
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Run: expr 20 + 22"
+capture_end_regex = "faux-1\\s*$"
+
+[[tmux.steps]]
+keys = ["Run: expr 20 + 22", "Enter"]
+settle_seconds = 6
+wait_contains = ["Took"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+# The cropped region underneath the divergent headers (banner vs changelog) is
+# byte-identical between pig and pi after the one nondeterministic-duration
+# normalization below. This asserts PLAIN-CELL parity, not full byte/render
+# parity: escaped_output_equal compares the full SGR-preserving capture
+# (capture-pane -e). pig's alt-screen frame is byte-identical to pi 0.84 after
+# the theme text tokens (userMessageText/toolTitle/text/customMessageText) were
+# populated in the built-in dark theme and Markdown gained the default-color
+# option (upstream DefaultTextStyle.color); the shared AnsiCodeTracker emits the
+# bold-before-fg ordering pi uses. Only the sub-second "Took Xs" tool duration is
+# non-deterministic, masked by normalize_replace below.
+escaped_output_equal = true
+runtime_ratio_max = 2.0
+runs = 3
+
+# normalize-rationale: only the sub-second tool duration varies with scheduling.
+[[assert.normalize_replace]]
+pattern = "Took \\d+\\.\\ds"
+with = "Took Ns"

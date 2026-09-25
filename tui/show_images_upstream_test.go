@@ -1,0 +1,89 @@
+package tui
+
+import (
+	"fmt"
+	"slices"
+	"strings"
+	"testing"
+)
+
+// Pinned show-images-selector.ts delegates to SelectList without a filter row.
+// Keep whitespace intact: these are oracle-probed lines, with colors removed
+// only to isolate this component's labels/layout from the active user theme.
+func TestShowImagesUpstreamRender(t *testing.T) {
+	for _, current := range []bool{true, false} {
+		for _, width := range []int{20, 80} {
+			t.Run(fmt.Sprintf("current_%t_width_%d", current, width), func(t *testing.T) {
+				s := NewShowImagesSelector(current, nil, nil)
+				yes, no := "  Yes", "  No"
+				if current {
+					yes = "→ Yes"
+				} else {
+					no = "→ No"
+				}
+				if width > 40 {
+					yes += "         Show images inline in terminal"
+					no += "          Show text placeholder instead"
+				}
+				border := strings.Repeat("─", width)
+				want := []string{border, yes, no, border}
+				got := s.Render(width)
+				for i := range got {
+					got[i] = stripANSI(got[i])
+				}
+				if !slices.Equal(got, want) {
+					t.Fatalf("Render(%d) = %q, want %q", width, got, want)
+				}
+			})
+		}
+	}
+}
+
+func TestShowImagesListInputKeepsCallbacksLive(t *testing.T) {
+	old := GetTUIKeybindings()
+	SetTUIKeybindings(NewTUIKeybindingsManager(map[string][]string{"tui.select.down": {"ctrl+r"}}))
+	t.Cleanup(func() { SetTUIKeybindings(old) })
+	var calls []string
+	s := NewShowImagesSelector(true, func(value bool) { calls = append(calls, fmt.Sprint(value)) }, func() { calls = append(calls, "cancel") })
+	for _, input := range []string{"ignored", "\x1b[B", "\r", "\x12", "\r", "\x1b", "\r"} {
+		s.List().HandleInput(input)
+	}
+	if want := []string{"true", "false", "cancel", "false"}; !slices.Equal(calls, want) {
+		t.Fatalf("direct list callbacks = %v, want %v", calls, want)
+	}
+}
+
+func TestShowImagesUpstreamCallbacks(t *testing.T) {
+	old := GetTUIKeybindings()
+	SetTUIKeybindings(NewTUIKeybindingsManager(nil))
+	t.Cleanup(func() { SetTUIKeybindings(old) })
+	for _, current := range []bool{true, false} {
+		for _, input := range []string{"", "\x1b[A", "\x1b[B"} {
+			t.Run(fmt.Sprintf("current_%t_input_%q", current, input), func(t *testing.T) {
+				var selected []bool
+				cancels := 0
+				s := NewShowImagesSelector(current, func(v bool) { selected = append(selected, v) }, func() { cancels++ })
+				want := current
+				if input != "" {
+					s.HandleInput(input)
+					want = !current
+				}
+				if len(selected) != 0 || cancels != 0 {
+					t.Fatal("callback before confirm/cancel")
+				}
+				s.HandleInput("\r")
+				if !slices.Equal(selected, []bool{want}) || cancels != 0 {
+					t.Fatalf("callbacks = %v/cancel %d, want [%t]/0", selected, cancels, want)
+				}
+			})
+		}
+		t.Run(fmt.Sprintf("cancel_%t", current), func(t *testing.T) {
+			selects, cancels := 0, 0
+			s := NewShowImagesSelector(current, func(bool) { selects++ }, func() { cancels++ })
+			s.HandleInput("\x1b")
+			if selects != 0 || cancels != 1 {
+				t.Fatalf("select/cancel = %d/%d, want 0/1", selects, cancels)
+			}
+		})
+	}
+}

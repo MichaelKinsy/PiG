@@ -1,0 +1,4 @@
+# Ephemeral session files created by pig during parity runs.
+# Never commit these: they are runtime artifacts, not test fixtures.
+*
+!.gitignore

@@ -1,0 +1,27 @@
+{"input":"$x^2$","lines":["x²"]}
+{"input":"The value $x^2 + y^2$ is positive.","lines":["The value x² + y² is positive."]}
+{"input":"$E = mc^2$","lines":["E = mc²"]}
+{"input":"$\\alpha + \\beta$","lines":["α + β"]}
+{"input":"$$\\frac{a}{b}$$","lines":["a","─","b"]}
+{"input":"\\[ x = \\frac{-b}{2a} \\]","lines":["    -b","x = ──","    2a"]}
+{"input":"\\( \\alpha + \\beta \\)","lines":["α + β"]}
+{"input":"inline $a$ and $b$ here","lines":["inline a and b here"]}
+{"input":"a $x$ b $y$ c","lines":["a x b y c"]}
+{"input":"$$\n\\sum_{i=1}^n i\n$$","lines":[" n"," ∑  i","i=1"]}
+{"input":"text before\n\n$$\\int_0^1 x dx$$\n\ntext after","lines":["text before","","1","∫ x dx","0","","text after"]}
+{"input":"Cost is $5 and $10 today","lines":["Cost is $5 and $10 today"]}
+{"input":"Use `$PATH` variable","lines":["Use $PATH variable"]}
+{"input":"$ x $","lines":["$ x $"]}
+{"input":"$x$.","lines":["x."]}
+{"input":"price: $5","lines":["price: $5"]}
+{"input":"$a \\$ b$","lines":["a $ b"]}
+{"input":"value $x \\$ y$ end","lines":["value x $ y end"]}
+{"input":"$x^2","lines":["$x^2"]}
+{"input":"$$\\frac{a}{b}","lines":["$$\\frac{a}{b}"]}
+{"input":"\\[ x = 1","lines":["\\[ x = 1"]}
+{"input":"# Heading with $x^2$","lines":["Heading with x²"]}
+{"input":"- item $a_i$","lines":["- item aᵢ"]}
+{"input":"**bold** and $\\frac{1}{2}$","lines":["bold and 1/2"]}
+{"input":"> quote $\\infty$","lines":["│ quote ∞"]}
+{"input":"$\\Gamma(n) = (n-1)!$","lines":["Γ(n) = (n-1)!"]}
+{"input":"$$\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}$$","lines":["⎛ a │ b ⎞","⎝ c │ d ⎠"]}

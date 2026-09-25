@@ -1,0 +1,76 @@
+# Behavior family: extensions-runtime
+# Scenario: extension session_start lifecycle hook fires during boot.
+#
+# parity-lifecycle.mjs records the "session_start" reason, then exposes it
+# through /lifecycle-status. The scenario waits for normal TUI readiness before
+# invoking the command so cold extension builds cannot hide a transient startup
+# notification.
+#
+# This exercises sdk.ts session_start event dispatch through the extension
+# lifecycle pipeline.
+#
+# Upstream evidence (pi v0.80.3, tmux probe):
+#   PI_CODING_AGENT_DIR=testdata/pi-agent PI_SKIP_VERSION_CHECK=1 \
+#     pi --no-extensions \
+#     -e ../../testdata/test-faux-provider.ts \
+#     -e testdata/ext/parity-lifecycle.mjs \
+#     --model test-faux/faux-1 \
+#     --session-dir /tmp/parity-lifecycle-pi
+#   keys: "/lifecycle-status" Enter
+#   wait: "lifecycle:session_start:startup"
+#   crop: start="lifecycle:session_start:startup" end="lifecycle:session_start:startup"
+#   raw cropped upstream block:
+#     lifecycle:session_start:startup
+#
+# Important: this scenario's parity contract is the lifecycle notification,
+# not the generic startup footer. The notification is emitted by an explicit
+# slash command after startup so first-run extension build logs cannot race it.
+
+name = "05-session-lifecycle"
+description = "Extension session_start handler fires with reason=startup during boot"
+covers = [
+  "packages/coding-agent/src/core/sdk.ts",
+  "packages/coding-agent/src/core/agent-session-runtime.ts",
+  "packages/coding-agent/src/core/agent-session-services.ts",
+  "packages/agent/src/harness/types.ts",
+  "packages/agent/src/harness/agent-harness.ts",
+  "packages/agent/src/harness/session/session.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/parity-lifecycle.mjs"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/parity-lifecycle.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+# Upstream readiness re-probed 2026-09-25 against the repository pin: the idle editor renders 0.0%/128k (auto) with faux-1, not a Ready paragraph. Wait for that footer before invoking the command.
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "lifecycle:session_start:startup"
+capture_end = "lifecycle:session_start:startup"
+
+[[tmux.steps]]
+# Registration and startup lifecycle dispatch complete before command submission. Send once;
+# absence is a lifecycle/command failure, never a reason to replay the action.
+keys = ["/lifecycle-status", "Enter"]
+wait_contains = ["lifecycle:session_start:startup"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 1

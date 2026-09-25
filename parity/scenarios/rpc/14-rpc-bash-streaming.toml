@@ -1,0 +1,42 @@
+# Behavior family: rpc
+# Surface: bash streams output events before returning the final BashResult.
+# The command uses two writes separated by a short process delay so each runtime
+# observes at least one streaming update without depending on chunk boundaries.
+
+name = "14-rpc-bash-streaming"
+description = "RPC bash emits output updates and returns the complete command result."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"bash","type":"bash","command":"printf one; sleep 0.1; printf two"}'
+wait_contains = ['"id":"bash","type":"response","command":"bash"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '"type":"bash_execution_update","id":"bash"',
+  '"id":"bash","type":"response","command":"bash","success":true',
+  '"output":"onetwo"',
+  '"exitCode":0',
+  '"cancelled":false',
+  '"truncated":false',
+]
+both_not_contain = [
+  '"success":false',
+]
+runs = 3

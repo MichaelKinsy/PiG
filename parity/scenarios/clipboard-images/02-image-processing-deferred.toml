@@ -1,0 +1,38 @@
+# Behavior family: clipboard-images
+# Surface: Tool-result image conversion to PNG for Kitty-capable terminals.
+#
+# Status: deferred. Current-loop upstream evidence shows the batch2 image probe
+# renders the tmux fallback line `[Image: probe.png [image/png] 1x1]`, which
+# means `packages/tui/src/terminal-image.ts` detected `images = null` under
+# tmux. Upstream only calls image-convert.ts from
+# `modes/interactive/components/tool-execution.ts` when
+# `getCapabilities().images === "kitty"`:
+#   if (caps.images !== "kitty") return;
+# Under the parity driver's tmux TTY, that branch is unreachable in both
+# binaries, so no behavioral scenario can honestly claim image-convert.ts yet.
+
+name = "02-image-convert-deferred"
+description = "Deferred because image-convert.ts runs only on Kitty image terminals. Tmux parity cannot trigger it."
+covers = [
+  "packages/coding-agent/src/utils/image-convert.ts",
+]
+tags = ["deferred", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 25
+capture_start = "Ready. Type a message"
+capture_end = "$0.000"
+settle_seconds = 1
+
+[env]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+runs = 1

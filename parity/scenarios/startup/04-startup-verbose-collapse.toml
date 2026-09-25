@@ -1,0 +1,52 @@
+# Behavior family: startup
+# Upstream evidence: interactive-mode.ts getStartupExpansionState seeds the
+# header from verbose || toolOutputExpanded, but setToolsExpanded and header
+# restoration subsequently use only toolOutputExpanded. At 100x45, --verbose
+# starts expanded; two Ctrl+O presses leave the complete compact help.
+# Editor markers acknowledge both keypresses without relying on status text.
+name = "04-startup-verbose-collapse"
+description = "Verbose startup help remains collapsible after tool expansion toggles."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_OFFLINE=1", "PIG_CODING_AGENT_DIR=../interactive-rendering/testdata/pig-agent"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=../interactive-rendering/testdata/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--verbose"]
+pi_args = ["--verbose"]
+
+[tmux]
+width = 100
+height = 45
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "escape"
+capture_end_regex = 'extend Pi(G)?\.'
+
+[[tmux.steps]]
+wait_contains = ["drop files to attach"]
+
+[[tmux.steps]]
+keys = ["C-o", "verbose-first"]
+wait_contains = ["verbose-first"]
+
+[[tmux.steps]]
+keys = ["C-o", "verbose-second"]
+wait_contains = ["verbose-firstverbose-second"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["interrupt", "clear/exit", "commands", "bash", "more", "to show full startup help and loaded resources."]
+both_not_contain = ["drop files to attach", "to run bash (no context)"]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: D2 substitutes only the product name in onboarding;
+# key labels, descriptions, ANSI styling and all whitespace stay byte-faithful.
+[[assert.normalize_replace]]
+pattern = 'PiG'
+with = "Pi"

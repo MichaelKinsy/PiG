@@ -1,0 +1,42 @@
+# Behavior family: oauth
+# Surface: OpenAI Codex OAuth helper.
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   /probe-oauth-codex
+#   output: codex-oauth:refresh=codex-refresh:account=acct_123:grant=true:pkce=true:exp=true
+
+name = "05-oauth-openai-codex"
+description = "OpenAI Codex OAuth login succeeds against a hermetic token stub and preserves the account-id claim shape."
+covers = [
+  "packages/ai/src/auth/oauth/openai-codex.ts",
+]
+tags = ["hermetic", "tui", "serial"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 160
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "codex-oauth:name="
+capture_end = "exp=true"
+
+[[tmux.steps]]
+keys = ["/probe-oauth-codex", "Enter"]
+wait_contains = ["codex-oauth:name=OpenAI (ChatGPT Plus/Pro)", "refresh=codex-refresh", "account=acct_123", "exp=true"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../clipboard-images/testdata/pig-agent", "PIG_PARITY_HARNESS=1"]
+pi = ["PI_CODING_AGENT_DIR=../clipboard-images/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/oauth-harness.ts"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

@@ -1,0 +1,8 @@
+object:
+content:"package main\n", path:"/tmp/foo.go"
+array:
+["one","two","three"]
+string:
+"hello world"
+empty_obj:
+

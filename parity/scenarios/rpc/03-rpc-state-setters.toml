@@ -1,0 +1,61 @@
+# Behavior family: rpc
+# Surface: state-setting commands → success responses with id correlation
+#
+# Upstream evidence (pi v0.73.1, probed 2026-05-20, isolated PI_CODING_AGENT_DIR):
+#   $ PI_CODING_AGENT_DIR=/tmp/x pi --mode rpc --no-extensions --model test-faux/faux-1 \
+#       -e parity/testdata/test-faux-provider.ts --session-dir /tmp/sessions < input.jsonl
+#   {"type":"session_info_changed","name":"test-rpc"}
+#   {"id":"1","type":"response","command":"set_session_name","success":true}
+#   {"id":"2","type":"response","command":"set_thinking_level","success":true}
+#   {"id":"3","type":"response","command":"set_auto_compaction","success":true}
+#   {"id":"4","type":"response","command":"set_steering_mode","success":true}
+#   {"id":"5","type":"response","command":"set_follow_up_mode","success":true}
+#   {"id":"6","type":"response","command":"set_auto_retry","success":true}
+#
+# Observed determinism: upstream agent-session.ts:1524 only emits
+# thinking_level_changed when the *effective* level (after clamping to
+# model capabilities) changes from the previous level. For test-faux/faux-1
+# (non-reasoning model), the effective level clamps to "off" and the
+# default is "off": so no notification fires. Without PI_CODING_AGENT_DIR
+# isolation, the user's real ~/.pi/ leaks the previous thinking level
+# into the test and the event fires non-deterministically.
+#
+# Tests all state-setting responses with proper id correlation. The final
+# out-of-union thinking value probes the runtime boundary: Pi accepts untyped
+# JSON and clamps it through the same model-capability path.
+
+name = "03-rpc-state-setters"
+description = "State-setting commands produce byte-equal success responses with id correlation"
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = [
+  '{"id":"1","type":"set_session_name","name":"test-rpc"}',
+  '{"id":"2","type":"set_thinking_level","level":"low"}',
+  '{"id":"3","type":"set_auto_compaction","enabled":false}',
+  '{"id":"4","type":"set_steering_mode","mode":"all"}',
+  '{"id":"5","type":"set_follow_up_mode","mode":"one-at-a-time"}',
+  '{"id":"6","type":"set_auto_retry","enabled":true}',
+  '{"id":"7","type":"set_thinking_level","level":"bogus"}',
+]
+timeout_seconds = 15
+# Pi 0.84 dispatches JSONL handlers asynchronously; wait for command responses
+# and state events before EOF initiates shutdown.
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/echo", "--session-dir", "{{TEMP}}/sessions"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-home/agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

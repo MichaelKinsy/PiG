@@ -1,0 +1,42 @@
+Base: fa8024b01666fb6737c9d863e054bf59aec01485 (staging/main at lane start)
+
+PASS on base and final:
+  go build ./...
+  go vet ./...
+  go test -count=1 -cover ./internal/codingagent ./tui
+  make -k correspondence-check porter-check interface-inventory interface-inventory-test interface-go-drift interface-recommendations-drift interface-mapping-quality interface-delta behavior-contracts test-inventory-drift test-inventory format-version-inventory custom-factory-ledger-drift
+  make -k coverage-drift port-map-drift docs-drift
+
+The contract command is the complete check-contracts-fast dependency list except closure-check, as required by this lane. Existing dependency stamps satisfy interface-deps; no install runs. PIG_HOME, PI_CODING_AGENT_DIR, and npm's cache are isolated under lane scratch for gate commands.
+
+PASS final supplemental commands:
+  node parity/testdata/next-evidence-app-b/oracle.mjs
+  go test ./tui ./internal/codingagent -run '^(TestFlash.*|TestImageConvertDecodedPixels|TestClipboardImageBackendResults|TestConvertToPngReturnsOriginalDataForPNG|TestConvertToPngReturnsNilWhenConversionFails)$' -count=1 -json
+  go test -race ./tui ./internal/codingagent -run '^(TestFlash.*|TestImageConvertDecodedPixels|TestClipboardImageBackendResults|TestConvertToPngReturnsOriginalDataForPNG|TestConvertToPngReturnsNilWhenConversionFails)$' -count=10 -json
+  go test -race -count=1 ./tui ./internal/codingagent
+  go test -count=1 ./parity/cmd/coverage
+  make coverage RESULTS=
+  go tool golangci-lint config verify
+  make lint-changed
+  make lint
+
+Full package before:
+  ok github.com/MichaelKinsy/PiG/internal/codingagent 9.717s coverage: 65.7% of statements
+  ok github.com/MichaelKinsy/PiG/tui 12.110s coverage: 88.3% of statements
+Full package after:
+  ok github.com/MichaelKinsy/PiG/internal/codingagent 9.821s coverage: 65.7% of statements
+  ok github.com/MichaelKinsy/PiG/tui 12.036s coverage: 88.3% of statements
+Full package race:
+  ok github.com/MichaelKinsy/PiG/tui 19.125s
+  ok github.com/MichaelKinsy/PiG/internal/codingagent 42.722s
+Lint:
+  0 issues.
+Drift:
+  coverage-drift: parity/coverage.md, .github/badges/parity-coverage.svg, and the README.md porting block are current
+  port-map-drift: clean (616 upstream source files accounted for)
+  ok github.com/MichaelKinsy/PiG/tests/docs-drift 1.843s
+
+Expected red probes (not gate failures):
+  base-tests.jsonl: TestClipboardImageUnsupportedFormats, TestShowImagesUpstreamRender, TestShowImagesUpstreamCallbacks fail on unchanged production.
+  Every *-red.jsonl: compiling production mutation produces named runtime FAIL; see README.md and matching .patch.
+  First local test draft had a constructor-argument compile error; corrected before base-tests.jsonl. It is not counted as mutation or regression evidence.

@@ -1,0 +1,29 @@
+// divguard:path agent/agent.go
+
+package agent
+
+import "context"
+
+type Event struct{}
+
+type Agent struct {
+	runCtx  context.Context
+	EventCh chan Event
+}
+
+// emit reproduces AGENT-01: after an abort both cases are ready, so the
+// terminal agent_end is dropped about half the time.
+func (a *Agent) emit(ev Event) {
+	select {
+	case a.EventCh <- ev: // want
+	case <-a.runCtx.Done():
+	}
+}
+
+func forward(ctx context.Context, listenerCh chan<- Event, ev Event) {
+	select {
+	case <-ctx.Done():
+		return
+	case listenerCh <- ev: // want
+	}
+}

@@ -1,0 +1,60 @@
+# Behavior family: slash-commands
+# Surface: /name set and bare /name display
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   command: PI_CODING_AGENT_DIR=parity/scenarios/slash-commands/testdata/pi-agent pi --no-extensions --session-dir /tmp/pi-probe-name
+#   keys: /name test-session Enter (then) /name Enter
+#   ready_pattern: "Warning: No models available."
+#   crop: start="Session name set:" end="Session name: test-session"
+#   raw cropped upstream block (normalized, stripping ANSI dim):
+#
+#     Session name set: test-session
+#     Session name: test-session
+#
+# Both binaries produce these exact lines (dim-styled in upstream, plain
+# or dim in pig). The crop targets only the bare /name output line
+# to avoid the "Update Available" banner that pi sometimes injects
+# between the two commands.
+
+name = "02-name-set-get"
+description = "Both binaries show matching /name set confirmation and bare /name display."
+covers = [
+  "packages/coding-agent/src/core/slash-commands.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "Session name: test-session"
+capture_end = "Session name: test-session"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["/name test-session", "Enter"]
+wait_contains = ["Session name set: test-session"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/name", "Enter"]
+wait_contains = ["Session name: test-session"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+output_normalized_equal = true
+runs = 1

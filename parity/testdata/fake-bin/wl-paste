@@ -1,0 +1,12 @@
+#!/bin/sh
+case "$1" in
+  --list-types)
+    printf 'image/png\n'
+    ;;
+  --type)
+    cat "$(dirname "$0")/clipboard-sample.png"
+    ;;
+  *)
+    exit 1
+    ;;
+esac

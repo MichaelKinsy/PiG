@@ -1,0 +1,50 @@
+# Behavior family: tools
+# Scenario: print-mode write+edit batch on the same file.
+#
+# Faux provider emits two tool calls in a single assistant turn:
+#   1. write(parity-batched-target.txt, "REPLACE_ME\n")
+#   2. edit(parity-batched-target.txt, edits=[{oldText:"REPLACE_ME", newText:"DONE"}])
+#
+# Upstream pi defaults tool execution to parallel when a tool does not mark
+# itself sequential. The built-in write/edit ToolDefinitions rely on
+# file-mutation-queue.ts to serialize same-file mutations so the edit sees the
+# freshly-written content instead of racing and failing with "File not found"
+# or a missing oldText match.
+#
+# Upstream evidence (2026-05-16):
+#   cd parity/scenarios/tools/testdata
+#   pi --no-extensions -e ../../../testdata/test-faux-provider.ts --model test-faux/faux-1 \
+#     --print "Run: write then edit parity-batched-target.txt"
+#   output: "batched-done"
+#   exit: 0
+#
+#   PIG_TEST_FAUX=1 PIG_HOME=parity/scenarios/tools/testdata/pig-home \
+#     pig --no-extensions --model test-faux/faux-1 \
+#     --print "Run: write then edit parity-batched-target.txt"
+#   output: "batched-done"
+#   exit: 0
+
+name = "10-print-batched-file-mutation"
+description = "Same-file write+edit batch succeeds identically in print mode"
+covers = [
+  "packages/coding-agent/src/core/tools/file-mutation-queue.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--no-extensions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: write then edit parity-batched-target.txt"
+timeout_seconds = 30
+cwd = "testdata"
+
+[assert]
+exit_code = 0
+both_contain = ["batched-done"]
+output_equal = true
+runs = 3

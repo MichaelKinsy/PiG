@@ -1,0 +1,37 @@
+# Behavior family: tools
+# Scenario: print-mode read with relative path exercises path-utils resolution.
+#
+# The read tool resolves "parity-read-target.txt" relative to the CWD.
+# This exercises path-utils.ts / path_utils.go (resolveReadPath) which
+# resolves relative paths against the session working directory.
+#
+# This is the same execution as 02-print-read-tool-exec but with an
+# explicit covers claim on path-utils.ts to document that the path
+# resolution pipeline is exercised by every tool call scenario.
+#
+# Upstream evidence (2026-05-15):
+#   Both binaries successfully resolve the relative path and output "done".
+
+name = "09-print-path-resolution"
+description = "Relative path resolution via read tool exercises path-utils"
+covers = [
+  "packages/coding-agent/src/core/tools/path-utils.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--no-extensions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: read parity-read-target.txt"
+timeout_seconds = 30
+cwd = "testdata"
+
+[assert]
+exit_code = 0
+both_contain = ["done"]
+output_equal = true

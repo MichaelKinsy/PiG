@@ -1,0 +1,37 @@
+# Behavior family: interactive-rendering
+# Upstream evidence: RRT-002 in independent review c22f27062 reproduces visible
+# thinking containing **Resumed bold** and `code`, plus a two-item list.
+# Pi renders Markdown, not literal delimiters, with thinking-specific text
+# style, separate inline-code/list-marker colors and unchanged answer styling.
+# Reuse the persisted-session vector and 100x35 terminal crop from user marker
+# through answer. Probe the pinned Pi with --session-dir sessions -c.
+name = "26-review-thinking-markdown"
+description = "RRT-002: persisted visible thinking uses Markdown and thinking-specific token styling."
+covers = ["packages/coding-agent/src/modes/interactive/components/assistant-message.ts", "packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/tui/src/components/markdown.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/review-markdown-cwd"
+capture_start = "Review thinking Markdown"
+capture_end = "Review answer"
+
+[assert]
+both_reach_ready = true
+both_contain = ["Resumed bold and code", "- first", "- second", "Review answer"]
+both_not_contain = ["**Resumed bold**", "`code`", "Thinking..."]
+escaped_output_equal = true
+runs = 3

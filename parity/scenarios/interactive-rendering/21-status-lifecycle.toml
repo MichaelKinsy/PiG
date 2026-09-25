@@ -1,0 +1,33 @@
+# Upstream evidence: status-lifecycle-pi.mjs invokes the pinned InteractiveMode
+# handleEvent implementation and real status classes with a controlled interval
+# clock. The Go probe drives the production interactive event handler under
+# synctest. Both emit raw kind/message/placement state, not normalized rendering.
+# All regular/fullscreen, embedded/standalone, and clear-on-shrink combinations
+# cover replacement, countdown, source restoration, matching clear, and disposal.
+# Escape, Session cancellation/persistence, and new/resume are additionally
+# guarded by the interactive_tree_session and status_lifecycle Go regressions.
+name = "21-status-lifecycle"
+description = "Summarization retries replace status, restore branch summaries, and dispose countdowns without changing editor placement."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/status-indicator.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./parity/testdata/status-lifecycle-pig.sh"]
+pi_args = ["node", "./parity/testdata/status-lifecycle-pi.mjs"]
+
+[cli]
+cwd = "../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["STATUS_LIFECYCLE", "branchSummary", "Retrying (1/3) in 2s"]
+runs = 3

@@ -1,0 +1,449 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://pig.dev/schemas/piglet.json",
+  "title": "Pig Profile",
+  "description": "Closed current vocabulary for a Pig Profile. This schema mirrors the Go parser's accepted vocabulary; Go adds semantic validation (path safety, origin resolution, inheritance) on top.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "name"
+  ],
+  "properties": {
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "description": {
+      "type": "string"
+    },
+    "extends": {
+      "$ref": "#/$defs/extendsSpec"
+    },
+    "packages": {
+      "type": "object",
+      "propertyNames": {
+        "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]*$"
+      },
+      "additionalProperties": {
+        "type": "string",
+        "pattern": "^[a-z][a-z0-9-]*:\\S+$"
+      }
+    },
+    "extensions": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/extensionEntry"
+      }
+    },
+    "skills": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/skillEntry"
+      }
+    },
+    "tools": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "enum": [
+          "bash",
+          "read",
+          "write",
+          "edit",
+          "grep",
+          "find",
+          "ls"
+        ]
+      },
+      "uniqueItems": true
+    },
+    "model": {
+      "$ref": "#/$defs/modelConfig"
+    },
+    "systemPrompt": {
+      "$ref": "#/$defs/promptRef"
+    },
+    "discovery": {
+      "$ref": "#/$defs/discovery"
+    },
+    "agentEnv": {
+      "$ref": "#/$defs/agentEnvironment"
+    },
+    "secrets": {
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/secretDeclaration"
+      }
+    },
+    "release": {
+      "$ref": "#/$defs/releaseSpec"
+    },
+    "build": {
+      "$ref": "#/$defs/buildSpec"
+    }
+  },
+  "$defs": {
+    "secretDeclaration": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "name",
+        "from"
+      ],
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "from": {
+          "$ref": "#/$defs/secretSource"
+        }
+      }
+    },
+    "secretSource": {
+      "oneOf": [
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "env"
+          ],
+          "properties": {
+            "env": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "file"
+          ],
+          "properties": {
+            "file": {
+              "type": "string"
+            }
+          }
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ref"
+          ],
+          "properties": {
+            "ref": {
+              "type": "string"
+            }
+          }
+        }
+      ]
+    },
+    "extendsSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9-]*:\\S+$"
+        },
+        "version": {
+          "type": "string"
+        },
+        "allowWiden": {
+          "type": "boolean"
+        },
+        "remove": {
+          "$ref": "#/$defs/removeSpec"
+        }
+      }
+    },
+    "removeSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "packages": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "skillEntry": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "description": {
+              "type": "string"
+            },
+            "content": {
+              "type": "string"
+            },
+            "origins": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*:\\S+$"
+              },
+              "uniqueItems": true
+            }
+          }
+        }
+      ]
+    },
+    "extensionEntry": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "name"
+          ],
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "tools": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 1
+              },
+              "uniqueItems": true
+            },
+            "origins": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9-]*:\\S+$"
+              },
+              "uniqueItems": true
+            }
+          }
+        }
+      ]
+    },
+    "discovery": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "extensions": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "workspace",
+              "user"
+            ]
+          },
+          "uniqueItems": true
+        },
+        "skills": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "enum": [
+              "workspace",
+              "user"
+            ]
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "promptRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "file": {
+          "type": "string"
+        },
+        "text": {
+          "type": "string"
+        }
+      }
+    },
+    "agentEnvironment": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "image": {
+          "type": "string"
+        },
+        "devContainer": {
+          "type": "string"
+        },
+        "source": {
+          "type": "string"
+        },
+        "pigRuntime": {
+          "$ref": "#/$defs/agentPigRuntime"
+        },
+        "policy": {
+          "$ref": "#/$defs/agentEnvironmentPolicy"
+        },
+        "workspace": {
+          "$ref": "#/$defs/agentWorkspace"
+        },
+        "mounts": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agentMount"
+          }
+        },
+        "secrets": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/agentSecretBinding"
+          }
+        }
+      }
+    },
+    "agentSecretBinding": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "secretRef",
+        "target"
+      ],
+      "properties": {
+        "secretRef": {
+          "type": "string"
+        },
+        "target": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "env"
+          ],
+          "properties": {
+            "env": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    "agentPigRuntime": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "mode": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "agentEnvironmentPolicy": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "preset": {
+          "type": "string"
+        }
+      }
+    },
+    "agentWorkspace": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "folder": {
+          "type": "string"
+        },
+        "readonly": {
+          "type": "boolean"
+        }
+      }
+    },
+    "agentMount": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string"
+        },
+        "target": {
+          "type": "string"
+        },
+        "readonly": {
+          "type": "boolean"
+        }
+      }
+    },
+    "modelConfig": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "provider": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "contextWindow": {
+          "type": "integer"
+        },
+        "thinking": {
+          "type": "string"
+        }
+      }
+    },
+    "buildSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "targets": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "outputName": {
+          "type": "string"
+        }
+      }
+    },
+    "releaseSpec": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "version": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,31 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Upstream test disposition mapping",
+  "description": "Reviewed disposition of every upstream test file in the inventory. Validated by parity/cmd/testinventorycheck: every inventory file has one entry, upstreamTestHash matches the inventory content hash (a changed hash on an upstream leap re-opens the disposition), and each ported/partial/scenario-covered/divergence claim resolves to real evidence.",
+  "type": "object",
+  "required": ["upstreamVersion", "entries"],
+  "additionalProperties": false,
+  "properties": {
+    "upstreamVersion": { "type": "string" },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["path", "disposition", "upstreamTestHash"],
+        "additionalProperties": false,
+        "properties": {
+          "path": { "type": "string", "description": "Inventory file path (packages/...)." },
+          "disposition": { "enum": ["ported", "partial", "scenario-covered", "designed-out", "divergence", "pending"] },
+          "upstreamTestHash": { "type": "string", "pattern": "^sha256:[0-9a-f]{64}$", "description": "Must equal the inventory file's sha256; binds the disposition to the exact upstream test content." },
+          "evidence": {
+            "type": "array",
+            "items": { "type": "string" },
+            "description": "path or path#fragment references. ported/partial require at least one *_test.go; scenario-covered requires at least one parity/scenarios/**.toml. A #fragment must appear in the referenced file (the upstream test path the proof mirrors)."
+          },
+          "divergence": { "type": "string", "pattern": "^D[0-9]+$", "description": "Required for disposition divergence; must appear in DIVERGENCES.md." },
+          "rationale": { "type": "string", "description": "Required for partial and designed-out." }
+        }
+      }
+    }
+  }
+}

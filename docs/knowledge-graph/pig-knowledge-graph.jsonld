@@ -1,0 +1,308 @@
+{
+  "@context": {
+    "@vocab": "https://schema.org/",
+    "pig": "https://github.com/MichaelKinsy/PiG/terms#",
+    "relations": "pig:relation"
+  },
+  "@graph": [
+    {
+      "@id": "pig:pi",
+      "@type": "DefinedTerm",
+      "name": "Pi",
+      "description": "Upstream TypeScript coding agent; the behavior oracle.",
+      "pig:kind": "project",
+      "pig:where": "https://github.com/earendil-works/pi",
+      "pig:inspect": "pig version"
+    },
+    {
+      "@id": "pig:pig",
+      "@type": "DefinedTerm",
+      "name": "PiG",
+      "description": "The Go implementation; executable pig.",
+      "pig:kind": "project",
+      "pig:where": "coding/pigversion/pigversion.go pins Pi",
+      "pig:inspect": "pig verify"
+    },
+    {
+      "@id": "pig:stock",
+      "@type": "DefinedTerm",
+      "name": "Stock PiG",
+      "description": "Product-neutral pig binary with no Piglet selected.",
+      "pig:kind": "artifact",
+      "pig:where": "cmd/pig",
+      "pig:inspect": "pig version"
+    },
+    {
+      "@id": "pig:session",
+      "@type": "DefinedTerm",
+      "name": "Session",
+      "description": "Append-only JSONL tree of entries for one conversation.",
+      "pig:kind": "runtime",
+      "pig:where": "~/.pig/agent/sessions",
+      "pig:inspect": "/tree, /session"
+    },
+    {
+      "@id": "pig:model_runtime",
+      "@type": "DefinedTerm",
+      "name": "Model Runtime",
+      "description": "Session-owned model lookup, auth, completion, and streaming used by every mode.",
+      "pig:kind": "runtime",
+      "pig:where": "coding/",
+      "pig:inspect": "/model, pig --list-models"
+    },
+    {
+      "@id": "pig:provider",
+      "@type": "DefinedTerm",
+      "name": "Provider",
+      "description": "Turns a Transcript into one Event Stream for one API.",
+      "pig:kind": "runtime",
+      "pig:where": "ai/",
+      "pig:inspect": "pig --list-models"
+    },
+    {
+      "@id": "pig:mode",
+      "@type": "DefinedTerm",
+      "name": "Mode",
+      "description": "Interactive TUI, print, JSON event stream, or RPC over stdin/stdout.",
+      "pig:kind": "runtime",
+      "pig:where": "cmd/pig",
+      "pig:inspect": "pig --mode rpc"
+    },
+    {
+      "@id": "pig:resource",
+      "@type": "DefinedTerm",
+      "name": "Resource",
+      "description": "One capability: extension, skill, prompt, hook, MCP definition, theme, or environment.",
+      "pig:kind": "concept",
+      "pig:where": "~/.pig/agent, .pig/ in a project",
+      "pig:inspect": "pig status --json"
+    },
+    {
+      "@id": "pig:extension",
+      "@type": "DefinedTerm",
+      "name": "Extension",
+      "description": "Code Resource in Go, Rust, Python, or Node/TypeScript that registers tools, commands, events, and UI.",
+      "pig:kind": "resource",
+      "pig:where": "extensions/sdk*, ~/.pig/agent/extensions",
+      "pig:inspect": "pig install --validate-only <dir>"
+    },
+    {
+      "@id": "pig:sdk",
+      "@type": "DefinedTerm",
+      "name": "Extension SDK",
+      "description": "One extension contract per language: Go, Rust, Python, TypeScript declarations.",
+      "pig:kind": "library",
+      "pig:where": "extensions/sdk, sdk-rs, sdk-py, sdk-ts",
+      "pig:inspect": "pig extension init"
+    },
+    {
+      "@id": "pig:realization",
+      "@type": "DefinedTerm",
+      "name": "Extension realization",
+      "description": "How an extension runs: isolated process, packed runtime cell, or fused into a Piglet Binary (Go only).",
+      "pig:kind": "concept",
+      "pig:where": "coding/extension/host",
+      "pig:inspect": "pig status --json"
+    },
+    {
+      "@id": "pig:extension_host",
+      "@type": "DefinedTerm",
+      "name": "Extension Host",
+      "description": "Loads, isolates, reloads, and shuts down extension realizations over one wire contract.",
+      "pig:kind": "runtime",
+      "pig:where": "coding/extension/host/subprocess",
+      "pig:inspect": "/reload"
+    },
+    {
+      "@id": "pig:package",
+      "@type": "DefinedTerm",
+      "name": "Package",
+      "description": "Versioned collection of Resources from npm, git, or a local path; never owns a Piglet.",
+      "pig:kind": "distribution",
+      "pig:where": "~/.pig/agent/npm, ~/.pig/agent/git",
+      "pig:inspect": "pig list"
+    },
+    {
+      "@id": "pig:piglet",
+      "@type": "DefinedTerm",
+      "name": "Piglet",
+      "description": "One named agent: selects and scopes Resources and sets defaults.",
+      "pig:kind": "composition",
+      "pig:where": "*.yaml Piglet file",
+      "pig:inspect": "pig piglet validate <file>"
+    },
+    {
+      "@id": "pig:standard",
+      "@type": "DefinedTerm",
+      "name": "PiG Standard",
+      "description": "The optional curated Piglet: login identity, PiG Runner, Angry Pigs.",
+      "pig:kind": "composition",
+      "pig:where": "piglets/standard/pig-standard.yaml",
+      "pig:inspect": "pig piglet validate piglets/standard/pig-standard.yaml"
+    },
+    {
+      "@id": "pig:piglet_release",
+      "@type": "DefinedTerm",
+      "name": "Piglet release",
+      "description": "Pins the exact Resource closure and component plan of a Piglet.",
+      "pig:kind": "artifact",
+      "pig:where": "release.version and managed records",
+      "pig:inspect": "pig piglet show --record <path>"
+    },
+    {
+      "@id": "pig:piglet_binary",
+      "@type": "DefinedTerm",
+      "name": "Piglet Binary",
+      "description": "Target-native pig executable for one Piglet release; verifies its closure at startup.",
+      "pig:kind": "artifact",
+      "pig:where": "pig piglet build --format binary",
+      "pig:inspect": "pig verify"
+    },
+    {
+      "@id": "pig:builder",
+      "@type": "DefinedTerm",
+      "name": "Builder",
+      "description": "Produces Piglet Binaries: native (needs Go and PiG source) or container (needs Docker or Podman).",
+      "pig:kind": "tool",
+      "pig:where": "coding/pigletbuild",
+      "pig:inspect": "pig setup"
+    },
+    {
+      "@id": "pig:porter",
+      "@type": "DefinedTerm",
+      "name": "Pig Porter",
+      "description": "Parity workbench Piglet Resource; proposes ports, never accepts its own work.",
+      "pig:kind": "resource",
+      "pig:where": "piglets/porter",
+      "pig:inspect": "make porter-check (source checkout)"
+    },
+    {
+      "@id": "pig:divergence",
+      "@type": "DefinedTerm",
+      "name": "Divergence",
+      "description": "A numbered, approved, user-visible difference from pinned Pi.",
+      "pig:kind": "record",
+      "pig:where": "DIVERGENCES.md",
+      "pig:inspect": "pig docs show divergences"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:pig",
+      "pig:relation": "implements",
+      "pig:to": "pig:pi",
+      "description": "exact pinned release"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:stock",
+      "pig:relation": "builds",
+      "pig:to": "pig:pig",
+      "description": "one binary per target"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:session",
+      "pig:relation": "owns",
+      "pig:to": "pig:model_runtime",
+      "description": "one per Session"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:model_runtime",
+      "pig:relation": "streams_through",
+      "pig:to": "pig:provider",
+      "description": "one Provider per request"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:mode",
+      "pig:relation": "drives",
+      "pig:to": "pig:session",
+      "description": "TUI, print, JSON, RPC share one Session path"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:package",
+      "pig:relation": "distributes",
+      "pig:to": "pig:resource",
+      "description": "one to many"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:extension",
+      "pig:relation": "is_a",
+      "pig:to": "pig:resource",
+      "description": ""
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:extension",
+      "pig:relation": "written_with",
+      "pig:to": "pig:sdk",
+      "description": "one language per extension"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:extension",
+      "pig:relation": "realized_as",
+      "pig:to": "pig:realization",
+      "description": "isolated, packed, or fused"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:extension_host",
+      "pig:relation": "hosts",
+      "pig:to": "pig:realization",
+      "description": "same contract in every realization"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:piglet",
+      "pig:relation": "selects",
+      "pig:to": "pig:resource",
+      "description": "and scopes discovery"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:standard",
+      "pig:relation": "is_a",
+      "pig:to": "pig:piglet",
+      "description": "explicit, never active in Stock"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:piglet_release",
+      "pig:relation": "pins",
+      "pig:to": "pig:piglet",
+      "description": "exact closure"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:piglet_binary",
+      "pig:relation": "realizes",
+      "pig:to": "pig:piglet_release",
+      "description": "per target"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:builder",
+      "pig:relation": "produces",
+      "pig:to": "pig:piglet_binary",
+      "description": "no silent fallback between builders"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:porter",
+      "pig:relation": "is_a",
+      "pig:to": "pig:resource",
+      "description": "selected by the Porter Piglet"
+    },
+    {
+      "@type": "pig:Relation",
+      "pig:from": "pig:divergence",
+      "pig:relation": "documents_difference_from",
+      "pig:to": "pig:pi",
+      "description": "numbered D<N>"
+    }
+  ]
+}

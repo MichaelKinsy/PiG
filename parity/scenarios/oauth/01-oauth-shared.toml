@@ -1,0 +1,57 @@
+# Behavior family: oauth
+# Surface: shared OAuth registry + PKCE primitives.
+#
+# Upstream evidence (pi v0.87.1 providers/*.ts auth.oauth declarations):
+#   /probe-oauth-shared
+#   output: oauth-shared:ids=anthropic,codex,copilot,kimi-coding,meta,openrouter,radius,xai:custom=probe-custom:api=probe-access:exp=true:pkce=true
+#
+# The probe exercises the provider registry, custom-provider refresh path,
+# and PKCE generation invariants without depending on live external auth.
+# The set is the built-in OAuth flows (each upstream provider whose auth.oauth
+# is a first-class login flow): anthropic, openai-codex, github-copilot,
+# kimi-coding, meta, openrouter, radius (default gateway), and xai.
+# Provider-specific flow scenarios and Go tests exercise each implementation.
+
+name = "01-oauth-shared"
+description = "Shared OAuth provider registry and PKCE generation behave identically under a local parity harness."
+covers = [
+  "packages/ai/src/oauth.ts",
+  "packages/ai/src/auth/oauth/pkce.ts",
+  "packages/ai/src/auth/types.ts",
+]
+tags = ["hermetic", "fast", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 160
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "oauth-shared:ids="
+capture_end = "pkce=true"
+
+[[tmux.steps]]
+keys = ["/probe-oauth-shared", "Enter"]
+wait_contains = ["oauth-shared:ids=", "pkce=true"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = [
+  "PIG_CODING_AGENT_DIR=../clipboard-images/testdata/pig-agent",
+  "PIG_PARITY_HARNESS=1",
+]
+pi = [
+  "PI_CODING_AGENT_DIR=../clipboard-images/testdata/pi-agent",
+  "PI_SKIP_VERSION_CHECK=1",
+]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/oauth-harness.ts"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

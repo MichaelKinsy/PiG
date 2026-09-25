@@ -1,0 +1,11 @@
+[
+  {
+    "upstream": "packages/coding-agent/src/utils/windows-self-update.ts",
+    "package": "./internal/codingagent",
+    "tests": [
+      "TestQuarantineNativeDependenciesMovesLoadedImagesAndCopiesThemBack"
+    ],
+    "upstream_reference": "packages/coding-agent/src/utils/windows-self-update.ts",
+    "mutation": "internal/codingagent/windows_self_update.go: delete the copyQuarantinedImage(quarantinePath, loadedFile) call and its error check; compiling go test -overlay quarantine-overlay.json -run exact test -count=1 fails TestQuarantineNativeDependenciesMovesLoadedImagesAndCopiesThemBack because the package's pig.exe is gone."
+  }
+]

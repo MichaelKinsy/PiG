@@ -1,0 +1,30 @@
+# Behavior family: cli-utils
+# Surface: bare installed Package listing.
+#
+# Upstream Pi 0.84.0 keeps `pi list` as Package inventory. Pig uses the same
+# top-level command and output. Typed Resource and Piglet details remain on
+# `pig status --json` and `pig piglet list`.
+
+name = "09-bare-list-package-parity"
+description = "Bare pig list retains Pi-compatible installed Package listing"
+covers = [
+  "packages/coding-agent/src/package-manager-cli.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_HOME=testdata/empty-home", "PI_CODING_AGENT_DIR=testdata/empty-home/agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_HOME=testdata/empty-home", "PIG_CODING_AGENT_DIR=testdata/empty-home/agent"]
+override_base_args = true
+
+[cli]
+args = ["list"]
+timeout_seconds = 10
+
+[assert]
+pig_exit_code = 0
+pi_exit_code = 0
+both_contain = ["No packages installed"]
+output_equal = true
+runs = 3

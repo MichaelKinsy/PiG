@@ -1,0 +1,51 @@
+# Behavior family: oauth
+# Surface: GitHub Copilot env-credential fallback.
+#
+# Upstream evidence (pi v0.79.1, env-fallback probe):
+#   /probe-oauth-copilot-env
+#   output: copilot-env:match=true:base=https://api.individual.githubcopilot.com
+#
+# Upstream auth-storage.getApiKey() falls back to the env API key
+# (COPILOT_GITHUB_TOKEN) and uses it verbatim as the bearer when auth.json has
+# no github-copilot OAuth credential; getGitHubCopilotBaseUrl() derives the base
+# URL from the token's proxy-ep claim. pig previously refused with "not logged
+# in" because the Copilot provider read only auth.json; this scenario pins the
+# fixed env-fallback so pig now matches upstream.
+
+name = "07-oauth-github-copilot-env"
+description = "GitHub Copilot env-token fallback yields the same bearer + base URL on pig and pi."
+covers = [
+  "packages/ai/src/env-api-keys.ts",
+  "packages/ai/src/auth/oauth/github-copilot.ts",
+  "packages/coding-agent/src/core/auth-storage.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 160
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "copilot-env:match="
+capture_end = "githubcopilot.com"
+
+[[tmux.steps]]
+keys = ["/probe-oauth-copilot-env", "Enter"]
+wait_contains = ["copilot-env:match=true", "api.individual.githubcopilot.com"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../clipboard-images/testdata/pig-agent", "PIG_PARITY_HARNESS=1"]
+pi = ["PI_CODING_AGENT_DIR=../clipboard-images/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/oauth-harness.ts"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3

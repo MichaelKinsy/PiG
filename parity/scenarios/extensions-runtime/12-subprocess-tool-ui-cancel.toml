@@ -1,0 +1,49 @@
+# Behavior family: extensions-runtime
+# Scenario: Escape cancels a subprocess tool's Select call explicitly.
+#
+# Upstream evidence (Pi 0.83.0): a real interactive-tmux probe with the
+# ui-dialogs fixture displayed `Pick a deployment`; Escape resolved Select to
+# undefined and the still-running tool returned `dialogs-cancelled:select`.
+
+name = "12-subprocess-tool-ui-cancel"
+description = "Escape cancels a subprocess extension tool selector without hanging"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/core/tools/tool-definition-wrapper.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/ui-dialogs.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/ui-dialogs.mjs",
+]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "dialogs-cancelled:select"
+capture_end = "dialogs-cancelled:select"
+
+[[tmux.steps]]
+keys = ["Run: extension UI dialogs", "Enter"]
+wait_contains = ["Pick a deployment"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["dialogs-cancelled:select"]
+wait_timeout_seconds = 20
+
+[assert]
+output_equal = true
+runs = 1

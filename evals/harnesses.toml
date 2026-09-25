@@ -1,0 +1,94 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# Coding-agent harnesses that pigeval measures. Each table is one harness.
+#
+#   name        display name
+#   npm         packages that `make setup SETUP_ARGS=--harnesses=<id>` installs
+#   bin         executable under the install prefix; "{pig}" is this checkout's bin/pig
+#   api         protocol the harness speaks to the mock model:
+#               openai-completions, openai-responses, anthropic-messages, or none
+#   config      how pigeval points the harness at the mock: pi-models, opencode, or none
+#   config_dir  pi-models only: agent directory under the isolated HOME
+#   print       argv for one non-interactive prompt against the mock
+#   session     argv that resumes a Pi-format Session file (optional)
+#   live        argv for `pigeval live` with a real model (optional)
+#   env         extra environment; values may use {base_url} and {home}
+#   version     argv for the startup scenario and the printed version
+#               (default ["--version"])
+#   own_version argv whose first line ends with the harness's own version,
+#               for a harness whose --version prints another tool's version
+#   mock        false when the harness cannot use a custom endpoint
+#
+# Placeholders: {prompt}, {model} (provider/id), {model_id}, {session},
+# {base_url}, {home}. Versions are pinned so results stay comparable.
+
+[pig]
+name = "PiG"
+bin = "{pig}"
+api = "openai-completions"
+config = "pi-models"
+config_dir = ".pig/agent"
+print = ["--provider", "bench", "--model", "bench-1", "--no-session", "-p", "{prompt}"]
+session = ["--provider", "bench", "--model", "bench-1", "--session", "{session}", "-p", "{prompt}"]
+live = ["--mode", "json", "--no-session", "--model", "{model}", "-p", "{prompt}"]
+env = { PIG_HOME = "{home}/.pig", PIG_OFFLINE = "1", PI_OFFLINE = "1" }
+
+[pi]
+name = "Pi"
+npm = ["@earendil-works/pi-coding-agent@0.87.1"]
+bin = "pi"
+api = "openai-completions"
+config = "pi-models"
+config_dir = ".pi/agent"
+print = ["--provider", "bench", "--model", "bench-1", "--no-session", "-p", "{prompt}"]
+session = ["--provider", "bench", "--model", "bench-1", "--session", "{session}", "-p", "{prompt}"]
+live = ["--mode", "json", "--no-session", "--model", "{model}", "-p", "{prompt}"]
+env = { PI_OFFLINE = "1" }
+
+[omp]
+name = "oh-my-pi"
+npm = ["@oh-my-pi/pi-coding-agent@18.2.10", "bun@1.3.14"]
+bin = "omp"
+api = "openai-completions"
+config = "pi-models"
+config_dir = ".omp/agent"
+print = ["--provider", "bench", "--model", "bench-1", "--no-session", "-p", "{prompt}"]
+live = ["--mode", "json", "--no-session", "--model", "{model}", "-p", "{prompt}"]
+env = { PI_OFFLINE = "1" }
+
+[codex]
+name = "Codex CLI"
+npm = ["@openai/codex@0.156.1"]
+bin = "codex"
+api = "openai-responses"
+print = ["exec", "--json", "--ephemeral", "--skip-git-repo-check", "-c", "model_provider=bench", "-c", "model_providers.bench.name=bench", "-c", "model_providers.bench.base_url={base_url}/v1", "-c", "model_providers.bench.wire_api=responses", "-c", "model_providers.bench.env_key=BENCH_API_KEY", "-m", "bench-1", "{prompt}"]
+live = ["exec", "--json", "--ephemeral", "--skip-git-repo-check", "--full-auto", "-m", "{model_id}", "{prompt}"]
+env = { BENCH_API_KEY = "bench-key" }
+
+[claude]
+name = "Claude Code"
+npm = ["@anthropic-ai/claude-code@2.1.280"]
+bin = "claude"
+api = "anthropic-messages"
+print = ["-p", "{prompt}", "--output-format", "stream-json", "--verbose", "--bare", "--model", "bench-1"]
+live = ["-p", "{prompt}", "--output-format", "stream-json", "--verbose", "--dangerously-skip-permissions", "--model", "{model_id}"]
+env = { ANTHROPIC_BASE_URL = "{base_url}", ANTHROPIC_API_KEY = "bench-key", DISABLE_TELEMETRY = "1", DISABLE_AUTOUPDATER = "1", CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1" }
+
+[opencode]
+name = "opencode"
+npm = ["opencode-ai@1.18.32"]
+bin = "opencode"
+api = "openai-completions"
+config = "opencode"
+print = ["run", "--model", "bench/bench-1", "{prompt}"]
+live = ["run", "--model", "{model}", "{prompt}"]
+
+[copilot]
+name = "GitHub Copilot CLI"
+npm = ["@github/copilot@1.0.88"]
+bin = "copilot"
+api = "none"
+mock = false
+print = ["-p", "{prompt}"]
+live = ["-p", "{prompt}", "--allow-all-tools", "--model", "{model_id}"]

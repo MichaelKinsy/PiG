@@ -1,0 +1,116 @@
+[
+  {
+    "file": "demo-a.mp4",
+    "bytes": 662168,
+    "sha256": "67f2441076a9b93e2ee15745676c8f95e72fb6e46c793ec33dd39ce6881b07a9",
+    "width": 1280,
+    "height": 720,
+    "codec": "h264",
+    "duration_seconds": 22.35,
+    "pixel_format": "yuv420p",
+    "faststart": true
+  },
+  {
+    "file": "demo-b.mp4",
+    "bytes": 644473,
+    "sha256": "5702eb5ba111388319aa8f170f4127fe7d182ecf1961da89fbff73acf4f0b3e8",
+    "width": 1280,
+    "height": 720,
+    "codec": "h264",
+    "duration_seconds": 24.1,
+    "pixel_format": "yuv420p",
+    "faststart": true
+  },
+  {
+    "file": "demo-c.mp4",
+    "bytes": 260804,
+    "sha256": "6ad03bdaad7e8156e2cd2b0a4e8595d2ab69ed664da47259c238bca305d0bf29",
+    "width": 1280,
+    "height": 720,
+    "codec": "h264",
+    "duration_seconds": 43.75,
+    "pixel_format": "yuv420p",
+    "faststart": true
+  },
+  {
+    "file": "demo-d.mp4",
+    "bytes": 165448,
+    "sha256": "8dc356a1aa9fa287efed35a6a7413535d8ce21671e4257686c6294da8d838d0c",
+    "width": 1280,
+    "height": 720,
+    "codec": "h264",
+    "duration_seconds": 16.15,
+    "pixel_format": "yuv420p",
+    "faststart": true
+  },
+  {
+    "file": "demo-e.mp4",
+    "bytes": 203044,
+    "sha256": "4d61200ef8a12d68020374e6fd1c17b663e1b3141fb7a8841de3977d67382b0b",
+    "width": 1280,
+    "height": 720,
+    "codec": "h264",
+    "duration_seconds": 18.5,
+    "pixel_format": "yuv420p",
+    "faststart": true
+  },
+  {
+    "file": "demo-hook.mp4",
+    "bytes": 77213,
+    "sha256": "499dd757152ceea1a171def6cfd03f58ac765ddfe9a2091596504108b49eda8a",
+    "width": 1280,
+    "height": 720,
+    "codec": "h264",
+    "duration_seconds": 5.0,
+    "pixel_format": "yuv420p",
+    "faststart": true
+  },
+  {
+    "file": "demo-a.png",
+    "bytes": 166708,
+    "sha256": "f5b99ae5164524cece848fe541765bd2cd4839dad052375820b8b57f8c830efe",
+    "width": 1280,
+    "height": 720,
+    "codec": "png"
+  },
+  {
+    "file": "demo-b.png",
+    "bytes": 169609,
+    "sha256": "7e76c119c127b7cd100f6b6fa9b68b7e8957ba19a20783b85082b821f5da1e8d",
+    "width": 1280,
+    "height": 720,
+    "codec": "png"
+  },
+  {
+    "file": "demo-c.png",
+    "bytes": 270438,
+    "sha256": "9e69e843a5f9ba3a8f6e1ff4915eaed33e272f056caca321fbaa00102b61dd4a",
+    "width": 1280,
+    "height": 720,
+    "codec": "png"
+  },
+  {
+    "file": "demo-d.png",
+    "bytes": 305221,
+    "sha256": "43fad5354e0b1cc0841fbf09011c1ce20076a9a4bad765889ae81b418e9bf274",
+    "width": 1280,
+    "height": 720,
+    "codec": "png"
+  },
+  {
+    "file": "demo-e.png",
+    "bytes": 110279,
+    "sha256": "fe4a2eafd5226991c75601d0a1355c3095a266d281729f039c4d2b8ab5548ff3",
+    "width": 1280,
+    "height": 720,
+    "codec": "png"
+  },
+  {
+    "file": "demo-hook.png",
+    "bytes": 109168,
+    "sha256": "3038d11464a78a500ad3d0e339cb01728c4c463b5601731b052d8e404d7a33bc",
+    "width": 1280,
+    "height": 720,
+    "codec": "png"
+  }
+]

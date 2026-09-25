@@ -1,0 +1,112 @@
+# Behavior family: selectors
+# Surface: extension selector overlay (ExtensionSelectorComponent)
+#
+# Driven via /tree → select an older user message → showExtensionSelector(
+# "Summarize branch?", ["No summary", "Summarize", "Summarize with custom prompt"]).
+# This is the only built-in flow that opens ExtensionSelectorComponent;
+# extensions also reach it via ctx.ui.select() / ctx.ui.confirm().
+#
+# Upstream evidence (pi v0.69.0, manually probed in tmux 100×35,
+# faux provider seeded with "What is 20+22?" → "42", then /tree → Up
+# (cursor to user message) → Enter:
+#
+#     ────────────────────────────────────────────────────────────────────
+#
+#      Summarize branch?
+#
+#      → No summary
+#        Summarize
+#        Summarize with custom prompt
+#
+#      ↑↓ navigate  enter select  escape/ctrl+c cancel
+#
+#     ────────────────────────────────────────────────────────────────────
+#
+# Asserts output_equal on tmux's plain capture. Terminal colour codes for
+# accent/muted theming differ between palettes; escaped-output parity is tracked
+# separately below, while the visible glyph layout is byte-identical:
+#   - bordered top/bottom
+#   - title row "Summarize branch?"
+#   - three options listed in order
+#   - "→ " cursor on the first option
+#   - hint row "↑↓ navigate  enter select  escape/ctrl+c cancel"
+#
+# Bug fixed in this loop at root: pig's ShowExtensionSelector used to
+# route through `runModalSelector(FilterableList, OverlayOptions{...})`
+# which produced a centered floating bordered box with a `filter: █`
+# search-input row and no hint line: substantially divergent from
+# upstream's editor-slot ExtensionSelectorComponent. Both call sites
+# (slash_session_handlers.go for /tree summarize, ext_ui_context.go for
+# extension ctx.ui.select) now use the faithful editor-slot
+# ExtensionSelectorComponent (tui/extension_selector.go).
+
+# lint-known-gap: escaped_output_equal fails because pig and pi emit
+# slightly different ANSI byte sequences for the accent-coloured cursor
+# row and end-of-line resets (same visible glyphs after ANSI strip;
+# `output_equal = true` confirms parity at the glyph level). The
+# residual difference is theme-palette and reset-placement only, not
+# behavioural; will tighten to escaped_output_equal once pig's
+# theme/reset emission is aligned with upstream's truncateToWidth.
+# Pi 0.87.1 (re-probed 2026-09-23) persists the [system] entry at the first
+# prompt, so /tree lists [system], the user message and the reply ("(3/3)");
+# one Up from the reply still selects the user message.
+name = "09-extension-selector-summarize-branch"
+description = "Both binaries render the ExtensionSelectorComponent identically when /tree opens 'Summarize branch?'."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Summarize branch?"
+capture_end = "escape/ctrl+c cancel"
+
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+settle_seconds = 5
+
+[[tmux.steps]]
+keys = ["/tree", "Enter"]
+wait_contains = ["Session Tree", "(3/3)"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Up"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Summarize branch?", "No summary", "Summarize with custom prompt", "navigate", "select", "cancel"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+both_contain = [
+  "Summarize branch?",
+  "→ No summary",
+  "Summarize",
+  "Summarize with custom prompt",
+  "↑↓",
+  "navigate",
+  "select",
+  "cancel",
+]
+output_equal = true
+runtime_ratio_max = 1.50
+runs = 1

@@ -1,0 +1,65 @@
+# Behavior family: fullscreen
+# Surface: Pi 0.87.1 main-screen assistant streaming in progress.
+# Upstream evidence: the isolated Pi 0.87.1 live probe displayed a contiguous
+# LIVE-STREAM prefix with the animated Working border before LIVE-STREAM-24 settled.
+
+# Pi 0.87.1 re-check (launch-dry-run-f2416f71, clone/parity/artifacts/
+# 04-main-screen-assistant-streaming/20260924T154623Z): pi.stdout has no
+# "Working..." row. Pi 0.87.1 draws the loader in the editor top border as
+# "── ⠸ Working ───", and both sides failed only the stale "Working..."
+# both_contain. The assertion now names the border form.
+name = "04-main-screen-assistant-streaming"
+description = "Main-screen in-progress assistant streaming matches Pi before the turn settles."
+covers = [
+  "packages/tui/src/tui-main-screen.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 80
+height = 12
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "../compaction/testdata/compact-session"
+capture_end = "faux-1"
+
+[[tmux.steps]]
+keys = ["TUI_LIVE_STREAM_PAUSE", "Enter"]
+wait_contains = ["LIVE-STREAM-08"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_contain = ["LIVE-STREAM-05", "LIVE-STREAM-06", "LIVE-STREAM-07", "LIVE-STREAM-08", "Working ─"]
+both_not_contain = ["LIVE-STREAM-09", "LIVE-STREAM-24", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3
+
+# normalize-rationale: spinner glyph selection, temporary working-directory
+# identity, and faux footer usage are outside the main-screen row contract.
+# The complete bordered status row, transcript markers, rows, whitespace, and
+# ordering remain unmasked.
+# Pi 0.87.1 embeds the animated loader in the editor top border; only the
+# spinner code point is normalized (same rule as 05 and 09).
+[[assert.normalize_replace]]
+pattern = '(?m)^(── )[⠋⠙⠹⠸⠼⠴⠦⠧⠇⠏]( Working ─*)$'
+with = '${1}<SPINNER>${2}'
+
+[[assert.normalize_replace]]
+pattern = '(?m)^.*[/\\]parity-snap-cwd-[^\n]*$'
+with = "<CWD>"
+
+[[assert.normalize_replace]]
+pattern = '(?m)^.*?/128k \(auto\)\s+faux-1$'
+with = "<STATUS>"

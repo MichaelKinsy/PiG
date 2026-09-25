@@ -1,0 +1,27 @@
+import { PassThrough } from "node:stream";
+import { pathToFileURL } from "node:url";
+
+const root = pathToFileURL(`${process.argv[2]}/`).href;
+const { jsonConnection } = await import(`${root}packages/coding-agent/src/experimental/mini/shared/transport.ts`);
+const input = new PassThrough();
+const output = new PassThrough();
+const messages = [];
+let wire = "";
+let closes = 0;
+let cleanups = 0;
+let lateCloses = 0;
+output.setEncoding("utf8");
+output.on("data", (chunk) => { wire += chunk; });
+const connection = jsonConnection(input, output, () => { cleanups++; });
+connection.onMessage((message) => messages.push(message));
+const ended = new Promise((resolve) => connection.onClose(() => { closes++; resolve(); }));
+const encoded = Buffer.from('\n{"text":"é世界\u2028\u2029"}\r\n{"n":2}\n{"ignored":true}');
+for (const byte of encoded) input.write(Buffer.from([byte]));
+connection.send({ text: "<>&\u2028\u2029\\u2028" });
+input.end();
+await ended;
+connection.onClose(() => { lateCloses++; });
+connection.close();
+connection.close();
+connection.send({ ignored: true });
+console.log(JSON.stringify({ messages, wire, closes, cleanups, lateCloses }));

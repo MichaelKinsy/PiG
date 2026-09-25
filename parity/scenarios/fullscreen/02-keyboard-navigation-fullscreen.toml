@@ -1,0 +1,97 @@
+# Behavior family: fullscreen
+# Surface: alternate-screen viewport keyboard navigation (handleViewportInput
+#          keyboard branch -> ScrollToTop / ScrollToBottom via the
+#          tui.altScreen.top / tui.altScreen.bottom keybindings)
+#
+# Upstream evidence (pi v0.84.0):
+#   Drive a conversation in fullscreen, then send Home (\x1b[H) and End (\x1b[F).
+#   Home scrolls the transcript to the very top; End scrolls it back to the
+#   follow-end bottom. Home moves the viewport into the startup-content region
+#   (banner/changelog), which differs between pig and pi; End returns both to the
+#   byte-identical bottom-aligned conversation.
+#
+# Why this proves the input path: the crop below is the bottom-aligned
+# conversation, captured AFTER Home then End. This scenario is scoped to the
+# End-return path: Home is unasserted setup that scrolls the viewport into the
+# divergent startup region, and End is the asserted keybinding. If the End
+# keybinding did not reach handleViewportInput and scroll to the bottom, the
+# viewport would still show the Home-scrolled top (the divergent banner/changelog)
+# and the "Run: expr 20 + 22" conversation crop would be absent -- the capture
+# window would fail to find it. Mutation-proven: making pig's End branch consume
+# without scrolling turns this scenario red (pig stuck at the banner top vs pi's
+# conversation bottom). A green output_equal here requires that a raw \x1b[F byte
+# routed through the driver reached the alt-screen keyboard handler and invoked
+# ScrollToBottom in both pig and pi.
+#
+# Home's own scroll-to-top effect (and pageUp/pageDown/prompt-nav) is proven at
+# the unit level by TestAltScreenKeyboardPageAndEdgeScroll and
+# TestAltScreenScrollToPromptJumpsToOsc133Marker (both mutation-proven). The mouse
+# input branches of handleViewportInput are unit-tested in
+# tui/tui_alt_screen_test.go: selection press/drag/release + decoded
+# OSC 52 clipboard payload, scrollbar grab/drag-to-scrollTop, and the edge
+# auto-scroll tick (advance + cancellation-race), all race-checked and
+# mutation-proven. SGR-level selection-highlight bytes are not byte-stable across
+# the pig/pi bg-paint gap, so they are unit-verified rather than asserted here;
+# OSC 8 link activation and scrollbar hover are wired but not yet unit-covered.
+#
+# height = 24 and the plain-cell parity rationale match 01-conversation-fullscreen: the
+# transcript overflows so both renderers follow=end and bottom-align the
+# conversation, making the crop independent of startup-content height. runs = 3
+# because live tmux capture timing is non-trivial.
+
+name = "02-keyboard-navigation-fullscreen"
+description = "Fullscreen Home/End keyboard scrolling returns the viewport to the identical conversation bottom in pig and pi."
+covers = [
+  "packages/tui/src/tui-alt-screen.ts",
+  "packages/tui/src/components/scroll-view.ts",
+]
+tags = ["fast", "hermetic", "tui", "fullscreen"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 24
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Run: expr 20 + 22"
+capture_end_regex = "faux-1\\s*$"
+
+[[tmux.steps]]
+keys = ["Run: expr 20 + 22", "Enter"]
+settle_seconds = 6
+wait_contains = ["Took"]
+wait_timeout_seconds = 15
+
+# Home: scroll the transcript to the top (into the divergent startup region).
+[[tmux.steps]]
+keys = ["hex:1b 5b 48"]
+settle_seconds = 2
+
+# End: scroll the transcript back to the follow-end bottom (identical region).
+[[tmux.steps]]
+keys = ["hex:1b 5b 46"]
+settle_seconds = 2
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+# After Home then End the viewport is bottom-aligned again; the conversation crop
+# is byte-identical to pi 0.84 at the SGR level (same basis as 01: escaped
+# capture-pane -e, only the sub-second tool duration normalized).
+escaped_output_equal = true
+runtime_ratio_max = 2.0
+runs = 3
+
+# normalize-rationale: only the sub-second tool duration varies with scheduling.
+[[assert.normalize_replace]]
+pattern = "Took \\d+\\.\\ds"
+with = "Took Ns"

@@ -1,0 +1,43 @@
+# Behavior family: providers-registry
+# Surface: Copilot dynamic/request header shaping.
+#
+# Upstream evidence (pi v0.69.0, current loop probe):
+#   /probe-copilot-headers
+#   output: copilot-headers:init=user:intent=conversation-edits:vision=true:keys=copilot-vision-request,openai-intent,x-initiator
+
+name = "03-copilot-headers"
+description = "Copilot dynamic headers are built identically for image-bearing user turns."
+covers = [
+  "packages/ai/src/utils/headers.ts",
+  "packages/ai/src/api/github-copilot-headers.ts",
+]
+tags = ["hermetic", "fast", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 160
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "copilot-headers:init="
+capture_end = "x-initiator"
+
+[[tmux.steps]]
+keys = ["/probe-copilot-headers", "Enter"]
+wait_contains = ["copilot-headers:init=user:intent=conversation-edits:vision=true"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../clipboard-images/testdata/pig-agent", "PIG_PARITY_HARNESS=1"]
+pi = ["PI_CODING_AGENT_DIR=../clipboard-images/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/oauth-harness.ts"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3
