@@ -441,6 +441,19 @@ func (stream *toolStream) flushLocked() {
 	}()
 }
 
+// settle waits for every flush started so far. Upstream chains flushes on
+// promise microtasks, so a flush queued by stream() has committed before the
+// tool resumes from its next await; PiG flushes on goroutines, so the tool
+// API waits here to keep the tool's writes in program order.
+func (stream *toolStream) settle() {
+	stream.mu.Lock()
+	tail := stream.tail
+	stream.mu.Unlock()
+	if tail != nil {
+		<-tail
+	}
+}
+
 // drain waits for every flush and returns the first failure.
 func (stream *toolStream) drain() error {
 	stream.mu.Lock()
@@ -529,6 +542,7 @@ func toolApiFor(task Task, rt *Runtime, stream *toolStream) *ToolApi {
 	index := toolInputOf(task).Index
 	api.stream = stream.push
 	api.progress = func(ctx context.Context, update func(slot *ToolProgress)) error {
+		stream.settle()
 		_, err := rt.Commit(ctx, func(_ context.Context, tx *Tx, _ Task) (any, error) {
 			slot, err := rawToolSlot(tx, task.ConversationId, index)
 			if err != nil {

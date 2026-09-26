@@ -561,6 +561,22 @@ function streamTestFaux(model: any, context: any, options: any) {
       lastText.includes("Create a structured context checkpoint summary")) ||
     (lastText.includes("Create a structured context checkpoint summary") &&
       messages.map(messageText).join("\n").includes("Trigger: overflow error with queued message"));
+  // TEST_FAUX_HOLD_COMPACTION holds a /compact summary until the run is
+  // aborted, so a probe of the in-progress screen captures a steady state
+  // instead of racing a fixed delay. PiG's ai/test_faux.go does the same.
+  if (process.env.TEST_FAUX_HOLD_COMPACTION === "1" &&
+      lastText.includes("Create a structured context checkpoint summary")) {
+    stream.push({ type: "start", partial: output });
+    const abort = () => {
+      output.stopReason = "error";
+      output.errorMessage = "This operation was aborted";
+      stream.push({ type: "error", reason: "error", error: output });
+      stream.end();
+    };
+    if (options?.signal?.aborted) abort();
+    else options?.signal?.addEventListener("abort", abort, { once: true });
+    return stream;
+  }
   if (slowCompaction) {
     stream.push({ type: "start", partial: output });
     setTimeout(() => {
