@@ -115827,6 +115827,28 @@
       "shapeHash": "sha256:c0a8358c716b68d07dfd937c8bbe736ab15c3cdaa5e47dbec909644ad9671120"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#extractPigFromTarGz",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "extractPigFromTarGz",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(archivePath string, dir string, limit int64) (string, error)"
+      },
+      "shapeHash": "sha256:89a6cd9d4e0256d7d4e06bb7b0384e66aa535bf668e9b0f0f2fd476546ecc39b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#fetchDetachedSignature",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "fetchDetachedSignature",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, client *net/http.Client, rawURL string) (string, error)"
+      },
+      "shapeHash": "sha256:218d88aab0170611c3e4fc13918c729ecbe04a527d628bb8f09fa023e3fd9ad0"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#fg",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "fg",
@@ -117092,6 +117114,17 @@
       "shapeHash": "sha256:1c727f6e38421b55c8b3505dc204615a51bf10aeba1044cdcab72c2f48debc84"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#isTarGzURL",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "isTarGzURL",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(rawURL string) bool"
+      },
+      "shapeHash": "sha256:9ccca7d2c4f071a815f67983fe24c97590d080e6c29cf36d3eb305d62a5cec40"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#isTruthyTelemetryEnvFlag",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "isTruthyTelemetryEnvFlag",
@@ -118041,6 +118074,17 @@
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#maxCrashRecords",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "maxCrashRecords",
+      "kind": "constant",
+      "exported": false,
+      "shape": {
+        "type": "untyped int"
+      },
+      "shapeHash": "sha256:e464e6de3ad35418f6e6dfe34abdf0de696ea4b2b49704e3c41e4184b74f805f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#maxDetachedSignatureBytes",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "maxDetachedSignatureBytes",
       "kind": "constant",
       "exported": false,
       "shape": {

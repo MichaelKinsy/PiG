@@ -1,7 +1,9 @@
 package codingagent
 
 import (
+	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/ed25519"
 	"crypto/sha256"
@@ -18,6 +20,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"regexp"
 	"runtime"
@@ -33,13 +36,15 @@ import (
 //
 //	-ldflags "-X github.com/MichaelKinsy/PiG/internal/codingagent.DefaultUpdateURL=<url>"
 //
-// so a product release can configure its update source. Stock Pig and Piglet
-// builds never set it: update transport is product/environment policy.
+// so a product release can configure its update source. PiG's own release
+// builds (release-candidate.yml) point it at the latest release's signed
+// update.json; development, go install, and Piglet builds leave it empty.
 var DefaultUpdateURL string
 
 // DefaultUpdateTrustRoot is an optional build-time Ed25519 public key in PEM
-// form. Distributor installers normally seed the same public key through the
-// update-trust.pem sidecar beside update-url.
+// form, or the same PEM base64-encoded on one line (a multi-line value cannot
+// be passed through -ldflags -X). Distributor installers can instead seed the
+// public key through the update-trust.pem sidecar beside update-url.
 var DefaultUpdateTrustRoot string
 
 // UpdateSignatureHeader carries the base64 Ed25519 signature over the exact
@@ -147,6 +152,13 @@ func updateTrustRoots() ([]ed25519.PublicKey, error) {
 		data = sidecar
 	} else {
 		data = []byte(DefaultUpdateTrustRoot)
+		if trimmed := strings.TrimSpace(DefaultUpdateTrustRoot); trimmed != "" && !strings.Contains(trimmed, "-----BEGIN") {
+			decoded, err := base64.StdEncoding.DecodeString(trimmed)
+			if err != nil {
+				return nil, fmt.Errorf("decode built-in update trust root: %w", err)
+			}
+			data = decoded
+		}
 	}
 	if len(bytes.TrimSpace(data)) == 0 {
 		return nil, fmt.Errorf("no update trust root is configured")
@@ -442,7 +454,16 @@ func FetchUpdateManifest(ctx context.Context, client *http.Client, rawURL string
 	if err != nil {
 		return nil, err
 	}
-	if !verifyReleaseSignature(data, resp.Header.Get(UpdateSignatureHeader), trustRoots) {
+	signature := resp.Header.Get(UpdateSignatureHeader)
+	if strings.TrimSpace(signature) == "" {
+		// Static hosts such as GitHub release assets cannot set a response
+		// header; they publish the same signature beside the manifest.
+		signature, err = fetchDetachedSignature(ctx, client, manifestURL.String()+".sig")
+		if err != nil {
+			return nil, err
+		}
+	}
+	if !verifyReleaseSignature(data, signature, trustRoots) {
 		return nil, fmt.Errorf("update manifest release signature verification failed")
 	}
 	var manifest UpdateManifest
@@ -563,6 +584,15 @@ func selfReplaceAt(ctx context.Context, client *http.Client, bin UpdateBinary, e
 	if !strings.EqualFold(sum, want) {
 		return fmt.Errorf("checksum mismatch: refusing to install")
 	}
+	if isTarGzURL(bin.URL) {
+		extracted, err := extractPigFromTarGz(tmpPath, dir, maxUpdateBinaryBytes)
+		if err != nil {
+			return err
+		}
+		_ = os.Remove(tmpPath)
+		tmpPath = extracted
+		defer func() { _ = os.Remove(extracted) }()
+	}
 	if commit == nil {
 		if err := os.Rename(tmpPath, exePath); err != nil {
 			return fmt.Errorf("replace %s: %w", exePath, err)
@@ -671,6 +701,108 @@ func downloadBinaryToFile(ctx context.Context, client *http.Client, rawURL, dir 
 	tmp = nil
 	removeTemp = false
 	return tmpPath, hex.EncodeToString(digest.Sum(nil)), nil
+}
+
+// maxDetachedSignatureBytes bounds a detached manifest signature: a few
+// comma-separated base64 Ed25519 signatures.
+const maxDetachedSignatureBytes = 4 << 10 // pig divergence (D39): PiG-only signed self-update transport.
+
+// fetchDetachedSignature reads the base64 signature list published at
+// <manifest URL>.sig when the manifest response carries no signature header.
+func fetchDetachedSignature(ctx context.Context, client *http.Client, rawURL string) (string, error) {
+	sigURL, err := validateUpdateURL(rawURL)
+	if err != nil {
+		return "", err
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, sigURL.String(), nil)
+	if err != nil {
+		return "", err
+	}
+	resp, err := doUpdateRequest(client, req)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("update manifest signature %s: %s", rawURL, resp.Status)
+	}
+	data, err := io.ReadAll(io.LimitReader(resp.Body, maxDetachedSignatureBytes+1))
+	if err != nil {
+		return "", err
+	}
+	if len(data) > maxDetachedSignatureBytes {
+		return "", fmt.Errorf("update manifest signature exceeds %d-byte limit", maxDetachedSignatureBytes)
+	}
+	return strings.TrimSpace(string(data)), nil
+}
+
+// isTarGzURL reports whether an update binary URL names a .tar.gz release
+// archive rather than a bare executable.
+func isTarGzURL(rawURL string) bool {
+	parsed, err := url.Parse(rawURL)
+	return err == nil && strings.HasSuffix(parsed.Path, ".tar.gz")
+}
+
+// extractPigFromTarGz writes the archive's single pig executable (at the root
+// or one directory down) to a new temporary file in dir. The archive digest
+// was verified before this runs; anything other than exactly one regular pig
+// file is refused.
+func extractPigFromTarGz(archivePath, dir string, limit int64) (string, error) {
+	archive, err := os.Open(archivePath)
+	if err != nil {
+		return "", err
+	}
+	defer func() { _ = archive.Close() }()
+	gz, err := gzip.NewReader(archive)
+	if err != nil {
+		return "", fmt.Errorf("read update archive: %w", err)
+	}
+	defer func() { _ = gz.Close() }()
+	reader := tar.NewReader(gz)
+	var out string
+	for {
+		header, err := reader.Next()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			if out != "" {
+				_ = os.Remove(out)
+			}
+			return "", fmt.Errorf("read update archive: %w", err)
+		}
+		name := path.Clean(header.Name)
+		if path.Base(name) != "pig" || strings.Count(name, "/") > 1 {
+			continue
+		}
+		if out != "" {
+			_ = os.Remove(out)
+			return "", fmt.Errorf("update archive contains more than one pig executable")
+		}
+		if header.Typeflag != tar.TypeReg || header.Size <= 0 || header.Size > limit {
+			return "", fmt.Errorf("update archive pig entry is not a regular file within the %d-byte limit", limit)
+		}
+		tmp, err := os.CreateTemp(dir, ".pig-update-*")
+		if err != nil {
+			return "", fmt.Errorf("stage update (is %s writable?): %w", dir, err)
+		}
+		out = tmp.Name()
+		written, copyErr := io.Copy(tmp, io.LimitReader(reader, header.Size))
+		chmodErr := tmp.Chmod(0o755)
+		syncErr := tmp.Sync()
+		closeErr := tmp.Close()
+		if err := errors.Join(copyErr, chmodErr, syncErr, closeErr); err != nil || written != header.Size {
+			_ = os.Remove(out)
+			if err == nil {
+				err = fmt.Errorf("truncated pig entry")
+			}
+			return "", fmt.Errorf("extract update archive: %w", err)
+		}
+	}
+	if out == "" {
+		return "", fmt.Errorf("update archive contains no pig executable")
+	}
+	return out, nil
 }
 
 // CompareVersions compares strict semantic versions. Returns -1 if a<b, 1 if
