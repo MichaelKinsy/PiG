@@ -154,10 +154,6 @@ func authExtensionConfigs(cwd, agentDir string, settings *codingagent.SettingsMa
 				}
 				continue
 			}
-			if member.Enabled {
-				kind := strings.TrimSuffix(string(member.Kind), "s")
-				return nil, nil, fmt.Errorf("Package %q declares missing %s %q. Run `pig config` and disable the missing member, restore the file, or correct the authored Package", pkg.Source.Source, kind, member.Pattern)
-			}
 		}
 		for _, source := range resources.ExtensionEntries {
 			relative, _ := filepath.Rel(pkg.InstalledPath, source)

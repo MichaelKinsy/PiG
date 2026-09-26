@@ -33,6 +33,11 @@ packages together. Use it to run two configurations side by side.
 Set `PIG_OFFLINE` in CI. Without it, every run checks for updates and fails
 slowly when the network is blocked.
 
+Offline mode, from `--offline`, `PIG_OFFLINE` or `PI_OFFLINE`, sets
+`PI_OFFLINE=1` and `PI_SKIP_VERSION_CHECK=1` in the environment extensions
+inherit, as Pi does. Pi extensions that check `PI_OFFLINE` see PiG's offline
+mode.
+
 ## Diagnostics
 
 | Variable | Effect |

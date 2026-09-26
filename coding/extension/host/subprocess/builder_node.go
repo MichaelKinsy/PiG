@@ -32,7 +32,7 @@ const nodeLauncherFormat = "direct-node-v3"
 // extension entry the launcher runs.
 const nodeEntryFile = "entry"
 
-//go:embed runtime-node/*.mjs runtime-node/shims/*.mjs runtime-node/shims/get-east-asian-width runtime-node/shims/marked runtime-node/shims/partial-json runtime-node/shims/pi-dist runtime-node/shims/yaml
+//go:embed runtime-node/*.mjs runtime-node/shims/*.mjs runtime-node/shims/get-east-asian-width runtime-node/shims/marked runtime-node/shims/partial-json all:runtime-node/shims/pi-dist runtime-node/shims/yaml
 var nodeRuntimeFS embed.FS
 
 func isNodeSourcePath(path string) bool {

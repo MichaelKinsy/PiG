@@ -255,7 +255,7 @@ class Connection {
     this.send({
       type: "response",
       id,
-      response: error ? { result, error: { message: error.message || String(error) } } : { result },
+      response: error ? { result, error: errorInfo(error) } : { result },
     });
   }
 
@@ -273,8 +273,31 @@ class Connection {
   }
 }
 
+// errorInfo is the wire form of a thrown error. The stack travels with it
+// because upstream reports a handler's `err.stack` alongside its message.
+export function errorInfo(error) {
+  const info = { message: error?.message || String(error) };
+  if (typeof error?.stack === "string" && error.stack !== "") info.stack = error.stack;
+  return info;
+}
+
+// bindOwnMethods copies each prototype method onto the instance, bound to it.
+// Upstream builds ExtensionContext (runner.ts createContext) and
+// ExtensionUIContext (interactive-mode.ts createExtensionUIContext) as object
+// literals of arrow functions, so a method still works when detached:
+// pi-lens does `const setWidget = ui.setWidget; setWidget(...)`.
+function bindOwnMethods(target) {
+  const proto = Object.getPrototypeOf(target);
+  for (const name of Object.getOwnPropertyNames(proto)) {
+    if (name === "constructor") continue;
+    const descriptor = Object.getOwnPropertyDescriptor(proto, name);
+    if (typeof descriptor?.value === "function") target[name] = descriptor.value.bind(target);
+  }
+}
+
 class RuntimeContext {
   constructor(runtime) {
+    bindOwnMethods(this);
     this.runtime = runtime;
     this.ui = runtime.ui;
     this.hasUI = true;
@@ -315,6 +338,7 @@ class RuntimeContext {
 
 class RuntimeUI {
   constructor(runtime) {
+    bindOwnMethods(this);
     this.runtime = runtime;
     this.theme = new ThemeShim();
   }
@@ -1948,6 +1972,15 @@ export class Runtime {
     const streamId = `model-stream-${this.nextModelStreamId++}`;
     const stream = new ModelEventStream();
     this.modelStreams.set(streamId, stream);
+    // An AbortSignal (upstream options.signal) cannot cross the process
+    // boundary: its abort cancels the host request instead, and the provider
+    // ends the stream as upstream does for an aborted request.
+    const { signal, ...requestOptions } = options ?? {};
+    let onAbort;
+    if (signal && typeof signal.addEventListener === "function") {
+      onAbort = () => { this.call("cancelModelStream", { streamId }).catch(() => {}); };
+      signal.addEventListener("abort", onAbort, { once: true });
+    }
     // The host writes every model_stream_event notification before the call
     // result, but Connection resolves call results inside its frame reader
     // while earlier notifications still wait for the run loop. Settle only
@@ -1959,11 +1992,13 @@ export class Runtime {
       }
       if (!stream.terminal) stream.fail(error ?? new Error("model stream ended without a terminal event"), model);
       this.modelStreams.delete(streamId);
+      if (onAbort) signal.removeEventListener("abort", onAbort);
     };
-    void this.call("modelStream", { streamId, model, request: { ...context, ...options } }).then(
+    void this.call("modelStream", { streamId, model, request: { ...context, ...requestOptions } }).then(
       () => setImmediate(() => settle()),
       (error) => setImmediate(() => settle(error)),
     );
+    if (signal?.aborted) onAbort?.();
     return stream;
   }
 
