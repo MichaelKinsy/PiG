@@ -24,7 +24,6 @@ Status values:
 | OpenSSF Scorecard | `.github/workflows/scorecard.yml` with `publish_results: true`; the checks are listed below | Activates when public |
 | OpenSSF Best Practices | Criteria mapped below; the badge is an HTML comment in `README.md` until the project id exists | Owner action: register at bestpractices.dev |
 | REUSE | `REUSE.toml`, `LICENSES/`, SPDX headers; `make compliance` runs `reuse --no-multiprocessing lint` | Verifiable now; badge after registering at api.reuse.software |
-| Go Report Card | `make lint` (golangci-lint), `gofmt`, `go vet` | Activates when public |
 | Go Reference | Package doc comments; `go.mod` module `github.com/MichaelKinsy/PiG` | Activates when public; owner requests the pkg.go.dev fetch |
 | Go version | `go.mod` `go` directive (language floor) | Activates when public |
 | License | `LICENSE` (MIT); `CITATION.cff` `license: MIT` | Verifiable now |

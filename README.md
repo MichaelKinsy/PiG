@@ -16,7 +16,6 @@ SPDX-License-Identifier: MIT
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/PROJECT_ID/badge)](https://www.bestpractices.dev/projects/PROJECT_ID)
 -->
 [![REUSE status](https://api.reuse.software/badge/github.com/MichaelKinsy/PiG)](https://api.reuse.software/info/github.com/MichaelKinsy/PiG)
-[![Go Report Card](https://goreportcard.com/badge/github.com/MichaelKinsy/PiG)](https://goreportcard.com/report/github.com/MichaelKinsy/PiG)
 [![Go Reference](https://pkg.go.dev/badge/github.com/MichaelKinsy/PiG.svg)](https://pkg.go.dev/github.com/MichaelKinsy/PiG)
 [![Go version](https://img.shields.io/github/go-mod/go-version/MichaelKinsy/PiG)](go.mod)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
