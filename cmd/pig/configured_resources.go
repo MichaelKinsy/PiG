@@ -152,8 +152,16 @@ func collectExtensionConfigs(cwd, agentDir string, sm *codingagent.SettingsManag
 // A directory that is not itself an extension loads the extensions inside it.
 // Each loaded extension carries upstream's CLI provenance.
 func cliExtensionConfigs(resolved string, resolvers ...extsource.ResolveFunc) []subprocess.ExtConfig {
-	if _, err := os.Stat(resolved); os.IsNotExist(err) {
+	info, err := os.Stat(resolved)
+	if os.IsNotExist(err) {
 		return []subprocess.ExtConfig{subprocess.UnresolvedExtConfig(resolved, extensionPathMissingError{path: resolved})}
+	}
+	if err == nil && info.IsDir() && packagecontent.HasPiManifest(resolved) {
+		// Upstream resolves a directory with a "pi" manifest as a Package
+		// (resolveLocalExtensionSource, collectPackageResources): each entry
+		// its manifest yields is its own extension, and a manifest that yields
+		// none loads nothing.
+		return withCLISourceInfo(packageExtensionConfigs(resolved, nil, resolvers...))
 	}
 	configs := pathToExtConfigs(resolved, resolvers...)
 	if len(configs) > 0 && configs[0].ResolveError() == nil {
@@ -190,7 +198,7 @@ func collectTopLevelExtensionConfigs(autoDir string, entries []string, resolvers
 	configs := make([]subprocess.ExtConfig, 0, len(automatic)+len(entries))
 	for _, path := range automatic {
 		selected := path
-		if name := filepath.Base(path); name == "index.ts" || name == "index.js" {
+		if name := filepath.Base(path); (name == "index.ts" || name == "index.js") && !extsource.NodeDeclaresExtensions(filepath.Dir(path)) {
 			selected = filepath.Dir(path)
 		}
 		// Upstream loads and names the discovered entry file; PiG loads the
@@ -486,25 +494,41 @@ func collectPackageExtensionConfigs(cwd string, sm *codingagent.SettingsManager,
 		if err != nil {
 			continue
 		}
-		resources, err := packagecontent.Discover(root)
+		for _, config := range packageExtensionConfigs(root, filters[packagecontent.Extensions], resolvers...) {
+			path := config.Source
+			if path == "" {
+				path = config.Path
+			}
+			config.SourceInfo = codingagent.PiSourceInfo{Path: path, Source: pkg.Source.Source, Scope: pkg.Scope, Origin: "package", BaseDir: root}
+			configs = append(configs, config)
+		}
+	}
+	return configs
+}
+
+// packageExtensionConfigs resolves each extension entry the Package at root
+// exposes and filter enables as its own extension, as upstream loads every
+// file its manifest entries collect.
+func packageExtensionConfigs(root string, filter []string, resolvers ...extsource.ResolveFunc) []subprocess.ExtConfig {
+	resources, err := packagecontent.Discover(root)
+	if err != nil {
+		return nil
+	}
+	var configs []subprocess.ExtConfig
+	for _, src := range resources.ExtensionEntries {
+		rel, _ := filepath.Rel(root, src)
+		if !packagecontent.ResourceEnabled(rel, filter) {
+			continue
+		}
+		name, err := packagecontent.PublicName(packagecontent.Extensions, src, "")
 		if err != nil {
 			continue
 		}
-		for _, src := range resources.ExtensionEntries {
-			rel, _ := filepath.Rel(root, src)
-			if !packagecontent.ResourceEnabled(rel, filters[packagecontent.Extensions]) {
-				continue
-			}
-			name, err := packagecontent.PublicName(packagecontent.Extensions, src, "")
-			if err != nil {
-				continue
-			}
-			config, _, err := subprocess.ResolveExtConfigWithResolver(src, name, configuredExtensionResolver(resolvers))
-			if err != nil {
-				config = subprocess.UnresolvedExtConfig(src, err)
-			}
-			configs = append(configs, config)
+		config, _, err := subprocess.ResolveExtConfigWithResolver(src, name, configuredExtensionResolver(resolvers))
+		if err != nil {
+			config = subprocess.UnresolvedExtConfig(src, err)
 		}
+		configs = append(configs, config)
 	}
 	return configs
 }

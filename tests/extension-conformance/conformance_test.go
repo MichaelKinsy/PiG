@@ -73,6 +73,7 @@ type recording struct {
 	UIPromptEvents          []string            `json:"ui_prompt_events"`
 	FocusedProbe            string              `json:"focused_probe"`
 	MessageRenderer         []string            `json:"message_renderer"`
+	ToolRenderer            []string            `json:"tool_renderer"`
 	EntryRenderer           []string            `json:"entry_renderer"`
 	LoginDefinition         string              `json:"login_definition"`
 	LoginError              string              `json:"login_error"`
@@ -119,6 +120,14 @@ func sdkHarnessCases() []harnessCase {
 type conformanceLinesComponent struct {
 	lines []string
 }
+
+// conformanceWidthComponent renders one line naming the width it is drawn at.
+type conformanceWidthComponent struct {
+	line func(width int) string
+}
+
+func (c *conformanceWidthComponent) Render(width int) []string { return []string{c.line(width)} }
+func (*conformanceWidthComponent) Invalidate()                 {}
 
 func (c *conformanceLinesComponent) Render(int) []string { return append([]string(nil), c.lines...) }
 func (*conformanceLinesComponent) Invalidate()           {}
@@ -845,7 +854,36 @@ func captureRecording(t *testing.T, h *harness) recording {
 		return len(entryRendererLines) == 1 && entryRendererLines[0] == "entryrenderer:hi-entry:expanded=true:width=72"
 	})
 
+	renderProbe, ok := h.runner.GetToolDefinition("render_probe")
+	if !ok || renderProbe.RenderShell != extension.ToolRenderShellSelf || renderProbe.RenderCall == nil || renderProbe.RenderResult == nil {
+		t.Fatalf("render_probe definition = %+v, want a self shell with both renderers", renderProbe)
+	}
+	renderContext := extension.ToolRenderContext{
+		Args: json.RawMessage(`{"topic":"alpha"}`), ToolCallID: "render-probe-1", Card: "conformance-card",
+		State: map[string]any{}, Invalidate: func() {}, ExecutionStarted: true, ArgsComplete: true,
+	}
+	renderCall, ok := renderProbe.RenderCall(json.RawMessage(`{"topic":"alpha"}`), nil, renderContext).(interface{ Render(int) []string })
+	if !ok {
+		t.Fatal("renderCall did not return a component")
+	}
+	var toolRenderer []string
+	waitFor(t, func() bool {
+		lines := renderCall.Render(72)
+		return len(lines) == 1 && lines[0] == "toolrender:call:alpha:partial=false:calls=1:width=72"
+	})
+	toolRenderer = append(toolRenderer, renderCall.Render(72)...)
+	renderResult, ok := renderProbe.RenderResult(agent.AgentToolResult{Content: "out", Details: map[string]any{"k": "v"}}, extension.ToolRenderResultOptions{Expanded: true}, nil, renderContext).(interface{ Render(int) []string })
+	if !ok {
+		t.Fatal("renderResult did not return a component")
+	}
+	waitFor(t, func() bool {
+		lines := renderResult.Render(72)
+		return len(lines) == 1 && lines[0] == "toolrender:result:out:v:expanded=true:calls=1:width=72"
+	})
+	toolRenderer = append(toolRenderer, renderResult.Render(72)...)
+
 	return recording{
+		ToolRenderer:            toolRenderer,
 		EchoContent:             tr.Content,
 		PreparedContent:         preparedTR.Content,
 		EchoIsError:             tr.IsError,
@@ -1000,6 +1038,36 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 			},
 		},
 		Tools: map[string]extension.RegisteredTool{
+			"render_probe": {
+				Definition: extension.ToolDefinition{
+					Name:        "render_probe",
+					Description: "Render its own tool card",
+					Parameters:  json.RawMessage(`{"type":"object","properties":{}}`),
+					RenderShell: extension.ToolRenderShellSelf,
+					Execute: func(context.Context, string, json.RawMessage, extension.AgentToolUpdateCallback) (extension.AgentToolResult, error) {
+						return agent.AgentToolResult{Content: "render ok"}, nil
+					},
+					RenderCall: func(args json.RawMessage, _ extension.Theme, render extension.ToolRenderContext) extension.Component {
+						state := render.State.(map[string]any)
+						calls, _ := state["calls"].(int)
+						state["calls"] = calls + 1
+						var input map[string]any
+						_ = json.Unmarshal(args, &input)
+						return &conformanceWidthComponent{line: func(width int) string {
+							return fmt.Sprintf("toolrender:call:%v:partial=%t:calls=%d:width=%d", input["topic"], render.IsPartial, calls+1, width)
+						}}
+					},
+					RenderResult: func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, render extension.ToolRenderContext) extension.Component {
+						value := result.(agent.AgentToolResult)
+						details, _ := value.Details.(map[string]any)
+						calls := render.State.(map[string]any)["calls"]
+						return &conformanceWidthComponent{line: func(width int) string {
+							return fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d", value.Content, details["k"], options.Expanded, calls, width)
+						}}
+					},
+				},
+				SourceInfo: inprocFixtureName,
+			},
 			"update_tool": {
 				Definition: extension.ToolDefinition{
 					Name:        "update_tool",

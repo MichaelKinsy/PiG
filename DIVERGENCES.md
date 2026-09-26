@@ -20,7 +20,7 @@ Every active divergence must have:
 - D47 — Width stripping consumes DEC private-mode set/reset sequences. Retired by the width-parity change. `tui/widthx.ExtractAnsi` now delegates to the upstream-compatible `ExtractAnsiCode`; the ID remains reserved. `TestExtractAnsi_PrivateModeMatchesUpstream` and `TestPiWidthDifferential` verify the shared ANSI parsing behavior. No active divergence or source marker remains.
 - D71 — Nonfatal main-screen overflow recovery. Withdrawn on 2026-09-25 by owner decision; the ID remains reserved. PiG now matches upstream `tui-main-screen.ts`: an over-wide non-image row that reaches the differential-render loop writes the TUI crash log (`pig-tui-crash.log` in the agent directory), stops the TUI, and ends the process through the uncaught-exception path with status 1. Initial, full, and resize renders emit the row unchanged. Tests: `tui/render_overflow_test.go` and parity scenario `extensions-runtime/20-differential-render-overflow-terminates.toml`. No active divergence or source marker remains.
 
-## Active divergences (31)
+## Active divergences (32)
 
 ## D2 PiG uses a separate command and configuration identity
 
@@ -917,6 +917,8 @@ Call-site markers:
   supervision.
 - `coding/extension/host/subprocess/render_proxy.go`: generation-scoped
   renderer inactivity and last-frame retention.
+- `coding/extension/host/subprocess/tool_render_proxy.go`: the same renderer
+  boundary for tool `renderCall` and `renderResult`.
 
 Locked by: `coding/extension/host/subprocess/liveness_test.go`,
 `coding/extension/host/subprocess/node_liveness_test.go`, Go/Rust/Python SDK
@@ -1048,8 +1050,9 @@ Its collapsed header uses the current terminal-cell width for a compact preview
 and marks hidden input with `… (ctrl+o to expand)`. The expanded card shows the
 complete pretty-printed arguments and complete available result output. A
 resize recomputes both the preview budget and expanded wrapping from the
-retained value. Built-in tool renderers and extension tools with a custom call
-renderer keep their existing presentation.
+retained value. A generic card is an extension tool whose definition has no
+`renderCall`, `renderResult` or `renderShell` "self". Built-in tools keep their
+renderers, and an extension tool with renderers draws them as upstream does.
 
 Upstream state: `ToolExecutionComponent.expanded` starts false and is passed to
 custom call/result renderers, but the registered-tool fallback does not consume
@@ -1374,5 +1377,26 @@ Locked by: `coding/extension/host/subprocess` `TestVendoredPiDistMatchesThePinne
 Parity allowance: no paired scenario runs an extension's direct provider call; the Pi-extension end-to-end run compares pi-hermes-memory's consolidation request and result against Pi 0.87.1 over a scripted OpenAI-compatible server.
 
 Remove when: PiG ships the vendor SDKs to extensions and runs upstream's API implementations, or upstream removes the compat entry point's global dispatch.
+
+SCRUTINIZED:approved
+
+## D75 A built-in tool override with one renderer keeps the built-in card
+
+What: an extension tool that overrides a built-in tool name (`read`, `bash`, `powershell`, `edit`, `write`, `grep`, `find`, `ls`) and defines only one of `renderCall` and `renderResult` is drawn with PiG's built-in card for that tool, and the renderer it defines is not called. An override that defines both renderers draws them as upstream does, as does every other extension tool with renderers.
+
+Upstream state: `withBuiltInRenderers` (`core/tools/renderers/index.ts`) fills the missing renderer from the built-in pair, so the card shows the override's renderer next to the built-in half.
+
+Why: PiG draws built-in tools with a header and a body renderer that do not map one to one onto upstream's `renderCall` and `renderResult` components. For example, upstream's `write` call component previews the file content, which PiG draws in its body, and the bash result carries the live elapsed footer. Combining a built-in half with an extension component needs the built-in renderers ported as components. Before 0.2.2 PiG ignored every renderer of a built-in override; this record keeps only the partial case. Owner-directed 0.2.2 extension-parity task.
+
+Observable effect: a partial renderer override of a built-in tool looks like the built-in tool's card instead of showing the extension's call or result rendering.
+
+Call-site markers:
+- `internal/codingagent/tool_definition_renderers.go`: `usesToolDefinitionRenderers`.
+
+Locked by: `internal/codingagent` `TestBuiltInOverrideNeedsBothRenderers`.
+
+Parity allowance: no paired scenario overrides a built-in tool with one renderer; the tool-renderer scenarios `extensions-runtime/24-tool-renderers-collapsed` and `25-tool-renderers-expanded` cover extension tools with renderers.
+
+Remove when: PiG's built-in tool renderers are ported as `renderCall` and `renderResult` components.
 
 SCRUTINIZED:approved

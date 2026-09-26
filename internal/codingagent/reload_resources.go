@@ -20,11 +20,14 @@ import (
 // /reload. It mirrors the upstream resource-loader/session.reload flow where
 // prompt/theme/skill/context inputs are re-resolved from current settings.
 type ReloadResourceSnapshot struct {
-	PromptPaths        []string
-	ThemePaths         []string
-	SkillPaths         []string
-	ContextFiles       []ContextFile
-	ResourceSourceInfo map[string]ResourceSourceInfo
+	PromptPaths  []string
+	ThemePaths   []string
+	SkillPaths   []string
+	ContextFiles []ContextFile
+	// SystemPromptSourcePaths are the system prompt files the loaded
+	// resources [Context] section lists before ContextFiles.
+	SystemPromptSourcePaths []string
+	ResourceSourceInfo      map[string]ResourceSourceInfo
 }
 
 func cloneResourceSourceInfoMap(in map[string]ResourceSourceInfo) map[string]ResourceSourceInfo {
@@ -41,6 +44,7 @@ func (m *InteractiveMode) applyReloadResourceSnapshot(snapshot ReloadResourceSna
 	m.opts.ThemePaths = append([]string(nil), snapshot.ThemePaths...)
 	m.opts.SkillPaths = append([]string(nil), snapshot.SkillPaths...)
 	m.opts.ContextFiles = append([]ContextFile(nil), snapshot.ContextFiles...)
+	m.opts.SystemPromptSourcePaths = append([]string(nil), snapshot.SystemPromptSourcePaths...)
 	if snapshot.ResourceSourceInfo != nil {
 		m.resourceSourceInfo = cloneResourceSourceInfoMap(snapshot.ResourceSourceInfo)
 	}

@@ -280,6 +280,23 @@ func (r *Runner) ExtensionPaths() []string {
 	return paths
 }
 
+// ExtensionSource is one loaded extension's resolved path and SourceInfo.
+type ExtensionSource struct {
+	ResolvedPath string
+	SourceInfo   extension.SourceInfo
+}
+
+// ExtensionSources returns the resolved path and SourceInfo of every loaded
+// extension in load order, which the interactive loaded-resources listing
+// labels and groups as upstream does.
+func (r *Runner) ExtensionSources() []ExtensionSource {
+	sources := make([]ExtensionSource, 0, len(r.extensions))
+	for _, ext := range r.extensions {
+		sources = append(sources, ExtensionSource{ResolvedPath: ext.ResolvedPath, SourceInfo: ext.SourceInfo})
+	}
+	return sources
+}
+
 // ExtensionNames returns human-readable extension names in load order.
 func (r *Runner) ExtensionNames() []string {
 	names := make([]string, 0, len(r.extensions))

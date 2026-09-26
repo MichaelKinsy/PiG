@@ -677,6 +677,10 @@ export class Runtime {
     this.oauthProviders = new Map();
     this.renderers = new Map();
     this.entryRenderers = new Map();
+    // Upstream ToolExecutionComponent keeps one renderer state per tool card,
+    // shared by renderCall and renderResult, and each renderer's last
+    // component. The host names the card and releases it when the card is gone.
+    this.toolRenderCards = new Map();
     this.modelStreams = new Map();
     this.models = new Map();
     this.nextModelStreamId = 1;
@@ -839,6 +843,9 @@ export class Runtime {
           prompt_guidelines: tool.promptGuidelines,
           annotations: tool.annotations,
           source: tool.source,
+          render_shell: tool.renderShell === "self" ? "self" : undefined,
+          renders_call: typeof tool.renderCall === "function" || undefined,
+          renders_result: typeof tool.renderResult === "function" || undefined,
         })),
         commands: [...this.commands.values()].map((cmd) => ({
           name: cmd.name,
@@ -1622,6 +1629,16 @@ export class Runtime {
 
   handleNotify(notify) {
     switch (notify.method) {
+      case "tool_render_release": {
+        let args = notify.args;
+        try {
+          if (typeof args === "string") args = JSON.parse(args);
+        } catch {
+          return;
+        }
+        this.toolRenderCards.delete(args?.card);
+        return;
+      }
       case "model_registry_update": {
         let args = notify.args;
         if (typeof args === "string") args = JSON.parse(args);
@@ -1877,6 +1894,41 @@ export class Runtime {
           const payload = request.args || {};
           const component = await handler(payload.entry, payload.options, this.ui.theme);
           const lines = Array.isArray(component) ? component : component?.render?.(payload.width);
+          await this.respond(id, { lines: Array.isArray(lines) ? lines : [] });
+          return;
+        }
+        case "render_tool": {
+          const tool = this.tools.get(request.tool);
+          const payload = request.args || {};
+          const isResult = payload.phase === "result";
+          const renderer = isResult ? tool?.renderResult : tool?.renderCall;
+          if (typeof renderer !== "function") throw new Error(`tool ${request.tool} has no ${isResult ? "renderResult" : "renderCall"}`);
+          let card = this.toolRenderCards.get(payload.card);
+          if (!card) {
+            card = { state: {}, call: undefined, result: undefined };
+            this.toolRenderCards.set(payload.card, card);
+          }
+          const phase = isResult ? "result" : "call";
+          let component = card[phase];
+          if (payload.rerender || component === undefined) {
+            const context = {
+              ...(payload.context || {}),
+              args: payload.args,
+              invalidate: () => this.notify("tool_render_invalidate", { card: payload.card }),
+              lastComponent: component,
+              state: card.state,
+            };
+            try {
+              component = isResult
+                ? renderer({ content: payload.result?.content ?? [], details: payload.result?.details }, payload.options ?? {}, this.ui.theme, context)
+                : renderer(payload.args, this.ui.theme, context);
+            } catch (err) {
+              card[phase] = undefined;
+              throw err;
+            }
+            card[phase] = component;
+          }
+          const lines = component?.render?.(payload.width);
           await this.respond(id, { lines: Array.isArray(lines) ? lines : [] });
           return;
         }

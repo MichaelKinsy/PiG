@@ -855,3 +855,56 @@ func TestPiManifestPackageSkipsPigConventionDirectories(t *testing.T) {
 		t.Fatalf("conventional hooks without a pi manifest = %#v, err = %v", found.HookFiles, err)
 	}
 }
+
+// Upstream resolveExtensionEntries loads each existing entry an extension
+// directory's Pi manifest declares as its own extension, falls back to the
+// index when none exists, and loads nothing when neither exists. PiG used to
+// return the directory itself, which then failed to resolve to one entry.
+func TestDiscoverAutomaticLoadsEachDeclaredEntryOfAnExtensionDirectory(t *testing.T) {
+	dir := t.TempDir()
+	extension := "export default function extension(pi) {}\n"
+	two := filepath.Join(dir, "two")
+	writeTestFile(t, filepath.Join(two, "package.json"), `{"pi":{"extensions":["./a.ts","./b.js","./gone.ts"]}}`)
+	writeTestFile(t, filepath.Join(two, "a.ts"), extension)
+	writeTestFile(t, filepath.Join(two, "b.js"), extension)
+	fallback := filepath.Join(dir, "fallback")
+	writeTestFile(t, filepath.Join(fallback, "package.json"), `{"pi":{"extensions":["./gone.ts"]}}`)
+	writeTestFile(t, filepath.Join(fallback, "index.ts"), extension)
+	missing := filepath.Join(dir, "missing")
+	writeTestFile(t, filepath.Join(missing, "package.json"), `{"pi":{"extensions":["./gone.ts"]}}`)
+	writeTestFile(t, filepath.Join(missing, "main.ts"), extension)
+
+	got := DiscoverAutomatic(dir, Extensions)
+	want := []string{filepath.Join(fallback, "index.ts"), filepath.Join(two, "a.ts"), filepath.Join(two, "b.js")}
+	if !slices.Equal(got, want) {
+		t.Fatalf("DiscoverAutomatic = %v, want %v", got, want)
+	}
+}
+
+// A Package's pi.extensions directory entry expands the way upstream
+// collectAutoExtensionEntries does: every .ts/.js file and every subdirectory
+// entry is its own extension, and a directory without entries yields none.
+func TestDiscoverExpandsPiManifestDirectoryEntries(t *testing.T) {
+	root := t.TempDir()
+	extension := "export default function extension(pi) {}\n"
+	writeTestFile(t, filepath.Join(root, "package.json"), `{"pi":{"extensions":["./extensions","./empty"]}}`)
+	writeTestFile(t, filepath.Join(root, "extensions", "alpha.ts"), extension)
+	writeTestFile(t, filepath.Join(root, "extensions", "beta.js"), extension)
+	writeTestFile(t, filepath.Join(root, "extensions", "gamma", "index.ts"), extension)
+	writeTestFile(t, filepath.Join(root, "extensions", ".hidden.ts"), extension)
+	writeTestFile(t, filepath.Join(root, "extensions", "notes.md"), "notes\n")
+	writeTestFile(t, filepath.Join(root, "empty", "README.md"), "nothing here\n")
+
+	resources, err := Discover(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		filepath.Join(root, "extensions", "alpha.ts"),
+		filepath.Join(root, "extensions", "beta.js"),
+		filepath.Join(root, "extensions", "gamma", "index.ts"),
+	}
+	if !slices.Equal(resources.ExtensionEntries, want) {
+		t.Fatalf("ExtensionEntries = %v, want %v", resources.ExtensionEntries, want)
+	}
+}

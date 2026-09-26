@@ -492,6 +492,10 @@ type managedExt struct {
 	releaseLiveness       func()               // Releases heartbeat ownership for live provider state.
 	livenessOwnerMu       sync.Mutex
 	cacheLease            *runtimecell.UsageLease
+
+	// toolRenders routes this extension's renderer invalidations to the
+	// tool cards whose renderers it runs.
+	toolRenders toolRenderSessions
 }
 
 func (me *managedExt) releaseLivenessOwner() {
@@ -2070,19 +2074,24 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 		if source == "" {
 			source = me.config.Name // default: extension name (matches upstream sourceInfo stamping)
 		}
-		ext.Tools[td.Name] = extension.RegisteredTool{
-			Definition: extension.ToolDefinition{
-				Name:                tool.Name,
-				Label:               tool.Label,
-				Description:         tool.Description,
-				Parameters:          tool.Parameters,
-				ConstrainedSampling: tool.ConstrainedSampling,
-				PromptGuidelines:    tool.PromptGuidelines,
-				ExecutionMode:       extension.ToolExecutionMode(tool.ExecutionMode),
-				Execute:             h.makeToolExecuteFunc(me, tool.Name),
-			},
-			SourceInfo: source,
+		definition := extension.ToolDefinition{
+			Name:                tool.Name,
+			Label:               tool.Label,
+			Description:         tool.Description,
+			Parameters:          tool.Parameters,
+			ConstrainedSampling: tool.ConstrainedSampling,
+			PromptGuidelines:    tool.PromptGuidelines,
+			ExecutionMode:       extension.ToolExecutionMode(tool.ExecutionMode),
+			RenderShell:         extension.ToolRenderShell(tool.RenderShell),
+			Execute:             h.makeToolExecuteFunc(me, tool.Name),
 		}
+		if tool.RendersCall {
+			definition.RenderCall = h.makeToolRenderCall(me, tool.Name)
+		}
+		if tool.RendersResult {
+			definition.RenderResult = h.makeToolRenderResult(me, tool.Name)
+		}
+		ext.Tools[td.Name] = extension.RegisteredTool{Definition: definition, SourceInfo: source}
 		ext.ToolOrder = append(ext.ToolOrder, td.Name)
 	}
 
@@ -2504,7 +2513,17 @@ func (h *Host) handleIncoming(me *managedExt) {
 			// host-side overlay surfaces (e.g. ui.custom). Errors
 			// are intentionally swallowed because the producer does
 			// not expect a response.
-			if env.Notify == nil || h.uiBridge == nil {
+			if env.Notify == nil {
+				continue
+			}
+			if env.Notify.Method == NotifyToolRenderInvalidate {
+				var card ToolRenderCardPayload
+				if json.Unmarshal(env.Notify.Args, &card) == nil {
+					me.toolRenders.invalidate(me.conn, card.Card)
+				}
+				continue
+			}
+			if h.uiBridge == nil {
 				continue
 			}
 			h.uiBridge.HandleNotifyFrom(me.config.Name, me.conn, env.Notify)

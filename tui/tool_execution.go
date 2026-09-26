@@ -7,6 +7,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -141,6 +142,17 @@ type ToolExecutionComponent struct {
 	// argsComplete mirrors upstream tool-execution.ts argsComplete.
 	// Set when the message stream ends and args JSON is finalized.
 	argsComplete bool
+
+	// definition, when set, draws a registered tool definition's renderers
+	// as upstream does. definitionDirty reruns them on the next render, as
+	// every upstream state change reruns updateDisplay; a renderer may
+	// invalidate the card from any goroutine.
+	definition                *ToolDefinitionRenderers
+	definitionArgs            json.RawMessage
+	definitionResult          any
+	definitionDirty           atomic.Bool
+	definitionCall            Component
+	definitionResultComponent Component
 }
 
 // ImageBlock describes one image from a tool result for rendering.
@@ -243,7 +255,18 @@ func (c *ToolExecutionComponent) IsDirty() bool {
 	if c.invalidatable.IsDirty() {
 		return true
 	}
+	if c.definition != nil {
+		return c.definitionDirty.Load() || c.definitionComponentsDirty()
+	}
 	return c.State == ToolStateRunning && IsShellTool(c.Name) && !c.StartedAt.IsZero()
+}
+
+// Invalidate marks the card for redraw. A card with a definition also reruns
+// its renderers, as upstream ToolExecutionComponent.invalidate calls
+// updateDisplay.
+func (c *ToolExecutionComponent) Invalidate() {
+	c.definitionDirty.Store(true)
+	c.invalidatable.Invalidate()
 }
 
 // SetRunning marks the component as in-flight with the given pre-formatted
@@ -287,6 +310,9 @@ func (c *ToolExecutionComponent) UpdateArgs(name string, partialArgsJSON string)
 	// fail to parse: that's OK, we fall back to the tool name.
 	var raw json.RawMessage
 	if json.Unmarshal([]byte(partialArgsJSON), &raw) == nil {
+		if c.definition != nil {
+			c.definitionArgs = append(c.definitionArgs[:0], raw...)
+		}
 		if c.renderStructuredArgs {
 			c.structuredArgs = append(c.structuredArgs[:0], raw...)
 		} else {
@@ -324,7 +350,9 @@ func (c *ToolExecutionComponent) SetResult(output string, isError bool, elapsed 
 	}
 	c.Output = output
 	c.Elapsed = elapsed
-	if !c.userToggled {
+	// A card with a definition keeps its expansion: upstream updateResult
+	// never changes it.
+	if !c.userToggled && c.definition == nil {
 		switch {
 		case isError:
 			// Errors are always auto-expanded: the LLM (and the user) need
@@ -505,6 +533,9 @@ func (c *ToolExecutionComponent) runningElapsedRows(width int) []string {
 // padding on each content line. We replicate this layout exactly:
 // top-pad, header, separator, body, bottom-pad: all bg-painted.
 func (c *ToolExecutionComponent) Render(width int) []string {
+	if c.definition != nil {
+		return c.renderDefinition(width)
+	}
 	if width < 3 {
 		width = 3
 	}

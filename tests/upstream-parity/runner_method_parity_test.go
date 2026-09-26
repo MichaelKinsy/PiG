@@ -142,11 +142,12 @@ var deferredRunnerMethods = map[string]string{
 // DIVERGENCES.md header excludes language-surface differences. Each MUST carry
 // a rationale here so pig-only methods cannot accrete silently.
 var pigOnlyRunnerMethods = map[string]string{
-	"IsStale":        "SDK-surface: read-only staleness accessor (test/lifecycle seam)",
-	"StaleMessage":   "SDK-surface: read-only staleness accessor (test/lifecycle seam)",
-	"ExtensionCount": "SDK-surface: read-only count accessor (avoids exposing the slice)",
-	"ExtensionNames": "SDK-surface: read-only names accessor (avoids exposing the slice)",
-	"ExecuteCommand": "SDK-surface: active-runner command bridge for AgentSession/RPC invocation parity",
+	"IsStale":          "SDK-surface: read-only staleness accessor (test/lifecycle seam)",
+	"StaleMessage":     "SDK-surface: read-only staleness accessor (test/lifecycle seam)",
+	"ExtensionCount":   "SDK-surface: read-only count accessor (avoids exposing the slice)",
+	"ExtensionNames":   "SDK-surface: read-only names accessor (avoids exposing the slice)",
+	"ExtensionSources": "SDK-surface: read-only resolved paths and sourceInfo for the loaded-resources listing (upstream reads extension.path and extension.sourceInfo directly)",
+	"ExecuteCommand":   "SDK-surface: active-runner command bridge for AgentSession/RPC invocation parity",
 	// Upstream's getAllRegisteredTools returns each tool with its extension's
 	// sourceInfo; Pig's RegisteredTool.SourceInfo carries the D23 per-tool
 	// source instead, so getAllTools reads the extension's through this.

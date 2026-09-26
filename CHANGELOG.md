@@ -9,6 +9,13 @@ All notable public changes to PiG will be recorded in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed extension tools that define `renderCall`, `renderResult` or `renderShell` being drawn with PiG's generic tool header, as it appeared above `pi-mcp-adapter`'s compact tool card. PiG now draws them as Pi 0.87.1 does: the call and result renderers share one state per tool card and receive their last component, `context.invalidate()` runs them again, the result renderer sees partial results while the tool streams, a result no longer expands the card, `renderShell: "self"` draws the tool's own framing, and a renderer that throws shows Pi's fallback. Node extensions' renderers run in the extension process. The Go, Rust and Python SDKs gain the same renderers (`SetToolRenderers`; `render_tool_call`, `render_tool_result` and `tool_render_shell`; `tool_renderers`). An override of a built-in tool that defines only one of the two renderers keeps the built-in card (D75).
+- Fixed the startup resource list putting each section's heading and list on one line and labelling extensions by their entry file (`dist`, `index`). Each section now shows its heading with the list below it, package extensions are labelled by package and entry (`pi-lens:dist`, `@upstash/context7-pi:context7.ts`), other extensions by their shortest unique path, and Ctrl+O expands every section into Pi's user, project and path groups. The list also shows `[Themes]` and the system prompt files in `[Context]`, stays above the transcript when the chat is rebuilt, and is rebuilt after `/reload`, as in Pi. Ctrl+O shows Pi's "Tool output: expanded" and "Tool output: collapsed" status.
+- Fixed `/q <message>` from `pi-msg-queue` showing the queued user message above "Follow-up message sent.". PiG now shows a prompt's user message when the agent starts the turn, as Pi does, so a notification an extension sends right after `pi.sendUserMessage()`, and output from `before_agent_start` handlers, appears before it, and a prompt that is rejected before the turn starts is not shown.
+- Fixed a `pi.extensions` entry that names a directory without an index failing with "resolves to N entrypoints" or "no extension entry file". As in Pi, each `.ts` and `.js` file and each subdirectory entry in the directory loads as its own extension, a directory with no entries loads nothing, and a `-e` directory with a `pi` manifest loads each entry its manifest yields.
+
 ## [0.2.1] - 2026-09-26
 
 Hotfix for Pi extensions from npm that failed to load or crashed in 0.2.0, reported on Reddit by rokrdev and WorriedAcanthisitta3. `pig --version` prints `0.2.1+0.87.1`.

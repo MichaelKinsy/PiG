@@ -19,6 +19,22 @@ export default function (pi) {
   }));
 
   pi.registerTool({
+    name: "render_probe",
+    description: "Render its own tool card",
+    parameters: { type: "object", properties: {} },
+    renderShell: "self",
+    async execute() { return { content: [{ type: "text", text: "render ok" }] }; },
+    renderCall(args, _theme, context) {
+      context.state.calls = (context.state.calls ?? 0) + 1;
+      const calls = context.state.calls;
+      return { render: (width) => [`toolrender:call:${args.topic}:partial=${context.isPartial}:calls=${calls}:width=${width}`], invalidate() {} };
+    },
+    renderResult(result, options, _theme, context) {
+      const calls = context.state.calls;
+      return { render: (width) => [`toolrender:result:${result.content[0].text}:${result.details.k}:expanded=${Boolean(options.expanded)}:calls=${calls}:width=${width}`], invalidate() {} };
+    },
+  });
+  pi.registerTool({
     name: "echo",
     description: "Echo input text",
     parameters: { type: "object", required: ["text"], properties: { text: { type: "string", description: "Text to echo" } } },

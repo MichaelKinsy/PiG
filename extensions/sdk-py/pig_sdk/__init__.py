@@ -98,6 +98,38 @@ class ProjectTrustResult(TypedDict):
 ProjectTrustHandler: TypeAlias = Callable[["Context", dict[str, Any]], ProjectTrustResult]
 ShortcutHandler: TypeAlias = Callable[["Context"], None]
 RendererHandler: TypeAlias = Callable[["Context", dict[str, Any], dict[str, Any], int], list[str]]
+
+
+@dataclass
+class ToolRenderContext:
+    """Upstream ToolRenderContext for a renderer that returns lines.
+
+    ``state`` is the tool card's renderer state: it starts empty and is shared
+    by the call and result renderers of one card. ``invalidate()`` asks the
+    host to run both renderers again, as upstream ``context.invalidate()``
+    does.
+    """
+
+    args: dict[str, Any]
+    tool_call_id: str
+    cwd: str
+    execution_started: bool
+    args_complete: bool
+    is_partial: bool
+    expanded: bool
+    show_images: bool
+    is_error: bool
+    state: dict[str, Any]
+    _invalidate: Callable[[], None] = field(repr=False, default=lambda: None)
+
+    def invalidate(self) -> None:
+        self._invalidate()
+
+
+# A call renderer: (ctx, args, render context, width) -> lines.
+ToolRenderCallHandler: TypeAlias = Callable[["Context", dict[str, Any], ToolRenderContext, int], list[str]]
+# A result renderer: (ctx, {content, details}, {expanded, isPartial}, render context, width) -> lines.
+ToolRenderResultHandler: TypeAlias = Callable[["Context", dict[str, Any], dict[str, Any], ToolRenderContext, int], list[str]]
 Factory: TypeAlias = Callable[[], "Extension"]
 
 
@@ -1138,6 +1170,11 @@ class Extension:
         self._shortcut_handlers: dict[str, ShortcutHandler] = {}
         self._renderer_handlers: dict[str, RendererHandler] = {}
         self._entry_renderer_handlers: dict[str, RendererHandler] = {}
+        self._tool_call_renderers: dict[str, ToolRenderCallHandler] = {}
+        self._tool_result_renderers: dict[str, ToolRenderResultHandler] = {}
+        # One renderer state per tool card; renders of one card run one at a time.
+        self._tool_render_cards: dict[str, tuple[threading.Lock, dict[str, Any]]] = {}
+        self._tool_render_lock = threading.Lock()
         self._flag_defaults: dict[str, Any] = {}
         self._session_name: str = ""
         self._session_file: str = ""
@@ -1233,6 +1270,57 @@ class Extension:
         _ensure_jsonable(config, f"provider config for {name}")
         self._providers.append({"name": name, "config": config})
         self._oauth_providers[name] = provider
+
+    def tool_renderers(self, name: str, *, render_call: ToolRenderCallHandler | None = None, render_result: ToolRenderResultHandler | None = None, render_shell: str = "default") -> None:
+        """Set upstream renderShell, renderCall and renderResult of the registered tool ``name``.
+
+        A renderer that raises draws upstream's fallback in its place.
+        """
+        if render_shell not in {"default", "self"}:
+            raise ValueError("render_shell must be 'default' or 'self'")
+        for tool in self._tools:
+            if tool.get("name") != name:
+                continue
+            tool.pop("render_shell", None)
+            if render_shell == "self":
+                tool["render_shell"] = "self"
+            tool["renders_call"] = render_call is not None
+            tool["renders_result"] = render_result is not None
+        if render_call is not None:
+            self._tool_call_renderers[name] = render_call
+        if render_result is not None:
+            self._tool_result_renderers[name] = render_result
+
+    def _render_tool(self, ctx: "Context", name: str, args: dict[str, Any]) -> list[str]:
+        card_id = str(args.get("card") or "")
+        with self._tool_render_lock:
+            card = self._tool_render_cards.setdefault(card_id, (threading.Lock(), {}))
+        wire = args.get("context") or {}
+        with card[0]:
+            render = ToolRenderContext(
+                args=args.get("args") or {},
+                tool_call_id=str(wire.get("toolCallId") or ""),
+                cwd=str(wire.get("cwd") or ""),
+                execution_started=bool(wire.get("executionStarted")),
+                args_complete=bool(wire.get("argsComplete")),
+                is_partial=bool(wire.get("isPartial")),
+                expanded=bool(wire.get("expanded")),
+                show_images=bool(wire.get("showImages")),
+                is_error=bool(wire.get("isError")),
+                state=card[1],
+                _invalidate=lambda: self._notify("tool_render_invalidate", {"card": card_id}),
+            )
+            width = int(args.get("width") or 0)
+            if args.get("phase") == "result":
+                handler = self._tool_result_renderers.get(name)
+                if handler is None:
+                    raise RuntimeError(f"tool {name} has no result renderer")
+                result = args.get("result") or {"content": []}
+                return handler(ctx, result, args.get("options") or {}, render, width)
+            call = self._tool_call_renderers.get(name)
+            if call is None:
+                raise RuntimeError(f"tool {name} has no call renderer")
+            return call(ctx, args.get("args") or {}, render, width)
 
     def message_renderer(self, custom_type: str, handler: RendererHandler) -> None:
         self._renderers.append({"custom_type": custom_type})
@@ -1380,6 +1468,10 @@ class Extension:
         notify = env.get("notify") or {}
         method = notify.get("method", "")
         args = notify.get("args") or {}
+        if method == "tool_render_release":
+            with self._tool_render_lock:
+                self._tool_render_cards.pop(str(args.get("card") or ""), None)
+            return
         if method == "model_stream_event":
             stream_id = str(args.get("streamId") or "")
             with self._model_stream_lock:
@@ -1514,6 +1606,9 @@ class Extension:
                 custom_type = req.get("tool", "")
                 args = req.get("args") or {}
                 lines = self._renderer_handlers[custom_type](ctx, args.get("message") or {}, args.get("options") or {}, int(args.get("width") or 0))
+                self._respond(req_id, {"lines": lines}, None)
+            elif method == "render_tool":
+                lines = self._render_tool(ctx, req.get("tool", ""), req.get("args") or {})
                 self._respond(req_id, {"lines": lines}, None)
             elif method == "render_entry":
                 custom_type = req.get("tool", "")

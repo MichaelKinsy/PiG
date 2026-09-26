@@ -3,6 +3,9 @@
 use crate::context::{Context, ModelStreams, RemoteComponents, TerminalInputSubs};
 use crate::oauth::{OAuthLoginCallbacks, OAuthProvider, ProviderOAuthConfig};
 use crate::protocol::*;
+use crate::tool_render::{
+    ToolRenderContext, ToolRenderResult, ToolRenderResultOptions, ToolRenderShell, ToolRenderers,
+};
 use crate::transport::UnixStream;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -253,6 +256,7 @@ pub struct Extension {
     // oauth_fns holds OAuth closures for providers registered with an OAuth
     // capability, keyed by provider name for oauth_* dispatch.
     oauth_fns: HashMap<String, OAuthProvider>,
+    tool_renderers: ToolRenderers,
 }
 
 impl Extension {
@@ -276,7 +280,54 @@ impl Extension {
             renderer_fns: HashMap::new(),
             entry_renderer_fns: HashMap::new(),
             oauth_fns: HashMap::new(),
+            tool_renderers: ToolRenderers::default(),
         }
+    }
+
+    /// Set the render shell of the registered tool `name` (upstream
+    /// ToolDefinition.renderShell).
+    pub fn tool_render_shell(&mut self, name: &str, shell: ToolRenderShell) {
+        for tool in self.tools.iter_mut().filter(|tool| tool.name == name) {
+            tool.render_shell = (shell == ToolRenderShell::SelfShell).then(|| "self".to_string());
+        }
+    }
+
+    /// Set the call renderer of the registered tool `name` (upstream
+    /// ToolDefinition.renderCall). An error draws upstream's fallback.
+    pub fn render_tool_call(
+        &mut self,
+        name: &str,
+        handler: impl Fn(&Context, Value, &mut ToolRenderContext, u32) -> Result<Vec<String>, String>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        for tool in self.tools.iter_mut().filter(|tool| tool.name == name) {
+            tool.renders_call = true;
+        }
+        self.tool_renderers.call.insert(name.to_string(), Box::new(handler));
+    }
+
+    /// Set the result renderer of the registered tool `name` (upstream
+    /// ToolDefinition.renderResult). An error draws upstream's fallback.
+    pub fn render_tool_result(
+        &mut self,
+        name: &str,
+        handler: impl Fn(
+            &Context,
+            ToolRenderResult,
+            ToolRenderResultOptions,
+            &mut ToolRenderContext,
+            u32,
+        ) -> Result<Vec<String>, String>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        for tool in self.tools.iter_mut().filter(|tool| tool.name == name) {
+            tool.renders_result = true;
+        }
+        self.tool_renderers.result.insert(name.to_string(), Box::new(handler));
     }
 
     /// Returns the extension's registered name.
@@ -300,6 +351,9 @@ impl Extension {
             constrained_sampling: None,
             prompt_guidelines: Vec::new(),
             source: None,
+            render_shell: None,
+            renders_call: false,
+            renders_result: false,
         });
         self.tool_fns.insert(n, Box::new(handler));
     }
@@ -337,6 +391,9 @@ impl Extension {
             constrained_sampling: None,
             prompt_guidelines: guidelines,
             source: None,
+            render_shell: None,
+            renders_call: false,
+            renders_result: false,
         });
         self.tool_fns.insert(n, Box::new(handler));
     }
@@ -363,6 +420,9 @@ impl Extension {
             constrained_sampling: None,
             prompt_guidelines: guidelines,
             source: Some(source.into()),
+            render_shell: None,
+            renders_call: false,
+            renders_result: false,
         });
         self.tool_fns.insert(n, Box::new(handler));
     }
@@ -387,6 +447,9 @@ impl Extension {
             constrained_sampling: Some(sampling),
             prompt_guidelines: Vec::new(),
             source: None,
+            render_shell: None,
+            renders_call: false,
+            renders_result: false,
         });
         self.tool_fns.insert(n, Box::new(handler));
     }
@@ -738,6 +801,9 @@ impl Extension {
                 "notify" => {
                     if let Some(notify) = env.notify {
                         match notify.method.as_str() {
+                            "tool_render_release" => {
+                                ext.tool_renderers.release(notify.args.as_ref());
+                            }
                             "model_stream_event" => {
                                 if let Some(args) = &notify.args {
                                     let stream_id = args.get("streamId").and_then(|value| value.as_str()).unwrap_or("");
@@ -1220,6 +1286,18 @@ impl Extension {
                             message: format!("unknown renderer: {}", custom_type),
                         }),
                     );
+                }
+            }
+            "render_tool" => {
+                let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                let tool = req.tool.as_deref().unwrap_or("");
+                match self.tool_renderers.render(&ctx, conn, tool, req.args.as_ref()) {
+                    Ok(lines) => {
+                        let _ = conn.respond(id, Some(serde_json::json!({"lines": lines})), None);
+                    }
+                    Err(message) => {
+                        let _ = conn.respond(id, None, Some(ErrorInfo { code: None, message }));
+                    }
                 }
             }
             "render_entry" => {

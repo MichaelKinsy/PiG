@@ -897,6 +897,10 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			}
 			tui.RefreshActiveThemeColorMode()
 
+			// 8c. Upstream rebuilds the loaded-resources listing from the
+			//     reloaded resources (showLoadedResources after reload).
+			m.showLoadedResources(false)
+
 			// 9. Rebuild autocomplete (may have new slash commands from
 			//    reloaded extensions).
 			m.editor.SetAutocomplete(m.buildAutocompleteProvider())

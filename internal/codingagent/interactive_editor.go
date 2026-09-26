@@ -106,6 +106,10 @@ func (m *InteractiveMode) setAllToolsExpanded(expanded bool) {
 	for _, custom := range customMessages {
 		custom.SetExpanded(expanded)
 	}
+	for _, section := range m.loadedResourceSections {
+		section.SetExpanded(expanded)
+	}
+	m.showStatus("Tool output: " + map[bool]string{true: "expanded", false: "collapsed"}[expanded])
 	if !expanded && m.tuiInst != nil {
 		// Collapsing can remove more rows than the viewport contains. Those
 		// expanded rows already live in native scrollback and differential

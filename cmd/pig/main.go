@@ -1596,6 +1596,7 @@ func main() {
 		SkillPaths:                 skillInputs,
 		NoSkills:                   flags.NoSkills,
 		ContextFiles:               projectCtxFiles,
+		SystemPromptSourcePaths:    resolvedPrompts.sourcePaths,
 		SessionHandle:              codingSess,
 		ResumePath:                 displayResumePath,
 		ModelBuilder: func(spec string) (*ai.Model, error) {

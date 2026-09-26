@@ -413,6 +413,14 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	if strings.Contains(lastText, "Run: extension UI dialogs") {
 		return "tool", "", []testFauxToolCall{{Name: "ui_dialog_probe", Args: map[string]any{}}}
 	}
+	if strings.Contains(lastText, "Run: extension render cards") {
+		return "tool", "", []testFauxToolCall{
+			{Name: "render_card", Args: map[string]any{"topic": "alpha"}},
+			{Name: "render_self", Args: map[string]any{"topic": "beta"}},
+			{Name: "render_throw", Args: map[string]any{"topic": "gamma"}},
+			{Name: "render_fail", Args: map[string]any{"topic": "delta"}},
+		}
+	}
 
 	// Extension tool_call blocker parity.
 	if strings.Contains(lastText, "Run: bash BLOCK_ME") {
@@ -547,6 +555,12 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 				return "text", "details-probe-done", nil
 			}
 			return "error", "test-faux: extension details marker missing", nil
+		}
+		if strings.Contains(currentUserText, "Run: extension render cards") {
+			if strings.Contains(historyText, "done alpha") && strings.Contains(historyText, "cannot render delta") {
+				return "text", "render-cards-done", nil
+			}
+			return "error", "test-faux: render card results missing", nil
 		}
 		if strings.Contains(currentUserText, "Run: extension UI dialogs") {
 			for _, marker := range []string{"dialogs-ok:", "dialogs-cancelled:"} {

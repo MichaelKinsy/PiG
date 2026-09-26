@@ -24,7 +24,7 @@ Pig preserves upstream pi-coding-agent's observable behavior unless an entry bel
 | D56 | Subprocess liveness | Heartbeats, request-state reporting, and renderer isolation for subprocess extensions. See [Extension API](extension-api.md). |
 | D57 | Unloadable install source refused | `pig install` fails when a complete conventional extension source is selected as a Package root and nothing would load, and records nothing. Pi reports success and the resources never load. Empty packages still install. See [Extensions](extensions.md). |
 | D58 | Over-wide Mermaid | A Mermaid diagram wider than the message area is laid out again, narrower, until it fits. |
-| D59 | Recoverable generic tool details | A generic extension tool card uses a width-aware argument preview. Press Ctrl+O to show the complete retained arguments and available result. Pi hides arguments when a registered extension does not provide a call renderer. |
+| D59 | Recoverable generic tool details | An extension tool card without renderers uses a width-aware argument preview. Press Ctrl+O to show the complete retained arguments and available result. Pi hides arguments when a registered extension tool provides no renderers. |
 | D61 | Session replacement | Replacing the session keeps the startup project's Services and Resources. |
 | D62 | `/bug` | Writes a local report archive and prints a prefilled PiG issue link. Nothing is uploaded. |
 | D63 | `pig --version` | Prints the composite version, the PiG release then the Pi release it ports (`coding.Version`). `pig version` keeps separate fields. |
@@ -37,6 +37,7 @@ Pig preserves upstream pi-coding-agent's observable behavior unless an entry bel
 | D70 | Module state across reload | `/reload` restarts every extension in a fresh process, so module-level state resets. Pi re-runs every factory too, but keeps an `.mjs` module's module-level state in Node's module cache. Keep per-reload state inside the factory. |
 | D73 | Host-bound Pi exports in extensions | Extensions can import every value Pi's packages export. Pi's own code backs the pure ones, including pi-tui's `Input`, `Editor`, `SelectList`, `Markdown` and `KeybindingsManager` and pi-ai's utilities. Values that belong to Pi's own process (its UI components, session and runtime construction, package loading, the terminal and its capabilities, images, pi-ai's session-resource cleanups) throw a named error if an extension calls them. Keybinding overrides stay in the host. |
 | D74 | Pi-ai provider calls in extensions | An extension's `stream`, `complete`, `streamSimple` and `completeSimple` use Pi's own dispatch and credential rules, and the request runs on PiG's port of the same provider. Provider-specific `stream()` options beyond the common ones are not forwarded, results lack `responseId` and `rawStopReason`, and OpenRouter image generation returns an error. |
+| D75 | Built-in tool override with one renderer | An extension tool that overrides a built-in tool name and defines only one of `renderCall` and `renderResult` keeps PiG's built-in card. Pi fills the missing renderer from the built-in pair. An override with both renderers draws them. |
 
 ## Additive features
 

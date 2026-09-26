@@ -273,6 +273,17 @@ function classify(messages: any[]) {
   if (lastText.includes("Run: extension echo hello")) {
     return { kind: "tool", toolCalls: [{ toolName: "echo_bridge", toolArgs: { text: "hello" } }] };
   }
+  if (lastText.includes("Run: extension render cards")) {
+    return {
+      kind: "tool",
+      toolCalls: [
+        { toolName: "render_card", toolArgs: { topic: "alpha" } },
+        { toolName: "render_self", toolArgs: { topic: "beta" } },
+        { toolName: "render_throw", toolArgs: { topic: "gamma" } },
+        { toolName: "render_fail", toolArgs: { topic: "delta" } },
+      ],
+    };
+  }
   if (lastText.includes("Run: extension details")) {
     return {
       kind: "tool",
@@ -369,6 +380,12 @@ function classify(messages: any[]) {
         return { kind: "text", text: "details-probe-done" };
       }
       return { kind: "error", text: "test-faux: extension details marker missing" };
+    }
+    if (currentUserText.includes("Run: extension render cards")) {
+      if (historyText.includes("done alpha") && historyText.includes("cannot render delta")) {
+        return { kind: "text", text: "render-cards-done" };
+      }
+      return { kind: "error", text: "test-faux: render card results missing" };
     }
     if (currentUserText.includes("Run: extension UI dialogs")) {
       for (const marker of ["dialogs-ok:", "dialogs-cancelled:"]) {

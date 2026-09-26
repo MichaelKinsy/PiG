@@ -30,6 +30,11 @@ type ToolRenderContext struct {
 	Expanded         bool      `json:"expanded"`
 	ShowImages       bool      `json:"showImages"`
 	IsError          bool      `json:"isError"`
+	// Card identifies the tool card being rendered. Go mechanic (not a
+	// divergence): a renderer that runs in an extension process keeps State
+	// and its last component there, so the host names the card they belong
+	// to; upstream passes the card's objects themselves.
+	Card string `json:"-"`
 }
 
 // ToolRenderShell controls whether the standard tool-execution chrome wraps

@@ -106,6 +106,15 @@ pub struct ToolDef {
     pub prompt_guidelines: Vec<String>,
     #[serde(skip_serializing_if = "Option::is_none", default)]
     pub source: Option<String>,
+    /// "self" when the tool's renderers draw their own framing.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub render_shell: Option<String>,
+    /// The tool has a call renderer.
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    pub renders_call: bool,
+    /// The tool has a result renderer.
+    #[serde(skip_serializing_if = "std::ops::Not::not", default)]
+    pub renders_result: bool,
 }
 
 /// Provider-side constrained sampling request for a tool. `type` is "json_schema"

@@ -2,7 +2,8 @@ use pig_sdk::{
     CommandResult, ConstrainedSampling, Extension, LoginDefinition, OAuthCredentialStatus,
     OAuthCredentialStore, OAuthCredentials, OAuthDeviceCodeInfo, OAuthPrompt, OAuthProvider,
     ProjectTrustDecision, ProjectTrustResult, RemoteComponent, RemoteComponentInvalidate,
-    RemoteComponentResult, TerminalInputResult, TerminalInputSubscription, ToolResult,
+    RemoteComponentResult, TerminalInputResult, TerminalInputSubscription, ToolRenderShell,
+    ToolResult,
 };
 use serde_json::{Value, json};
 use std::sync::{
@@ -158,6 +159,31 @@ fn main() {
         let data = entry.get("data").and_then(Value::as_str).unwrap_or("");
         Ok(vec![format!(
             "entryrenderer:{data}:expanded={}:width={width}",
+            options.expanded
+        )])
+    });
+    ext.tool(
+        "render_probe",
+        "Render its own tool card",
+        json!({"type": "object", "properties": {}}),
+        |_ctx, _params| ToolResult::text("render ok"),
+    );
+    ext.tool_render_shell("render_probe", ToolRenderShell::SelfShell);
+    ext.render_tool_call("render_probe", |_ctx, args, render, width| {
+        let calls = render.state.get("calls").and_then(Value::as_u64).unwrap_or(0) + 1;
+        render.state.insert("calls".to_string(), json!(calls));
+        let topic = args.get("topic").and_then(Value::as_str).unwrap_or("");
+        Ok(vec![format!(
+            "toolrender:call:{topic}:partial={}:calls={calls}:width={width}",
+            render.is_partial
+        )])
+    });
+    ext.render_tool_result("render_probe", |_ctx, result, options, render, width| {
+        let text = result.content[0].get("text").and_then(Value::as_str).unwrap_or("");
+        let key = result.details.get("k").and_then(Value::as_str).unwrap_or("");
+        let calls = render.state.get("calls").cloned().unwrap_or(Value::Null);
+        Ok(vec![format!(
+            "toolrender:result:{text}:{key}:expanded={}:calls={calls}:width={width}",
             options.expanded
         )])
     });

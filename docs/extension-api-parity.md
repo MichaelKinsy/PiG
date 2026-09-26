@@ -230,9 +230,9 @@ reload.
 | `onUpdate` streaming | `tool_update` notify delivered to the running tool in frame order, before its result; `signal` is the request's cancellation (Node `AbortSignal`, Go `ctx.Done()`, Rust/Python `is_cancelled`) | `TestToolSignalAndUpdatesSDKsMatch` across in-process Go and Go/Node/Rust/Python subprocesses | complete |
 | `terminate` | `terminate` field on the wire tool result | `rich_tool` row of `TestConformance_TransportsMatch`; batch semantics owned by the agent loop | partial |
 | throw-to-error behavior | thrown errors mark result `isError` | tool error scenario | planned |
-| `renderCall` | declarative renderer protocol or accepted divergence | custom renderer scenario | planned |
-| `renderResult` | declarative renderer protocol or accepted divergence | custom renderer scenario | planned |
-| `renderShell` | renderer shell selection | self-shell/fallback scenario | planned |
+| `renderCall` | the tool card runs it on every card state change, with one renderer state per card shared with `renderResult`, the renderer's last component, and `context.invalidate` rerunning both. A Node extension returns its own component; the host requests `render_tool` off the TUI loop and keeps the last frame (D56). Go/Rust/Python renderers return lines. A renderer that throws draws upstream's fallback. An override of a built-in tool that supplies only one renderer keeps the built-in card (D75). | `TestNodeToolRenderersRunInTheExtensionProcess`, `TestToolRenderersAcrossSDKs`, the `tool_renderer` row of `TestConformance_TransportsMatch`, `TestDefinitionCard*`, `TestInteractiveModeDrawsToolDefinitionRenderers`, and `extensions-runtime/24-tool-renderers-collapsed` and `25-tool-renderers-expanded` | complete |
+| `renderResult` | as `renderCall`, with the partial result and `isPartial` while the tool streams, then the final result; a result never changes the card's expansion | as `renderCall` | complete |
+| `renderShell` | `"self"` draws the renderers after one blank line and nothing when they draw nothing; the default shell is upstream's padded Box in the lifecycle background | `TestDefinitionCardSelfShell`, `TestDefinitionCardDefaultShell`, and the tool-renderer scenarios | complete |
 | Built-in tool override | same-name registration override semantics | override `read` scenario | planned |
 | Active tool management | active set host API | dynamic tools scenario | planned |
 | File mutation queue | host API equivalent | concurrent edit/write scenario | planned |

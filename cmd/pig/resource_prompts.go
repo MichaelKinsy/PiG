@@ -13,6 +13,10 @@ import (
 type resolvedPromptInputs struct {
 	custom string
 	append string
+	// sourcePaths are the existing files the custom and then each append
+	// input came from, as upstream reports getSystemPromptSource and
+	// getAppendSystemPromptSources.
+	sourcePaths []string
 }
 
 // resolvePromptInputs applies the resource-loader precedence shared by every
@@ -34,9 +38,22 @@ func resolvePromptInputs(cwd, agentDir string, flags CLIFlags, projectTrusted bo
 			resolvedAppend = append(resolvedAppend, value)
 		}
 	}
+	var sourcePaths []string
+	for _, source := range append([]string{customSource}, appendSources...) {
+		if source == "" {
+			continue
+		}
+		if _, err := os.Stat(source); err == nil {
+			if absolute, err := filepath.Abs(source); err == nil {
+				source = absolute
+			}
+			sourcePaths = append(sourcePaths, source)
+		}
+	}
 	return resolvedPromptInputs{
-		custom: resolvePromptInput(customSource, "system prompt"),
-		append: strings.Join(resolvedAppend, "\n\n"),
+		custom:      resolvePromptInput(customSource, "system prompt"),
+		append:      strings.Join(resolvedAppend, "\n\n"),
+		sourcePaths: sourcePaths,
 	}
 }
 

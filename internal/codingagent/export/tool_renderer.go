@@ -94,10 +94,18 @@ func trimRenderedResultLines(lines []string) []string {
 
 func renderComponentHTML(component any, width int) string {
 	renderable, ok := component.(renderableComponent)
-	if !ok || renderable == nil {
+	if !ok || renderable == nil || rendersAsynchronously(component) {
 		return ""
 	}
 	return ansiLinesToHTML(renderable.Render(width))
+}
+
+// rendersAsynchronously reports a component an extension process renders. Its
+// frame arrives after the export has finished, so the export uses the default
+// tool rendering for it.
+func rendersAsynchronously(component any) bool {
+	_, async := component.(tui.RendererFallback)
+	return async
 }
 
 func (r *toolHTMLRenderer) renderCall(toolCallID, toolName string, argsJSON json.RawMessage) string {
@@ -118,6 +126,9 @@ func (r *toolHTMLRenderer) renderResult(toolCallID, toolName string, result agen
 	}
 	collapsedComponent := def.RenderResult(result, extension.ToolRenderResultOptions{Expanded: false, IsPartial: false}, tui.ActiveTheme(), r.renderContext(toolCallID, r.renderedResult[toolCallID], false, false, result.IsError))
 	r.renderedResult[toolCallID] = collapsedComponent
+	if rendersAsynchronously(collapsedComponent) {
+		return renderedToolHTML{}
+	}
 	collapsedRenderable, _ := collapsedComponent.(renderableComponent)
 	collapsed := ""
 	if collapsedRenderable != nil {
