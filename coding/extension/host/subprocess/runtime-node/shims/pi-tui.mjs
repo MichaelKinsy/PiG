@@ -18,6 +18,7 @@ export {
 // under Pi, and PiG's renderer (widthx, held to the same code by
 // tui/widthx/pi_width_diff_test.go) agrees with every width they compute.
 import {
+  applyBackgroundToLine,
   getOsc8LinkAtColumn,
   sliceByColumn,
   stripTerminalSequences,
@@ -64,6 +65,9 @@ export class Container extends Focusable {
   }
   addChild(child) { this.children.push(child); }
   removeChild(child) { this.children = this.children.filter((c) => c !== child); }
+  // Ported from pi-tui 0.87.1 tui.js Container.
+  clear() { this.children = []; }
+  invalidate() { for (const child of this.children) child?.invalidate?.(); }
   render(width = 80) { return this.children.flatMap((c) => c?.render?.(width) ?? []); }
 }
 
@@ -76,6 +80,7 @@ export class Text extends Component {
     this.customBgFn = customBgFn;
   }
   setText(text) { this.text = text; }
+  setCustomBgFn(customBgFn) { this.customBgFn = customBgFn; }
   render(width = 80) {
     if (!this.text || this.text.trim() === "") return [];
     const normalized = this.text.replace(/\t/g, "   ");
@@ -93,12 +98,16 @@ export class Text extends Component {
   }
 }
 
+// Ported from pi-tui 0.87.1 components/spacer.js.
 export class Spacer extends Component {
-  render() { return [""]; }
+  constructor(lines = 1) { super(); this.lines = lines; }
+  setLines(lines) { this.lines = lines; }
+  render() { return Array.from({ length: this.lines }, () => ""); }
 }
 
 export class Markdown extends Component {
   constructor(text = "") { super(); this.text = text; }
+  setText(text) { this.text = text; this.invalidate(); }
   render(width = 80) { return wrapTextWithAnsi(this.text, width); }
 }
 
@@ -129,7 +138,59 @@ export class Input extends Focusable {
 export class Editor extends Input {}
 export class SelectItem { constructor(label, value = label) { this.label = label; this.value = value; } }
 export class SelectList extends Focusable { constructor(items = []) { super(); this.items = items; } }
-export class Box extends Container {}
+// Ported from pi-tui 0.87.1 components/box.js: a container that applies
+// padding and a background to its children.
+export class Box extends Container {
+  constructor(paddingX = 1, paddingY = 1, bgFn = undefined) {
+    super();
+    this.paddingX = paddingX;
+    this.paddingY = paddingY;
+    this.bgFn = bgFn;
+    this.cache = undefined;
+  }
+  addChild(component) { this.children.push(component); this.invalidateCache(); }
+  removeChild(component) {
+    const index = this.children.indexOf(component);
+    if (index !== -1) {
+      this.children.splice(index, 1);
+      this.invalidateCache();
+    }
+  }
+  clear() { this.children = []; this.invalidateCache(); }
+  setBgFn(bgFn) { this.bgFn = bgFn; }
+  invalidateCache() { this.cache = undefined; }
+  matchCache(width, childLines, bgSample) {
+    const cache = this.cache;
+    return !!cache && cache.width === width && cache.bgSample === bgSample &&
+      cache.childLines.length === childLines.length && cache.childLines.every((line, i) => line === childLines[i]);
+  }
+  invalidate() {
+    this.invalidateCache();
+    for (const child of this.children) child?.invalidate?.();
+  }
+  render(width = 80) {
+    if (this.children.length === 0) return [];
+    const contentWidth = Math.max(1, width - this.paddingX * 2);
+    const leftPad = " ".repeat(this.paddingX);
+    const childLines = [];
+    for (const child of this.children) {
+      for (const line of child.render(contentWidth)) childLines.push(leftPad + line);
+    }
+    if (childLines.length === 0) return [];
+    const bgSample = this.bgFn ? this.bgFn("test") : undefined;
+    if (this.matchCache(width, childLines, bgSample)) return this.cache.lines;
+    const result = [];
+    for (let i = 0; i < this.paddingY; i++) result.push(this.applyBg("", width));
+    for (const line of childLines) result.push(this.applyBg(line, width));
+    for (let i = 0; i < this.paddingY; i++) result.push(this.applyBg("", width));
+    this.cache = { childLines, width, bgSample, lines: result };
+    return result;
+  }
+  applyBg(line, width) {
+    const padded = line + " ".repeat(Math.max(0, width - visibleWidth(line)));
+    return this.bgFn ? applyBackgroundToLine(padded, width, this.bgFn) : padded;
+  }
+}
 export class TUI {}
 export class KeybindingsManager {}
 export class OverlayHandle {}
@@ -237,6 +298,7 @@ export class Stack extends Component {
   }
   addChild(child) { this.entries.push(normalizeStackChild(child)); }
   removeChild(component) { this.entries = this.entries.filter((entry) => entry.component !== component); }
+  clear() { this.entries.length = 0; }
   invalidate() { for (const entry of this.entries) entry.component?.invalidate?.(); }
 }
 

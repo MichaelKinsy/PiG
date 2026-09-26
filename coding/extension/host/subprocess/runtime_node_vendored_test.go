@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"testing"
@@ -101,5 +102,53 @@ func TestVendoredPiTuiUtilsMatchThePinnedPackage(t *testing.T) {
 		if !bytes.Equal(got, readPinned(t, "node_modules", "get-east-asian-width", name)) {
 			t.Fatalf("vendored get-east-asian-width/%s differs from the pinned dependency: run automation/gen/vendor-pi-tui-utils.sh", name)
 		}
+	}
+}
+
+// The runtime's pi-tui layout components render byte-for-byte like the pinned
+// package's: extensions (pi-mcp-adapter, pi-rtk-optimizer) compose panels from
+// Box, Container, Text and Spacer and call their setters and clear().
+func TestPiTuiLayoutComponentsMatchThePinnedPackage(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatalf("node is required: %v", err)
+	}
+	readPinned(t, "node_modules", "@earendil-works", "pi-tui", "package.json")
+	pinned, err := filepath.Abs(filepath.Join(pinnedPiPackages, "node_modules", "@earendil-works", "pi-tui", "dist", "index.js"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	shim, err := filepath.Abs(filepath.Join("runtime-node", "shims", "pi-tui.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	script := `const [pi, pig] = await Promise.all([import(process.argv[1]), import(process.argv[2])]);
+const bg = (s) => "\x1b[44m" + s + "\x1b[49m";
+function scene(m) {
+  const box = new m.Box(2, 1, bg);
+  box.addChild(new m.Text("Hello, \x1b[1mbold\x1b[22m wrapped text that runs past the width", 1, 0));
+  box.addChild(new m.Spacer(2));
+  const text = new m.Text("second", 0, 0);
+  text.setCustomBgFn(bg);
+  box.addChild(text);
+  const out = [box.render(24)];
+  box.setBgFn(undefined);
+  out.push(box.render(24));
+  const spacer = new m.Spacer();
+  spacer.setLines(3);
+  const container = new m.Container();
+  container.addChild(box);
+  container.addChild(spacer);
+  out.push(container.render(30));
+  container.clear();
+  box.clear();
+  out.push(container.render(30), box.render(30));
+  return JSON.stringify(out);
+}
+const want = scene(pi), got = scene(pig);
+if (want !== got) { console.log("pinned: " + want + "\npig:    " + got); process.exit(1); }`
+	cmd := exec.Command(node, "--input-type=module", "--eval", script, "file://"+filepath.ToSlash(pinned), "file://"+filepath.ToSlash(shim))
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("pi-tui layout components differ: %v\n%s", err, output)
 	}
 }
