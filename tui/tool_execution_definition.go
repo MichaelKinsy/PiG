@@ -222,10 +222,9 @@ func (c *ToolExecutionComponent) renderDefinition(width int) []string {
 		if len(content) == 0 && len(images) == 0 {
 			return []string{}
 		}
-		out := make([]string, 0, len(content)+len(images)+1)
+		var out []string
 		if len(content) > 0 {
-			out = append(out, "")
-			out = append(out, content...)
+			out = append([]string{""}, content...)
 		}
 		return append(out, images...)
 	}
