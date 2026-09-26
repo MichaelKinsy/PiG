@@ -137,7 +137,7 @@ func TestAutoDiscoveredIndexExtensionReportsEntryFile(t *testing.T) {
 	broken := filepath.Join(agentDir, "extensions", "brokendir")
 	entry := filepath.Join(broken, "index.js")
 	writeStartupFixtureFile(t, entry, "export default function () { throw new Error(\"register boom\"); }\n")
-	configs := collectTopLevelExtensionConfigs(filepath.Join(agentDir, "extensions"), nil)
+	configs := collectTopLevelExtensionConfigs(filepath.Join(agentDir, "extensions"), nil, "user")
 	if len(configs) != 1 || configs[0].Name != "brokendir" || configs[0].Source != broken {
 		t.Fatalf("configs = %#v, want the brokendir directory selected", configs)
 	}
@@ -312,7 +312,7 @@ func TestTopLevelExtensionDirectoryLoadsEachManifestEntry(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	configs := collectTopLevelExtensionConfigs(autoDir, nil)
+	configs := collectTopLevelExtensionConfigs(autoDir, nil, "user")
 	if len(configs) != 2 {
 		t.Fatalf("configs = %#v, want one per manifest entry", configs)
 	}

@@ -14,20 +14,20 @@ var toolCardSeq atomic.Uint64
 
 // usesToolDefinitionRenderers reports whether a registered tool definition
 // draws its own card, as upstream ToolExecutionComponent does for a
-// definition with renderers. An override of a built-in tool name keeps the
-// built-in card unless it supplies both renderers.
+// definition with renderers. An extension override of a built-in tool name
+// always does: upstream withBuiltInRenderers gives it the built-in renderers
+// it does not define.
 func usesToolDefinitionRenderers(name string, definition extension.ToolDefinition) bool {
-	if definition.RenderCall == nil && definition.RenderResult == nil && definition.RenderShell != extension.ToolRenderShellSelf {
-		return false
+	if tui.HasBuiltInToolRenderers(name) {
+		return true
 	}
-	// pig divergence (D75): upstream fills the missing half of a built-in
-	// override from the built-in renderers; PiG keeps its built-in card.
-	return !tui.HasBuiltInToolRenderers(name) || (definition.RenderCall != nil && definition.RenderResult != nil)
+	return definition.RenderCall != nil || definition.RenderResult != nil || definition.RenderShell == extension.ToolRenderShellSelf
 }
 
 // applyToolPresentation selects how an extension tool's card draws: a
 // definition with renderers draws them as upstream does, and one without uses
-// the generic details card (D59). Built-in tools keep their renderers.
+// the generic details card (D59). Built-in tools without an extension
+// override keep their built-in card.
 func (m *InteractiveMode) applyToolPresentation(comp *tui.ToolExecutionComponent, toolCallID, name string, args json.RawMessage) {
 	if comp == nil || m.newRunner == nil {
 		return
@@ -38,6 +38,7 @@ func (m *InteractiveMode) applyToolPresentation(comp *tui.ToolExecutionComponent
 	}
 	definition, ok := m.newRunner.GetToolDefinition(name)
 	if ok && usesToolDefinitionRenderers(name, definition) {
+		definition = withBuiltInRenderers(name, definition)
 		comp.SetDefinition(m.toolDefinitionRenderers(definition, comp, toolCallID), args)
 		return
 	}

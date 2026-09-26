@@ -280,7 +280,7 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 2 registrati
 | `compaction` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
 | `export-html` | 5 | 5 | 0 | 0 | 0 | 5 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 25 | 25 | 0 | 0 | 0 | 25 | not run |
+| `extensions-runtime` | 27 | 27 | 0 | 0 | 0 | 28 | not run |
 | `footer` | 7 | 7 | 0 | 0 | 0 | 8 | not run |
 | `fullscreen` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
 | `interactive-rendering` | 29 | 27 | 2 | 0 | 0 | 25 | not run |
@@ -292,7 +292,7 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 2 registrati
 | `project-trust` | 8 | 8 | 0 | 0 | 0 | 13 | not run |
 | `providers-faux-streaming` | 10 | 9 | 0 | 1 | 0 | 14 | not run |
 | `providers-registry` | 5 | 3 | 0 | 2 | 0 | 26 | not run |
-| `rpc` | 26 | 26 | 0 | 0 | 0 | 10 | not run |
+| `rpc` | 27 | 27 | 0 | 0 | 0 | 11 | not run |
 | `selectors` | 9 | 9 | 0 | 0 | 1 | 14 | not run |
 | `session` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
 | `settings` | 7 | 7 | 0 | 0 | 0 | 13 | not run |

@@ -851,6 +851,7 @@ export class Runtime {
           name: cmd.name,
           description: cmd.description || "",
           args: cmd.args,
+          argument_completions: typeof cmd.getArgumentCompletions === "function" || undefined,
         })),
         shortcuts: [...this.shortcuts.values()].map((s) => ({ key: s.key, description: s.description || "" })),
         handlers: [...this.handlers.entries()].flatMap(([event, handlers]) =>
@@ -1817,6 +1818,13 @@ export class Runtime {
             done = true;
           }
           await this.respond(id, this.normalizeToolResult(result));
+          return;
+        }
+        case "command_argument_completions": {
+          const cmd = this.commands.get(request.tool);
+          if (typeof cmd?.getArgumentCompletions !== "function") throw new Error(`command ${request.tool} has no getArgumentCompletions`);
+          const items = await cmd.getArgumentCompletions(request.args ?? "");
+          await this.respond(id, Array.isArray(items) ? items : null);
           return;
         }
         case "command": {

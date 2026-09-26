@@ -49,8 +49,8 @@ func (m *InteractiveMode) setGenericToolArgs(comp *tui.ToolExecutionComponent, n
 		return
 	}
 	definition, ok := m.newRunner.GetToolDefinition(name)
-	// An override of a built-in name without its own renderCall keeps the
-	// built-in renderers (upstream renderers/index.ts withBuiltInRenderers).
+	// An override of a built-in name draws the built-in renderers it does not
+	// define (upstream renderers/index.ts withBuiltInRenderers).
 	if !ok || definition.RenderCall != nil || tui.HasBuiltInToolRenderers(name) {
 		return
 	}

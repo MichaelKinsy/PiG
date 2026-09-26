@@ -75,6 +75,9 @@ type printModeRuntime struct {
 	// pi.getAllTools() reports (see toolRegistryFilters).
 	ToolRegistryAllowed  map[string]struct{}
 	ToolRegistryExcluded map[string]struct{}
+	// SystemPromptSections rebuilds the session's system prompt with the
+	// skills extensions discovered (upstream _rebuildSystemPrompt).
+	SystemPromptSections func(skills []*codingagent.SkillDef) ai.OrderedSections
 }
 
 // printModeOptions mirrors upstream PrintModeOptions (print-mode.ts).
@@ -198,12 +201,16 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 		// Print mode binds no UI; ctx.ui.notify does nothing.
 		commands.notify = func(string, string) {}
 	}
+	// Extension host calls read the published copy of the catalog; this
+	// goroutine alone changes commands.
+	var publishedCommands atomic.Pointer[headlessCommandCatalog]
+	publishedCommands.Store(new(commands))
 	if host.Bridge != nil {
 		host.Bridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
 			return codingagent.ExtensionToolInfos(runner, host.ToolRegistryAllowed, host.ToolRegistryExcluded)
 		})
 		host.Bridge.SetHostAction("getCommands", func() []subprocess.CommandInfo {
-			return commands.slashCatalog().SubprocessCommands()
+			return publishedCommands.Load().slashCatalog().SubprocessCommands()
 		})
 	}
 
@@ -286,6 +293,10 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 	// session_start (and clean up on session_shutdown) run in print mode too,
 	// not only interactive.
 	sess.EmitSessionStart("startup")
+	if commands.extendFromExtensions(ctx, runner, "startup") && host.SystemPromptSections != nil {
+		sess.SetSystemPromptSections(host.SystemPromptSections(commands.skills))
+	}
+	publishedCommands.Store(new(commands))
 
 	// A termination signal ends the run where it is: upstream's handler
 	// disposes the runtime and exits, so no later prompt starts.

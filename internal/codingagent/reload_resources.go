@@ -226,6 +226,22 @@ func extensionBaseDir(extensionPath string) string {
 	return filepath.Dir(extensionPath)
 }
 
+// ExtensionDiscoveredSourceInfo is the provenance upstream
+// buildExtensionResourcePaths records for a resource path an extension's
+// resources_discover handler returned: source "extension:<name>", scope
+// "temporary", and the extension's directory as baseDir.
+func ExtensionDiscoveredSourceInfo(path, kind, extensionPath string) ResourceSourceInfo {
+	return ResourceSourceInfo{
+		Path:         path,
+		ResourceType: kind,
+		Enabled:      true,
+		Scope:        "temporary",
+		Origin:       "top-level",
+		Source:       extensionSourceLabel(extensionPath),
+		BaseDir:      extensionBaseDir(extensionPath),
+	}
+}
+
 // extendResourcesFromExtensions merges extension-discovered resources. Its
 // caller shows the final prompt diagnostics once, as upstream
 // showLoadedResources does after startup and after reload.
@@ -245,39 +261,15 @@ func (m *InteractiveMode) extendResourcesFromExtensions(reason string) {
 	}
 	for _, entry := range agg.SkillPaths {
 		m.opts.SkillPaths = mergeUniqueStrings(m.opts.SkillPaths, entry.Path)
-		m.resourceSourceInfo[entry.Path] = ResourceSourceInfo{
-			Path:         entry.Path,
-			ResourceType: "skills",
-			Enabled:      true,
-			Scope:        "temporary",
-			Origin:       "top-level",
-			Source:       extensionSourceLabel(entry.ExtensionPath),
-			BaseDir:      extensionBaseDir(entry.ExtensionPath),
-		}
+		m.resourceSourceInfo[entry.Path] = ExtensionDiscoveredSourceInfo(entry.Path, "skills", entry.ExtensionPath)
 	}
 	for _, entry := range agg.PromptPaths {
 		m.opts.PromptPaths = mergeUniqueStrings(m.opts.PromptPaths, entry.Path)
-		m.resourceSourceInfo[entry.Path] = ResourceSourceInfo{
-			Path:         entry.Path,
-			ResourceType: "prompts",
-			Enabled:      true,
-			Scope:        "temporary",
-			Origin:       "top-level",
-			Source:       extensionSourceLabel(entry.ExtensionPath),
-			BaseDir:      extensionBaseDir(entry.ExtensionPath),
-		}
+		m.resourceSourceInfo[entry.Path] = ExtensionDiscoveredSourceInfo(entry.Path, "prompts", entry.ExtensionPath)
 	}
 	for _, entry := range agg.ThemePaths {
 		m.opts.ThemePaths = mergeUniqueStrings(m.opts.ThemePaths, entry.Path)
-		m.resourceSourceInfo[entry.Path] = ResourceSourceInfo{
-			Path:         entry.Path,
-			ResourceType: "themes",
-			Enabled:      true,
-			Scope:        "temporary",
-			Origin:       "top-level",
-			Source:       extensionSourceLabel(entry.ExtensionPath),
-			BaseDir:      extensionBaseDir(entry.ExtensionPath),
-		}
+		m.resourceSourceInfo[entry.Path] = ExtensionDiscoveredSourceInfo(entry.Path, "themes", entry.ExtensionPath)
 	}
 
 	if m.opts.NoPromptTemplates {

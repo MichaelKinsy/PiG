@@ -1,0 +1,5 @@
+{
+  "packages": ["git:github.com/pig-parity/order-fixture"],
+  "extensions": ["extra/user-settings.js"],
+  "defaultProjectTrust": "always"
+}

@@ -492,6 +492,11 @@ type InteractiveMode struct {
 	extensionErrorsMu      sync.Mutex
 	pendingExtensionErrors []extension.ExtensionError
 	extensionErrorWakeCh   chan struct{}
+
+	// commandArgumentCompletions serves extension commands'
+	// getArgumentCompletions to the editor.
+	argumentCompletionsOnce    sync.Once
+	commandArgumentCompletions *commandArgumentCompletions
 }
 
 // postUITask hands a closure to the main input loop to run

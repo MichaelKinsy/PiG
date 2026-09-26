@@ -421,6 +421,27 @@ func TestDiscoverUsesConventionalDirectories(t *testing.T) {
 	assertContains(t, resources.MCPFiles, filepath.Join(root, "mcp", "server.json"))
 }
 
+// Upstream collectPackageResources loads a Package with a "pi" manifest from
+// the entries it declares only: pi-mcp-adapter declares its extension and
+// ships skills/mcp-scripting, which only its resources_discover handler adds.
+func TestDiscoverPiManifestLoadsNoUndeclaredKind(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "package.json"), `{"name":"adapter","pi":{"extensions":["./index.ts"]}}`)
+	writeTestFile(t, filepath.Join(root, "index.ts"), "export default function extension(pi) {}\n")
+	writeTestFile(t, filepath.Join(root, "skills", "mcp-scripting", "SKILL.md"), "# scripting\n")
+	writeTestFile(t, filepath.Join(root, "prompts", "review.md"), "# prompt\n")
+	writeTestFile(t, filepath.Join(root, "themes", "dark.json"), `{}`)
+
+	resources, err := Discover(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertContains(t, resources.ExtensionEntries, filepath.Join(root, "index.ts"))
+	if len(resources.SkillDirs) != 0 || len(resources.PromptFiles) != 0 || len(resources.ThemeFiles) != 0 {
+		t.Fatalf("undeclared kinds loaded: skills %v prompts %v themes %v", resources.SkillDirs, resources.PromptFiles, resources.ThemeFiles)
+	}
+}
+
 func TestDiscoverDoesNotPromoteArbitraryPackageRootSource(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, "go.mod"), "module example.com/package\n\ngo 1.26\n")

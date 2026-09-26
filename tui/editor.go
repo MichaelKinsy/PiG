@@ -1301,6 +1301,15 @@ func (e *Editor) SetAutocomplete(p AutocompleteProvider) {
 	e.refreshAutocomplete()
 }
 
+// RefreshAutocomplete queries the provider again for the current buffer,
+// for a provider whose answer arrived after the keystroke that asked for it.
+func (e *Editor) RefreshAutocomplete() {
+	if e.autocomplete == nil {
+		return
+	}
+	e.refreshAutocomplete()
+}
+
 // AutocompleteOpen reports whether the popup is currently visible.
 // Used by the host (interactive.go) to gate Esc/Enter handling.
 func (e *Editor) AutocompleteOpen() bool { return len(e.autocompleteItems) > 0 }
@@ -1391,8 +1400,10 @@ func (e *Editor) AutocompleteAccept() (submit bool) {
 	e.lines = newLines
 	e.cursor = [2]int{nl, nc}
 	e.saveHistory()
-	// Slash-name prefix → submit. Anything else (arg completion) → no submit.
-	isSlashName := strings.HasPrefix(prefix, "/") && !strings.ContainsAny(prefix, " \t")
+	// A prefix that starts with "/" falls through to submit; anything else
+	// (an argument completion) does not (upstream editor.ts
+	// tui.select.confirm).
+	isSlashName := strings.HasPrefix(prefix, "/")
 	e.autocompleteItems = nil
 	e.autocompleteCursor = 0
 	e.autocompletePrefix = ""

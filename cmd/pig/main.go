@@ -1435,6 +1435,11 @@ func main() {
 			ResumePath:  printResumePath,
 			SessionName: sessionName,
 		}
+		host.SystemPromptSections = func(skills []*codingagent.SkillDef) ai.OrderedSections {
+			options := promptOptions
+			options.Skills = promptSkillsFor(skills)
+			return prompts.BuildSystemPromptSections(options)
+		}
 		if err := runPrintMode(ctx, host, printModeOptions{Mode: mode, Messages: extraMessages, InitialMessage: initialMessage, InitialImages: initialImages}); err != nil {
 			// A run stopped by a termination signal reports 128+signum and
 			// stays quiet, matching upstream's print-mode signal handlers.

@@ -436,10 +436,7 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 		}
 	}
 
-	promptSkills := make([]prompts.Skill, 0, len(resources.Skills))
-	for _, skill := range resources.Skills {
-		promptSkills = append(promptSkills, prompts.Skill{Name: skill.Name, Description: skill.Description, Path: skill.Path, DisableModelInvocation: skill.DisableModelInvocation})
-	}
+	promptSkills := promptSkillsFor(resources.Skills)
 	contextFiles := loadContextFiles(cwd, agentDir, flags.NoContextFiles)
 	resolvedPrompts := resolvePromptInputs(cwd, agentDir, flags, resources.ProjectTrusted)
 	promptOptions := prompts.Options{
@@ -494,6 +491,10 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 		cwd: cwd, agentDir: agentDir, sourceInfo: resources.SourceInfo,
 		llama: llamaHost, notify: rpcUI.Notify,
 	}
+	// Extension host calls read the published copy of the catalog; this
+	// goroutine alone changes commandCatalog.
+	var publishedCatalog atomic.Pointer[headlessCommandCatalog]
+	publishedCatalog.Store(new(commandCatalog))
 	// Session-backed actions (sendUserMessage, isIdle, abort,
 	// hasPendingMessages, waitForIdle) for in-process and subprocess
 	// extensions, as upstream rpc-mode binds the session in bindExtensions.
@@ -628,7 +629,7 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 			return codingagent.ExtensionToolInfos(runner, registryAllowed, registryExcluded)
 		})
 		subprocBridge.SetHostAction("getCommands", func() []subprocess.CommandInfo {
-			return commandCatalog.slashCatalog().SubprocessCommands()
+			return publishedCatalog.Load().slashCatalog().SubprocessCommands()
 		})
 		subprocBridge.SetHostAction("getSessionName", func() string { return sess.SessionName() })
 		subprocBridge.SetHostAction("getSessionID", func() string { return sess.ID() })
@@ -735,6 +736,11 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 	// after binding, with shutdown deferred so it only runs when start did.
 	sess.EmitSessionStart("startup")
 	defer sess.EmitSessionShutdown("quit")
+	if commandCatalog.extendFromExtensions(ctx, runner, "startup") {
+		promptOptions.Skills = promptSkillsFor(commandCatalog.skills)
+		sess.SetSystemPromptSections(prompts.BuildSystemPromptSections(promptOptions))
+	}
+	publishedCatalog.Store(new(commandCatalog))
 
 	// ── Event forwarder ────────────────────────────────────────────────────
 	// Forward upstream-compatible AgentSessionEvent JSON objects. Upstream pi

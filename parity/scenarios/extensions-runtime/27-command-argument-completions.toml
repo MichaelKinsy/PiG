@@ -1,0 +1,60 @@
+# Behavior family: extensions-runtime
+# Surface: an extension command's getArgumentCompletions in the editor, and
+# Enter with the argument popup open.
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-26 with pi-mcp-adapter and
+# argument-completions.mjs): after "/probe " the editor awaits the command's
+# getArgumentCompletions (autocomplete.ts) and shows its items. Enter with the
+# popup open applies the highlighted item; its prefix is the argument text,
+# which does not start with "/", so editor.ts tui.select.confirm returns
+# without submitting and the editor holds "/probe reconnect".
+# PiG never asked extensions for argument completions, and Enter after an
+# argument completion submitted the command.
+
+name = "27-command-argument-completions"
+description = "Extension command argument completions show after the command, and Enter accepts one without submitting"
+covers = [
+  "packages/tui/src/autocomplete.ts",
+  "packages/tui/src/components/editor.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/argument-completions.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/argument-completions.mjs",
+]
+
+[tmux]
+width = 100
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "/probe"
+capture_end = "(auto)"
+
+[[tmux.steps]]
+keys = ["/probe "]
+wait_contains = ["reconnect — Reconnect servers", "status — Show server status"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Enter"]
+settle_seconds = 1
+wait_contains = ["/probe reconnect"]
+wait_not_contains = ["tools — List all tools"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["/probe reconnect"]
+both_not_contain = ["probe ran", "panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

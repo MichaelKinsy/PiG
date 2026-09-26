@@ -163,6 +163,10 @@ type CommandDecl struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Args        string `json:"args,omitempty"` // Argument hint shown in /help
+	// ArgumentCompletions reports that the command defines upstream
+	// getArgumentCompletions. The host asks for them with
+	// RequestCommandArgumentCompletions.
+	ArgumentCompletions bool `json:"argument_completions,omitempty"`
 }
 
 // ShortcutDecl declares a keyboard shortcut the extension binds.
@@ -690,6 +694,12 @@ type RenderResult struct {
 // RenderToolPayload; the response is a RenderResult, and an error response
 // means the renderer threw, so the card draws upstream's fallback.
 const RequestRenderTool = "render_tool"
+
+// RequestCommandArgumentCompletions (host→ext) runs a command's
+// getArgumentCompletions for the editor's autocomplete. Tool names the
+// command and Args is the argument prefix as a JSON string; the response is
+// the items as a JSON array, or null for none.
+const RequestCommandArgumentCompletions = "command_argument_completions"
 
 // NotifyToolRenderInvalidate (ext→host) is a renderer's context.invalidate():
 // the host runs the card's renderers again and repaints. Args is a

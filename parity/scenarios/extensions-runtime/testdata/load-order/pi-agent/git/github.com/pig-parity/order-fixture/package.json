@@ -1,0 +1,6 @@
+{
+  "name": "order-fixture",
+  "pi": {
+    "extensions": ["./extensions"]
+  }
+}

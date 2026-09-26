@@ -134,15 +134,28 @@ func discover(root string, manifest *packageManifest, plugin *pluginManifest) Re
 		}
 		return entries
 	}
-	skillEntries := coalesceEntries(manifestEntries(manifest, Skills), pluginEntries(plugin, Skills))
+	// A "pi" manifest's Pi kinds come only from its entries (upstream
+	// collectPackageResources, addManifestEntries): a kind it does not
+	// declare loads nothing unless plugin metadata declares it.
+	piEntries := func(kind Kind) *[]string {
+		entries := coalesceEntries(manifestEntries(manifest, kind), pluginEntries(plugin, kind))
+		if entries == nil && manifest != nil && manifest.PI != nil {
+			return &[]string{}
+		}
+		return entries
+	}
+	skillEntries := piEntries(Skills)
 	if plugin != nil && plugin.AgentPlugins {
 		skillEntries = manifestEntries(manifest, Skills)
+		if skillEntries == nil && manifest != nil && manifest.PI != nil {
+			skillEntries = &[]string{}
+		}
 	}
 	resources := Resources{
-		PromptFiles:       collectManifestResources(root, Prompts, coalesceEntries(manifestEntries(manifest, Prompts), pluginEntries(plugin, Prompts))),
-		ThemeFiles:        collectManifestResources(root, Themes, coalesceEntries(manifestEntries(manifest, Themes), pluginEntries(plugin, Themes))),
+		PromptFiles:       collectManifestResources(root, Prompts, piEntries(Prompts)),
+		ThemeFiles:        collectManifestResources(root, Themes, piEntries(Themes)),
 		SkillDirs:         collectManifestResources(root, Skills, skillEntries),
-		ExtensionEntries:  collectExtensionResources(root, coalesceEntries(manifestEntries(manifest, Extensions), pluginEntries(plugin, Extensions))),
+		ExtensionEntries:  collectExtensionResources(root, piEntries(Extensions)),
 		AgentFiles:        collectManifestResources(root, Agents, pluginEntries(plugin, Agents)),
 		MCPFiles:          collectMCPResources(root, pigEntries(MCP)),
 		HookFiles:         collectManifestResources(root, Hooks, pigEntries(Hooks)),

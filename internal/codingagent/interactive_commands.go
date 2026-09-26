@@ -126,10 +126,7 @@ func (m *InteractiveMode) buildAutocompleteProvider() tui.AutocompleteProvider {
 	// Add extension commands to autocomplete so they are discoverable by typing /.
 	if m.newRunner != nil {
 		for _, rc := range m.newRunner.Commands() {
-			cmds = append(cmds, tui.SlashCommand{
-				Name:        strings.TrimPrefix(rc.InvocationName, "/"),
-				Description: rc.Description,
-			})
+			cmds = append(cmds, m.extensionCommandSlashEntry(rc))
 		}
 	}
 
