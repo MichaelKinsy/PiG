@@ -19,8 +19,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      product: ${{ steps.classify.outputs.product }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Classify the change
+        id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        # Source analysis skips pull requests that change only project prose
+        # and repository metadata. Secret scanning always runs.
+        run: automation/ci/classify-changes.sh "$EVENT" "$BASE_SHA" "$HEAD_SHA" | tee -a "$GITHUB_OUTPUT"
+
   source-assurance:
     name: Source assurance
+    needs: [changes]
+    if: needs.changes.outputs.product == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -45,10 +69,8 @@ jobs:
           python-version: '3.12'
       - name: Install source-analysis tools
         run: |
-          python -m pip install --disable-pip-version-check \
-            "reuse[charset-normalizer]==6.2.0" \
-            ruff==0.15.12 \
-            bandit==1.9.3
+          python -m pip install --disable-pip-version-check --require-hashes \
+            -r automation/ci/security-tools.txt
           sudo apt-get update
           sudo apt-get install --yes shellcheck
       - name: Check compliance evidence (REUSE, govulncheck, pins, workflow hardening)
@@ -149,7 +171,8 @@ jobs:
 
   dependency-review:
     name: Dependency review
-    if: github.event_name == 'pull_request' && github.event.repository.private == false
+    needs: [changes]
+    if: github.event_name == 'pull_request' && github.event.repository.private == false && needs.changes.outputs.product == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -164,7 +187,8 @@ jobs:
 
   codeql:
     name: CodeQL (${{ matrix.language }})
-    if: github.event.repository.private == false
+    needs: [changes]
+    if: github.event.repository.private == false && needs.changes.outputs.product == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
@@ -207,3 +231,40 @@ jobs:
       - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           category: /language:${{ matrix.language }}
+
+  result:
+    name: Security result
+    # The one required check for this workflow; see CI result in ci.yml.
+    needs: [source-assurance, secret-scan, dependency-review, codeql]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every security job this event runs
+        env:
+          EVENT: ${{ github.event_name }}
+          PRIVATE: ${{ github.event.repository.private }}
+          SOURCE: ${{ needs.source-assurance.result }}
+          SECRETS: ${{ needs.secret-scan.result }}
+          REVIEW: ${{ needs.dependency-review.result }}
+          CODEQL: ${{ needs.codeql.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=0
+          expect() { # job result allowed-skip
+            if [ "$2" = success ] || { [ "$2" = skipped ] && [ "$3" = true ]; }; then
+              echo "$1: $2"
+            else
+              echo "::error::$1: $2"
+              status=1
+            fi
+          }
+          review_skip=false; codeql_skip=false
+          { [ "$EVENT" != pull_request ] || [ "$PRIVATE" = true ]; } && review_skip=true
+          [ "$PRIVATE" = true ] && codeql_skip=true
+          expect "Source assurance" "$SOURCE" false
+          expect "Secret scanning" "$SECRETS" false
+          expect "Dependency review" "$REVIEW" "$review_skip"
+          expect "CodeQL" "$CODEQL" "$codeql_skip"
+          exit "$status"

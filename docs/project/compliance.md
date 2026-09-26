@@ -35,7 +35,7 @@ Status values:
 
 | Check | Evidence | Status |
 |---|---|---|
-| Branch-Protection | Branch ruleset on `main`: pull request, one approving review, required status checks | Owner action |
+| Branch-Protection | Branch ruleset on `main`: pull request, one approving review, required status checks `CI result` and `Security result` (each aggregates its workflow's jobs) | Owner action |
 | Code-Review | Same ruleset; `.github/CODEOWNERS`; `.github/pull_request_template.md` | Owner action; the score grows with reviewed merges |
 | Signed-Releases | `release-candidate.yml` writes `<archive>.sigstore.json` beside each archive and runs `actions/attest-build-provenance` | Owner action: attach archives, `SHA256SUMS`, and `.sigstore.json` files to the first GitHub Release |
 | Pinned-Dependencies | Every action pinned to a commit SHA (`make compliance` check `actions`); image bases pinned by digest; `go.sum`; npm lock files | Verifiable now |

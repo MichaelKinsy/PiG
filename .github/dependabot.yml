@@ -13,7 +13,8 @@ updates:
   - package-ecosystem: gomod
     directories:
       - /
-      - /extensions/sdk
+      # extensions/sdk has no dependencies; Dependabot would only rewrite its
+      # go directive, which breaks modules that declare go 1.26.
       - /piglets/porter/extensions/pig-porter
       - /piglets/standard
       - /examples/extensions/go-factory
@@ -32,6 +33,10 @@ updates:
       - /automation/images/npm-runtime
     schedule:
       interval: monthly
+    ignore:
+      # npm 12 in this image is built on undici 6; take undici majors with npm.
+      - dependency-name: undici
+        update-types: ["version-update:semver-major"]
     cooldown:
       default-days: 3
       semver-major-days: 14
@@ -83,6 +88,7 @@ updates:
       - /extensions/sdk-ts
       - /automation/images/ci-parity
       - /parity/interface-extractor
+      - /automation/ci/npm-toolchain
     schedule:
       interval: monthly
     open-pull-requests-limit: 0

@@ -12,9 +12,7 @@ SPDX-License-Identifier: MIT
 [![CI](https://github.com/MichaelKinsy/PiG/actions/workflows/ci.yml/badge.svg)](https://github.com/MichaelKinsy/PiG/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/MichaelKinsy/PiG/actions/workflows/security.yml/badge.svg)](https://github.com/MichaelKinsy/PiG/actions/workflows/security.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/MichaelKinsy/PiG/badge)](https://scorecard.dev/viewer/?uri=github.com/MichaelKinsy/PiG)
-<!-- TODO(owner): add the OpenSSF Best Practices badge after registering at https://www.bestpractices.dev; replace PROJECT_ID with the assigned id.
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/PROJECT_ID/badge)](https://www.bestpractices.dev/projects/PROJECT_ID)
--->
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14941/badge)](https://www.bestpractices.dev/projects/14941)
 [![REUSE status](https://api.reuse.software/badge/github.com/MichaelKinsy/PiG)](https://api.reuse.software/info/github.com/MichaelKinsy/PiG)
 [![Go Reference](https://pkg.go.dev/badge/github.com/MichaelKinsy/PiG.svg)](https://pkg.go.dev/github.com/MichaelKinsy/PiG)
 [![Go version](https://img.shields.io/github/go-mod/go-version/MichaelKinsy/PiG)](go.mod)
@@ -222,7 +220,7 @@ Requirements:
 - Go 1.27.1
 - Git
 - macOS 13 or later for native macOS builds
-- Node.js 24.19.0 and npm 12.0.2 for parity tooling
+- Node.js 24.19.0 and npm 12.1.0 for parity tooling
 - Python 3.12 for Python SDK tests
 - Rust 1.97.1 for Rust SDK tests
 - tmux for terminal parity tests on Unix
