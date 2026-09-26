@@ -322,3 +322,48 @@ jobs:
           go build -trimpath -o bin/pig ./cmd/pig
           ./bin/pig --version
           go test ./ai ./internal/codingagent/tools ./tui
+
+  result:
+    name: CI result
+    # The one required check for this workflow. It runs even when a job it
+    # needs failed, because a skipped job would otherwise count as passing.
+    # A job may be skipped only where its own condition skips it.
+    needs: [changes, docs, dco, verify, windows, macos]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every job this change needs
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PRODUCT: ${{ needs.changes.outputs.product }}
+          CHANGES: ${{ needs.changes.result }}
+          DOCS: ${{ needs.docs.result }}
+          DCO: ${{ needs.dco.result }}
+          VERIFY: ${{ needs.verify.result }}
+          WINDOWS: ${{ needs.windows.result }}
+          MACOS: ${{ needs.macos.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=0
+          expect() { # job result allowed-skip
+            if [ "$2" = success ] || { [ "$2" = skipped ] && [ "$3" = true ]; }; then
+              echo "$1: $2"
+            else
+              echo "::error::$1: $2"
+              status=1
+            fi
+          }
+          product_skip=false; docs_skip=false; dco_skip=false
+          [ "$PRODUCT" = false ] && product_skip=true
+          [ "$PRODUCT" = true ] && docs_skip=true
+          { [ "$EVENT" != pull_request ] || [ "$PR_AUTHOR" = 'dependabot[bot]' ]; } && dco_skip=true
+          expect "Changed paths" "$CHANGES" false
+          expect "Project documents" "$DOCS" "$docs_skip"
+          expect "DCO" "$DCO" "$dco_skip"
+          expect "Linux verification" "$VERIFY" false
+          expect "Windows" "$WINDOWS" "$product_skip"
+          expect "macOS" "$MACOS" "$product_skip"
+          exit "$status"

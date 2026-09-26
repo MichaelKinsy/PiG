@@ -205,3 +205,40 @@ jobs:
       - uses: github/codeql-action/analyze@b96794f015dfd88f77b49b1c93e0fa7110f94c63 # v4.38.0
         with:
           category: /language:${{ matrix.language }}
+
+  result:
+    name: Security result
+    # The one required check for this workflow; see CI result in ci.yml.
+    needs: [source-assurance, secret-scan, dependency-review, codeql]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every security job this event runs
+        env:
+          EVENT: ${{ github.event_name }}
+          PRIVATE: ${{ github.event.repository.private }}
+          SOURCE: ${{ needs.source-assurance.result }}
+          SECRETS: ${{ needs.secret-scan.result }}
+          REVIEW: ${{ needs.dependency-review.result }}
+          CODEQL: ${{ needs.codeql.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=0
+          expect() { # job result allowed-skip
+            if [ "$2" = success ] || { [ "$2" = skipped ] && [ "$3" = true ]; }; then
+              echo "$1: $2"
+            else
+              echo "::error::$1: $2"
+              status=1
+            fi
+          }
+          review_skip=false; codeql_skip=false
+          { [ "$EVENT" != pull_request ] || [ "$PRIVATE" = true ]; } && review_skip=true
+          [ "$PRIVATE" = true ] && codeql_skip=true
+          expect "Source assurance" "$SOURCE" false
+          expect "Secret scanning" "$SECRETS" false
+          expect "Dependency review" "$REVIEW" "$review_skip"
+          expect "CodeQL" "$CODEQL" "$codeql_skip"
+          exit "$status"
