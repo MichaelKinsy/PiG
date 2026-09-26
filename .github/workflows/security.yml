@@ -235,7 +235,7 @@ jobs:
   result:
     name: Security result
     # The one required check for this workflow; see CI result in ci.yml.
-    needs: [source-assurance, secret-scan, dependency-review, codeql]
+    needs: [changes, source-assurance, secret-scan, dependency-review, codeql]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -244,6 +244,8 @@ jobs:
         env:
           EVENT: ${{ github.event_name }}
           PRIVATE: ${{ github.event.repository.private }}
+          PRODUCT: ${{ needs.changes.outputs.product }}
+          CHANGES: ${{ needs.changes.result }}
           SOURCE: ${{ needs.source-assurance.result }}
           SECRETS: ${{ needs.secret-scan.result }}
           REVIEW: ${{ needs.dependency-review.result }}
@@ -260,10 +262,13 @@ jobs:
               status=1
             fi
           }
-          review_skip=false; codeql_skip=false
-          { [ "$EVENT" != pull_request ] || [ "$PRIVATE" = true ]; } && review_skip=true
-          [ "$PRIVATE" = true ] && codeql_skip=true
-          expect "Source assurance" "$SOURCE" false
+          # Docs-only changes (the changes classifier) skip the product scans.
+          product_skip=false; review_skip=false; codeql_skip=false
+          [ "$PRODUCT" = false ] && product_skip=true
+          { [ "$EVENT" != pull_request ] || [ "$PRIVATE" = true ] || [ "$product_skip" = true ]; } && review_skip=true
+          { [ "$PRIVATE" = true ] || [ "$product_skip" = true ]; } && codeql_skip=true
+          expect "Changed paths" "$CHANGES" false
+          expect "Source assurance" "$SOURCE" "$product_skip"
           expect "Secret scanning" "$SECRETS" false
           expect "Dependency review" "$REVIEW" "$review_skip"
           expect "CodeQL" "$CODEQL" "$codeql_skip"
