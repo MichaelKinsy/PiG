@@ -105,7 +105,7 @@ jobs:
           output-file: evidence/source.cyclonedx.json
           upload-artifact: false
       - name: Scan source inventory with Grype
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         with:
           sbom: evidence/source.spdx.json
           fail-build: false

@@ -148,7 +148,7 @@ jobs:
             --licenses out/evidence/licenses.csv \
             --out out/evidence/inventory-validation.json
       - name: Scan artifact SBOM
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         with:
           sbom: out/evidence/sbom.spdx.json
           fail-build: true
@@ -320,7 +320,7 @@ jobs:
             --licenses out/evidence/licenses.csv \
             --out out/evidence/inventory-validation.json
       - name: Scan source SBOM
-        uses: anchore/scan-action@e1165082ffb1fe366ebaf02d8526e7c4989ea9d2 # v7
+        uses: anchore/scan-action@27805bf3b4e84b4a5c980df22ed233c00390a439 # v7.4.2
         with:
           sbom: out/evidence/source.spdx.json
           fail-build: false
@@ -411,7 +411,8 @@ jobs:
           set -euo pipefail
           automation/release/module-tags.sh "$VERSION" go.mod > "$RUNNER_TEMP/module-tags"
           while read -r tag; do
-            ref=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '.object.type + " " + .object.sha' 2>/dev/null || true)
+            # gh api prints the error body on stdout for a missing tag (404).
+            ref=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$tag" --jq '.object.type + " " + .object.sha' 2>/dev/null) || ref=""
             if [ -n "$ref" ]; then
               read -r kind sha <<<"$ref"
               if [ "$kind" = tag ]; then

@@ -59,7 +59,7 @@ The automation writes only where the environment allows. Set these when the defa
 | `check-divergence-quality.py` | Divergence and additive records are current, enforceable contracts. |
 | `divguard/` | Divergence guard (`make divergence-guard`): syntactic checks for invented limits and timeouts, dropped events, swallowed errors and success on unknown stop reasons, ratcheted by `divguard/baseline.toml`. |
 | `check-divergence-delta.sh` | A release adds no divergence without its per-entry justification. |
-| `check-coverage-delta.sh`, `check-coverage-drift.py` | Parity coverage did not regress, and `parity/coverage.md`, the badge, and the README porting block match `PORT_MAP.md`. |
+| `check-coverage-delta.sh`, `check-coverage-drift.py` | Parity coverage did not regress, and `parity/coverage.md` and the badge match `PORT_MAP.md`. |
 | `check-public-claims.py` | Public prose makes no claim the evidence contradicts: overclaim phrases, unrecorded governance claims, Pi versions other than the pin, and porting or verification figures that differ from the AGENTS.md coverage block. Runs in `make docs-drift`; pass delivery or blog drafts as extra arguments to audit them too. |
 | `check-port-map-drift.py` | `PORT_MAP.md` accounts for every upstream source file. |
 | `check-dco.sh` | Every commit in a pull request carries a DCO sign-off. |

@@ -1,69 +1,102 @@
 # SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
 # SPDX-License-Identifier: MIT
 
+# One grouped pull request per ecosystem per month. Security updates are not
+# affected: GitHub opens them as soon as an advisory applies. The cooldown
+# waits for new releases to settle before proposing them.
+#
+# The parity oracle (extensions/sdk-ts, the ci-parity image, and the interface
+# extractor) and test fixtures take security updates only: changing an oracle
+# dependency changes what PiG is compared against and needs a parity rebaseline.
 version: 2
 updates:
   - package-ecosystem: gomod
-    directory: /
+    directories:
+      - /
+      - /extensions/sdk
+      - /piglets/porter/extensions/pig-porter
+      - /piglets/standard
+      - /examples/extensions/go-factory
     schedule:
-      interval: weekly
-  - package-ecosystem: gomod
-    directory: /extensions/sdk
-    schedule:
-      interval: weekly
-  - package-ecosystem: gomod
-    directory: /piglets/porter/extensions/pig-porter
-    schedule:
-      interval: weekly
-  - package-ecosystem: gomod
-    directory: /piglets/standard
-    schedule:
-      interval: weekly
-  - package-ecosystem: gomod
-    directory: /cmd/pig/testdata/login-preview
-    schedule:
-      interval: weekly
-  - package-ecosystem: gomod
-    directory: /coding/extension/host/subprocess/testdata/sdk-fixture
-    schedule:
-      interval: weekly
-  - package-ecosystem: gomod
-    directory: /examples/extensions/go-factory
-    schedule:
-      interval: weekly
+      interval: monthly
+    cooldown:
+      default-days: 3
+      semver-major-days: 14
+    groups:
+      go:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
   - package-ecosystem: npm
-    directory: /automation/images/ci-parity
+    directories:
+      - /automation/images/npm-runtime
     schedule:
-      interval: weekly
-  - package-ecosystem: npm
-    directory: /automation/images/npm-runtime
-    schedule:
-      interval: weekly
-  - package-ecosystem: npm
-    directory: /extensions/sdk-ts
-    schedule:
-      interval: weekly
-  - package-ecosystem: npm
-    directory: /parity/interface-extractor
-    schedule:
-      interval: weekly
+      interval: monthly
+    cooldown:
+      default-days: 3
+      semver-major-days: 14
+    groups:
+      npm:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
   - package-ecosystem: pip
     directory: /extensions/sdk-py
     schedule:
-      interval: weekly
+      interval: monthly
+    cooldown:
+      default-days: 3
+      semver-major-days: 14
+    groups:
+      python:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
   - package-ecosystem: cargo
-    directory: /extensions/sdk-rs
+    directories:
+      - /extensions/sdk-rs
+      - /examples/extensions/rust-factory
     schedule:
-      interval: weekly
-  - package-ecosystem: cargo
-    directory: /examples/extensions/rust-factory
-    schedule:
-      interval: weekly
-  - package-ecosystem: cargo
-    directory: /tests/extension-conformance/testdata/rust-sdk-fixture
-    schedule:
-      interval: weekly
+      interval: monthly
+    cooldown:
+      default-days: 3
+      semver-major-days: 14
+    groups:
+      rust:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
   - package-ecosystem: github-actions
     directory: /
     schedule:
-      interval: weekly
+      interval: monthly
+    cooldown:
+      default-days: 3
+    groups:
+      actions:
+        patterns: ["*"]
+    open-pull-requests-limit: 5
+
+  # Security updates only (no version-update pull requests).
+  - package-ecosystem: npm
+    directories:
+      - /extensions/sdk-ts
+      - /automation/images/ci-parity
+      - /parity/interface-extractor
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: gomod
+    directories:
+      - /cmd/pig/testdata/login-preview
+      - /coding/extension/host/subprocess/testdata/sdk-fixture
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0
+
+  - package-ecosystem: cargo
+    directory: /tests/extension-conformance/testdata/rust-sdk-fixture
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 0

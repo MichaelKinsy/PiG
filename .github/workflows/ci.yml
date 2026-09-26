@@ -3,10 +3,13 @@
 
 name: CI
 
+# Pull requests carry the full verification; a squash merge lands exactly the
+# tested tree, so pushes to main do not run it again. A weekly run keeps main's
+# health and the CI badge current.
 on:
   pull_request:
-  push:
-    branches: [main]
+  schedule:
+    - cron: '41 6 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -24,6 +27,63 @@ env:
   RUST_VERSION: 1.97.1
 
 jobs:
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      product: ${{ steps.classify.outputs.product }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Classify the change
+        id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Only a pull request that changes nothing but project prose and
+          # repository settings skips the product suites; the docs job below
+          # still checks those files. Everything else, and every scheduled or
+          # manual run, verifies the product.
+          product=true
+          if [ "$EVENT" = pull_request ]; then
+            product=false
+            while IFS= read -r path; do
+              case "$path" in
+                README.md|CHANGELOG.md|CONTRIBUTING.md|CODE_OF_CONDUCT.md|GOVERNANCE.md|MAINTAINERS.md|SECURITY.md|SUPPORT.md) ;;
+                media/*|.github/ISSUE_TEMPLATE/*|.github/pull_request_template.md|.github/CODEOWNERS|.github/dependabot.yml|.coderabbit.yaml) ;;
+                *) product=true; echo "product change: $path" ;;
+              esac
+            done < <(git diff --name-only "$BASE_SHA...$HEAD_SHA")
+          fi
+          echo "product=$product" >> "$GITHUB_OUTPUT"
+          echo "product=$product"
+
+  docs:
+    name: Project documents
+    needs: [changes]
+    if: needs.changes.outputs.product == 'false'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Check the README, changelog and repository settings
+        run: |
+          go test ./tests/ci-images/ ./tests/docs-drift/
+          python3 automation/ci/check-public-claims.py
+
   dco:
     name: DCO
     if: github.event_name == 'pull_request'
@@ -41,6 +101,8 @@ jobs:
 
   linux:
     name: Linux / ${{ matrix.shard }}
+    needs: [changes]
+    if: needs.changes.outputs.product == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     strategy:
@@ -101,18 +163,24 @@ jobs:
 
   verify:
     name: Linux verification
-    needs: [linux]
+    needs: [changes, linux]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     steps:
       - name: Require every Linux shard
         env:
+          CHANGES: ${{ needs.changes.result }}
+          PRODUCT: ${{ needs.changes.outputs.product }}
           RESULT: ${{ needs.linux.result }}
-        run: test "$RESULT" = success
+        # Shards are skipped only when the change classifier succeeded and
+        # found no product change.
+        run: test "$RESULT" = success || { test "$CHANGES" = success && test "$PRODUCT" = false && test "$RESULT" = skipped; }
 
   windows:
     name: Windows extensions and native paths
+    needs: [changes]
+    if: needs.changes.outputs.product == 'true'
     runs-on: windows-latest
     timeout-minutes: 60
     steps:
@@ -209,6 +277,8 @@ jobs:
 
   macos:
     name: macOS native
+    needs: [changes]
+    if: needs.changes.outputs.product == 'true'
     runs-on: macos-15
     timeout-minutes: 30
     steps:

@@ -28,7 +28,7 @@ First public release of PiG, a Go port of Pi 0.87.1. `pig --version` prints `0.2
 - Port Pi 0.87.1's model-thinking settings submenu, model picker and selector layouts.
 - Fix duplicated tool rows and choppy rendering while tools run; keep the working status through the tool lifecycle.
 - Measure wrapped graphemes by visible cell width, and keep assistant content order and terminal state on redraw.
-- Recover from over-width lines without exiting, and without diagnostic logging (D71).
+- Handle over-width lines as Pi does.
 
 ### Piglets
 
@@ -51,9 +51,7 @@ First public release of PiG, a Go port of Pi 0.87.1. `pig --version` prints `0.2
 
 ### Known issues
 
-- Windows support is a preview. Native console, named-pipe, process-tree and composed extension acceptance on Windows is still pending proof; Linux cross-builds do not establish it.
-- In `--mode json`, cancelling a run may not stop it promptly. A fix is in progress.
-- Over-width lines on the main screen wrap and recover (D71) instead of following Pi's overflow behavior exactly. Faithful Pi overflow behavior is planned for the next release.
+- Windows support is a preview: tested natively, with less real-world use than macOS and Linux.
 - The Package catalog listing is not in this release; install packages from a known npm or git source.
 
 ### Also in this release

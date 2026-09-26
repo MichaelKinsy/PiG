@@ -1,0 +1,31 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# CodeRabbit reads this file from the default branch.
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+language: en-US
+reviews:
+  profile: chill
+  request_changes_workflow: false
+  high_level_summary: true
+  collapse_walkthrough: true
+  poem: false
+  sequence_diagrams: false
+  review_status: false
+  auto_review:
+    enabled: true
+    # Review when a pull request opens, not again on every push. Comment
+    # "@coderabbitai review" on the pull request to request another pass.
+    auto_incremental_review: false
+    drafts: false
+  path_filters:
+    # Generated or locked files: reviewing them adds noise, not signal.
+    - "!**/package-lock.json"
+    - "!**/go.sum"
+    - "!**/Cargo.lock"
+    - "!**/packages.lock"
+    - "!parity/interfaces/**"
+    - "!parity/coverage.md"
+    - "!.github/badges/**"
+chat:
+  auto_reply: true

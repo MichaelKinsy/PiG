@@ -30,7 +30,7 @@ Status values:
 | License | `LICENSE` (MIT); `CITATION.cff` `license: MIT` | Verifiable now |
 | Latest release | GitHub Releases | Owner action: publish the first release, tagged `v` plus `coding.PigVersion` |
 | Pi pin | Static badge naming the pinned Pi release, not a parity result; `make compliance` fails when it differs from `coding.UpstreamVersion` | Verifiable now |
-| Parity coverage | `.github/badges/parity-coverage.svg` and the README porting block from `make coverage`; the badge is the share of ported files with a behavioral parity scenario, not a pass rate; `make coverage-drift` rejects a stale badge or block | Verifiable now |
+| Parity coverage | `.github/badges/parity-coverage.svg` from `make coverage`; the badge is the share of ported files with a behavioral parity scenario, not a pass rate; `make coverage-drift` rejects a stale badge | Verifiable now |
 
 ## OpenSSF Scorecard checks
 
