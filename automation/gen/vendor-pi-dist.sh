@@ -9,7 +9,8 @@
 # verbatim except for import specifiers of third-party packages, which point
 # at the vendored copies by path so the modules also load without the
 # extension loader:
-# - pi-tui utils.js imports shims/get-east-asian-width;
+# - pi-tui utils.js imports shims/get-east-asian-width and
+#   components/markdown.js shims/marked;
 # - pi-ai utils/json-parse.js imports shims/partial-json, and
 #   utils/validation.js and utils/typebox-helpers.js the TypeBox bundle
 #   (shims/typebox*.mjs, built by vendor-typebox.sh);
@@ -19,7 +20,8 @@
 #   through buildSessionContext) with the imports that section uses, importing
 #   pi-ai from the runtime's pi-ai module.
 # shims/yaml/ is yaml's ES module build (its browser/ directory),
-# shims/get-east-asian-width/ and shims/partial-json/ the published packages,
+# shims/marked/ marked's ES module build, and shims/get-east-asian-width/ and
+# shims/partial-json/ the published packages,
 # each the release Pi depends on.
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -29,6 +31,7 @@ tui="$agent/node_modules/@earendil-works/pi-tui"
 yaml="$agent/node_modules/yaml"
 eaw="$agent/node_modules/get-east-asian-width"
 pjson="$agent/node_modules/partial-json"
+marked="$agent/node_modules/marked"
 shims="$root/coding/extension/host/subprocess/runtime-node/shims"
 dist="$shims/pi-dist"
 
@@ -42,8 +45,8 @@ copy() {
   done
 }
 
-rm -rf "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json"
-mkdir -p "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json/dist"
+rm -rf "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked"
+mkdir -p "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json/dist" "$shims/marked/lib"
 printf '{\n  "type": "module"\n}\n' >"$dist/package.json"
 
 # pi-tui: the key parser, width utilities, keybindings and the components
@@ -57,6 +60,8 @@ copy "$tui/dist" "$dist/pi-tui" \
   components/stack.js components/h-stack.js components/v-stack.js
 sed 's#^import { eastAsianWidth } from "get-east-asian-width";$#import { eastAsianWidth } from "../../get-east-asian-width/index.js";#' \
   "$tui/dist/utils.js" >"$dist/pi-tui/utils.js"
+sed 's#^import { Marked, Tokenizer } from "marked";$#import { Marked, Tokenizer } from "../../../marked/lib/marked.esm.js";#' \
+  "$tui/dist/components/markdown.js" >"$dist/pi-tui/components/markdown.js"
 
 # pi-ai: everything its index exports except the session-resource registry,
 # whose cleanups Pi's session runs (D73), with the modules it imports.
@@ -89,11 +94,14 @@ cp "$yaml/browser/index.js" "$yaml/browser/package.json" "$yaml/LICENSE" "$shims
 cp "$eaw"/index.js "$eaw"/lookup.js "$eaw"/lookup-data.js "$eaw"/utilities.js "$eaw"/license "$eaw"/package.json "$shims/get-east-asian-width/"
 cp "$pjson/dist/index.js" "$pjson/dist/options.js" "$shims/partial-json/dist/"
 cp "$pjson/package.json" "$pjson/LICENSE" "$shims/partial-json/"
+cp "$marked/lib/marked.esm.js" "$shims/marked/lib/"
+cp "$marked/package.json" "$marked/LICENSE" "$shims/marked/"
 
 # Every rewritten specifier must have matched: a pin change that alters an
 # import line fails here instead of shipping a module that cannot load.
 for check in \
   "$dist/pi-tui/utils.js:../../get-east-asian-width/index.js" \
+  "$dist/pi-tui/components/markdown.js:../../../marked/lib/marked.esm.js" \
   "$dist/pi-ai/utils/json-parse.js:../../../partial-json/dist/index.js" \
   "$dist/pi-ai/utils/validation.js:../../../typebox-compile.mjs" \
   "$dist/pi-ai/utils/validation.js:../../../typebox-value.mjs" \
@@ -103,4 +111,4 @@ for check in \
 done
 
 version() { node -p "require('$1/package.json').version"; }
-echo "vendored Pi $(version "$agent") dist modules, yaml $(version "$yaml"), get-east-asian-width $(version "$eaw") and partial-json $(version "$pjson") into $shims"
+echo "vendored Pi $(version "$agent") dist modules, yaml $(version "$yaml"), get-east-asian-width $(version "$eaw"), partial-json $(version "$pjson") and marked $(version "$marked") into $shims"

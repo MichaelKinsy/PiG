@@ -359,6 +359,18 @@ type StatePayload struct {
 	EditorText    string         `json:"editorText"`
 	ToolsExpanded bool           `json:"toolsExpanded"`
 	AllThemes     []themeMetaDTO `json:"allThemes,omitempty"`
+	// TerminalCapabilities is the host terminal's resolved capabilities
+	// (detection plus settings overrides). The Node runtime seeds pi-tui's
+	// capability cache with it, so Pi's Markdown renders links as the host
+	// terminal supports them.
+	TerminalCapabilities *TerminalCapabilitiesPayload `json:"terminalCapabilities,omitempty"`
+}
+
+// TerminalCapabilitiesPayload mirrors pi-tui's TerminalCapabilities.
+type TerminalCapabilitiesPayload struct {
+	Images     string `json:"images,omitempty"` // "kitty", "iterm2", or empty for none
+	TrueColor  bool   `json:"trueColor"`
+	Hyperlinks bool   `json:"hyperlinks"`
 }
 
 // themeMetaDTO mirrors extension.ThemeMeta on the wire. The Node runtime

@@ -53,6 +53,8 @@ func TestVendoredTypeBoxMatchesThePinnedDependency(t *testing.T) {
 var vendoredImportRewrites = map[string][2]string{
 	"pi-tui/utils.js": {`import { eastAsianWidth } from "get-east-asian-width";`,
 		`import { eastAsianWidth } from "../../get-east-asian-width/index.js";`},
+	"pi-tui/components/markdown.js": {`import { Marked, Tokenizer } from "marked";`,
+		`import { Marked, Tokenizer } from "../../../marked/lib/marked.esm.js";`},
 	"pi-ai/utils/json-parse.js": {`import { parse as partialParse } from "partial-json";`,
 		`import { parse as partialParse } from "../../../partial-json/dist/index.js";`},
 	"pi-ai/utils/typebox-helpers.js": {`import { Type } from "typebox";`,
@@ -77,8 +79,8 @@ var pinnedPackageDist = map[string][]string{
 
 // The runtime's Pi modules re-export Pi's own code copied from the pinned
 // release: shims/pi-dist mirrors each package's dist/, and shims/yaml,
-// shims/get-east-asian-width and shims/partial-json are the third-party
-// releases Pi depends on. A pin change must re-vendor them.
+// shims/marked, shims/get-east-asian-width and shims/partial-json are the
+// third-party releases Pi depends on. A pin change must re-vendor them.
 func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 	for pkg, dist := range pinnedPackageDist {
 		var manifest struct{ Version string }
@@ -186,6 +188,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("read the pinned yaml build (run npm ci in extensions/sdk-ts): %v", err)
 	}
+	marked := filepath.Join(nodeModules, "marked")
 	eaw := filepath.Join(nodeModules, "get-east-asian-width")
 	partial := filepath.Join(nodeModules, "partial-json")
 	for dir, files := range map[string]map[string]string{
@@ -194,6 +197,10 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 			"index.js": filepath.Join(eaw, "index.js"), "lookup.js": filepath.Join(eaw, "lookup.js"),
 			"lookup-data.js": filepath.Join(eaw, "lookup-data.js"), "utilities.js": filepath.Join(eaw, "utilities.js"),
 			"license": filepath.Join(eaw, "license"), "package.json": filepath.Join(eaw, "package.json"),
+		},
+		"marked": {
+			"lib/marked.esm.js": filepath.Join(marked, "lib", "marked.esm.js"),
+			"LICENSE":           filepath.Join(marked, "LICENSE"), "package.json": filepath.Join(marked, "package.json"),
 		},
 		"partial-json": {
 			"dist/index.js": filepath.Join(partial, "dist", "index.js"), "dist/options.js": filepath.Join(partial, "dist", "options.js"),
@@ -258,6 +265,10 @@ func runPinnedComparison(t *testing.T, pinnedEntry []string, shim, script string
 func TestPiTuiComponentsMatchThePinnedPackage(t *testing.T) {
 	runPinnedComparison(t, []string{"node_modules", "@earendil-works", "pi-tui", "dist", "index.js"}, "pi-tui.mjs", `
 const [pi, pig] = await Promise.all([import(process.argv[1]), import(process.argv[2])]);
+// The runtime seeds pi-tui's capability cache in its vendored terminal-image
+// module; the shim's setCapabilities is a host-only stand-in.
+const pigImage = await import(new URL("./pi-dist/pi-tui/terminal-image.js", process.argv[2]).href);
+const setCaps = (m, caps) => (m === pi ? pi.setCapabilities(caps) : pigImage.setCapabilities(caps));
 const bg = (s) => "\x1b[44m" + s + "\x1b[49m";
 const bold = (s) => "\x1b[1m" + s + "\x1b[22m";
 const dim = (s) => "\x1b[2m" + s + "\x1b[22m";
@@ -394,6 +405,21 @@ async function scene(m) {
   stdin.on("paste", (d) => log("paste", d));
   stdin.process("a\x1b[A\x1b[13;2ub" + keys.paste("pasted") + "\x1bb");
   stdin.destroy();
+
+  // Markdown through marked, with hyperlinks on and off.
+  const mdTheme = { heading: bold, link: (s) => "\x1b[4m" + s + "\x1b[24m", linkUrl: dim, code: (s) => "\x1b[33m" + s + "\x1b[39m",
+    codeBlock: (s) => s, codeBlockBorder: dim, quote: dim, quoteBorder: dim, hr: dim, listBullet: bold, bold, italic: (s) => "\x1b[3m" + s + "\x1b[23m",
+    strikethrough: (s) => "\x1b[9m" + s + "\x1b[29m", underline: (s) => "\x1b[4m" + s + "\x1b[24m" };
+  const source = "# Title\n\nSome **bold**, *italic*, ~~gone~~ and \x60code\x60 with a [link](https://example.com) and https://bare.example.\n\n" +
+    "- one\n- two\n  1. nested\n\n> quoted text that wraps across the narrow width\n\n\x60\x60\x60go\nfunc main() {}\n\x60\x60\x60\n\n| a | b |\n|---|---|\n| 1 | 2 |\n\n---\n\n$x^2$ inline math";
+  for (const hyperlinks of [true, false]) {
+    setCaps(m, { images: null, trueColor: true, hyperlinks });
+    const md = new m.Markdown(source, 1, 0, mdTheme);
+    log(md.render(40));
+    md.setText("updated *text*");
+    log(md.render(20));
+  }
+  log(new m.Marked().parse("**x**"));
 
   // CombinedAutocompleteProvider slash-command suggestions.
   const provider = new m.CombinedAutocompleteProvider([{ name: "help", description: "Show help" }, { name: "hello" }], "/");

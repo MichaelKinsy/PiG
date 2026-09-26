@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/tui"
 
 	"golang.org/x/term"
 )
@@ -106,6 +107,10 @@ func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, regist
 	// (cached by PushProxy); UI method calls return noop results until the
 	// real UIContext is set via bridge.SetUIContext().
 	bridge := subprocess.NewUIBridge(func() {})
+	bridge.SetTerminalCapabilitiesFunc(func() subprocess.TerminalCapabilitiesPayload {
+		caps := tui.GetCapabilities()
+		return subprocess.TerminalCapabilitiesPayload{Images: string(caps.Images), TrueColor: caps.TrueColor, Hyperlinks: caps.Hyperlinks}
+	})
 	host.SetUIBridge(bridge)
 	installStartupTrace(&trace, host.SetStartupTrace)
 	host.SetMode(string(mode))

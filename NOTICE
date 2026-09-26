@@ -25,6 +25,7 @@ PiG embeds the following third-party browser assets in exported HTML transcripts
 The Node extension runtime embeds the third-party packages Pi 0.87.1 depends on for the Pi code it serves to extensions:
 
 - `yaml` 2.9.0, Copyright Eemeli Aro, ISC.
+- `marked` 18.0.11, Copyright (c) 2018+, MarkedJS and Copyright (c) 2011-2018, Christopher Jeffrey, MIT; bundled Markdown material is Copyright 2004 John Gruber, BSD-3-Clause.
 - `get-east-asian-width` 1.6.0, Copyright (c) Sindre Sorhus, MIT.
 - `partial-json` 0.1.7, Copyright (c) 2023 Promplate Dev Team, MIT.
 

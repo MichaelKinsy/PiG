@@ -78999,6 +78999,17 @@
       "shapeHash": "sha256:bca86afaad1945025dc93096c06477a335ffae5caa66f46c878d4b42b9a117dd"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#TerminalCapabilitiesPayload",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "TerminalCapabilitiesPayload",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "TerminalCapabilitiesPayload"
+      },
+      "shapeHash": "sha256:ac2ccc3b3ade6dd89f4b00e69be5ce3c7c70c3b85b68de30944c51047f221510"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#ToolDecl",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "ToolDecl",
@@ -79294,6 +79305,17 @@
         "type": "func(fn func(message string, level string))"
       },
       "shapeHash": "sha256:5520231dd1257ee9f2baab66fc598114660ab2f1a281acb70426389f1ea50d4b"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.SetTerminalCapabilitiesFunc",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "UIBridge.SetTerminalCapabilitiesFunc",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(fn func() TerminalCapabilitiesPayload)"
+      },
+      "shapeHash": "sha256:b4c8176a986ea90bf0f71dbf65f8302a62b8cc299373e2ef49bcc5506a92dab2"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#UIBridge.SetUIContext",

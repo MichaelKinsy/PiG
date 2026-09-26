@@ -2,10 +2,11 @@
 // extension process is Pi's own code, copied verbatim from the pinned release
 // into pi-dist/pi-tui (automation/gen/vendor-pi-dist.sh): key parsing, width
 // utilities, keybindings, fuzzy matching, autocomplete and the components
-// extensions construct. The modules share one instance each, so for example
-// setKittyProtocolActive and setKeybindings affect every component.
-import { wrapTextWithAnsi } from "./pi-dist/pi-tui/utils.js";
-
+// extensions construct, with the marked release Pi's Markdown renders
+// through. Markdown reads the host terminal's capabilities, which the runtime
+// seeds from each state snapshot. The modules share one instance each, so for
+// example setKittyProtocolActive and setKeybindings affect every component.
+export { Marked } from "./marked/lib/marked.esm.js";
 export { CombinedAutocompleteProvider } from "./pi-dist/pi-tui/autocomplete.js";
 export { Box } from "./pi-dist/pi-tui/components/box.js";
 export { CancellableLoader } from "./pi-dist/pi-tui/components/cancellable-loader.js";
@@ -13,6 +14,7 @@ export { Editor } from "./pi-dist/pi-tui/components/editor.js";
 export { HStack } from "./pi-dist/pi-tui/components/h-stack.js";
 export { Input } from "./pi-dist/pi-tui/components/input.js";
 export { Loader } from "./pi-dist/pi-tui/components/loader.js";
+export { Markdown } from "./pi-dist/pi-tui/components/markdown.js";
 export { MouseRegion } from "./pi-dist/pi-tui/components/mouse-region.js";
 export { SelectList } from "./pi-dist/pi-tui/components/select-list.js";
 export { SettingsList } from "./pi-dist/pi-tui/components/settings-list.js";
@@ -82,15 +84,6 @@ export class TUI {}
 export class OverlayHandle {}
 export class EditorTheme {}
 
-// pig divergence (D73): Markdown wraps its text without Markdown rendering.
-// Pi's renders through marked and consults the terminal capabilities the host
-// owns.
-export class Markdown extends Component {
-  constructor(text = "") { super(); this.text = text; }
-  setText(text) { this.text = text; this.invalidate(); }
-  render(width = 80) { return wrapTextWithAnsi(this.text, width); }
-}
-
 // pig divergence (D73): the terminal, its capability probing and cell
 // geometry, images, screens and scroll views, the clipboard and the renderer
 // itself belong to PiG's Go host. They are importable here and throw a descriptive error only
@@ -107,7 +100,6 @@ function hostOnlyTuiClass(name) {
   return { [name]: class { constructor() { throw hostOnlyTui(name); } } }[name];
 }
 export const Image = hostOnlyTuiClass("Image");
-export const Marked = hostOnlyTuiClass("Marked");
 export const ProcessTerminal = hostOnlyTuiClass("ProcessTerminal");
 export const ScrollView = hostOnlyTuiClass("ScrollView");
 export const TuiAltScreen = hostOnlyTuiClass("TuiAltScreen");

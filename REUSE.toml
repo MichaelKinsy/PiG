@@ -125,6 +125,18 @@ precedence = "override"
 SPDX-FileCopyrightText = "Copyright Eemeli Aro <eemeli@gmail.com>"
 SPDX-License-Identifier = "ISC"
 
+# The unmodified ES module build of marked 18.0.11, the Markdown parser
+# pi-tui's Markdown component uses.
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/marked/**"
+precedence = "override"
+SPDX-FileCopyrightText = [
+  "Copyright (c) 2018+, MarkedJS",
+  "Copyright (c) 2011-2018, Christopher Jeffrey",
+  "Copyright 2004 John Gruber",
+]
+SPDX-License-Identifier = "MIT AND BSD-3-Clause"
+
 # The unmodified get-east-asian-width 1.6.0 package, which pi-tui measures
 # character widths with.
 [[annotations]]
