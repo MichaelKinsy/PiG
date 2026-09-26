@@ -342,9 +342,10 @@ impl Extension {
     }
 
     /// Register a tool with an explicit source identifier.
-    /// Source overrides the default extension-name attribution in getAllTools,
-    /// allowing extensions that wrap external tool sources (e.g. MCP servers)
-    /// to provide per-tool provenance for profile scoping.
+    /// Source overrides the default extension-name attribution Piglet tool
+    /// scoping reads, allowing extensions that wrap external tool sources
+    /// (e.g. MCP servers) to provide per-tool provenance. `get_all_tools()`
+    /// reports upstream's `sourceInfo` for the tool, not this source.
     pub fn tool_with_source(
         &mut self,
         name: impl Into<String>,

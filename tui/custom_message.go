@@ -3,11 +3,11 @@ package tui
 // custom_message.go: renders custom extension messages.
 //
 // Ports upstream custom-message.ts (99 LOC).
-// In pig's line renderer, the Box/Spacer/Markdown composition is
-// simplified to colored text lines.
+// The Box/Spacer/Markdown composition is rendered as lines: the label, a
+// spacer, and the Markdown body wrapped to the box's inner width.
 
 import (
-	"fmt"
+	"encoding/json"
 	"strings"
 )
 
@@ -17,6 +17,7 @@ type CustomMessageComponent struct {
 	CustomType string
 	Content    string // text content (may contain markdown)
 	Expanded   bool
+	markdown   *Markdown
 }
 
 // NewCustomMessageComponent creates a custom message renderer.
@@ -61,18 +62,16 @@ func (c *CustomMessageComponent) Render(width int) []string {
 	// Structural blank (upstream: Spacer(1) inside Box between label and content).
 	lines = append(lines, paintBgWith(customMsgBgOpen, "", width))
 
-	if c.Content != "" {
-		// Render content as plain text lines with paddingX=1 indent.
-		contentColor := t.CustomMessageText
-		for raw := range strings.SplitSeq(c.Content, "\n") {
-			var line string
-			if contentColor != "" {
-				line = padding + contentColor + raw + "\x1b[0m"
-			} else {
-				line = padding + raw
-			}
-			lines = append(lines, paintBgWith(customMsgBgOpen, line, width))
-		}
+	// Upstream renders the text as Markdown in the customMessageText color
+	// inside Box(1, 1): wrapped to the box's inner width, one column of
+	// padding on each side.
+	if c.markdown == nil {
+		c.markdown = NewMarkdown(c.Content)
+	}
+	c.markdown.Content = c.Content
+	c.markdown.SetDefaultColor(t.CustomMessageText)
+	for _, line := range c.markdown.Render(width - 2) {
+		lines = append(lines, paintBgWith(customMsgBgOpen, padding+line, width))
 	}
 
 	lines = append(lines, paintBgWith(customMsgBgOpen, "", width))
@@ -86,22 +85,31 @@ type CustomMessage struct {
 	Content    any // string or []ContentBlock
 }
 
-// CustomMessageText extracts text from a CustomMessage's Content field.
+// CustomMessageText extracts text from a CustomMessage's Content field the
+// way upstream CustomMessageComponent does: a string is shown as is, and an
+// array's text blocks are joined with newlines. Content from an extension is
+// JSON-decoded ([]any of map[string]any); typed block slices from Go callers
+// are read through the same JSON shape.
 func CustomMessageText(cm *CustomMessage) string {
-	switch v := cm.Content.(type) {
-	case string:
-		return v
-	case []map[string]any:
-		var parts []string
-		for _, block := range v {
-			if block["type"] == "text" {
-				if t, ok := block["text"].(string); ok {
-					parts = append(parts, t)
-				}
-			}
-		}
-		return strings.Join(parts, "\n")
-	default:
-		return fmt.Sprintf("%v", cm.Content)
+	if s, ok := cm.Content.(string); ok {
+		return s
 	}
+	raw, err := json.Marshal(cm.Content)
+	if err != nil {
+		return ""
+	}
+	var blocks []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(raw, &blocks); err != nil {
+		return ""
+	}
+	parts := make([]string, 0, len(blocks))
+	for _, block := range blocks {
+		if block.Type == "text" {
+			parts = append(parts, block.Text)
+		}
+	}
+	return strings.Join(parts, "\n")
 }

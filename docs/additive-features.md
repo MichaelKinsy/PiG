@@ -350,6 +350,12 @@ Upstream pi stamps `sourceInfo` automatically in the in-process extension loader
 receive the per-tool source through the wire protocol because extensions run
 out-of-process. The `Source` field on `ToolDecl` / `toolDef` is optional and
 backward compatible: when omitted, the host falls back to the extension name.
+The per-tool source reaches Piglet scoping through the in-process
+`extension.Context`. Node extensions see exactly upstream's `ToolInfo`, whose
+`sourceInfo` is the registering extension's, as `pi.getAllTools()` does. The
+`getAllTools` host call the Go, Rust and Python SDKs use also carries the
+per-tool source as `source`, which the Go SDK exposes as the deprecated
+`ToolInfo.Source`.
 
 Upstream has no `GetAllTools`, `GetActiveTools`, `SetActiveTools`, or
 `GetFlagValue` on `ExtensionContext` because upstream loads extensions
@@ -376,8 +382,7 @@ Call-site markers:
 - `extensions/sdk-py/pig_sdk/__init__.py`: `tool(..., source=)`
 - `coding/extension/host/subprocess/host.go`: `buildExtension()` reads
   `ToolDecl.Source` into `RegisteredTool.SourceInfo`
-- `internal/codingagent/interactive.go`: wires `ContextActions` + subprocess
-  bridge `getAllTools` source field
+- `internal/codingagent/interactive_extensions.go`: wires `ContextActions`
 - `coding/piglet/scope.go`: `ScopeTools()` MCP branch
 - `coding/piglet/main.go`: `BuildExtension()` calls
   `SetActiveTools`

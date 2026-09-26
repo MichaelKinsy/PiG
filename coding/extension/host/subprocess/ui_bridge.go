@@ -44,6 +44,8 @@ type UIBridge struct {
 	// terminalInputSubs holds the retire func for each extension's raw
 	// terminal-input subscription, keyed by extension name.
 	terminalInputSubs map[string]func()
+	// terminalCapabilities reports the host terminal's resolved capabilities.
+	terminalCapabilities func() TerminalCapabilitiesPayload
 
 	uiCtx            extension.UIContext
 	uiReady          bool
@@ -307,17 +309,36 @@ type SendUserMessageOptions struct {
 	DeliverAs string `json:"deliverAs,omitempty"` // "steer" | "followUp"
 }
 
-// ToolInfo is a simplified tool metadata struct for getActiveTools/getAllTools.
+// ToolInfo is one entry of getAllTools on the wire. Mirrors upstream ToolInfo
+// (types.ts): the tool definition's name, description, parameter schema and
+// prompt guidelines, with the sourceInfo of whatever registered it.
 type ToolInfo struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Source      string `json:"source,omitempty"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Parameters  json.RawMessage `json:"parameters"`
+	// PromptGuidelines is omitted when the definition has none, as upstream
+	// copies an undefined definition.promptGuidelines.
+	PromptGuidelines []string `json:"promptGuidelines,omitempty"`
+	// SourceInfo is upstream's SourceInfo object: path, source, scope, origin
+	// and an optional baseDir.
+	SourceInfo extension.SourceInfo `json:"sourceInfo"`
+	// Source is PiG's per-tool source attribution (D23): "builtin", the
+	// registering extension's name, or the tool's declared source. It is
+	// not part of upstream's ToolInfo, so the replicated state Node
+	// extensions read omits it; the getAllTools host call keeps sending it
+	// as "source" for SDKs released before sourceInfo existed.
+	Source string `json:"-"`
 }
 
-// CommandInfo is a simplified command metadata struct.
+// CommandInfo is one entry of getCommands on the wire. Mirrors upstream
+// SlashCommandInfo (slash-commands.ts): an extension command, prompt template
+// or skill, with its source kind and sourceInfo.
 type CommandInfo struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
+	// Source is "extension", "prompt" or "skill".
+	Source     string               `json:"source"`
+	SourceInfo extension.SourceInfo `json:"sourceInfo"`
 }
 
 // Snapshot returns the current host-side state visible to the extension via
@@ -336,6 +357,7 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	b.mu.RLock()
 	actions := b.actions
 	uiCtx := b.uiCtx
+	terminalCapabilities := b.terminalCapabilities
 	b.mu.RUnlock()
 
 	// Defaults mirror the upstream runner's unbound defaults: idle, has UI, and
@@ -347,6 +369,10 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	// dispatching a tool, command, or event handler, so these are current when
 	// an extension reads them. They come from the UI context rather than the
 	// host actions, so they are filled before the unbound-actions return.
+	if terminalCapabilities != nil {
+		caps := terminalCapabilities()
+		state.TerminalCapabilities = &caps
+	}
 	if ui := uiCtx; ui != nil {
 		state.EditorText = ui.GetEditorText()
 		state.ToolsExpanded = ui.GetToolsExpanded()
@@ -361,14 +387,10 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 		state.ActiveTools = actions.GetActiveTools()
 	}
 	if actions.GetAllTools != nil {
-		for _, t := range actions.GetAllTools() {
-			state.AllTools = append(state.AllTools, t.Name)
-		}
+		state.AllTools = actions.GetAllTools()
 	}
 	if actions.GetCommands != nil {
-		for _, c := range actions.GetCommands() {
-			state.Commands = append(state.Commands, c.Name)
-		}
+		state.Commands = actions.GetCommands()
 	}
 	if actions.GetThinkingLevel != nil {
 		state.ThinkingLevel = actions.GetThinkingLevel()
@@ -450,6 +472,14 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 		}
 	}
 	return state
+}
+
+// SetTerminalCapabilitiesFunc registers the source of the host terminal's
+// resolved capabilities, sent to extensions with every state snapshot.
+func (b *UIBridge) SetTerminalCapabilitiesFunc(fn func() TerminalCapabilitiesPayload) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.terminalCapabilities = fn
 }
 
 func NewUIBridge(invalidateTUI func()) *UIBridge {
@@ -659,8 +689,8 @@ func (b *UIBridge) BindCommandActions(actions extension.CommandActions) {
 // Accepted function signatures per key:
 //   - "getFlag":          func(string, string) any
 //   - "getActiveTools":   func() []string
-//   - "getAllTools":       func() []ToolInfo  OR  func() []map[string]string
-//   - "getCommands":      func() []CommandInfo  OR  func() []map[string]string
+//   - "getAllTools":      func() []ToolInfo
+//   - "getCommands":      func() []CommandInfo
 //   - "getThinkingLevel": func() string
 //   - "setThinkingLevel": func(string)
 //   - "getContextUsage":  func() *extension.ContextUsage
@@ -700,34 +730,9 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 	case "getActiveTools":
 		b.actions.GetActiveTools = fn.(func() []string)
 	case "getAllTools":
-		// Accept either []ToolInfo or []map[string]string for cross-package compat.
-		switch f := fn.(type) {
-		case func() []ToolInfo:
-			b.actions.GetAllTools = f
-		case func() []map[string]string:
-			b.actions.GetAllTools = func() []ToolInfo {
-				maps := f()
-				out := make([]ToolInfo, len(maps))
-				for i, m := range maps {
-					out[i] = ToolInfo{Name: m["name"], Description: m["description"], Source: m["source"]}
-				}
-				return out
-			}
-		}
+		b.actions.GetAllTools = fn.(func() []ToolInfo)
 	case "getCommands":
-		switch f := fn.(type) {
-		case func() []CommandInfo:
-			b.actions.GetCommands = f
-		case func() []map[string]string:
-			b.actions.GetCommands = func() []CommandInfo {
-				maps := f()
-				out := make([]CommandInfo, len(maps))
-				for i, m := range maps {
-					out[i] = CommandInfo{Name: m["name"], Description: m["description"]}
-				}
-				return out
-			}
-		}
+		b.actions.GetCommands = fn.(func() []CommandInfo)
 	case "getThinkingLevel":
 		b.actions.GetThinkingLevel = fn.(func() string)
 	case "setThinkingLevel":
@@ -2570,7 +2575,16 @@ func (b *UIBridge) handleGetAllTools(actions *HostCallbacks) (*CallResultPayload
 		return &CallResultPayload{Result: result}, nil
 	}
 	tools := actions.GetAllTools()
-	result, _ := json.Marshal(map[string]any{"tools": tools})
+	type sdkToolInfo struct {
+		ToolInfo
+		// Deprecated field of the Go, Rust and Python SDK ToolInfo.
+		Source string `json:"source,omitempty"`
+	}
+	out := make([]sdkToolInfo, len(tools))
+	for i, tool := range tools {
+		out[i] = sdkToolInfo{ToolInfo: tool, Source: tool.Source}
+	}
+	result, _ := json.Marshal(map[string]any{"tools": out})
 	return &CallResultPayload{Result: result}, nil
 }
 

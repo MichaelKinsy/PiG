@@ -9,6 +9,7 @@ import (
 	"image"
 	"image/color"
 	"image/png"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -17,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
@@ -299,4 +301,87 @@ func TestPrintModePrintsAnswerAfterOverflowRecovery(t *testing.T) {
 	if result.stdout != "recovered answer\n" {
 		t.Fatalf("stdout = %q, want the answer after overflow recovery %q", result.stdout, "recovered answer\n")
 	}
+}
+
+// Print and JSON mode prompt through AgentSession.prompt upstream, which runs
+// an extension command in place of the prompt (_tryExecuteExtensionCommand),
+// before input handlers, and expands prompt templates in other text. A
+// failing command handler is reported and still counts as handled, so the run
+// succeeds without contacting the model.
+func TestPrintAndJSONModeRunExtensionCommandsAndExpandTemplates(t *testing.T) {
+	for _, mode := range []string{"text", "json"} {
+		t.Run(mode, func(t *testing.T) {
+			captured := make(chan []ai.Message, 1)
+			provider := ai.NewFauxProvider(ai.FauxConfig{})
+			provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(context ai.TranscriptContext, _ ai.StreamOptions, _ int) ai.FauxResponse {
+				captured <- context.Messages()
+				return fauxTextResponse("reviewed")
+			})})
+			var ran []string
+			var inputs []string
+			host := printModeTestHost(t, provider)
+			host.Extensions = []extension.Extension{{
+				Path: "commands-probe",
+				Commands: map[string]extension.RegisteredCommand{
+					"probe": {Name: "probe", Handler: func(_ context.Context, args string) error {
+						ran = append(ran, args)
+						return nil
+					}},
+					"boom": {Name: "boom", Handler: func(context.Context, string) error {
+						return errors.New("boom failed")
+					}},
+				},
+				CommandOrder: []string{"probe", "boom"},
+				Handlers: map[string][]extension.HandlerFn{"input": {func(args ...any) (any, error) {
+					inputs = append(inputs, args[0].(extension.InputEvent).Text)
+					return nil, nil
+				}}},
+			}}
+			host.Commands.promptTemplates = []codingagent.PromptTemplate{{Name: "review", Content: "Review carefully: $ARGUMENTS"}}
+			result := runPrintModeForTest(t, host, printModeOptions{
+				Mode: mode, InitialMessage: "/probe hello world", Messages: []string{"/boom", "/probe", "/review main.go"},
+			})
+			if result.err != nil {
+				t.Fatalf("run = %v, stderr %q", result.err, result.stderr)
+			}
+			if want := []string{"hello world", ""}; !slices.Equal(ran, want) {
+				t.Fatalf("probe ran with %q, want %q", ran, want)
+			}
+			if want := "Extension error (command:boom): boom failed\n"; result.stderr != want {
+				t.Fatalf("stderr = %q, want %q", result.stderr, want)
+			}
+			// Commands never reach input handlers; the template prompt does,
+			// unexpanded, as upstream expands after _runInputHandlers.
+			if want := []string{"/review main.go"}; !slices.Equal(inputs, want) {
+				t.Fatalf("input handler saw %q, want %q", inputs, want)
+			}
+			if calls := provider.CallCount(); calls != 1 {
+				t.Fatalf("provider calls = %d, want 1 (only the template prompt)", calls)
+			}
+			messages := <-captured
+			user, ok := messages[len(messages)-1].(ai.UserMessage)
+			if !ok {
+				t.Fatalf("last provider message = %T", messages[len(messages)-1])
+			}
+			if text := userMessageText(user); text != "Review carefully: main.go" {
+				t.Fatalf("prompt sent = %q, want the expanded template", text)
+			}
+		})
+	}
+}
+
+func userMessageText(message ai.UserMessage) string {
+	switch content := message.Content.(type) {
+	case ai.UserText:
+		return string(content)
+	case ai.UserContentBlocks:
+		var text strings.Builder
+		for _, block := range content {
+			if block, ok := block.(ai.TextContent); ok {
+				text.WriteString(block.Text)
+			}
+		}
+		return text.String()
+	}
+	return ""
 }

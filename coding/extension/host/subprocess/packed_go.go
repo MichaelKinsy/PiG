@@ -179,6 +179,9 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 	h.mu.Unlock()
 	for i := range pendingExts {
 		pendingExts[i].me.packedProcess = processState
+		// As for an isolated extension (startExt), an exit after the owner
+		// cancelled ctx is teardown, not a crash.
+		pendingExts[i].me.parentCtx = ctx
 	}
 	started := false
 	defer func() {

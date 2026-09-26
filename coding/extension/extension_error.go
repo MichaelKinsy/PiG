@@ -1,5 +1,15 @@
 package extension
 
+import "errors"
+
+// ErrHandlerStopped marks a handler call the host itself cut short: it
+// stopped the extension (shutdown, a termination signal, /reload) or
+// cancelled the dispatch. The handler did not fail, so runners do not report
+// it as an ExtensionError. Upstream never interrupts a running handler; its
+// signal path disposes the runtime and exits without reporting the
+// interrupted work.
+var ErrHandlerStopped = errors.New("extension handler stopped by the host")
+
 // ExtensionError is the structured error surfaced when a registered
 // handler throws (TS) / returns a non-nil error (Go) during event
 // dispatch. Hosts collect these without aborting the dispatch chain

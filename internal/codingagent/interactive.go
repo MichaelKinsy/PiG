@@ -432,6 +432,10 @@ type InteractiveMode struct {
 	// falls through to template expansion when no builtin matches.
 	promptTemplates   []PromptTemplate
 	promptDiagnostics []extension.ResourceDiagnostic
+	// slashCatalog is the resource side of pi.getCommands() (templates,
+	// skills, provenance), republished whole whenever the owner loop changes
+	// one, because extension host calls read it off the owner loop.
+	slashCatalog atomic.Pointer[SlashCommandCatalog]
 
 	// Thinking level and visibility state.
 	// thinkingLevel is the user-facing cycle string ("off"/"low"/"medium"/"high").
@@ -743,6 +747,11 @@ type InteractiveOptions struct {
 	// built-in and extension tools alike. Mirrors upstream excludedToolNames
 	// (sdk.ts:246) + isAllowedTool (agent-session.ts:2288).
 	ExcludedTools map[string]struct{}
+	// ToolRegistryAllowed is the --tools allowlist bounding the tool registry
+	// pi.getAllTools() reports (upstream _allowedToolNames): nil admits every
+	// tool, an empty map none. Unlike AllowedTools, active-tool changes never
+	// modify it.
+	ToolRegistryAllowed map[string]struct{}
 	// NoBuiltinTools hides built-in tools while leaving extension/custom tools.
 	NoBuiltinTools bool
 	// PromptPaths lists additional prompt-template directories.
@@ -1262,6 +1271,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	if m.opts.ResourceSourceInfoProvider != nil {
 		m.resourceSourceInfo = m.opts.ResourceSourceInfoProvider()
 	}
+	m.publishSlashCommandCatalog()
 
 	// Set up extension context
 	uiCtx := NewTUIUIContext(m.tuiInst)

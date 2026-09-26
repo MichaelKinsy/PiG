@@ -3,10 +3,12 @@
 package main
 
 import (
+	"bufio"
 	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 	"time"
@@ -87,5 +89,80 @@ func TestPrintModeSignalExitCodes(t *testing.T) {
 				t.Errorf("exit code = %d, want %d (upstream print-mode contract)", got, tc.want)
 			}
 		})
+	}
+}
+
+// TestPrintModeSignalDuringPipedStdinRead pins termination while print mode
+// waits for piped stdin. Upstream main.ts reads piped stdin to its end before
+// print mode registers any signal handler, so a writer that never closes the
+// pipe (a harness that leaves stdin open) keeps it waiting, and SIGTERM ends
+// the process through the default action: status 143, nothing printed. pig
+// read stdin with a blocking io.ReadAll after its own SIGTERM handler had
+// replaced the default action, so the signal only cancelled a context nobody
+// was waiting on and the process hung.
+func TestPrintModeSignalDuringPipedStdinRead(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping signal exit-code test in short mode")
+	}
+	bin := buildPigBinaryForSignalTest(t)
+	cmd := exec.Command(bin, "--model", "test-faux/faux-1", "--no-extensions", "--print", "/probe")
+	cmd.Dir = t.TempDir()
+	cmd.Env = append(os.Environ(), "PIG_HOME="+t.TempDir(), "PIG_TEST_FAUX=1", "PIG_STARTUP_TRACE=1")
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = stdin.Close() }()
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("start pig: %v", err)
+	}
+	defer func() { _ = cmd.Process.Kill() }()
+
+	// Signal once pig is waiting on stdin, which the startup trace marks.
+	reading := make(chan struct{})
+	stderrDone := make(chan struct{})
+	var trace strings.Builder
+	go func() {
+		defer close(stderrDone)
+		scanner := bufio.NewScanner(stderr)
+		signalled := false
+		for scanner.Scan() {
+			line := scanner.Text()
+			if !strings.HasPrefix(line, "[startup] ") {
+				trace.WriteString(line + "\n")
+			}
+			if !signalled && strings.Contains(line, "stdin-read-start") {
+				signalled = true
+				close(reading)
+			}
+		}
+	}()
+	select {
+	case <-reading:
+	case <-time.After(testbudget.Wait(t)):
+		t.Fatal("pig never started reading stdin")
+	}
+	if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+		t.Fatalf("signal: %v", err)
+	}
+
+	// stderr reaches EOF when the process exits; Wait must follow the reads.
+	select {
+	case <-stderrDone:
+	case <-time.After(testbudget.Wait(t)):
+		t.Fatal("pig ignored SIGTERM while waiting for piped stdin")
+	}
+	err = cmd.Wait()
+	var exitErr *exec.ExitError
+	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 143 {
+		t.Fatalf("wait = %v, want exit status 143", err)
+	}
+	if got := trace.String(); got != "" {
+		t.Errorf("stderr = %q, want nothing besides the startup trace", got)
 	}
 }

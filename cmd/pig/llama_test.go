@@ -14,7 +14,9 @@ import (
 )
 
 // RPC lists and runs /llama like upstream's built-in inline extension
-// command: first in get_commands, and in RPC mode it only warns.
+// command: after every path extension's commands in get_commands, since
+// upstream loads inline extensions last (resource-loader.ts
+// loadFinalExtensionSet), and in RPC mode it only warns.
 func TestRPCCatalogListsAndRunsBuiltInLlamaCommand(t *testing.T) {
 	t.Setenv("LLAMA_BASE_URL", "")
 	t.Setenv("LLAMA_API_KEY", "")
@@ -26,7 +28,7 @@ func TestRPCCatalogListsAndRunsBuiltInLlamaCommand(t *testing.T) {
 	host := startBuiltInLlama(context.Background(), services)
 	var notices [][2]string
 	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{{RegisteredCommand: extension.RegisteredCommand{Name: "other"}, InvocationName: "other"}}}
-	catalog := rpcCommandCatalog{runner: runner, llama: host, notify: func(message, kind string) {
+	catalog := headlessCommandCatalog{runner: runner, llama: host, notify: func(message, kind string) {
 		notices = append(notices, [2]string{message, kind})
 	}}
 
@@ -35,7 +37,7 @@ func TestRPCCatalogListsAndRunsBuiltInLlamaCommand(t *testing.T) {
 		Name: "llama", Description: "Manage llama.cpp router models", Source: "extension",
 		SourceInfo: RPCSourceInfo{Path: "<inline:llama.cpp>", Source: "inline", Scope: "temporary", Origin: "top-level"},
 	}
-	if len(commands) != 2 || !reflect.DeepEqual(commands[0], want) || commands[1].Name != "other" {
+	if len(commands) != 2 || commands[0].Name != "other" || !reflect.DeepEqual(commands[1], want) {
 		t.Fatalf("commands = %#v", commands)
 	}
 	if expanded, handled := catalog.routePrompt(context.Background(), "/llama now"); !handled || expanded != "" {

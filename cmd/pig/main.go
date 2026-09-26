@@ -176,15 +176,31 @@ func loadSkills(skillInputs []string, noSkills bool) ([]*codingagent.SkillDef, e
 // readPipedStdin returns piped stdin content, trimmed. It returns "" when
 // stdin is a terminal or the content is blank. Mirrors upstream main.ts
 // readPipedStdin (`data.trim() || undefined`).
-func readPipedStdin() string {
+//
+// The read waits for end of input, so a writer that never closes the pipe
+// keeps it waiting, as upstream's does. A termination signal ends the wait:
+// upstream reads stdin before print mode registers its signal handlers, so
+// the signal's default action stops the process mid-read. It returns ctx's
+// error when ctx ends first.
+func readPipedStdin(ctx context.Context) (string, error) {
 	if term.IsTerminal(int(os.Stdin.Fd())) {
-		return ""
+		return "", nil
 	}
-	data, err := io.ReadAll(os.Stdin)
-	if err != nil {
-		return ""
+	read := make(chan string, 1)
+	go func() {
+		data, err := io.ReadAll(os.Stdin)
+		if err != nil {
+			read <- ""
+			return
+		}
+		read <- strings.TrimSpace(string(data))
+	}()
+	select {
+	case content := <-read:
+		return content, nil
+	case <-ctx.Done():
+		return "", ctx.Err()
 	}
-	return strings.TrimSpace(string(data))
 }
 
 // buildInitialMessage combines stdin content, @file text, and the first CLI
@@ -1340,7 +1356,20 @@ func main() {
 
 	// Build the initial message from positional args and piped stdin.
 	// Mirrors upstream cli/initial-message.ts + cli/file-processor.ts.
-	initialMessage, initialImages, extraMessages, err := prepareInitialMessage(initialCWD, flags.Args, flags.FileArgs, readPipedStdin())
+	trace.Mark("stdin-read-start")
+	stdinContent, err := readPipedStdin(ctx)
+	if err != nil {
+		// Upstream has no signal handler of its own while it reads stdin, so
+		// a termination signal ends the process with 128+signum. Main's
+		// handler cancelling ctx already stopped the extension processes.
+		if sig := receivedTerminationSignal.Load(); sig != 0 {
+			exitProcess(128 + int(sig))
+		}
+		fmt.Fprintf(os.Stderr, "Error: read stdin: %v\n", err)
+		exitProcess(1)
+	}
+	trace.Mark("stdin-read-done")
+	initialMessage, initialImages, extraMessages, err := prepareInitialMessage(initialCWD, flags.Args, flags.FileArgs, stdinContent)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
 		exitProcess(1)
@@ -1357,6 +1386,12 @@ func main() {
 	// Mirrors upstream main.ts resolveAppMode: --print, --mode json, or a
 	// stdin or stdout that is not a terminal runs print mode.
 	if processAppMode(flags) != appModeInteractive {
+		// Print and JSON mode expand prompt templates as upstream
+		// AgentSession.prompt does, so they load them as RPC mode does.
+		promptResult := codingagent.LoadPromptTemplates("", "", promptPaths...)
+		for _, diagnostic := range promptResult.Diagnostics {
+			startupDiagnostics = append(startupDiagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: diagnostic.Type, Message: diagnostic.Path + ": " + diagnostic.Message})
+		}
 		codingagent.ReportDiagnostics(startupDiagnostics)
 		if model == nil {
 			fmt.Fprintln(os.Stderr, "error: no model specified. Use --model, run `pig login github-copilot`, or set OPENAI_API_KEY")
@@ -1373,10 +1408,21 @@ func main() {
 		if processAppMode(flags) == appModeJSON {
 			mode = "json"
 		}
+		registryAllowed, registryExcluded := toolRegistryFilters(flags)
 		host := printModeRuntime{
-			Services:   services,
-			Extensions: printExts,
-			Bridge:     subprocBridge,
+			Commands: headlessCommandCatalog{
+				promptTemplates: promptResult.Templates,
+				skills:          rpcResolvedSkills(skillDefs, activePiglet),
+				cwd:             cwd,
+				agentDir:        agentDir,
+				sourceInfo:      resourceSourceInfoProvider(cwd, agentDir, services.SettingsManager(), resourceFlags, startupSourceResolver.Resolve)(),
+				llama:           llamaHost,
+			},
+			ToolRegistryAllowed:  registryAllowed,
+			ToolRegistryExcluded: registryExcluded,
+			Services:             services,
+			Extensions:           printExts,
+			Bridge:               subprocBridge,
 			Session: coding.SessionStartOptions{
 				Model:                model,
 				SystemPrompt:         systemPrompt,
@@ -1493,6 +1539,7 @@ func main() {
 		fmt.Fprintf(os.Stderr, "error: construct request auth runtime: %v\n", err)
 		exitProcess(1)
 	}
+	interactiveRegistryAllowed, _ := toolRegistryFilters(flags)
 	iopts := codingagent.InteractiveOptions{
 		ContextUsage: func() (*int, int) {
 			usage := codingSess.ContextUsage()
@@ -1512,6 +1559,7 @@ func main() {
 		SystemPrompt:        systemPrompt,
 		SystemPromptOptions: systemPromptOptions,
 		AllowedTools:        allowed,
+		ToolRegistryAllowed: interactiveRegistryAllowed,
 		ActiveBuiltinTools:  activeBuiltin,
 		ExcludedTools:       excludedTools,
 		NoBuiltinTools:      skipBuiltinTools,

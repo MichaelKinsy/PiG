@@ -56,8 +56,8 @@ These are the call names the host accepts. SDK bindings wrap each into a method 
 
 - `getFlag(name)` - value of a host or extension flag.
 - `getActiveTools()` - names of tools currently active for the model.
-- `getAllTools()` - every tool name + description known to the host.
-- `getCommands()` - slash commands available to the user.
+- `getAllTools()` - every tool in the session's registry, active or not, as Pi's `ToolInfo`: `name`, `description`, `parameters`, `promptGuidelines` (when set) and `sourceInfo`. The Go, Rust and Python SDKs' host call also returns PiG's per-tool `source`, which the Go SDK keeps as the deprecated `ToolInfo.Source`.
+- `getCommands()` - extension commands, prompt templates and skills, as Pi's `SlashCommandInfo`: `name`, `description`, `source` and `sourceInfo`.
 - `getThinkingLevel()` - `"none" | "low" | "medium" | "high" | "xhigh"`.
 - `setThinkingLevel(level)` - switch reasoning effort if the active model supports it.
 - `getContextUsage()` - `{ tokens, max, percent }`.

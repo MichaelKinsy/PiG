@@ -289,6 +289,24 @@ func (m *InteractiveMode) extensionNavigateTreeContext(ctx context.Context, targ
 	return extension.CancelledResult{}, nil
 }
 
+// publishSlashCommandCatalog republishes the prompt templates, skills and
+// resource provenance pi.getCommands() lists. Call it on the owner loop after
+// changing any of them: extension host calls read the published copy, never
+// the live fields.
+func (m *InteractiveMode) publishSlashCommandCatalog() {
+	catalog := &SlashCommandCatalog{
+		PromptTemplates: append([]PromptTemplate(nil), m.promptTemplates...),
+		Skills:          append([]*SkillDef(nil), m.opts.Skills...),
+		CWD:             m.opts.CWD,
+		AgentDir:        m.opts.AgentDir,
+		SourceInfo:      cloneResourceSourceInfoMap(m.resourceSourceInfo),
+	}
+	if m.opts.Llama != nil {
+		catalog.Inline = []PiSlashCommand{LlamaSlashCommand()}
+	}
+	m.slashCatalog.Store(catalog)
+}
+
 // wireSubprocessHostCallbacks sets up host-side callbacks so subprocess
 // extensions can query session state (active tools, commands, usage, etc.).
 // pig-specific: no upstream equivalent: upstream's extension runner has
@@ -340,55 +358,22 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		names = append(names, builtinNames...)
 		return names
 	})
-	b.SetHostAction("getAllTools", func() []map[string]string {
-		if m.newRunner == nil {
-			builtinNames := m.activeBuiltinToolNames()
-			result := make([]map[string]string, len(builtinNames))
-			for i, name := range builtinNames {
-				result[i] = map[string]string{
-					"name":        name,
-					"description": tools.BuiltinToolDescription(name),
-					"source":      "builtin",
-				}
-			}
-			return result
+	b.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
+		var runner ExtensionToolLister
+		if m.newRunner != nil {
+			runner = m.newRunner
 		}
-		extTools := m.newRunner.Tools()
-		builtinNames := m.activeBuiltinToolNames(extTools...)
-		result := make([]map[string]string, 0, len(extTools)+len(builtinNames))
-		for _, t := range extTools {
-			source := "builtin"
-			if s, ok := t.SourceInfo.(string); ok && s != "" {
-				source = s
-			}
-			result = append(result, map[string]string{
-				"name":        t.Definition.Name,
-				"description": t.Definition.Description,
-				"source":      source,
-			})
-		}
-		for _, name := range builtinNames {
-			result = append(result, map[string]string{
-				"name":        name,
-				"description": tools.BuiltinToolDescription(name),
-				"source":      "builtin",
-			})
-		}
-		return result
+		return ExtensionToolInfos(runner, m.opts.ToolRegistryAllowed, m.opts.ExcludedTools)
 	})
-	b.SetHostAction("getCommands", func() []map[string]string {
-		if m.newRunner == nil {
-			return nil
+	b.SetHostAction("getCommands", func() []subprocess.CommandInfo {
+		catalog := SlashCommandCatalog{}
+		if published := m.slashCatalog.Load(); published != nil {
+			catalog = *published
 		}
-		commands := m.newRunner.Commands()
-		result := make([]map[string]string, len(commands))
-		for i, c := range commands {
-			result[i] = map[string]string{
-				"name":        strings.TrimPrefix(c.InvocationName, "/"),
-				"description": c.Description,
-			}
+		if m.newRunner != nil {
+			catalog.Runner = m.newRunner
 		}
-		return result
+		return catalog.SubprocessCommands()
 	})
 	b.SetHostAction("setActiveTools", func(names []string) {
 		m.opts.AllowedTools = make(map[string]struct{}, len(names))

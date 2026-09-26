@@ -1,13 +1,16 @@
 package codingagent
 
 import (
+	"encoding/json"
 	"io"
+	"path/filepath"
 	"slices"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -333,34 +336,91 @@ func TestGetAllTools_ExtensionOverrideSuppressesDuplicateBuiltin(t *testing.T) {
 	}
 }
 
-func TestSubprocessGetAllTools_ExtensionOverrideSuppressesDuplicateBuiltin(t *testing.T) {
+// The subprocess getAllTools mirrors upstream AgentSession.getAllTools: every
+// admitted built-in, active or not, in createAllToolDefinitions order, and an
+// extension tool named like a built-in takes that built-in's place with the
+// extension's definition and sourceInfo.
+func TestSubprocessGetAllTools_ExtensionOverrideReplacesBuiltinInPlace(t *testing.T) {
 	runner := inproc.NewRunner([]extension.Extension{{
-		Name: "override-ext",
+		Name:       "override-ext",
+		SourceInfo: PiSourceInfo{Path: "/ext/override.ts", Source: "cli", Scope: "temporary", Origin: "top-level"},
 		Tools: map[string]extension.RegisteredTool{
-			"bash": {Definition: extension.ToolDefinition{Name: "bash", Description: "override"}, SourceInfo: "override-ext"},
+			"bash":  {Definition: extension.ToolDefinition{Name: "bash", Description: "override", Parameters: json.RawMessage(`{"type":"object"}`)}, SourceInfo: "override-ext"},
+			"extra": {Definition: extension.ToolDefinition{Name: "extra", Description: "extra tool", Parameters: json.RawMessage(`{"type":"object","properties":{}}`), PromptGuidelines: []string{"Use extra."}}, SourceInfo: "override-ext"},
 		},
+		ToolOrder: []string{"bash", "extra"},
 	}}, t.TempDir())
 	bridge := &captureUIBridge{}
 	m := &InteractiveMode{
 		newRunner: runner,
-		opts:      InteractiveOptions{CWD: t.TempDir(), SubprocessUIBridge: bridge},
+		opts:      InteractiveOptions{CWD: t.TempDir(), SubprocessUIBridge: bridge, ExcludedTools: map[string]struct{}{"ls": {}}},
 	}
 	m.wireSubprocessHostCallbacks()
-	getAll, ok := bridge.actions["getAllTools"].(func() []map[string]string)
+	getAll, ok := bridge.actions["getAllTools"].(func() []subprocess.ToolInfo)
 	if !ok {
 		t.Fatalf("getAllTools action = %T", bridge.actions["getAllTools"])
 	}
-	count := 0
-	for _, tool := range getAll() {
-		if tool["name"] != "bash" {
-			continue
-		}
-		count++
-		if tool["source"] != "override-ext" {
-			t.Fatalf("bash source = %q", tool["source"])
-		}
+	tools := getAll()
+	var names []string
+	for _, tool := range tools {
+		names = append(names, tool.Name)
 	}
-	if count != 1 {
-		t.Fatalf("bash count = %d", count)
+	if want := []string{"read", "bash", "powershell", "edit", "write", "grep", "find", "extra"}; !slices.Equal(names, want) {
+		t.Fatalf("getAllTools names = %v, want %v", names, want)
+	}
+	bash := tools[1]
+	if bash.Description != "override" || string(bash.Parameters) != `{"type":"object"}` ||
+		bash.SourceInfo != (PiSourceInfo{Path: "/ext/override.ts", Source: "cli", Scope: "temporary", Origin: "top-level"}) {
+		t.Fatalf("bash = %+v, want the extension's definition and sourceInfo", bash)
+	}
+	grep := tools[5]
+	if grep.SourceInfo != (PiSourceInfo{Path: "<builtin:grep>", Source: "builtin", Scope: "temporary", Origin: "top-level"}) || len(grep.Parameters) == 0 {
+		t.Fatalf("grep = %+v, want the built-in definition", grep)
+	}
+	if extra := tools[7]; !slices.Equal(extra.PromptGuidelines, []string{"Use extra."}) {
+		t.Fatalf("extra = %+v", extra)
+	}
+}
+
+// The subprocess getCommands mirrors upstream getCommands: extension
+// commands, then prompt templates, then skills, each with its source and
+// sourceInfo. It reads the catalog the owner loop last published.
+func TestSubprocessGetCommands_ListsExtensionCommandsTemplatesAndSkills(t *testing.T) {
+	runner := inproc.NewRunner([]extension.Extension{{
+		Name:         "cmd-ext",
+		SourceInfo:   PiSourceInfo{Path: "/ext/cmd.ts", Source: "cli", Scope: "temporary", Origin: "top-level"},
+		Commands:     map[string]extension.RegisteredCommand{"probe": {Name: "probe", Description: "Probe"}},
+		CommandOrder: []string{"probe"},
+	}}, t.TempDir())
+	bridge := &captureUIBridge{}
+	agentDir := t.TempDir()
+	templatePath := filepath.Join(agentDir, "prompts", "review.md")
+	skillPath := filepath.Join(agentDir, "skills", "lint", "SKILL.md")
+	m := &InteractiveMode{
+		newRunner:       runner,
+		promptTemplates: []PromptTemplate{{Name: "review", Description: "Review code", FilePath: templatePath}},
+		opts: InteractiveOptions{CWD: t.TempDir(), AgentDir: agentDir, SubprocessUIBridge: bridge,
+			Skills: []*SkillDef{{Name: "lint", Description: "Lint code", Path: skillPath}}},
+	}
+	m.wireSubprocessHostCallbacks()
+	m.publishSlashCommandCatalog()
+	getCommands, ok := bridge.actions["getCommands"].(func() []subprocess.CommandInfo)
+	if !ok {
+		t.Fatalf("getCommands action = %T", bridge.actions["getCommands"])
+	}
+	got, err := json.Marshal(getCommands())
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := json.Marshal([]subprocess.CommandInfo{
+		{Name: "probe", Description: "Probe", Source: "extension", SourceInfo: PiSourceInfo{Path: "/ext/cmd.ts", Source: "cli", Scope: "temporary", Origin: "top-level"}},
+		{Name: "review", Description: "Review code", Source: "prompt", SourceInfo: PiSourceInfo{Path: templatePath, Source: "local", Scope: "user", Origin: "top-level", BaseDir: filepath.Join(agentDir, "prompts")}},
+		{Name: "skill:lint", Description: "Lint code", Source: "skill", SourceInfo: PiSourceInfo{Path: skillPath, Source: "local", Scope: "user", Origin: "top-level", BaseDir: filepath.Join(agentDir, "skills")}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(got) != string(want) {
+		t.Fatalf("getCommands = %s\nwant %s", got, want)
 	}
 }

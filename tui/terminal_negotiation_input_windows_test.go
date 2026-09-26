@@ -5,6 +5,7 @@ package tui
 import (
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -69,7 +70,7 @@ func (p *pseudoConsole) typeRequestedKeys(t *testing.T, keys string) {
 	t.Helper()
 	deadline := time.Now().Add(60 * time.Second)
 	for next := 1; time.Now().Before(deadline); {
-		text, err := os.ReadFile(fmt.Sprintf("%s.%d", keys, next))
+		text, err := readSharingDelete(fmt.Sprintf("%s.%d", keys, next))
 		if err == nil {
 			p.write(t, string(text))
 			next++
@@ -83,4 +84,29 @@ func (p *pseudoConsole) typeRequestedKeys(t *testing.T, keys string) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+}
+
+// readSharingDelete reads a keys file the child publishes with os.Rename.
+// MoveFileEx renames through a handle opened with DELETE access, and that
+// handle can still be open once the new name is visible. os.ReadFile opens
+// without FILE_SHARE_DELETE, so a read racing the rename failed with
+// ERROR_SHARING_VIOLATION ("being used by another process"). Sharing delete
+// access lets the read coexist with the rename's handle.
+func readSharingDelete(path string) ([]byte, error) {
+	name, err := windows.UTF16PtrFromString(path)
+	if err != nil {
+		return nil, err
+	}
+	handle, err := windows.CreateFile(name, windows.GENERIC_READ,
+		windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE,
+		nil, windows.OPEN_EXISTING, windows.FILE_ATTRIBUTE_NORMAL, 0)
+	if err != nil {
+		if errors.Is(err, windows.ERROR_FILE_NOT_FOUND) || errors.Is(err, windows.ERROR_PATH_NOT_FOUND) {
+			return nil, &os.PathError{Op: "open", Path: path, Err: os.ErrNotExist}
+		}
+		return nil, &os.PathError{Op: "open", Path: path, Err: err}
+	}
+	file := os.NewFile(uintptr(handle), path)
+	defer func() { _ = file.Close() }()
+	return io.ReadAll(file)
 }
