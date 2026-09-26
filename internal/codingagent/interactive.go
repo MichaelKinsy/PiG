@@ -677,6 +677,12 @@ func (m *InteractiveMode) modalRouteWatch() (chan []byte, chan struct{}, <-chan 
 // unbuffered readCh: when the next selector arms, modalChangedCh fires and
 // the chunk routes to it.
 func (m *InteractiveMode) routeInputChunk(ctx context.Context, chunk []byte, readCh chan<- inputChunk) *inputTicket {
+	return m.routeInputSequence(ctx, chunk, false, readCh)
+}
+
+// routeInputSequence is routeInputChunk for a sequence the pump parsed from
+// its input; more reports that sequences already read follow it.
+func (m *InteractiveMode) routeInputSequence(ctx context.Context, chunk []byte, more bool, readCh chan<- inputChunk) *inputTicket {
 	ticket := newInputTicket()
 	for {
 		modalCh, modalDone, changed := m.modalRouteWatch()
@@ -694,7 +700,7 @@ func (m *InteractiveMode) routeInputChunk(ctx context.Context, chunk []byte, rea
 			}
 		}
 		select {
-		case readCh <- inputChunk{data: chunk, ticket: ticket}:
+		case readCh <- inputChunk{data: chunk, ticket: ticket, more: more}:
 			return ticket
 		case <-changed:
 			// A modal armed (or the route otherwise changed) while the busy

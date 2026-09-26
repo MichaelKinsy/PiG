@@ -22,22 +22,71 @@ func (m *InteractiveMode) inputLoop(ctx context.Context, source io.Reader) error
 	errCh := make(chan error, 1)
 	go m.pumpTerminalInput(ctx, source, readCh, errCh)
 
-	dispatchInput := func(input inputChunk) error {
+	// dispatchInput handles one routed sequence and reports whether the rest
+	// of the same terminal read follows it on readCh.
+	dispatchInput := func(input inputChunk) (bool, error) {
 		defer input.ticket.settle()
-		chunk := string(input.data)
-		if chunk == "" {
-			return nil
+		if chunk := string(input.data); chunk != "" {
+			if os.Getenv("PIG_DEBUG_KEYS") != "" {
+				debugLog("key %q -> %d", chunk, classifyKey(chunk))
+			}
+			if err := m.dispatchInputChunk(ctx, chunk, input.ticket); err != nil {
+				return false, err
+			}
 		}
-		if os.Getenv("PIG_DEBUG_KEYS") != "" {
-			debugLog("key %q -> %d", chunk, classifyKey(chunk))
+		input.ticket.settle()
+		// A chunk still waiting on a remote listener's verdict holds the
+		// pump, and a modal takes the next sequence itself, so neither
+		// continues the read here.
+		if !input.more || !input.ticket.settled() || m.inputLoopErr != nil || m.requestExit.Load() {
+			return false, nil
 		}
-		if err := m.dispatchInputChunk(ctx, chunk, input.ticket); err != nil {
-			return err
-		}
+		modalCh, _, _ := m.modalRouteWatch()
+		return modalCh == nil, nil
+	}
+
+	// dispatchRead dispatches input and the rest of its terminal read, then
+	// paints once. Upstream's StdinBuffer emits every sequence of one read
+	// synchronously, so no posted UI task (an async autocomplete result),
+	// agent event or paint runs between them, and requestImmediateRender
+	// coalesces the paint to one frame after the read. Handling each sequence
+	// as its own loop turn painted every prefix of a typed "/compact" with the
+	// popup its stale suggestions opened, which grew the transcript and left
+	// the main screen scrolled further than upstream.
+	dispatchRead := func(input inputChunk) (err error) {
+		dispatched := false
 		// Match upstream's immediate keyboard paint before asynchronous
 		// autocomplete results request their throttled follow-up frame.
-		m.tuiInst.Render()
-		return nil
+		defer func() {
+			if dispatched && err == nil {
+				m.tuiInst.Render()
+			}
+		}()
+		for {
+			dispatched = dispatched || len(input.data) > 0
+			continues, dispatchErr := dispatchInput(input)
+			if dispatchErr != nil || !continues {
+				return dispatchErr
+			}
+			_, _, changed := m.modalRouteWatch()
+			select {
+			case <-ctx.Done():
+				return nil
+			case readErr := <-errCh:
+				// Paint what the read delivered before the loop ends.
+				m.tuiInst.Render()
+				return readErr
+			case <-changed:
+				// A modal armed off the loop and takes the rest of the read.
+				return nil
+			case next, ok := <-readCh:
+				if !ok {
+					readCh = nil
+					return nil
+				}
+				input = next
+			}
+		}
 	}
 
 	for {
@@ -61,7 +110,7 @@ func (m *InteractiveMode) inputLoop(ctx context.Context, source io.Reader) error
 			readCh = nil
 			continue
 		case priorityInputRead:
-			if err := dispatchInput(buf); err != nil {
+			if err := dispatchRead(buf); err != nil {
 				return err
 			}
 			continue
@@ -109,7 +158,7 @@ func (m *InteractiveMode) inputLoop(ctx context.Context, source io.Reader) error
 				readCh = nil
 				continue
 			}
-			if err := dispatchInput(buf); err != nil {
+			if err := dispatchRead(buf); err != nil {
 				return err
 			}
 		}
@@ -171,7 +220,7 @@ func (m *InteractiveMode) pumpTerminalInput(ctx context.Context, source io.Reade
 			chunk := backlog.held[0]
 			backlog.held[0] = ""
 			backlog.held = backlog.held[1:]
-			backlog.waiting = m.routeInputChunk(ctx, []byte(chunk), readCh)
+			backlog.waiting = m.routeInputSequence(ctx, []byte(chunk), len(backlog.held) > 0, readCh)
 		}
 	}
 	process := func(buf []byte) {
