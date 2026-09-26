@@ -102,3 +102,25 @@ func TestStatePayload_RoundTrip(t *testing.T) {
 		t.Errorf("roundtrip mismatch: %+v", got)
 	}
 }
+
+// Node extensions read ToolInfo from the state replica, which is exactly
+// upstream's shape. The getAllTools host call the Go, Rust and Python SDKs
+// use also carries PiG's per-tool source, which their ToolInfo exposed
+// before sourceInfo existed.
+func TestGetAllToolsHostCallKeepsTheSDKSourceField(t *testing.T) {
+	b := NewUIBridge(func() {})
+	b.SetActions(&HostCallbacks{GetAllTools: func() []ToolInfo {
+		return []ToolInfo{{Name: "lookup", Description: "Look up", Parameters: json.RawMessage(`{"type":"object"}`), SourceInfo: map[string]any{"path": "/ext.ts"}, Source: "mcp:docs"}}
+	}})
+	result, err := b.HandleCall("ext", &CallPayload{Method: "getAllTools"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"tools":[{"name":"lookup","description":"Look up","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts"},"source":"mcp:docs"}]}`; string(result.Result) != want {
+		t.Errorf("getAllTools result = %s, want %s", result.Result, want)
+	}
+	state, _ := json.Marshal(b.Snapshot(nil, 0, false).AllTools)
+	if want := `[{"name":"lookup","description":"Look up","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts"}}]`; string(state) != want {
+		t.Errorf("replicated allTools = %s, want %s", state, want)
+	}
+}

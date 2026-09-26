@@ -498,6 +498,12 @@ type ToolInfo struct {
 	// PromptGuidelines is nil when the definition has none.
 	PromptGuidelines []string   `json:"promptGuidelines,omitempty"`
 	SourceInfo       SourceInfo `json:"sourceInfo"`
+	// Source is PiG's per-tool source attribution: "builtin", the
+	// registering extension's name, or the source a tool declares with
+	// ToolWithSource.
+	//
+	// Deprecated: use SourceInfo.
+	Source string `json:"source,omitempty"`
 }
 
 // GetActiveTools returns the currently active tool names.

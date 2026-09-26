@@ -68351,6 +68351,17 @@
       "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ErrHandlerStopped",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension",
+      "name": "ErrHandlerStopped",
+      "kind": "variable",
+      "exported": true,
+      "shape": {
+        "type": "error"
+      },
+      "shapeHash": "sha256:6320ac68bd22b44fdcc4619eb1bb6166e15ab5fc8e78dbf2401aeda8f9e49a1d"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension#ErrStaleContext",
       "package": "github.com/MichaelKinsy/PiG/coding/extension",
       "name": "ErrStaleContext",
@@ -72933,9 +72944,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(extPath string, eventType string, err error)"
+        "type": "func(ctx context.Context, extPath string, eventType string, err error)"
       },
-      "shapeHash": "sha256:63b8855ccd50d99c896f9d4ec01416f14a1fe92d30261a7fdfff182473e89ba6"
+      "shapeHash": "sha256:c42f2733a08fa56978db3366df985a8179fb613a9e31728ad415c4f7e8288e11"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#Runner.resolveCommands",
@@ -73002,17 +73013,6 @@
         "type": "func(handler github.com/MichaelKinsy/PiG/coding/extension.HandlerFn, args ...any) (result any, err error)"
       },
       "shapeHash": "sha256:4b7ccbee456733fc0937273f940ec1c7d61f1a85fc6fa386815322e26fb416b1"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#cancelledBy",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/inproc",
-      "name": "cancelledBy",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx context.Context, err error) bool"
-      },
-      "shapeHash": "sha256:089e3de07aa92f07b08dd9bf22039927365e5cbf00fc4ffd4377c8b9ed72a711"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/inproc#cloneAgentMessages",
@@ -81694,6 +81694,17 @@
       "shapeHash": "sha256:c412ec559705d7db7f6cc6df3aca8056f375092d2bf092c1fcb14086fdfe39f4"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#managedExt.dispatchError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "managedExt.dispatchError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error) error"
+      },
+      "shapeHash": "sha256:757366f347b77fab18c96d624ec5206676e19d18aa9ceb4a88a9343171f303d5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#managedExt.makeEventHandler",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "managedExt.makeEventHandler",
@@ -81725,6 +81736,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#managedExt.stoppedByOwner",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "managedExt.stoppedByOwner",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#maxConcurrentCellPreparations",
@@ -124229,6 +124251,17 @@
         "type": "func(value any) *github.com/MichaelKinsy/PiG/ai.Usage"
       },
       "shapeHash": "sha256:567b05399f8121dc04bc7e7358852a88369cc3433be3f792d3609faedf48a3b3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#toolSource",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "toolSource",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(tool github.com/MichaelKinsy/PiG/coding/extension.RegisteredTool) string"
+      },
+      "shapeHash": "sha256:52520c469b288ea808848e3516bbc2d24413b0f3107571c97486adf46f9d1425"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#transformMermaidBlocks",

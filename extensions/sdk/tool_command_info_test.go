@@ -29,8 +29,8 @@ func TestGetAllToolsAndGetCommandsDecodeUpstreamInfo(t *testing.T) {
 
 	results := map[string]string{
 		"getAllTools": `{"tools":[` +
-			`{"name":"read","description":"Read a file","parameters":{"type":"object"},"promptGuidelines":["Use read."],"sourceInfo":{"path":"<builtin:read>","source":"builtin","scope":"temporary","origin":"top-level"}},` +
-			`{"name":"probe","description":"Probe","parameters":{"type":"object","properties":{}},"sourceInfo":{"path":"/x/probe.go","source":"cli","scope":"temporary","origin":"top-level"}}]}`,
+			`{"name":"read","description":"Read a file","parameters":{"type":"object"},"promptGuidelines":["Use read."],"sourceInfo":{"path":"<builtin:read>","source":"builtin","scope":"temporary","origin":"top-level"},"source":"builtin"},` +
+			`{"name":"probe","description":"Probe","parameters":{"type":"object","properties":{}},"sourceInfo":{"path":"/x/probe.go","source":"cli","scope":"temporary","origin":"top-level"},"source":"mcp:probe"}]}`,
 		"getCommands": `{"commands":[` +
 			`{"name":"probe","description":"Probe command","source":"extension","sourceInfo":{"path":"/x/probe.go","source":"cli","scope":"temporary","origin":"top-level"}},` +
 			`{"name":"skill:review","source":"skill","sourceInfo":{"path":"/s/SKILL.md","source":"local","scope":"user","origin":"top-level","baseDir":"/s"}}]}`,
@@ -54,9 +54,9 @@ func TestGetAllToolsAndGetCommandsDecodeUpstreamInfo(t *testing.T) {
 
 	wantTools := []ToolInfo{
 		{Name: "read", Description: "Read a file", Parameters: json.RawMessage(`{"type":"object"}`), PromptGuidelines: []string{"Use read."},
-			SourceInfo: SourceInfo{Path: "<builtin:read>", Source: "builtin", Scope: "temporary", Origin: "top-level"}},
+			SourceInfo: SourceInfo{Path: "<builtin:read>", Source: "builtin", Scope: "temporary", Origin: "top-level"}, Source: "builtin"},
 		{Name: "probe", Description: "Probe", Parameters: json.RawMessage(`{"type":"object","properties":{}}`),
-			SourceInfo: SourceInfo{Path: "/x/probe.go", Source: "cli", Scope: "temporary", Origin: "top-level"}},
+			SourceInfo: SourceInfo{Path: "/x/probe.go", Source: "cli", Scope: "temporary", Origin: "top-level"}, Source: "mcp:probe"},
 	}
 	if !reflect.DeepEqual(tools, wantTools) {
 		t.Errorf("GetAllTools() = %+v\nwant %+v", tools, wantTools)

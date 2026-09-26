@@ -234,6 +234,7 @@ func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string
 			Name: schema.Name, Description: schema.Description, Parameters: parameters,
 			PromptGuidelines: schema.PromptGuidelines,
 			SourceInfo:       PiSourceInfo{Path: "<builtin:" + schema.Name + ">", Source: "builtin", Scope: "temporary", Origin: "top-level"},
+			Source:           "builtin",
 		})
 	}
 	if runner == nil {
@@ -248,6 +249,7 @@ func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string
 		info := subprocess.ToolInfo{
 			Name: name, Description: tool.Definition.Description, Parameters: tool.Definition.Parameters,
 			PromptGuidelines: tool.Definition.PromptGuidelines, SourceInfo: PiSourceInfoValue(sourceInfo),
+			Source: toolSource(tool),
 		}
 		if i, ok := index[name]; ok {
 			out[i] = info
@@ -257,4 +259,13 @@ func ExtensionToolInfos(runner ExtensionToolLister, allowed, excluded map[string
 		out = append(out, info)
 	}
 	return out
+}
+
+// toolSource is a tool's D23 source attribution: its declared source, or the
+// registering extension's name, which the loader stamps as SourceInfo.
+func toolSource(tool extension.RegisteredTool) string {
+	if source, ok := tool.SourceInfo.(string); ok && source != "" {
+		return source
+	}
+	return "builtin"
 }

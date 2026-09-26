@@ -433,8 +433,8 @@ func (e *Extension) ToolWithGuidelines(name, description string, schema Schema, 
 // ToolWithSource registers a tool with an explicit source identifier.
 // Source overrides the default extension-name attribution Piglet tool
 // scoping reads, allowing extensions that wrap external tool sources (e.g.
-// MCP servers) to provide per-tool provenance. GetAllTools reports upstream's
-// SourceInfo for the tool, not this source.
+// MCP servers) to provide per-tool provenance. GetAllTools reports it in the
+// deprecated ToolInfo.Source; ToolInfo.SourceInfo is the extension's.
 // pig additive (D23): ToolWithSource adds per-tool source attribution.
 // Example: ext.ToolWithSource("list_models", desc, schema, "mcp:mctl-platform", guidelines, handler)
 func (e *Extension) ToolWithSource(name, description string, schema Schema, source string, guidelines []string, handler ToolFunc) {

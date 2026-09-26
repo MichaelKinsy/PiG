@@ -611,18 +611,10 @@ func (r *Runner) ExecuteCommand(ctx context.Context, invocationName, args string
 	commandContext := r.CreateCommandContext()
 	callContext := extension.WithContext(ctx, commandContext.Context)
 	callContext = extension.WithCommandContext(callContext, commandContext)
-	if err := command.Handler(callContext, args); err != nil && !cancelledBy(ctx, err) {
-		r.recordHandlerError("command:"+invocationName, "command", err)
+	if err := command.Handler(callContext, args); err != nil {
+		r.recordHandlerError(ctx, "command:"+invocationName, "command", err)
 	}
 	return true
-}
-
-// cancelledBy reports whether err is ctx's own cancellation: the host
-// stopped the command (shutdown or a termination signal), the handler did
-// not fail. Upstream cannot cancel a command; its process exits instead,
-// and nothing is reported.
-func cancelledBy(ctx context.Context, err error) bool {
-	return ctx.Err() != nil && errors.Is(err, ctx.Err())
 }
 
 // CommandDiagnostics returns the warnings/errors collected during the
@@ -973,8 +965,12 @@ func extensionPath(ext extension.Extension) string {
 // recordHandlerError wraps a handler-returned error into ExtensionError
 // and dispatches it via emitError. Captures a stack trace at the call
 // site (pig parity with upstream's `err.stack`).
-func (r *Runner) recordHandlerError(extPath, eventType string, err error) {
-	if err == nil {
+//
+// A call the host cut short is not reported: the error is the dispatch
+// context's own cancellation, or the transport marks it
+// [extension.ErrHandlerStopped] because the host stopped the extension.
+func (r *Runner) recordHandlerError(ctx context.Context, extPath, eventType string, err error) {
+	if err == nil || errors.Is(err, extension.ErrHandlerStopped) || (ctx.Err() != nil && errors.Is(err, ctx.Err())) {
 		return
 	}
 	r.emitError(&extension.ExtensionError{
@@ -1025,7 +1021,7 @@ func (r *Runner) EmitBoundary(
 			handlerResult, handlerErr := callHandler(handler, event, dispatchCtx)
 			entries = event.Entries
 			if handlerErr != nil {
-				r.recordHandlerError(ext.Path, eventType, handlerErr)
+				r.recordHandlerError(ctx, ext.Path, eventType, handlerErr)
 			} else if handlerResult != nil {
 				result, ok := coerceResult[extension.BoundaryResult](handlerResult)
 				if !ok {
@@ -1034,7 +1030,7 @@ func (r *Runner) EmitBoundary(
 					}
 				}
 				if !ok {
-					r.recordHandlerError(ext.Path, eventType, fmt.Errorf("handler returned %T, expected extension.BoundaryResult", handlerResult))
+					r.recordHandlerError(ctx, ext.Path, eventType, fmt.Errorf("handler returned %T, expected extension.BoundaryResult", handlerResult))
 				} else {
 					if result.Entries != nil {
 						entries = *result.Entries
@@ -1093,7 +1089,7 @@ func (r *Runner) EmitToolCall(ctx context.Context, event extension.ToolCallEvent
 			}
 			typed, ok := coerceResult[*extension.ToolCallEventResult](handlerResult)
 			if !ok {
-				r.recordHandlerError(ext.Path, "tool_call",
+				r.recordHandlerError(ctx, ext.Path, "tool_call",
 					fmt.Errorf("handler returned %T, expected *extension.ToolCallEventResult", handlerResult))
 				continue
 			}
@@ -1145,7 +1141,7 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 			event = withToolResultFields(event, curContent, curDetails, curIsError, curUsage)
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
-				r.recordHandlerError(ext.Path, "tool_result", err)
+				r.recordHandlerError(ctx, ext.Path, "tool_result", err)
 				continue
 			}
 			if handlerResult == nil {
@@ -1153,7 +1149,7 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 			}
 			typed, ok := coerceResult[*extension.ToolResultEventResult](handlerResult)
 			if !ok {
-				r.recordHandlerError(ext.Path, "tool_result",
+				r.recordHandlerError(ctx, ext.Path, "tool_result",
 					fmt.Errorf("handler returned %T, expected *extension.ToolResultEventResult", handlerResult))
 				continue
 			}
@@ -1236,7 +1232,7 @@ func (r *Runner) EmitInput(ctx context.Context, text string, images []extension.
 			}
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
-				r.recordHandlerError(ext.Path, "input", err)
+				r.recordHandlerError(ctx, ext.Path, "input", err)
 				continue
 			}
 			if handlerResult == nil {
@@ -1244,7 +1240,7 @@ func (r *Runner) EmitInput(ctx context.Context, text string, images []extension.
 			}
 			typed, ok := coerceInputEventResult(handlerResult)
 			if !ok {
-				r.recordHandlerError(ext.Path, "input",
+				r.recordHandlerError(ctx, ext.Path, "input",
 					fmt.Errorf("handler returned %T, expected extension.InputEventResult", handlerResult))
 				continue
 			}
@@ -1403,14 +1399,14 @@ func (r *Runner) EmitContextTracked(ctx context.Context, messages []extension.Ag
 				return nil, false, contextErr
 			}
 			if err != nil {
-				r.recordHandlerError(ext.Path, "context", err)
+				r.recordHandlerError(ctx, ext.Path, "context", err)
 				continue
 			}
 			var returned []extension.AgentMessage
 			if handlerResult != nil {
 				typed, ok := coerceResult[*extension.ContextEventResult](handlerResult)
 				if !ok {
-					r.recordHandlerError(ext.Path, "context",
+					r.recordHandlerError(ctx, ext.Path, "context",
 						fmt.Errorf("handler returned %T, expected *extension.ContextEventResult", handlerResult))
 					continue
 				}
@@ -1561,13 +1557,13 @@ func (r *Runner) EmitContextWithSystem(ctx context.Context, messages []extension
 				return nil, contextErr
 			}
 			if err != nil {
-				r.recordHandlerError(ext.Path, "context_with_system", err)
+				r.recordHandlerError(ctx, ext.Path, "context_with_system", err)
 				continue
 			}
 			if handlerResult != nil {
 				typed, ok := coerceResult[*extension.ContextEventResult](handlerResult)
 				if !ok {
-					r.recordHandlerError(ext.Path, "context_with_system",
+					r.recordHandlerError(ctx, ext.Path, "context_with_system",
 						fmt.Errorf("handler returned %T, expected *extension.ContextEventResult", handlerResult))
 					continue
 				}
@@ -1576,7 +1572,7 @@ func (r *Runner) EmitContextWithSystem(ctx context.Context, messages []extension
 				}
 			}
 			if hadLeadingSystem && (len(current) == 0 || messageRole(current[0]) != "system") {
-				r.recordHandlerError(ext.Path, "context_with_system", errLeadingSystemRemoved)
+				r.recordHandlerError(ctx, ext.Path, "context_with_system", errLeadingSystemRemoved)
 			}
 		}
 	}
@@ -1619,7 +1615,7 @@ func (r *Runner) EmitBeforeProviderRequest(ctx context.Context, payload any) (an
 			}
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
-				r.recordHandlerError(ext.Path, "before_provider_request", err)
+				r.recordHandlerError(ctx, ext.Path, "before_provider_request", err)
 				continue
 			}
 			// Upstream: `if (handlerResult !== undefined) currentPayload = handlerResult`.
@@ -1652,7 +1648,7 @@ func (r *Runner) EmitMessageEnd(ctx context.Context, message extension.AgentMess
 			event := extension.MessageEndEvent{Type: "message_end", Message: current}
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
-				r.recordHandlerError(ext.Path, "message_end", err)
+				r.recordHandlerError(ctx, ext.Path, "message_end", err)
 				continue
 			}
 			if handlerResult == nil {
@@ -1663,7 +1659,7 @@ func (r *Runner) EmitMessageEnd(ctx context.Context, message extension.AgentMess
 				continue
 			}
 			if messageRole(*typed.Message) != messageRole(current) {
-				r.recordHandlerError(ext.Path, "message_end", errors.New("message_end handlers must return a message with the same role"))
+				r.recordHandlerError(ctx, ext.Path, "message_end", errors.New("message_end handlers must return a message with the same role"))
 				continue
 			}
 			current = *typed.Message
@@ -1712,7 +1708,7 @@ func (r *Runner) EmitBeforeProviderHeaders(ctx context.Context, headers extensio
 			event := extension.BeforeProviderHeadersEvent{Type: "before_provider_headers", Headers: headers}
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
-				r.recordHandlerError(ext.Path, "before_provider_headers", err)
+				r.recordHandlerError(ctx, ext.Path, "before_provider_headers", err)
 				continue
 			}
 			if handlerResult == nil {
@@ -1720,7 +1716,7 @@ func (r *Runner) EmitBeforeProviderHeaders(ctx context.Context, headers extensio
 			}
 			replacement, ok := coerceResult[extension.ProviderHeaders](handlerResult)
 			if !ok {
-				r.recordHandlerError(ext.Path, "before_provider_headers",
+				r.recordHandlerError(ctx, ext.Path, "before_provider_headers",
 					fmt.Errorf("handler returned %T, expected the mutated headers", handlerResult))
 				continue
 			}
@@ -1764,7 +1760,7 @@ func (r *Runner) EmitUserBash(ctx context.Context, event extension.UserBashEvent
 				}
 			}
 			if err != nil {
-				r.recordHandlerError(ext.Path, "user_bash", err)
+				r.recordHandlerError(ctx, ext.Path, "user_bash", err)
 				return nil, err
 			}
 			return typed, nil
@@ -1890,7 +1886,7 @@ func (r *Runner) EmitBeforeAgentStart(
 			}
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
-				r.recordHandlerError(ext.Path, "before_agent_start", err)
+				r.recordHandlerError(ctx, ext.Path, "before_agent_start", err)
 				continue
 			}
 			if handlerResult == nil {
@@ -1898,7 +1894,7 @@ func (r *Runner) EmitBeforeAgentStart(
 			}
 			typed, ok := coerceResult[*extension.BeforeAgentStartEventResult](handlerResult)
 			if !ok {
-				r.recordHandlerError(ext.Path, "before_agent_start",
+				r.recordHandlerError(ctx, ext.Path, "before_agent_start",
 					fmt.Errorf("handler returned %T, expected *extension.BeforeAgentStartEventResult", handlerResult))
 				continue
 			}
@@ -1969,7 +1965,7 @@ func (r *Runner) EmitResourcesDiscover(
 			}
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
-				r.recordHandlerError(ext.Path, "resources_discover", err)
+				r.recordHandlerError(ctx, ext.Path, "resources_discover", err)
 				continue
 			}
 			if handlerResult == nil {
@@ -1977,7 +1973,7 @@ func (r *Runner) EmitResourcesDiscover(
 			}
 			typed, ok := coerceResult[*extension.ResourcesDiscoverResult](handlerResult)
 			if !ok {
-				r.recordHandlerError(ext.Path, "resources_discover",
+				r.recordHandlerError(ctx, ext.Path, "resources_discover",
 					fmt.Errorf("handler returned %T, expected *extension.ResourcesDiscoverResult", handlerResult))
 				continue
 			}
@@ -2174,7 +2170,7 @@ func (r *Runner) Emit(ctx context.Context, event any) (any, error) {
 		for _, handler := range handlers {
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
-				r.recordHandlerError(ext.Path, eventType, err)
+				r.recordHandlerError(ctx, ext.Path, eventType, err)
 				continue
 			}
 			if handlerResult == nil {

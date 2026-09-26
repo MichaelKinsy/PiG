@@ -320,6 +320,12 @@ type ToolInfo struct {
 	// SourceInfo is upstream's SourceInfo object: path, source, scope, origin
 	// and an optional baseDir.
 	SourceInfo extension.SourceInfo `json:"sourceInfo"`
+	// Source is PiG's per-tool source attribution (D23): "builtin", the
+	// registering extension's name, or the tool's declared source. It is
+	// not part of upstream's ToolInfo, so the replicated state Node
+	// extensions read omits it; the getAllTools host call keeps sending it
+	// as "source" for SDKs released before sourceInfo existed.
+	Source string `json:"-"`
 }
 
 // CommandInfo is one entry of getCommands on the wire. Mirrors upstream
@@ -2554,7 +2560,16 @@ func (b *UIBridge) handleGetAllTools(actions *HostCallbacks) (*CallResultPayload
 		return &CallResultPayload{Result: result}, nil
 	}
 	tools := actions.GetAllTools()
-	result, _ := json.Marshal(map[string]any{"tools": tools})
+	type sdkToolInfo struct {
+		ToolInfo
+		// Deprecated field of the Go, Rust and Python SDK ToolInfo.
+		Source string `json:"source,omitempty"`
+	}
+	out := make([]sdkToolInfo, len(tools))
+	for i, tool := range tools {
+		out[i] = sdkToolInfo{ToolInfo: tool, Source: tool.Source}
+	}
+	result, _ := json.Marshal(map[string]any{"tools": out})
 	return &CallResultPayload{Result: result}, nil
 }
 
