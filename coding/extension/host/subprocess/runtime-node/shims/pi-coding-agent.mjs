@@ -5,6 +5,20 @@ import { getRuntime } from "../state.mjs";
 import { EventEmitter } from "node:events";
 import { Type } from "./typebox.mjs";
 import { Text } from "./pi-tui.mjs";
+// Pi's own code for these, copied verbatim from the pinned release
+// (automation/gen/vendor-pi-dist.sh).
+export { convertToLlm } from "./pi-dist/pi-coding-agent/core/messages.js";
+export {
+  buildContextEntries,
+  buildSessionContext,
+  buildSessionProjection,
+  CURRENT_SESSION_VERSION,
+  getLatestCompactionEntry,
+  migrateSessionEntries,
+  parseSessionEntries,
+  sessionEntryToContextMessages,
+} from "./pi-dist/pi-coding-agent/core/session-manager.js";
+export { parseFrontmatter, stripFrontmatter } from "./pi-dist/pi-coding-agent/utils/frontmatter.js";
 
 export {
   allToolNames,
@@ -121,41 +135,6 @@ export function getAgentDir() {
   return join(configRoot, "agent");
 }
 
-const COMPACTION_SUMMARY_PREFIX = `The conversation history before this point was compacted into the following summary:\n\n<summary>\n`;
-const COMPACTION_SUMMARY_SUFFIX = `\n</summary>`;
-const BRANCH_SUMMARY_PREFIX = `The following is a summary of a branch that this conversation came back from:\n\n<summary>\n`;
-const BRANCH_SUMMARY_SUFFIX = `</summary>`;
-
-function bashExecutionToText(message) {
-  let text = `Ran \`${message.command}\`\n`;
-  text += message.output ? `\`\`\`\n${message.output}\n\`\`\`` : "(no output)";
-  if (message.cancelled) text += "\n\n(command cancelled)";
-  else if (message.exitCode !== null && message.exitCode !== undefined && message.exitCode !== 0) text += `\n\nCommand exited with code ${message.exitCode}`;
-  if (message.truncated && message.fullOutputPath) text += `\n\n[Output truncated. Full output: ${message.fullOutputPath}]`;
-  return text;
-}
-
-export function convertToLlm(messages) {
-  return (messages ?? []).map((message) => {
-    switch (message?.role) {
-      case "bashExecution":
-        if (message.excludeFromContext) return undefined;
-        return { role: "user", content: [{ type: "text", text: bashExecutionToText(message) }], timestamp: message.timestamp };
-      case "custom":
-        return { role: "user", content: typeof message.content === "string" ? [{ type: "text", text: message.content }] : message.content, timestamp: message.timestamp };
-      case "branchSummary":
-        return { role: "user", content: [{ type: "text", text: BRANCH_SUMMARY_PREFIX + message.summary + BRANCH_SUMMARY_SUFFIX }], timestamp: message.timestamp };
-      case "compactionSummary":
-        return { role: "user", content: [{ type: "text", text: COMPACTION_SUMMARY_PREFIX + message.summary + COMPACTION_SUMMARY_SUFFIX }], timestamp: message.timestamp };
-      case "user":
-      case "assistant":
-      case "toolResult":
-        return message;
-      default:
-        return undefined;
-    }
-  }).filter((message) => message !== undefined);
-}
 
 function contentText(content, separator = "\n") {
   if (typeof content === "string") return content;
@@ -261,23 +240,6 @@ export async function compact(ctx, options = {}) {
   return ctx.compact(options);
 }
 
-export function buildSessionContext(entries = [], leafId = undefined) {
-  const messages = [];
-  for (const entry of entries) {
-    if (!entry || entry.type !== "message" || !entry.message) continue;
-    const msg = entry.message;
-    switch (msg.role) {
-      case "user":
-      case "assistant":
-        messages.push(msg);
-        break;
-      case "toolResult":
-        messages.push({ role: "user", content: msg.content ?? [], timestamp: entry.timestamp ?? Date.now() });
-        break;
-    }
-  }
-  return { messages, leafId };
-}
 
 export async function createAgentSession() {
   throw new Error("createAgentSession is not yet supported in the pig TS subprocess shim");
@@ -310,15 +272,6 @@ export function isGrepToolResult(e) { return e.toolName === "grep"; }
 export function isFindToolResult(e) { return e.toolName === "find"; }
 export function isLsToolResult(e) { return e.toolName === "ls"; }
 
-// core/session-manager.ts
-export const CURRENT_SESSION_VERSION = 3;
-
-export function getLatestCompactionEntry(entries) {
-  for (let i = entries.length - 1; i >= 0; i--) {
-    if (entries[i].type === "compaction") return entries[i];
-  }
-  return null;
-}
 
 // core/compaction/compaction.ts
 export const DEFAULT_COMPACTION_SETTINGS = {
@@ -426,49 +379,6 @@ export function parseSkillBlock(text) {
   return { name: match[1], location: match[2], content: match[3], userMessage: match[4]?.trim() || undefined };
 }
 
-// utils/frontmatter.ts
-const normalizeNewlines = (value) => value.replace(/\r\n/g, "\n").replace(/\r/g, "\n");
-const stripBom = (value) => (value.charCodeAt(0) === 0xfeff ? value.slice(1) : value);
-
-function extractFrontmatter(content) {
-  const normalized = normalizeNewlines(stripBom(content));
-  if (!normalized.startsWith("---")) return { yamlString: null, body: normalized };
-  const endIndex = normalized.indexOf("\n---", 3);
-  if (endIndex === -1) return { yamlString: null, body: normalized };
-  return { yamlString: normalized.slice(4, endIndex), body: normalized.slice(endIndex + 4).trim() };
-}
-
-// pig divergence (D73): upstream parses frontmatter with the full `yaml`
-// package, which is not part of PiG's extension runtime. Flat `key: value`
-// frontmatter (the form skills and prompts use) parses identically; any other
-// YAML construct throws instead of guessing.
-function parseFlatYaml(yamlString) {
-  const result = {};
-  for (const raw of yamlString.split("\n")) {
-    const line = raw.replace(/\s+#.*$/, "");
-    if (!line.trim()) continue;
-    const match = line.match(/^([A-Za-z0-9_-]+):\s*(.*)$/);
-    if (!match || /^[\[{|>]/.test(match[2]) || /^\s/.test(raw)) {
-      throw new Error("parseFrontmatter in PiG extensions supports flat `key: value` YAML only (see DIVERGENCES.md D73)");
-    }
-    let value = match[2].trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
-      value = value.startsWith('"') ? JSON.parse(value) : value.slice(1, -1).replace(/''/g, "'");
-    } else if (value === "" || value === "~" || value === "null") value = null;
-    else if (value === "true" || value === "false") value = value === "true";
-    else if (/^-?\d+(\.\d+)?$/.test(value)) value = Number(value);
-    result[match[1]] = value;
-  }
-  return result;
-}
-
-export const parseFrontmatter = (content) => {
-  const { yamlString, body } = extractFrontmatter(content);
-  if (!yamlString) return { frontmatter: {}, body };
-  return { frontmatter: parseFlatYaml(yamlString) ?? {}, body };
-};
-
-export const stripFrontmatter = (content) => extractFrontmatter(content).body;
 
 // modes/interactive/theme/theme.ts
 const EXT_TO_LANG = {
@@ -585,8 +495,6 @@ export const ToolExecutionComponent = hostOnlyClass("ToolExecutionComponent");
 export const TreeSelectorComponent = hostOnlyClass("TreeSelectorComponent");
 export const UserMessageComponent = hostOnlyClass("UserMessageComponent");
 export const UserMessageSelectorComponent = hostOnlyClass("UserMessageSelectorComponent");
-export const buildContextEntries = hostOnlyFunction("buildContextEntries");
-export const buildSessionProjection = hostOnlyFunction("buildSessionProjection");
 export const collectEntriesForBranchSummary = hostOnlyFunction("collectEntriesForBranchSummary");
 export const convertToPng = hostOnlyFunction("convertToPng");
 export const createAgentSessionFromServices = hostOnlyFunction("createAgentSessionFromServices");
@@ -623,9 +531,7 @@ export const loadProjectContextFiles = hostOnlyFunction("loadProjectContextFiles
 export const loadSkills = hostOnlyFunction("loadSkills");
 export const loadSkillsFromDir = hostOnlyFunction("loadSkillsFromDir");
 export const main = hostOnlyFunction("main");
-export const migrateSessionEntries = hostOnlyFunction("migrateSessionEntries");
 export const parseArgs = hostOnlyFunction("parseArgs");
-export const parseSessionEntries = hostOnlyFunction("parseSessionEntries");
 export const prepareBranchEntries = hostOnlyFunction("prepareBranchEntries");
 export const readStoredCredential = hostOnlyFunction("readStoredCredential");
 export const renderDiff = hostOnlyFunction("renderDiff");
@@ -634,6 +540,5 @@ export const resolveCliModel = hostOnlyFunction("resolveCliModel");
 export const resolveModelScopeWithDiagnostics = hostOnlyFunction("resolveModelScopeWithDiagnostics");
 export const runPrintMode = hostOnlyFunction("runPrintMode");
 export const runRpcMode = hostOnlyFunction("runRpcMode");
-export const sessionEntryToContextMessages = hostOnlyFunction("sessionEntryToContextMessages");
 export const wrapRegisteredTool = hostOnlyFunction("wrapRegisteredTool");
 export const wrapRegisteredTools = hostOnlyFunction("wrapRegisteredTools");

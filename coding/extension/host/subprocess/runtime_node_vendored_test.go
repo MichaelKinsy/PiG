@@ -152,3 +152,94 @@ if (want !== got) { console.log("pinned: " + want + "\npig:    " + got); process
 		t.Fatalf("pi-tui layout components differ: %v\n%s", err, output)
 	}
 }
+
+// The runtime's Pi modules re-export Pi's own code copied from the pinned
+// release: shims/pi-dist mirrors each package's dist/ and shims/yaml is the
+// yaml build Pi depends on. A pin change must re-vendor them.
+func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
+	shims := filepath.Join("runtime-node", "shims")
+	aiDist := []string{"node_modules", "@earendil-works", "pi-ai", "dist"}
+	agentDist := []string{"dist"}
+	pinnedFile := func(base []string, rel ...string) []byte {
+		return readPinned(t, append(append([]string{}, base...), rel...)...)
+	}
+	vendoredFile := func(rel string) []byte {
+		t.Helper()
+		data, err := os.ReadFile(filepath.Join(shims, filepath.FromSlash(rel)))
+		if err != nil {
+			t.Fatalf("%v: run automation/gen/vendor-pi-dist.sh", err)
+		}
+		return data
+	}
+	for rel, want := range map[string][]byte{
+		"pi-dist/pi-ai/utils/text.js":              pinnedFile(aiDist, "utils", "text.js"),
+		"pi-dist/pi-ai/utils/transcript.js":        pinnedFile(aiDist, "utils", "transcript.js"),
+		"pi-dist/pi-coding-agent/core/messages.js": pinnedFile(agentDist, "core", "messages.js"),
+		"pi-dist/pi-coding-agent/utils/text.js":    pinnedFile(agentDist, "utils", "text.js"),
+		"pi-dist/pi-coding-agent/utils/frontmatter.js": bytes.Replace(pinnedFile(agentDist, "utils", "frontmatter.js"),
+			[]byte(`import { parse } from "yaml";`), []byte(`import { parse } from "../../../yaml/index.js";`), 1),
+	} {
+		if !bytes.Equal(vendoredFile(rel), want) {
+			t.Errorf("shims/%s differs from the pinned release: run automation/gen/vendor-pi-dist.sh", rel)
+		}
+	}
+
+	// session-manager.js keeps the pure section and the imports it uses.
+	session := vendoredFile("pi-dist/pi-coding-agent/core/session-manager.js")
+	pinnedSession := pinnedFile(agentDist, "core", "session-manager.js")
+	start := bytes.Index(pinnedSession, []byte("export const CURRENT_SESSION_VERSION"))
+	fn := bytes.Index(pinnedSession, []byte("export function buildSessionContext"))
+	if start < 0 || fn < start {
+		t.Fatal("pinned session-manager.js lacks the vendored section")
+	}
+	end := fn + bytes.Index(pinnedSession[fn:], []byte("\n}\n")) + len("\n}\n")
+	imports, body, found := bytes.Cut(session, []byte("export const CURRENT_SESSION_VERSION"))
+	if !found || !bytes.Equal(append([]byte("export const CURRENT_SESSION_VERSION"), body...), pinnedSession[start:end]) {
+		t.Error("shims/pi-dist/pi-coding-agent/core/session-manager.js section differs from the pinned release: run automation/gen/vendor-pi-dist.sh")
+	}
+	for _, line := range bytes.Split(bytes.TrimSpace(imports), []byte("\n")) {
+		if !bytes.Contains(pinnedSession, append(line, '\n')) {
+			t.Errorf("session-manager.js import %q is not in the pinned release", line)
+		}
+	}
+
+	// yaml: the whole ES module build, file for file.
+	yamlRoot := filepath.Join(pinnedPiPackages, "node_modules", "yaml")
+	pinnedYAML := map[string]string{
+		"index.js":     filepath.Join(yamlRoot, "browser", "index.js"),
+		"package.json": filepath.Join(yamlRoot, "browser", "package.json"),
+		"LICENSE":      filepath.Join(yamlRoot, "LICENSE"),
+	}
+	distRoot := filepath.Join(yamlRoot, "browser", "dist")
+	if err := filepath.WalkDir(distRoot, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		rel, err := filepath.Rel(distRoot, path)
+		pinnedYAML[filepath.ToSlash(filepath.Join("dist", rel))] = path
+		return err
+	}); err != nil {
+		t.Fatalf("read the pinned yaml build (run npm ci in extensions/sdk-ts): %v", err)
+	}
+	vendoredYAML := 0
+	if err := filepath.WalkDir(filepath.Join(shims, "yaml"), func(path string, d os.DirEntry, err error) error {
+		if err == nil && !d.IsDir() {
+			vendoredYAML++
+		}
+		return err
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if vendoredYAML != len(pinnedYAML) {
+		t.Errorf("shims/yaml has %d files, the pinned yaml build %d: run automation/gen/vendor-pi-dist.sh", vendoredYAML, len(pinnedYAML))
+	}
+	for rel, path := range pinnedYAML {
+		want, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !bytes.Equal(vendoredFile("yaml/"+rel), want) {
+			t.Errorf("shims/yaml/%s differs from the pinned yaml: run automation/gen/vendor-pi-dist.sh", rel)
+		}
+	}
+}

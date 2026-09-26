@@ -20,7 +20,7 @@ Every active divergence must have:
 - D47 — Width stripping consumes DEC private-mode set/reset sequences. Retired by the width-parity change. `tui/widthx.ExtractAnsi` now delegates to the upstream-compatible `ExtractAnsiCode`; the ID remains reserved. `TestExtractAnsi_PrivateModeMatchesUpstream` and `TestPiWidthDifferential` verify the shared ANSI parsing behavior. No active divergence or source marker remains.
 - D71 — Nonfatal main-screen overflow recovery. Withdrawn on 2026-09-25 by owner decision; the ID remains reserved. PiG now matches upstream `tui-main-screen.ts`: an over-wide non-image row that reaches the differential-render loop writes the TUI crash log (`pig-tui-crash.log` in the agent directory), stops the TUI, and ends the process through the uncaught-exception path with status 1. Initial, full, and resize renders emit the row unchanged. Tests: `tui/render_overflow_test.go` and parity scenario `extensions-runtime/20-differential-render-overflow-terminates.toml`. No active divergence or source marker remains.
 
-## Active divergences (29)
+## Active divergences (30)
 
 ## D2 PiG uses a separate command and configuration identity
 
@@ -1338,18 +1338,18 @@ SCRUTINIZED:approved
 
 ## D73 Host-bound Pi exports are importable stand-ins inside extensions
 
-What: inside an extension process, `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, and `@earendil-works/pi-ai` export every runtime value their Pi 0.87.1 packages export. Pure helpers are ported and behave as upstream (for example `isToolCallEventType`, the `is*ToolResult` guards, `stripFrontmatter`, `getLanguageFromPath`, `createEventBus`, `formatSkillsForPrompt`, `parseSkillBlock`, `TruncatedText`, `Loader`, `CancellableLoader`, `TUI_KEYBINDINGS`, `getSystemMessageText`). Values that belong to Pi's own process (the interactive UI and its components, `main`, print and RPC modes, session and runtime construction, package and resource loading, tool definitions bound to Pi's runner, terminal images and capability probing, pi-ai's model, provider and stream layer) are exported as stand-ins that throw `<name> is not available to extensions running in PiG ...` when called or constructed. `parseFrontmatter` parses flat `key: value` frontmatter (strings, quoted strings, numbers, booleans, null) and throws on other YAML, because the `yaml` package is not part of PiG's extension runtime. Theme-bound helpers (`getSelectListTheme`, `highlightCode`, `keyText`, `rawKeyHint`) return uncolored text, as the existing `getSettingsListTheme` and `keyHint` shims already do.
+What: inside an extension process, `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, and `@earendil-works/pi-ai` export every runtime value their Pi 0.87.1 packages export. Values that run unchanged in an extension process are Pi's own code, copied verbatim from the pinned release into `shims/pi-dist` (`convertToLlm`, session entry parsing, migration and context projection including `buildSessionContext`, `parseFrontmatter` and `stripFrontmatter` with the same `yaml` release, pi-ai's text and transcript helpers such as `getCurrentTools`) or ported line for line (for example `isToolCallEventType`, the `is*ToolResult` guards, `getLanguageFromPath`, `createEventBus`, `formatSkillsForPrompt`, `parseSkillBlock`, `TruncatedText`, `Loader`, `CancellableLoader`, `TUI_KEYBINDINGS`). Values that belong to Pi's own process (the interactive UI and its components, `main`, print and RPC modes, session and runtime construction, package and resource loading, tool definitions bound to Pi's runner, terminal images and capability probing, pi-ai's model, provider and stream layer) are exported as stand-ins that throw `<name> is not available to extensions running in PiG ...` when called or constructed. Theme-bound helpers (`getSelectListTheme`, `highlightCode`, `keyText`, `rawKeyHint`) return uncolored text, as the existing `getSettingsListTheme` and `keyHint` shims already do.
 
 Why: PiG runs extensions in a Node process beside its Go host, not inside Pi's process, so these values have no working implementation there. An ESM import of a name a module does not export fails the whole extension at link time, before any of its code runs: pi-rtk-optimizer failed to load on PiG 0.2.0 because the shim lacked `isToolCallEventType`. Exporting every upstream name keeps an extension loadable whenever the names it imports are the ones it can use, and a stand-in reports the exact name if the extension does call one. Owner-directed launch P0 fix (Reddit report on 2026-09-26, faithful extension compatibility).
 
-Observable effect: an extension that imports a host-bound name loads on PiG and fails only if it calls that name, with an error naming it. Under Pi the same call works. An extension whose frontmatter uses nested YAML gets an error from `parseFrontmatter` instead of a parsed object.
+Observable effect: an extension that imports a host-bound name loads on PiG and fails only if it calls that name, with an error naming it. Under Pi the same call works.
 
 Call-site markers:
-- `coding/extension/host/subprocess/runtime-node/shims/pi-coding-agent.mjs`: the frontmatter parser and the host-only stand-ins.
+- `coding/extension/host/subprocess/runtime-node/shims/pi-coding-agent.mjs`: the host-only stand-ins.
 - `coding/extension/host/subprocess/runtime-node/shims/pi-tui.mjs`: the host-only stand-ins.
 - `coding/extension/host/subprocess/runtime-node/shims/pi-ai.mjs`: the host-only stand-ins.
 
-Locked by: `coding/extension/host/subprocess` `TestNodeRuntimeShimsExportEveryPinnedPiValue`, which collects every runtime export of the pinned upstream `packages/{coding-agent,tui,ai}/src/index.ts` (following `export *`) and fails if the loader's module lacks any of them.
+Locked by: `coding/extension/host/subprocess` `TestNodeRuntimeShimsExportEveryPinnedPiValue`, which collects every runtime export of the pinned upstream `packages/{coding-agent,tui,ai}/src/index.ts` (following `export *`) and fails if the loader's module lacks any of them; `TestVendoredPiDistMatchesThePinnedPackage` (the copied Pi code equals the pinned release) and `TestNodeRuntimeParseFrontmatterMatchesPi`.
 
 Parity allowance: no paired scenario calls a host-bound value from an extension; the coverage test locks the export surface.
 
