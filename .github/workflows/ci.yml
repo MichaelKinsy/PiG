@@ -86,7 +86,9 @@ jobs:
 
   dco:
     name: DCO
-    if: github.event_name == 'pull_request'
+    # Dependabot commits carry no Signed-off-by trailer; the maintainer's
+    # signed-off squash merge records the DCO for them.
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
