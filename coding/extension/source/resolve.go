@@ -113,9 +113,9 @@ func resolveFile(path string, info os.FileInfo) (Definition, error) {
 		if executableMode(info) && strings.HasPrefix(string(data), "#!") {
 			return Definition{Language: "node", Form: Standalone, Root: filepath.Dir(path), Entrypoint: path}, nil
 		}
-		if !nodeDefaultExport.Match(data) {
-			return Definition{}, fmt.Errorf("Node extension %s has no default extension export; add a Pi-compatible default export or select an exact executable standalone", path)
-		}
+		// Like upstream loader.ts, the module's default export is checked when
+		// the Node runtime imports it, not by scanning its text: bundles export
+		// `export { x as default }` and CommonJS modules assign module.exports.
 		return Definition{Language: "node", Form: Factory, Root: filepath.Dir(path), Entrypoint: path}, nil
 	}
 	if ext == ".py" {
@@ -570,8 +570,6 @@ func resolvePython(root string) (Definition, error) {
 	return Definition{}, fmt.Errorf("Python extension %s has no def new_extension() factory or executable main.py standalone", root)
 }
 
-var nodeDefaultExport = regexp.MustCompile(`(?m)\bexport\s+default\b`)
-
 func resolveNode(root string) (Definition, error) {
 	entries, err := nodeEntrypoints(root)
 	if err != nil {
@@ -580,13 +578,7 @@ func resolveNode(root string) (Definition, error) {
 	if len(entries) != 1 {
 		return Definition{}, fmt.Errorf("Node extension %s resolves to %d entrypoints; select one exact Pi-compatible default export", root, len(entries))
 	}
-	data, err := os.ReadFile(entries[0])
-	if err != nil {
-		return Definition{}, err
-	}
-	if !nodeDefaultExport.Match(data) {
-		return Definition{}, fmt.Errorf("Node extension %s has no Pi-compatible default export; export one default extension function or select an exact executable standalone", entries[0])
-	}
+	// The Node runtime checks the default export on import, as upstream does.
 	return Definition{Language: "node", Form: Factory, Root: root, Entrypoint: entries[0]}, nil
 }
 

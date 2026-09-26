@@ -160,12 +160,6 @@ func TestResolveRejectsAmbiguousAndNonstandardFactories(t *testing.T) {
 			},
 		},
 		{
-			name: "node missing default export", want: "no Pi-compatible default export",
-			prepare: func(t *testing.T, root string) {
-				writeSourceTestFile(t, filepath.Join(root, "index.js"), "export function extension(pi) {}\n")
-			},
-		},
-		{
 			name: "node multiple package entries", want: "resolves to 2 entrypoints",
 			prepare: func(t *testing.T, root string) {
 				writeSourceTestFile(t, filepath.Join(root, "package.json"), `{"pi":{"extensions":["one.js","two.js"]}}`)
@@ -253,5 +247,40 @@ func TestResolveGoFactoryRejectsUnrelatedExtensionType(t *testing.T) {
 	writeSourceTestFile(t, filepath.Join(root, "main.go"), "package other\nimport sdk \"example.com/not/the/pig/sdk\"\nfunc Extension() *sdk.Extension { return nil }\n")
 	if _, err := Resolve(root); err == nil || !strings.Contains(err.Error(), "has no func Extension() *sdk.Extension factory") {
 		t.Fatalf("Resolve error = %v", err)
+	}
+}
+
+// Upstream imports the module and reads its default export; it never scans the
+// text. Bundled (`export { x as default }`) and CommonJS entries resolve as
+// factories, and the Node runtime reports a module without a default export.
+func TestResolveNodeEntriesWithoutLiteralExportDefault(t *testing.T) {
+	for _, tc := range []struct {
+		name, file, source string
+		manifest           string
+		entry              string
+	}{
+		{name: "bundled export list", file: "dist/index.js", manifest: `{"pi":{"extensions":["./dist"]}}`, entry: "dist",
+			source: "var index_default = function(pi) {};\nexport {\n  index_default as default,\n  helper\n};\n"},
+		{name: "commonjs", file: "index.js", source: "module.exports = function (pi) {};\n"},
+		{name: "no default export", file: "index.js", source: "export function extension(pi) {}\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			if tc.manifest != "" {
+				writeSourceTestFile(t, filepath.Join(root, "package.json"), tc.manifest)
+			}
+			writeSourceTestFile(t, filepath.Join(root, tc.file), tc.source)
+			def, err := Resolve(root)
+			if err != nil {
+				t.Fatalf("Resolve: %v", err)
+			}
+			want := tc.file
+			if tc.entry != "" {
+				want = tc.entry
+			}
+			if def.Language != "node" || def.Form != Factory || def.Entrypoint != filepath.Join(root, want) {
+				t.Fatalf("Resolve = %+v, want node factory at %s", def, want)
+			}
+		})
 	}
 }

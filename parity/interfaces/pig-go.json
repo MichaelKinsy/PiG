@@ -84169,17 +84169,6 @@
       "shapeHash": "sha256:de921de3ac3b9a42464da7f1580cfb7c2f06ab26f73c6072c3c22c1465c7c5ca"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#nodeDefaultExport",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
-      "name": "nodeDefaultExport",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*regexp.Regexp"
-      },
-      "shapeHash": "sha256:71d5e3591899cd0c396770073cb9dff2078549477cfe54a8adbee9e0bbd77653"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#nodeEntrypoints",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
       "name": "nodeEntrypoints",

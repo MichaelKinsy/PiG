@@ -52,7 +52,7 @@ for (const member of manifest) {
       const mod = await import(pathToFileURL(member.entry).href);
       const install = mod?.default ?? mod;
       if (typeof install !== "function") {
-        throw new Error(`extension ${member.entry} must default-export a function`);
+        throw new Error(`Extension does not export a valid factory function: ${member.entry}`);
       }
       await install(runtime.api);
     });

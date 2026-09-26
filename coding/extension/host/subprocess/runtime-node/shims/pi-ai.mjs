@@ -80,3 +80,107 @@ export class Message {
     this.content = content;
   }
 }
+
+// utils/text.ts (Pi 0.87.1)
+function systemContentText(content) {
+  if (typeof content === "string") return content;
+  return (content ?? []).filter((block) => block.type === "text").map((block) => block.text).join("\n");
+}
+
+export function getSystemMessageText(message) {
+  const parts = [systemContentText(message.content)];
+  for (const text of Object.values(message.sections ?? {})) {
+    if (text !== null) parts.push(text);
+  }
+  return parts.filter((part) => part.length > 0).join("\n\n");
+}
+
+export function renderSystemMessageUpdate(message) {
+  const parts = [];
+  const text = systemContentText(message.content);
+  if (text.length > 0) parts.push(text);
+  for (const [name, value] of Object.entries(message.sections ?? {})) {
+    parts.push(value === null ? `Removed system prompt section "${name}".` : `Updated system prompt section "${name}":\n\n${value}`);
+  }
+  return parts.join("\n\n");
+}
+
+// pig divergence (D73): these pi-ai values (model/provider construction,
+// stream internals, faux provider, transcript helpers) run in PiG's Go host.
+// They are importable so no extension fails at link time, and throw a
+// descriptive error only when called or constructed.
+function hostOnlyAi(name) {
+  return new Error(`${name} is not available to extensions running in PiG: pi-ai's model and provider layer runs in PiG's host (see DIVERGENCES.md D73)`);
+}
+function hostOnlyAiFunction(name) {
+  const fn = function () { throw hostOnlyAi(name); };
+  Object.defineProperty(fn, "name", { value: name });
+  return fn;
+}
+function hostOnlyAiClass(name) {
+  return { [name]: class { constructor() { throw hostOnlyAi(name); } } }[name];
+}
+
+// utils/retry.ts
+export const DEFAULT_MAX_AGENT_RETRY_DELAY_MS = 60_000;
+export const AssistantMessageEventStream = hostOnlyAiClass("AssistantMessageEventStream");
+export const AssistantMessageFrameEncoder = hostOnlyAiClass("AssistantMessageFrameEncoder");
+export const EventStream = hostOnlyAiClass("EventStream");
+export const InMemoryCredentialStore = hostOnlyAiClass("InMemoryCredentialStore");
+export const InMemoryModelsStore = hostOnlyAiClass("InMemoryModelsStore");
+export const ModelsError = hostOnlyAiClass("ModelsError");
+export const appendAssistantMessageDiagnostic = hostOnlyAiFunction("appendAssistantMessageDiagnostic");
+export const calculateCost = hostOnlyAiFunction("calculateCost");
+export const clampThinkingLevel = hostOnlyAiFunction("clampThinkingLevel");
+export const cleanupSessionResources = hostOnlyAiFunction("cleanupSessionResources");
+export const collapseSystemMessages = hostOnlyAiFunction("collapseSystemMessages");
+export const createAssistantMessageDiagnostic = hostOnlyAiFunction("createAssistantMessageDiagnostic");
+export const createAssistantMessageEventStream = hostOnlyAiFunction("createAssistantMessageEventStream");
+export const createFauxCore = hostOnlyAiFunction("createFauxCore");
+export const createImagesModels = hostOnlyAiFunction("createImagesModels");
+export const createImagesProvider = hostOnlyAiFunction("createImagesProvider");
+export const createInitialSystemMessage = hostOnlyAiFunction("createInitialSystemMessage");
+export const createModels = hostOnlyAiFunction("createModels");
+export const createProvider = hostOnlyAiFunction("createProvider");
+export const declarationsEqual = hostOnlyAiFunction("declarationsEqual");
+export const defaultProviderAuthContext = hostOnlyAiFunction("defaultProviderAuthContext");
+export const envApiKeyAuth = hostOnlyAiFunction("envApiKeyAuth");
+export const extractDiagnosticError = hostOnlyAiFunction("extractDiagnosticError");
+export const fauxAssistantMessage = hostOnlyAiFunction("fauxAssistantMessage");
+export const fauxProvider = hostOnlyAiFunction("fauxProvider");
+export const fauxText = hostOnlyAiFunction("fauxText");
+export const fauxThinking = hostOnlyAiFunction("fauxThinking");
+export const fauxToolCall = hostOnlyAiFunction("fauxToolCall");
+export const formatThrownValue = hostOnlyAiFunction("formatThrownValue");
+export const getCurrentSystemMessage = hostOnlyAiFunction("getCurrentSystemMessage");
+export const getCurrentSystemPrompt = hostOnlyAiFunction("getCurrentSystemPrompt");
+export const getCurrentTools = hostOnlyAiFunction("getCurrentTools");
+export const getDeclaredTools = hostOnlyAiFunction("getDeclaredTools");
+export const getInitialSystemMessage = hostOnlyAiFunction("getInitialSystemMessage");
+export const getOverflowPatterns = hostOnlyAiFunction("getOverflowPatterns");
+export const getSupportedThinkingLevels = hostOnlyAiFunction("getSupportedThinkingLevels");
+export const getToolStateChanges = hostOnlyAiFunction("getToolStateChanges");
+export const hasApi = hostOnlyAiFunction("hasApi");
+export const hasNonAdditiveToolChanges = hostOnlyAiFunction("hasNonAdditiveToolChanges");
+export const hasToolRedefinitions = hostOnlyAiFunction("hasToolRedefinitions");
+export const isContextOverflow = hostOnlyAiFunction("isContextOverflow");
+export const isRecoverableLength = hostOnlyAiFunction("isRecoverableLength");
+export const isRetryableAssistantError = hostOnlyAiFunction("isRetryableAssistantError");
+export const lazyApi = hostOnlyAiFunction("lazyApi");
+export const lazyOAuth = hostOnlyAiFunction("lazyOAuth");
+export const lazyStream = hostOnlyAiFunction("lazyStream");
+export const modelsAreEqual = hostOnlyAiFunction("modelsAreEqual");
+export const normalizeContext = hostOnlyAiFunction("normalizeContext");
+export const parseJsonWithRepair = hostOnlyAiFunction("parseJsonWithRepair");
+export const parseStreamingJson = hostOnlyAiFunction("parseStreamingJson");
+export const reduceAssistantMessageFrames = hostOnlyAiFunction("reduceAssistantMessageFrames");
+export const registerSessionResourceCleanup = hostOnlyAiFunction("registerSessionResourceCleanup");
+export const repairJson = hostOnlyAiFunction("repairJson");
+export const resolveTranscript = hostOnlyAiFunction("resolveTranscript");
+export const resolveTranscriptTools = hostOnlyAiFunction("resolveTranscriptTools");
+export const retryAssistantCall = hostOnlyAiFunction("retryAssistantCall");
+export const retryDelayMs = hostOnlyAiFunction("retryDelayMs");
+export const toToolDeclaration = hostOnlyAiFunction("toToolDeclaration");
+export const validateToolArguments = hostOnlyAiFunction("validateToolArguments");
+export const validateToolCall = hostOnlyAiFunction("validateToolCall");
+export const withoutInitialSystemMessage = hostOnlyAiFunction("withoutInitialSystemMessage");

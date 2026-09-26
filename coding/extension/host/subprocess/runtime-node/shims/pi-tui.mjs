@@ -426,3 +426,305 @@ export class SettingsList {
     }
   }
 }
+
+// keybindings.ts (Pi 0.87.1, verbatim table)
+export const TUI_KEYBINDINGS = {
+	"tui.editor.cursorUp": { defaultKeys: "up", description: "Move cursor up" },
+	"tui.editor.cursorDown": { defaultKeys: "down", description: "Move cursor down" },
+	"tui.editor.historyPrevious": {
+		defaultKeys: [],
+		description: "Select previous prompt history entry",
+	},
+	"tui.editor.historyNext": {
+		defaultKeys: [],
+		description: "Select next prompt history entry",
+	},
+	"tui.editor.cursorLeft": {
+		defaultKeys: ["left", "ctrl+b"],
+		description: "Move cursor left",
+	},
+	"tui.editor.cursorRight": {
+		defaultKeys: ["right", "ctrl+f"],
+		description: "Move cursor right",
+	},
+	"tui.editor.cursorWordLeft": {
+		defaultKeys: ["alt+left", "ctrl+left", "alt+b"],
+		description: "Move cursor word left",
+	},
+	"tui.editor.cursorWordRight": {
+		defaultKeys: ["alt+right", "ctrl+right", "alt+f"],
+		description: "Move cursor word right",
+	},
+	"tui.editor.cursorLineStart": {
+		defaultKeys: ["home", "ctrl+home", "ctrl+a"],
+		description: "Move to line start",
+	},
+	"tui.editor.cursorLineEnd": {
+		defaultKeys: ["end", "ctrl+end", "ctrl+e"],
+		description: "Move to line end",
+	},
+	"tui.editor.jumpForward": {
+		defaultKeys: "ctrl+]",
+		description: "Jump forward to character",
+	},
+	"tui.editor.jumpBackward": {
+		defaultKeys: "ctrl+alt+]",
+		description: "Jump backward to character",
+	},
+	"tui.editor.pageUp": { defaultKeys: ["pageUp", "ctrl+pageUp"], description: "Page up" },
+	"tui.editor.pageDown": { defaultKeys: ["pageDown", "ctrl+pageDown"], description: "Page down" },
+	"tui.editor.deleteCharBackward": {
+		defaultKeys: "backspace",
+		description: "Delete character backward",
+	},
+	"tui.editor.deleteCharForward": {
+		defaultKeys: ["delete", "ctrl+d"],
+		description: "Delete character forward",
+	},
+	"tui.editor.deleteWordBackward": {
+		defaultKeys: ["ctrl+w", "alt+backspace"],
+		description: "Delete word backward",
+	},
+	"tui.editor.deleteWordForward": {
+		defaultKeys: ["alt+d", "alt+delete"],
+		description: "Delete word forward",
+	},
+	"tui.editor.deleteToLineStart": {
+		defaultKeys: "ctrl+u",
+		description: "Delete to line start",
+	},
+	"tui.editor.deleteToLineEnd": {
+		defaultKeys: "ctrl+k",
+		description: "Delete to line end",
+	},
+	"tui.editor.yank": { defaultKeys: "ctrl+y", description: "Yank" },
+	"tui.editor.yankPop": { defaultKeys: "alt+y", description: "Yank pop" },
+	"tui.editor.undo": { defaultKeys: "ctrl+-", description: "Undo" },
+	"tui.input.newLine": { defaultKeys: ["shift+enter", "ctrl+j"], description: "Insert newline" },
+	"tui.input.submit": { defaultKeys: "enter", description: "Submit input" },
+	"tui.input.tab": { defaultKeys: "tab", description: "Tab / autocomplete" },
+	"tui.input.copy": { defaultKeys: "ctrl+c", description: "Copy selection" },
+	"tui.select.up": { defaultKeys: "up", description: "Move selection up" },
+	"tui.select.down": { defaultKeys: "down", description: "Move selection down" },
+	"tui.select.pageUp": { defaultKeys: "pageUp", description: "Selection page up" },
+	"tui.select.pageDown": {
+		defaultKeys: "pageDown",
+		description: "Selection page down",
+	},
+	"tui.select.confirm": { defaultKeys: "enter", description: "Confirm selection" },
+	"tui.select.cancel": {
+		defaultKeys: ["escape", "ctrl+c"],
+		description: "Cancel selection",
+	},
+	// These intentionally shadow the unmodified editor bindings in fullscreen mode.
+	"tui.altScreen.pageUp": {
+		defaultKeys: "pageUp",
+		description: "Scroll viewport up one page",
+	},
+	"tui.altScreen.pageDown": {
+		defaultKeys: "pageDown",
+		description: "Scroll viewport down one page",
+	},
+	"tui.altScreen.halfPageUp": {
+		defaultKeys: [],
+		description: "Scroll viewport up half a page",
+	},
+	"tui.altScreen.halfPageDown": {
+		defaultKeys: [],
+		description: "Scroll viewport down half a page",
+	},
+	"tui.altScreen.lineUp": {
+		defaultKeys: [],
+		description: "Scroll viewport up one line",
+	},
+	"tui.altScreen.lineDown": {
+		defaultKeys: [],
+		description: "Scroll viewport down one line",
+	},
+	"tui.altScreen.previousPrompt": {
+		defaultKeys: ["ctrl+shift+up", "ctrl+up"],
+		description: "Jump to previous semantic prompt",
+	},
+	"tui.altScreen.nextPrompt": {
+		defaultKeys: ["ctrl+shift+down", "ctrl+down"],
+		description: "Jump to next semantic prompt",
+	},
+	"tui.altScreen.search": {
+		defaultKeys: "ctrl+shift+f",
+		description: "Search the primary scroll view",
+	},
+	"tui.altScreen.searchNext": {
+		defaultKeys: ["enter", "ctrl+g"],
+		description: "Select the next search match",
+	},
+	"tui.altScreen.searchPrevious": {
+		defaultKeys: ["shift+enter", "ctrl+shift+g"],
+		description: "Select the previous search match",
+	},
+	"tui.altScreen.searchClose": {
+		defaultKeys: "escape",
+		description: "Close transcript search",
+	},
+	"tui.altScreen.top": { defaultKeys: "home", description: "Scroll viewport to top" },
+	"tui.altScreen.bottom": { defaultKeys: "end", description: "Scroll viewport to bottom" },
+};
+
+// tui.ts
+export function isFocusable(component) {
+  return component !== null && "focused" in component;
+}
+
+// terminal-image.ts
+export function hyperlink(text, url) {
+  return `\x1b]8;;${url}\x1b\\${text}\x1b]8;;\x1b\\`;
+}
+
+// components/truncated-text.ts
+export class TruncatedText {
+  constructor(text, paddingX = 0, paddingY = 0) {
+    this.text = text;
+    this.paddingX = paddingX;
+    this.paddingY = paddingY;
+  }
+  invalidate() {}
+  render(width) {
+    const result = [];
+    const emptyLine = " ".repeat(width);
+    for (let i = 0; i < this.paddingY; i++) result.push(emptyLine);
+    const availableWidth = Math.max(1, width - this.paddingX * 2);
+    let singleLineText = this.text;
+    const newlineIndex = this.text.indexOf("\n");
+    if (newlineIndex !== -1) singleLineText = this.text.substring(0, newlineIndex);
+    const displayText = truncateToWidth(singleLineText, availableWidth);
+    const lineWithPadding = " ".repeat(this.paddingX) + displayText + " ".repeat(this.paddingX);
+    result.push(lineWithPadding + " ".repeat(Math.max(0, width - visibleWidth(lineWithPadding))));
+    for (let i = 0; i < this.paddingY; i++) result.push(emptyLine);
+    return result;
+  }
+}
+
+// components/loader.ts
+const DEFAULT_LOADER_FRAMES = ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"];
+const DEFAULT_LOADER_INTERVAL_MS = 80;
+
+export class Loader extends Text {
+  constructor(ui, spinnerColorFn, messageColorFn, message = "Loading...", indicator) {
+    super("", 1, 0);
+    this.frames = [...DEFAULT_LOADER_FRAMES];
+    this.intervalMs = DEFAULT_LOADER_INTERVAL_MS;
+    this.currentFrame = 0;
+    this.intervalId = null;
+    this.ui = ui;
+    this.renderIndicatorVerbatim = false;
+    this.spinnerColorFn = spinnerColorFn;
+    this.messageColorFn = messageColorFn;
+    this.message = message;
+    this.setIndicator(indicator);
+  }
+  render(width) { return ["", ...super.render(width)]; }
+  start() { this.updateDisplay(); this.restartAnimation(); }
+  stop() {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+  }
+  setMessage(message) { this.message = message; this.updateDisplay(); }
+  invalidate() { super.invalidate?.(); this.updateDisplay(); }
+  setIndicator(indicator) {
+    this.renderIndicatorVerbatim = indicator !== undefined;
+    this.frames = indicator?.frames !== undefined ? [...indicator.frames] : [...DEFAULT_LOADER_FRAMES];
+    this.intervalMs = indicator?.intervalMs && indicator.intervalMs > 0 ? indicator.intervalMs : DEFAULT_LOADER_INTERVAL_MS;
+    this.currentFrame = 0;
+    this.start();
+  }
+  restartAnimation() {
+    this.stop();
+    if (this.frames.length <= 1) return;
+    this.intervalId = setInterval(() => {
+      this.currentFrame = (this.currentFrame + 1) % this.frames.length;
+      this.updateDisplay();
+    }, this.intervalMs);
+  }
+  getRenderedIndicator() {
+    const frame = this.frames[this.currentFrame] ?? "";
+    return this.renderIndicatorVerbatim ? frame : this.spinnerColorFn(frame);
+  }
+  updateDisplay() {
+    const renderedFrame = this.getRenderedIndicator();
+    const indicator = renderedFrame.length > 0 ? `${renderedFrame} ` : "";
+    this.setText(`${indicator}${this.messageColorFn(this.message)}`);
+    if (this.ui) this.ui.requestRender?.();
+  }
+}
+
+// components/cancellable-loader.ts. The host owns keybinding overrides, so the
+// shim matches tui.select.cancel's default keys.
+export class CancellableLoader extends Loader {
+  constructor(...args) {
+    super(...args);
+    this.abortController = new AbortController();
+    this.onAbort = undefined;
+  }
+  get signal() { return this.abortController.signal; }
+  get aborted() { return this.abortController.signal.aborted; }
+  handleInput(data) {
+    const keys = [].concat(TUI_KEYBINDINGS["tui.select.cancel"].defaultKeys);
+    if (keys.some((key) => matchesKey(data, key))) {
+      this.abortController.abort();
+      this.onAbort?.();
+    }
+  }
+  dispose() { this.stop(); }
+}
+
+// pig divergence (D73): terminal images, capability probing, screens and the
+// renderer itself belong to PiG's Go host. They are importable here and throw
+// a descriptive error only when called or constructed.
+function hostOnlyTui(name) {
+  return new Error(`${name} is not available to extensions running in PiG: the terminal is owned by PiG's host (see DIVERGENCES.md D73)`);
+}
+function hostOnlyTuiFunction(name) {
+  const fn = function () { throw hostOnlyTui(name); };
+  Object.defineProperty(fn, "name", { value: name });
+  return fn;
+}
+function hostOnlyTuiClass(name) {
+  return { [name]: class { constructor() { throw hostOnlyTui(name); } } }[name];
+}
+export const CombinedAutocompleteProvider = hostOnlyTuiClass("CombinedAutocompleteProvider");
+export const Image = hostOnlyTuiClass("Image");
+export const Marked = hostOnlyTuiClass("Marked");
+export const MouseRegion = hostOnlyTuiClass("MouseRegion");
+export const ProcessTerminal = hostOnlyTuiClass("ProcessTerminal");
+export const ScrollView = hostOnlyTuiClass("ScrollView");
+export const StdinBuffer = hostOnlyTuiClass("StdinBuffer");
+export const TuiAltScreen = hostOnlyTuiClass("TuiAltScreen");
+export const TuiMainScreen = hostOnlyTuiClass("TuiMainScreen");
+export const allocateImageId = hostOnlyTuiFunction("allocateImageId");
+export const calculateImageRows = hostOnlyTuiFunction("calculateImageRows");
+export const compositeTuiLine = hostOnlyTuiFunction("compositeTuiLine");
+export const deleteAllKittyImages = hostOnlyTuiFunction("deleteAllKittyImages");
+export const deleteKittyImage = hostOnlyTuiFunction("deleteKittyImage");
+export const detectCapabilities = hostOnlyTuiFunction("detectCapabilities");
+export const encodeITerm2 = hostOnlyTuiFunction("encodeITerm2");
+export const encodeKitty = hostOnlyTuiFunction("encodeKitty");
+export const getCapabilities = hostOnlyTuiFunction("getCapabilities");
+export const getCellDimensions = hostOnlyTuiFunction("getCellDimensions");
+export const getGifDimensions = hostOnlyTuiFunction("getGifDimensions");
+export const getImageDimensions = hostOnlyTuiFunction("getImageDimensions");
+export const getJpegDimensions = hostOnlyTuiFunction("getJpegDimensions");
+export const getNativeClipboard = hostOnlyTuiFunction("getNativeClipboard");
+export const getPngDimensions = hostOnlyTuiFunction("getPngDimensions");
+export const getWebpDimensions = hostOnlyTuiFunction("getWebpDimensions");
+export const imageFallback = hostOnlyTuiFunction("imageFallback");
+export const isViewportTUI = hostOnlyTuiFunction("isViewportTUI");
+export const parseOsc11BackgroundColor = hostOnlyTuiFunction("parseOsc11BackgroundColor");
+export const parseTerminalColorSchemeReport = hostOnlyTuiFunction("parseTerminalColorSchemeReport");
+export const renderImage = hostOnlyTuiFunction("renderImage");
+export const renderLatex = hostOnlyTuiFunction("renderLatex");
+export const resetCapabilitiesCache = hostOnlyTuiFunction("resetCapabilitiesCache");
+export const setCapabilities = hostOnlyTuiFunction("setCapabilities");
+export const setCapabilityOverrides = hostOnlyTuiFunction("setCapabilityOverrides");
+export const setCellDimensions = hostOnlyTuiFunction("setCellDimensions");
+export const setKeybindings = hostOnlyTuiFunction("setKeybindings");

@@ -1335,3 +1335,24 @@ Parity allowance: no paired scenario asserts module-scope state across `/reload`
 Remove when: Pig re-invokes TS/JS extension factories inside a retained Node runtime on reload, using Pi's loader semantics (jiti re-evaluation for `.ts`, the native module cache for `.mjs`), or when upstream reload re-evaluates every extension module.
 
 SCRUTINIZED:approved
+
+## D73 Host-bound Pi exports are importable stand-ins inside extensions
+
+What: inside an extension process, `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, and `@earendil-works/pi-ai` export every runtime value their Pi 0.87.1 packages export. Pure helpers are ported and behave as upstream (for example `isToolCallEventType`, the `is*ToolResult` guards, `stripFrontmatter`, `getLanguageFromPath`, `createEventBus`, `formatSkillsForPrompt`, `parseSkillBlock`, `TruncatedText`, `Loader`, `CancellableLoader`, `TUI_KEYBINDINGS`, `getSystemMessageText`). Values that belong to Pi's own process (the interactive UI and its components, `main`, print and RPC modes, session and runtime construction, package and resource loading, tool definitions bound to Pi's runner, terminal images and capability probing, pi-ai's model, provider and stream layer) are exported as stand-ins that throw `<name> is not available to extensions running in PiG ...` when called or constructed. `parseFrontmatter` parses flat `key: value` frontmatter (strings, quoted strings, numbers, booleans, null) and throws on other YAML, because the `yaml` package is not part of PiG's extension runtime. Theme-bound helpers (`getSelectListTheme`, `highlightCode`, `keyText`, `rawKeyHint`) return uncolored text, as the existing `getSettingsListTheme` and `keyHint` shims already do.
+
+Why: PiG runs extensions in a Node process beside its Go host, not inside Pi's process, so these values have no working implementation there. An ESM import of a name a module does not export fails the whole extension at link time, before any of its code runs: pi-rtk-optimizer failed to load on PiG 0.2.0 because the shim lacked `isToolCallEventType`. Exporting every upstream name keeps an extension loadable whenever the names it imports are the ones it can use, and a stand-in reports the exact name if the extension does call one. Owner-directed launch P0 fix (Reddit report on 2026-09-26, faithful extension compatibility).
+
+Observable effect: an extension that imports a host-bound name loads on PiG and fails only if it calls that name, with an error naming it. Under Pi the same call works. An extension whose frontmatter uses nested YAML gets an error from `parseFrontmatter` instead of a parsed object.
+
+Call-site markers:
+- `coding/extension/host/subprocess/runtime-node/shims/pi-coding-agent.mjs`: the frontmatter parser and the host-only stand-ins.
+- `coding/extension/host/subprocess/runtime-node/shims/pi-tui.mjs`: the host-only stand-ins.
+- `coding/extension/host/subprocess/runtime-node/shims/pi-ai.mjs`: the host-only stand-ins.
+
+Locked by: `coding/extension/host/subprocess` `TestNodeRuntimeShimsExportEveryPinnedPiValue`, which collects every runtime export of the pinned upstream `packages/{coding-agent,tui,ai}/src/index.ts` (following `export *`) and fails if the loader's module lacks any of them.
+
+Parity allowance: no paired scenario calls a host-bound value from an extension; the coverage test locks the export surface.
+
+Remove when: a stand-in's value gains a working implementation in the extension runtime (port it and drop it from the stand-in list), or upstream stops exporting it.
+
+SCRUTINIZED:approved
