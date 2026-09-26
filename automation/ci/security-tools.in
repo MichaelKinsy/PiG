@@ -1,0 +1,10 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# Source-analysis tools for .github/workflows/security.yml. Regenerate the
+# hash-locked security-tools.txt with:
+#   uv pip compile --generate-hashes --python-version 3.12 --universal \
+#     automation/ci/security-tools.in -o automation/ci/security-tools.txt
+reuse[charset-normalizer]==6.2.0
+ruff==0.15.12
+bandit==1.9.3

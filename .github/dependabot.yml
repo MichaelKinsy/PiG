@@ -13,7 +13,8 @@ updates:
   - package-ecosystem: gomod
     directories:
       - /
-      - /extensions/sdk
+      # extensions/sdk has no dependencies; Dependabot would only rewrite its
+      # go directive, which breaks modules that declare go 1.26.
       - /piglets/porter/extensions/pig-porter
       - /piglets/standard
       - /examples/extensions/go-factory
@@ -83,6 +84,7 @@ updates:
       - /extensions/sdk-ts
       - /automation/images/ci-parity
       - /parity/interface-extractor
+      - /automation/ci/npm-toolchain
     schedule:
       interval: monthly
     open-pull-requests-limit: 0
