@@ -492,7 +492,7 @@ func (r *Runner) Tools() []extension.RegisteredTool {
 	seen := make(map[string]struct{}, total)
 	out := make([]extension.RegisteredTool, 0, total)
 	for _, ext := range r.extensions {
-		for _, tool := range ext.Tools {
+		for _, tool := range orderedTools(ext) {
 			name := tool.Definition.Name
 			if _, dup := seen[name]; dup {
 				continue
@@ -500,6 +500,52 @@ func (r *Runner) Tools() []extension.RegisteredTool {
 			seen[name] = struct{}{}
 			out = append(out, tool)
 		}
+	}
+	return out
+}
+
+// ToolSourceInfo returns the SourceInfo of the extension whose tool
+// [Runner.Tools] reports under toolName. Upstream registerTool stamps the
+// registering extension's sourceInfo onto the tool (loader.ts), and
+// getAllTools reports it. [extension.RegisteredTool.SourceInfo] carries
+// PiG's per-tool source attribution for Piglet scoping instead (D23).
+//
+// upstream: runner.ts getAllRegisteredTools (RegisteredTool.sourceInfo)
+func (r *Runner) ToolSourceInfo(toolName string) (extension.SourceInfo, bool) {
+	for _, ext := range r.extensions {
+		if _, ok := ext.Tools[toolName]; ok {
+			return ext.SourceInfo, true
+		}
+	}
+	return nil, false
+}
+
+// orderedTools returns ext's tools in registration order (ToolOrder), then
+// any tool the loader did not order, by name, so the result never depends on
+// map iteration.
+func orderedTools(ext extension.Extension) []extension.RegisteredTool {
+	out := make([]extension.RegisteredTool, 0, len(ext.Tools))
+	ordered := make(map[string]struct{}, len(ext.ToolOrder))
+	for _, name := range ext.ToolOrder {
+		tool, ok := ext.Tools[name]
+		if !ok {
+			continue
+		}
+		if _, dup := ordered[name]; dup {
+			continue
+		}
+		ordered[name] = struct{}{}
+		out = append(out, tool)
+	}
+	rest := make([]string, 0, len(ext.Tools)-len(ordered))
+	for name := range ext.Tools {
+		if _, ok := ordered[name]; !ok {
+			rest = append(rest, name)
+		}
+	}
+	slices.Sort(rest)
+	for _, name := range rest {
+		out = append(out, ext.Tools[name])
 	}
 	return out
 }
@@ -565,10 +611,18 @@ func (r *Runner) ExecuteCommand(ctx context.Context, invocationName, args string
 	commandContext := r.CreateCommandContext()
 	callContext := extension.WithContext(ctx, commandContext.Context)
 	callContext = extension.WithCommandContext(callContext, commandContext)
-	if err := command.Handler(callContext, args); err != nil {
+	if err := command.Handler(callContext, args); err != nil && !cancelledBy(ctx, err) {
 		r.recordHandlerError("command:"+invocationName, "command", err)
 	}
 	return true
+}
+
+// cancelledBy reports whether err is ctx's own cancellation: the host
+// stopped the command (shutdown or a termination signal), the handler did
+// not fail. Upstream cannot cancel a command; its process exits instead,
+// and nothing is reported.
+func cancelledBy(ctx context.Context, err error) bool {
+	return ctx.Err() != nil && errors.Is(err, ctx.Err())
 }
 
 // CommandDiagnostics returns the warnings/errors collected during the

@@ -776,6 +776,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			if m.opts.ReloadResourceProvider == nil && m.opts.ResourceSourceInfoProvider != nil {
 				m.resourceSourceInfo = m.opts.ResourceSourceInfoProvider()
 			}
+			m.publishSlashCommandCatalog()
 
 			// 6. Reload context files (AGENTS.md / CLAUDE.md).
 			// Mirrors upstream resourceLoader.reload() which re-walks

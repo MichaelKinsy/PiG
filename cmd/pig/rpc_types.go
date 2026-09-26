@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	codingcompaction "github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 )
 
@@ -186,20 +187,12 @@ type RPCClearQueueData struct {
 	FollowUp []string `json:"followUp"`
 }
 
-type RPCSourceInfo struct {
-	Path    string `json:"path"`
-	Source  string `json:"source"`
-	Scope   string `json:"scope"`
-	Origin  string `json:"origin"`
-	BaseDir string `json:"baseDir,omitempty"`
-}
+// RPCSourceInfo is upstream's SourceInfo on the RPC wire; extensions receive
+// the same shape.
+type RPCSourceInfo = codingagent.PiSourceInfo
 
-type RPCSlashCommand struct {
-	Name        string        `json:"name"`
-	Description string        `json:"description,omitempty"`
-	Source      string        `json:"source"`
-	SourceInfo  RPCSourceInfo `json:"sourceInfo"`
-}
+// RPCSlashCommand is upstream's RpcSlashCommand (SlashCommandInfo).
+type RPCSlashCommand = codingagent.PiSlashCommand
 
 type RPCCancelledResult struct {
 	Cancelled bool `json:"cancelled"`

@@ -720,8 +720,10 @@ export class Runtime {
       exec: (command, args = [], options = undefined) => this.call("exec", { command, args, options }),
       getFlag: (name) => this.state.flags?.[name] ?? this.flagValues?.[name] ?? undefined,
       getActiveTools: action(() => [...(this.state.activeTools || [])]),
-      getAllTools: action(() => [...(this.state.allTools || [])]),
-      getCommands: action(() => [...(this.state.commands || [])]),
+      // Pi returns fresh ToolInfo and SlashCommandInfo objects on every call;
+      // a caller mutating one must not change the replicated host state.
+      getAllTools: action(() => structuredClone(this.state.allTools || [])),
+      getCommands: action(() => structuredClone(this.state.commands || [])),
       getThinkingLevel: action(() => this.state.thinkingLevel || ""),
       setThinkingLevel: action((level) => {
         this.state.thinkingLevel = level;

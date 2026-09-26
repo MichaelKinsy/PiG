@@ -10,9 +10,13 @@ import (
 func TestUIBridge_Snapshot_ReadsCallbacks(t *testing.T) {
 	b := NewUIBridge(func() {})
 	b.SetActions(&HostCallbacks{
-		GetActiveTools:     func() []string { return []string{"read", "write"} },
-		GetAllTools:        func() []ToolInfo { return []ToolInfo{{Name: "read"}, {Name: "bash"}} },
-		GetCommands:        func() []CommandInfo { return []CommandInfo{{Name: "help"}} },
+		GetActiveTools: func() []string { return []string{"read", "write"} },
+		GetAllTools: func() []ToolInfo {
+			return []ToolInfo{{Name: "read"}, {Name: "bash", Description: "Run bash", Parameters: json.RawMessage(`{"type":"object"}`), PromptGuidelines: []string{"g"}, SourceInfo: map[string]any{"path": "<builtin:bash>"}}}
+		},
+		GetCommands: func() []CommandInfo {
+			return []CommandInfo{{Name: "help", Description: "Help", Source: "extension", SourceInfo: map[string]any{"path": "/ext.ts"}}}
+		},
 		GetThinkingLevel:   func() string { return "high" },
 		IsIdle:             func() bool { return false },
 		HasPendingMessages: func() bool { return true },
@@ -34,11 +38,13 @@ func TestUIBridge_Snapshot_ReadsCallbacks(t *testing.T) {
 	if len(state.ActiveTools) != 2 || state.ActiveTools[0] != "read" {
 		t.Errorf("ActiveTools = %v", state.ActiveTools)
 	}
-	if len(state.AllTools) != 2 || state.AllTools[1] != "bash" {
-		t.Errorf("AllTools = %v", state.AllTools)
+	// The Node runtime answers pi.getAllTools() and pi.getCommands() from
+	// this replica, so it carries the whole ToolInfo and SlashCommandInfo.
+	if raw, _ := json.Marshal(state.AllTools); string(raw) != `[{"name":"read","description":"","parameters":null,"sourceInfo":null},{"name":"bash","description":"Run bash","parameters":{"type":"object"},"promptGuidelines":["g"],"sourceInfo":{"path":"\u003cbuiltin:bash\u003e"}}]` {
+		t.Errorf("AllTools = %s", raw)
 	}
-	if len(state.Commands) != 1 || state.Commands[0] != "help" {
-		t.Errorf("Commands = %v", state.Commands)
+	if raw, _ := json.Marshal(state.Commands); string(raw) != `[{"name":"help","description":"Help","source":"extension","sourceInfo":{"path":"/ext.ts"}}]` {
+		t.Errorf("Commands = %s", raw)
 	}
 	if state.ThinkingLevel != "high" {
 		t.Errorf("ThinkingLevel = %q", state.ThinkingLevel)

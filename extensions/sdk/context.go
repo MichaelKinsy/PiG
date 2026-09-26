@@ -478,11 +478,26 @@ func (c Context) SetModel(model string) (bool, error) {
 
 // ── Tool State ───────────────────────────────────────────────────────────────
 
-// ToolInfo describes a registered tool (returned by GetAllTools).
+// SourceInfo mirrors upstream SourceInfo: where a tool, command, prompt
+// template or skill came from.
+type SourceInfo struct {
+	Path    string `json:"path"`
+	Source  string `json:"source"`
+	Scope   string `json:"scope"`
+	Origin  string `json:"origin"`
+	BaseDir string `json:"baseDir,omitempty"`
+}
+
+// ToolInfo mirrors upstream ToolInfo, one entry of GetAllTools: a tool
+// definition's name, description, parameter schema and prompt guidelines,
+// and the SourceInfo of what registered it ("builtin" for built-in tools).
 type ToolInfo struct {
-	Name        string `json:"name"`
-	Description string `json:"description,omitempty"`
-	Source      string `json:"source,omitempty"`
+	Name        string          `json:"name"`
+	Description string          `json:"description"`
+	Parameters  json.RawMessage `json:"parameters"`
+	// PromptGuidelines is nil when the definition has none.
+	PromptGuidelines []string   `json:"promptGuidelines,omitempty"`
+	SourceInfo       SourceInfo `json:"sourceInfo"`
 }
 
 // GetActiveTools returns the currently active tool names.
@@ -498,7 +513,8 @@ func (c Context) GetActiveTools() []string {
 	return resp.Tools
 }
 
-// GetAllTools returns all registered tools with their metadata.
+// GetAllTools returns every tool in the session's registry, active or not:
+// built-in tools, then extension tools. Mirrors upstream pi.getAllTools().
 func (c Context) GetAllTools() []ToolInfo {
 	result, err := c.callHost("getAllTools", nil)
 	if err != nil || result == nil {
@@ -523,14 +539,17 @@ func (c Context) RefreshTools() {
 
 // ── Commands ─────────────────────────────────────────────────────────────────
 
-// CommandInfo describes a registered slash command (returned by GetCommands).
+// CommandInfo mirrors upstream SlashCommandInfo, one entry of GetCommands.
 type CommandInfo struct {
 	Name        string `json:"name"`
 	Description string `json:"description,omitempty"`
-	Source      string `json:"source,omitempty"`
+	// Source is "extension", "prompt" or "skill".
+	Source     string     `json:"source"`
+	SourceInfo SourceInfo `json:"sourceInfo"`
 }
 
-// GetCommands returns all registered slash commands.
+// GetCommands returns the session's extension commands, prompt templates and
+// skills. Mirrors upstream pi.getCommands().
 func (c Context) GetCommands() []CommandInfo {
 	result, err := c.callHost("getCommands", nil)
 	if err != nil || result == nil {

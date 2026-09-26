@@ -1,0 +1,50 @@
+# Behavior family: print
+# Scenario: an extension command given as the print-mode prompt runs the
+# command instead of prompting the model.
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-25): print-mode.ts sends the
+# initial message through session.prompt(), and AgentSession.prompt runs a
+# registered extension command in place of the prompt
+# (_tryExecuteExtensionCommand) before input handlers or the model see it:
+#
+#   pi --no-extensions -e test-faux-provider.ts -e extension-api-info.mjs \
+#     --model test-faux/faux-1 --no-session -p "/api-info <file>"
+#
+# writes <file> and exits 0 with no output. pig sent "/api-info <file>" to the
+# model, so the faux provider answered `test-faux: unhandled request` and the
+# run exited 1 without running the command.
+#
+# The artifact is the command's own record of pi.getAllTools() and
+# pi.getCommands(), so it also pins those lists in print mode.
+
+name = "02-print-extension-command"
+description = "--print with an extension command runs the command, not a model prompt"
+
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "/api-info {{TEMP}}/api-info.json"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/api-info.json"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["../testdata/extension-api-info.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "../testdata/extension-api-info.mjs",
+]
+
+[assert]
+exit_code = 0
+runs = 1
+output_equal = true
+both_not_contain = ["unhandled request"]
+artifact_normalized_equal = true
+artifact_both_contain = ['"name": "api-info"']

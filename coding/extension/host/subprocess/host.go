@@ -243,6 +243,10 @@ type Host struct {
 	// extension list, so Extensions reports them in load order as upstream
 	// does.
 	loadOrder map[string]int
+	// configSourceInfo is each configured extension's SourceInfo by name.
+	// Packed cells start their members from cell descriptors, not the
+	// configs, so buildExtension reads the provenance back from here.
+	configSourceInfo map[string]extension.SourceInfo
 	// embeddedCells is the immutable source-free cell set supplied by a Piglet
 	// Binary. Reload reconstructs these cells alongside source extensions.
 	embeddedCells []EmbeddedCell
@@ -1010,11 +1014,27 @@ func (h *Host) recordLoadOrder(configs []ExtConfig, replace bool) {
 	if replace || h.loadOrder == nil {
 		h.loadOrder = make(map[string]int, len(configs))
 	}
+	if replace || h.configSourceInfo == nil {
+		h.configSourceInfo = make(map[string]extension.SourceInfo, len(configs))
+	}
 	for _, config := range configs {
 		if _, ranked := h.loadOrder[config.Name]; !ranked {
 			h.loadOrder[config.Name] = len(h.loadOrder)
 		}
+		if config.SourceInfo != nil {
+			h.configSourceInfo[config.Name] = config.SourceInfo
+		}
 	}
+}
+
+// extensionSourceInfo returns the SourceInfo configured for me's extension.
+func (h *Host) extensionSourceInfo(me *managedExt) extension.SourceInfo {
+	if me.config.SourceInfo != nil {
+		return me.config.SourceInfo
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.configSourceInfo[me.config.Name]
 }
 
 // ExtensionCount returns the number of loaded subprocess extensions.
@@ -2032,7 +2052,7 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 		Name:             me.config.Name,
 		Path:             path,
 		ResolvedPath:     resolvedPath,
-		SourceInfo:       me.config.SourceInfo,
+		SourceInfo:       h.extensionSourceInfo(me),
 		Tools:            make(map[string]extension.RegisteredTool, len(reg.Tools)),
 		Commands:         make(map[string]extension.RegisteredCommand, len(reg.Commands)),
 		MessageRenderers: make(map[string]extension.MessageRenderer, len(reg.MessageRenderers)),
@@ -2063,6 +2083,7 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 			},
 			SourceInfo: source,
 		}
+		ext.ToolOrder = append(ext.ToolOrder, td.Name)
 	}
 
 	// Build commands.
