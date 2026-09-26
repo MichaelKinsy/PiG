@@ -94,7 +94,11 @@ func TestSelfReplaceAtInstallsPigFromReleaseArchive(t *testing.T) {
 	if err != nil || string(got) != newPig {
 		t.Fatalf("executable = %q, %v; want the archive's pig", got, err)
 	}
-	if info, _ := os.Stat(exe); info.Mode().Perm() != 0o755 {
+	info, err := os.Stat(exe)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Mode().Perm() != 0o755 {
 		t.Fatalf("mode = %o, want 755", info.Mode().Perm())
 	}
 	leftovers, _ := filepath.Glob(filepath.Join(filepath.Dir(exe), ".pig-update-*"))
