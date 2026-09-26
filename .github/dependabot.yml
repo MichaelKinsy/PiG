@@ -32,6 +32,10 @@ updates:
       - /automation/images/npm-runtime
     schedule:
       interval: monthly
+    ignore:
+      # npm 12 in this image is built on undici 6; take undici majors with npm.
+      - dependency-name: undici
+        update-types: ["version-update:semver-major"]
     cooldown:
       default-days: 3
       semver-major-days: 14
