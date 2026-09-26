@@ -71,6 +71,7 @@ installing software.
 8. Run `make check` before requesting review.
 9. Sign off every commit.
 10. Describe the problem, change, verification, and any divergence in the pull request.
+11. In your first pull request, add yourself to [`CONTRIBUTORS.md`](CONTRIBUTORS.md).
 
 A documentation-only or mechanical change can explain why it does not need an issue.
 
