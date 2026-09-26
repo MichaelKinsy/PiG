@@ -110,9 +110,7 @@ func (run *shellRun) execute(command string, config shellConfig, cwd string, tim
 	if err != nil {
 		return harness.ShellExecResult{}, err
 	}
-	pid := cmd.Process.Pid
-	run.env.trackChild(pid, true)
-	defer run.env.trackChild(pid, false)
+	defer run.env.untrackChild(cmd.Process.Pid)
 	if timeout > 0 {
 		onTimeout, drainTimeout := ownedCallback(run.timeout)
 		timer := time.AfterFunc(timeout, onTimeout)
@@ -133,7 +131,7 @@ func (run *shellRun) execute(command string, config shellConfig, cwd string, tim
 }
 
 // start spawns the shell with piped stdout/stderr as the leader of its own
-// process group.
+// process group and registers it for Cleanup.
 func (run *shellRun) start(command string, config shellConfig, cwd string) (*exec.Cmd, *os.File, *os.File, error) {
 	stdoutRead, stdoutWrite, err := os.Pipe()
 	if err != nil {
@@ -157,7 +155,7 @@ func (run *shellRun) start(command string, config shellConfig, cwd string) (*exe
 	if config.commandFromStdin {
 		cmd.Stdin = strings.NewReader(command)
 	}
-	startErr := cmd.Start()
+	startErr := run.env.startChild(cmd)
 	closeAll(stdoutWrite, stderrWrite)
 	if startErr != nil {
 		closeAll(stdoutRead, stderrRead)

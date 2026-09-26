@@ -66,6 +66,9 @@ wait_timeout_seconds = 20
 [[tmux.steps]]
 keys = ["Enter"]
 wait_contains = ["Login to GitHub Copilot", "Enter code:"]
+# wait_contains also matches scrollback and the raw output transcript, which
+# can run ahead of the painted screen; the capture reads the visible screen.
+wait_visible_contains = ["Login to GitHub Copilot", "https://github.com/login/device", "Enter code:"]
 wait_timeout_seconds = 20
 
 [env]
