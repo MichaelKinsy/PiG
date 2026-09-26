@@ -1,0 +1,62 @@
+# Behavior family: extensions-runtime
+# Scenario: a displayed custom message with no registered renderer shows its
+# text as Markdown wrapped inside the message box.
+#
+# Upstream evidence (Pi 0.87.1, tmux probe 2026-09-26): custom-message.ts
+# renders the label, a spacer, and `new Markdown(text, 0, 0, markdownTheme,
+# {color: customMessageText})` inside Box(1, 1), so a line wider than the
+# terminal wraps with the list continuation indent:
+#
+#   pi --no-extensions -e test-faux-provider.ts -e custom-message-long.mjs \
+#     --model test-faux/faux-1 --no-session
+#   send: "/long-message" Enter
+#
+# pig printed each content line unwrapped. pi-web-access's /websearch result
+# message has such a line, and the over-wide row ended pig through the TUI
+# overflow check.
+
+name = "22-custom-message-markdown-wrap"
+description = "Default custom message rendering wraps Markdown content inside the box as Pi does"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/custom-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--no-session"]
+pig_extensions = ["testdata/ext/custom-message-long.mjs"]
+pi_args = ["--no-session"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/custom-message-long.mjs",
+]
+
+[tmux]
+width = 80
+height = 45
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "[long-probe]"
+capture_end = "end."
+
+[[tmux.steps]]
+keys = ["/long-message"]
+wait_contains = ["/long-message"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["end."]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "exceeds terminal width"]
+escaped_output_equal = true
+runs = 1

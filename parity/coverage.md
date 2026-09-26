@@ -1,6 +1,6 @@
 # PORT_MAP coverage report
 
-Generated from `616` PORT_MAP entries and `253` parity scenarios.
+Generated from `616` PORT_MAP entries and `254` parity scenarios.
 
 **Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 428 behavioral (96.0%), 4 weak-only (no behavioral verification), 14 untested.
 Raw PORT_MAP rows: 616. Breakdown: 74 n/a (designed out) · 24 🟡 partial · 72 ⬜ not started. See DIVERGENCES.md for the documented exceptions.
@@ -455,7 +455,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/coding-agent/src/modes/interactive/components/countdown-timer.ts` | ✅ | 2 (09-countdown-timer, 10-loader-countdown-bordered-behavior) | 1 (10-loader-countdown-bordered-behavior) | not run |  |
 | `packages/coding-agent/src/modes/interactive/components/custom-editor.ts` | ✅ | 1 (custom-editor-precedence) | 1 (custom-editor-precedence) | not run |  |
 | `packages/coding-agent/src/modes/interactive/components/custom-entry.ts` | ✅ | 1 (18-subprocess-entry-renderer) | 1 (18-subprocess-entry-renderer) | not run |  |
-| `packages/coding-agent/src/modes/interactive/components/custom-message.ts` | ✅ | 3 (12-custom-message, 20-message-output-padding, 22-exit-final-layout) | 3 (12-custom-message, 20-message-output-padding, 22-exit-final-layout) | not run |  |
+| `packages/coding-agent/src/modes/interactive/components/custom-message.ts` | ✅ | 4 (12-custom-message, 20-message-output-padding, 22-custom-message-markdown-wrap, 22-exit-final-layout) | 4 (12-custom-message, 20-message-output-padding, 22-custom-message-markdown-wrap, 22-exit-final-layout) | not run |  |
 | `packages/coding-agent/src/modes/interactive/components/diff.ts` | ✅ | 1 (10-edit-tool-diff) | 1 (10-edit-tool-diff) | not run |  |
 | `packages/coding-agent/src/modes/interactive/components/dynamic-border.ts` | ✅ | 1 (08-dynamic-border-width80) | 1 (08-dynamic-border-width80) | not run |  |
 | `packages/coding-agent/src/modes/interactive/components/extension-editor.ts` | ✅ | 1 (10-extension-editor) | 1 (10-extension-editor) | not run |  |

@@ -3,8 +3,8 @@ package tui
 // custom_message.go: renders custom extension messages.
 //
 // Ports upstream custom-message.ts (99 LOC).
-// In pig's line renderer, the Box/Spacer/Markdown composition is
-// simplified to colored text lines.
+// The Box/Spacer/Markdown composition is rendered as lines: the label, a
+// spacer, and the Markdown body wrapped to the box's inner width.
 
 import (
 	"encoding/json"
@@ -17,6 +17,7 @@ type CustomMessageComponent struct {
 	CustomType string
 	Content    string // text content (may contain markdown)
 	Expanded   bool
+	markdown   *Markdown
 }
 
 // NewCustomMessageComponent creates a custom message renderer.
@@ -61,18 +62,16 @@ func (c *CustomMessageComponent) Render(width int) []string {
 	// Structural blank (upstream: Spacer(1) inside Box between label and content).
 	lines = append(lines, paintBgWith(customMsgBgOpen, "", width))
 
-	if c.Content != "" {
-		// Render content as plain text lines with paddingX=1 indent.
-		contentColor := t.CustomMessageText
-		for raw := range strings.SplitSeq(c.Content, "\n") {
-			var line string
-			if contentColor != "" {
-				line = padding + contentColor + raw + "\x1b[0m"
-			} else {
-				line = padding + raw
-			}
-			lines = append(lines, paintBgWith(customMsgBgOpen, line, width))
-		}
+	// Upstream renders the text as Markdown in the customMessageText color
+	// inside Box(1, 1): wrapped to the box's inner width, one column of
+	// padding on each side.
+	if c.markdown == nil {
+		c.markdown = NewMarkdown(c.Content)
+	}
+	c.markdown.Content = c.Content
+	c.markdown.SetDefaultColor(t.CustomMessageText)
+	for _, line := range c.markdown.Render(width - 2) {
+		lines = append(lines, paintBgWith(customMsgBgOpen, padding+line, width))
 	}
 
 	lines = append(lines, paintBgWith(customMsgBgOpen, "", width))
