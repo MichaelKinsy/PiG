@@ -3,6 +3,7 @@ package source
 import (
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -257,9 +258,8 @@ func TestResolveNodeEntriesWithoutLiteralExportDefault(t *testing.T) {
 	for _, tc := range []struct {
 		name, file, source string
 		manifest           string
-		entry              string
 	}{
-		{name: "bundled export list", file: "dist/index.js", manifest: `{"pi":{"extensions":["./dist"]}}`, entry: "dist",
+		{name: "bundled export list", file: "dist/index.js", manifest: `{"pi":{"extensions":["./dist"]}}`,
 			source: "var index_default = function(pi) {};\nexport {\n  index_default as default,\n  helper\n};\n"},
 		{name: "commonjs", file: "index.js", source: "module.exports = function (pi) {};\n"},
 		{name: "no default export", file: "index.js", source: "export function extension(pi) {}\n"},
@@ -275,11 +275,65 @@ func TestResolveNodeEntriesWithoutLiteralExportDefault(t *testing.T) {
 				t.Fatalf("Resolve: %v", err)
 			}
 			want := tc.file
-			if tc.entry != "" {
-				want = tc.entry
-			}
 			if def.Language != "node" || def.Form != Factory || def.Entrypoint != filepath.Join(root, want) {
 				t.Fatalf("Resolve = %+v, want node factory at %s", def, want)
+			}
+		})
+	}
+}
+
+// A directory named in package.json "pi.extensions" expands as upstream Pi's
+// package manager expands it (collectAutoExtensionEntries in
+// core/package-manager.ts): the directory's own pi.extensions, else index.ts,
+// else index.js, else its .ts and .js files and subdirectory entries. The
+// runtime imports a file; Node refuses a directory import.
+func TestResolveNodeManifestDirectoryEntries(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		files map[string]string
+		want  []string
+		err   string
+	}{
+		{name: "index.js", files: map[string]string{"dist/index.js": "", "dist/chunk.js": ""}, want: []string{"dist/index.js"}},
+		{name: "index.ts before index.js", files: map[string]string{"dist/index.ts": "", "dist/index.js": ""}, want: []string{"dist/index.ts"}},
+		{name: "nested manifest before index", files: map[string]string{
+			"dist/package.json": "\ufeff{\"pi\":{\"extensions\":[\"./main.js\",\"./absent.js\"]}}", "dist/main.js": "", "dist/index.js": "",
+		}, want: []string{"dist/main.js"}},
+		{name: "no index: the directory's single file", files: map[string]string{"dist/tool.js": "", "dist/notes.md": "", "dist/.hidden.js": ""}, want: []string{"dist/tool.js"}},
+		{name: "no index: ignored files and node_modules skipped", files: map[string]string{
+			"dist/tool.ts": "", "dist/gen.js": "", "dist/.gitignore": "gen.js\n", "dist/node_modules/dep/index.js": "",
+		}, want: []string{"dist/tool.ts"}},
+		{name: "no index: a subdirectory's index", files: map[string]string{"dist/sub/index.js": "", "dist/empty/readme.md": ""}, want: []string{"dist/sub/index.js"}},
+		{name: "no index: several files", files: map[string]string{"dist/a.js": "", "dist/b.ts": ""}, err: "resolves to 2 entrypoints"},
+		{name: "no entry at all", files: map[string]string{"dist/readme.md": ""}, err: "no extension entry file"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeSourceTestFile(t, filepath.Join(root, "package.json"), `{"pi":{"extensions":["./dist"]}}`)
+			writeSourceTestFile(t, filepath.Join(root, "index.js"), "export default function root(pi) {}\n")
+			for name, content := range tc.files {
+				writeSourceTestFile(t, filepath.Join(root, filepath.FromSlash(name)), content)
+			}
+			entries, _, declared, err := NodeManifestEntries(root)
+			if err != nil || !declared {
+				t.Fatalf("NodeManifestEntries: declared=%t err=%v", declared, err)
+			}
+			def, err := Resolve(root)
+			if tc.err != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.err) {
+					t.Fatalf("Resolve error = %v (entries %v), want %q", err, entries, tc.err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Resolve: %v", err)
+			}
+			want := make([]string, 0, len(tc.want))
+			for _, name := range tc.want {
+				want = append(want, filepath.Join(root, filepath.FromSlash(name)))
+			}
+			if !slices.Equal(entries, want) || def.Entrypoint != want[0] {
+				t.Fatalf("entries = %v, Entrypoint = %s, want %v", entries, def.Entrypoint, want)
 			}
 		})
 	}
