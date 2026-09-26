@@ -82563,17 +82563,6 @@
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#piPackageEntrypoints",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "piPackageEntrypoints",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(dir string) (entries []string, missing []string, err error)"
-      },
-      "shapeHash": "sha256:76501c4e9298004cfd5d723b833019ec4ea07f4695e46c521e79d74a48115d1c"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#pigSDKInlinePathRe",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "pigSDKInlinePathRe",
@@ -84059,6 +84048,28 @@
       "shapeHash": "sha256:7eabd192b9f1c379102c8dc793881875f1f949f6b752e15a20b93080cb0b311d"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#NodeDirectoryEntries",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
+      "name": "NodeDirectoryEntries",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(dir string) []string"
+      },
+      "shapeHash": "sha256:94e234dda5d4f511e0a2900403f8d2fb700767ce383fa2d30ca537602a83a6d8"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#NodeManifestEntries",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
+      "name": "NodeManifestEntries",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(root string) (entries []string, missing []string, declared bool, err error)"
+      },
+      "shapeHash": "sha256:8da0b27bdf7dab0f2f13763a383c45a9cf50ec82a106ecdad7a774d90201fd32"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#Resolve",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
       "name": "Resolve",
@@ -84191,17 +84202,6 @@
       "shapeHash": "sha256:de921de3ac3b9a42464da7f1580cfb7c2f06ab26f73c6072c3c22c1465c7c5ca"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#nodeDefaultExport",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
-      "name": "nodeDefaultExport",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "*regexp.Regexp"
-      },
-      "shapeHash": "sha256:71d5e3591899cd0c396770073cb9dff2078549477cfe54a8adbee9e0bbd77653"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#nodeEntrypoints",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
       "name": "nodeEntrypoints",
@@ -84211,6 +84211,28 @@
         "type": "func(root string) ([]string, error)"
       },
       "shapeHash": "sha256:de921de3ac3b9a42464da7f1580cfb7c2f06ab26f73c6072c3c22c1465c7c5ca"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#nodeManifestDeclared",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
+      "name": "nodeManifestDeclared",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dir string) (entries []string, ok bool, err error)"
+      },
+      "shapeHash": "sha256:12dd34a9d0a559affcc6fec95196b58f458c03cb251b7c57f55bead2a795f674"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#nodeRootEntries",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/source",
+      "name": "nodeRootEntries",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(dir string) []string"
+      },
+      "shapeHash": "sha256:94e234dda5d4f511e0a2900403f8d2fb700767ce383fa2d30ca537602a83a6d8"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/source#pathWithin",
@@ -84873,17 +84895,6 @@
       "shapeHash": "sha256:71d5e3591899cd0c396770073cb9dff2078549477cfe54a8adbee9e0bbd77653"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#appendSkillIgnoreRules",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "appendSkillIgnoreRules",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(rules []skillIgnoreRule, dir string, root string) []skillIgnoreRule"
-      },
-      "shapeHash": "sha256:f7701becc08b4118e49bdedcbd873cb6981ace63bd2e9f9bf4cdb2e222898355"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#coalesceEntries",
       "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
       "name": "coalesceEntries",
@@ -85399,39 +85410,6 @@
         "type": "func(input string) (github.com/MichaelKinsy/PiG/coding/extension/source.Definition, error)"
       },
       "shapeHash": "sha256:9f5cf91b6afb53208acc7f7a9b5f50dfaa007663c02e14f8aa7c86d0eeb10113"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#skillIgnoreMatch",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "skillIgnoreMatch",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(pattern string, candidate string) bool"
-      },
-      "shapeHash": "sha256:0d96faadbcb10a9a0a475746a93596e4b2205e6a91373402aa5ed654d942fcd6"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#skillIgnoreRule",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "skillIgnoreRule",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "skillIgnoreRule"
-      },
-      "shapeHash": "sha256:0239fcfb46111a533dabbff0fbf5469788d34595f9c8dbbb093285cb8624f084"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#skillPathIgnored",
-      "package": "github.com/MichaelKinsy/PiG/coding/packagecontent",
-      "name": "skillPathIgnored",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(candidate string, directory bool, root string, rules []skillIgnoreRule) bool"
-      },
-      "shapeHash": "sha256:86c5475a9b9da7769ed4f27194aeffd6ff883c7bb83ad81cc2ce6a0f1be64e62"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/packagecontent#stringList",

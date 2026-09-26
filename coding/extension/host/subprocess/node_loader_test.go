@@ -195,3 +195,90 @@ func TestNodeRuntimeLoaderServesPiAiCompatAndOAuth(t *testing.T) {
 		t.Fatalf("pi-ai virtual modules: %v\n%s", err, output)
 	}
 }
+
+// Every runtime value Pi's packages export must be importable through the
+// loader. An ESM import of a missing name fails the whole extension at link
+// time (pi-rtk-optimizer's isToolCallEventType, for example), so the check is
+// the full upstream index, not the names today's extensions happen to use.
+func TestNodeRuntimeShimsExportEveryPinnedPiValue(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatalf("node is required for the loader fixture: %v", err)
+	}
+	modRoot := findModuleRoot(t)
+	runtimeRoot := filepath.Join(modRoot, "coding", "extension", "host", "subprocess", "runtime-node")
+	for spec, index := range map[string]string{
+		"@earendil-works/pi-coding-agent": "coding-agent",
+		"@earendil-works/pi-tui":          "tui",
+		"@earendil-works/pi-ai":           "ai",
+	} {
+		upstream := filepath.Join(modRoot, ".upstream", "current", "packages", index, "src", "index.ts")
+		script := `import fs from "node:fs";
+const spec = process.argv[1], upstream = process.argv[2];
+import path from "node:path";
+const names = new Set();
+const seen = new Set();
+function collect(file) {
+  if (seen.has(file)) return;
+  seen.add(file);
+  const src = fs.readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  for (const m of src.matchAll(/export\s*\{([^}]*)\}/g)) {
+    for (let n of m[1].split(",")) { n = n.trim(); if (!n || n.startsWith("type ")) continue; names.add(n.split(/\s+as\s+/).pop().trim()); }
+  }
+  for (const m of src.matchAll(/export\s+(?:declare\s+)?(?:abstract\s+)?(?:async\s+)?(?:const|function\*?|class|let|var|enum)\s+([A-Za-z0-9_$]+)/g)) names.add(m[1]);
+  for (const m of src.matchAll(/export\s+\*\s+from\s+"(\.[^"]+)"/g)) collect(path.resolve(path.dirname(file), m[1]));
+}
+collect(upstream);
+if (names.size < 10) { console.log("parsed only " + names.size + " upstream exports"); process.exit(2); }
+const mod = await import(spec);
+const missing = [...names].filter((n) => !(n in mod)).sort();
+if (missing.length) { console.log(missing.join(" ")); process.exit(1); }`
+		command := exec.Command(node, "--import", registerLoaderURL(t, runtimeRoot), "--input-type=module", "--eval", script, spec, upstream)
+		if output, err := command.CombinedOutput(); err != nil {
+			t.Errorf("%s is missing upstream exports: %v\n%s", spec, err, output)
+		}
+	}
+}
+
+// parseFrontmatter as served to extensions returns what Pi's returns: YAML
+// lists, nested maps, quoting, block scalars, CRLF and BOM input, and the
+// same error for malformed YAML.
+func TestNodeRuntimeParseFrontmatterMatchesPi(t *testing.T) {
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatalf("node is required for the loader fixture: %v", err)
+	}
+	modRoot := findModuleRoot(t)
+	runtimeRoot := filepath.Join(modRoot, "coding", "extension", "host", "subprocess", "runtime-node")
+	pinned := filepath.Join(modRoot, "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent", "dist", "utils", "frontmatter.js")
+	if _, err := os.Stat(pinned); err != nil {
+		t.Fatalf("pinned Pi package missing (run npm ci in extensions/sdk-ts): %v", err)
+	}
+	script := `import { pathToFileURL } from "node:url";
+const pi = await import(pathToFileURL(process.argv[1]).href);
+const pig = await import("@earendil-works/pi-coding-agent");
+const inputs = [
+  "---\nname: skill\ndescription: Does things\n---\nBody text\n",
+  "---\ntags: [a, b, \"c d\"]\nitems:\n  - one\n  - two: 2\nmeta:\n  nested:\n    deep: true\n  n: 1.5\n---\nbody",
+  "---\nquoted: \"a: b # not a comment\"\nsingle: 'it''s'\nempty:\nnull_value: ~\ndate: 2026-09-26\n---\n",
+  "---\nliteral: |\n  line one\n  line two\nfolded: >\n  folded\n  text\n---\nafter",
+  "\ufeff---\r\nname: crlf\r\nlist:\r\n  - x\r\n---\r\nbody\r\n",
+  "no frontmatter here\n---\nname: x\n---\n",
+  "---\nname: unterminated\nbody",
+  "---\n---\nempty frontmatter",
+  "---\nkey: [unclosed\n---\nbody",
+  "---\n- just\n- a list\n---\nb",
+];
+const run = (fn, input) => { try { return { ok: fn(input) }; } catch (e) { return { error: String(e?.name) + ": " + String(e?.message) }; } };
+for (const input of inputs) {
+  for (const name of ["parseFrontmatter", "stripFrontmatter"]) {
+    const want = JSON.stringify(run(pi[name], input));
+    const got = JSON.stringify(run(pig[name], input));
+    if (want !== got) { console.log(name + " " + JSON.stringify(input) + "\npi:  " + want + "\npig: " + got); process.exitCode = 1; }
+  }
+}`
+	command := exec.Command(node, "--import", registerLoaderURL(t, runtimeRoot), "--input-type=module", "--eval", script, pinned)
+	if output, err := command.CombinedOutput(); err != nil {
+		t.Fatalf("parseFrontmatter differs from Pi: %v\n%s", err, output)
+	}
+}

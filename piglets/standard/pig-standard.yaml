@@ -2,7 +2,7 @@ name: pig-standard
 description: "Explicit PiG composition built from ordinary extension Resources."
 
 release:
-  version: 0.2.0-dev
+  version: 0.2.1-dev
 
 build:
   extensionRealization: fused
