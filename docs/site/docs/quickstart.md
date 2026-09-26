@@ -10,7 +10,7 @@ macOS require macOS 13 or later.
 The complete verification suite also uses:
 
 - Git;
-- Node.js 24.19.0 and npm 12.0.2;
+- Node.js 24.19.0 and npm 12.1.0;
 - Python 3.12;
 - Rust 1.97.1;
 - tmux on Unix.

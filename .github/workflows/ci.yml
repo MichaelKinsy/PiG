@@ -23,7 +23,7 @@ concurrency:
 # coding/pigversion/pigversion.go. make compliance checks every other copy
 # of these pins.
 env:
-  NPM_VERSION: 12.0.2
+  NPM_VERSION: 12.1.0
   RUST_VERSION: 1.97.1
 
 jobs:
@@ -46,24 +46,10 @@ jobs:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         shell: bash
         run: |
-          set -euo pipefail
           # Only a pull request that changes nothing but project prose and
-          # repository settings skips the product suites; the docs job below
-          # still checks those files. Everything else, and every scheduled or
-          # manual run, verifies the product.
-          product=true
-          if [ "$EVENT" = pull_request ]; then
-            product=false
-            while IFS= read -r path; do
-              case "$path" in
-                README.md|CHANGELOG.md|CONTRIBUTING.md|CODE_OF_CONDUCT.md|GOVERNANCE.md|MAINTAINERS.md|SECURITY.md|SUPPORT.md) ;;
-                media/*|.github/ISSUE_TEMPLATE/*|.github/pull_request_template.md|.github/CODEOWNERS|.github/dependabot.yml|.coderabbit.yaml) ;;
-                *) product=true; echo "product change: $path" ;;
-              esac
-            done < <(git diff --name-only "$BASE_SHA...$HEAD_SHA")
-          fi
-          echo "product=$product" >> "$GITHUB_OUTPUT"
-          echo "product=$product"
+          # repository metadata skips the product suites; the docs job below
+          # still checks those files.
+          automation/ci/classify-changes.sh "$EVENT" "$BASE_SHA" "$HEAD_SHA" | tee -a "$GITHUB_OUTPUT"
 
   docs:
     name: Project documents
@@ -86,7 +72,9 @@ jobs:
 
   dco:
     name: DCO
-    if: github.event_name == 'pull_request'
+    # Dependabot commits carry no Signed-off-by trailer; the maintainer's
+    # signed-off squash merge records the DCO for them.
+    if: github.event_name == 'pull_request' && github.event.pull_request.user.login != 'dependabot[bot]'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
@@ -142,7 +130,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install --global --ignore-scripts "npm@$NPM_VERSION"
+          # npm ci installs the lockfile-pinned npm; later steps use it via PATH.
+          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
           test "$(npm --version)" = "$NPM_VERSION"
       - name: Prepare pinned Pi oracle
         run: make upstream-mirror
@@ -227,7 +219,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install --global --ignore-scripts "npm@$NPM_VERSION"
+          # npm ci installs the lockfile-pinned npm; later steps use it via PATH.
+          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          cygpath -w "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
           test "$(npm --version)" = "$NPM_VERSION"
           npm ci --prefix extensions/sdk-ts --ignore-scripts --no-audit --no-fund
       - name: Mirror the pinned Pi source
@@ -299,7 +295,11 @@ jobs:
         run: |
           set -euo pipefail
           brew install fd ripgrep
-          npm install --global --ignore-scripts "npm@$NPM_VERSION"
+          # npm ci installs the lockfile-pinned npm; later steps use it via PATH.
+          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
           test "$(npm --version)" = "$NPM_VERSION"
           npm ci --prefix extensions/sdk-ts --ignore-scripts --no-audit --no-fund
       - name: Build and test native macOS paths
@@ -308,3 +308,48 @@ jobs:
           go build -trimpath -o bin/pig ./cmd/pig
           ./bin/pig --version
           go test ./ai ./internal/codingagent/tools ./tui
+
+  result:
+    name: CI result
+    # The one required check for this workflow. It runs even when a job it
+    # needs failed, because a skipped job would otherwise count as passing.
+    # A job may be skipped only where its own condition skips it.
+    needs: [changes, docs, dco, verify, windows, macos]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Require every job this change needs
+        env:
+          EVENT: ${{ github.event_name }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+          PRODUCT: ${{ needs.changes.outputs.product }}
+          CHANGES: ${{ needs.changes.result }}
+          DOCS: ${{ needs.docs.result }}
+          DCO: ${{ needs.dco.result }}
+          VERIFY: ${{ needs.verify.result }}
+          WINDOWS: ${{ needs.windows.result }}
+          MACOS: ${{ needs.macos.result }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          status=0
+          expect() { # job result allowed-skip
+            if [ "$2" = success ] || { [ "$2" = skipped ] && [ "$3" = true ]; }; then
+              echo "$1: $2"
+            else
+              echo "::error::$1: $2"
+              status=1
+            fi
+          }
+          product_skip=false; docs_skip=false; dco_skip=false
+          [ "$PRODUCT" = false ] && product_skip=true
+          [ "$PRODUCT" = true ] && docs_skip=true
+          { [ "$EVENT" != pull_request ] || [ "$PR_AUTHOR" = 'dependabot[bot]' ]; } && dco_skip=true
+          expect "Changed paths" "$CHANGES" false
+          expect "Project documents" "$DOCS" "$docs_skip"
+          expect "DCO" "$DCO" "$dco_skip"
+          expect "Linux verification" "$VERIFY" false
+          expect "Windows" "$WINDOWS" "$product_skip"
+          expect "macOS" "$MACOS" "$product_skip"
+          exit "$status"

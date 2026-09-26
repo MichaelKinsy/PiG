@@ -123,8 +123,10 @@ func TestCIImageSeederUsesDockerfileDigests(t *testing.T) {
 	writeCIFixture(t, root, "automation/images/ci-go/Dockerfile", "ARG GO_IMAGE=fixture/go"+digest+"\n")
 	writeCIFixture(t, root, "automation/images/ci-parity/Dockerfile", "ARG GO_BUILDER=fixture/builder"+digest+"\nARG WOLFI_BASE=fixture/wolfi"+digest+"\n")
 	for name, script := range map[string]string{
-		"curl":      "#!/bin/sh\nexit 0\n",
-		"sha256sum": "#!/bin/sh\nexit 0\n",
+		"curl": "#!/bin/sh\nexit 0\n",
+		// Like the real `sha256sum -c -`, read the whole check list: exiting
+		// unread would SIGPIPE the seeder's echo and fail its pipefail pipeline.
+		"sha256sum": "#!/bin/sh\ncat >/dev/null\n",
 		"tar": `#!/usr/bin/env bash
 set -euo pipefail
 while [[ "$1" != -C ]]; do shift; done

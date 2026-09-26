@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"slices"
 	"sync"
@@ -432,12 +433,21 @@ func (env *NodeExecutionEnv) Cleanup(context.Context) {
 	}
 }
 
-func (env *NodeExecutionEnv) trackChild(pid int, active bool) {
+// startChild starts cmd and registers its pid as one step under the lock
+// Cleanup takes, as upstream's synchronous spawn-then-add does: a child is
+// never running yet unknown to a concurrent Cleanup.
+func (env *NodeExecutionEnv) startChild(cmd *exec.Cmd) error {
 	env.mu.Lock()
 	defer env.mu.Unlock()
-	if active {
-		env.activeChildPids[pid] = struct{}{}
-	} else {
-		delete(env.activeChildPids, pid)
+	if err := cmd.Start(); err != nil {
+		return err
 	}
+	env.activeChildPids[cmd.Process.Pid] = struct{}{}
+	return nil
+}
+
+func (env *NodeExecutionEnv) untrackChild(pid int) {
+	env.mu.Lock()
+	defer env.mu.Unlock()
+	delete(env.activeChildPids, pid)
 }

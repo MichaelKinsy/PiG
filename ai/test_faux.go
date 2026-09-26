@@ -183,6 +183,17 @@ func (p *TestFauxProvider) Stream(ctx context.Context, transcript TranscriptCont
 			strings.Contains(lastText, "Create a structured context checkpoint summary") ||
 			strings.Contains(lastText, "Create a structured context checkpoint summary") &&
 				strings.Contains(historyText(messages), "Trigger: overflow error with queued message")
+		// TEST_FAUX_HOLD_COMPACTION holds a /compact summary until the run is
+		// cancelled, so a probe of the in-progress screen captures a steady
+		// state instead of racing a fixed delay. parity/testdata/
+		// test-faux-provider.ts does the same for Pi.
+		if os.Getenv("TEST_FAUX_HOLD_COMPACTION") == "1" &&
+			strings.Contains(lastText, "Create a structured context checkpoint summary") {
+			builder.start()
+			<-ctx.Done()
+			builder.fail(StopReasonAborted, errors.New("This operation was aborted"))
+			return
+		}
 		if slowCompactionProbe || slowOverflowSummary {
 			builder.start()
 			select {

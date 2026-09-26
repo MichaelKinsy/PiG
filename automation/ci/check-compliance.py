@@ -259,7 +259,7 @@ def run(command: list[str], label: str) -> list[str]:
 
 
 def check_reuse() -> list[str]:
-    requirement = search(r'"?(reuse(?:\[[\w,-]+\])?==[\d.]+)"?', ".github/workflows/security.yml", "reuse requirement")
+    requirement = search(r'"?(reuse(?:\[[\w,-]+\])?==[\d.]+)"?', "automation/ci/security-tools.in", "reuse requirement")
     # Single-process linting also works in containers and sandboxes that
     # restrict POSIX semaphores; the repository lints in seconds either way.
     lint = ["reuse", "--no-multiprocessing", "lint"]
