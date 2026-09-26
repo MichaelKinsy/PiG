@@ -24,7 +24,7 @@ Homepage = "https://github.com/MichaelKinsy/PiG"
 Repository = "https://github.com/MichaelKinsy/PiG"
 
 [build-system]
-requires = ["uv_build>=0.11.0,<0.12.0"]
+requires = ["uv_build>=0.12.17,<0.13.0"]
 build-backend = "uv_build"
 
 [tool.uv.build-backend]
@@ -32,7 +32,7 @@ module-name = "pig_sdk"
 module-root = ""
 
 [dependency-groups]
-dev = ["pytest>=8"]
+dev = ["pytest>=9.1.1"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
