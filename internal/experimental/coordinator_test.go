@@ -174,11 +174,20 @@ func TestCoordinatorGenerationRouting(t *testing.T) {
 		t.Run(fmt.Sprintf("upstream=%t", oracle), func(t *testing.T) {
 			public, control, done := startTestCoordinator(t, oracle)
 			for _, path := range []string{public, control} {
-				info, err := os.Stat(path)
 				// Both coordinators restrict the socket with chmod 0600
 				// except on Windows, which has no POSIX mode bits.
-				if err != nil || (runtime.GOOS != "windows" && info.Mode().Perm() != 0o600) {
-					t.Fatalf("socket permissions: %v %v", info, err)
+				// coordinator.ts listens, then chmods asynchronously, so a
+				// connection can be accepted just before the mode changes.
+				deadline := time.Now().Add(10 * time.Second)
+				for {
+					info, err := os.Stat(path)
+					if err == nil && (runtime.GOOS == "windows" || info.Mode().Perm() == 0o600) {
+						break
+					}
+					if time.Now().After(deadline) {
+						t.Fatalf("socket permissions: %v %v", info, err)
+					}
+					time.Sleep(10 * time.Millisecond)
 				}
 			}
 			controlDial(t, public).wantClosed(t)
