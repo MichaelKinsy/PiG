@@ -70,6 +70,19 @@ func bindSessionExtensionActions(runner *inproc.Runner, bridge *subprocess.UIBri
 	bridge.SetHostAction("sendUserMessage", func(content any, opts subprocess.SendUserMessageOptions) error {
 		return sendSessionUserMessage(current(), content, extension.DeliverAs(opts.DeliverAs))
 	})
+	// Upstream _bindExtensionCore binds getActiveTools and setActiveTools to
+	// the session in every mode (getActiveToolNames, setActiveToolsByName).
+	bridge.SetHostAction("getActiveTools", func() []string {
+		if sess := current(); sess != nil {
+			return sess.ActiveToolNames()
+		}
+		return []string{}
+	})
+	bridge.SetHostAction("setActiveTools", func(names []string) {
+		if sess := current(); sess != nil {
+			sess.SetActiveToolsByName(names)
+		}
+	})
 	bridge.SetHostAction("isIdle", sessionContext.IsIdle)
 	bridge.SetHostAction("abort", sessionContext.Abort)
 	bridge.SetHostAction("hasPendingMessages", sessionContext.HasPendingMessages)

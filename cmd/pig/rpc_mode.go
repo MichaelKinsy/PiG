@@ -665,30 +665,8 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 			}
 			return page, next, next < len(entries), leafID
 		})
-		subprocBridge.SetHostAction("getActiveTools", func() []string {
-			agentTools := sess.Agent().Tools()
-			names := make([]string, len(agentTools))
-			for i, t := range agentTools {
-				names[i] = t.Name()
-			}
-			return names
-		})
-		subprocBridge.SetHostAction("setActiveTools", func(names []string) {
-			allowed := make(map[string]struct{}, len(names))
-			for _, n := range names {
-				allowed[n] = struct{}{}
-			}
-			// Filter the full tool set to only those in the allowed list.
-			allTools := sess.Tools() // session's unfiltered tool set
-			var filtered []agent.AgentTool
-			for _, t := range allTools {
-				if _, ok := allowed[t.Name()]; ok {
-					filtered = append(filtered, t)
-				}
-			}
-			fmt.Fprintf(os.Stderr, "pig --rpc: setActiveTools: %d/%d tools active\n", len(filtered), len(allTools))
-			sess.Agent().SetTools(filtered)
-		})
+		// getActiveTools and setActiveTools come from bindSessionExtensionActions
+		// (upstream getActiveToolNames and setActiveToolsByName).
 		subprocBridge.SetHostAction("refreshTools", func() {
 			// No-op in RPC mode: tools don't change dynamically.
 		})

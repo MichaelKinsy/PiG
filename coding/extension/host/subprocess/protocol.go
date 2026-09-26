@@ -451,17 +451,32 @@ type ResponsePayload struct {
 type ErrorInfo struct {
 	Code    string `json:"code,omitempty"`
 	Message string `json:"message"`
+	// Stack is the thrown error's own stack when the extension runtime has
+	// one (a JavaScript `err.stack`). Hosts report it as upstream reports
+	// `ExtensionError.stack`.
+	Stack string `json:"stack,omitempty"`
 }
 
 func (e *ErrorInfo) ToError() error {
 	if e == nil {
 		return nil
 	}
+	message := e.Message
 	if e.Code != "" {
-		return fmt.Errorf("[%s] %s", e.Code, e.Message)
+		message = fmt.Sprintf("[%s] %s", e.Code, e.Message)
 	}
-	return fmt.Errorf("%s", e.Message)
+	return &remoteError{message: message, stack: e.Stack}
 }
+
+// remoteError is an error an extension process returned. It carries the
+// extension's own stack for [extension.ErrorStack].
+type remoteError struct {
+	message string
+	stack   string
+}
+
+func (e *remoteError) Error() string      { return e.message }
+func (e *remoteError) ErrorStack() string { return e.stack }
 
 // ── Notify (bidirectional) ───────────────────────────────────────────────────
 

@@ -924,7 +924,7 @@ func EmitProjectTrust(r *Runner, ctx context.Context, event extension.ProjectTru
 					ExtensionPath: extensionPath(ext),
 					Event:         "project_trust",
 					Error:         err.Error(),
-					Stack:         string(debug.Stack()),
+					Stack:         extension.ErrorStack(err),
 				})
 				continue
 			}
@@ -963,8 +963,9 @@ func extensionPath(ext extension.Extension) string {
 }
 
 // recordHandlerError wraps a handler-returned error into ExtensionError
-// and dispatches it via emitError. Captures a stack trace at the call
-// site (pig parity with upstream's `err.stack`).
+// and dispatches it via emitError. The stack is the failure's own, as
+// upstream's `err.stack` (see [extension.ErrorStack]); the host's dispatch
+// stack says nothing about the extension and is never reported.
 //
 // A call the host cut short is not reported: the error is the dispatch
 // context's own cancellation, or the transport marks it
@@ -977,7 +978,7 @@ func (r *Runner) recordHandlerError(ctx context.Context, extPath, eventType stri
 		ExtensionPath: extPath,
 		Event:         eventType,
 		Error:         err.Error(),
-		Stack:         string(debug.Stack()),
+		Stack:         extension.ErrorStack(err),
 	})
 }
 
@@ -2198,12 +2199,28 @@ func callHandler(handler extension.HandlerFn, args ...any) (result any, err erro
 	defer func() {
 		if r := recover(); r != nil {
 			result = nil
-			err = fmt.Errorf("extension handler panicked: %v", r)
+			err = &handlerPanicError{
+				message: fmt.Sprintf("extension handler panicked: %v", r),
+				stack:   string(debug.Stack()),
+			}
 		}
 	}()
 	result, err = handler(args...)
 	return noResultAsNil(result), err
 }
+
+// handlerPanicError is a recovered handler panic. Its stack is the panicking
+// goroutine's, the Go counterpart of a thrown JavaScript error's `stack`.
+type handlerPanicError struct {
+	message string
+	stack   string
+}
+
+func (e *handlerPanicError) Error() string { return e.message }
+
+// ErrorStack returns the stack as upstream formats `err.stack`: the message
+// line first, then the frames.
+func (e *handlerPanicError) ErrorStack() string { return e.message + "\n" + e.stack }
 
 // noResultAsNil maps every encoding of "the handler returned nothing" to nil:
 // a JSON null from a subprocess handler that returned undefined or None, and a

@@ -36,6 +36,7 @@ Pig preserves upstream pi-coding-agent's observable behavior unless an entry bel
 | D69 | Windows Piglet scripts | `pig piglet build --format script` writes a cmd.exe batch file on Windows (`@setlocal DisableDelayedExpansion` then `@pig --piglet "<source>" %*`, CRLF); Linux and macOS get a POSIX shell script. Name the Windows output `.cmd`. |
 | D70 | Module state across reload | `/reload` restarts every extension in a fresh process, so module-level state resets. Pi re-runs every factory too, but keeps an `.mjs` module's module-level state in Node's module cache. Keep per-reload state inside the factory. |
 | D73 | Host-bound Pi exports in extensions | Extensions can import every value Pi's packages export. Pi's own code backs the pure ones, including pi-tui's `Input`, `Editor`, `SelectList`, `Markdown` and `KeybindingsManager` and pi-ai's utilities. Values that belong to Pi's own process (its UI components, session and runtime construction, package loading, the terminal and its capabilities, images, pi-ai's session-resource cleanups) throw a named error if an extension calls them. Keybinding overrides stay in the host. |
+| D74 | Pi-ai provider calls in extensions | An extension's `stream`, `complete`, `streamSimple` and `completeSimple` use Pi's own dispatch and credential rules, and the request runs on PiG's port of the same provider. Provider-specific `stream()` options beyond the common ones are not forwarded, results lack `responseId` and `rawStopReason`, and OpenRouter image generation returns an error. |
 
 ## Additive features
 

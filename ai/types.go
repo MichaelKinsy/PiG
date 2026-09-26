@@ -520,6 +520,10 @@ type StreamOptions struct {
 	// Headers are request-specific HTTP headers. A nil value deletes a header
 	// supplied by configured or resolved authentication state.
 	Headers ProviderHeaders
+	// APIKey is a request-specific credential, upstream's options.apiKey. When
+	// set, ModelRuntime builds the provider with it instead of the configured
+	// credential and does not require configured auth. Providers never read it.
+	APIKey string
 	// CacheRetention requests a provider-supported prompt-cache lifetime. Empty leaves the option unset.
 	CacheRetention CacheRetention
 	// SessionID is passed to the provider for prompt caching (OpenAI prompt_cache_key). When non-empty and the provider supports it, repeated calls with the same session ID can reuse cached prompt processing. Mirrors upstream openai-completions.ts:449.

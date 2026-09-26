@@ -671,8 +671,10 @@ func TestValidateConfiguredForStartupReportsEveryUnresolvableExtension(t *testin
 	prompt := filepath.Join(root, "prompts", "p.md")
 	writeTestFile(t, prompt, "prompt\n")
 
+	// An enabled member that matches nothing is skipped, as upstream skips it,
+	// and the rest of the Package still loads.
 	resources, missing, issues, err := ValidateConfiguredForStartup(root, map[Kind][]string{Extensions: nil, Prompts: nil})
-	if err != nil || len(issues) != 0 || len(resources.ExtensionEntries) != 0 {
+	if err != nil || !slices.Equal(resources.ExtensionEntries, []string{good}) || len(issues) != 2 {
 		t.Fatalf("enabled missing member: resources = %#v, issues = %#v, err = %v", resources, issues, err)
 	}
 	if len(missing) != 1 || missing[0].Pattern != "extensions/missing" || !missing[0].Enabled {
@@ -777,5 +779,79 @@ func TestValidateConfiguredForStartupResolvesEachEnabledExtensionOnce(t *testing
 	}
 	if got := count(); got != 0 {
 		t.Fatalf("extensions disabled: resolved %d times, want 0", got)
+	}
+}
+
+// Upstream collects a declared Pi resource path as it exists and skips one
+// that does not (collectFilesFromPaths in core/package-manager.ts). A skills
+// directory holding several skills, as pi-lens, @upstash/context7-pi and
+// @dietrichgebert/ponytail publish, is a present member, and a missing entry of
+// any Pi kind never stops the Package from loading at startup.
+func TestStartupAcceptsPiPackageResourceShapes(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "package.json"), `{"name":"pkg","pi":{`+
+		`"extensions":["./dist/index.js","./gone.js"],`+
+		`"skills":["./skills","./no-skills"],`+
+		`"prompts":["./prompts","./no-prompts"],`+
+		`"themes":["./themes","./no-themes"]}}`)
+	writeTestFile(t, filepath.Join(root, "dist", "index.js"), "export default function (pi) {}\n")
+	for _, skill := range []string{"ast-grep", "lsp-navigation"} {
+		writeTestFile(t, filepath.Join(root, "skills", skill, "SKILL.md"), "---\nname: "+skill+"\ndescription: d\n---\n")
+	}
+	writeTestFile(t, filepath.Join(root, "prompts", "p.md"), "prompt\n")
+	writeTestFile(t, filepath.Join(root, "themes", "t.json"), "{}\n")
+
+	_, missing, err := InspectConfigured(root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var patterns []string
+	for _, member := range missing {
+		patterns = append(patterns, member.Pattern)
+	}
+	slices.Sort(patterns)
+	if want := []string{"./gone.js", "./no-prompts", "./no-themes", "no-skills/SKILL.md"}; !slices.Equal(patterns, want) {
+		t.Fatalf("missing = %v, want %v (the populated skills directory is present)", patterns, want)
+	}
+
+	resources, _, issues, err := ValidateConfiguredForStartupWithResolver(root, nil, func(string) (extsource.Definition, error) {
+		return extsource.Definition{Language: "node", Form: extsource.Factory}, nil
+	})
+	if err != nil || len(issues) != 0 {
+		t.Fatalf("startup refused a Package upstream accepts: issues = %#v, err = %v", issues, err)
+	}
+	if len(resources.ExtensionEntries) != 1 || len(resources.SkillDirs) != 2 || len(resources.PromptFiles) != 1 || len(resources.ThemeFiles) != 1 {
+		t.Fatalf("resources = %#v, want 1 extension, 2 skills, 1 prompt, 1 theme", resources)
+	}
+}
+
+// A package with a "pi" manifest loads from what it declares, as upstream does.
+// @dietrichgebert/ponytail ships Claude Code, Codex and Cursor hook configs in
+// hooks/ beside a pi manifest; PiG must neither read them as its own Hooks
+// nor refuse the Package over events it does not support. Without a pi
+// manifest, PiG's conventional directories still apply.
+func TestPiManifestPackageSkipsPigConventionDirectories(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "package.json"), `{"name":"pkg","pi":{"extensions":["./pi-extension/index.js"],"skills":["./skills"]}}`)
+	writeTestFile(t, filepath.Join(root, "pi-extension", "index.js"), "export default function (pi) {}\n")
+	writeTestFile(t, filepath.Join(root, "skills", "one", "SKILL.md"), "---\nname: one\ndescription: d\n---\n")
+	writeTestFile(t, filepath.Join(root, "hooks", "claude-codex-hooks.json"), `{"hooks":{"SubagentStart":[{"hooks":[{"type":"command","command":"node hooks/x.js"}]}]}}`)
+	writeTestFile(t, filepath.Join(root, "mcp", "servers.json"), `{"mcpServers":{}}`)
+
+	resources, _, issues, err := ValidateConfiguredForStartupWithResolver(root, nil, func(string) (extsource.Definition, error) {
+		return extsource.Definition{Language: "node", Form: extsource.Factory}, nil
+	})
+	if err != nil || len(issues) != 0 {
+		t.Fatalf("startup refused a Package upstream loads: issues = %#v, err = %v", issues, err)
+	}
+	if len(resources.HookFiles) != 0 || len(resources.MCPFiles) != 0 || len(resources.ExtensionEntries) != 1 || len(resources.SkillDirs) != 1 {
+		t.Fatalf("resources = %#v, want the declared extension and skill only", resources)
+	}
+
+	conventional := t.TempDir()
+	writeTestFile(t, filepath.Join(conventional, "package.json"), `{"name":"pkg"}`)
+	writeTestFile(t, filepath.Join(conventional, "hooks", "h.json"), `{}`)
+	if found, err := Discover(conventional); err != nil || len(found.HookFiles) != 1 {
+		t.Fatalf("conventional hooks without a pi manifest = %#v, err = %v", found.HookFiles, err)
 	}
 }

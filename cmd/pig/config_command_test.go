@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"slices"
@@ -177,10 +176,10 @@ func TestConfigSelectorDisablesEnabledMissingPackageMember(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	startupErr := startupPackageValidationError(cwd, settings)
-	wantStartupError := fmt.Sprintf("Package %q declares missing extension %q", packageRoot, "extensions/missing-extension")
-	if startupErr == nil || !strings.Contains(startupErr.Error(), wantStartupError) || !strings.Contains(startupErr.Error(), "Run `pig config`") {
-		t.Fatalf("startup error = %v, want %q with pig config recovery", startupErr, wantStartupError)
+	// Upstream skips a declared member that matches nothing, so startup
+	// proceeds; pig config still lists it so it can be disabled.
+	if err := startupPackageValidationError(cwd, settings); err != nil {
+		t.Fatalf("missing member blocked startup: %v", err)
 	}
 
 	selector, err := newConfigSelector(cwd, agentDir, settings)
@@ -194,7 +193,7 @@ func TestConfigSelectorDisablesEnabledMissingPackageMember(t *testing.T) {
 	selector.HandleInput(" ")
 	settings.Reload()
 	if err := startupPackageValidationError(cwd, settings); err != nil {
-		t.Fatalf("disabled missing member still blocked startup: %v", err)
+		t.Fatalf("disabled missing member blocked startup: %v", err)
 	}
 	filters := settings.GetGlobalSettings().Packages[0].Extensions
 	if len(filters) != 1 || filters[0] != "-extensions/missing-extension" {
@@ -440,7 +439,6 @@ func TestProjectPackageDeltaPreservesStrictManifestValidation(t *testing.T) {
 	for name, prepare := range map[string]func(*testing.T, string) string{
 		"lexical traversal": func(t *testing.T, root string) string { return `{"name":"pkg","pi":{"prompts":["../outside.md"]}}` },
 		"absolute path":     func(t *testing.T, root string) string { return `{"name":"pkg","pi":{"prompts":["/tmp/outside.md"]}}` },
-		"invalid glob":      func(t *testing.T, root string) string { return `{"name":"pkg","pi":{"prompts":["prompts/["]}}` },
 		"symlink escape": func(t *testing.T, root string) string {
 			outside := t.TempDir()
 			if err := os.WriteFile(filepath.Join(outside, "escape.md"), []byte("escape"), 0o644); err != nil {

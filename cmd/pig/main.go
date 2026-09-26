@@ -628,11 +628,7 @@ func main() {
 		exitProcess(0)
 	}
 
-	// --offline: set env var so downstream code respects it.
-	// Mirrors upstream cli/main.ts offline handling.
-	if flags.Offline {
-		_ = os.Setenv("PI_OFFLINE", "1")
-	}
+	exportOfflineMode(flags.Offline)
 
 	// --list-models is handled after extensions load (below), so
 	// extension-contributed providers appear in the catalog, matching upstream
@@ -1728,4 +1724,23 @@ var validSessionIDPattern = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A
 
 func isValidSessionID(id string) bool {
 	return validSessionIDPattern.MatchString(id)
+}
+
+// exportOfflineMode mirrors upstream main.ts, which normalizes --offline or a
+// truthy PI_OFFLINE to PI_OFFLINE=1 and PI_SKIP_VERSION_CHECK=1 in the process
+// environment. Pi extensions read PI_OFFLINE (pi-auto-update skips its
+// `pi update` run) and inherit this environment, so PiG's own PIG_OFFLINE
+// alias sets it too.
+func exportOfflineMode(flagOffline bool) {
+	if flagOffline || truthyEnvFlag(os.Getenv("PI_OFFLINE")) || truthyEnvFlag(strings.TrimSpace(os.Getenv("PIG_OFFLINE"))) {
+		_ = os.Setenv("PI_OFFLINE", "1")
+		_ = os.Setenv("PI_SKIP_VERSION_CHECK", "1")
+	}
+}
+
+// truthyEnvFlag mirrors upstream main.ts isTruthyEnvFlag: "1", "true" or
+// "yes", case-insensitively.
+func truthyEnvFlag(value string) bool {
+	lower := strings.ToLower(value)
+	return value == "1" || lower == "true" || lower == "yes"
 }
