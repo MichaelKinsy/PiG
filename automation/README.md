@@ -75,7 +75,7 @@ The automation writes only where the environment allows. Set these when the defa
 | `generate-model-catalogs.sh` | Regenerates model catalogs from the pinned published Pi package. |
 | `gen-help.sh` | Renders Pi's own `--help` with PiG's identity. |
 | `gen-knowledge-graph.py` | Renders `docs/knowledge-graph/pig.graph.json` into its published forms. |
-| `vendor-pi-tui-keys.sh`, `vendor-typebox.sh` | Vendor the pinned Pi TUI keys and TypeBox modules for the Node extension runtime. |
+| `vendor-pi-dist.sh`, `vendor-typebox.sh` | Vendor the pinned Pi release's pure modules, the third-party packages they import, and TypeBox for the Node extension runtime. |
 
 ## release
 

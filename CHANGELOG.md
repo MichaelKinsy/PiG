@@ -9,6 +9,12 @@ All notable public changes to PiG will be recorded in this file.
 
 ## [Unreleased]
 
+### Fixed
+
+- Fixed pi-tui's `Input`, `Editor`, `SelectList` and `KeybindingsManager` being simplified stand-ins inside extensions. They are now Pi 0.87.1's own code, so extension prompts get cursor movement, word and line editing, kill and yank, undo, paste handling, horizontal scrolling, multi-line editing with history and autocomplete, and filterable, scrolling select lists. The other pi-tui components extensions build panels from (`Box`, `Container`, `Text`, `Spacer`, `SettingsList`, `HStack`, `VStack`, loaders), fuzzy matching, `CombinedAutocompleteProvider` and `StdinBuffer` are Pi's own code too, checked byte for byte against Pi's package in CI (D73).
+- Fixed `pi-mcp-adapter`'s `/mcp` panel crashing the extension process, and with it every extension sharing that process, on the first arrow key or Enter: `ctx.ui.custom` factories received an empty object instead of a keybindings manager. Factories now get pi-tui's `KeybindingsManager` with Pi's default bindings, and the component they return is focused, as in Pi, so an `Input` or `Editor` shows its cursor.
+- Fixed pi-ai's pure utilities throwing "not available" inside extensions. `parseJsonWithRepair`, `repairJson`, `parseStreamingJson`, `calculateCost`, the thinking-level and overflow helpers, retry classification, diagnostics, `EventStream` and the assistant-message streams and frames, `validateToolArguments`, `validateToolCall`, the faux message builders, model and credential registries, `StringEnum` and `uuidv7` are now Pi 0.87.1's own code, with the `partial-json` release Pi uses. Only `registerSessionResourceCleanup` and `cleanupSessionResources`, whose cleanups Pi's agent session runs, remain stand-ins (D73).
+
 ## [0.2.1] - 2026-09-26
 
 Hotfix for Pi extensions from npm that failed to load or crashed in 0.2.0. `pig --version` prints `0.2.1+0.87.1`.
