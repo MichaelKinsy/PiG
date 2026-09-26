@@ -41,7 +41,7 @@ pub use oauth::{
     OAuthDeviceCodeInfo, OAuthGetApiKeyFn, OAuthLoginCallbacks, OAuthLoginFn, OAuthPrompt,
     OAuthProvider, OAuthRefreshFn, OAuthSelectOption, OAuthSelectPrompt,
 };
-pub use protocol::{ConstrainedSampling, Schema, empty_schema};
+pub use protocol::{AutocompleteItem, ConstrainedSampling, Schema, empty_schema};
 pub use tool_render::{
     ToolRenderCallHandler, ToolRenderContext, ToolRenderResult, ToolRenderResultHandler,
     ToolRenderResultOptions, ToolRenderShell,

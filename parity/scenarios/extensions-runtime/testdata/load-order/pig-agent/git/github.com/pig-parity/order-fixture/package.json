@@ -1,6 +1,7 @@
 {
   "name": "order-fixture",
   "pi": {
-    "extensions": ["./extensions"]
+    "extensions": ["./extensions"],
+    "prompts": ["./prompts"]
   }
 }

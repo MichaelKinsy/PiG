@@ -7,6 +7,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { setRuntime } from "./state.mjs";
 import { getKeybindings, isFocusable } from "./shims/pi-tui.mjs";
 import { setCapabilities as setTerminalCapabilities } from "./shims/pi-dist/pi-tui/terminal-image.js";
+import { loadAllHighlightLanguages } from "./shims/pi-dist/pi-coding-agent/utils/syntax-highlight.js";
 
 const USER_BLOCKING_CALLS = new Set(["ui.select", "ui.confirm", "ui.input", "ui.editor", "ui.custom"]);
 const MAX_FRAME_SIZE = 128 * 1024 * 1024;
@@ -128,14 +129,23 @@ class RuntimeModelRegistry {
   }
 }
 
-class ThemeShim {
+export class ThemeShim {
   constructor() {
     this.foregrounds = {};
     this.backgrounds = {};
+    // Upstream's bold, italic, underline, inverse and strikethrough are chalk
+    // styles, which chalk drops when the host's stdout has no color support.
+    this.modifiers = true;
   }
   setPalette(palette = {}) {
     this.foregrounds = palette.foregrounds && typeof palette.foregrounds === "object" ? palette.foregrounds : {};
     this.backgrounds = palette.backgrounds && typeof palette.backgrounds === "object" ? palette.backgrounds : {};
+    this.modifiers = palette.modifiers !== false;
+    this.mode = palette.mode === "256color" ? "256color" : "truecolor";
+  }
+  style(open, close, text) {
+    const value = String(text ?? "");
+    return this.modifiers ? `${open}${value}${close}` : value;
   }
   fg(token, text) {
     const value = String(text ?? "");
@@ -147,13 +157,30 @@ class ThemeShim {
     const open = this.backgrounds[token] || "";
     return open ? `${open}${value}\x1b[49m` : value;
   }
-  bold(text) { return `\x1b[1m${String(text ?? "")}\x1b[22m`; }
+  bold(text) { return this.style("\x1b[1m", "\x1b[22m", text); }
   dim(text) { return `\x1b[2m${String(text ?? "")}\x1b[22m`; }
-  italic(text) { return `\x1b[3m${String(text ?? "")}\x1b[23m`; }
-  underline(text) { return `\x1b[4m${String(text ?? "")}\x1b[24m`; }
-  inverse(text) { return `\x1b[7m${String(text ?? "")}\x1b[27m`; }
-  strikethrough(text) { return `\x1b[9m${String(text ?? "")}\x1b[29m`; }
-  getBashModeBorderColor() { return (text) => String(text ?? ""); }
+  italic(text) { return this.style("\x1b[3m", "\x1b[23m", text); }
+  underline(text) { return this.style("\x1b[4m", "\x1b[24m", text); }
+  inverse(text) { return this.style("\x1b[7m", "\x1b[27m", text); }
+  strikethrough(text) { return this.style("\x1b[9m", "\x1b[29m", text); }
+  // Upstream Theme.getFgAnsi, getBgAnsi, getColorMode, getThinkingBorderColor
+  // and getBashModeBorderColor over the host's palette.
+  getFgAnsi(color) {
+    const ansi = this.foregrounds[color];
+    if (!ansi) throw new Error(`Unknown theme color: ${color}`);
+    return ansi;
+  }
+  getBgAnsi(color) {
+    const ansi = this.backgrounds[color];
+    if (!ansi) throw new Error(`Unknown theme background color: ${color}`);
+    return ansi;
+  }
+  getColorMode() { return this.mode ?? "truecolor"; }
+  getThinkingBorderColor(level) {
+    const token = { off: "thinkingOff", minimal: "thinkingMinimal", low: "thinkingLow", medium: "thinkingMedium", high: "thinkingHigh", xhigh: "thinkingXhigh", max: "thinkingMax" }[level] ?? "thinkingOff";
+    return (text) => this.fg(token, text);
+  }
+  getBashModeBorderColor() { return (text) => this.fg("bashMode", text); }
 }
 
 class Connection {
@@ -887,6 +914,10 @@ export class Runtime {
           this.ctx.mode = this.ready.mode || this.ctx.mode;
           this.ctx.model = this.ready.model ? { id: this.ready.model } : this.ctx.model;
           if (env.ready?.state) this.applyState(env.ready.state);
+          // Pi's interactive mode loads every highlight.js language at
+          // startup (interactive-mode.ts); print, JSON and RPC mode keep the
+          // eager set.
+          if (this.ctx.mode === "tui") void loadAllHighlightLanguages();
           continue;
         }
         if (env.type === "ping") {
@@ -1090,6 +1121,9 @@ export class Runtime {
     // Pi's TUI and its extensions share one capability cache; here the host
     // owns the terminal, so its resolved capabilities seed the cache pi-tui's
     // Markdown reads.
+    // The host's active theme colors ctx.ui.theme and the pi-coding-agent
+    // theme helpers, as Pi's global theme does in its own process.
+    if (snapshot.theme && typeof snapshot.theme === "object") this.ui.theme.setPalette(snapshot.theme);
     const caps = snapshot.terminalCapabilities;
     if (caps && typeof caps === "object") {
       setTerminalCapabilities({ images: caps.images || null, trueColor: caps.trueColor === true, hyperlinks: caps.hyperlinks === true });

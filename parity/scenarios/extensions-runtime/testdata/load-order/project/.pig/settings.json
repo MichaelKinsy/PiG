@@ -1,3 +1,4 @@
 {
-  "extensions": ["extra/project-settings.js"]
+  "extensions": ["extra/project-settings.js"],
+  "prompts": ["extra/a.md"]
 }

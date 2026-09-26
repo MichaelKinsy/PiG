@@ -44,13 +44,8 @@ module whose `go.mod` has a `replace` or `exclude` directive. The root
 checkout resolves that requirement to `./extensions/sdk` through `go.work`.
 The root `go.sum` pins the SDK zip hash the checksum database will record for
 that tag; `tests/gomodule` recomputes it from the tracked SDK files and prints
-the replacement lines whenever the SDK changes. The first change to the SDK
-after a release's tag requires the SDK at the next patch version instead, with
-that version's `go.sum` lines, so the hash recorded for the published tag never
-changes; `go.sum` keeps the published version's lines as they were. The next
-release commit moves `PigVersion` and the CHANGELOG to that version. When the
-PiG version changes otherwise, bump the SDK requirement and its `go.sum` lines
-with it.
+the replacement lines whenever the SDK changes. When the PiG version changes,
+bump the SDK requirement and its `go.sum` lines with it.
 
 Both tags name the same commit. `automation/release/module-tags.sh VERSION`
 prints the full tag set (`vVERSION`, then `<dir>/vVERSION` for every nested

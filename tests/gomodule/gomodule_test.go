@@ -20,7 +20,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
-	"strconv"
 	"strings"
 	"testing"
 
@@ -86,16 +85,11 @@ func TestRootModuleIsGoInstallable(t *testing.T) {
 	if _, ok := nested["extensions/sdk"]; !ok {
 		t.Fatalf("root go.mod does not require %s/extensions/sdk", rootModule)
 	}
-	// The release commit requires each nested module at its own version. A
-	// nested module that changes after that release's tag is required at the
-	// next patch version instead, so the published tag's go.sum hash never
-	// changes; the next release commit moves PigVersion to that version.
 	want := "v" + pigversion.PigVersion
-	next := nextPatchVersion(t, want)
 	work := parseWork(t, root)
 	for dir, mod := range nested {
-		if mod.Version != want && mod.Version != next {
-			t.Errorf("root go.mod requires %s %s; want %s (the release tags %s/%s on the root release commit) or, after the module changes, %s", mod.Path, mod.Version, want, dir, want, next)
+		if mod.Version != want {
+			t.Errorf("root go.mod requires %s %s; want %s (the release tags %s/%s on the root release commit)", mod.Path, mod.Version, want, dir, want)
 		}
 		nestedMod := parseMod(t, filepath.Join(root, filepath.FromSlash(dir), "go.mod"))
 		if nestedMod.Module == nil || nestedMod.Module.Mod.Path != mod.Path {
@@ -111,20 +105,6 @@ func TestRootModuleIsGoInstallable(t *testing.T) {
 	if !work["."] {
 		t.Error("go.work does not use the root module")
 	}
-}
-
-// nextPatchVersion returns vMAJOR.MINOR.PATCH+1 for vMAJOR.MINOR.PATCH.
-func nextPatchVersion(t *testing.T, version string) string {
-	t.Helper()
-	parts := strings.Split(strings.TrimPrefix(version, "v"), ".")
-	if len(parts) != 3 {
-		t.Fatalf("PigVersion %s is not MAJOR.MINOR.PATCH", version)
-	}
-	patch, err := strconv.Atoi(parts[2])
-	if err != nil {
-		t.Fatalf("PigVersion %s has a non-numeric patch: %v", version, err)
-	}
-	return "v" + parts[0] + "." + parts[1] + "." + strconv.Itoa(patch+1)
 }
 
 func parseWork(t *testing.T, root string) map[string]bool {
@@ -259,9 +239,7 @@ func TestModuleTagsScriptListsEveryReleaseTag(t *testing.T) {
 	}
 	root := repoRoot(t)
 	script := filepath.Join(root, "automation", "release", "module-tags.sh")
-	// The version the next release commit tags: PigVersion on a release
-	// commit, the next patch version after a nested module changed.
-	version := strings.TrimPrefix(nestedRequirements(t, root)["extensions/sdk"].Version, "v")
+	version := pigversion.PigVersion
 	out, err := exec.Command("bash", script, version, filepath.Join(root, "go.mod")).CombinedOutput()
 	if err != nil {
 		t.Fatalf("module-tags.sh %s: %v\n%s", version, err, out)

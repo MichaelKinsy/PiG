@@ -1333,7 +1333,11 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 				writeRPC(rpcError(env.ID, "export_html", "Cannot export an in-memory session"))
 				continue
 			}
-			outputPath, err := codingexport.ExportFromFile(sess.Path(), cmd.OutputPath)
+			var registered []extension.RegisteredTool
+			if runner != nil {
+				registered = runner.Tools()
+			}
+			outputPath, err := codingexport.ExportFromFileWithTools(sess.Path(), cmd.OutputPath, registered, cwd)
 			if err != nil {
 				writeRPC(rpcError(env.ID, "export_html", err.Error()))
 				continue

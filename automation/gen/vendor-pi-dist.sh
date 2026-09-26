@@ -18,14 +18,15 @@
 #   vendor SDKs) are one-line stubs that load shims/pi-ai-bridge.mjs, so
 #   Pi's lazy wrappers, api registry and compat dispatch run unchanged over
 #   PiG's providers (D74);
-# - pi-coding-agent utils/frontmatter.js imports shims/yaml;
+# - pi-coding-agent utils/frontmatter.js imports shims/yaml, and
+#   utils/syntax-highlight.js shims/highlight.js;
 # - pi-coding-agent core/session-manager.js keeps only its pure section (entry
 #   parsing and migration, context projection, from CURRENT_SESSION_VERSION
 #   through buildSessionContext) with the imports that section uses, importing
 #   pi-ai from the runtime's pi-ai module.
 # shims/yaml/ is yaml's ES module build (its browser/ directory),
 # shims/marked/ marked's ES module build, and shims/get-east-asian-width/ and
-# shims/partial-json/ the published packages,
+# shims/partial-json/ the published packages, shims/highlight.js/ its lib/,
 # each the release Pi depends on.
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -36,6 +37,7 @@ yaml="$agent/node_modules/yaml"
 eaw="$agent/node_modules/get-east-asian-width"
 pjson="$agent/node_modules/partial-json"
 marked="$agent/node_modules/marked"
+hljs="$agent/node_modules/highlight.js"
 shims="$root/coding/extension/host/subprocess/runtime-node/shims"
 dist="$shims/pi-dist"
 
@@ -49,8 +51,8 @@ copy() {
   done
 }
 
-rm -rf "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked"
-mkdir -p "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json/dist" "$shims/marked/lib"
+rm -rf "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/highlight.js"
+mkdir -p "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json/dist" "$shims/marked/lib" "$shims/highlight.js"
 printf '{\n  "type": "module"\n}\n' >"$dist/package.json"
 
 # pi-tui: the key parser, width utilities, keybindings and the components
@@ -96,7 +98,9 @@ sed 's#^import { Type } from "typebox";$#import { Type } from "../../../typebox.
   "$ai/dist/utils/typebox-helpers.js" >"$dist/pi-ai/utils/typebox-helpers.js"
 
 # pi-coding-agent.
-copy "$agent/dist" "$dist/pi-coding-agent" core/messages.js utils/text.js
+copy "$agent/dist" "$dist/pi-coding-agent" core/messages.js utils/text.js utils/html.js
+sed 's#"highlight\.js/lib/#"../../../highlight.js/lib/#' \
+  "$agent/dist/utils/syntax-highlight.js" >"$dist/pi-coding-agent/utils/syntax-highlight.js"
 sed 's#^import { parse } from "yaml";$#import { parse } from "../../../yaml/index.js";#' \
   "$agent/dist/utils/frontmatter.js" >"$dist/pi-coding-agent/utils/frontmatter.js"
 {
@@ -114,6 +118,8 @@ cp "$pjson/dist/index.js" "$pjson/dist/options.js" "$shims/partial-json/dist/"
 cp "$pjson/package.json" "$pjson/LICENSE" "$shims/partial-json/"
 cp "$marked/lib/marked.esm.js" "$shims/marked/lib/"
 cp "$marked/package.json" "$marked/LICENSE" "$shims/marked/"
+cp -R "$hljs/lib" "$shims/highlight.js/lib"
+cp "$hljs/package.json" "$hljs/LICENSE" "$shims/highlight.js/"
 
 # Every rewritten specifier must have matched: a pin change that alters an
 # import line fails here instead of shipping a module that cannot load.
@@ -125,9 +131,11 @@ for check in \
   "$dist/pi-ai/utils/validation.js:../../../typebox-value.mjs" \
   "$dist/pi-ai/utils/typebox-helpers.js:../../../typebox.mjs" \
   "$dist/pi-ai/index.js:../../typebox.mjs" \
-  "$dist/pi-coding-agent/utils/frontmatter.js:../../../yaml/index.js"; do
+  "$dist/pi-coding-agent/utils/frontmatter.js:../../../yaml/index.js" \
+  "$dist/pi-coding-agent/utils/syntax-highlight.js:../../../highlight.js/lib/core.js" \
+  "$dist/pi-coding-agent/utils/syntax-highlight.js:../../../highlight.js/lib/index.js"; do
   grep -qF "\"${check#*:}\"" "${check%%:*}" || { echo "vendor-pi-dist: import rewrite failed in ${check%%:*}" >&2; exit 1; }
 done
 
 version() { node -p "require('$1/package.json').version"; }
-echo "vendored Pi $(version "$agent") dist modules, yaml $(version "$yaml"), get-east-asian-width $(version "$eaw"), partial-json $(version "$pjson") and marked $(version "$marked") into $shims"
+echo "vendored Pi $(version "$agent") dist modules, yaml $(version "$yaml"), get-east-asian-width $(version "$eaw"), partial-json $(version "$pjson"), marked $(version "$marked") and highlight.js $(version "$hljs") into $shims"

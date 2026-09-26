@@ -316,6 +316,16 @@ function classify(messages: any[]) {
     };
   }
   // Parallel tool call parity: two tools dispatched simultaneously.
+  if (lastText.includes("Run: compact reads")) {
+    return {
+      kind: "tool",
+      toolCalls: [
+        { toolName: "read", toolArgs: { path: "skills/demo-skill/SKILL.md" } },
+        { toolName: "read", toolArgs: { path: "AGENTS.md", offset: 2, limit: 1 } },
+        { toolName: "read", toolArgs: { path: "notes.txt" } },
+      ],
+    };
+  }
   if (lastText.includes("Run: parallel reads")) {
     return {
       kind: "tool",
@@ -414,6 +424,7 @@ function classify(messages: any[]) {
     if (currentUserText.includes("Run: tui live tool")) return { kind: "text", text: "LIVE-TOOL-DONE" };
     if (currentUserText.includes("Run: bash long output")) return { kind: "text", text: "ran" };
     if (currentUserText.includes("Run: parallel reads")) return { kind: "text", text: "parallel-done" };
+    if (currentUserText.includes("Run: compact reads")) return { kind: "text", text: "compact-reads-done" };
     if (currentUserText.includes("Run: bash control-chars")) return { kind: "text", text: "sanitized" };
     if (currentUserText.includes("Run: bash with invalid args")) return { kind: "text", text: "validation-handled" };
   }

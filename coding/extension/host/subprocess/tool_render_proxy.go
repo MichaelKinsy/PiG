@@ -265,6 +265,29 @@ func (p *toolRenderProxy) Render(width int) []string {
 	return lines
 }
 
+// RenderNow runs the renderer in the extension at width and waits for its
+// frame, for a caller off the TUI loop that needs the component's lines at
+// once, as HTML export renders upstream's synchronous renderers. answered is
+// false when no frame arrived within the renderer inactivity boundary;
+// failed reports a renderer that threw.
+func (p *toolRenderProxy) RenderNow(width int) (lines []string, failed, answered bool) {
+	p.mu.Lock()
+	payload := p.payload
+	payload.Width = width
+	payload.Rerender = p.rerender
+	p.rerender = false
+	p.mu.Unlock()
+	lines, failed, answered = p.request(payload)
+	p.mu.Lock()
+	if answered {
+		p.lines, p.linesWidth, p.failed = lines, width, failed
+	} else if payload.Rerender {
+		p.rerender = true
+	}
+	p.mu.Unlock()
+	return lines, failed, answered
+}
+
 // Invalidate is a no-op: the card runs its renderers again on
 // invalidation, which schedules a new generation through update.
 func (p *toolRenderProxy) Invalidate() {}

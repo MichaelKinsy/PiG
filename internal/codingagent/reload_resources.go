@@ -280,11 +280,9 @@ func (m *InteractiveMode) extendResourcesFromExtensions(reason string) {
 	m.reloadSkillsFromPaths()
 	if !m.opts.NoThemes {
 		registry := tui.ActiveThemeRegistry()
-		for _, themePath := range m.opts.ThemePaths {
-			if err := loadThemePath(registry, themePath); err != nil {
-				_, _ = fmt.Fprintf(stderrWriter(), "theme reload: %v\n", err)
-			}
-		}
+		loadThemePaths(registry, m.opts.ThemePaths, func(err error) {
+			_, _ = fmt.Fprintf(stderrWriter(), "theme reload: %v\n", err)
+		})
 	}
 	m.rebuildSystemPromptFromResources()
 }

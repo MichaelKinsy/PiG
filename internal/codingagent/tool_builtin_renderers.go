@@ -84,7 +84,7 @@ func builtInToolRenderers(name string) (extension.ToolRenderCallFunc, extension.
 		prompt, _ := tui.ShellToolPrompt(name)
 		return shellRenderCall(prompt), shellRenderResult
 	case "read":
-		return headerRenderCall(tui.FormatReadHeader), readRenderResult
+		return readRenderCall, readRenderResult
 	case "write":
 		return writeRenderCall, writeRenderResult
 	case "edit":
@@ -222,6 +222,17 @@ func trimTrailingEmptyLines(lines []string) []string {
 func moreLinesHint(text string) string {
 	theme := tui.ActiveTheme()
 	return themeFg(theme.Muted, text) + " " + expandKeyHint() + themeFg(theme.Muted, ")")
+}
+
+// readRenderCall is upstream read.ts renderCall: the compact label for a
+// skill, docs or context file while collapsed, else the path and range.
+func readRenderCall(args json.RawMessage, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
+	if !context.Expanded {
+		if header := tui.FormatCompactReadHeader(args, context.Cwd); header != "" {
+			return tui.NewPaddedText(header, 0, 0, nil)
+		}
+	}
+	return tui.NewPaddedText(tui.FormatReadHeader(args, context.Cwd), 0, 0, nil)
 }
 
 // readRenderResult is upstream read.ts formatReadResult: nothing while

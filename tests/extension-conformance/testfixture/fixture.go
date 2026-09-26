@@ -282,6 +282,19 @@ func Extension() *sdk.Extension {
 			return map[string]string{"content": "grammar"}, nil
 		})
 
+	ext.RegisterCommand("complete_probe", sdk.CommandOptions{
+		Description: "Complete its arguments",
+		GetArgumentCompletions: func(prefix string) ([]sdk.AutocompleteItem, error) {
+			var items []sdk.AutocompleteItem
+			for _, item := range []sdk.AutocompleteItem{{Value: "alpha", Label: "alpha — first"}, {Value: "apple", Description: "fruit"}, {Value: "beta"}} {
+				if strings.HasPrefix(item.Value, strings.TrimSpace(prefix)) {
+					items = append(items, item)
+				}
+			}
+			return items, nil
+		},
+		Handler: func(sdk.Context, string) error { return nil },
+	})
 	ext.Command("ping", "Respond with pong", func(ctx sdk.Context, args string) error {
 		ctx.Notify("pong", "info")
 		return nil

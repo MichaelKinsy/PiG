@@ -87,6 +87,10 @@ Schema: TypeAlias = dict[str, Any]
 ToolPrepareArguments: TypeAlias = Callable[[dict[str, Any]], dict[str, Any]]
 ToolHandler: TypeAlias = Callable[["Context", dict[str, Any]], Any]
 CommandHandler: TypeAlias = Callable[["Context", str], None]
+# Upstream RegisteredCommand.getArgumentCompletions: the pi-tui AutocompleteItem
+# dicts ({"value", "label"?, "description"?}) for the text after
+# "/<command> ", or None for none.
+ArgumentCompletionsHandler: TypeAlias = Callable[[str], "list[dict[str, Any]] | None"]
 EventHandler: TypeAlias = Callable[["Context", dict[str, Any]], Any]
 
 
@@ -1166,6 +1170,7 @@ class Extension:
         self._tool_handlers: dict[str, ToolHandler] = {}
         self._tool_prepare_handlers: dict[str, ToolPrepareArguments] = {}
         self._command_handlers: dict[str, CommandHandler] = {}
+        self._command_completions: dict[str, ArgumentCompletionsHandler] = {}
         self._event_handlers: dict[int, EventHandler] = {}
         self._shortcut_handlers: dict[str, ShortcutHandler] = {}
         self._renderer_handlers: dict[str, RendererHandler] = {}
@@ -1225,8 +1230,16 @@ class Extension:
         if prepare_arguments is not None:
             self._tool_prepare_handlers[name] = prepare_arguments
 
-    def command(self, name: str, description: str, handler: CommandHandler) -> None:
-        self._commands.append({"name": name, "description": description})
+    def command(self, name: str, description: str, handler: CommandHandler, *, get_argument_completions: ArgumentCompletionsHandler | None = None) -> None:
+        """Register a slash command, as upstream ``pi.registerCommand`` does.
+
+        ``get_argument_completions`` is upstream's ``getArgumentCompletions``.
+        """
+        declaration: dict[str, Any] = {"name": name, "description": description}
+        if get_argument_completions is not None:
+            declaration["argument_completions"] = True
+            self._command_completions[name] = get_argument_completions
+        self._commands.append(declaration)
         self._command_handlers[name] = handler
 
     def shortcut(self, key: str, description: str, handler: ShortcutHandler) -> None:
@@ -1552,6 +1565,11 @@ class Extension:
                 args = req.get("args") or ""
                 self._command_handlers[name](ctx, args if isinstance(args, str) else json.dumps(args))
                 self._respond(req_id, None, None)
+            elif method == "command_argument_completions":
+                name = req.get("tool", "")
+                prefix = req.get("args") or ""
+                items = self._command_completions[name](prefix if isinstance(prefix, str) else "")
+                self._respond(req_id, list(items) if items else None, None)
             elif method == "terminal_input":
                 # The host is blocked on this reply and upstream's handler is
                 # synchronous, so handlers run inline. A raising handler

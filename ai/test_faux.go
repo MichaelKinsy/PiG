@@ -447,6 +447,16 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}
 	}
 
+	// Compact read labels: a skill file, a context file with a line range,
+	// and an ordinary file.
+	if strings.Contains(lastText, "Run: compact reads") {
+		return "tool", "", []testFauxToolCall{
+			{Name: "read", Args: map[string]any{"path": "skills/demo-skill/SKILL.md"}},
+			{Name: "read", Args: map[string]any{"path": "AGENTS.md", "offset": 2, "limit": 1}},
+			{Name: "read", Args: map[string]any{"path": "notes.txt"}},
+		}
+	}
+
 	// Parallel tool call parity: two tools dispatched simultaneously.
 	if strings.Contains(lastText, "Run: parallel reads") {
 		return "tool", "", []testFauxToolCall{
@@ -605,6 +615,9 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}
 		if strings.Contains(currentUserText, "Run: parallel reads") {
 			return "text", "parallel-done", nil
+		}
+		if strings.Contains(currentUserText, "Run: compact reads") {
+			return "text", "compact-reads-done", nil
 		}
 		if strings.Contains(currentUserText, "Run: bash control-chars") {
 			return "text", "sanitized", nil

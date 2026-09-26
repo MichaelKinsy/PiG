@@ -52,6 +52,9 @@ pub type ToolHandler = Box<dyn Fn(&Context, Value) -> ToolResult + Send + Sync>;
 
 /// Type alias for command handler functions.
 pub type CommandHandler = Box<dyn Fn(&Context, &str) -> CommandResult + Send + Sync>;
+/// Command argument completions (upstream getArgumentCompletions).
+pub type CommandCompletionHandler =
+    Box<dyn Fn(&str) -> Option<Vec<AutocompleteItem>> + Send + Sync>;
 
 /// Type alias for event handler functions.
 /// Errors are returned to the host as request failures.
@@ -257,6 +260,7 @@ pub struct Extension {
     // capability, keyed by provider name for oauth_* dispatch.
     oauth_fns: HashMap<String, OAuthProvider>,
     tool_renderers: ToolRenderers,
+    command_completion_fns: HashMap<String, CommandCompletionHandler>,
 }
 
 impl Extension {
@@ -281,6 +285,7 @@ impl Extension {
             entry_renderer_fns: HashMap::new(),
             oauth_fns: HashMap::new(),
             tool_renderers: ToolRenderers::default(),
+            command_completion_fns: HashMap::new(),
         }
     }
 
@@ -465,8 +470,24 @@ impl Extension {
         self.commands.push(CmdDef {
             name: n.clone(),
             description: description.into(),
+            argument_completions: false,
         });
         self.command_fns.insert(n, Box::new(handler));
+    }
+
+    /// Set the argument completions of the registered command `name`
+    /// (upstream RegisteredCommand.getArgumentCompletions): the items for the
+    /// text after "/<command> ", or `None` for none.
+    pub fn command_argument_completions(
+        &mut self,
+        name: &str,
+        handler: impl Fn(&str) -> Option<Vec<AutocompleteItem>> + Send + Sync + 'static,
+    ) {
+        for command in self.commands.iter_mut().filter(|command| command.name == name) {
+            command.argument_completions = true;
+        }
+        self.command_completion_fns
+            .insert(name.to_string(), Box::new(handler));
     }
 
     /// Register a keyboard shortcut handler.
@@ -1284,6 +1305,24 @@ impl Extension {
                         Some(ErrorInfo {
                             code: None,
                             message: format!("unknown renderer: {}", custom_type),
+                        }),
+                    );
+                }
+            }
+            "command_argument_completions" => {
+                let cmd_name = req.tool.as_deref().unwrap_or("");
+                if let Some(handler) = self.command_completion_fns.get(cmd_name) {
+                    let prefix = req.args.as_ref().and_then(|v| v.as_str()).unwrap_or("");
+                    let items = handler(prefix).filter(|items| !items.is_empty());
+                    let result = items.and_then(|items| serde_json::to_value(items).ok());
+                    let _ = conn.respond(id, result, None);
+                } else {
+                    let _ = conn.respond(
+                        id,
+                        None,
+                        Some(ErrorInfo {
+                            code: None,
+                            message: format!("command {} has no getArgumentCompletions", cmd_name),
                         }),
                     );
                 }

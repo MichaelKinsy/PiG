@@ -255,6 +255,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			// final (complete) args and mark execution started.
 			comp.Cwd = m.opts.CWD
 			comp.ArgsPreview = argsPreview
+			comp.SetHeaderArgs(e.Args)
 			m.applyToolPresentation(comp, e.ToolCallID, e.ToolName, e.Args)
 			if e.ToolLabel != "" {
 				comp.Label = e.ToolLabel
@@ -267,6 +268,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			// or providers that don't emit per-delta tool IDs).
 			comp = tui.NewToolExecutionComponent(e.ToolName, argsPreview)
 			comp.Cwd = m.opts.CWD
+			comp.SetHeaderArgs(e.Args)
 			m.applyToolPresentation(comp, e.ToolCallID, e.ToolName, e.Args)
 			if e.ToolLabel != "" {
 				comp.Label = e.ToolLabel

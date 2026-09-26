@@ -207,6 +207,12 @@ def new_extension() -> pig_sdk.Extension:
         constrained_sampling={"type": "grammar", "variants": {"openai_lark": "start: NUMBER"}},
     )
 
+    def complete_probe(prefix: str) -> list[dict[str, str]] | None:
+        items = [{"value": "alpha", "label": "alpha — first"}, {"value": "apple", "description": "fruit"}, {"value": "beta"}]
+        matched = [item for item in items if item["value"].startswith(prefix.strip())]
+        return matched or None
+
+    ext.command("complete_probe", "Complete its arguments", lambda ctx, args: None, get_argument_completions=complete_probe)
     ext.command("ping", "Respond with pong", lambda ctx, args: ctx.notify("pong", "info"))
 
     def model_stream_probe(ctx: pig_sdk.Context, _args: str) -> None:

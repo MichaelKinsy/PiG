@@ -248,6 +248,7 @@ func (m *InteractiveMode) renderSessionEntries() {
 				comp := tui.NewToolExecutionComponent(call.Name, argsPreview)
 				comp.BodyRenderer = toolBodyRendererForCall(call, agent.AgentToolResult{})
 				comp.Cwd = m.opts.CWD
+				comp.SetHeaderArgs(json.RawMessage(args))
 				m.applyToolPresentation(comp, call.ID, call.Name, json.RawMessage(args))
 				comp.SetExpanded(m.toolsExpanded)
 				switch msg.Assistant.StopReason {

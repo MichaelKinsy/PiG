@@ -785,3 +785,37 @@ func TestCollectExtensionConfigsDoesNotRediscoverLegacyGlobalDirectory(t *testin
 		t.Fatalf("legacy global extension directory was rediscovered: %#v", configs)
 	}
 }
+
+// Upstream orders theme paths by resourcePrecedenceRank after the --theme
+// paths: project settings entries, project auto-discovery, user settings
+// entries, then user auto-discovery.
+func TestCollectThemePathsFollowsUpstreamPrecedence(t *testing.T) {
+	cwd := t.TempDir()
+	agentDir := t.TempDir()
+	projectDir := filepath.Join(cwd, codingagent.CONFIG_DIR_NAME)
+	cli := filepath.Join(cwd, "cli.json")
+	projectEntry := filepath.Join(projectDir, "extra", "project-entry.json")
+	projectAuto := filepath.Join(projectDir, "themes", "project-auto.json")
+	userEntry := filepath.Join(agentDir, "extra", "user-entry.json")
+	userAuto := filepath.Join(agentDir, "themes", "user-auto.json")
+	for _, path := range []string{cli, projectEntry, projectAuto, userEntry, userAuto} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(`{"name":"fixture","colors":{}}`), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	sm := codingagent.NewSettingsManager(cwd, agentDir)
+	if err := sm.SetThemePaths([]string{"extra/user-entry.json"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := sm.SetProjectThemePaths([]string{"extra/project-entry.json"}); err != nil {
+		t.Fatal(err)
+	}
+	got := collectThemePaths(cwd, agentDir, sm, CLIFlags{Themes: []string{cli}}, true)
+	want := []string{cli, projectEntry, projectAuto, userEntry, userAuto}
+	if !slices.Equal(got, want) {
+		t.Fatalf("collectThemePaths = %v\nwant %v", got, want)
+	}
+}

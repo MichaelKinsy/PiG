@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/MichaelKinsy/PiG v0.0.0
-	github.com/MichaelKinsy/PiG/extensions/sdk v0.2.2
+	github.com/MichaelKinsy/PiG/extensions/sdk v0.2.1
 )
 
 require (

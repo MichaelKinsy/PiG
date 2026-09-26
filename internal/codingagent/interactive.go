@@ -1152,11 +1152,9 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 		if _, err := os.Stat(themesDir); err == nil {
 			_ = registry.LoadDir(themesDir) // best-effort; don't block startup
 		}
-		for _, themePath := range m.opts.ThemePaths {
-			if err := loadThemePath(registry, themePath); err != nil {
-				fmt.Fprintf(os.Stderr, "theme load: %v\n", err)
-			}
-		}
+		loadThemePaths(registry, m.opts.ThemePaths, func(err error) {
+			fmt.Fprintf(os.Stderr, "theme load: %v\n", err)
+		})
 	}
 	// Re-apply theme in case it was a custom theme name.
 	if m.opts.Settings.Theme != "" {
@@ -1660,6 +1658,17 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	}
 	mark("interactive-ready")
 	return m.inputLoop(ctx, os.Stdin)
+}
+
+// loadThemePaths registers the themes of paths, which are in upstream
+// precedence order. Upstream dedupeThemes keeps the first theme of a name;
+// the registry keeps the last one added, so the paths load in reverse.
+func loadThemePaths(registry *tui.ThemeRegistry, paths []string, report func(error)) {
+	for _, path := range slices.Backward(paths) {
+		if err := loadThemePath(registry, path); err != nil && report != nil {
+			report(err)
+		}
+	}
 }
 
 func loadThemePath(registry *tui.ThemeRegistry, path string) error {

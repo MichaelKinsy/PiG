@@ -95,6 +95,7 @@ type ToolExecutionComponent struct {
 	cachedStructured     bool
 	cachedLines          []string
 	cachedTheme          *Theme
+	cachedHeaderBody     string
 
 	// BodyRenderer, when non-nil, replaces the default plain-text body
 	// rendering. Used for per-tool rich displays: unified diff for
@@ -153,6 +154,10 @@ type ToolExecutionComponent struct {
 	definitionDirty           atomic.Bool
 	definitionCall            Component
 	definitionResultComponent Component
+
+	// compactHeader is the collapsed read card's upstream compact label
+	// (FormatCompactReadHeader), or "" for the full header.
+	compactHeader string
 }
 
 // ImageBlock describes one image from a tool result for rendering.
@@ -317,6 +322,7 @@ func (c *ToolExecutionComponent) UpdateArgs(name string, partialArgsJSON string)
 			c.structuredArgs = append(c.structuredArgs[:0], raw...)
 		} else {
 			c.ArgsPreview = HeaderForTool(c.Name, raw, c.Cwd)
+			c.SetHeaderArgs(raw)
 		}
 	}
 	c.Invalidate()
@@ -550,6 +556,7 @@ func (c *ToolExecutionComponent) Render(width int) []string {
 		c.cachedWidth == width &&
 		c.cachedIsPartial == c.IsPartial &&
 		c.cachedArgsPreview == c.ArgsPreview &&
+		c.cachedHeaderBody == c.headerBody() &&
 		c.cachedStructuredArgs == string(c.structuredArgs) &&
 		c.cachedStructured == c.renderStructuredArgs &&
 		c.cachedTheme == ActiveTheme() {
@@ -644,6 +651,7 @@ func (c *ToolExecutionComponent) saveCachedRender(width int, lines []string) {
 	c.cachedWidth = width
 	c.cachedIsPartial = c.IsPartial
 	c.cachedArgsPreview = c.ArgsPreview
+	c.cachedHeaderBody = c.headerBody()
 	c.cachedStructuredArgs = string(c.structuredArgs)
 	c.cachedStructured = c.renderStructuredArgs
 	c.cachedLines = lines
@@ -711,7 +719,7 @@ func (c *ToolExecutionComponent) renderHeaderInner(width int) string {
 	if c.renderStructuredArgs {
 		return c.renderStructuredArgsHeader(width)
 	}
-	body := c.ArgsPreview
+	body := c.headerBody()
 	if body == "" {
 		// Fallback: bold toolTitle tool name, matching upstream
 		// tool-execution.ts:136 default renderCall.
@@ -1192,6 +1200,26 @@ func FormatBuiltinToolHeader(toolName string, args json.RawMessage, cwd string) 
 		return FormatLsHeader(args, cwd)
 	}
 	return ""
+}
+
+// headerBody is the call header: upstream read.ts renderCall draws the
+// compact label unless the tool output is expanded, and a result alone never
+// expands the card.
+func (c *ToolExecutionComponent) headerBody() string {
+	if c.compactHeader != "" && (!c.userToggled || c.Collapsed) {
+		return c.compactHeader
+	}
+	return c.ArgsPreview
+}
+
+// SetHeaderArgs records the call arguments the collapsed read card's
+// compact label is drawn from.
+func (c *ToolExecutionComponent) SetHeaderArgs(args json.RawMessage) {
+	c.compactHeader = ""
+	if c.Name == "read" {
+		c.compactHeader = FormatCompactReadHeader(args, c.Cwd)
+	}
+	c.Invalidate()
 }
 
 // HeaderForTool returns the fully styled call header for any tool: the

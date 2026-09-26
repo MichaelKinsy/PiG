@@ -356706,7 +356706,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "2 normalized-name Pig candidates are ambiguous."
+        "3 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -356717,6 +356717,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/coding/extension#AutocompleteItem",
+        "go:github.com/MichaelKinsy/PiG/extensions/sdk#AutocompleteItem",
         "go:github.com/MichaelKinsy/PiG/tui#AutocompleteItem"
       ],
       "missingClosure": [

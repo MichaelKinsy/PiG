@@ -68,17 +68,19 @@ func collectPromptPaths(cwd, agentDir string, sm *codingagent.SettingsManager, f
 	return dedupStrings(paths)
 }
 
+// collectThemePaths lists theme paths in upstream precedence order, the first
+// theme of a name winning: --theme paths, project, user, then Packages.
 func collectThemePaths(cwd, agentDir string, sm *codingagent.SettingsManager, flags CLIFlags, projectTrusted bool, resolvers ...extsource.ResolveFunc) []string {
 	paths := make([]string, 0)
+	for _, p := range flags.Themes {
+		paths = append(paths, collectResourceFilesFromPaths([]string{resolveSettingsPath(cwd, p)}, "themes")...)
+	}
 	if !flags.NoThemes {
-		paths = append(paths, collectPackageThemePaths(cwd, sm, resolvers...)...)
-		paths = append(paths, collectTopLevelResourcePaths(filepath.Join(agentDir, "themes"), sm.GetGlobalSettings().Themes, "themes")...)
 		if projectRoot, ok := projectResourceRoot(cwd); projectTrusted && ok {
 			paths = append(paths, collectTopLevelResourcePaths(filepath.Join(projectRoot, "themes"), sm.GetProjectSettings().Themes, "themes")...)
 		}
-	}
-	for _, p := range flags.Themes {
-		paths = append(paths, collectResourceFilesFromPaths([]string{resolveSettingsPath(cwd, p)}, "themes")...)
+		paths = append(paths, collectTopLevelResourcePaths(filepath.Join(agentDir, "themes"), sm.GetGlobalSettings().Themes, "themes")...)
+		paths = append(paths, collectPackageThemePaths(cwd, sm, resolvers...)...)
 	}
 	return dedupStrings(paths)
 }
@@ -233,12 +235,15 @@ func collectTopLevelExtensionConfigs(autoDir string, entries []string, scope str
 	return configs
 }
 
+// collectTopLevelResourcePaths lists a scope's settings entries, then its
+// auto-discovered resources, as upstream package-manager.ts
+// resourcePrecedenceRank orders them.
 func collectTopLevelResourcePaths(autoDir string, entries []string, kind string) []string {
 	auto := collectAutoDiscoveredResourcePaths(autoDir, kind)
 	baseDir := filepath.Dir(autoDir)
 	explicit := resolveConfiguredResourceEntries(entries, baseDir, kind)
 	auto = filterAutoDiscoveredPaths(auto, entries, baseDir, kind)
-	return append(auto, explicit...)
+	return append(explicit, auto...)
 }
 
 func resolveConfiguredResourceEntries(entries []string, baseDir string, kind string) []string {

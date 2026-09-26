@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"regexp"
+	"slices"
 	"sync"
 	"time"
 
@@ -275,7 +276,10 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 
 func configureStartupTheme(settings Settings, paths []string) {
 	registry := tui.NewThemeRegistry()
-	for _, path := range paths {
+	// paths are in upstream precedence order, the first theme of a name
+	// winning; the registry keeps the last one added.
+	for _, path := range slices.Backward(paths) {
+
 		info, err := os.Stat(path)
 		if err != nil {
 			continue

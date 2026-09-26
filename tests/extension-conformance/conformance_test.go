@@ -74,6 +74,7 @@ type recording struct {
 	FocusedProbe            string              `json:"focused_probe"`
 	MessageRenderer         []string            `json:"message_renderer"`
 	ToolRenderer            []string            `json:"tool_renderer"`
+	ArgumentCompletions     []string            `json:"argument_completions"`
 	EntryRenderer           []string            `json:"entry_renderer"`
 	LoginDefinition         string              `json:"login_definition"`
 	LoginError              string              `json:"login_error"`
@@ -882,8 +883,11 @@ func captureRecording(t *testing.T, h *harness) recording {
 	})
 	toolRenderer = append(toolRenderer, renderResult.Render(72)...)
 
+	argumentCompletions := commandArgumentCompletions(t, h.runner, "complete_probe", " a", "zz")
+
 	return recording{
 		ToolRenderer:            toolRenderer,
+		ArgumentCompletions:     argumentCompletions,
 		EchoContent:             tr.Content,
 		PreparedContent:         preparedTR.Content,
 		EchoIsError:             tr.IsError,
@@ -1227,6 +1231,20 @@ func makeInprocFixture(ui extension.UIContext, actions *[]string) extension.Exte
 					ui.Notify(fmt.Sprintf("abort:%t", abortObserved.Load()), "info")
 					return nil
 				},
+			},
+			"complete_probe": {
+				Name:        "complete_probe",
+				Description: "Complete its arguments",
+				GetArgumentCompletions: func(prefix string) ([]extension.AutocompleteItem, error) {
+					var items []extension.AutocompleteItem
+					for _, item := range []extension.AutocompleteItem{{Value: "alpha", Label: "alpha — first"}, {Value: "apple", Description: "fruit"}, {Value: "beta"}} {
+						if strings.HasPrefix(item.Value, strings.TrimSpace(prefix)) {
+							items = append(items, item)
+						}
+					}
+					return items, nil
+				},
+				Handler: func(context.Context, string) error { return nil },
 			},
 			"ping": {
 				Name:        "ping",
@@ -2284,6 +2302,30 @@ func toolNames(r *inproc.Runner) []string {
 		out = append(out, tool.Definition.Name)
 	}
 	slices.Sort(out)
+	return out
+}
+
+// commandArgumentCompletions records a command's getArgumentCompletions for
+// each prefix as "value|label|description" items, or "none".
+func commandArgumentCompletions(t *testing.T, r *inproc.Runner, name string, prefixes ...string) []string {
+	t.Helper()
+	command, ok := r.Command(name)
+	if !ok || command.GetArgumentCompletions == nil {
+		t.Fatalf("%s has no argument completions: %+v", name, command)
+	}
+	var out []string
+	for _, prefix := range prefixes {
+		items, err := command.GetArgumentCompletions(prefix)
+		if err != nil {
+			t.Fatalf("%s argument completions for %q: %v", name, prefix, err)
+		}
+		if len(items) == 0 {
+			out = append(out, prefix+":none")
+		}
+		for _, item := range items {
+			out = append(out, prefix+":"+item.Value+"|"+item.Label+"|"+item.Description)
+		}
+	}
 	return out
 }
 

@@ -1,5 +1,6 @@
 use pig_sdk::{
-    CommandResult, ConstrainedSampling, Extension, LoginDefinition, OAuthCredentialStatus,
+    AutocompleteItem, CommandResult, ConstrainedSampling, Extension, LoginDefinition,
+    OAuthCredentialStatus,
     OAuthCredentialStore, OAuthCredentials, OAuthDeviceCodeInfo, OAuthPrompt, OAuthProvider,
     ProjectTrustDecision, ProjectTrustResult, RemoteComponent, RemoteComponentInvalidate,
     RemoteComponentResult, TerminalInputResult, TerminalInputSubscription, ToolRenderShell,
@@ -302,6 +303,18 @@ fn main() {
         },
         |_ctx, _params: Value| ToolResult::Json(json!({"content": "grammar"})),
     );
+    ext.command("complete_probe", "Complete its arguments", |_ctx, _args| CommandResult::Ok);
+    ext.command_argument_completions("complete_probe", |prefix| {
+        let items: Vec<AutocompleteItem> = [
+            AutocompleteItem { value: "alpha".into(), label: Some("alpha — first".into()), description: None },
+            AutocompleteItem { value: "apple".into(), label: None, description: Some("fruit".into()) },
+            AutocompleteItem { value: "beta".into(), label: None, description: None },
+        ]
+        .into_iter()
+        .filter(|item| item.value.starts_with(prefix.trim()))
+        .collect();
+        (!items.is_empty()).then_some(items)
+    });
     ext.command("ping", "Respond with pong", |ctx, _args| {
         ctx.notify("pong", "info");
         CommandResult::Ok

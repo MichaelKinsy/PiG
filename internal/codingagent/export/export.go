@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -241,6 +242,13 @@ func FromJSONL(data []byte) (SessionData, error) {
 
 // ExportFromFile reads a session JSONL file and writes the upstream-style HTML export.
 func ExportFromFile(inputPath, outputPath string) (string, error) {
+	return ExportFromFileWithTools(inputPath, outputPath, nil, "")
+}
+
+// ExportFromFileWithTools is ExportFromFile with the session's registered
+// tools drawing their calls and results through their renderers, as
+// upstream AgentSession.exportToHtml passes a tool renderer.
+func ExportFromFileWithTools(inputPath, outputPath string, tools []extension.RegisteredTool, cwd string) (string, error) {
 	data, err := os.ReadFile(inputPath)
 	if err != nil {
 		return "", fmt.Errorf("read session: %w", err)
@@ -249,6 +257,7 @@ func ExportFromFile(inputPath, outputPath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("parse session: %w", err)
 	}
+	RenderCustomTools(&sd, tools, cwd, 100)
 	htmlStr := ToHTML(sd)
 	if outputPath == "" {
 		base := strings.TrimSuffix(filepath.Base(inputPath), ".jsonl")

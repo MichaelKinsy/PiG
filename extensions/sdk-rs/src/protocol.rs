@@ -143,6 +143,21 @@ pub struct HandlerDef {
 pub struct CmdDef {
     pub name: String,
     pub description: String,
+    /// The command defines upstream getArgumentCompletions; the host asks for
+    /// it with the command_argument_completions request.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub argument_completions: bool,
+}
+
+/// Upstream pi-tui `AutocompleteItem`: `value` is inserted, `label` is shown
+/// in its place when set.
+#[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Default)]
+pub struct AutocompleteItem {
+    pub value: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub label: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]

@@ -375,6 +375,11 @@ type StatePayload struct {
 	// capability cache with it, so Pi's Markdown renders links as the host
 	// terminal supports them.
 	TerminalCapabilities *TerminalCapabilitiesPayload `json:"terminalCapabilities,omitempty"`
+	// Theme is the host's active theme as extensions see it (ctx.ui.theme):
+	// its name, foreground and background escape sequences by token, and
+	// whether chalk styles draw. The Node runtime's theme helpers
+	// (getSelectListTheme, highlightCode, keyHint, ...) color with it.
+	Theme any `json:"theme,omitempty"`
 }
 
 // TerminalCapabilitiesPayload mirrors pi-tui's TerminalCapabilities.

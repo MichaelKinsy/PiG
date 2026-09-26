@@ -880,11 +880,9 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 						fmt.Fprintf(os.Stderr, "theme reload: %v\n", err)
 					}
 				}
-				for _, themePath := range m.opts.ThemePaths {
-					if err := loadThemePath(registry, themePath); err != nil {
-						fmt.Fprintf(os.Stderr, "theme reload: %v\n", err)
-					}
-				}
+				loadThemePaths(registry, m.opts.ThemePaths, func(err error) {
+					fmt.Fprintf(os.Stderr, "theme reload: %v\n", err)
+				})
 			}
 
 			// 8b. Mirrors upstream applyRuntimeSettings after reload:

@@ -86,6 +86,9 @@ type handlerDef struct {
 type cmdDef struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	// ArgumentCompletions reports a getArgumentCompletions the host asks for
+	// with the command_argument_completions request.
+	ArgumentCompletions bool `json:"argument_completions,omitempty"`
 }
 
 type shortcutDef struct {

@@ -125,6 +125,15 @@ export default function (pi) {
     async execute() { return { content: [{ type: "text", text: "grammar" }] }; },
   });
 
+  pi.registerCommand("complete_probe", {
+    description: "Complete its arguments",
+    getArgumentCompletions: (prefix) => {
+      const items = [{ value: "alpha", label: "alpha — first" }, { value: "apple", description: "fruit" }, { value: "beta" }]
+        .filter((item) => item.value.startsWith(prefix.trim()));
+      return items.length > 0 ? items : null;
+    },
+    handler: async () => {},
+  });
   pi.registerCommand("ping", { description: "Respond with pong", handler: async (_args, ctx) => ctx.ui.notify("pong", "info") });
   pi.registerCommand("model-stream-probe", {
     description: "Exercise model streaming",

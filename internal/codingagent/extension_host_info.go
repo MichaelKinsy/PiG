@@ -134,11 +134,9 @@ func (c SlashCommandCatalog) SourceInfoForPath(path, kind string) PiSourceInfo {
 			if source == "" {
 				source = "local"
 			}
-			baseDir := info.BaseDir
-			if baseDir == "" && path != "" {
-				baseDir = filepath.Dir(path)
-			}
-			return PiSourceInfo{Path: path, Source: source, Scope: scope, Origin: origin, BaseDir: baseDir}
+			// Upstream createSourceInfo: the recorded metadata's baseDir, which
+			// a settings entry does not have.
+			return PiSourceInfo{Path: path, Source: source, Scope: scope, Origin: origin, BaseDir: info.BaseDir}
 		}
 	}
 	info := PiSourceInfo{Path: path, Source: "local", Scope: "temporary", Origin: "top-level"}
