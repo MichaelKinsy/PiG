@@ -15,8 +15,11 @@ driver = "interactive-tmux"
 model = "test-faux/faux-1"
 
 [env]
-pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent", "TUI_LIVE_PROBE=1"]
-pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TUI_LIVE_PROBE=1"]
+# TEST_FAUX_HOLD_COMPACTION keeps the summary pending until teardown, so the
+# in-progress screen is a steady state on both sides rather than a window the
+# capture has to race.
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent", "TUI_LIVE_PROBE=1", "TEST_FAUX_HOLD_COMPACTION=1"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TUI_LIVE_PROBE=1", "TEST_FAUX_HOLD_COMPACTION=1"]
 pi_extensions = ["../../testdata/test-faux-provider.ts"]
 pig_args = ["--no-extensions", "--session-dir", "sessions", "--session", "sessions/2025-01-01T00-00-00-000Z_parity-compact.jsonl"]
 pi_args = ["--session-dir", "sessions", "--session", "sessions/2025-01-01T00-00-00-000Z_parity-compact.jsonl"]
@@ -35,6 +38,9 @@ capture_end = "faux-1"
 keys = ["/compact", "Enter"]
 wait_contains = ["Compacting context... (escape to cancel)"]
 wait_timeout_seconds = 15
+# wait_contains also matches scrollback and the raw output transcript, which
+# can run ahead of the painted screen; the capture reads the visible screen.
+wait_visible_contains = ["How do goroutines work internally?", "Compacting context... (escape to cancel)"]
 
 [assert]
 both_reach_ready = true
