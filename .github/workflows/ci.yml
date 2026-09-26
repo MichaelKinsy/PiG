@@ -142,7 +142,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install --global --ignore-scripts "npm@$NPM_VERSION"
+          # npm ci installs the lockfile-pinned npm; later steps use it via PATH.
+          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
           test "$(npm --version)" = "$NPM_VERSION"
       - name: Prepare pinned Pi oracle
         run: make upstream-mirror
@@ -227,7 +231,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          npm install --global --ignore-scripts "npm@$NPM_VERSION"
+          # npm ci installs the lockfile-pinned npm; later steps use it via PATH.
+          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          cygpath -w "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
           test "$(npm --version)" = "$NPM_VERSION"
           npm ci --prefix extensions/sdk-ts --ignore-scripts --no-audit --no-fund
       - name: Mirror the pinned Pi source
@@ -299,7 +307,11 @@ jobs:
         run: |
           set -euo pipefail
           brew install fd ripgrep
-          npm install --global --ignore-scripts "npm@$NPM_VERSION"
+          # npm ci installs the lockfile-pinned npm; later steps use it via PATH.
+          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          bin="$PWD/automation/ci/npm-toolchain/node_modules/.bin"
+          echo "$bin" >> "$GITHUB_PATH"
+          export PATH="$bin:$PATH"
           test "$(npm --version)" = "$NPM_VERSION"
           npm ci --prefix extensions/sdk-ts --ignore-scripts --no-audit --no-fund
       - name: Build and test native macOS paths

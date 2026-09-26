@@ -83,6 +83,7 @@ updates:
       - /extensions/sdk-ts
       - /automation/images/ci-parity
       - /parity/interface-extractor
+      - /automation/ci/npm-toolchain
     schedule:
       interval: monthly
     open-pull-requests-limit: 0
