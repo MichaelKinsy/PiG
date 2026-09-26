@@ -71,9 +71,10 @@ installing software.
 8. Run `make check` before requesting review.
 9. Sign off every commit.
 10. Describe the problem, change, verification, and any divergence in the pull request.
-11. In your first pull request, add yourself to [`CONTRIBUTORS.md`](CONTRIBUTORS.md).
 
 A documentation-only or mechanical change can explain why it does not need an issue.
+
+Maintainers squash-merge pull requests, which keeps you as the commit author, so you appear on GitHub's contributors page. When a maintainer lands your change inside a larger commit, the commit carries a `Co-authored-by:` trailer for you.
 
 ## Pull request requirements
 

@@ -294,4 +294,4 @@ See [docs/supply-chain.md](docs/supply-chain.md) for the inventory, SBOM, vulner
 
 PiG would not exist without Pi and the work of its maintainers and contributors. Their design and open-source work provide the reference that PiG follows.
 
-Thank you to everyone who contributes to Pi and PiG; community contributors are listed in [`CONTRIBUTORS.md`](CONTRIBUTORS.md).
+Thank you to everyone who contributes to Pi and PiG. Maintainers are listed in [`MAINTAINERS.md`](MAINTAINERS.md), every contributor appears on [GitHub's contributors page](https://github.com/MichaelKinsy/PiG/graphs/contributors), and the [changelog](CHANGELOG.md) credits each fix to the person who reported or contributed it.
