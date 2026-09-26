@@ -1,6 +1,6 @@
 # Models
 
-A model in PiG is identified by a **provider-qualified spec**: `provider/modelID`. Every API that takes a model - `--model`, `/model`, `Ctrl+P` cycling, `Context.SetModel()`, settings entries - should round-trip through provider-qualified specs. Bare model IDs are accepted for backward compatibility but are interpreted as `openai/<id>`, which has historically caused silent routing drift.
+A model in PiG is identified by a **provider-qualified spec**: `provider/modelID`. Model-selection APIs such as `--model`, `/model`, `Ctrl+P` cycling, and `Context.SetModel()` use provider-qualified specs. Scoped model entries in settings also use that form. The saved default is an exception: set `defaultProvider` to the provider and `defaultModel` to the model ID without the provider prefix. A provider-qualified `defaultModel` does not select that model at startup. Bare model IDs passed to model-selection APIs are accepted for backward compatibility but can route to `openai/<id>` instead of the intended provider.
 
 ## Selecting a model
 
@@ -66,6 +66,7 @@ New built-in models are generated into `ai/models_generated.go` and committed in
 
 | Symptom | Cause | Fix |
 |---|---|---|
+| `defaultModel` contains `github-copilot/gpt-6-sol`, but a new session starts on another model | The saved default expects separate provider and model fields. | Set `"defaultProvider": "github-copilot"` and `"defaultModel": "gpt-6-sol"`. |
 | `model gpt-5.5 routed to openai but I selected copilot` | Bare ID passed to `BuildModel()` | Always pass `provider/id`. |
 | `GPT-5.5 does not support thinking` after a binary swap | Stale `pig` on `PATH` | Reinstall or rebuild PiG, run `hash -r`, and restart the TUI. |
 | Thinking cycle has no effect | Active model has `Reasoning: false` | Switch to a reasoning model. |
