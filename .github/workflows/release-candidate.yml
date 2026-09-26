@@ -406,7 +406,10 @@ jobs:
       - name: Sign the self-update manifest
         # update.json names each macOS and Linux archive and its SHA-256 from
         # SHA256SUMS. Release binaries fetch it from releases/latest/download
-        # and verify update.json.sig against automation/release/update-trust.pem.
+        # and accept it when any signature in update.json.sig verifies against
+        # a key they trust. PIG_UPDATE_SIGNING_KEY holds one PEM private key, or
+        # two during a key rotation; each must verify against a key in
+        # automation/release/update-trust.pem.
         shell: bash
         env:
           VERSION: ${{ inputs.version }}
@@ -422,13 +425,11 @@ jobs:
             --sha256sums release/SHA256SUMS \
             --notes "https://github.com/${GITHUB_REPOSITORY}/releases/tag/v${VERSION}" > release/update.json
           umask 077
-          key="$RUNNER_TEMP/update-signing.pem"
-          trap 'rm -f "$key" "$RUNNER_TEMP/update.sig"' EXIT
-          printf '%s\n' "$UPDATE_SIGNING_KEY" > "$key"
-          openssl pkeyutl -sign -rawin -inkey "$key" -in release/update.json -out "$RUNNER_TEMP/update.sig"
-          openssl pkeyutl -verify -rawin -pubin -inkey automation/release/update-trust.pem \
-            -in release/update.json -sigfile "$RUNNER_TEMP/update.sig"
-          base64 -w0 < "$RUNNER_TEMP/update.sig" > release/update.json.sig
+          keys="$RUNNER_TEMP/update-signing.pem"
+          trap 'rm -f "$keys"' EXIT
+          printf '%s\n' "$UPDATE_SIGNING_KEY" > "$keys"
+          automation/release/sign-update-manifest.sh release/update.json "$keys" \
+            automation/release/update-trust.pem > release/update.json.sig
       - name: Tag the nested Go modules on the release commit
         # go install github.com/MichaelKinsy/PiG/cmd/pig@v<version> resolves
         # each nested module the root go.mod requires (extensions/sdk) through
