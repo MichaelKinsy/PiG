@@ -1,6 +1,6 @@
 # PORT_MAP coverage report
 
-Generated from `616` PORT_MAP entries and `266` parity scenarios.
+Generated from `616` PORT_MAP entries and `267` parity scenarios.
 
 **Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 428 behavioral (96.0%), 4 weak-only (no behavioral verification), 14 untested.
 Raw PORT_MAP rows: 616. Breakdown: 74 n/a (designed out) · 24 🟡 partial · 72 ⬜ not started. See DIVERGENCES.md for the documented exceptions.
@@ -583,7 +583,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/coding-agent/src/utils/text.ts` | ✅ | 0 | 1 (unit:./internal/text:TestSplitBom) | not run | ./internal/text:TestSplitBom |
 | `packages/coding-agent/src/utils/wsl.ts` | ✅ | 0 | 1 (unit:./internal/codingagent:TestIsWSL) | not run | ./internal/codingagent:TestIsWSL |
 | `packages/coding-agent/src/utils/zip.ts` | n/a | 0 | 0 | not run |  |
-| `packages/tui/src/tui.ts` | ✅ | 1 (02-settings-selector) | 1 (02-settings-selector) | not run |  |
+| `packages/tui/src/tui.ts` | ✅ | 2 (02-settings-selector, 30-overlay-over-editor-cursor) | 2 (02-settings-selector, 30-overlay-over-editor-cursor) | not run |  |
 | `packages/tui/src/editor-component.ts` | ✅ | 1 (02-slash-filter-model) | 1 (02-slash-filter-model) | not run |  |
 | `packages/tui/src/autocomplete.ts` | ✅ | 8 (01-slash-popup, 02-slash-filter-model, 03-slash-accept-hotkeys, 04-slash-dismiss, 05-path-force-tab-popup, 06-path-accept-partial, 07-path-dismiss, 27-command-argument-completions) | 8 (01-slash-popup, 02-slash-filter-model, 03-slash-accept-hotkeys, 04-slash-dismiss, 05-path-force-tab-popup, 06-path-accept-partial, 07-path-dismiss, 27-command-argument-completions) | not run |  |
 | `packages/tui/src/fuzzy.ts` | ✅ | 1 (03-settings-filter-theme) | 1 (03-settings-filter-theme) | not run |  |
@@ -601,7 +601,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/tui/src/index.ts` | n/a | 0 | 0 | not run |  |
 | `packages/tui/src/components/box.ts` | ✅ | 1 (02-box-tool-result-paint) | 1 (02-box-tool-result-paint) | not run |  |
 | `packages/tui/src/components/cancellable-loader.ts` | ✅ | 1 (09-cancellable-loader) | 1 (09-cancellable-loader) | not run |  |
-| `packages/tui/src/components/editor.ts` | ✅ | 4 (02-slash-filter-model, 06-settings-editor-padding-live, 12-editor-wrapped-history-navigation, 27-command-argument-completions) | 4 (02-slash-filter-model, 06-settings-editor-padding-live, 12-editor-wrapped-history-navigation, 27-command-argument-completions) | not run |  |
+| `packages/tui/src/components/editor.ts` | ✅ | 5 (02-slash-filter-model, 06-settings-editor-padding-live, 12-editor-wrapped-history-navigation, 27-command-argument-completions, 30-overlay-over-editor-cursor) | 5 (02-slash-filter-model, 06-settings-editor-padding-live, 12-editor-wrapped-history-navigation, 27-command-argument-completions, 30-overlay-over-editor-cursor) | not run |  |
 | `packages/tui/src/components/image.ts` | ✅ | 1 (03-image-rendering-deferred) | 1 (03-image-rendering-deferred) | not run |  |
 | `packages/tui/src/components/input.ts` | ✅ | 8 (01-slash-popup, 02-slash-filter-model, 03-slash-accept-hotkeys, 04-slash-dismiss, 05-path-force-tab-popup, 06-path-accept-partial, 07-path-dismiss, 14-model-picker-fuzzy-filter) | 8 (01-slash-popup, 02-slash-filter-model, 03-slash-accept-hotkeys, 04-slash-dismiss, 05-path-force-tab-popup, 06-path-accept-partial, 07-path-dismiss, 14-model-picker-fuzzy-filter) | not run |  |
 | `packages/tui/src/components/loader.ts` | ✅ | 1 (10-loader-countdown-bordered-behavior) | 1 (10-loader-countdown-bordered-behavior) | not run |  |

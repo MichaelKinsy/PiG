@@ -260,11 +260,12 @@ func TestEditor_Render_WordWrapParity(t *testing.T) {
 	if len(rows) != 2 {
 		t.Fatalf("rows = %v, want 2 content rows", rows)
 	}
-	if got := stripANSI(rows[0]); got != "hello " {
-		t.Fatalf("row 0 = %q, want %q", got, "hello ")
+	// Pi pads each row to the content width.
+	if got := stripANSI(rows[0]); got != "hello      " {
+		t.Fatalf("row 0 = %q, want %q", got, "hello      ")
 	}
-	if got := stripANSI(rows[1]); got != "world test" {
-		t.Fatalf("row 1 = %q, want %q", got, "world test")
+	if got := stripANSI(rows[1]); got != "world test " {
+		t.Fatalf("row 1 = %q, want %q", got, "world test ")
 	}
 }
 
@@ -275,10 +276,10 @@ func TestEditor_Render_ReservesRightmostColumnForCursor(t *testing.T) {
 	if len(rows) != 2 {
 		t.Fatalf("rows = %d, want 2", len(rows))
 	}
-	if got := widthx.VisibleWidth(rows[0]); got != 79 {
-		t.Fatalf("first row width = %d, want 79", got)
+	if got, want := stripANSI(rows[0]), strings.Repeat("x", 79)+" "; got != want {
+		t.Fatalf("first row = %q, want 79 cells of text and the reserved column", got)
 	}
-	if got := stripANSI(rows[1]); got != "x " {
+	if got := stripANSI(rows[1]); got != "x"+strings.Repeat(" ", 79) {
 		t.Fatalf("second row = %q, want cursor-decorated trailing x", got)
 	}
 }

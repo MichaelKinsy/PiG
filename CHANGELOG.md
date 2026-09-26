@@ -45,6 +45,7 @@ Hotfix for Pi extensions from npm that failed to load or crashed in 0.2.0, repor
 - Fixed extension messages whose content is a list of blocks, such as `pi-web-access`'s `/websearch` results, showing as `[map[text:... type:text]]`. They now show their text blocks joined by newlines, rendered as Markdown and wrapped inside the message box, as in Pi; a result line wider than the terminal had ended pig with a render-overflow crash.
 - Fixed print mode hanging, and ignoring SIGTERM, while waiting for piped stdin that is never closed. PiG now exits 143 on SIGTERM there as Pi does. A signal no longer lets later prompts start, and extension handlers and commands it interrupts are no longer reported as failing with "context canceled", in any mode.
 - Fixed the `grep` tool's `path` parameter description differing from Pi's.
+- Fixed an extension overlay that covers the editor, such as `pi-rtk-optimizer`'s `/rtk` panel, drawing the editor cursor as an inverse bar reaching the overlay's left edge. The editor now pads each row to its full width, as Pi's does, so the cursor stays one cell wide under an overlay.
 
 ## [0.2.0] - 2026-09-25
 

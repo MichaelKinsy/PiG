@@ -280,7 +280,7 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 2 registrati
 | `compaction` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
 | `export-html` | 5 | 5 | 0 | 0 | 0 | 5 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 29 | 29 | 0 | 0 | 0 | 30 | not run |
+| `extensions-runtime` | 30 | 30 | 0 | 0 | 0 | 31 | not run |
 | `footer` | 7 | 7 | 0 | 0 | 0 | 8 | not run |
 | `fullscreen` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
 | `interactive-rendering` | 31 | 29 | 2 | 0 | 0 | 26 | not run |
