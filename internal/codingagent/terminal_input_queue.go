@@ -28,9 +28,14 @@ func (m *InteractiveMode) addRemoteTerminalInputHandler(_ string, handler extens
 
 // inputChunk is one parsed terminal sequence routed to the owner loop. The
 // loop settles ticket once the chunk's terminal-input listeners are done.
+// more reports that further sequences parsed from input the pump has already
+// read follow this one. Upstream's StdinBuffer emits every sequence of one
+// read synchronously and paints once afterwards, so the owner loop handles
+// the rest of the read before any other work or paint.
 type inputChunk struct {
 	data   []byte
 	ticket *inputTicket
+	more   bool
 }
 
 type inputTicketState uint8
@@ -82,6 +87,18 @@ func (t *inputTicket) resume() {
 	if t.state == inputTicketPending {
 		t.state = inputTicketRouted
 	}
+}
+
+// settled reports whether the chunk's listeners are done, so the pump routes
+// the next chunk without waiting on the owner loop. A nil ticket gates
+// nothing.
+func (t *inputTicket) settled() bool {
+	if t == nil {
+		return true
+	}
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	return t.state == inputTicketSettled
 }
 
 // settle releases the pump to route the next chunk. It does nothing while the

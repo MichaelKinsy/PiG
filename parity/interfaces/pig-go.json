@@ -103628,6 +103628,17 @@
       "shapeHash": "sha256:677102dff63be6d79356c7f2246bec509ed48d91af6784045f079f3705807d59"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.routeInputSequence",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.routeInputSequence",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(ctx context.Context, chunk []byte, more bool, readCh chan\u003c- inputChunk) *inputTicket"
+      },
+      "shapeHash": "sha256:7d3ddd0468b0e277b3744fc8a59e94f4b2f7f7aff9e8117dae9120b981880a49"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.runAgentPrompt",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.runAgentPrompt",
@@ -116705,6 +116716,17 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#inputTicket.settled",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "inputTicket.settled",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() bool"
+      },
+      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#inputTicketPending",
