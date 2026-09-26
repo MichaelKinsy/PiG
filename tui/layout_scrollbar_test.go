@@ -54,7 +54,9 @@ func TestLayoutRendersProportionalGlyphScrollbar(t *testing.T) {
 	trackStyle := func(text string) string { return trackColor + text + "\x1b[39m" }
 	thumbStyle := func(text string) string { return thumbColor + text + "\x1b[39m" }
 	content := NewPaddedText(strings.Join(sourceLines, "\n"), 0, 0, func(text string) string { return contentBackground + text + "\x1b[49m" })
-	delay := 10
+	// Long enough that the render right after a scroll sees the scrollbar
+	// even on a loaded machine; the hide below is awaited, not slept on.
+	delay := 200
 	scrollView := NewScrollView(content, ScrollViewOptions{
 		Scrollbar: "auto", ScrollbarTrackStyle: trackStyle, ScrollbarThumbStyle: thumbStyle, ScrollbarHideDelayMs: &delay,
 	})
@@ -90,7 +92,10 @@ func TestLayoutRendersProportionalGlyphScrollbar(t *testing.T) {
 	}
 
 	scrollView.SetScrollbarActive(false)
-	time.Sleep(30 * time.Millisecond)
+	deadline := time.Now().Add(10 * time.Second)
+	for !slices.Equal(visibleFrameLines(render()), sourceLines[2:6]) && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
 	assertVisible(render(), sourceLines[2:6])
 
 	scrollView.ScrollToEnd()

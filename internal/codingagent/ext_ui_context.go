@@ -633,7 +633,20 @@ func (u *ExtUIContext) GetEditorComponent() any {
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
 
-func (u *ExtUIContext) Theme() extension.Theme {
+func (u *ExtUIContext) Theme() extension.Theme { return ActiveExtensionTheme() }
+
+// themeColorMode is upstream's ColorMode for the terminal: "truecolor" when
+// it draws 24-bit colors, else "256color".
+func themeColorMode() string {
+	if tui.GetCapabilities().TrueColor {
+		return "truecolor"
+	}
+	return "256color"
+}
+
+// ActiveExtensionTheme is the active theme as extensions see it
+// (ctx.ui.theme): upstream hands every mode's UI context the global theme.
+func ActiveExtensionTheme() extension.Theme {
 	theme := tui.ActiveTheme()
 	if theme == nil {
 		return nil
@@ -643,6 +656,11 @@ func (u *ExtUIContext) Theme() extension.Theme {
 		"name":        theme.Name,
 		"foregrounds": foregrounds,
 		"backgrounds": backgrounds,
+		// modifiers is whether theme.bold and the other chalk styles draw,
+		// as upstream's chalk decides from its own stdout.
+		"modifiers": chalkModifiersEnabled(),
+		// mode is upstream Theme.getColorMode().
+		"mode": themeColorMode(),
 	}
 }
 

@@ -273,6 +273,17 @@ function classify(messages: any[]) {
   if (lastText.includes("Run: extension echo hello")) {
     return { kind: "tool", toolCalls: [{ toolName: "echo_bridge", toolArgs: { text: "hello" } }] };
   }
+  if (lastText.includes("Run: extension render cards")) {
+    return {
+      kind: "tool",
+      toolCalls: [
+        { toolName: "render_card", toolArgs: { topic: "alpha" } },
+        { toolName: "render_self", toolArgs: { topic: "beta" } },
+        { toolName: "render_throw", toolArgs: { topic: "gamma" } },
+        { toolName: "render_fail", toolArgs: { topic: "delta" } },
+      ],
+    };
+  }
   if (lastText.includes("Run: extension details")) {
     return {
       kind: "tool",
@@ -305,6 +316,16 @@ function classify(messages: any[]) {
     };
   }
   // Parallel tool call parity: two tools dispatched simultaneously.
+  if (lastText.includes("Run: compact reads")) {
+    return {
+      kind: "tool",
+      toolCalls: [
+        { toolName: "read", toolArgs: { path: "skills/demo-skill/SKILL.md" } },
+        { toolName: "read", toolArgs: { path: "AGENTS.md", offset: 2, limit: 1 } },
+        { toolName: "read", toolArgs: { path: "notes.txt" } },
+      ],
+    };
+  }
   if (lastText.includes("Run: parallel reads")) {
     return {
       kind: "tool",
@@ -370,6 +391,12 @@ function classify(messages: any[]) {
       }
       return { kind: "error", text: "test-faux: extension details marker missing" };
     }
+    if (currentUserText.includes("Run: extension render cards")) {
+      if (historyText.includes("done alpha") && historyText.includes("cannot render delta")) {
+        return { kind: "text", text: "render-cards-done" };
+      }
+      return { kind: "error", text: "test-faux: render card results missing" };
+    }
     if (currentUserText.includes("Run: extension UI dialogs")) {
       for (const marker of ["dialogs-ok:", "dialogs-cancelled:"]) {
         const index = historyText.indexOf(marker);
@@ -397,6 +424,7 @@ function classify(messages: any[]) {
     if (currentUserText.includes("Run: tui live tool")) return { kind: "text", text: "LIVE-TOOL-DONE" };
     if (currentUserText.includes("Run: bash long output")) return { kind: "text", text: "ran" };
     if (currentUserText.includes("Run: parallel reads")) return { kind: "text", text: "parallel-done" };
+    if (currentUserText.includes("Run: compact reads")) return { kind: "text", text: "compact-reads-done" };
     if (currentUserText.includes("Run: bash control-chars")) return { kind: "text", text: "sanitized" };
     if (currentUserText.includes("Run: bash with invalid args")) return { kind: "text", text: "validation-handled" };
   }

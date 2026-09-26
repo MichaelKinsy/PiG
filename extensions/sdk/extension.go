@@ -125,6 +125,12 @@ type Extension struct {
 	renderers          []rendererDef
 	entryRenderers     []rendererDef
 
+	// toolRenderMu guards toolRenderers and toolRenderCards: render requests
+	// run on their own goroutines.
+	toolRenderMu    sync.Mutex
+	toolRenderers   map[string]ToolRenderers
+	toolRenderCards map[string]*toolRenderCard
+
 	// terminalInputMu guards terminalInputFuncs, which the host consults
 	// synchronously while it holds the user's keystroke.
 	terminalInputMu     sync.RWMutex
@@ -179,6 +185,9 @@ type Extension struct {
 	notifyMu      sync.Mutex
 	notifyHandled uint64
 	notifyChanged chan struct{}
+
+	// commandCompletions are the commands' getArgumentCompletions.
+	commandCompletions map[string]ArgumentCompletionsFunc
 }
 
 const (
@@ -385,6 +394,7 @@ func New(name string) *Extension {
 		toolFuncs:          make(map[string]ToolFunc),
 		toolPrepareFuncs:   make(map[string]ToolPrepareArgumentsFunc),
 		commandFuncs:       make(map[string]CommandFunc),
+		commandCompletions: make(map[string]ArgumentCompletionsFunc),
 		eventFuncs:         make(map[int]EventFunc),
 		shortcutFuncs:      make(map[string]ShortcutFunc),
 		rendererFuncs:      make(map[string]RendererFunc),
@@ -905,6 +915,14 @@ func (e *Extension) handleRequest(id string, req *requestMsg) {
 		lines, err := handler(ctx, payload.Entry, payload.Options, payload.Width)
 		_ = e.conn.respond(id, map[string]any{"lines": lines}, err)
 
+	case "command_argument_completions":
+		items, err := e.commandArgumentCompletions(req.Tool, req.Args)
+		_ = e.conn.respond(id, items, err)
+
+	case "render_tool":
+		lines, err := e.renderTool(ctx, req.Tool, req.Args)
+		_ = e.conn.respond(id, map[string]any{"lines": lines}, err)
+
 	default:
 		_ = e.conn.respond(id, nil, fmt.Errorf("unknown request method: %s", req.Method))
 	}
@@ -962,6 +980,8 @@ func (e *Extension) handleNotify(env envelope) {
 		return
 	}
 	switch env.Notify.Method {
+	case "tool_render_release":
+		e.releaseToolRenderCard(env.Notify.Args)
 	case "model_stream_event":
 		var payload struct {
 			StreamID string         `json:"streamId"`

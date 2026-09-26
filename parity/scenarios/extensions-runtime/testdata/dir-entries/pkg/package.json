@@ -1,0 +1,5 @@
+{
+  "name": "dir-entries-pkg",
+  "type": "module",
+  "pi": { "extensions": ["./extensions"] }
+}

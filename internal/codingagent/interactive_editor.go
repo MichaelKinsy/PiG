@@ -49,8 +49,8 @@ func (m *InteractiveMode) setGenericToolArgs(comp *tui.ToolExecutionComponent, n
 		return
 	}
 	definition, ok := m.newRunner.GetToolDefinition(name)
-	// An override of a built-in name without its own renderCall keeps the
-	// built-in renderers (upstream renderers/index.ts withBuiltInRenderers).
+	// An override of a built-in name draws the built-in renderers it does not
+	// define (upstream renderers/index.ts withBuiltInRenderers).
 	if !ok || definition.RenderCall != nil || tui.HasBuiltInToolRenderers(name) {
 		return
 	}
@@ -106,6 +106,10 @@ func (m *InteractiveMode) setAllToolsExpanded(expanded bool) {
 	for _, custom := range customMessages {
 		custom.SetExpanded(expanded)
 	}
+	for _, section := range m.loadedResourceSections {
+		section.SetExpanded(expanded)
+	}
+	m.showStatus("Tool output: " + map[bool]string{true: "expanded", false: "collapsed"}[expanded])
 	if !expanded && m.tuiInst != nil {
 		// Collapsing can remove more rows than the viewport contains. Those
 		// expanded rows already live in native scrollback and differential

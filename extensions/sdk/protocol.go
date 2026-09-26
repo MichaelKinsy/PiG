@@ -72,6 +72,9 @@ type toolDef struct {
 	ConstrainedSampling any      `json:"constrained_sampling,omitempty"` // false | ConstrainedSampling: provider-side constrained sampling request
 	PromptGuidelines    []string `json:"prompt_guidelines,omitempty"`    // Bullets injected into system prompt Guidelines section when tool is active
 	Source              string   `json:"source,omitempty"`               // pig additive (D23): optional per-tool source; defaults to extension name
+	RenderShell         string   `json:"render_shell,omitempty"`         // "self" when the renderers draw their own framing
+	RendersCall         bool     `json:"renders_call,omitempty"`         // the tool has a call renderer
+	RendersResult       bool     `json:"renders_result,omitempty"`       // the tool has a result renderer
 }
 
 type handlerDef struct {
@@ -83,6 +86,9 @@ type handlerDef struct {
 type cmdDef struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
+	// ArgumentCompletions reports a getArgumentCompletions the host asks for
+	// with the command_argument_completions request.
+	ArgumentCompletions bool `json:"argument_completions,omitempty"`
 }
 
 type shortcutDef struct {
@@ -117,7 +123,7 @@ type readyMsg struct {
 }
 
 type requestMsg struct {
-	Method     string          `json:"method"` // "tool_call", "event", "command", "shortcut", "render_message"
+	Method     string          `json:"method"` // "tool_call", "event", "command", "shortcut", "render_message", "render_entry", "render_tool"
 	Tool       string          `json:"tool,omitempty"`
 	Event      string          `json:"event,omitempty"`
 	HandlerID  int             `json:"handler_id,omitempty"`

@@ -1,0 +1,47 @@
+# Behavior family: rpc
+# Surface: skills and prompt templates an extension's resources_discover
+# handler returns, as get_commands lists them.
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-26): AgentSession.bindExtensions
+# emits session_start, then extendResourcesFromExtensions in every mode. The
+# resource loader records each discovered path with
+# buildExtensionResourcePaths's provenance ({source: "extension:<name>", scope:
+# "temporary", origin: "top-level", baseDir: <extension dir>}), and
+# findSourceInfoForPath prefers it for the path and anything below it:
+#
+#   pi --no-extensions -e test-faux-provider.ts -e discover/discover.ts \
+#     --model test-faux/faux-1 --mode rpc
+#   stdin: {"id":"cmds","type":"get_commands"}
+#   ... {"name":"discovered-prompt", ..., "sourceInfo":{"path":".../prompts/discovered-prompt.md",
+#        "source":"extension:discover","scope":"temporary","origin":"top-level","baseDir":".../discover"}}
+#   ... {"name":"skill:discovered-skill", ..., "source":"extension:discover", ...}
+#
+# PiG used to run resources_discover only in interactive mode, so print, JSON
+# and RPC mode listed neither.
+
+name = "27-rpc-extension-discovered-resources"
+description = "get_commands lists the skills and prompt templates an extension discovers, attributed to that extension"
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"cmds","type":"get_commands"}']
+timeout_seconds = 20
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pig_extensions = ["testdata/discover/discover.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/discover/discover.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+
+[assert]
+exit_code = 0
+output_normalized_equal = true
+runs = 3
+both_contain = ['"name":"discovered-prompt"', '"name":"skill:discovered-skill"', '"source":"extension:discover"']

@@ -73,7 +73,7 @@ func writeStartupPackages(t *testing.T, root string, withGoodExtensions bool) st
 	writeStartupFixtureFile(t, filepath.Join(f.mixed, "package.json"), `{"name":"mixed","pi":{"extensions":`+mixedExtensions+`,"prompts":["prompts"]}}`)
 	writeStartupFixtureFile(t, f.mixedPrompt, "---\ndescription: mixed prompt\n---\nmixed\n")
 
-	writeStartupFixtureFile(t, filepath.Join(f.healthy, "package.json"), `{"name":"healthy","pi":{"extensions":`+healthyExtensions+`,"prompts":["prompts"]}}`)
+	writeStartupFixtureFile(t, filepath.Join(f.healthy, "package.json"), `{"name":"healthy","pi":{"extensions":`+healthyExtensions+`,"prompts":["prompts"],"skills":["skills"]}}`)
 	writeStartupFixtureFile(t, f.healthyPrompt, "---\ndescription: healthy prompt\n---\nhealthy\n")
 	writeStartupFixtureFile(t, filepath.Join(f.healthySkill, "SKILL.md"), "---\nname: healthy-skill\ndescription: healthy skill\n---\nbody\n")
 

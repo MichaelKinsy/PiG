@@ -7,6 +7,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -94,6 +95,7 @@ type ToolExecutionComponent struct {
 	cachedStructured     bool
 	cachedLines          []string
 	cachedTheme          *Theme
+	cachedHeaderBody     string
 
 	// BodyRenderer, when non-nil, replaces the default plain-text body
 	// rendering. Used for per-tool rich displays: unified diff for
@@ -141,6 +143,21 @@ type ToolExecutionComponent struct {
 	// argsComplete mirrors upstream tool-execution.ts argsComplete.
 	// Set when the message stream ends and args JSON is finalized.
 	argsComplete bool
+
+	// definition, when set, draws a registered tool definition's renderers
+	// as upstream does. definitionDirty reruns them on the next render, as
+	// every upstream state change reruns updateDisplay; a renderer may
+	// invalidate the card from any goroutine.
+	definition                *ToolDefinitionRenderers
+	definitionArgs            json.RawMessage
+	definitionResult          any
+	definitionDirty           atomic.Bool
+	definitionCall            Component
+	definitionResultComponent Component
+
+	// compactHeader is the collapsed read card's upstream compact label
+	// (FormatCompactReadHeader), or "" for the full header.
+	compactHeader string
 }
 
 // ImageBlock describes one image from a tool result for rendering.
@@ -243,7 +260,18 @@ func (c *ToolExecutionComponent) IsDirty() bool {
 	if c.invalidatable.IsDirty() {
 		return true
 	}
+	if c.definition != nil {
+		return c.definitionDirty.Load() || c.definitionComponentsDirty()
+	}
 	return c.State == ToolStateRunning && IsShellTool(c.Name) && !c.StartedAt.IsZero()
+}
+
+// Invalidate marks the card for redraw. A card with a definition also reruns
+// its renderers, as upstream ToolExecutionComponent.invalidate calls
+// updateDisplay.
+func (c *ToolExecutionComponent) Invalidate() {
+	c.definitionDirty.Store(true)
+	c.invalidatable.Invalidate()
 }
 
 // SetRunning marks the component as in-flight with the given pre-formatted
@@ -287,10 +315,14 @@ func (c *ToolExecutionComponent) UpdateArgs(name string, partialArgsJSON string)
 	// fail to parse: that's OK, we fall back to the tool name.
 	var raw json.RawMessage
 	if json.Unmarshal([]byte(partialArgsJSON), &raw) == nil {
+		if c.definition != nil {
+			c.definitionArgs = append(c.definitionArgs[:0], raw...)
+		}
 		if c.renderStructuredArgs {
 			c.structuredArgs = append(c.structuredArgs[:0], raw...)
 		} else {
 			c.ArgsPreview = HeaderForTool(c.Name, raw, c.Cwd)
+			c.SetHeaderArgs(raw)
 		}
 	}
 	c.Invalidate()
@@ -324,7 +356,9 @@ func (c *ToolExecutionComponent) SetResult(output string, isError bool, elapsed 
 	}
 	c.Output = output
 	c.Elapsed = elapsed
-	if !c.userToggled {
+	// A card with a definition keeps its expansion: upstream updateResult
+	// never changes it.
+	if !c.userToggled && c.definition == nil {
 		switch {
 		case isError:
 			// Errors are always auto-expanded: the LLM (and the user) need
@@ -505,6 +539,9 @@ func (c *ToolExecutionComponent) runningElapsedRows(width int) []string {
 // padding on each content line. We replicate this layout exactly:
 // top-pad, header, separator, body, bottom-pad: all bg-painted.
 func (c *ToolExecutionComponent) Render(width int) []string {
+	if c.definition != nil {
+		return c.renderDefinition(width)
+	}
 	if width < 3 {
 		width = 3
 	}
@@ -519,6 +556,7 @@ func (c *ToolExecutionComponent) Render(width int) []string {
 		c.cachedWidth == width &&
 		c.cachedIsPartial == c.IsPartial &&
 		c.cachedArgsPreview == c.ArgsPreview &&
+		c.cachedHeaderBody == c.headerBody() &&
 		c.cachedStructuredArgs == string(c.structuredArgs) &&
 		c.cachedStructured == c.renderStructuredArgs &&
 		c.cachedTheme == ActiveTheme() {
@@ -613,6 +651,7 @@ func (c *ToolExecutionComponent) saveCachedRender(width int, lines []string) {
 	c.cachedWidth = width
 	c.cachedIsPartial = c.IsPartial
 	c.cachedArgsPreview = c.ArgsPreview
+	c.cachedHeaderBody = c.headerBody()
 	c.cachedStructuredArgs = string(c.structuredArgs)
 	c.cachedStructured = c.renderStructuredArgs
 	c.cachedLines = lines
@@ -680,7 +719,7 @@ func (c *ToolExecutionComponent) renderHeaderInner(width int) string {
 	if c.renderStructuredArgs {
 		return c.renderStructuredArgsHeader(width)
 	}
-	body := c.ArgsPreview
+	body := c.headerBody()
 	if body == "" {
 		// Fallback: bold toolTitle tool name, matching upstream
 		// tool-execution.ts:136 default renderCall.
@@ -1161,6 +1200,26 @@ func FormatBuiltinToolHeader(toolName string, args json.RawMessage, cwd string) 
 		return FormatLsHeader(args, cwd)
 	}
 	return ""
+}
+
+// headerBody is the call header: upstream read.ts renderCall draws the
+// compact label unless the tool output is expanded, and a result alone never
+// expands the card.
+func (c *ToolExecutionComponent) headerBody() string {
+	if c.compactHeader != "" && (!c.userToggled || c.Collapsed) {
+		return c.compactHeader
+	}
+	return c.ArgsPreview
+}
+
+// SetHeaderArgs records the call arguments the collapsed read card's
+// compact label is drawn from.
+func (c *ToolExecutionComponent) SetHeaderArgs(args json.RawMessage) {
+	c.compactHeader = ""
+	if c.Name == "read" {
+		c.compactHeader = FormatCompactReadHeader(args, c.Cwd)
+	}
+	c.Invalidate()
 }
 
 // HeaderForTool returns the fully styled call header for any tool: the

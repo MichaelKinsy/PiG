@@ -52,6 +52,8 @@ type UIBridge struct {
 	terminalInputSubs map[string]func()
 	// terminalCapabilities reports the host terminal's resolved capabilities.
 	terminalCapabilities func() TerminalCapabilitiesPayload
+	// theme reports the host's active theme palette for the state snapshot.
+	theme func() any
 
 	uiCtx            extension.UIContext
 	uiReady          bool
@@ -364,6 +366,7 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	actions := b.actions
 	uiCtx := b.uiCtx
 	terminalCapabilities := b.terminalCapabilities
+	theme := b.theme
 	b.mu.RUnlock()
 
 	// Defaults mirror the upstream runner's unbound defaults: idle, has UI, and
@@ -378,6 +381,9 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	if terminalCapabilities != nil {
 		caps := terminalCapabilities()
 		state.TerminalCapabilities = &caps
+	}
+	if theme != nil {
+		state.Theme = theme()
 	}
 	if ui := uiCtx; ui != nil {
 		state.EditorText = ui.GetEditorText()
@@ -478,6 +484,14 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 		}
 	}
 	return state
+}
+
+// SetThemeFunc registers the source of the host's active theme palette,
+// which every state snapshot carries.
+func (b *UIBridge) SetThemeFunc(fn func() any) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.theme = fn
 }
 
 // SetTerminalCapabilitiesFunc registers the source of the host terminal's

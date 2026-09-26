@@ -94,6 +94,11 @@ auth.json
 !parity/scenarios/project-trust/testdata/project-*/.pig/**
 !parity/scenarios/project-trust/testdata/project-*/.pi/
 !parity/scenarios/project-trust/testdata/project-*/.pi/**
+# Exception: the extension load-order scenario's fixture project holds project
+# settings and an auto-discovered extension under .pig/; they hold no
+# credentials.
+!parity/scenarios/extensions-runtime/testdata/load-order/project/.pig/
+!parity/scenarios/extensions-runtime/testdata/load-order/project/.pig/**
 # Exception: this named fixture directory represents the Session target cwd. It
 # is source data, not Rust build output.
 !parity/scenarios/project-trust/testdata/session-target-cwd/target/

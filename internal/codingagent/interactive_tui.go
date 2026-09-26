@@ -90,8 +90,9 @@ func fullscreenTuiOptions() tui.TuiAltScreenOptions {
 // it as the second caller, which is why the construction lives here rather
 // than inline in Run. Mirrors upstream init's createChatViewport call.
 func (m *InteractiveMode) buildChatViewport() ChatViewport {
+	m.ensureLoadedResourcesContainer()
 	return CreateChatViewport(ChatViewportOptions{
-		Document:            tui.NewContainer(m.extHeader, m.chatContainer),
+		Document:            tui.NewContainer(m.extHeader, m.loadedResourcesContainer, m.chatContainer),
 		PendingMessages:     m.pendingMessagesContainer,
 		Status:              m.statusContainer,
 		WidgetsAbove:        m.widgetContainer,
@@ -103,10 +104,20 @@ func (m *InteractiveMode) buildChatViewport() ChatViewport {
 	})
 }
 
+// ensureLoadedResourcesContainer creates the loaded-resources container for a
+// mode assembled without Run.
+func (m *InteractiveMode) ensureLoadedResourcesContainer() {
+	if m.loadedResourcesContainer == nil {
+		m.loadedResourcesContainer = tui.NewContainer()
+	}
+}
+
 // mountInteractiveTui builds and paints the mode-appropriate layout from the shared component tree. Fullscreen arranges the transcript scroll view over the dock and enters the alt screen; regular adds the flat layout to the main screen. The initial paint does not depend on a welcome header or input. Run and live tui-mode switching reuse the same containers across renderer mounts.
 func (m *InteractiveMode) mountInteractiveTui() {
+	m.ensureLoadedResourcesContainer()
 	layoutChildren := []tui.Component{
 		m.extHeader,
+		m.loadedResourcesContainer,
 		m.chatContainer,
 		m.pendingMessagesContainer,
 		m.statusContainer,

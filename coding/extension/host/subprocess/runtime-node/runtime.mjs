@@ -7,6 +7,7 @@ import { AsyncLocalStorage } from "node:async_hooks";
 import { setRuntime } from "./state.mjs";
 import { getKeybindings, isFocusable } from "./shims/pi-tui.mjs";
 import { setCapabilities as setTerminalCapabilities } from "./shims/pi-dist/pi-tui/terminal-image.js";
+import { loadAllHighlightLanguages } from "./shims/pi-dist/pi-coding-agent/utils/syntax-highlight.js";
 
 const USER_BLOCKING_CALLS = new Set(["ui.select", "ui.confirm", "ui.input", "ui.editor", "ui.custom"]);
 const MAX_FRAME_SIZE = 128 * 1024 * 1024;
@@ -128,14 +129,23 @@ class RuntimeModelRegistry {
   }
 }
 
-class ThemeShim {
+export class ThemeShim {
   constructor() {
     this.foregrounds = {};
     this.backgrounds = {};
+    // Upstream's bold, italic, underline, inverse and strikethrough are chalk
+    // styles, which chalk drops when the host's stdout has no color support.
+    this.modifiers = true;
   }
   setPalette(palette = {}) {
     this.foregrounds = palette.foregrounds && typeof palette.foregrounds === "object" ? palette.foregrounds : {};
     this.backgrounds = palette.backgrounds && typeof palette.backgrounds === "object" ? palette.backgrounds : {};
+    this.modifiers = palette.modifiers !== false;
+    this.mode = palette.mode === "256color" ? "256color" : "truecolor";
+  }
+  style(open, close, text) {
+    const value = String(text ?? "");
+    return this.modifiers ? `${open}${value}${close}` : value;
   }
   fg(token, text) {
     const value = String(text ?? "");
@@ -147,13 +157,30 @@ class ThemeShim {
     const open = this.backgrounds[token] || "";
     return open ? `${open}${value}\x1b[49m` : value;
   }
-  bold(text) { return `\x1b[1m${String(text ?? "")}\x1b[22m`; }
+  bold(text) { return this.style("\x1b[1m", "\x1b[22m", text); }
   dim(text) { return `\x1b[2m${String(text ?? "")}\x1b[22m`; }
-  italic(text) { return `\x1b[3m${String(text ?? "")}\x1b[23m`; }
-  underline(text) { return `\x1b[4m${String(text ?? "")}\x1b[24m`; }
-  inverse(text) { return `\x1b[7m${String(text ?? "")}\x1b[27m`; }
-  strikethrough(text) { return `\x1b[9m${String(text ?? "")}\x1b[29m`; }
-  getBashModeBorderColor() { return (text) => String(text ?? ""); }
+  italic(text) { return this.style("\x1b[3m", "\x1b[23m", text); }
+  underline(text) { return this.style("\x1b[4m", "\x1b[24m", text); }
+  inverse(text) { return this.style("\x1b[7m", "\x1b[27m", text); }
+  strikethrough(text) { return this.style("\x1b[9m", "\x1b[29m", text); }
+  // Upstream Theme.getFgAnsi, getBgAnsi, getColorMode, getThinkingBorderColor
+  // and getBashModeBorderColor over the host's palette.
+  getFgAnsi(color) {
+    const ansi = this.foregrounds[color];
+    if (!ansi) throw new Error(`Unknown theme color: ${color}`);
+    return ansi;
+  }
+  getBgAnsi(color) {
+    const ansi = this.backgrounds[color];
+    if (!ansi) throw new Error(`Unknown theme background color: ${color}`);
+    return ansi;
+  }
+  getColorMode() { return this.mode ?? "truecolor"; }
+  getThinkingBorderColor(level) {
+    const token = { off: "thinkingOff", minimal: "thinkingMinimal", low: "thinkingLow", medium: "thinkingMedium", high: "thinkingHigh", xhigh: "thinkingXhigh", max: "thinkingMax" }[level] ?? "thinkingOff";
+    return (text) => this.fg(token, text);
+  }
+  getBashModeBorderColor() { return (text) => this.fg("bashMode", text); }
 }
 
 class Connection {
@@ -677,6 +704,10 @@ export class Runtime {
     this.oauthProviders = new Map();
     this.renderers = new Map();
     this.entryRenderers = new Map();
+    // Upstream ToolExecutionComponent keeps one renderer state per tool card,
+    // shared by renderCall and renderResult, and each renderer's last
+    // component. The host names the card and releases it when the card is gone.
+    this.toolRenderCards = new Map();
     this.modelStreams = new Map();
     this.models = new Map();
     this.nextModelStreamId = 1;
@@ -839,11 +870,15 @@ export class Runtime {
           prompt_guidelines: tool.promptGuidelines,
           annotations: tool.annotations,
           source: tool.source,
+          render_shell: tool.renderShell === "self" ? "self" : undefined,
+          renders_call: typeof tool.renderCall === "function" || undefined,
+          renders_result: typeof tool.renderResult === "function" || undefined,
         })),
         commands: [...this.commands.values()].map((cmd) => ({
           name: cmd.name,
           description: cmd.description || "",
           args: cmd.args,
+          argument_completions: typeof cmd.getArgumentCompletions === "function" || undefined,
         })),
         shortcuts: [...this.shortcuts.values()].map((s) => ({ key: s.key, description: s.description || "" })),
         handlers: [...this.handlers.entries()].flatMap(([event, handlers]) =>
@@ -879,6 +914,10 @@ export class Runtime {
           this.ctx.mode = this.ready.mode || this.ctx.mode;
           this.ctx.model = this.ready.model ? { id: this.ready.model } : this.ctx.model;
           if (env.ready?.state) this.applyState(env.ready.state);
+          // Pi's interactive mode loads every highlight.js language at
+          // startup (interactive-mode.ts); print, JSON and RPC mode keep the
+          // eager set.
+          if (this.ctx.mode === "tui") void loadAllHighlightLanguages();
           continue;
         }
         if (env.type === "ping") {
@@ -1082,6 +1121,9 @@ export class Runtime {
     // Pi's TUI and its extensions share one capability cache; here the host
     // owns the terminal, so its resolved capabilities seed the cache pi-tui's
     // Markdown reads.
+    // The host's active theme colors ctx.ui.theme and the pi-coding-agent
+    // theme helpers, as Pi's global theme does in its own process.
+    if (snapshot.theme && typeof snapshot.theme === "object") this.ui.theme.setPalette(snapshot.theme);
     const caps = snapshot.terminalCapabilities;
     if (caps && typeof caps === "object") {
       setTerminalCapabilities({ images: caps.images || null, trueColor: caps.trueColor === true, hyperlinks: caps.hyperlinks === true });
@@ -1622,6 +1664,16 @@ export class Runtime {
 
   handleNotify(notify) {
     switch (notify.method) {
+      case "tool_render_release": {
+        let args = notify.args;
+        try {
+          if (typeof args === "string") args = JSON.parse(args);
+        } catch {
+          return;
+        }
+        this.toolRenderCards.delete(args?.card);
+        return;
+      }
       case "model_registry_update": {
         let args = notify.args;
         if (typeof args === "string") args = JSON.parse(args);
@@ -1802,6 +1854,13 @@ export class Runtime {
           await this.respond(id, this.normalizeToolResult(result));
           return;
         }
+        case "command_argument_completions": {
+          const cmd = this.commands.get(request.tool);
+          if (typeof cmd?.getArgumentCompletions !== "function") throw new Error(`command ${request.tool} has no getArgumentCompletions`);
+          const items = await cmd.getArgumentCompletions(request.args ?? "");
+          await this.respond(id, Array.isArray(items) ? items : null);
+          return;
+        }
         case "command": {
           const cmd = this.commands.get(request.tool);
           if (!cmd) throw new Error(`unknown command: ${request.tool}`);
@@ -1877,6 +1936,41 @@ export class Runtime {
           const payload = request.args || {};
           const component = await handler(payload.entry, payload.options, this.ui.theme);
           const lines = Array.isArray(component) ? component : component?.render?.(payload.width);
+          await this.respond(id, { lines: Array.isArray(lines) ? lines : [] });
+          return;
+        }
+        case "render_tool": {
+          const tool = this.tools.get(request.tool);
+          const payload = request.args || {};
+          const isResult = payload.phase === "result";
+          const renderer = isResult ? tool?.renderResult : tool?.renderCall;
+          if (typeof renderer !== "function") throw new Error(`tool ${request.tool} has no ${isResult ? "renderResult" : "renderCall"}`);
+          let card = this.toolRenderCards.get(payload.card);
+          if (!card) {
+            card = { state: {}, call: undefined, result: undefined };
+            this.toolRenderCards.set(payload.card, card);
+          }
+          const phase = isResult ? "result" : "call";
+          let component = card[phase];
+          if (payload.rerender || component === undefined) {
+            const context = {
+              ...(payload.context || {}),
+              args: payload.args,
+              invalidate: () => this.notify("tool_render_invalidate", { card: payload.card }),
+              lastComponent: component,
+              state: card.state,
+            };
+            try {
+              component = isResult
+                ? renderer({ content: payload.result?.content ?? [], details: payload.result?.details }, payload.options ?? {}, this.ui.theme, context)
+                : renderer(payload.args, this.ui.theme, context);
+            } catch (err) {
+              card[phase] = undefined;
+              throw err;
+            }
+            card[phase] = component;
+          }
+          const lines = component?.render?.(payload.width);
           await this.respond(id, { lines: Array.isArray(lines) ? lines : [] });
           return;
         }

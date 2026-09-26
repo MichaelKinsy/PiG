@@ -134,15 +134,28 @@ func discover(root string, manifest *packageManifest, plugin *pluginManifest) Re
 		}
 		return entries
 	}
-	skillEntries := coalesceEntries(manifestEntries(manifest, Skills), pluginEntries(plugin, Skills))
+	// A "pi" manifest's Pi kinds come only from its entries (upstream
+	// collectPackageResources, addManifestEntries): a kind it does not
+	// declare loads nothing unless plugin metadata declares it.
+	piEntries := func(kind Kind) *[]string {
+		entries := coalesceEntries(manifestEntries(manifest, kind), pluginEntries(plugin, kind))
+		if entries == nil && manifest != nil && manifest.PI != nil {
+			return &[]string{}
+		}
+		return entries
+	}
+	skillEntries := piEntries(Skills)
 	if plugin != nil && plugin.AgentPlugins {
 		skillEntries = manifestEntries(manifest, Skills)
+		if skillEntries == nil && manifest != nil && manifest.PI != nil {
+			skillEntries = &[]string{}
+		}
 	}
 	resources := Resources{
-		PromptFiles:       collectManifestResources(root, Prompts, coalesceEntries(manifestEntries(manifest, Prompts), pluginEntries(plugin, Prompts))),
-		ThemeFiles:        collectManifestResources(root, Themes, coalesceEntries(manifestEntries(manifest, Themes), pluginEntries(plugin, Themes))),
+		PromptFiles:       collectManifestResources(root, Prompts, piEntries(Prompts)),
+		ThemeFiles:        collectManifestResources(root, Themes, piEntries(Themes)),
 		SkillDirs:         collectManifestResources(root, Skills, skillEntries),
-		ExtensionEntries:  collectExtensionResources(root, coalesceEntries(manifestEntries(manifest, Extensions), pluginEntries(plugin, Extensions))),
+		ExtensionEntries:  collectExtensionResources(root, piEntries(Extensions)),
 		AgentFiles:        collectManifestResources(root, Agents, pluginEntries(plugin, Agents)),
 		MCPFiles:          collectMCPResources(root, pigEntries(MCP)),
 		HookFiles:         collectManifestResources(root, Hooks, pigEntries(Hooks)),
@@ -1735,6 +1748,13 @@ func Deduplicate(values []string) []string {
 	return out
 }
 
+// HasPiManifest reports whether root's package.json has a "pi" object, which
+// makes upstream resolve root as a Package (readPiManifest).
+func HasPiManifest(root string) bool {
+	manifest := readPackageManifest(root)
+	return manifest != nil && manifest.PI != nil
+}
+
 func readPackageManifest(root string) *packageManifest {
 	data, err := os.ReadFile(filepath.Join(root, "package.json"))
 	if err != nil {
@@ -2093,18 +2113,20 @@ func discoverExtensionEntries(dir string) []string {
 	return paths
 }
 
+// resolveExtensionEntries is upstream's resolveExtensionEntries: each
+// existing entry a Pi manifest declares is its own extension, else index.ts,
+// else index.js. A manifest that declares only missing entries, with no index,
+// contributes nothing. A directory with another language's or PiG's
+// conventional source loads as one extension that source.Resolve classifies.
 func resolveExtensionEntries(dir string) []string {
 	if dir == "" {
 		return nil
 	}
-	if _, err := os.Stat(filepath.Join(dir, "package.json")); err == nil {
-		return []string{dir}
+	if entries := extsource.NodeRootEntries(dir); len(entries) > 0 {
+		return entries
 	}
-	for _, name := range []string{"index.ts", "index.js"} {
-		candidate := filepath.Join(dir, name)
-		if _, err := os.Stat(candidate); err == nil {
-			return []string{candidate}
-		}
+	if extsource.NodeDeclaresExtensions(dir) {
+		return nil
 	}
 	if hasBuildFile(dir) {
 		return []string{dir}

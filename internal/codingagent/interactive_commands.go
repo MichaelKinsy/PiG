@@ -126,10 +126,7 @@ func (m *InteractiveMode) buildAutocompleteProvider() tui.AutocompleteProvider {
 	// Add extension commands to autocomplete so they are discoverable by typing /.
 	if m.newRunner != nil {
 		for _, rc := range m.newRunner.Commands() {
-			cmds = append(cmds, tui.SlashCommand{
-				Name:        strings.TrimPrefix(rc.InvocationName, "/"),
-				Description: rc.Description,
-			})
+			cmds = append(cmds, m.extensionCommandSlashEntry(rc))
 		}
 	}
 
@@ -883,11 +880,9 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 						fmt.Fprintf(os.Stderr, "theme reload: %v\n", err)
 					}
 				}
-				for _, themePath := range m.opts.ThemePaths {
-					if err := loadThemePath(registry, themePath); err != nil {
-						fmt.Fprintf(os.Stderr, "theme reload: %v\n", err)
-					}
-				}
+				loadThemePaths(registry, m.opts.ThemePaths, func(err error) {
+					fmt.Fprintf(os.Stderr, "theme reload: %v\n", err)
+				})
 			}
 
 			// 8b. Mirrors upstream applyRuntimeSettings after reload:
@@ -896,6 +891,10 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 				tui.SetCapabilityOverrides(m.opts.SettingsManager.GetTerminalCapabilityOverrides())
 			}
 			tui.RefreshActiveThemeColorMode()
+
+			// 8c. Upstream rebuilds the loaded-resources listing from the
+			//     reloaded resources (showLoadedResources after reload).
+			m.showLoadedResources(false)
 
 			// 9. Rebuild autocomplete (may have new slash commands from
 			//    reloaded extensions).

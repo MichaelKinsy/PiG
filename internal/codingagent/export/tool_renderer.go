@@ -2,7 +2,9 @@ package export
 
 import (
 	"encoding/json"
+	"strconv"
 	"strings"
+	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -29,6 +31,10 @@ type toolHTMLRenderer struct {
 	renderedResult   map[string]any
 	renderedState    map[string]any
 	renderedArgsJSON map[string]json.RawMessage
+	// cardPrefix names this export's renderer cards in extension processes.
+	cardPrefix string
+	// unresponsive are tools whose extension did not answer a render.
+	unresponsive map[string]bool
 }
 
 func newToolHTMLRenderer(tools []extension.RegisteredTool, cwd string, width int) *toolHTMLRenderer {
@@ -47,8 +53,12 @@ func newToolHTMLRenderer(tools []extension.RegisteredTool, cwd string, width int
 		renderedResult:   map[string]any{},
 		renderedState:    map[string]any{},
 		renderedArgsJSON: map[string]json.RawMessage{},
+		cardPrefix:       "export-" + strconv.FormatUint(exportCardSeq.Add(1), 10) + "-",
+		unresponsive:     map[string]bool{},
 	}
 }
+
+var exportCardSeq atomic.Uint64
 
 func (r *toolHTMLRenderer) getState(toolCallID string) any {
 	if state, ok := r.renderedState[toolCallID]; ok {
@@ -73,6 +83,7 @@ func (r *toolHTMLRenderer) renderContext(toolCallID string, lastComponent any, e
 		Expanded:         expanded,
 		ShowImages:       false,
 		IsError:          isError,
+		Card:             r.cardPrefix + toolCallID,
 	}
 }
 
@@ -92,47 +103,86 @@ func trimRenderedResultLines(lines []string) []string {
 	return lines[start:end]
 }
 
-func renderComponentHTML(component any, width int) string {
-	renderable, ok := component.(renderableComponent)
-	if !ok || renderable == nil {
-		return ""
-	}
-	return ansiLinesToHTML(renderable.Render(width))
+// synchronousRenderer is a component an extension process renders: the
+// export asks it for its frame and waits, as upstream calls the renderer and
+// renders the component in one step.
+type synchronousRenderer interface {
+	RenderNow(width int) (lines []string, failed, answered bool)
 }
 
-func (r *toolHTMLRenderer) renderCall(toolCallID, toolName string, argsJSON json.RawMessage) string {
+// componentLines renders a renderer's component at width. ok is false when
+// the renderer threw or its extension did not answer, which upstream's
+// try/catch turns into the default tool rendering.
+func (r *toolHTMLRenderer) componentLines(toolName string, component any) (lines []string, ok bool) {
+	if remote, isRemote := component.(synchronousRenderer); isRemote {
+		if r.unresponsive[toolName] {
+			return nil, false
+		}
+		lines, failed, answered := remote.RenderNow(r.width)
+		if !answered {
+			// A renderer that exceeded the inactivity boundary is not asked
+			// again during this export, so one stalled extension costs one
+			// boundary rather than one per tool call.
+			r.unresponsive[toolName] = true
+		}
+		return lines, answered && !failed
+	}
+	renderable, isRenderable := component.(renderableComponent)
+	if !isRenderable || renderable == nil {
+		return nil, false
+	}
+	return renderable.Render(r.width), true
+}
+
+func (r *toolHTMLRenderer) renderCall(toolCallID, toolName string, argsJSON json.RawMessage) (html string) {
 	def, ok := r.defs[toolName]
 	if !ok || def.RenderCall == nil {
 		return ""
 	}
+	defer func() {
+		// upstream: packages/coding-agent/src/core/export-html/tool-renderer.ts:renderCall
+		if recover() != nil {
+			html = ""
+		}
+	}()
 	r.renderedArgsJSON[toolCallID] = argsJSON
 	component := def.RenderCall(argsJSON, tui.ActiveTheme(), r.renderContext(toolCallID, r.renderedCall[toolCallID], false, true, false))
 	r.renderedCall[toolCallID] = component
-	return renderComponentHTML(component, r.width)
+	lines, ok := r.componentLines(toolName, component)
+	if !ok {
+		return ""
+	}
+	return ansiLinesToHTML(lines)
 }
 
-func (r *toolHTMLRenderer) renderResult(toolCallID, toolName string, result agent.AgentToolResult) renderedToolHTML {
+func (r *toolHTMLRenderer) renderResult(toolCallID, toolName string, result agent.AgentToolResult) (out renderedToolHTML) {
 	def, ok := r.defs[toolName]
 	if !ok || def.RenderResult == nil {
 		return renderedToolHTML{}
 	}
+	defer func() {
+		// upstream: packages/coding-agent/src/core/export-html/tool-renderer.ts:renderResult
+		if recover() != nil {
+			out = renderedToolHTML{}
+		}
+	}()
 	collapsedComponent := def.RenderResult(result, extension.ToolRenderResultOptions{Expanded: false, IsPartial: false}, tui.ActiveTheme(), r.renderContext(toolCallID, r.renderedResult[toolCallID], false, false, result.IsError))
 	r.renderedResult[toolCallID] = collapsedComponent
-	collapsedRenderable, _ := collapsedComponent.(renderableComponent)
-	collapsed := ""
-	if collapsedRenderable != nil {
-		collapsed = ansiLinesToHTML(trimRenderedResultLines(collapsedRenderable.Render(r.width)))
+	collapsedLines, ok := r.componentLines(toolName, collapsedComponent)
+	if !ok {
+		return renderedToolHTML{}
 	}
+	collapsed := ansiLinesToHTML(trimRenderedResultLines(collapsedLines))
 
 	expandedComponent := def.RenderResult(result, extension.ToolRenderResultOptions{Expanded: true, IsPartial: false}, tui.ActiveTheme(), r.renderContext(toolCallID, r.renderedResult[toolCallID], true, false, result.IsError))
 	r.renderedResult[toolCallID] = expandedComponent
-	expandedRenderable, _ := expandedComponent.(renderableComponent)
-	expanded := ""
-	if expandedRenderable != nil {
-		expanded = ansiLinesToHTML(trimRenderedResultLines(expandedRenderable.Render(r.width)))
+	expandedLines, ok := r.componentLines(toolName, expandedComponent)
+	if !ok {
+		return renderedToolHTML{}
 	}
+	expanded := ansiLinesToHTML(trimRenderedResultLines(expandedLines))
 
-	out := renderedToolHTML{ResultHTMLExpanded: expanded}
+	out = renderedToolHTML{ResultHTMLExpanded: expanded}
 	if collapsed != "" && collapsed != expanded {
 		out.ResultHTMLCollapsed = collapsed
 	}

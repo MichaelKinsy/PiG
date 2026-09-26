@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // pinnedPiPackages is where `npm ci` in extensions/sdk-ts installs the Pi
@@ -161,6 +162,13 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		if rel == "pi-ai/utils/validation.js" {
 			rewrites = append(rewrites, vendoredValidationRewrites...)
 		}
+		if rel == "pi-coding-agent/utils/syntax-highlight.js" {
+			// Every highlight.js specifier points at the vendored package.
+			if !bytes.Contains(want, []byte(`"highlight.js/lib/core.js"`)) {
+				t.Errorf("pinned %s no longer imports highlight.js/lib/core.js: update automation/gen/vendor-pi-dist.sh", rel)
+			}
+			want = bytes.ReplaceAll(want, []byte(`"highlight.js/lib/`), []byte(`"../../../highlight.js/lib/`))
+		}
 		for _, rw := range rewrites {
 			line := []byte(rw[0] + "\n")
 			if !bytes.Contains(want, line) {
@@ -214,11 +222,28 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("read the pinned yaml build (run npm ci in extensions/sdk-ts): %v", err)
 	}
+	hljs := filepath.Join(nodeModules, "highlight.js")
+	hljsFiles := map[string]string{
+		"package.json": filepath.Join(hljs, "package.json"),
+		"LICENSE":      filepath.Join(hljs, "LICENSE"),
+	}
+	hljsLib := filepath.Join(hljs, "lib")
+	if err := filepath.WalkDir(hljsLib, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() {
+			return err
+		}
+		rel, err := filepath.Rel(hljsLib, path)
+		hljsFiles[filepath.ToSlash(filepath.Join("lib", rel))] = path
+		return err
+	}); err != nil {
+		t.Fatalf("read the pinned highlight.js (run npm ci in extensions/sdk-ts): %v", err)
+	}
 	marked := filepath.Join(nodeModules, "marked")
 	eaw := filepath.Join(nodeModules, "get-east-asian-width")
 	partial := filepath.Join(nodeModules, "partial-json")
 	for dir, files := range map[string]map[string]string{
-		"yaml": yamlFiles,
+		"yaml":         yamlFiles,
+		"highlight.js": hljsFiles,
 		"get-east-asian-width": {
 			"index.js": filepath.Join(eaw, "index.js"), "lookup.js": filepath.Join(eaw, "lookup.js"),
 			"lookup-data.js": filepath.Join(eaw, "lookup-data.js"), "utilities.js": filepath.Join(eaw, "utilities.js"),
@@ -533,5 +558,62 @@ async function scene(m) {
 }
 const want = await scene(pi), got = await scene(pig);
 if (want !== got) { console.log("pinned: " + want + "\npig:    " + got); process.exit(1); }
+`)
+}
+
+// The pi-coding-agent theme helpers color text as Pi's do for the same
+// theme: Pi 0.87.1's own theme and keybinding-hints modules against the shim
+// with ctx.ui.theme carrying PiG's dark theme palette, as the host sends it.
+func TestPiThemeHelpersMatchThePinnedPackage(t *testing.T) {
+	dark, err := tui.LoadBuiltinTheme("dark")
+	if err != nil {
+		t.Fatal(err)
+	}
+	foregrounds, backgrounds := dark.ANSIPalette()
+	palette, err := json.Marshal(map[string]any{"name": "dark", "foregrounds": foregrounds, "backgrounds": backgrounds, "modifiers": true, "mode": "truecolor"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("FORCE_COLOR", "3")
+	t.Setenv("COLORTERM", "truecolor")
+	t.Setenv("PIG_TEST_THEME_PALETTE", string(palette))
+	runPinnedComparison(t, []string{"dist", "modes", "interactive", "theme", "theme.js"}, "pi-coding-agent.mjs", `
+import assert from "node:assert/strict";
+const [piTheme, pig] = await Promise.all([import(process.argv[1]), import(process.argv[2])]);
+const piHints = await import(new URL("../components/keybinding-hints.js", process.argv[1]).href);
+const { ThemeShim } = await import(new URL("../runtime.mjs", process.argv[2]).href);
+const { setRuntime } = await import(new URL("../state.mjs", process.argv[2]).href);
+const shim = new ThemeShim();
+shim.setPalette(JSON.parse(process.env.PIG_TEST_THEME_PALETTE));
+setRuntime({ ui: { theme: shim } });
+piTheme.initTheme("dark");
+function scene(m, hints) {
+  const select = m.getSelectListTheme();
+  const settings = m.getSettingsListTheme();
+  const markdown = m.getMarkdownTheme();
+  return [
+    select.selectedPrefix("→ "), select.selectedText("item"), select.description("desc"), select.scrollInfo("(1/3)"), select.noMatch("none"),
+    settings.label("label", true), settings.label("label", false), settings.value("v", true), settings.value("v", false),
+    settings.description("d"), settings.cursor, settings.hint("h"),
+    markdown.heading("H"), markdown.link("l"), markdown.linkUrl("u"), markdown.code("c"), markdown.codeBlock("cb"),
+    markdown.codeBlockBorder("b"), markdown.quote("q"), markdown.quoteBorder("|"), markdown.hr("-"), markdown.listBullet("*"),
+    markdown.bold("b"), markdown.italic("i"), markdown.underline("u"), markdown.strikethrough("s"),
+    markdown.highlightCode("const x = 1; // note\nfunction f(a) { return \"s\" + a; }", "javascript"),
+    markdown.highlightCode("plain text", undefined),
+    m.highlightCode("def f(x):\n    return x * 2  # twice", "python"),
+    m.highlightCode("no language", "not-a-language"),
+    hints.keyText("tui.select.confirm"), hints.keyText("tui.select.cancel"),
+    hints.keyHint("tui.select.confirm", "to select"), hints.rawKeyHint("ctrl+x", "to cut"),
+  ];
+}
+function themeScene(t) {
+  return [t.fg("accent", "a"), t.bg("selectedBg", "b"), t.bold("c"), t.italic("d"), t.underline("e"), t.inverse("f"), t.strikethrough("g"),
+    t.getFgAnsi("borderMuted"), t.getBgAnsi("toolPendingBg"), t.getColorMode(),
+    t.getThinkingBorderColor("high")("h"), t.getThinkingBorderColor("unknown")("i"), t.getBashModeBorderColor()("j")];
+}
+assert.deepEqual(themeScene(shim), themeScene(piTheme.theme));
+const got = scene(pig, pig);
+if (!got.some((v) => JSON.stringify(v).includes("\\u001b[38;2;"))) throw new Error("theme helpers drew no truecolor text: " + JSON.stringify(got).slice(0, 300));
+assert.deepEqual(got, scene(piTheme, piHints));
 `)
 }

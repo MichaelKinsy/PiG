@@ -492,6 +492,10 @@ type managedExt struct {
 	releaseLiveness       func()               // Releases heartbeat ownership for live provider state.
 	livenessOwnerMu       sync.Mutex
 	cacheLease            *runtimecell.UsageLease
+
+	// toolRenders routes this extension's renderer invalidations to the
+	// tool cards whose renderers it runs.
+	toolRenders toolRenderSessions
 }
 
 func (me *managedExt) releaseLivenessOwner() {
@@ -2070,31 +2074,40 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 		if source == "" {
 			source = me.config.Name // default: extension name (matches upstream sourceInfo stamping)
 		}
-		ext.Tools[td.Name] = extension.RegisteredTool{
-			Definition: extension.ToolDefinition{
-				Name:                tool.Name,
-				Label:               tool.Label,
-				Description:         tool.Description,
-				Parameters:          tool.Parameters,
-				ConstrainedSampling: tool.ConstrainedSampling,
-				PromptGuidelines:    tool.PromptGuidelines,
-				ExecutionMode:       extension.ToolExecutionMode(tool.ExecutionMode),
-				Execute:             h.makeToolExecuteFunc(me, tool.Name),
-			},
-			SourceInfo: source,
+		definition := extension.ToolDefinition{
+			Name:                tool.Name,
+			Label:               tool.Label,
+			Description:         tool.Description,
+			Parameters:          tool.Parameters,
+			ConstrainedSampling: tool.ConstrainedSampling,
+			PromptGuidelines:    tool.PromptGuidelines,
+			ExecutionMode:       extension.ToolExecutionMode(tool.ExecutionMode),
+			RenderShell:         extension.ToolRenderShell(tool.RenderShell),
+			Execute:             h.makeToolExecuteFunc(me, tool.Name),
 		}
+		if tool.RendersCall {
+			definition.RenderCall = h.makeToolRenderCall(me, tool.Name)
+		}
+		if tool.RendersResult {
+			definition.RenderResult = h.makeToolRenderResult(me, tool.Name)
+		}
+		ext.Tools[td.Name] = extension.RegisteredTool{Definition: definition, SourceInfo: source}
 		ext.ToolOrder = append(ext.ToolOrder, td.Name)
 	}
 
 	// Build commands.
 	for _, cd := range reg.Commands {
 		cmd := cd // capture
-		ext.Commands[cd.Name] = extension.RegisteredCommand{
+		registered := extension.RegisteredCommand{
 			Name:        cmd.Name,
 			Description: cmd.Description,
 			SourceInfo:  ext.SourceInfo,
 			Handler:     h.makeCommandHandler(me, cmd.Name),
 		}
+		if cmd.ArgumentCompletions {
+			registered.GetArgumentCompletions = makeCommandArgumentCompletions(me, cmd.Name)
+		}
+		ext.Commands[cd.Name] = registered
 		ext.CommandOrder = append(ext.CommandOrder, cd.Name)
 	}
 
@@ -2339,6 +2352,41 @@ func (h *Host) makeCommandHandler(me *managedExt, cmdName string) extension.Comm
 	}
 }
 
+// makeCommandArgumentCompletions asks the extension for a command's
+// getArgumentCompletions. The caller runs it off the TUI loop, as upstream
+// awaits it.
+func makeCommandArgumentCompletions(me *managedExt, cmdName string) extension.ArgumentCompletionsFunc {
+	return func(prefix string) ([]extension.AutocompleteItem, error) {
+		if me.conn == nil {
+			return nil, errors.New("extension not connected")
+		}
+		args, err := json.Marshal(prefix)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := me.conn.Request(context.Background(), &Envelope{
+			Type:    MsgRequest,
+			Request: &RequestPayload{Method: RequestCommandArgumentCompletions, Tool: cmdName, Args: args},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("command %s argument completions: %w", cmdName, err)
+		}
+		if resp.Response == nil {
+			return nil, nil
+		}
+		if resp.Response.Error != nil {
+			return nil, resp.Response.Error.ToError()
+		}
+		var items []extension.AutocompleteItem
+		if len(resp.Response.Result) > 0 {
+			if err := json.Unmarshal(resp.Response.Result, &items); err != nil {
+				return nil, fmt.Errorf("command %s argument completions: %w", cmdName, err)
+			}
+		}
+		return items, nil
+	}
+}
+
 // makeShortcutHandler returns a ShortcutHandler that dispatches shortcuts
 // over the socket to the subprocess extension.
 func (h *Host) makeShortcutHandler(me *managedExt, key string) extension.ShortcutHandler {
@@ -2504,7 +2552,17 @@ func (h *Host) handleIncoming(me *managedExt) {
 			// host-side overlay surfaces (e.g. ui.custom). Errors
 			// are intentionally swallowed because the producer does
 			// not expect a response.
-			if env.Notify == nil || h.uiBridge == nil {
+			if env.Notify == nil {
+				continue
+			}
+			if env.Notify.Method == NotifyToolRenderInvalidate {
+				var card ToolRenderCardPayload
+				if json.Unmarshal(env.Notify.Args, &card) == nil {
+					me.toolRenders.invalidate(me.conn, card.Card)
+				}
+				continue
+			}
+			if h.uiBridge == nil {
 				continue
 			}
 			h.uiBridge.HandleNotifyFrom(me.config.Name, me.conn, env.Notify)

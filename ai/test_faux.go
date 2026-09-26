@@ -413,6 +413,14 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	if strings.Contains(lastText, "Run: extension UI dialogs") {
 		return "tool", "", []testFauxToolCall{{Name: "ui_dialog_probe", Args: map[string]any{}}}
 	}
+	if strings.Contains(lastText, "Run: extension render cards") {
+		return "tool", "", []testFauxToolCall{
+			{Name: "render_card", Args: map[string]any{"topic": "alpha"}},
+			{Name: "render_self", Args: map[string]any{"topic": "beta"}},
+			{Name: "render_throw", Args: map[string]any{"topic": "gamma"}},
+			{Name: "render_fail", Args: map[string]any{"topic": "delta"}},
+		}
+	}
 
 	// Extension tool_call blocker parity.
 	if strings.Contains(lastText, "Run: bash BLOCK_ME") {
@@ -436,6 +444,16 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		return "tool", "", []testFauxToolCall{
 			{Name: "read", Args: map[string]any{"path": ".pig-live-parallel-a"}},
 			{Name: "read", Args: map[string]any{"path": ".pig-live-parallel-b"}},
+		}
+	}
+
+	// Compact read labels: a skill file, a context file with a line range,
+	// and an ordinary file.
+	if strings.Contains(lastText, "Run: compact reads") {
+		return "tool", "", []testFauxToolCall{
+			{Name: "read", Args: map[string]any{"path": "skills/demo-skill/SKILL.md"}},
+			{Name: "read", Args: map[string]any{"path": "AGENTS.md", "offset": 2, "limit": 1}},
+			{Name: "read", Args: map[string]any{"path": "notes.txt"}},
 		}
 	}
 
@@ -548,6 +566,12 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 			}
 			return "error", "test-faux: extension details marker missing", nil
 		}
+		if strings.Contains(currentUserText, "Run: extension render cards") {
+			if strings.Contains(historyText, "done alpha") && strings.Contains(historyText, "cannot render delta") {
+				return "text", "render-cards-done", nil
+			}
+			return "error", "test-faux: render card results missing", nil
+		}
 		if strings.Contains(currentUserText, "Run: extension UI dialogs") {
 			for _, marker := range []string{"dialogs-ok:", "dialogs-cancelled:"} {
 				if strings.Contains(historyText, marker) {
@@ -591,6 +615,9 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}
 		if strings.Contains(currentUserText, "Run: parallel reads") {
 			return "text", "parallel-done", nil
+		}
+		if strings.Contains(currentUserText, "Run: compact reads") {
+			return "text", "compact-reads-done", nil
 		}
 		if strings.Contains(currentUserText, "Run: bash control-chars") {
 			return "text", "sanitized", nil

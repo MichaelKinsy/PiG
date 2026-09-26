@@ -351,3 +351,52 @@ func extractCSSVar(css, name string) string {
 	}
 	return ""
 }
+
+// remoteComponent stands in for a component an extension process renders.
+type remoteComponent struct {
+	lines    []string
+	answered bool
+	calls    *int
+}
+
+func (c remoteComponent) Render(int) []string { return nil }
+func (c remoteComponent) RenderNow(int) ([]string, bool, bool) {
+	*c.calls++
+	return c.lines, false, c.answered
+}
+
+// Upstream renders every registered renderer synchronously; the export asks
+// an extension-process component for its frame and waits. A renderer whose
+// extension does not answer leaves the default rendering and is not asked
+// again during the export.
+func TestRenderCustomTools_RendersExtensionProcessComponents(t *testing.T) {
+	entries := func(ids ...string) []json.RawMessage {
+		var out []json.RawMessage
+		for _, id := range ids {
+			out = append(out, mustRaw(map[string]any{"type": "message", "message": map[string]any{
+				"role": "assistant", "content": []any{map[string]any{"type": "toolCall", "id": id, "name": "remote", "arguments": map[string]any{}}},
+			}}))
+		}
+		return out
+	}
+	calls := 0
+	answered := true
+	tools := []extension.RegisteredTool{{Definition: extension.ToolDefinition{
+		Name: "remote",
+		RenderCall: func(json.RawMessage, extension.Theme, extension.ToolRenderContext) extension.Component {
+			return remoteComponent{lines: []string{"REMOTE CALL"}, answered: answered, calls: &calls}
+		},
+	}}}
+	sd := &SessionData{Entries: entries("call-1")}
+	RenderCustomTools(sd, tools, "/tmp", 80)
+	if html, _ := sd.RenderedTools["call-1"]["callHtml"].(string); !strings.Contains(html, "REMOTE CALL") {
+		t.Fatalf("callHtml = %q, want the extension's frame", html)
+	}
+
+	calls, answered = 0, false
+	sd = &SessionData{Entries: entries("call-1", "call-2")}
+	RenderCustomTools(sd, tools, "/tmp", 80)
+	if sd.RenderedTools != nil || calls != 1 {
+		t.Fatalf("unanswered renders: rendered %v after %d requests, want none after 1", sd.RenderedTools, calls)
+	}
+}

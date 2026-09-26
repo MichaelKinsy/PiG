@@ -920,12 +920,21 @@ func (e *Editor) Render(width int) []string {
 	end := min(e.scrollOffset+maxVis, len(visual))
 	visible := visual[e.scrollOffset:end]
 	e.renderedVisibleLineCount = len(visible)
-	if paddingX > 0 {
-		padding := strings.Repeat(" ", paddingX)
-		for i, line := range visible {
-			right := strings.Repeat(" ", max(0, contentWidth-widthx.VisibleWidth(line)))
-			visible[i] = padding + line + right + padding
+	// Mirrors upstream editor.ts render: every content row is padded to the
+	// content width, padding or not. The trailing cells matter beyond looks:
+	// compositeTuiLine keeps SGR codes only when a later cell follows them, so
+	// an unpadded row ending in the cursor's "\x1b[7m \x1b[0m" loses its reset
+	// under an overlay and paints the gap before the overlay inverse. A cursor
+	// appended past the content width sits in the right padding, which then
+	// gives up one cell.
+	padding := strings.Repeat(" ", paddingX)
+	for i, line := range visible {
+		lineWidth := widthx.VisibleWidth(line)
+		right := padding
+		if paddingX > 0 && lineWidth > contentWidth {
+			right = padding[1:]
 		}
+		visible[i] = padding + line + strings.Repeat(" ", max(0, contentWidth-lineWidth)) + right
 	}
 
 	// Render top border (with "↑ N more" indicator if scrolled down).
@@ -954,12 +963,8 @@ func (e *Editor) Render(width int) []string {
 	if len(e.autocompleteItems) > 0 {
 		autocomplete := e.renderAutocomplete(contentWidth)
 		e.renderedAutocompleteHeight = len(autocomplete)
-		if paddingX > 0 {
-			padding := strings.Repeat(" ", paddingX)
-			for i, line := range autocomplete {
-				right := strings.Repeat(" ", max(0, contentWidth-widthx.VisibleWidth(line)))
-				autocomplete[i] = padding + line + right + padding
-			}
+		for i, line := range autocomplete {
+			autocomplete[i] = padding + line + strings.Repeat(" ", max(0, contentWidth-widthx.VisibleWidth(line))) + padding
 		}
 		out = append(out, autocomplete...)
 	}
@@ -1301,6 +1306,15 @@ func (e *Editor) SetAutocomplete(p AutocompleteProvider) {
 	e.refreshAutocomplete()
 }
 
+// RefreshAutocomplete queries the provider again for the current buffer,
+// for a provider whose answer arrived after the keystroke that asked for it.
+func (e *Editor) RefreshAutocomplete() {
+	if e.autocomplete == nil {
+		return
+	}
+	e.refreshAutocomplete()
+}
+
 // AutocompleteOpen reports whether the popup is currently visible.
 // Used by the host (interactive.go) to gate Esc/Enter handling.
 func (e *Editor) AutocompleteOpen() bool { return len(e.autocompleteItems) > 0 }
@@ -1391,8 +1405,10 @@ func (e *Editor) AutocompleteAccept() (submit bool) {
 	e.lines = newLines
 	e.cursor = [2]int{nl, nc}
 	e.saveHistory()
-	// Slash-name prefix → submit. Anything else (arg completion) → no submit.
-	isSlashName := strings.HasPrefix(prefix, "/") && !strings.ContainsAny(prefix, " \t")
+	// A prefix that starts with "/" falls through to submit; anything else
+	// (an argument completion) does not (upstream editor.ts
+	// tui.select.confirm).
+	isSlashName := strings.HasPrefix(prefix, "/")
 	e.autocompleteItems = nil
 	e.autocompleteCursor = 0
 	e.autocompletePrefix = ""

@@ -145,29 +145,12 @@ func (m *InteractiveMode) runInputHandlers(ctx context.Context, text string, ima
 	return RunInputHandlers(ctx, m.newRunner, text, images, source, behavior)
 }
 
-// runPromptTurnWithImages renders the user message and starts a turn for
-// prompt, which input handlers and expansion have already processed.
+// runPromptTurnWithImages starts a turn for prompt, which input handlers and
+// expansion have already processed. The user message renders from the agent's
+// message_start event, as upstream interactive mode renders it: output that
+// the caller, a compaction, or a before_agent_start handler produces before
+// the run starts precedes it, and a prompt the run rejects is never shown.
 func (m *InteractiveMode) runPromptTurnWithImages(ctx context.Context, prompt string, images []ai.ImageContent) {
-	// Show user message in chat. Rendered as a styled
-	// box (UserMessageBlock) instead of the prior markdown blockquote
-	// (`> **You:** ...`). The blockquote rendering was visually
-	// ambiguous: any LLM output containing literal `> ` lines (e.g.
-	// when reciting documentation that quotes things) rendered with
-	// the same `│ ` bar as the user's own messages, making it look
-	// like the LLM was speaking as the user. The styled-box approach
-	// uses raw ANSI bg paint, which markdown output cannot mimic by
-	// construction. Mirrors upstream `UserMessageComponent`
-	// Spacer before the user block. Mirrors upstream addMessageToChat using
-	// the chat container child count instead of a separate first-message flag.
-	// The AssistantMessageBlock also adds a leading spacer when it has
-	// visible content, so the assistant text gets its own separation.
-	if !m.chatContainer.IsEmpty() {
-		m.appendToChat(tui.NewSpacer(1))
-	}
-	m.appendToChat(m.newUserMessageBlock(prompt))
-	m.skipNextUserMessageText = prompt
-	m.tuiInst.Render()
-
 	m.runTurnWithImages(ctx, prompt, images, func(runCtx context.Context) ([]agent.AgentMessage, error) {
 		content := promptContent(prompt, images)
 		autoResize := true

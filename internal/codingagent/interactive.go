@@ -167,6 +167,13 @@ type InteractiveMode struct {
 	editor          *tui.Editor
 	statusLine      *StatusLine
 
+	// loadedResourcesContainer holds the loaded-resources listing between the
+	// header and the transcript, so clearing the transcript keeps it.
+	loadedResourcesContainer *tui.Container
+	// loadedResourceSections are the listing's sections, which Ctrl+O
+	// expands and collapses with tool output. Owned by the UI loop.
+	loadedResourceSections []*expandableText
+
 	// State
 	isIdle bool
 	// turnActive is true from the synchronous commit of a turn in runPromptTurn
@@ -313,11 +320,6 @@ type InteractiveMode struct {
 	lastAssistantText string
 	lastStatusSpacer  *tui.Spacer
 	lastStatusText    *tui.Text
-
-	// skipNextUserMessageText suppresses the MessageStartEvent for the prompt
-	// already rendered synchronously by handleSubmit. Steering/follow-up user
-	// messages are only surfaced by agent events, so they must not be skipped.
-	skipNextUserMessageText string
 
 	// Countdown goroutine cancel function for auto-retry.
 	// Called on AutoRetryEndEvent or when a new retry starts.
@@ -490,6 +492,11 @@ type InteractiveMode struct {
 	extensionErrorsMu      sync.Mutex
 	pendingExtensionErrors []extension.ExtensionError
 	extensionErrorWakeCh   chan struct{}
+
+	// commandArgumentCompletions serves extension commands'
+	// getArgumentCompletions to the editor.
+	argumentCompletionsOnce    sync.Once
+	commandArgumentCompletions *commandArgumentCompletions
 }
 
 // postUITask hands a closure to the main input loop to run
@@ -906,9 +913,14 @@ type InteractiveOptions struct {
 	NoSkills bool
 
 	// ContextFiles lists the loaded AGENTS.md/CLAUDE.md project context files.
-	// Shown in the startup banner when verbose/non-quiet. Mirrors upstream
-	// showLoadedResources [Context] section (interactive-mode.ts:1303-1317).
+	// The loaded-resources [Context] section lists them after
+	// SystemPromptSourcePaths.
 	ContextFiles []ContextFile
+
+	// SystemPromptSourcePaths are the existing files the system prompt and
+	// then each appended system prompt were read from, as upstream
+	// getSystemPromptSource and getAppendSystemPromptSources report them.
+	SystemPromptSourcePaths []string
 
 	// ThinkingLevel is the initial thinking level override from --thinking.
 	// Empty means use default (settings or "medium"). Mirrors upstream
@@ -1109,12 +1121,6 @@ func (m *InteractiveMode) printResumeHint() {
 	_, _ = fmt.Printf("\x1b[2mTo resume this session:\x1b[22m %s\n", cmd)
 }
 
-func appendCompactResourceSection(banner *strings.Builder, heading string, names []string) {
-	names = slices.Clone(names)
-	slices.Sort(names)
-	fmt.Fprintf(banner, "**[%s]**  %s\n", heading, strings.Join(names, ", "))
-}
-
 // Run renders the initial editor and footer even with quiet startup, then blocks in the interactive loop until the user exits.
 func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	// Registered first so it runs last, after the deferred TUI teardown has
@@ -1146,11 +1152,9 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 		if _, err := os.Stat(themesDir); err == nil {
 			_ = registry.LoadDir(themesDir) // best-effort; don't block startup
 		}
-		for _, themePath := range m.opts.ThemePaths {
-			if err := loadThemePath(registry, themePath); err != nil {
-				fmt.Fprintf(os.Stderr, "theme load: %v\n", err)
-			}
-		}
+		loadThemePaths(registry, m.opts.ThemePaths, func(err error) {
+			fmt.Fprintf(os.Stderr, "theme load: %v\n", err)
+		})
 	}
 	// Re-apply theme in case it was a custom theme name.
 	if m.opts.Settings.Theme != "" {
@@ -1212,6 +1216,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	m.keybindings = NewKeybindingsManager(m.opts.AgentDir)
 	m.extHeader = newSpecialLinesComponent(m.renderNow)
 	m.setBuiltInHeader(m.opts.Verbose || m.toolsExpanded)
+	m.loadedResourcesContainer = tui.NewContainer()
 	m.chatContainer = tui.NewContainer()
 	m.extFooter = newSpecialLinesComponent(m.renderNow)
 	mark("tui-layout-built")
@@ -1459,66 +1464,7 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 		// user must see to know why no LLM calls will succeed.
 		m.appendToChat(tui.NewMarkdown("**Warning: " + m.opts.NoModelWarning + "**"))
 	}
-	if m.opts.Verbose || !m.opts.Settings.QuietStartup {
-		var banner strings.Builder
-
-		// [Context]: loaded AGENTS.md/CLAUDE.md files
-		if len(m.opts.ContextFiles) > 0 {
-			banner.WriteString("**[Context]**  ")
-			for i, cf := range m.opts.ContextFiles {
-				if i > 0 {
-					banner.WriteString(", ")
-				}
-				banner.WriteString(shortenPath(cf.Path))
-			}
-			banner.WriteString("\n")
-		}
-		// [Skills]: loaded skill definitions
-		if len(m.opts.Skills) > 0 {
-			if m.opts.Verbose {
-				banner.WriteString("**[Skills]**\n")
-				for _, s := range m.opts.Skills {
-					banner.WriteString("- ")
-					banner.WriteString(m.formatLoadedResourceRef(s.Path, s.Name))
-					banner.WriteString("\n")
-				}
-			} else {
-				names := make([]string, 0, len(m.opts.Skills))
-				for _, skill := range m.opts.Skills {
-					names = append(names, skill.Name)
-				}
-				appendCompactResourceSection(&banner, "Skills", names)
-			}
-		}
-		// [Prompts]: loaded prompt templates
-		if len(m.promptTemplates) > 0 {
-			if m.opts.Verbose {
-				banner.WriteString("**[Prompts]**\n")
-				for _, p := range m.promptTemplates {
-					banner.WriteString("- ")
-					banner.WriteString(m.formatLoadedResourceRef(p.FilePath, "/"+p.Name))
-					banner.WriteString("\n")
-				}
-			} else {
-				names := make([]string, 0, len(m.promptTemplates))
-				for _, prompt := range m.promptTemplates {
-					names = append(names, "/"+prompt.Name)
-				}
-				appendCompactResourceSection(&banner, "Prompts", names)
-			}
-		}
-		// [Extensions]: loaded subprocess extensions
-		if m.newRunner != nil {
-			names := m.newRunner.ExtensionNames()
-			if len(names) > 0 {
-				appendCompactResourceSection(&banner, "Extensions", names)
-			}
-		}
-
-		if banner.Len() > 0 {
-			m.appendToChat(tui.NewMarkdown(banner.String()))
-		}
-	}
+	m.showLoadedResources(false)
 	// Quiet startup suppresses help and resource listings, not the initial editor and footer.
 	m.tuiInst.Render()
 	mark("first-render-done")
@@ -1712,6 +1658,17 @@ func (m *InteractiveMode) Run(ctx context.Context) (err error) {
 	}
 	mark("interactive-ready")
 	return m.inputLoop(ctx, os.Stdin)
+}
+
+// loadThemePaths registers the themes of paths, which are in upstream
+// precedence order. Upstream dedupeThemes keeps the first theme of a name;
+// the registry keeps the last one added, so the paths load in reverse.
+func loadThemePaths(registry *tui.ThemeRegistry, paths []string, report func(error)) {
+	for _, path := range slices.Backward(paths) {
+		if err := loadThemePath(registry, path); err != nil && report != nil {
+			report(err)
+		}
+	}
 }
 
 func loadThemePath(registry *tui.ThemeRegistry, path string) error {

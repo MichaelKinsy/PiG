@@ -111,6 +111,7 @@ func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, regist
 		caps := tui.GetCapabilities()
 		return subprocess.TerminalCapabilitiesPayload{Images: string(caps.Images), TrueColor: caps.TrueColor, Hyperlinks: caps.Hyperlinks}
 	})
+	bridge.SetThemeFunc(codingagent.ActiveExtensionTheme)
 	host.SetUIBridge(bridge)
 	installStartupTrace(&trace, host.SetStartupTrace)
 	host.SetMode(string(mode))

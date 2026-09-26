@@ -1,6 +1,7 @@
 package main
 
 import (
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -41,7 +42,14 @@ func resourceSourceInfoProvider(cwd, agentDir string, sm *codingagent.SettingsMa
 	}
 }
 
+// sourceInfoFromResourceItem is the item's upstream PathMetadata. A settings
+// entry ({source: "local"}) carries no baseDir upstream
+// (package-manager.ts resolveLocalEntries).
 func sourceInfoFromResourceItem(item tui.ResourceItem) codingagent.ResourceSourceInfo {
+	baseDir := item.BaseDir
+	if item.Origin == "top-level" && item.Source == "local" {
+		baseDir = ""
+	}
 	return codingagent.ResourceSourceInfo{
 		Path:         item.Path,
 		ResourceType: string(item.ResourceType),
@@ -49,7 +57,7 @@ func sourceInfoFromResourceItem(item tui.ResourceItem) codingagent.ResourceSourc
 		Scope:        item.Scope,
 		Origin:       item.Origin,
 		Source:       item.Source,
-		BaseDir:      item.BaseDir,
+		BaseDir:      baseDir,
 	}
 }
 
@@ -67,16 +75,21 @@ func addInferredSourceInfo(infos map[string]codingagent.ResourceSourceInfo, path
 		Origin:       "top-level",
 		Source:       "local",
 	}
+	// Upstream getDefaultSourceInfoForPath.
 	switch {
 	case agentDir != "" && isWithin(path, filepath.Join(agentDir, kind)):
-		info.Scope = "user"
+		info.Scope, info.BaseDir = "user", filepath.Join(agentDir, kind)
 	case cwd != "" && isWithin(path, filepath.Join(cwd, ".pig", kind)):
-		info.Scope = "project"
+		info.Scope, info.BaseDir = "project", filepath.Join(cwd, ".pig", kind)
 	default:
 		// A path named on the command line (--prompt-template, --skill,
 		// --theme) is temporary, as upstream resolves CLI resources with
 		// {temporary: true} (resource-loader.ts).
 		info.Scope = "temporary"
+		info.BaseDir = filepath.Dir(path)
+		if stat, err := os.Stat(path); err == nil && stat.IsDir() {
+			info.BaseDir = path
+		}
 	}
 	infos[path] = info
 }

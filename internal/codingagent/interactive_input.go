@@ -398,20 +398,10 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 					m.editor.Clear()
 					m.handleSubmit(ctx, text)
 				}
-			} else {
-				// Argument completion accepted (not a slash-name prefix).
-				// In upstream, the autocomplete request is async so Enter
-				// arrives before the popup opens and goes through the normal
-				// submit path. In pig, autocomplete is synchronous, so we
-				// must replicate the upstream behavior by also submitting
-				// when the completed text is a slash command.
-				text := strings.TrimSpace(m.editor.Text())
-				if text != "" && strings.HasPrefix(text, "/") {
-					m.editor.AddToHistory(text)
-					m.editor.Clear()
-					m.handleSubmit(ctx, text)
-				}
 			}
+			// An accepted argument completion stays in the editor
+			// (upstream editor.ts tui.select.confirm returns after
+			// applying a completion whose prefix does not start with "/").
 			m.tuiInst.Render()
 			return nil
 		}

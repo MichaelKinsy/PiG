@@ -280,10 +280,10 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 2 registrati
 | `compaction` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
 | `export-html` | 5 | 5 | 0 | 0 | 0 | 5 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 22 | 22 | 0 | 0 | 0 | 24 | not run |
+| `extensions-runtime` | 30 | 30 | 0 | 0 | 0 | 31 | not run |
 | `footer` | 7 | 7 | 0 | 0 | 0 | 8 | not run |
 | `fullscreen` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
-| `interactive-rendering` | 29 | 27 | 2 | 0 | 0 | 25 | not run |
+| `interactive-rendering` | 31 | 29 | 2 | 0 | 0 | 26 | not run |
 | `json` | 2 | 2 | 0 | 0 | 0 | 3 | not run |
 | `model-resolver-selector` | 17 | 17 | 0 | 0 | 0 | 13 | not run |
 | `model-runtime-store-catalog` | 3 | 3 | 0 | 0 | 0 | 7 | not run |
@@ -292,12 +292,12 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 2 registrati
 | `project-trust` | 8 | 8 | 0 | 0 | 0 | 13 | not run |
 | `providers-faux-streaming` | 10 | 9 | 0 | 1 | 0 | 14 | not run |
 | `providers-registry` | 5 | 3 | 0 | 2 | 0 | 26 | not run |
-| `rpc` | 26 | 26 | 0 | 0 | 0 | 10 | not run |
+| `rpc` | 27 | 27 | 0 | 0 | 0 | 11 | not run |
 | `selectors` | 9 | 9 | 0 | 0 | 1 | 14 | not run |
 | `session` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
 | `settings` | 7 | 7 | 0 | 0 | 0 | 13 | not run |
 | `slash-commands` | 9 | 8 | 1 | 0 | 0 | 17 | not run |
-| `startup` | 5 | 4 | 1 | 0 | 0 | 2 | not run |
+| `startup` | 7 | 6 | 1 | 0 | 0 | 2 | not run |
 | `tools` | 12 | 12 | 0 | 0 | 0 | 27 | not run |
 | `tree` | 5 | 4 | 1 | 0 | 0 | 5 | not run |
 | `tui-components` | 11 | 11 | 0 | 0 | 0 | 16 | not run |
