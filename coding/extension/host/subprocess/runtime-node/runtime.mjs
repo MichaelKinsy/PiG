@@ -5,6 +5,8 @@ import { pathToFileURL } from "node:url";
 import { EventEmitter } from "node:events";
 import { AsyncLocalStorage } from "node:async_hooks";
 import { setRuntime } from "./state.mjs";
+import { getKeybindings, isFocusable } from "./shims/pi-tui.mjs";
+import { setCapabilities as setTerminalCapabilities } from "./shims/pi-dist/pi-tui/terminal-image.js";
 
 const USER_BLOCKING_CALLS = new Set(["ui.select", "ui.confirm", "ui.input", "ui.editor", "ui.custom"]);
 const MAX_FRAME_SIZE = 128 * 1024 * 1024;
@@ -1053,6 +1055,13 @@ export class Runtime {
       this.systemPrompt = snapshot.systemPrompt;
     }
     if (snapshot.flags && typeof snapshot.flags === "object") this.state.flags = { ...snapshot.flags };
+    // Pi's TUI and its extensions share one capability cache; here the host
+    // owns the terminal, so its resolved capabilities seed the cache pi-tui's
+    // Markdown reads.
+    const caps = snapshot.terminalCapabilities;
+    if (caps && typeof caps === "object") {
+      setTerminalCapabilities({ images: caps.images || null, trueColor: caps.trueColor === true, hyperlinks: caps.hyperlinks === true });
+    }
     if (typeof snapshot.hasUI === "boolean") this.state.hasUI = snapshot.hasUI;
     this.ctx.hasUI = this.state.hasUI;
     this.ctx.model = normalizeModel(this.state.model);
@@ -1072,7 +1081,7 @@ export class Runtime {
   applyEditorComponent(factory) {
     let comp;
     try {
-      comp = factory(this.api?.tui || {}, this.ui?.theme, this.api?.keybindings || {});
+      comp = factory(this.api?.tui || {}, this.ui?.theme, getKeybindings());
     } catch (err) {
       this.fireAndForget("ui.notify", {
         message: `setEditorComponent factory failed: ${err?.message || String(err)}`,
@@ -1438,8 +1447,9 @@ export class Runtime {
     };
     try {
       const themeShim = this.ui?.theme;
-      const kbShim = this.api?.keybindings || {};
-      const built = factory(tuiShim, themeShim, kbShim, done);
+      // Pi hands factories its keybindings manager; the extension process
+      // has pi-tui's (D73: the user's keybindings.json stays in the host).
+      const built = factory(tuiShim, themeShim, getKeybindings(), done);
       component = built && typeof built.then === "function" ? await built : built;
       // showExtensionCustom resolves options only after the factory completes.
       if (!doneCalled) {
@@ -1464,6 +1474,10 @@ export class Runtime {
     }
 
     overlay.component = component;
+    // Pi focuses the component it shows (TUI.setFocus), unless it is a
+    // non-capturing overlay, so focusable components such as Input and
+    // Editor render their cursor marker.
+    if (isFocusable(component) && !(isOverlay && overlayOpts?.nonCapturing)) component.focused = true;
     const openArgs = {
       key,
       title: String(overlayOpts?.title || ""),

@@ -1,5 +1,3 @@
-// Verbatim copy of dist/keys.js from @earendil-works/pi-tui@0.87.1 (MIT, Copyright (c) 2025 Mario Zechner).
-// Regenerate with automation/gen/vendor-pi-tui-keys.sh; runtime_node_vendored_test.go checks it against the pinned package.
 /**
  * Keyboard input handling for terminal applications.
  *
