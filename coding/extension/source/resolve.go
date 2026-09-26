@@ -3,7 +3,6 @@
 package source
 
 import (
-	"encoding/json"
 	"fmt"
 	"go/ast"
 	"go/parser"
@@ -583,28 +582,21 @@ func resolveNode(root string) (Definition, error) {
 }
 
 func nodeEntrypoints(root string) ([]string, error) {
-	data, err := os.ReadFile(filepath.Join(root, "package.json"))
-	if err == nil {
-		var manifest struct {
-			PI struct {
-				Extensions []string `json:"extensions"`
-			} `json:"pi"`
-		}
-		if json.Unmarshal(data, &manifest) == nil && len(manifest.PI.Extensions) > 0 {
-			entries := make([]string, 0, len(manifest.PI.Extensions))
-			for _, relative := range manifest.PI.Extensions {
-				path := filepath.Join(root, filepath.FromSlash(relative))
-				if !exists(path) {
-					return nil, fmt.Errorf("Node extension %s declares missing pi.extensions entry %q", root, relative)
-				}
-				entries = append(entries, path)
-			}
-			return entries, nil
-		}
-	} else if !os.IsNotExist(err) {
+	entries, missing, declared, err := NodeManifestEntries(root)
+	if err != nil {
 		return nil, err
 	}
-	var entries []string
+	if declared {
+		if len(missing) > 0 {
+			return nil, fmt.Errorf("Node extension %s declares missing pi.extensions entry %q", root, missing[0])
+		}
+		if len(entries) == 0 {
+			// Upstream loads only what pi.extensions names, so a declared
+			// directory without an entry file contributes nothing.
+			return nil, fmt.Errorf("Node extension %s declares pi.extensions directories with no extension entry file", root)
+		}
+		return entries, nil
+	}
 	for _, name := range []string{"index.ts", "index.js", "main.ts", "main.js", "extension.ts", "extension.js", "index.mjs", "main.mjs", "extension.mjs"} {
 		if path := filepath.Join(root, name); exists(path) {
 			entries = append(entries, path)
