@@ -149,7 +149,16 @@ func TestImportDenominatorUsesCompiledCorrespondenceDenominator(t *testing.T) {
 		t.Fatal(err)
 	}
 	targetCommit := repositorySnapshotCommit(t, root)
-	storeDir, err := os.MkdirTemp(root, ".closure-command-")
+	// The store must sit inside -root, and it must stay out of every
+	// repository snapshot: parity/closure's tests hash this same tree with
+	// `git add -A` while this package runs, and a tracked-looking SQLite file
+	// changing under them fails git with "unstable object source data". tmp/
+	// is ignored, like the command's default tmp/closure/graph.db.
+	scratch := filepath.Join(root, "tmp")
+	if err := os.MkdirAll(scratch, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	storeDir, err := os.MkdirTemp(scratch, "closure-command-")
 	if err != nil {
 		t.Fatal(err)
 	}
