@@ -16,7 +16,7 @@ SPDX-License-Identifier: MIT
 [![REUSE status](https://api.reuse.software/badge/github.com/MichaelKinsy/PiG)](https://api.reuse.software/info/github.com/MichaelKinsy/PiG)
 [![Go Report Card](https://goreportcard.com/badge/github.com/MichaelKinsy/PiG)](https://goreportcard.com/report/github.com/MichaelKinsy/PiG)
 [![Go Reference](https://pkg.go.dev/badge/github.com/MichaelKinsy/PiG.svg)](https://pkg.go.dev/github.com/MichaelKinsy/PiG)
-[![Go version](https://img.shields.io/github/go-mod/go-version/MichaelKinsy/PiG)](go.mod)
+[![Minimum Go version](https://img.shields.io/github/go-mod/go-version/MichaelKinsy/PiG?label=Go%20%E2%89%A5)](go.mod)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/MichaelKinsy/PiG?sort=semver)](https://github.com/MichaelKinsy/PiG/releases)
 [![Pi pin 0.87.1](https://img.shields.io/badge/Pi%20pin-0.87.1-8A2BE2)](https://github.com/earendil-works/pi/releases/tag/v0.87.1)
