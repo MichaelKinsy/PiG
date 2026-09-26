@@ -9,7 +9,9 @@
 # verbatim except: utils/frontmatter.js imports the vendored yaml by path, and
 # core/session-manager.js keeps only its pure section (entry parsing and
 # migration, context projection, from CURRENT_SESSION_VERSION through
-# buildSessionContext) with the imports that section uses. shims/yaml/ is
+# buildSessionContext) with the imports that section uses, importing pi-ai
+# from the runtime's pi-ai module by path so the module also loads without the
+# extension loader. shims/yaml/ is
 # yaml's ES module build (its browser/ directory), the release Pi depends on.
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
@@ -28,7 +30,8 @@ cp "$agent/dist/utils/text.js" "$dist/pi-coding-agent/utils/"
 sed 's#^import { parse } from "yaml";$#import { parse } from "../../../yaml/index.js";#' \
   "$agent/dist/utils/frontmatter.js" >"$dist/pi-coding-agent/utils/frontmatter.js"
 {
-  grep -E '^import .* from "(@earendil-works/pi-ai|crypto|\./messages\.js)";$' "$agent/dist/core/session-manager.js"
+  grep -E '^import .* from "(@earendil-works/pi-ai|crypto|\./messages\.js)";$' "$agent/dist/core/session-manager.js" |
+    sed 's#from "@earendil-works/pi-ai";$#from "../../../pi-ai.mjs";#'
   awk '/^export const CURRENT_SESSION_VERSION/ { on = 1 } on { print } on && /^export function buildSessionContext/ { last = 1 } last && /^}$/ { exit }' \
     "$agent/dist/core/session-manager.js"
 } >"$dist/pi-coding-agent/core/session-manager.js"

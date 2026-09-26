@@ -197,7 +197,8 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 	if !found || !bytes.Equal(append([]byte("export const CURRENT_SESSION_VERSION"), body...), pinnedSession[start:end]) {
 		t.Error("shims/pi-dist/pi-coding-agent/core/session-manager.js section differs from the pinned release: run automation/gen/vendor-pi-dist.sh")
 	}
-	for _, line := range bytes.Split(bytes.TrimSpace(imports), []byte("\n")) {
+	for line := range bytes.SplitSeq(bytes.TrimSpace(imports), []byte("\n")) {
+		line = bytes.Replace(line, []byte(`from "../../../pi-ai.mjs";`), []byte(`from "@earendil-works/pi-ai";`), 1)
 		if !bytes.Contains(pinnedSession, append(line, '\n')) {
 			t.Errorf("session-manager.js import %q is not in the pinned release", line)
 		}

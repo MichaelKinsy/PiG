@@ -1,4 +1,4 @@
-import { getCurrentSystemMessage, uuidv7, } from "@earendil-works/pi-ai";
+import { getCurrentSystemMessage, uuidv7, } from "../../../pi-ai.mjs";
 import { randomUUID } from "crypto";
 import { createBranchSummaryMessage, createCompactionSummaryMessage, createCustomMessage, } from "./messages.js";
 export const CURRENT_SESSION_VERSION = 3;
