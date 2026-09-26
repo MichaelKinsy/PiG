@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"maps"
 	"os"
 	"strings"
 
@@ -39,9 +40,7 @@ func (c *headlessCommandCatalog) extendFromExtensions(ctx context.Context, runne
 		return false
 	}
 	sourceInfo := make(map[string]codingagent.ResourceSourceInfo, len(c.sourceInfo)+len(discovered.SkillPaths)+len(discovered.PromptPaths))
-	for path, info := range c.sourceInfo {
-		sourceInfo[path] = info
-	}
+	maps.Copy(sourceInfo, c.sourceInfo)
 	record := func(entries []extension.AttributedResourcePath, kind string) []string {
 		paths := make([]string, 0, len(entries))
 		for _, entry := range entries {
