@@ -104,10 +104,15 @@ jobs:
           mkdir -p "$stage" "$GITHUB_WORKSPACE/out/evidence"
           binary=pig
           if [ "$GOOS" = windows ]; then binary=pig.exe; fi
+          # Release binaries know where their signed update manifest lives and
+          # which key signs it, so `pig update` works for script installs.
+          codingagent=github.com/MichaelKinsy/PiG/internal/codingagent
+          update_url="https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/update.json"
+          trust_root=$(base64 < "$source_root/automation/release/update-trust.pem" | tr -d '\n')
           (
             cd "$source_root"
             CGO_ENABLED=0 go build -trimpath \
-              -ldflags "-s -w -X main.Build=$GITHUB_SHA" \
+              -ldflags "-s -w -X main.Build=$GITHUB_SHA -X $codingagent.DefaultUpdateURL=$update_url -X $codingagent.DefaultUpdateTrustRoot=$trust_root" \
               -o "$stage/$binary" ./cmd/pig
           )
           cp "$source_root/LICENSE" "$source_root/NOTICE" "$source_root/THIRD_PARTY_NOTICES.md" "$stage/"
@@ -398,6 +403,32 @@ jobs:
         run: |
           sha256sum -c SHA256SUMS
           sha256sum -c EVIDENCE-SHA256SUMS
+      - name: Sign the self-update manifest
+        # update.json names each macOS and Linux archive and its SHA-256 from
+        # SHA256SUMS. Release binaries fetch it from releases/latest/download
+        # and verify update.json.sig against automation/release/update-trust.pem.
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+          UPDATE_SIGNING_KEY: ${{ secrets.PIG_UPDATE_SIGNING_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "$UPDATE_SIGNING_KEY" ]; then
+            echo "The release environment has no PIG_UPDATE_SIGNING_KEY secret; see docs/project/RELEASING.md" >&2
+            exit 1
+          fi
+          python3 automation/release/gen-update-manifest.py --version "$VERSION" \
+            --base-url "https://github.com/${GITHUB_REPOSITORY}/releases/download/v${VERSION}" \
+            --sha256sums release/SHA256SUMS \
+            --notes "https://github.com/${GITHUB_REPOSITORY}/releases/tag/v${VERSION}" > release/update.json
+          umask 077
+          key="$RUNNER_TEMP/update-signing.pem"
+          trap 'rm -f "$key" "$RUNNER_TEMP/update.sig"' EXIT
+          printf '%s\n' "$UPDATE_SIGNING_KEY" > "$key"
+          openssl pkeyutl -sign -rawin -inkey "$key" -in release/update.json -out "$RUNNER_TEMP/update.sig"
+          openssl pkeyutl -verify -rawin -pubin -inkey automation/release/update-trust.pem \
+            -in release/update.json -sigfile "$RUNNER_TEMP/update.sig"
+          base64 -w0 < "$RUNNER_TEMP/update.sig" > release/update.json.sig
       - name: Tag the nested Go modules on the release commit
         # go install github.com/MichaelKinsy/PiG/cmd/pig@v<version> resolves
         # each nested module the root go.mod requires (extensions/sdk) through

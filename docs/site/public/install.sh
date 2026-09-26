@@ -17,6 +17,12 @@
 #   PIG_INSTALL_DIR    install directory (default: $HOME/.local/bin)
 #   PIG_API_BASE       API that names the latest release (default: https://pi-in-go.dev/api)
 #   PIG_DOWNLOAD_BASE  release download root (default: https://github.com/MichaelKinsy/PiG/releases/download)
+#   PIG_UPDATE_URL     update manifest `pig update` should use (default: the latest release's update.json)
+#   PIG_HOME           PiG's settings directory, where the install receipt goes (default: ~/.pig)
+#
+# After installing, it records an owner-only receipt (<settings>/install-receipt)
+# naming the installed executable, its release, its SHA-256, and its update
+# source, so `pig update` can later replace the binary in place.
 #
 # The whole script is one function called on its last line, so a truncated
 # download runs nothing.
@@ -80,10 +86,46 @@ main() {
   mv -f "$staged" "${install_dir}/pig"
 
   say "Installed $("${install_dir}/pig" --version 2>/dev/null || printf 'pig %s' "$version") to ${install_dir}/pig"
+  write_receipt "$install_dir" "$version" ||
+    say "Could not record the install receipt; to update later, run this installer again"
   case ":${PATH:-}:" in
     *":${install_dir}:"*) ;;
     *) say "Add ${install_dir} to PATH to run pig, for example: export PATH=\"${install_dir}:\$PATH\"" ;;
   esac
+}
+
+# write_receipt DIR VERSION records the standalone install for `pig update`,
+# in the format internal/codingagent/selfupdate_receipt.go reads: owner-only,
+# one key=value per line.
+write_receipt() {
+  exe="$(cd "$1" && pwd -P)/pig"
+  source_url=${PIG_UPDATE_URL:-https://github.com/MichaelKinsy/PiG/releases/latest/download/update.json}
+  if [ -n "${PIG_HOME:-}" ]; then
+    case "$PIG_HOME" in
+      \~) root=$HOME ;;
+      \~/*) root="$HOME/${PIG_HOME#\~/}" ;;
+      *) root=$PIG_HOME ;;
+    esac
+  elif [ -n "${XDG_CONFIG_HOME:-}" ]; then
+    root="${XDG_CONFIG_HOME}/pig"
+  else
+    root="$HOME/.pig"
+  fi
+  case "${exe}${source_url}" in
+    *"
+"*) return 1 ;;
+  esac
+  sum=$(sha256_of "$exe") || return 1
+  (
+    umask 077
+    mkdir -p "$root" &&
+      printf 'kind=standalone\nexecutable=%s\npig-version=%s\nsha256=%s\nupdate-source=%s\n' \
+        "$exe" "$2" "$sum" "$source_url" > "$root/.install-receipt.$$" &&
+      mv -f "$root/.install-receipt.$$" "$root/install-receipt"
+  ) 2>/dev/null || {
+    rm -f "$root/.install-receipt.$$"
+    return 1
+  }
 }
 
 say() {
