@@ -75,7 +75,11 @@ func (p *pseudoConsole) typeRequestedKeys(t *testing.T, keys string) {
 			next++
 			continue
 		}
-		if !errors.Is(err, os.ErrNotExist) {
+		// The child publishes each file with a rename. Windows holds the
+		// renamed file open for a moment after the new name appears, so an
+		// open in that window fails with a sharing violation: the file is
+		// still being published, the same state as not existing yet.
+		if !errors.Is(err, os.ErrNotExist) && !errors.Is(err, windows.ERROR_SHARING_VIOLATION) {
 			t.Fatal(err)
 		}
 		if event, _ := windows.WaitForSingleObject(p.process, 0); event == windows.WAIT_OBJECT_0 {

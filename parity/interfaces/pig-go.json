@@ -9545,15 +9545,26 @@
       "shapeHash": "sha256:3e828f02aef4392ad61c8a95a025b10f051bc7a3f4e3a4a7a39a521355c09a4c"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/agent/harness/env#NodeExecutionEnv.trackChild",
+      "id": "go:github.com/MichaelKinsy/PiG/agent/harness/env#NodeExecutionEnv.startChild",
       "package": "github.com/MichaelKinsy/PiG/agent/harness/env",
-      "name": "NodeExecutionEnv.trackChild",
+      "name": "NodeExecutionEnv.startChild",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(pid int, active bool)"
+        "type": "func(cmd *os/exec.Cmd) error"
       },
-      "shapeHash": "sha256:cc9fe8e2d2f0c241f1e99fd68e3a21ae43e1874e88b2c0d589eaf002283604ee"
+      "shapeHash": "sha256:0c5c6951bcf505254c992720315dc41d99fe0e45ed7d49be966bc6acd58f50a4"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/agent/harness/env#NodeExecutionEnv.untrackChild",
+      "package": "github.com/MichaelKinsy/PiG/agent/harness/env",
+      "name": "NodeExecutionEnv.untrackChild",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(pid int)"
+      },
+      "shapeHash": "sha256:96ec42371f9d09fb2a0d122f15f00e3b19ac23725f52574bbf7d3d4b08a111ab"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/agent/harness/env#NodeExecutionEnv.writeWithParents",
@@ -21885,6 +21896,17 @@
         "type": "func(chunk []byte)"
       },
       "shapeHash": "sha256:8aa9439411e3d94b197ea2e32d7cbd5c9ff8daef9c14926da1b4f6b53e7b651f"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/agent/harness/pico3#toolStream.settle",
+      "package": "github.com/MichaelKinsy/PiG/agent/harness/pico3",
+      "name": "toolStream.settle",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/agent/harness/pico3#touchedDoc",
