@@ -19,8 +19,32 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changed paths
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      product: ${{ steps.classify.outputs.product }}
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Classify the change
+        id: classify
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        # Source analysis skips pull requests that change only project prose
+        # and repository metadata. Secret scanning always runs.
+        run: automation/ci/classify-changes.sh "$EVENT" "$BASE_SHA" "$HEAD_SHA" | tee -a "$GITHUB_OUTPUT"
+
   source-assurance:
     name: Source assurance
+    needs: [changes]
+    if: needs.changes.outputs.product == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
@@ -149,7 +173,8 @@ jobs:
 
   dependency-review:
     name: Dependency review
-    if: github.event_name == 'pull_request' && github.event.repository.private == false
+    needs: [changes]
+    if: github.event_name == 'pull_request' && github.event.repository.private == false && needs.changes.outputs.product == 'true'
     runs-on: ubuntu-24.04
     permissions:
       contents: read
@@ -164,7 +189,8 @@ jobs:
 
   codeql:
     name: CodeQL (${{ matrix.language }})
-    if: github.event.repository.private == false
+    needs: [changes]
+    if: github.event.repository.private == false && needs.changes.outputs.product == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     permissions:
