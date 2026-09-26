@@ -183,6 +183,10 @@ jobs:
               paths:
                 - extensions/sdk-ts
                 - coding/extension/host/subprocess/runtime-node
+              # Pi's own published dist, copied verbatim from the pinned
+              # release (TestVendoredPiDistMatchesThePinnedPackage).
+              paths-ignore:
+                - coding/extension/host/subprocess/runtime-node/shims/pi-dist
           - language: python
             build-mode: none
             config: |
