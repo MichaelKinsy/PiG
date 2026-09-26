@@ -4,6 +4,6 @@
   "version": "0.0.0",
   "description": "The npm that CI installs with npm ci. Keep in step with NPM_VERSION in .github/workflows/ci.yml.",
   "dependencies": {
-    "npm": "12.0.2"
+    "npm": "12.1.0"
   }
 }

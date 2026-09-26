@@ -23,7 +23,7 @@ concurrency:
 # coding/pigversion/pigversion.go. make compliance checks every other copy
 # of these pins.
 env:
-  NPM_VERSION: 12.0.2
+  NPM_VERSION: 12.1.0
   RUST_VERSION: 1.97.1
 
 jobs:
