@@ -81,6 +81,11 @@ func cleanSnapshotRoot(root string) (string, error) {
 // mkdirFixed creates a new directory under root named prefix followed by
 // snapshotIDDigits random decimal digits.
 func mkdirFixed(root, prefix string) (string, error) {
+	// On Windows promptPathRoot is \tmp on the current drive, which exists
+	// only once a run creates it.
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		return "", err
+	}
 	for range 100 {
 		name := fmt.Sprintf("%s%0*d", prefix, snapshotIDDigits, rand.Uint64N(10_000_000_000))
 		dir := filepath.Join(root, name)
@@ -210,12 +215,15 @@ func pinPiPackageDir(t *testing.T, ref BinaryRef) BinaryRef {
 	return ref
 }
 
-// piPackageRoot resolves bin's symlinks and walks up to the directory whose
-// package.json names the Pi coding-agent package.
+// piPackageRoot resolves bin's symlinks, or the npm shim it is, and walks up
+// to the directory whose package.json names the Pi coding-agent package.
 func piPackageRoot(bin string) (string, error) {
 	real, err := filepath.EvalSymlinks(bin)
 	if err != nil {
 		return "", err
+	}
+	if script, ok := npmCmdShimScript(real); ok {
+		real = script
 	}
 	for dir := filepath.Dir(real); ; dir = filepath.Dir(dir) {
 		data, err := os.ReadFile(filepath.Join(dir, "package.json"))
@@ -231,4 +239,28 @@ func piPackageRoot(bin string) (string, error) {
 			return "", fmt.Errorf("no pi-coding-agent package.json above %s", real)
 		}
 	}
+}
+
+// npmShimScriptPattern matches a path that an npm .cmd shim quotes relative to
+// its own directory: "%dp0%\..\pkg\dist\cli.js".
+var npmShimScriptPattern = regexp.MustCompile(`"%dp0%\\([^"%]+)"`)
+
+// npmCmdShimScript returns the script that the npm .cmd shim at bin runs. On
+// Windows npm installs node_modules/.bin/<name>.cmd where other hosts get a
+// symlink to the script. The shim's last %dp0%-relative path is the script;
+// the earlier ones name a node.exe beside it.
+func npmCmdShimScript(bin string) (string, bool) {
+	if !strings.EqualFold(filepath.Ext(bin), ".cmd") {
+		return "", false
+	}
+	data, err := os.ReadFile(bin)
+	if err != nil {
+		return "", false
+	}
+	matches := npmShimScriptPattern.FindAllStringSubmatch(string(data), -1)
+	if len(matches) == 0 {
+		return "", false
+	}
+	relative := strings.ReplaceAll(matches[len(matches)-1][1], `\`, "/")
+	return filepath.Join(filepath.Dir(bin), filepath.FromSlash(relative)), true
 }
