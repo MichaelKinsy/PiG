@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -239,6 +241,10 @@ func (m *InteractiveMode) setupExtensionShortcutListener(ctx context.Context) {
 			if tui.MatchesKeyID(data, keyID) {
 				go func() {
 					if err := sc.Handler(ctx); err != nil {
+						// pig divergence (D56): the lifecycle handler reports a failed subprocess connection once, including interrupted shortcuts.
+						if _, owned := errors.AsType[*invocation.LifecycleError](err); owned {
+							return
+						}
 						m.runOnMain(m.runCtx, func() {
 							m.showWarning(fmt.Sprintf("Shortcut handler error: %v", err))
 						})

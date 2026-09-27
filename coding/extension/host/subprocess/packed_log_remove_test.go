@@ -18,7 +18,7 @@ func TestPackedStderrLogRemoveRetriesAfterFailure(t *testing.T) {
 	if err := os.WriteFile(blocker, nil, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	log := &packedStderrLog{path: path}
+	log := &processStderrLog{path: path}
 
 	log.remove()
 	if log.removed {
@@ -41,7 +41,7 @@ func TestPackedStderrLogRemoveRetriesAfterFailure(t *testing.T) {
 }
 
 func TestPackedStderrLogRemoveTreatsMissingFileAsRemoved(t *testing.T) {
-	log := &packedStderrLog{path: filepath.Join(t.TempDir(), "absent.log")}
+	log := &processStderrLog{path: filepath.Join(t.TempDir(), "absent.log")}
 	log.remove()
 	if !log.removed {
 		t.Fatal("a missing log should count as removed")

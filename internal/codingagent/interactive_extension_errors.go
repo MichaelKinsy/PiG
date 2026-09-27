@@ -45,11 +45,10 @@ func (m *InteractiveMode) showPendingExtensionErrors() {
 }
 
 // showExtensionError mirrors upstream InteractiveMode.showExtensionError: the
-// message in the error color, then the stack without its first line, dimmed
-// and indented.
+// message in the error color, then the stack without its first line, dimmed and indented. Neither block adds a spacer.
 func (m *InteractiveMode) showExtensionError(extensionPath, message, stack string) {
 	theme := tui.ActiveTheme()
-	m.appendChatBlock(tui.NewPaddedText(theme.FgText("error", "Extension \""+extensionPath+"\" error: "+message), 1, 0, nil))
+	m.chatContainer.Add(tui.NewPaddedText(theme.FgText("error", "Extension \""+extensionPath+"\" error: "+message), 1, 0, nil))
 	if stack == "" {
 		return
 	}
@@ -58,6 +57,6 @@ func (m *InteractiveMode) showExtensionError(extensionPath, message, stack strin
 		lines[i] = theme.FgText("dim", "  "+strings.TrimSpace(line))
 	}
 	if stackLines := strings.Join(lines, "\n"); stackLines != "" {
-		m.appendChatBlock(tui.NewPaddedText(stackLines, 1, 0, nil))
+		m.chatContainer.Add(tui.NewPaddedText(stackLines, 1, 0, nil))
 	}
 }

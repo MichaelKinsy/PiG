@@ -37,7 +37,9 @@ down. Quarantine is host runtime state and never changes the author's source.
 
 ## Diagnostic logs
 
-PiG captures one temporary `pig-packed-*.log` stderr file per packed process (D20). Shutdown and reload close the process handles and remove that file. A load or crash diagnostic that names the file retains it for troubleshooting, including after reload. A cancelled load does not retain a log. Remove a retained file manually when you no longer need it.
+PiG captures one temporary `pig-packed-*.log` stderr file per packed process (D20) or `pig-ext-*.log` per isolated process (D56). Shutdown and reload close the process handles and remove that file. A load or crash diagnostic that names the file retains it for troubleshooting, including after reload. A cancelled load does not retain a log. Remove a retained file manually when you no longer need it.
+
+A socket close and process exit claim the same failed member only once. Interrupted commands, shortcuts and events keep their error result, but the lifecycle handler owns the connection failure diagnostic when a crash handler is installed. Ordinary handler errors still reach the runner's error listener. Interactive commands use that same runner path.
 
 PiG does not sweep logs from earlier sessions. Their names do not identify an owner or prove that its process has exited. Automatic deletion could remove a live session's log or a retained failure diagnostic.
 

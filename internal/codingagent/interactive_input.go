@@ -736,31 +736,18 @@ func (m *InteractiveMode) syncExtensionSlashCommands() {
 	commands := m.newRunner.Commands()
 	dynamic := make([]SlashCommand, 0, len(commands))
 	for _, rc := range commands {
-		handler := rc.Handler
 		nr := m.newRunner
 		cmdName := strings.TrimPrefix(rc.InvocationName, "/")
 		dynamic = append(dynamic, SlashCommand{
 			Name:        cmdName,
 			Description: rc.Description,
 			Handler: func(_ *ExtensionContext, args string) error {
-				if handler == nil {
-					return nil
-				}
-				cmdCtx := nr.CreateCommandContext()
 				baseCtx := m.runCtx
 				if baseCtx == nil {
 					baseCtx = context.Background()
 				}
-				newCtx := extension.WithContext(baseCtx, cmdCtx.Context)
-				newCtx = extension.WithCommandContext(newCtx, cmdCtx)
-				go func() {
-					if err := handler(newCtx, args); err != nil {
-						m.runOnMain(baseCtx, func() {
-							m.appendChatBlock(tui.NewText("\033[31mError: " + err.Error() + "\033[0m"))
-							m.tuiInst.Render()
-						})
-					}
-				}()
+				// Use the runner's command context and error channel, as Session command dispatch does. IPC stays off the input loop.
+				go nr.ExecuteCommand(baseCtx, cmdName, args)
 				return nil
 			},
 		})

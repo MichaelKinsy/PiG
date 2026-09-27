@@ -7,15 +7,15 @@ import (
 	"sync"
 )
 
-// packedStderrLog owns a process's diagnostic file after the parent's write handle closes. Retention and removal serialize so a late crash notice never advertises a deleted file.
-type packedStderrLog struct {
+// processStderrLog owns a process's diagnostic file after the parent's write handle closes. Retention and removal serialize so a late crash notice never advertises a deleted file.
+type processStderrLog struct {
 	mu       sync.Mutex
 	path     string
 	retained bool
 	removed  bool
 }
 
-func (l *packedStderrLog) retain() string {
+func (l *processStderrLog) retain() string {
 	if l == nil {
 		return ""
 	}
@@ -29,7 +29,7 @@ func (l *packedStderrLog) retain() string {
 }
 
 // remove runs only after the process tree and the parent's write handle close. Files named in failure diagnostics remain available after shutdown and reload.
-func (l *packedStderrLog) remove() {
+func (l *processStderrLog) remove() {
 	if l == nil {
 		return
 	}
@@ -46,6 +46,9 @@ func (l *packedStderrLog) remove() {
 func (me *managedExt) retainStderrLog() string {
 	if me.packedProcess != nil && me.packedProcess.stderrLog != nil {
 		return me.packedProcess.stderrLog.retain()
+	}
+	if me.stderrLog != nil {
+		return me.stderrLog.retain()
 	}
 	return me.stderrLogPath
 }

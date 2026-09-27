@@ -385,6 +385,9 @@ func (c *Conn) requestWithUpdates(ctx context.Context, env *Envelope, onUpdate f
 
 func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Duration, operation string) (*Envelope, error) {
 	if c.closed.Load() {
+		if failure := c.failureError(); failure != nil {
+			return nil, failure
+		}
 		return nil, errors.New("connection closed")
 	}
 
@@ -536,7 +539,11 @@ func (c *Conn) Close(reason string) error {
 	// Wait for goroutines to exit.
 	<-c.done
 
-	// Fail any pending requests.
+	// Fail any pending requests without erasing a terminal error's identity.
+	failureCode := ""
+	if c.failureError() != nil {
+		failureCode = "extension_transport"
+	}
 	c.pendingMu.Lock()
 	for id, ch := range c.pending {
 		select {
@@ -544,7 +551,7 @@ func (c *Conn) Close(reason string) error {
 			Type: MsgResponse,
 			ID:   id,
 			Response: &ResponsePayload{
-				Error: &ErrorInfo{Message: "connection closed"},
+				Error: &ErrorInfo{Code: failureCode, Message: "connection closed"},
 			},
 		}:
 		default:

@@ -26,7 +26,8 @@ All notable public changes to PiG will be recorded in this file.
 - Match Pi's sparse tool-result field names and byte-truncation limits, and retain fractional grep and ls limits without rounding.
 - Include the empty details object in shell output updates, as Pi does.
 - Accept the pasted redirect URL or code in `/login` for Anthropic, as Pi does. The paste went to the model as a prompt, and a failure after the browser callback showed as "Login cancelled.". Login dialogs for every provider also accept a terminal paste, which they dropped.
-- Remove packed extension stderr logs after normal shutdown and `/reload` for Node, Go, Python and Rust. Keep logs referenced by load or crash diagnostics for troubleshooting.
+- Remove packed and isolated extension stderr logs after normal shutdown and `/reload` for Node, Go, Python and Rust. Keep logs referenced by load or crash diagnostics for troubleshooting.
+- Report an extension crash once, rather than again for each interrupted command or a racing socket-close notification. Preserve ordinary command errors and Pi's extension error presentation.
 - Preserve pending Pico3 tasks when a task kind is replaced just after the harness resumes. Only tasks with unknown kinds at the time of `Resume` are orphaned, as in Pi.
 - Fix the first request of a new session going to the wrong endpoint for providers without a dedicated builder, such as OpenCode, OpenCode Go, DeepSeek and Z.ai. A stored key was sent to OpenAI's default URL, and Anthropic-style models used the wrong client. Thanks @ShoichiTect (#59).
 - Preserve RPC prompt, steering and follow-up order when commands arrive together, so both queued messages reach the active run.

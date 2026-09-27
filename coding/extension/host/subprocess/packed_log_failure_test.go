@@ -21,7 +21,7 @@ func TestPackedStderrLogOwnership(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			log := &packedStderrLog{path: path}
+			log := &processStderrLog{path: path}
 			if retainFirst && log.retain() != path {
 				t.Fatal("retention lost path")
 			}

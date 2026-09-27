@@ -40,7 +40,7 @@ type packedProcessState struct {
 	processTree  *processTree
 	lease        *runtimecell.UsageLease
 	releaseLease sync.Once
-	stderrLog    *packedStderrLog
+	stderrLog    *processStderrLog
 }
 
 func (p *packedProcessState) stop() {
@@ -203,7 +203,7 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 	stderrFile, _ := os.CreateTemp("", fmt.Sprintf("pig-packed-%s-*.log", sanitizeLogName(cell.Key)))
 	if stderrFile != nil {
 		cmd.Stderr = stderrFile
-		processState.stderrLog = &packedStderrLog{path: stderrFile.Name()}
+		processState.stderrLog = &processStderrLog{path: stderrFile.Name()}
 	}
 	for _, pending := range pendingExts {
 		h.markExtension(pending.me.config.Name, "spawn-start")

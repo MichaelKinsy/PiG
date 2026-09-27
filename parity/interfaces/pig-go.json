@@ -74049,6 +74049,39 @@
       "shapeHash": "sha256:ffa79b2277a97578edb7154cd76c29b32899d1eb9bc77e0c60af10883a735d63"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/invocation#LifecycleError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/invocation",
+      "name": "LifecycleError",
+      "kind": "type",
+      "exported": true,
+      "shape": {
+        "type": "LifecycleError"
+      },
+      "shapeHash": "sha256:d945ade18ab30bc229f4d2d56184115749af4200ec53013343b311073ac4fef0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/invocation#LifecycleError.Error",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/invocation",
+      "name": "LifecycleError.Error",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/invocation#LifecycleError.Unwrap",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/invocation",
+      "name": "LifecycleError.Unwrap",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() error"
+      },
+      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/invocation#WithAcknowledgment",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/invocation",
       "name": "WithAcknowledgment",
@@ -77745,6 +77778,17 @@
       "shapeHash": "sha256:8d30c27e5588d2c2783a8b4ac8c9ea606a3ba468bad39e5cacbfd3933de20f40"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.invocationError",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "Host.invocationError",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(err error) error"
+      },
+      "shapeHash": "sha256:757366f347b77fab18c96d624ec5206676e19d18aa9ceb4a88a9343171f303d5"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.isolateCellFailure",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "Host.isolateCellFailure",
@@ -78224,9 +78268,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, me *managedExt, isRestart bool) (*github.com/MichaelKinsy/PiG/coding/extension.Extension, error)"
+        "type": "func(ctx context.Context, me *managedExt, isRestart bool) (_ *github.com/MichaelKinsy/PiG/coding/extension.Extension, err error)"
       },
-      "shapeHash": "sha256:3c69778de9d194fa6f52c9b6b439fc9d85ba8eda996b3db960cefc2d8c41c4a3"
+      "shapeHash": "sha256:e226a0fb42e6c4d41985fc34f625a6b45b4be75c047abb622f4bfda21ed9a4b1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#Host.startGoPackedCell",
@@ -82959,39 +83003,6 @@
       "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#packedStderrLog",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "packedStderrLog",
-      "kind": "type",
-      "exported": false,
-      "shape": {
-        "type": "packedStderrLog"
-      },
-      "shapeHash": "sha256:a8e8ae9695cd04b4c3c1b2e0c102e15f3f617eae5f2b968ab64b48314149021a"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#packedStderrLog.remove",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "packedStderrLog.remove",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func()"
-      },
-      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#packedStderrLog.retain",
-      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
-      "name": "packedStderrLog.retain",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() string"
-      },
-      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#piPackageEntrypoints",
       "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
       "name": "piPackageEntrypoints",
@@ -83034,6 +83045,39 @@
         "type": "func(goos string, first string, existing string) string"
       },
       "shapeHash": "sha256:b2a3031fff82c69004d0eaf477fd4543f5ecc70fa23699388cbdeaa3ceaeede7"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processStderrLog",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processStderrLog",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "processStderrLog"
+      },
+      "shapeHash": "sha256:fe8a04e7d3b899afde2957f40357695dfb2236564ce669a46d9e9d5f149abab5"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processStderrLog.remove",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processStderrLog.remove",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processStderrLog.retain",
+      "package": "github.com/MichaelKinsy/PiG/coding/extension/host/subprocess",
+      "name": "processStderrLog.retain",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func() string"
+      },
+      "shapeHash": "sha256:31cac5b359d9888bdbe3fe08c486b2e404a728edce6e0aaaa60e59ceafc92fb5"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/extension/host/subprocess#processTree",

@@ -16,6 +16,7 @@ import (
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 )
 
 // defaultStaleMessage matches the upstream default verbatim. This string
@@ -916,18 +917,25 @@ func extensionPath(ext extension.Extension) string {
 	return ext.ResolvedPath
 }
 
-// recordHandlerError wraps a handler-returned error into ExtensionError
-// and dispatches it via emitError. Captures a stack trace at the call
-// site (pig parity with upstream's `err.stack`).
+// recordHandlerError reports handler failures unless the subprocess lifecycle handler owns their diagnostic. It captures a stack at the call site, matching upstream's err.stack.
 func (r *Runner) recordHandlerError(extPath, eventType string, err error) {
 	if err == nil {
 		return
+	}
+	// pig divergence (D56): a failed subprocess connection has one lifecycle diagnostic, not another notification for every interrupted handler.
+	if _, owned := errors.AsType[*invocation.LifecycleError](err); owned {
+		return
+	}
+	stack := ""
+	// upstream: packages/coding-agent/src/core/agent-session.ts:_tryExecuteExtensionCommand omits the stack from command errors.
+	if eventType != "command" {
+		stack = string(debug.Stack())
 	}
 	r.emitError(&extension.ExtensionError{
 		ExtensionPath: extPath,
 		Event:         eventType,
 		Error:         err.Error(),
-		Stack:         string(debug.Stack()),
+		Stack:         stack,
 	})
 }
 
