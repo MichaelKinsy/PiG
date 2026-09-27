@@ -26,7 +26,7 @@ Status values:
 | REUSE | `REUSE.toml`, `LICENSES/`, SPDX headers; `make compliance` runs `reuse --no-multiprocessing lint` | Verifiable now; badge after registering at api.reuse.software |
 | Go Report Card | `make lint` (golangci-lint), `gofmt`, `go vet` | Activates when public |
 | Go Reference | Package doc comments; `go.mod` module `github.com/MichaelKinsy/PiG` | Activates when public; owner requests the pkg.go.dev fetch |
-| Go version | `go.mod` `go` directive (language floor) | Activates when public |
+| Go version | `go.mod` `go` directive, shown as the minimum ("Go ≥"). Releases build with the `toolchain` line's newer Go | Active |
 | License | `LICENSE` (MIT); `CITATION.cff` `license: MIT` | Verifiable now |
 | Latest release | GitHub Releases | Owner action: publish the first release, tagged `v` plus `coding.PigVersion` |
 | Pi pin | Static badge naming the pinned Pi release, not a parity result; `make compliance` fails when it differs from `coding.UpstreamVersion` | Verifiable now |

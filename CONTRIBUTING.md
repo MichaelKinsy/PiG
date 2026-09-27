@@ -74,6 +74,8 @@ installing software.
 
 A documentation-only or mechanical change can explain why it does not need an issue.
 
+Maintainers squash-merge pull requests, which keeps you as the commit author, so you appear on GitHub's contributors page. When a maintainer lands your change inside a larger commit, the commit carries a `Co-authored-by:` trailer for you.
+
 ## Pull request requirements
 
 A pull request must:

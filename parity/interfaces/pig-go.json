@@ -36682,6 +36682,17 @@
       "shapeHash": "sha256:141b25fbcc8ae86dd3e2b65f59f574ed6f57900beb5a920c15c213407cb37472"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderDisplayName",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "ProviderDisplayName",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(providerID string) string"
+      },
+      "shapeHash": "sha256:6ea887270ea826e3cc47c2484eb6ed6fcbc31478607fab5c49a0f4df812cf442"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#ProviderEnv",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "ProviderEnv",
@@ -41511,17 +41522,6 @@
       "shapeHash": "sha256:d642394ed522f573f981ac2c618df557a1a48ea8e7b3ad9d7ad92422ab5c152f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/ai#builtInAPIKeyProviders",
-      "package": "github.com/MichaelKinsy/PiG/ai",
-      "name": "builtInAPIKeyProviders",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "[]APIKeyProviderInfo"
-      },
-      "shapeHash": "sha256:431c03200876c13075b69b10c9d5d1335b4b6e7fb767cd2616ad3506f3453113"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/ai#builtInOAuthProviders",
       "package": "github.com/MichaelKinsy/PiG/ai",
       "name": "builtInOAuthProviders",
@@ -41575,6 +41575,17 @@
         "type": "map[string]struct{name string; subscription bool}"
       },
       "shapeHash": "sha256:81e54172a5f599ba012d6a471f626303f4c02a4a93ec386f9c75c442ffebbc81"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#builtinProviderNames",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "builtinProviderNames",
+      "kind": "variable",
+      "exported": false,
+      "shape": {
+        "type": "map[string]string"
+      },
+      "shapeHash": "sha256:745c198d1e8b89727fedc49d3ee1a081d44e828b69940e1f62928394d51a0f12"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#calculateUsageCost",
@@ -42818,6 +42829,17 @@
         "type": "func(raw []byte) string"
       },
       "shapeHash": "sha256:3b58c1912b1210a24b70812e78efe9a7da493065ab9d00a070915d66bccddfe3"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/ai#compareAPIKeyProviderNames",
+      "package": "github.com/MichaelKinsy/PiG/ai",
+      "name": "compareAPIKeyProviderNames",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(a APIKeyProviderInfo, b APIKeyProviderInfo) int"
+      },
+      "shapeHash": "sha256:68233a60acb5d7a794c1303b72bd839983a9f334f35bfb3713035341c0916717"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/ai#completionsConvertOptions",
