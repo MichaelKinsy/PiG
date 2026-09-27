@@ -24,9 +24,8 @@ Status values:
 | OpenSSF Scorecard | `.github/workflows/scorecard.yml` with `publish_results: true`; the checks are listed below | Activates when public |
 | OpenSSF Best Practices | Criteria mapped below; the badge is an HTML comment in `README.md` until the project id exists | Owner action: register at bestpractices.dev |
 | REUSE | `REUSE.toml`, `LICENSES/`, SPDX headers; `make compliance` runs `reuse --no-multiprocessing lint` | Verifiable now; badge after registering at api.reuse.software |
-| Go Report Card | `make lint` (golangci-lint), `gofmt`, `go vet` | Activates when public |
 | Go Reference | Package doc comments; `go.mod` module `github.com/MichaelKinsy/PiG` | Activates when public; owner requests the pkg.go.dev fetch |
-| Go version | `go.mod` `go` directive (language floor) | Activates when public |
+| Go version | `go.mod` `go` directive, shown as the minimum ("Go ≥"). Releases build with the `toolchain` line's newer Go | Active |
 | License | `LICENSE` (MIT); `CITATION.cff` `license: MIT` | Verifiable now |
 | Latest release | GitHub Releases | Owner action: publish the first release, tagged `v` plus `coding.PigVersion` |
 | Pi pin | Static badge naming the pinned Pi release, not a parity result; `make compliance` fails when it differs from `coding.UpstreamVersion` | Verifiable now |
@@ -36,7 +35,7 @@ Status values:
 
 | Check | Evidence | Status |
 |---|---|---|
-| Branch-Protection | Branch ruleset on `main`: pull request, one approving review, required status checks | Owner action |
+| Branch-Protection | Branch ruleset on `main`: pull request, one approving review, required status checks `CI result` and `Security result` (each aggregates its workflow's jobs) | Owner action |
 | Code-Review | Same ruleset; `.github/CODEOWNERS`; `.github/pull_request_template.md` | Owner action; the score grows with reviewed merges |
 | Signed-Releases | `release-candidate.yml` writes `<archive>.sigstore.json` beside each archive and runs `actions/attest-build-provenance` | Owner action: attach archives, `SHA256SUMS`, and `.sigstore.json` files to the first GitHub Release |
 | Pinned-Dependencies | Every action pinned to a commit SHA (`make compliance` check `actions`); image bases pinned by digest; `go.sum`; npm lock files | Verifiable now |

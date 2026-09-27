@@ -24,6 +24,7 @@ project:
   vulnerability-reporting:
     reports-accepted: true
     bug-bounty-available: false
+    policy: https://github.com/MichaelKinsy/PiG/blob/main/SECURITY.md
     contact:
       name: Michael Kinsy
       email: mrkinsy5@gmail.com

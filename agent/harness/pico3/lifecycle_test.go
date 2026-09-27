@@ -39,8 +39,9 @@ func TestSuspendAndRecoverSafeTool(t *testing.T) {
 }
 
 func TestHoldUsesReplacementKind(t *testing.T) {
-	env := openEnv(t, openOptions{})
-	release := must(env.h.Hold())
+	var release func()
+	// Hold before Resume; quiescence alone does not join an already queued reservation.
+	env := openEnv(t, openOptions{setup: func(_ *testing.T, h *Harness) { release = must(h.Hold()) }})
 	kind := &Kind{Name: "held", Initial: func(context.Context, Task, *Runtime) (Step, error) { return done(Completed("old")), nil }}
 	off := must(env.h.RegisterTaskKind(kind))
 	ref := createTestTask(t, env, kind, nil)
@@ -52,7 +53,7 @@ func TestHoldUsesReplacementKind(t *testing.T) {
 	must(env.h.RegisterTaskKind(replacement))
 	release()
 	release()
-	equal(t, env.untilTerminal(ref.Id).Outcome.Result, "replacement", "replacement code")
+	equal(t, must(env.h.WaitForTask(bg, ref.Id)).Outcome, &Outcome{Status: OutcomeCompleted, Result: "replacement"}, "replacement code")
 }
 
 func TestRuntimeExpiresAfterPhaseAndAbortPanic(t *testing.T) {

@@ -1,0 +1,65 @@
+# Behavior family: selectors
+# Surface: /login → Sign in with an API key → API-key provider picker.
+#
+# Regression intent: the API-key provider picker must list every built-in
+# provider that exposes an API-key auth method, with upstream provider.name
+# labels. Upstream getLoginProviderOptions() filters
+# modelRuntime.getProviders() by provider.auth.apiKey and sorts by name; pig
+# previously used a hand-maintained 18-provider subset that omitted opencode-go,
+# deepseek, xai, anthropic, github-copilot, and others.
+#
+# Upstream evidence: probed against the pinned Pi oracle. The unfiltered list
+# opens on the same alphabetical prefix with the same provider labels and the
+# same (1/41) count. OPENAI_API_KEY only makes a model selectable, so startup
+# does not stall on the no-model picker; it does not change the first page.
+
+name = "11-login-api-key-providers"
+description = "/login API-key provider picker lists every API-key-provider catalog entry with upstream labels."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts",
+  "packages/coding-agent/src/core/model-runtime.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "Select provider to configure"
+capture_end = "(1/41)"
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/login", "Enter"]
+wait_contains = ["Select authentication method:", "Sign in with an API key"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Down", "Enter"]
+wait_contains = ["Select provider to configure:", "Cloudflare Workers AI"]
+wait_timeout_seconds = 10
+settle_seconds = 1
+
+[env]
+pig = ["OPENAI_API_KEY=x", "PIG_HOME=testdata/pig-home"]
+pi = ["OPENAI_API_KEY=x", "PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+output_normalized_equal = true
+both_contain = [
+  "Select provider to configure",
+  "Ant Ling • unconfigured",
+  "Anthropic • unconfigured",
+  "Azure OpenAI • unconfigured",
+  "Cloudflare Workers AI • unconfigured",
+  "(1/41)",
+]
+runs = 3

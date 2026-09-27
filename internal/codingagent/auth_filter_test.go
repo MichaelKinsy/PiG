@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // writeAuthJSON writes a minimal auth.json fixture under dir.
@@ -240,6 +242,36 @@ func TestAuthenticatedProviders_AdditionalEnvProviders_AreDetected(t *testing.T)
 	}
 }
 
+// Every catalog provider whose env key is set must be reported authenticated,
+// not only the historically hand-listed providers. Upstream derives the
+// available set from checkAuth() over the whole provider catalog
+// (model-runtime.ts:runAvailabilityRefresh), so an env-key provider such as
+// opencode-go appears in --list-models and the picker.
+func TestAuthenticatedProviders_CatalogEnvProviders_AreDetected(t *testing.T) {
+	clearAllAuthEnv(t)
+	t.Setenv("HOME", t.TempDir())
+	for envVar, value := range map[string]string{
+		"OPENCODE_API_KEY": "sk",
+		"DEEPSEEK_API_KEY": "sk",
+		"XAI_API_KEY":      "sk",
+		"CEREBRAS_API_KEY": "sk",
+		"TOGETHER_API_KEY": "sk",
+		"NVIDIA_API_KEY":   "sk",
+		"BASETEN_API_KEY":  "sk",
+	} {
+		t.Setenv(envVar, value)
+	}
+	dir := t.TempDir()
+	got := AuthenticatedProviders(dir)
+	for _, provider := range []string{
+		"opencode", "opencode-go", "deepseek", "xai", "cerebras", "together", "nvidia", "baseten",
+	} {
+		if !got[provider] {
+			t.Errorf("expected %s in AuthenticatedProviders via its env key, got %v", provider, got)
+		}
+	}
+}
+
 func TestAuthenticatedProviders_OpenAICodexOAuth_IncludesProvider(t *testing.T) {
 	clearAllAuthEnv(t)
 	dir := t.TempDir()
@@ -281,12 +313,6 @@ func TestAuthenticatedProviders_BedrockAuthDetected(t *testing.T) {
 	if !ReachableProviders()["amazon-bedrock"] {
 		t.Errorf("amazon-bedrock must be in ReachableProviders")
 	}
-	// Other catalog-only providers still must NOT leak into reachable.
-	for _, banned := range []string{"google", "google-vertex", "azure-openai-responses", "mistral", "cerebras", "fireworks", "xai", "zai"} {
-		if ReachableProviders()[banned] {
-			t.Errorf("%s leaked into ReachableProviders", banned)
-		}
-	}
 }
 
 func TestAuthenticatedProviders_BedrockNoAuth_Excluded(t *testing.T) {
@@ -304,24 +330,17 @@ func TestAuthenticatedProviders_BedrockNoAuth_Excluded(t *testing.T) {
 	}
 }
 
-func TestReachableProviders_ExactSet(t *testing.T) {
-	want := map[string]bool{
-		"github-copilot": true,
-		"anthropic":      true,
-		"openai":         true,
-		"openai-codex":   true,
-		"openrouter":     true,
-		"groq":           true,
-		"ollama":         true,
-		"amazon-bedrock": true,
-	}
+// ReachableProviders must cover the whole built-in catalog: buildProviderForEntry
+// switches on each provider's API kind, so every composed catalog provider is
+// wireable. ollama is env-configured rather than catalog-declared.
+func TestReachableProviders_IncludesEveryCatalogProvider(t *testing.T) {
 	got := ReachableProviders()
-	if len(got) != len(want) {
-		t.Fatalf("ReachableProviders size mismatch: want %d, got %d (%v)", len(want), len(got), got)
-	}
-	for k := range want {
-		if !got[k] {
-			t.Errorf("missing %q in ReachableProviders", k)
+	for _, provider := range ai.ListRuntimeProviders() {
+		if !got[provider] {
+			t.Errorf("ReachableProviders missing catalog provider %q", provider)
 		}
+	}
+	if !got["ollama"] {
+		t.Errorf("ReachableProviders missing ollama")
 	}
 }

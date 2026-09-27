@@ -12,13 +12,10 @@ SPDX-License-Identifier: MIT
 [![CI](https://github.com/MichaelKinsy/PiG/actions/workflows/ci.yml/badge.svg)](https://github.com/MichaelKinsy/PiG/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/MichaelKinsy/PiG/actions/workflows/security.yml/badge.svg)](https://github.com/MichaelKinsy/PiG/actions/workflows/security.yml)
 [![OpenSSF Scorecard](https://api.scorecard.dev/projects/github.com/MichaelKinsy/PiG/badge)](https://scorecard.dev/viewer/?uri=github.com/MichaelKinsy/PiG)
-<!-- TODO(owner): add the OpenSSF Best Practices badge after registering at https://www.bestpractices.dev; replace PROJECT_ID with the assigned id.
-[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/PROJECT_ID/badge)](https://www.bestpractices.dev/projects/PROJECT_ID)
--->
+[![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14941/badge)](https://www.bestpractices.dev/projects/14941)
 [![REUSE status](https://api.reuse.software/badge/github.com/MichaelKinsy/PiG)](https://api.reuse.software/info/github.com/MichaelKinsy/PiG)
-[![Go Report Card](https://goreportcard.com/badge/github.com/MichaelKinsy/PiG)](https://goreportcard.com/report/github.com/MichaelKinsy/PiG)
 [![Go Reference](https://pkg.go.dev/badge/github.com/MichaelKinsy/PiG.svg)](https://pkg.go.dev/github.com/MichaelKinsy/PiG)
-[![Go version](https://img.shields.io/github/go-mod/go-version/MichaelKinsy/PiG)](go.mod)
+[![Minimum Go version](https://img.shields.io/github/go-mod/go-version/MichaelKinsy/PiG?label=Go%20%E2%89%A5)](go.mod)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/MichaelKinsy/PiG?sort=semver)](https://github.com/MichaelKinsy/PiG/releases)
 [![Pi pin 0.87.1](https://img.shields.io/badge/Pi%20pin-0.87.1-8A2BE2)](https://github.com/earendil-works/pi/releases/tag/v0.87.1)
@@ -223,7 +220,7 @@ Requirements:
 - Go 1.27.1
 - Git
 - macOS 13 or later for native macOS builds
-- Node.js 24.19.0 and npm 12.0.2 for parity tooling
+- Node.js 24.19.0 and npm 12.1.0 for parity tooling
 - Python 3.12 for Python SDK tests
 - Rust 1.97.1 for Rust SDK tests
 - tmux for terminal parity tests on Unix
@@ -296,4 +293,4 @@ See [docs/supply-chain.md](docs/supply-chain.md) for the inventory, SBOM, vulner
 
 PiG would not exist without Pi and the work of its maintainers and contributors. Their design and open-source work provide the reference that PiG follows.
 
-Thank you to everyone who contributes to Pi and PiG.
+Thank you to everyone who contributes to Pi and PiG. Maintainers are listed in [`MAINTAINERS.md`](MAINTAINERS.md), every contributor appears on [GitHub's contributors page](https://github.com/MichaelKinsy/PiG/graphs/contributors), and the [changelog](CHANGELOG.md) credits each fix to the person who reported or contributed it.

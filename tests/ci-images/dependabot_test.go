@@ -22,7 +22,6 @@ func TestDependabotCoversMaintainedManifests(t *testing.T) {
 		"/coding/extension/host/subprocess/testdata/sdk-fixture",
 		"/examples/extensions/go-factory",
 		"/examples/extensions/rust-factory",
-		"/extensions/sdk",
 		"/extensions/sdk-py",
 		"/extensions/sdk-rs",
 		"/extensions/sdk-ts",

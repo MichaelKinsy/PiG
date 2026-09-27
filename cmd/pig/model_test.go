@@ -62,11 +62,10 @@ func TestResolveModelUsesFirstAvailableCustomModel(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(models), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	registry := codingagent.NewModelRegistry(dir)
 	previousAgentDir := agentDirForModelOverride
 	agentDirForModelOverride = dir
 	t.Cleanup(func() { agentDirForModelOverride = previousAgentDir })
-	model, _, warning, err := resolveModel("", "", codingagent.Settings{}, registry)
+	model, _, warning, err := resolveModel("", "", codingagent.Settings{}, testServices(t, dir))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +89,7 @@ func TestResolveModelUsesFirstAvailableCustomModel(t *testing.T) {
 func TestResolveModelProviderFlagWithoutModelIsIgnored(t *testing.T) {
 	dir := isolateProviderAuthEnv(t)
 	t.Setenv("TOGETHER_API_KEY", "sk-together")
-	model, _, _, err := resolveModel("", "anthropic", codingagent.Settings{}, codingagent.NewModelRegistry(dir))
+	model, _, _, err := resolveModel("", "anthropic", codingagent.Settings{}, testServices(t, dir))
 	if err != nil {
 		t.Fatalf("resolveModel: %v", err)
 	}
@@ -127,17 +126,14 @@ func TestResolveModel_ThreadsProviderEnvIntoProvider(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "auth.json"), []byte(authJSON), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	auth, err := ai.NewAuthStorage(filepath.Join(dir, "auth.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	registry := codingagent.NewModelRegistry(dir)
-	registry.SetAuthStorage(auth)
+	previousAgentDir := agentDirForModelOverride
+	agentDirForModelOverride = dir
+	t.Cleanup(func() { agentDirForModelOverride = previousAgentDir })
 
 	// Process env would enable prompt caching; the scoped "none" must win.
 	t.Setenv("PI_CACHE_RETENTION", "short")
 
-	model, _, _, err := resolveModel("myco/m1", "", codingagent.Settings{}, registry)
+	model, _, _, err := resolveModel("myco/m1", "", codingagent.Settings{}, testServices(t, dir))
 	if err != nil {
 		t.Fatalf("resolveModel: %v", err)
 	}
@@ -175,18 +171,15 @@ func TestResolveModel_ThreadsAzureScopedEnv(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "auth.json"), []byte(authJSON), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	auth, err := ai.NewAuthStorage(filepath.Join(dir, "auth.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	registry := codingagent.NewModelRegistry(dir)
-	registry.SetAuthStorage(auth)
+	previousAgentDir := agentDirForModelOverride
+	agentDirForModelOverride = dir
+	t.Cleanup(func() { agentDirForModelOverride = previousAgentDir })
 
 	// Process env would set a different api-version; the scoped value must win.
 	t.Setenv("AZURE_OPENAI_API_VERSION", "process-ver")
 	t.Setenv("AZURE_OPENAI_API_KEY", "k")
 
-	model, _, _, err := resolveModel("azure-openai-responses/m1", "", codingagent.Settings{}, registry)
+	model, _, _, err := resolveModel("azure-openai-responses/m1", "", codingagent.Settings{}, testServices(t, dir))
 	if err != nil {
 		t.Fatalf("resolveModel: %v", err)
 	}
@@ -199,5 +192,51 @@ func TestResolveModel_ThreadsAzureScopedEnv(t *testing.T) {
 	_ = stream.Result()
 	if gotQuery != "api-version=scoped-ver" {
 		t.Fatalf("request query = %q, want api-version=scoped-ver (scoped env must win over process)", gotQuery)
+	}
+}
+
+// TestResolveModel_ThreadsAnthropicScopedEnv proves the startup resolver wires
+// entry.Env into the Anthropic provider config: a scoped PI_CACHE_RETENTION=none
+// from auth.json must win over the process env and suppress the
+// x-session-affinity header. The CLI's former builder passed entry.Env directly;
+// the shared coding.BuildModelFromEntry must keep doing so.
+func TestResolveModel_ThreadsAnthropicScopedEnv(t *testing.T) {
+	var gotHeader string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotHeader = r.Header.Get("x-session-affinity")
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = io.WriteString(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg\",\"usage\":{\"input_tokens\":1,\"output_tokens\":0}}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
+	}))
+	defer srv.Close()
+
+	dir := t.TempDir()
+	models := `{"providers":{"myco-anthropic":{"baseUrl":"` + srv.URL + `","apiKey":"sk-x",` +
+		`"api":"anthropic-messages",` +
+		`"compat":{"sendSessionAffinityHeaders":true},` +
+		`"models":[{"id":"m1","name":"M1"}]}}}`
+	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(models), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	authJSON := `{"myco-anthropic":{"type":"api_key","key":"sk-x","env":{"PI_CACHE_RETENTION":"none"}}}`
+	if err := os.WriteFile(filepath.Join(dir, "auth.json"), []byte(authJSON), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	// Process env would send the affinity header; the scoped "none" must win.
+	t.Setenv("PI_CACHE_RETENTION", "short")
+
+	model, _, _, err := resolveModel("myco-anthropic/m1", "", codingagent.Settings{}, testServices(t, dir))
+	if err != nil {
+		t.Fatalf("resolveModel: %v", err)
+	}
+	stream, err := model.Provider.Stream(context.Background(), ai.NormalizeContext(ai.Context{
+		Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hi")}},
+	}), ai.StreamOptions{SessionID: "sess-1"})
+	if err != nil {
+		t.Fatalf("Stream: %v", err)
+	}
+	_ = stream.Result()
+	if gotHeader != "" {
+		t.Fatalf("scoped PI_CACHE_RETENTION=none must omit x-session-affinity, got %q", gotHeader)
 	}
 }

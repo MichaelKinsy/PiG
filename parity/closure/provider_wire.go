@@ -132,7 +132,7 @@ func AddProviderWireBehaviors(root string, snapshot *Snapshot, records []Record)
 }
 
 func providerWireDefinitions() []providerWireBehavior {
-	openAIRoot := sourceRange{repository: "pig", path: "cmd/pig/model.go", semanticID: "cmd.pig.buildModel.openai", start: "provider = ai.NewOpenAIProvider(ai.OpenAIConfig{", end: "\n\t\t\t})"}
+	openAIRoot := sourceRange{repository: "pig", path: "coding/model.go", semanticID: "coding.buildProviderForEntry.openai-completions", start: "return ai.NewOpenAIProvider(ai.OpenAIConfig{", end: "\t\t}), nil"}
 	openAISampling := providerWireTarget{
 		id: "openai-completions-sampling", symbol: "ai.openAIProvider.Stream.sampling", goFact: "go:github.com/MichaelKinsy/PiG/ai#openAIProvider.Stream",
 		rangeRef: sourceRange{repository: "pig", path: "ai/openai.go", semanticID: "ai.openAIProvider.Stream.sampling", start: "\tpayload := any(req)", end: "\tif opts.OnPayload != nil"},
@@ -151,7 +151,7 @@ func providerWireDefinitions() []providerWireBehavior {
 	responsesStream := providerWireTarget{
 		id: "openai-responses-sampling", symbol: "ai.openAIResponsesProvider.Stream.sampling", goFact: "go:github.com/MichaelKinsy/PiG/ai#openAIResponsesProvider.Stream",
 		rangeRef: sourceRange{repository: "pig", path: "ai/openai_responses.go", semanticID: "ai.openAIResponsesProvider.Stream.sampling", start: "\tpayload := any(req)", end: "\tif opts.OnPayload != nil"},
-		rootRef:  sourceRange{repository: "pig", path: "cmd/pig/model.go", semanticID: "cmd.pig.buildModel.openai-responses", start: "provider = ai.NewOpenAIResponsesProvider(ai.OpenAIResponsesConfig{", end: "\n\t\t\t})"},
+		rootRef:  sourceRange{repository: "pig", path: "coding/model.go", semanticID: "coding.buildProviderForEntry.openai-responses", start: "return ai.NewOpenAIResponsesProvider(ai.OpenAIResponsesConfig{", end: "\t\t}), nil"},
 	}
 	return []providerWireBehavior{
 		{
