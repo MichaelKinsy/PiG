@@ -566,8 +566,7 @@ func (s *Session) currentRunner() *inproc.Runner {
 
 // BuildUserContent constructs the upstream user-content block list: a leading text block, including empty text, followed by any image attachments.
 func BuildUserContent(text string, images []ai.ImageContent) []ai.UserContentBlock {
-	content := make([]ai.UserContentBlock, 1, 1+len(images))
-	content[0] = ai.TextContent{Text: text}
+	content := []ai.UserContentBlock{ai.TextContent{Text: text}}
 	for _, img := range images {
 		content = append(content, img)
 	}
