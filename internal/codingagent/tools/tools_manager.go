@@ -266,6 +266,13 @@ func (m *ToolsManager) EnsureTool(ctx context.Context, tool string, onStatus fun
 		}
 		return m.GetToolPath(tool)
 	}
+	// A download that finished after the check above has already installed
+	// the tool and cleared its in-flight entry; look again under the lock so
+	// a late caller uses that install instead of downloading it a second time.
+	if existing := m.GetToolPath(tool); existing != "" {
+		m.mu.Unlock()
+		return existing
+	}
 	ch := make(chan struct{})
 	m.inflight[tool] = ch
 	m.mu.Unlock()
