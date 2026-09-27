@@ -18,6 +18,7 @@ func (m *InteractiveMode) finalizeRunningTools() {
 			comp.FinalizeAborted(time.Since(start))
 		}
 		delete(m.toolStarts, id)
+		delete(m.toolFileCalls, id)
 	}
 	m.toolMu.Unlock()
 }
@@ -47,6 +48,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		m.toolMu.Lock()
 		clear(m.toolByID)
 		clear(m.toolStarts)
+		clear(m.toolFileCalls)
 		clear(m.pendingArgs)
 		m.toolMu.Unlock()
 		if m.opts.Settings.GetShowTerminalProgress() {
@@ -85,15 +87,11 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		if e.Message.User != nil {
 			text := strings.TrimSpace(extractAgentMessageText(e.Message))
 			if text != "" {
-				if m.skipNextUserMessageText == text {
-					m.skipNextUserMessageText = ""
-				} else {
-					if !m.chatContainer.IsEmpty() {
-						m.appendToChat(tui.NewSpacer(1))
-					}
-					m.appendToChat(m.newUserMessageBlock(text))
-					m.tuiInst.RequestRender()
+				if !m.chatContainer.IsEmpty() {
+					m.appendToChat(tui.NewSpacer(1))
 				}
+				m.appendToChat(m.newUserMessageBlock(text))
+				m.tuiInst.RequestRender()
 			}
 			// A queued steering/follow-up message that just got injected as a
 			// user turn must leave the pending queue immediately, not linger
@@ -164,7 +162,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 				argsPreview := tui.HeaderForTool(pta.name, nil, m.opts.CWD)
 				comp = tui.NewToolExecutionComponent(pta.name, argsPreview)
 				comp.Cwd = m.opts.CWD
-				m.setGenericToolArgs(comp, pta.name, json.RawMessage(pta.args.String()))
+				m.applyToolPresentation(comp, pta.id, pta.name, json.RawMessage(pta.args.String()))
 				if m.opts.SettingsManager != nil {
 					s := m.opts.SettingsManager.Get()
 					comp.ShowImages = s.GetShowImages() && !s.BlockImages
@@ -178,7 +176,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 				m.toolMu.Unlock()
 				m.appendToChat(comp)
 			} else {
-				m.setGenericToolArgs(comp, pta.name, json.RawMessage(pta.args.String()))
+				m.applyToolPresentation(comp, pta.id, pta.name, json.RawMessage(pta.args.String()))
 				comp.UpdateArgs(pta.name, pta.args.String())
 				m.toolMu.Unlock()
 			}
@@ -224,10 +222,12 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 				errMsg = e.Message.Assistant.ErrorMessage
 			}
 			for _, comp := range m.toolByID {
+				comp.SetResultValue(agent.AgentToolResult{Content: errMsg, IsError: true})
 				comp.SetResult(errMsg, true, 0)
 			}
 			clear(m.toolByID)
 			clear(m.toolStarts)
+			clear(m.toolFileCalls)
 		} else {
 			for _, pta := range m.pendingArgs {
 				if pta.id != "" {
@@ -252,13 +252,22 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		}
 		argsPreview := tui.HeaderForTool(e.ToolName, e.Args, m.opts.CWD)
 		m.toolMu.Lock()
+		if e.ToolName == "read" || e.ToolName == "write" {
+			var args map[string]any
+			_ = json.Unmarshal(e.Args, &args)
+			if m.toolFileCalls == nil {
+				m.toolFileCalls = make(map[string]ai.ToolCall)
+			}
+			m.toolFileCalls[e.ToolCallID] = ai.ToolCall{Name: e.ToolName, Arguments: args}
+		}
 		comp := m.toolByID[e.ToolCallID]
 		if comp != nil {
 			// Component was created during streaming: update with
 			// final (complete) args and mark execution started.
 			comp.Cwd = m.opts.CWD
 			comp.ArgsPreview = argsPreview
-			m.setGenericToolArgs(comp, e.ToolName, e.Args)
+			comp.SetHeaderArgs(e.Args)
+			m.applyToolPresentation(comp, e.ToolCallID, e.ToolName, e.Args)
 			if e.ToolLabel != "" {
 				comp.Label = e.ToolLabel
 			}
@@ -270,7 +279,8 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			// or providers that don't emit per-delta tool IDs).
 			comp = tui.NewToolExecutionComponent(e.ToolName, argsPreview)
 			comp.Cwd = m.opts.CWD
-			m.setGenericToolArgs(comp, e.ToolName, e.Args)
+			comp.SetHeaderArgs(e.Args)
+			m.applyToolPresentation(comp, e.ToolCallID, e.ToolName, e.Args)
 			if e.ToolLabel != "" {
 				comp.Label = e.ToolLabel
 			}
@@ -307,6 +317,10 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			// renderer (upstream renderers/bash.ts, isPartial).
 			comp.BodyRenderer = makeShellBodyRenderer(e.Content, e.Details, true, nil)
 		}
+		if comp.HasDefinition() {
+			// Upstream hands a partial result to renderResult with isPartial.
+			comp.SetResultValue(agent.AgentToolResult{Content: e.Content, Details: e.Details})
+		}
 		comp.SetStreaming(e.Content)
 		m.tuiInst.RequestRender()
 
@@ -316,6 +330,8 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		delete(m.toolByID, e.ToolCallID)
 		start := m.toolStarts[e.ToolCallID]
 		delete(m.toolStarts, e.ToolCallID)
+		call, hasFileCall := m.toolFileCalls[e.ToolCallID]
+		delete(m.toolFileCalls, e.ToolCallID)
 		m.toolMu.Unlock()
 		debugLog("tool end id=%q name=%q matched=%v outlen=%d", e.ToolCallID, e.ToolName, comp != nil, len(e.Result.Content))
 		if comp == nil {
@@ -330,6 +346,10 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		// Attach a per-tool body renderer so Ctrl+O reveals a diff /
 		// line-numbered view instead of raw text.
 		comp.BodyRenderer = toolBodyRenderer(e.ToolName, e.Result, took)
+		if hasFileCall {
+			// File renderers own their call arguments; wire results carry no private preview state.
+			comp.BodyRenderer = toolBodyRendererForCall(call, e.Result)
+		}
 		// Wire image blocks from tool results so they render inline.
 		// Mirrors upstream tool-execution.ts updateResult → image block handling.
 		if len(e.Result.Images) > 0 {
@@ -339,6 +359,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			}
 			comp.ImageBlocks = blocks
 		}
+		comp.SetResultValue(e.Result)
 		comp.SetResult(e.Result.Content, e.Result.IsError, elapsed)
 		m.maybeConvertImagesForKitty(comp)
 		m.tuiInst.Render()

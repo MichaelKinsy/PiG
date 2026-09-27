@@ -78,6 +78,11 @@ var hostOnlyCapabilities = map[string]string{
 // deleting its entry here, which the gate enforces by failing when a listed SDK
 // has since gained the call.
 var knownCapabilityGaps = map[string]map[string]string{
+	"cancelModelStream": {
+		"go":   "no call cancels an in-flight host model stream (the Node runtime sends it for an aborted options.signal)",
+		"py":   "no call cancels an in-flight host model stream (the Node runtime sends it for an aborted options.signal)",
+		"rust": "no call cancels an in-flight host model stream (the Node runtime sends it for an aborted options.signal)",
+	},
 	"complete": {
 		"node": "host-backed completion is unavailable to Node extensions",
 	},

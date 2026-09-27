@@ -17,11 +17,12 @@ func reloadResourceSnapshotProvider(cwd, agentDir string, sm *codingagent.Settin
 		contextFiles := loadContextFiles(cwd, agentDir, flags.NoContextFiles)
 		infos := resourceSourceInfoProvider(cwd, agentDir, sm, flags)()
 		return codingagent.ReloadResourceSnapshot{
-			PromptPaths:        promptPaths,
-			ThemePaths:         themePaths,
-			SkillPaths:         skillPaths,
-			ContextFiles:       contextFiles,
-			ResourceSourceInfo: infos,
+			PromptPaths:             promptPaths,
+			ThemePaths:              themePaths,
+			SkillPaths:              skillPaths,
+			ContextFiles:            contextFiles,
+			SystemPromptSourcePaths: resolvePromptInputs(cwd, agentDir, flags, sm.IsProjectTrusted()).sourcePaths,
+			ResourceSourceInfo:      infos,
 		}
 	}
 }

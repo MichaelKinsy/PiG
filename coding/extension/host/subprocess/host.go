@@ -20,6 +20,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 )
 
@@ -243,6 +244,10 @@ type Host struct {
 	// extension list, so Extensions reports them in load order as upstream
 	// does.
 	loadOrder map[string]int
+	// configSourceInfo is each configured extension's SourceInfo by name.
+	// Packed cells start their members from cell descriptors, not the
+	// configs, so buildExtension reads the provenance back from here.
+	configSourceInfo map[string]extension.SourceInfo
 	// embeddedCells is the immutable source-free cell set supplied by a Piglet
 	// Binary. Reload reconstructs these cells alongside source extensions.
 	embeddedCells []EmbeddedCell
@@ -480,6 +485,7 @@ type managedExt struct {
 	providerNames         []string
 	oauthProviderNames    []string // subset of providerNames that also registered a bridged OAuth provider
 	stderrLogPath         string
+	stderrLog             *processStderrLog
 	sockPath              string               // Socket file path (for cleanup)
 	packedCellKey         string               // Non-empty when hosted by a packed runtime cell
 	packedProcess         *packedProcessState  // Shared process authority for packed-member sockets.
@@ -488,6 +494,10 @@ type managedExt struct {
 	releaseLiveness       func()               // Releases heartbeat ownership for live provider state.
 	livenessOwnerMu       sync.Mutex
 	cacheLease            *runtimecell.UsageLease
+
+	// toolRenders routes this extension's renderer invalidations to the
+	// tool cards whose renderers it runs.
+	toolRenders toolRenderSessions
 }
 
 func (me *managedExt) releaseLivenessOwner() {
@@ -1010,11 +1020,27 @@ func (h *Host) recordLoadOrder(configs []ExtConfig, replace bool) {
 	if replace || h.loadOrder == nil {
 		h.loadOrder = make(map[string]int, len(configs))
 	}
+	if replace || h.configSourceInfo == nil {
+		h.configSourceInfo = make(map[string]extension.SourceInfo, len(configs))
+	}
 	for _, config := range configs {
 		if _, ranked := h.loadOrder[config.Name]; !ranked {
 			h.loadOrder[config.Name] = len(h.loadOrder)
 		}
+		if config.SourceInfo != nil {
+			h.configSourceInfo[config.Name] = config.SourceInfo
+		}
 	}
+}
+
+// extensionSourceInfo returns the SourceInfo configured for me's extension.
+func (h *Host) extensionSourceInfo(me *managedExt) extension.SourceInfo {
+	if me.config.SourceInfo != nil {
+		return me.config.SourceInfo
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.configSourceInfo[me.config.Name]
 }
 
 // ExtensionCount returns the number of loaded subprocess extensions.
@@ -1185,6 +1211,9 @@ func (h *Host) Shutdown(reason string) {
 	for _, process := range watched {
 		process.stop()
 		_ = process.wait()
+		if process.watchDone != nil {
+			<-process.watchDone
+		}
 		process.releaseUsageLease()
 	}
 
@@ -1265,6 +1294,9 @@ func (me *managedExt) reap() {
 	if me.packedProcess != nil {
 		if me.packedProcess.cmd != nil {
 			_ = me.packedProcess.wait()
+			if me.packedProcess.watchDone != nil {
+				<-me.packedProcess.watchDone
+			}
 			me.packedProcess.releaseUsageLease()
 		}
 		return
@@ -1272,6 +1304,7 @@ func (me *managedExt) reap() {
 	if me.exitedCh != nil {
 		<-me.exitedCh
 	}
+	me.stderrLog.remove()
 }
 
 func (h *Host) stopManaged(me *managedExt, reason string) {
@@ -1537,10 +1570,29 @@ func (h *Host) commitStaged(staged []stagedManagedExt, removed []*managedExt, re
 
 // startExt spawns the binary, creates the socket listener, waits for connect,
 // performs the register handshake, and builds the extension.Extension struct.
-func (h *Host) startExt(ctx context.Context, me *managedExt, isRestart bool) (*extension.Extension, error) {
+func (h *Host) startExt(ctx context.Context, me *managedExt, isRestart bool) (_ *extension.Extension, err error) {
+	me.stderrLog, me.stderrLogPath = nil, ""
+	me.exitedCh, me.processTree, me.proc, me.cmd = nil, nil, nil, nil
 	extCtx, cancel := context.WithCancel(ctx)
 	me.cancel = cancel
 	me.parentCtx = ctx
+	defer func() {
+		if err == nil {
+			return
+		}
+		if loadErr, ok := errors.AsType[*LoadError](err); ok {
+			if ctx.Err() == nil {
+				loadErr.StderrLog = me.retainStderrLog()
+			} else {
+				loadErr.StderrLog = ""
+			}
+		}
+		cancel()
+		if me.processTree != nil {
+			_ = me.processTree.Kill()
+		}
+		me.reap()
+	}()
 
 	h.markExtension(me.config.Name, "spawn-start")
 	rawConn, err := h.connectExt(ctx, extCtx, cancel, me)
@@ -1640,21 +1692,24 @@ func (h *Host) connectExt(ctx, extCtx context.Context, cancel context.CancelFunc
 	// pipes get this long to drain before they are closed; it never bounds
 	// extension work.
 	cmd.WaitDelay = 5 * time.Second
-	// Capture stderr for diagnostics: pipe to a log file.
-	stderrFile, _ := os.CreateTemp("", fmt.Sprintf("pig-ext-%s-*.log", fileNameComponent(me.config.Name)))
-	if stderrFile != nil {
-		me.stderrLogPath = stderrFile.Name()
-		cmd.Stderr = stderrFile
-		defer func() { _ = stderrFile.Close() }()
-	}
-
 	cacheLease, err := runtimecell.AcquireArtifactUsageLease(binPath)
 	if err != nil {
 		cancel()
 		return nil, newLoadError(me.config.Name, "spawn", "cache_lease_failed", fmt.Errorf("lease extension cache artifact %s: %w", binPath, err))
 	}
 	me.cacheLease = cacheLease
+	// pig divergence (D56): retain stderr only when a subprocess failure diagnostic references it.
+	stderrFile, _ := os.CreateTemp("", fmt.Sprintf("pig-ext-%s-*.log", fileNameComponent(me.config.Name)))
+	if stderrFile != nil {
+		me.stderrLogPath = stderrFile.Name()
+		me.stderrLog = &processStderrLog{path: stderrFile.Name()}
+		cmd.Stderr = stderrFile
+	}
 	processTree, err := startProcessTree(cmd)
+	if stderrFile != nil {
+		// The child owns its inherited handle; the parent's handle must close before Windows can remove the file.
+		_ = stderrFile.Close()
+	}
 	if err != nil {
 		_ = me.cacheLease.Release()
 		me.cacheLease = nil
@@ -2032,7 +2087,7 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 		Name:             me.config.Name,
 		Path:             path,
 		ResolvedPath:     resolvedPath,
-		SourceInfo:       me.config.SourceInfo,
+		SourceInfo:       h.extensionSourceInfo(me),
 		Tools:            make(map[string]extension.RegisteredTool, len(reg.Tools)),
 		Commands:         make(map[string]extension.RegisteredCommand, len(reg.Commands)),
 		MessageRenderers: make(map[string]extension.MessageRenderer, len(reg.MessageRenderers)),
@@ -2050,30 +2105,40 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 		if source == "" {
 			source = me.config.Name // default: extension name (matches upstream sourceInfo stamping)
 		}
-		ext.Tools[td.Name] = extension.RegisteredTool{
-			Definition: extension.ToolDefinition{
-				Name:                tool.Name,
-				Label:               tool.Label,
-				Description:         tool.Description,
-				Parameters:          tool.Parameters,
-				ConstrainedSampling: tool.ConstrainedSampling,
-				PromptGuidelines:    tool.PromptGuidelines,
-				ExecutionMode:       extension.ToolExecutionMode(tool.ExecutionMode),
-				Execute:             h.makeToolExecuteFunc(me, tool.Name),
-			},
-			SourceInfo: source,
+		definition := extension.ToolDefinition{
+			Name:                tool.Name,
+			Label:               tool.Label,
+			Description:         tool.Description,
+			Parameters:          tool.Parameters,
+			ConstrainedSampling: tool.ConstrainedSampling,
+			PromptGuidelines:    tool.PromptGuidelines,
+			ExecutionMode:       extension.ToolExecutionMode(tool.ExecutionMode),
+			RenderShell:         extension.ToolRenderShell(tool.RenderShell),
+			Execute:             h.makeToolExecuteFunc(me, tool.Name),
 		}
+		if tool.RendersCall {
+			definition.RenderCall = h.makeToolRenderCall(me, tool.Name)
+		}
+		if tool.RendersResult {
+			definition.RenderResult = h.makeToolRenderResult(me, tool.Name)
+		}
+		ext.Tools[td.Name] = extension.RegisteredTool{Definition: definition, SourceInfo: source}
+		ext.ToolOrder = append(ext.ToolOrder, td.Name)
 	}
 
 	// Build commands.
 	for _, cd := range reg.Commands {
 		cmd := cd // capture
-		ext.Commands[cd.Name] = extension.RegisteredCommand{
+		registered := extension.RegisteredCommand{
 			Name:        cmd.Name,
 			Description: cmd.Description,
 			SourceInfo:  ext.SourceInfo,
 			Handler:     h.makeCommandHandler(me, cmd.Name),
 		}
+		if cmd.ArgumentCompletions {
+			registered.GetArgumentCompletions = makeCommandArgumentCompletions(me, cmd.Name)
+		}
+		ext.Commands[cd.Name] = registered
 		ext.CommandOrder = append(ext.CommandOrder, cd.Name)
 	}
 
@@ -2274,6 +2339,20 @@ func detailsToAny(raw json.RawMessage) any {
 	return v
 }
 
+// invocationError keeps transport failure propagation separate from diagnostic ownership.
+func (h *Host) invocationError(err error) error {
+	if h.onCrash == nil {
+		return err
+	}
+	_, transport := errors.AsType[*TransportError](err)
+	_, heartbeat := errors.AsType[*ExtensionUnresponsiveError](err)
+	// pig divergence (D56): the lifecycle handler owns a connection failure's diagnostic, while callers still receive the typed error.
+	if transport || heartbeat {
+		return &invocation.LifecycleError{Err: err}
+	}
+	return err
+}
+
 // makeCommandHandler returns a CommandHandler that dispatches commands over
 // the socket to the subprocess extension.
 //
@@ -2295,7 +2374,7 @@ func (h *Host) makeCommandHandler(me *managedExt, cmdName string) extension.Comm
 		}
 
 		if err := h.pushStateTo(ctx, me); err != nil {
-			return fmt.Errorf("sync extension state for command %s: %w", cmdName, err)
+			return me.dispatchError(fmt.Errorf("sync extension state for command %s: %w", cmdName, h.invocationError(err)))
 		}
 
 		resp, err := me.conn.Request(ctx, &Envelope{
@@ -2307,7 +2386,7 @@ func (h *Host) makeCommandHandler(me *managedExt, cmdName string) extension.Comm
 			},
 		})
 		if err != nil {
-			return fmt.Errorf("command %s: %w", cmdName, err)
+			return me.dispatchError(fmt.Errorf("command %s: %w", cmdName, h.invocationError(err)))
 		}
 
 		if resp.Response != nil && resp.Response.Error != nil {
@@ -2315,6 +2394,41 @@ func (h *Host) makeCommandHandler(me *managedExt, cmdName string) extension.Comm
 		}
 
 		return nil
+	}
+}
+
+// makeCommandArgumentCompletions asks the extension for a command's
+// getArgumentCompletions. The caller runs it off the TUI loop, as upstream
+// awaits it.
+func makeCommandArgumentCompletions(me *managedExt, cmdName string) extension.ArgumentCompletionsFunc {
+	return func(prefix string) ([]extension.AutocompleteItem, error) {
+		if me.conn == nil {
+			return nil, errors.New("extension not connected")
+		}
+		args, err := json.Marshal(prefix)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := me.conn.Request(context.Background(), &Envelope{
+			Type:    MsgRequest,
+			Request: &RequestPayload{Method: RequestCommandArgumentCompletions, Tool: cmdName, Args: args},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("command %s argument completions: %w", cmdName, err)
+		}
+		if resp.Response == nil {
+			return nil, nil
+		}
+		if resp.Response.Error != nil {
+			return nil, resp.Response.Error.ToError()
+		}
+		var items []extension.AutocompleteItem
+		if len(resp.Response.Result) > 0 {
+			if err := json.Unmarshal(resp.Response.Result, &items); err != nil {
+				return nil, fmt.Errorf("command %s argument completions: %w", cmdName, err)
+			}
+		}
+		return items, nil
 	}
 }
 
@@ -2326,7 +2440,7 @@ func (h *Host) makeShortcutHandler(me *managedExt, key string) extension.Shortcu
 			return errors.New("extension not connected")
 		}
 		if err := h.pushStateTo(ctx, me); err != nil {
-			return fmt.Errorf("sync extension state for shortcut %s: %w", key, err)
+			return me.dispatchError(fmt.Errorf("sync extension state for shortcut %s: %w", key, h.invocationError(err)))
 		}
 
 		resp, err := me.conn.Request(ctx, &Envelope{
@@ -2337,7 +2451,7 @@ func (h *Host) makeShortcutHandler(me *managedExt, key string) extension.Shortcu
 			},
 		})
 		if err != nil {
-			return fmt.Errorf("shortcut %s: %w", key, err)
+			return me.dispatchError(fmt.Errorf("shortcut %s: %w", key, h.invocationError(err)))
 		}
 
 		if resp.Response != nil && resp.Response.Error != nil {
@@ -2396,7 +2510,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			}
 		}
 		if err := me.host.pushStateTo(parent, me); err != nil {
-			return nil, fmt.Errorf("sync extension state for event %s: %w", event, err)
+			return nil, me.dispatchError(fmt.Errorf("sync extension state for event %s: %w", event, me.host.invocationError(err)))
 		}
 
 		resp, err := me.conn.Request(parent, &Envelope{
@@ -2409,7 +2523,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			},
 		})
 		if err != nil {
-			return nil, fmt.Errorf("event %s: %w", event, err)
+			return nil, me.dispatchError(fmt.Errorf("event %s: %w", event, me.host.invocationError(err)))
 		}
 
 		if resp.Response != nil {
@@ -2446,6 +2560,16 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 // When the connection closes (extension crashed/exited), this goroutine
 // invokes the crash supervisor and optionally restarts.
 func (h *Host) handleIncoming(me *managedExt) {
+	// Capture this generation before an automatic restart replaces the managed extension's process fields.
+	log, exited := me.stderrLog, me.exitedCh
+	defer func() {
+		if log != nil {
+			if exited != nil {
+				<-exited
+			}
+			log.remove()
+		}
+	}()
 	lanes := newCallLanes()
 	for env := range me.conn.Incoming() {
 		switch env.Type {
@@ -2483,7 +2607,17 @@ func (h *Host) handleIncoming(me *managedExt) {
 			// host-side overlay surfaces (e.g. ui.custom). Errors
 			// are intentionally swallowed because the producer does
 			// not expect a response.
-			if env.Notify == nil || h.uiBridge == nil {
+			if env.Notify == nil {
+				continue
+			}
+			if env.Notify.Method == NotifyToolRenderInvalidate {
+				var card ToolRenderCardPayload
+				if json.Unmarshal(env.Notify.Args, &card) == nil {
+					me.toolRenders.invalidate(me.conn, card.Card)
+				}
+				continue
+			}
+			if h.uiBridge == nil {
 				continue
 			}
 			h.uiBridge.HandleNotifyFrom(me.config.Name, me.conn, env.Notify)
@@ -2562,12 +2696,12 @@ func (h *Host) handleIncoming(me *managedExt) {
 				if hint != "" {
 					reason += "; " + hint
 				}
-				h.onCrash(me.config.Name, 0, true, withStderrLog(reason, me.stderrLogPath))
+				h.onCrash(me.config.Name, 0, true, withStderrLog(reason, me.retainStderrLog()))
 			}
 			return
 		}
 		if h.onCrash != nil {
-			h.onCrash(me.config.Name, delay, false, withStderrLog(hint, me.stderrLogPath))
+			h.onCrash(me.config.Name, delay, false, withStderrLog(hint, me.retainStderrLog()))
 		}
 		// Relaunch after the supervisor's backoff. The "restart in %s" notice
 		// above is only truthful because of this call.
@@ -2600,9 +2734,17 @@ func (h *Host) awaitClosedProcess(me *managedExt) {
 
 func (h *Host) disablePackedMember(me *managedExt, reason string) {
 	h.mu.Lock()
-	if h.exts[me.config.Name] == me {
-		delete(h.exts, me.config.Name)
+	// Detaching the current member claims its failure. The process watcher or a replacement may already own it.
+	if h.exts[me.config.Name] != me {
+		h.mu.Unlock()
+		return
 	}
+	// Reserve the diagnostic before detaching the member: the process watcher may finish as soon as it sees an empty registry.
+	logPath := ""
+	if h.onCrash != nil {
+		logPath = me.retainStderrLog()
+	}
+	delete(h.exts, me.config.Name)
 	h.mu.Unlock()
 	me.releaseLivenessOwner()
 	if me.sockPath != "" {
@@ -2618,7 +2760,7 @@ func (h *Host) disablePackedMember(me *managedExt, reason string) {
 	}
 	h.unregisterOAuthProviders(me, nil)
 	if h.onCrash != nil {
-		h.onCrash(me.config.Name, 0, true, withStderrLog(reason, me.stderrLogPath))
+		h.onCrash(me.config.Name, 0, true, withStderrLog(reason, logPath))
 	}
 }
 
@@ -2642,12 +2784,12 @@ func (h *Host) handleUnresponsiveExtension(me *managedExt, failure *ExtensionUnr
 	delay, err := me.supervisor.RecordCrash()
 	if err != nil {
 		if h.onCrash != nil {
-			h.onCrash(me.config.Name, 0, true, withStderrLog(me.supervisor.DisableReason()+"; "+reason, me.stderrLogPath))
+			h.onCrash(me.config.Name, 0, true, withStderrLog(me.supervisor.DisableReason()+"; "+reason, me.retainStderrLog()))
 		}
 		return
 	}
 	if h.onCrash != nil {
-		h.onCrash(me.config.Name, delay, false, withStderrLog(reason, me.stderrLogPath))
+		h.onCrash(me.config.Name, delay, false, withStderrLog(reason, me.retainStderrLog()))
 	}
 	h.scheduleRestart(me, delay)
 }
@@ -2677,6 +2819,7 @@ func (h *Host) attemptRestart(me *managedExt) {
 	if current != me {
 		return
 	}
+	me.reap()
 
 	// Release the dead process's context before spawning a fresh one so the
 	// old cancel func and its watcher goroutine don't leak.
@@ -2698,7 +2841,7 @@ func (h *Host) attemptRestart(me *managedExt) {
 				h.uiBridge.ClearExtensionConn(me.config.Name, me.conn)
 			}
 			if h.onCrash != nil {
-				h.onCrash(me.config.Name, 0, true, withStderrLog(me.supervisor.DisableReason(), me.stderrLogPath))
+				h.onCrash(me.config.Name, 0, true, withStderrLog(me.supervisor.DisableReason(), me.retainStderrLog()))
 			}
 			return
 		}
@@ -2759,4 +2902,24 @@ func buildExtCommandForGOOS(
 		return exec.CommandContext(ctx, node, binPath)
 	}
 	return exec.CommandContext(ctx, binPath)
+}
+
+// stoppedByOwner reports whether the host stopped this extension: a graceful
+// shutdown of it or of the host, its owner's context ending, or its packed
+// process being stopped.
+func (me *managedExt) stoppedByOwner() bool {
+	return me.shuttingDown.Load() ||
+		(me.host != nil && me.host.shuttingDown.Load()) ||
+		(me.parentCtx != nil && me.parentCtx.Err() != nil) ||
+		(me.packedProcess != nil && me.packedProcess.stopping.Load())
+}
+
+// dispatchError marks a failed handler call as cut short by the host when
+// the host stopped the extension, so runners do not report it as the
+// handler's failure (extension.ErrHandlerStopped).
+func (me *managedExt) dispatchError(err error) error {
+	if err != nil && me.stoppedByOwner() {
+		return fmt.Errorf("%w: %w", extension.ErrHandlerStopped, err)
+	}
+	return err
 }

@@ -341,10 +341,10 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 	configuredHeaders := model.ProviderMeta.Headers
 	var resolvedEnv map[string]string
 	if model.ProviderMeta.ProviderID != "" {
-		if modelRuntimeRequiresAuth(providerID) && !runtime.services.Registry().HasConfiguredAuth(providerID) {
+		if options.APIKey == "" && modelRuntimeRequiresAuth(providerID) && !runtime.services.Registry().HasConfiguredAuth(providerID) {
 			return nil, nil, ai.StreamOptions{}, fmt.Errorf("provider is not configured: %s", providerID)
 		}
-		resolved, err := BuildModel(providerID+"/"+model.ID, runtime.services)
+		resolved, err := buildModel(providerID+"/"+model.ID, runtime.services, options.APIKey)
 		if err != nil {
 			return nil, nil, ai.StreamOptions{}, err
 		}
@@ -357,6 +357,7 @@ func (runtime *ModelRuntime) prepareRequest(ctx context.Context, model *ai.Model
 	}
 
 	prepared := options
+	prepared.APIKey = ""
 	prepared.ModelCost = requestModel.CostRates()
 	prepared.Headers = mergeRuntimeHeaders(configuredHeaders, options.Headers)
 	if options.TransformHeaders != nil {

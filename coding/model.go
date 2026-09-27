@@ -44,6 +44,12 @@ import (
 //	rt, _ := coding.NewRuntime(coding.RuntimeOptions{Services: svcs})
 //	sess, _ := rt.New(coding.SessionStartOptions{Model: model})
 func BuildModel(spec string, svcs *Services) (*ai.Model, error) {
+	return buildModel(spec, svcs, "")
+}
+
+// buildModel builds spec's model; a non-empty apiKey replaces the resolved
+// credential, as upstream providers use options.apiKey when one is given.
+func buildModel(spec string, svcs *Services, apiKey string) (*ai.Model, error) {
 	if svcs == nil {
 		return nil, fmt.Errorf("coding: BuildModel: Services is required")
 	}
@@ -63,7 +69,7 @@ func BuildModel(spec string, svcs *Services) (*ai.Model, error) {
 	} else {
 		entry, _ = registry.Resolve(providerID, modelID)
 	}
-	return BuildModelFromEntry(providerID, modelID, entry, svcs)
+	return buildModelFromEntry(providerID, modelID, entry, svcs, apiKey)
 }
 
 // BuildModelFromEntry constructs the Model for an already-resolved entry. The
@@ -72,13 +78,19 @@ func BuildModel(spec string, svcs *Services) (*ai.Model, error) {
 // BuildModel, so both paths branch on the API kind and carry the catalog base
 // URL and credentials the same way.
 func BuildModelFromEntry(providerID, modelID string, entry icodingagent.ModelEntry, svcs *Services) (*ai.Model, error) {
+	return buildModelFromEntry(providerID, modelID, entry, svcs, "")
+}
+
+// buildModelFromEntry is BuildModelFromEntry with upstream's options.apiKey:
+// a non-empty apiKey replaces the resolved credential.
+func buildModelFromEntry(providerID, modelID string, entry icodingagent.ModelEntry, svcs *Services, apiKey string) (*ai.Model, error) {
 	if svcs == nil {
 		return nil, fmt.Errorf("coding: BuildModelFromEntry: Services is required")
 	}
 	entry.ProviderID = providerID
 	entry.ModelID = modelID
 	apiKind := ai.API(entry.API)
-	provider, err := buildProviderForEntry(providerID, modelID, apiKind, entry, svcs)
+	provider, err := buildProviderForEntry(providerID, modelID, apiKind, entry, svcs, apiKey)
 	if err != nil {
 		return nil, err
 	}
@@ -157,8 +169,14 @@ func lookupGeneratedModel(providerID, modelID string) (*ai.GeneratedModel, bool)
 	return ai.LookupModel(modelID)
 }
 
-func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry icodingagent.ModelEntry, svcs *Services) (ai.Provider, error) {
+// buildProviderForEntry builds the provider for entry. A non-empty explicitKey
+// is upstream's options.apiKey: it owns the request ahead of runtime, stored,
+// configured, and environment credentials.
+func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry icodingagent.ModelEntry, svcs *Services, explicitKey string) (ai.Provider, error) {
 	apiKey := entry.APIKey
+	if explicitKey != "" {
+		apiKey = explicitKey
+	}
 	baseURL := entry.BaseURL
 	extraHeaders := cloneStringMap(entry.Headers)
 
@@ -187,6 +205,9 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 			// credential, matching upstream auth-storage.getApiKey.
 			EnvToken: entry.APIKey,
 			RuntimeToken: func() (string, bool) {
+				if explicitKey != "" {
+					return explicitKey, true
+				}
 				return svcs.Registry().RuntimeAPIKey(providerID)
 			},
 		})
@@ -197,6 +218,9 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 	// key callback resolve it there so an OAuth refresh follows the request
 	// context; the others resolve it here, once per BuildModel.
 	resolveAPIKey := requestAPIKey(svcs, providerID, apiKey)
+	if explicitKey != "" {
+		resolveAPIKey = func(context.Context) (string, error) { return explicitKey, nil }
+	}
 	if !acceptsRequestAPIKey(apiKind) {
 		var err error
 		if apiKey, err = resolveAPIKey(context.Background()); err != nil {

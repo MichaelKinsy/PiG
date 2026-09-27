@@ -13,9 +13,13 @@ func TestTokenContext_ExpandsTempPlaceholder(t *testing.T) {
 	tc := newTokenContext(t, "test")
 
 	got := tc.expand("{{TEMP}}/sessions")
-	want := filepath.Join(tc.tempRoot, "sessions")
-	if got != want {
-		t.Errorf("expand: got %q, want %q", got, want)
+	if want := filepath.Join(tc.tempRoot, "sessions"); filepath.Clean(got) != want {
+		t.Errorf("expand: got %q, want the path %q", got, want)
+	}
+	// Scenarios place {{TEMP}} inside JSON and TOML strings, where a Windows
+	// path's backslashes would be escape sequences.
+	if strings.Contains(got, `\`) {
+		t.Errorf("expand: got %q, want forward slashes", got)
 	}
 
 	// No-op when no token present.
@@ -45,7 +49,7 @@ func TestTokenContext_ExpandSliceIsIndependent(t *testing.T) {
 	if &in[0] == &out[0] {
 		t.Fatalf("expandSlice must return a new slice, not modify in-place")
 	}
-	if !strings.Contains(out[1], tc.tempRoot) || !strings.Contains(out[3], tc.tempRoot) {
+	if root := filepath.ToSlash(tc.tempRoot); !strings.Contains(out[1], root) || !strings.Contains(out[3], root) {
 		t.Errorf("expandSlice did not expand all entries: %v", out)
 	}
 	if in[1] != "{{TEMP}}/s" {

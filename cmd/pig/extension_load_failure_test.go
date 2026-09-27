@@ -13,6 +13,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 func TestExtensionLoadDiagnosticsMatchUpstreamFormat(t *testing.T) {
@@ -136,7 +137,7 @@ func TestAutoDiscoveredIndexExtensionReportsEntryFile(t *testing.T) {
 	broken := filepath.Join(agentDir, "extensions", "brokendir")
 	entry := filepath.Join(broken, "index.js")
 	writeStartupFixtureFile(t, entry, "export default function () { throw new Error(\"register boom\"); }\n")
-	configs := collectTopLevelExtensionConfigs(filepath.Join(agentDir, "extensions"), nil)
+	configs := collectTopLevelExtensionConfigs(filepath.Join(agentDir, "extensions"), nil, "user")
 	if len(configs) != 1 || configs[0].Name != "brokendir" || configs[0].Source != broken {
 		t.Fatalf("configs = %#v, want the brokendir directory selected", configs)
 	}
@@ -241,6 +242,83 @@ func TestStartupDuplicateExtensionCopiesMatchUpstream(t *testing.T) {
 			if !slices.Contains(run.commands, want) {
 				t.Fatalf("RPC commands %v lack %q\nstderr:\n%s", run.commands, want, run.stderr)
 			}
+		}
+	}
+}
+
+// Upstream resolves a -e directory with a "pi" manifest as a Package: each
+// entry its manifest yields is its own extension with CLI provenance, and a
+// manifest whose directory entry holds no extension loads nothing.
+func TestCLIExtensionConfigsLoadEachPackageDirectoryEntry(t *testing.T) {
+	root := t.TempDir()
+	extension := "export default function extension(pi) {}\n"
+	write := func(path, content string) {
+		t.Helper()
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	pkg := filepath.Join(root, "pkg")
+	write(filepath.Join(pkg, "package.json"), `{"pi":{"extensions":["./extensions"]}}`)
+	write(filepath.Join(pkg, "extensions", "alpha.ts"), extension)
+	write(filepath.Join(pkg, "extensions", "beta.js"), extension)
+	write(filepath.Join(pkg, "extensions", "gamma", "index.ts"), extension)
+	empty := filepath.Join(root, "empty")
+	write(filepath.Join(empty, "package.json"), `{"pi":{"extensions":["./extensions"]}}`)
+	write(filepath.Join(empty, "extensions", "README.md"), "nothing\n")
+
+	configs := cliExtensionConfigs(pkg)
+	var sources []string
+	for _, config := range configs {
+		if err := config.ResolveError(); err != nil {
+			t.Fatalf("config %s did not resolve: %v", config.Name, err)
+		}
+		if info, ok := config.SourceInfo.(codingagent.PiSourceInfo); !ok || info.Source != "cli" || info.Scope != "temporary" {
+			t.Fatalf("config %s source info = %#v, want CLI provenance", config.Name, config.SourceInfo)
+		}
+		sources = append(sources, config.Source)
+	}
+	want := []string{
+		filepath.Join(pkg, "extensions", "alpha.ts"),
+		filepath.Join(pkg, "extensions", "beta.js"),
+		filepath.Join(pkg, "extensions", "gamma", "index.ts"),
+	}
+	if !slices.Equal(sources, want) {
+		t.Fatalf("sources = %v, want %v", sources, want)
+	}
+	if configs := cliExtensionConfigs(empty); len(configs) != 0 {
+		t.Fatalf("empty directory entry loaded %#v, want nothing", configs)
+	}
+}
+
+// Upstream auto-discovery loads each entry an extension directory's manifest
+// declares; an index among several entries is its own entry, not the whole
+// directory.
+func TestTopLevelExtensionDirectoryLoadsEachManifestEntry(t *testing.T) {
+	autoDir := filepath.Join(t.TempDir(), "extensions")
+	dir := filepath.Join(autoDir, "multi")
+	for name, content := range map[string]string{
+		"package.json": `{"pi":{"extensions":["./index.ts","./other.ts"]}}`,
+		"index.ts":     "export default function extension(pi) {}\n",
+		"other.ts":     "export default function extension(pi) {}\n",
+	} {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	configs := collectTopLevelExtensionConfigs(autoDir, nil, "user")
+	if len(configs) != 2 {
+		t.Fatalf("configs = %#v, want one per manifest entry", configs)
+	}
+	for _, config := range configs {
+		if err := config.ResolveError(); err != nil {
+			t.Fatalf("config %s did not resolve: %v", config.Name, err)
 		}
 	}
 }

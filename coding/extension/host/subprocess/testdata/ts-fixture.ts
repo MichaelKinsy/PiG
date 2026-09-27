@@ -26,6 +26,12 @@ export default function (pi: ExtensionAPI) {
           )
         : { stopReason: "error", content: [] };
       const built = buildSessionContext(ctx.sessionManager.getEntries(), ctx.sessionManager.getLeafId());
+      // Pi hands out fresh ToolInfo and SlashCommandInfo objects; mutating one
+      // must not change what the next call returns.
+      const scratchTools = pi.getAllTools();
+      if (scratchTools[0]) scratchTools[0].name = "mutated";
+      const scratchCommands = pi.getCommands();
+      if (scratchCommands[0]) scratchCommands[0].name = "mutated";
       return {
         content: [{ type: "text", text: `echo-ts: ${params.text}` }],
         details: {

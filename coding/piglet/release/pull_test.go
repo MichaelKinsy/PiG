@@ -391,6 +391,23 @@ func containsError(errs []error, want string) bool {
 	return false
 }
 
+// The exact no-write assertions compare snapshots, so a changed release lock
+// must change the snapshot.
+func TestSnapshotTreeDetectsReleaseLockMutation(t *testing.T) {
+	root := t.TempDir()
+	lock := filepath.Join(root, ".release.lock")
+	if err := os.WriteFile(lock, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	before := snapshotTree(t, root)
+	if err := os.WriteFile(lock, []byte("unexpected mutation"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if after := snapshotTree(t, root); reflect.DeepEqual(after, before) {
+		t.Fatal("snapshotTree hides changed .release.lock contents; no-write assertions cannot detect this mutation")
+	}
+}
+
 func snapshotTree(t *testing.T, root string) map[string]string {
 	t.Helper()
 	snapshot := map[string]string{}
@@ -409,12 +426,6 @@ func snapshotTree(t *testing.T, root string) map[string]string {
 			snapshot[relative+"/"] = "dir"
 			return nil
 		}
-		// The release lock holds no data. Windows refuses to read a byte
-		// range another handle has locked, and a caller may hold the lock.
-		if entry.Name() == ".release.lock" {
-			snapshot[relative] = "lock"
-			return nil
-		}
 		data, err := os.ReadFile(path)
 		if err != nil {
 			return err
@@ -426,6 +437,29 @@ func snapshotTree(t *testing.T, root string) map[string]string {
 		t.Fatal(err)
 	}
 	return snapshot
+}
+
+// treePaths lists the paths under root without reading any file, for a test
+// that holds the store lock: Windows refuses to read a byte range that another
+// handle has locked.
+func treePaths(t *testing.T, root string) []string {
+	t.Helper()
+	var paths []string
+	err := filepath.WalkDir(root, func(path string, _ fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		paths = append(paths, relative)
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return paths
 }
 
 func errorsIsNotExist(err error) bool {

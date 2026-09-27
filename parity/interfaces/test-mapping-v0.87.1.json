@@ -2796,9 +2796,13 @@
         "internal/codingagent/interactive_test.go#TestShowStatus_Coalesces",
         "internal/codingagent/ext_ui_context_test.go#TestExtUIContextSetToolsExpandedUpdatesVisibleToolCards",
         "internal/codingagent/ext_theme_test.go#TestExtensionThemeAPIsAreWired",
-        "internal/codingagent/interactive_test.go#TestCompactStartupResourceSectionListsNames"
+        "internal/codingagent/loaded_resources_test.go#TestShowLoadedResourcesListsEachSectionUnderItsHeading",
+        "internal/codingagent/loaded_resources_test.go#TestLoadedResourcesExtensionLabelsMatchUpstream",
+        "internal/codingagent/loaded_resources_test.go#TestLoadedResourcesExpandedExtensionsMatchUpstream",
+        "internal/codingagent/loaded_resources_test.go#TestLoadedResourcesContextMatchesUpstream",
+        "internal/codingagent/loaded_resources_test.go#TestLoadedResourcesQuietAndVerboseStartup"
       ],
-      "rationale": "only ~5 of 33 cases have plausible coverage: showStatus coalescing (1 of 2 -- 'appends a new status line if something else was added in between' is untested), setToolsExpanded (1), setTheme persist/reject-invalid (2), and one generic startup-resource-listing test that does not reach the ~24 showLoadedResources sub-cases (index.ts/index.js stripping, grandparent disambiguation, npm/Windows sibling labeling, verbose vs quiet, compact vs expanded, context-path handling -- no hits for 'index.ts'/'grandparent'/'disambiguat' in internal/codingagent or tui). showManagedToolStatus, showExtensionCustom, addAutocompleteProvider/setupAutocompleteProvider/createBaseAutocompleteProvider have no test evidence at all."
+      "rationale": "partial: showStatus coalescing (1 of 2 -- 'appends a new status line if something else was added in between' is untested), setToolsExpanded (1), setTheme persist/reject-invalid (2), and the showLoadedResources cases (compact and expanded listings, verbose versus quiet startup, index.ts/index.js stripping, parent and grandparent disambiguation, package and npm/Windows sibling labels, mixed layouts in compact and expanded output, context paths and system prompt order) are ported in loaded_resources_test.go. The reload quiet-startup and quiet-diagnostics cases, showManagedToolStatus, showExtensionCustom, and addAutocompleteProvider/setupAutocompleteProvider/createBaseAutocompleteProvider have no test evidence."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-suspend.test.ts",
@@ -3168,42 +3172,33 @@
     },
     {
       "path": "packages/coding-agent/test/rpc-jsonl.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:4a5a9738d39bb226e12535e6acdcebcd92ea675e9b1fd5ffadbdc0d7ea4babb6",
-      "rationale": "RPC tests cover JSONL framing, CRLF input, multi-record splitting and malformed input. Missing: byte-faithful U+2028/U+2029 serialization; Go encoding/json escapes those separators while upstream writes them raw, with no approved divergence.",
+      "rationale": "All four cases are ported with the same JSONL inputs and assertions, including literal Unicode separators on output, CRLF and the unterminated final record. Escaped-backslash cases guard the serializer fix.",
       "evidence": [
-        "cmd/pig/rpc_mode_test.go"
+        "cmd/pig/rpc_jsonl_upstream_test.go#TestRPCJSONLUpstream",
+        "parity/scenarios/rpc/02-rpc-unknown-command.toml"
       ]
     },
     {
       "path": "packages/coding-agent/test/rpc-prompt-response-semantics.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:d3c38618c3e0a2541a9211cfa0a616d3fb9936142663621bd3e48d627e10912d",
       "evidence": [
-        "cmd/pig/rpc_ui_integration_test.go#TestRPCModeStartsWithUnknownModelAndRejectsPromptBeforeAcceptance",
-        "parity/scenarios/rpc/22-rpc-unknown-model-preflight.toml",
+        "cmd/pig/rpc_prompt_semantics_upstream_test.go#TestRPCPromptResponseSemanticsUpstream",
         "parity/scenarios/rpc/25-rpc-clear-queue.toml"
       ],
-      "rationale": "covered: a failure response when prompt preflight rejects, a success response on accepted prompt, and clear_queue returning and clearing queued steering and follow-up messages; missing: assertions that exactly one response is emitted per prompt (the tests await the first matching response only), and the single success response for a prompt queued during streaming."
+      "rationale": "All four cases use the same prompts and expected response/error/queue shapes through a real RPC process. A held local HTTP response replaces timing sleeps. Every prompt response is counted after complete output drain, including queued prompts. A compiling duplicate-preflight-response mutation fails the exactly-once guard."
     },
     {
       "path": "packages/coding-agent/test/rpc.test.ts",
-      "disposition": "partial",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:28bb4f005cac1803df42abae071301824efe481598d25f1fabd0ce144203887f",
       "evidence": [
-        "cmd/pig/rpc_mode_test.go#TestRPCStateCommand",
-        "cmd/pig/rpc_mode_test.go#TestRPCEntriesSince",
-        "cmd/pig/rpc_mode_test.go#TestRPCTreeSerializesUpstreamShape",
-        "cmd/pig/rpc_resume_integration_test.go#TestRPCModeSessionReplacementAndExport",
-        "parity/scenarios/rpc/03-rpc-state-setters.toml",
-        "parity/scenarios/rpc/05-rpc-query-commands.toml",
-        "parity/scenarios/rpc/07-rpc-model-thinking-commands.toml",
-        "parity/scenarios/rpc/08-rpc-new-session.toml",
-        "parity/scenarios/rpc/12-rpc-export-html.toml",
-        "parity/scenarios/rpc/14-rpc-bash-streaming.toml",
+        "cmd/pig/rpc_upstream_test.go#TestRPCModeUpstream",
         "parity/scenarios/rpc/15-rpc-compaction-result.toml"
       ],
-      "rationale": "Upstream suite is a live-API e2e (skipped without ANTHROPIC credentials). covered: get_state, set_thinking_level, available thinking levels and models, session stats, new_session, export_html, get_last_assistant_text, get_entries with since cursor, get_tree, set_session_name, bash execution, manual compaction; missing: messages persisted to the session file, bash output added to and included in the next LLM context, cycle_thinking_level behavior (only parsed in Go tests), and pre-compaction entries retained in get_entries after compaction."
+      "rationale": "All 18 cases retain the upstream prompts, Anthropic model identity and expected results through a real RPC process, filesystem and provider request. A hermetic Anthropic HTTP server replaces live credentials. Bash recall reads the unique value from the actual LLM request; persistence, since cursors, tree identity, compaction append-only history and session names are asserted. Short fixture replies use keepRecentTokens=1 for a compactable prefix; relative HTML paths resolve in the isolated child cwd."
     },
     {
       "path": "packages/coding-agent/test/runtime-credentials.test.ts",
@@ -3798,9 +3793,13 @@
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/5868-rpc-unknown-command-id.test.ts",
-      "disposition": "pending",
+      "disposition": "ported",
       "upstreamTestHash": "sha256:8d820e03ede2d75f422a26ff68c060e58c79e34d2e22a76fb6961c39448ad3c0",
-      "rationale": "pending: ws/next-regression-inventory owns the unmerged port of this file. Main has no complete Go test for its 1 upstream case; retain this obligation until that branch lands and its exact cases are audited."
+      "rationale": "The sole case sends id=test/type=foobar through the real RPC process and requires the exact failure envelope, including the request id.",
+      "evidence": [
+        "cmd/pig/rpc_jsonl_upstream_test.go#TestRPCUnknownCommandPreservesRequestID",
+        "parity/scenarios/rpc/02-rpc-unknown-command.toml"
+      ]
     },
     {
       "path": "packages/coding-agent/test/suite/regressions/5943-session-start-notify.test.ts",

@@ -84,7 +84,10 @@ func (tc *tokenContext) expand(s string) string {
 		return s
 	}
 	if strings.Contains(s, "{{TEMP}}") {
-		s = strings.ReplaceAll(s, "{{TEMP}}", tc.tempRoot)
+		// Forward slashes: scenarios place {{TEMP}} inside JSON and TOML
+		// strings, where a Windows path's backslashes would be escape
+		// sequences. Windows file APIs accept either separator.
+		s = strings.ReplaceAll(s, "{{TEMP}}", filepath.ToSlash(tc.tempRoot))
 	}
 	if strings.Contains(s, "{{FAKE_BIN}}") {
 		s = strings.ReplaceAll(s, "{{FAKE_BIN}}", fakeBinDir())

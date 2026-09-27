@@ -154,10 +154,6 @@ func authExtensionConfigs(cwd, agentDir string, settings *codingagent.SettingsMa
 				}
 				continue
 			}
-			if member.Enabled {
-				kind := strings.TrimSuffix(string(member.Kind), "s")
-				return nil, nil, fmt.Errorf("Package %q declares missing %s %q. Run `pig config` and disable the missing member, restore the file, or correct the authored Package", pkg.Source.Source, kind, member.Pattern)
-			}
 		}
 		for _, source := range resources.ExtensionEntries {
 			relative, _ := filepath.Rel(pkg.InstalledPath, source)
@@ -177,11 +173,15 @@ func authExtensionConfigs(cwd, agentDir string, settings *codingagent.SettingsMa
 			configs = append(configs, config)
 		}
 	}
+	// Upstream resolves top-level extensions ahead of Packages, project scope
+	// first (package-manager.ts resourcePrecedenceRank).
+	packageConfigs := configs
+	configs = nil
 	var topLevel []subprocess.ExtConfig
-	topLevel = append(topLevel, collectTopLevelExtensionConfigs(filepath.Join(agentDir, "extensions"), settings.GetGlobalSettings().Extensions)...)
 	if projectRoot, ok := projectResourceRoot(cwd); ok {
-		topLevel = append(topLevel, collectTopLevelExtensionConfigs(filepath.Join(projectRoot, "extensions"), settings.GetProjectSettings().Extensions)...)
+		topLevel = append(topLevel, collectTopLevelExtensionConfigs(filepath.Join(projectRoot, "extensions"), settings.GetProjectSettings().Extensions, "project")...)
 	}
+	topLevel = append(topLevel, collectTopLevelExtensionConfigs(filepath.Join(agentDir, "extensions"), settings.GetGlobalSettings().Extensions, "user")...)
 	// A top-level extension whose source does not resolve is an inventory
 	// diagnostic too, as upstream package-manager-cli.ts warns on each
 	// extension load error.
@@ -192,7 +192,7 @@ func authExtensionConfigs(cwd, agentDir string, settings *codingagent.SettingsMa
 		}
 		configs = append(configs, config)
 	}
-	return mergeExtConfigs(configs), diagnostics, nil
+	return mergeExtConfigs(append(configs, packageConfigs...)), diagnostics, nil
 }
 
 type authRegistrationProjection struct {

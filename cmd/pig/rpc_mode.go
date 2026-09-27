@@ -75,16 +75,22 @@ type rpcModeResources struct {
 	ResumePath                   string
 }
 
-type rpcCommandRunner interface {
+type headlessCommandRunner interface {
 	Commands() []extension.ResolvedCommand
 	Command(string) (extension.ResolvedCommand, bool)
 	ExecuteCommand(context.Context, string, string) bool
 }
 
-type rpcCommandCatalog struct {
-	runner rpcCommandRunner
+// headlessCommandCatalog routes the prompts of print, JSON and RPC mode as
+// upstream AgentSession.prompt does: an extension command runs instead of
+// prompting, and other text has skill commands and prompt templates expanded.
+// It also lists the commands upstream getCommands and get_commands report.
+type headlessCommandCatalog struct {
+	runner headlessCommandRunner
+	// mode is the command context's mode: "print", "json" or "rpc".
+	mode string
 	// llama is the built-in llama.cpp extension's /llama command; notify
-	// carries its ctx.ui.notify calls to the RPC client.
+	// carries its ctx.ui.notify calls to the client.
 	llama           *llama.Host
 	notify          func(message, kind string)
 	promptTemplates []codingagent.PromptTemplate
@@ -94,39 +100,27 @@ type rpcCommandCatalog struct {
 	sourceInfo      map[string]codingagent.ResourceSourceInfo
 }
 
-func (c rpcCommandCatalog) commands() []RPCSlashCommand {
-	commands := make([]RPCSlashCommand, 0)
-	if c.llama != nil {
-		// Built-in extensions load before discovered ones, so their commands lead.
-		commands = append(commands, RPCSlashCommand{
-			Name: llama.CommandName, Description: llama.CommandDescription, Source: "extension",
-			SourceInfo: RPCSourceInfo{Path: llamaExtensionPath, Source: "inline", Scope: "temporary", Origin: "top-level"},
-		})
-	}
-	if c.runner != nil {
-		for _, command := range c.runner.Commands() {
-			commands = append(commands, RPCSlashCommand{
-				Name: strings.TrimPrefix(command.InvocationName, "/"), Description: command.Description,
-				Source: "extension", SourceInfo: rpcSourceInfoValue(command.SourceInfo),
-			})
-		}
-	}
-	for _, template := range c.promptTemplates {
-		commands = append(commands, RPCSlashCommand{
-			Name: template.Name, Description: template.Description, Source: "prompt",
-			SourceInfo: c.sourceInfoForPath(template.FilePath, "prompts"),
-		})
-	}
-	for _, skill := range c.skills {
-		commands = append(commands, RPCSlashCommand{
-			Name: "skill:" + skill.Name, Description: skill.Description, Source: "skill",
-			SourceInfo: c.sourceInfoForPath(skill.Path, "skills"),
-		})
-	}
-	return commands
+// commands lists the catalog as upstream get_commands does.
+func (c headlessCommandCatalog) commands() []RPCSlashCommand {
+	return c.slashCatalog().Commands()
 }
 
-func (c rpcCommandCatalog) extensionCommand(message string) (string, string, bool) {
+// slashCatalog is the shared getCommands catalog over this command set.
+func (c headlessCommandCatalog) slashCatalog() codingagent.SlashCommandCatalog {
+	catalog := codingagent.SlashCommandCatalog{
+		PromptTemplates: c.promptTemplates, Skills: c.skills,
+		CWD: c.cwd, AgentDir: c.agentDir, SourceInfo: c.sourceInfo,
+	}
+	if c.runner != nil {
+		catalog.Runner = c.runner
+	}
+	if c.llama != nil {
+		catalog.Inline = []codingagent.PiSlashCommand{codingagent.LlamaSlashCommand()}
+	}
+	return catalog
+}
+
+func (c headlessCommandCatalog) extensionCommand(message string) (string, string, bool) {
 	if !strings.HasPrefix(message, "/") {
 		return "", "", false
 	}
@@ -149,7 +143,7 @@ func (c rpcCommandCatalog) extensionCommand(message string) (string, string, boo
 	return "", "", false
 }
 
-func (c rpcCommandCatalog) expandPrompt(message string) string {
+func (c headlessCommandCatalog) expandPrompt(message string) string {
 	if expanded, ok := codingagent.ExpandSkillCommand(message, c.skills); ok {
 		message = expanded
 	}
@@ -159,7 +153,7 @@ func (c rpcCommandCatalog) expandPrompt(message string) string {
 	return message
 }
 
-func (c rpcCommandCatalog) routePrompt(ctx context.Context, message string) (string, bool) {
+func (c headlessCommandCatalog) routePrompt(ctx context.Context, message string) (string, bool) {
 	if name, args, ok := c.extensionCommand(message); ok {
 		return "", c.executeCommand(ctx, name, args)
 	}
@@ -167,78 +161,31 @@ func (c rpcCommandCatalog) routePrompt(ctx context.Context, message string) (str
 }
 
 // executeCommand runs a command extensionCommand resolved; /llama runs the
-// built-in llama.cpp command with RPC's command context.
-func (c rpcCommandCatalog) executeCommand(ctx context.Context, name, args string) bool {
+// built-in llama.cpp command with this mode's command context.
+func (c headlessCommandCatalog) executeCommand(ctx context.Context, name, args string) bool {
 	if c.llama != nil && name == llama.CommandName {
-		_ = c.llama.HandleCommand(llama.CommandContext{Ctx: ctx, Mode: "rpc", Notify: c.notify})
+		_ = c.llama.HandleCommand(llama.CommandContext{Ctx: ctx, Mode: c.mode, Notify: c.notify})
 		return true
 	}
 	return c.runner.ExecuteCommand(ctx, name, args)
 }
 
-func (c rpcCommandCatalog) sourceInfoForPath(path, kind string) RPCSourceInfo {
-	for _, candidate := range []string{path, filepath.Dir(path)} {
-		if info, ok := c.sourceInfo[candidate]; ok {
-			scope := info.Scope
-			if scope == "" {
-				scope = "temporary"
-			}
-			origin := info.Origin
-			if origin == "" {
-				origin = "top-level"
-			}
-			source := info.Source
-			if source == "" {
-				source = "local"
-			}
-			baseDir := info.BaseDir
-			if baseDir == "" && path != "" {
-				baseDir = filepath.Dir(path)
-			}
-			return RPCSourceInfo{Path: path, Source: source, Scope: scope, Origin: origin, BaseDir: baseDir}
-		}
-	}
-	info := RPCSourceInfo{Path: path, Source: "local", Scope: "temporary", Origin: "top-level"}
-	if path == "builtin:piglet" {
-		info.Source = "piglet"
-		return info
-	}
-	if path != "" {
-		info.BaseDir = filepath.Dir(path)
-	}
-	userRoot := filepath.Join(c.agentDir, kind)
-	projectRoot := filepath.Join(c.cwd, codingagent.CONFIG_DIR_NAME, kind)
-	switch {
-	case isWithin(path, userRoot):
-		info.Scope, info.BaseDir = "user", userRoot
-	case isWithin(path, projectRoot):
-		info.Scope, info.BaseDir = "project", projectRoot
-	}
-	return info
+func (c headlessCommandCatalog) sourceInfoForPath(path, kind string) RPCSourceInfo {
+	return c.slashCatalog().SourceInfoForPath(path, kind)
 }
 
-func rpcSourceInfoValue(value extension.SourceInfo) RPCSourceInfo {
-	if sourceInfo, ok := value.(RPCSourceInfo); ok {
-		return sourceInfo
-	}
-	encoded, err := json.Marshal(value)
-	if err == nil {
-		var sourceInfo RPCSourceInfo
-		if json.Unmarshal(encoded, &sourceInfo) == nil && sourceInfo.Path != "" {
-			return sourceInfo
-		}
-	}
-	return RPCSourceInfo{Source: "local", Scope: "temporary", Origin: "top-level"}
-}
-
-func rpcGetCommandsResponse(id string, catalog rpcCommandCatalog) RPCResponse {
+func rpcGetCommandsResponse(id string, catalog headlessCommandCatalog) RPCResponse {
 	return rpcSuccess(id, "get_commands", RPCGetCommandsData{Commands: catalog.commands()})
 }
 
 func rpcExtensionConfigs(configs []subprocess.ExtConfig, cwd, agentDir string, sourceInfo map[string]codingagent.ResourceSourceInfo) []subprocess.ExtConfig {
 	out := append([]subprocess.ExtConfig(nil), configs...)
-	catalog := rpcCommandCatalog{cwd: cwd, agentDir: agentDir, sourceInfo: sourceInfo}
+	catalog := headlessCommandCatalog{cwd: cwd, agentDir: agentDir, sourceInfo: sourceInfo}
 	for i := range out {
+		if out[i].SourceInfo != nil {
+			// Already stamped where it was collected (a -e extension).
+			continue
+		}
 		path := out[i].Source
 		if path == "" {
 			path = out[i].Path
@@ -272,19 +219,30 @@ func rpcResolvedSkills(skills []*codingagent.SkillDef, activePiglet *piglet.Pigl
 	return out
 }
 
-// runRPCMode is the entrypoint for `pig --rpc`.
-// It initialises a coding.Session, starts the event forwarder goroutine,
-// then reads commands from stdin until EOF.
-// Returns 0 on clean shutdown, 1 on fatal error.
-func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet, resources rpcModeResources) int {
+// runRPCMode owns the `--mode rpc` runtime until EOF or termination. Completed queue and shell operations publish through the input-turn executor. It returns 0 on EOF, 1 on failure, or 128+signum after signal-triggered disposal without waiting for more stdin.
+func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet, resources rpcModeResources) (exitCode int) {
+	defer func() {
+		if sig := receivedTerminationSignal.Load(); sig != 0 {
+			exitCode = 128 + int(sig)
+		}
+	}()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
 	var writeMu sync.Mutex
-	writeRPC := func(v any) {
+	writeImmediate := func(v any) {
 		writeMu.Lock()
 		defer writeMu.Unlock()
 		writeJSONLine(os.Stdout, v)
+	}
+	responses := &rpcResponseTurn{write: writeImmediate}
+	writeRPC := func(v any) {
+		switch v.(type) {
+		case RPCResponse, rpcNullResponse:
+			responses.complete(v)
+		default:
+			writeImmediate(v)
+		}
 	}
 	rpcUI := newRPCUIContext(writeRPC)
 	defer rpcUI.Close()
@@ -489,10 +447,7 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 		}
 	}
 
-	promptSkills := make([]prompts.Skill, 0, len(resources.Skills))
-	for _, skill := range resources.Skills {
-		promptSkills = append(promptSkills, prompts.Skill{Name: skill.Name, Description: skill.Description, Path: skill.Path, DisableModelInvocation: skill.DisableModelInvocation})
-	}
+	promptSkills := promptSkillsFor(resources.Skills)
 	contextFiles := loadContextFiles(cwd, agentDir, flags.NoContextFiles)
 	resolvedPrompts := resolvePromptInputs(cwd, agentDir, flags, resources.ProjectTrusted)
 	promptOptions := prompts.Options{
@@ -542,6 +497,15 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 			subprocBridge.SetUIPromptScope(runner)
 		}
 	}
+	commandCatalog := headlessCommandCatalog{
+		runner: runner, mode: "rpc", promptTemplates: resources.PromptTemplates, skills: resources.Skills,
+		cwd: cwd, agentDir: agentDir, sourceInfo: resources.SourceInfo,
+		llama: llamaHost, notify: rpcUI.Notify,
+	}
+	// Extension host calls read the published copy of the catalog; this
+	// goroutine alone changes commandCatalog.
+	var publishedCatalog atomic.Pointer[headlessCommandCatalog]
+	publishedCatalog.Store(new(commandCatalog))
 	// Session-backed actions (sendUserMessage, isIdle, abort,
 	// hasPendingMessages, waitForIdle) for in-process and subprocess
 	// extensions, as upstream rpc-mode binds the session in bindExtensions.
@@ -671,21 +635,12 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 	if subprocBridge != nil {
 		detachModelRegistry := wireSubprocessModelRegistry(subprocBridge, sess, services)
 		defer detachModelRegistry()
-		subprocBridge.SetHostAction("getAllTools", func() []map[string]string {
-			agentTools := sess.Agent().Tools()
-			result := make([]map[string]string, len(agentTools))
-			for i, t := range agentTools {
-				src := toolSource[t.Name()]
-				if src == "" {
-					src = "builtin"
-				}
-				result[i] = map[string]string{
-					"name":        t.Name(),
-					"description": t.Schema().Description,
-					"source":      src,
-				}
-			}
-			return result
+		registryAllowed, registryExcluded := toolRegistryFilters(flags)
+		subprocBridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
+			return codingagent.ExtensionToolInfos(runner, registryAllowed, registryExcluded)
+		})
+		subprocBridge.SetHostAction("getCommands", func() []subprocess.CommandInfo {
+			return publishedCatalog.Load().slashCatalog().SubprocessCommands()
 		})
 		subprocBridge.SetHostAction("getSessionName", func() string { return sess.SessionName() })
 		subprocBridge.SetHostAction("getSessionID", func() string { return sess.ID() })
@@ -722,30 +677,8 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 			}
 			return page, next, next < len(entries), leafID
 		})
-		subprocBridge.SetHostAction("getActiveTools", func() []string {
-			agentTools := sess.Agent().Tools()
-			names := make([]string, len(agentTools))
-			for i, t := range agentTools {
-				names[i] = t.Name()
-			}
-			return names
-		})
-		subprocBridge.SetHostAction("setActiveTools", func(names []string) {
-			allowed := make(map[string]struct{}, len(names))
-			for _, n := range names {
-				allowed[n] = struct{}{}
-			}
-			// Filter the full tool set to only those in the allowed list.
-			allTools := sess.Tools() // session's unfiltered tool set
-			var filtered []agent.AgentTool
-			for _, t := range allTools {
-				if _, ok := allowed[t.Name()]; ok {
-					filtered = append(filtered, t)
-				}
-			}
-			fmt.Fprintf(os.Stderr, "pig --rpc: setActiveTools: %d/%d tools active\n", len(filtered), len(allTools))
-			sess.Agent().SetTools(filtered)
-		})
+		// getActiveTools and setActiveTools come from bindSessionExtensionActions
+		// (upstream getActiveToolNames and setActiveToolsByName).
 		subprocBridge.SetHostAction("refreshTools", func() {
 			// No-op in RPC mode: tools don't change dynamically.
 		})
@@ -814,12 +747,13 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 	// after binding, with shutdown deferred so it only runs when start did.
 	sess.EmitSessionStart("startup")
 	defer sess.EmitSessionShutdown("quit")
-
-	commandCatalog := rpcCommandCatalog{
-		runner: runner, promptTemplates: resources.PromptTemplates, skills: resources.Skills,
-		cwd: cwd, agentDir: agentDir, sourceInfo: resources.SourceInfo,
-		llama: llamaHost, notify: rpcUI.Notify,
+	setTerminationShutdownHook(func() { sess.EmitSessionShutdown("quit") })
+	defer setTerminationShutdownHook(nil)
+	if commandCatalog.extendFromExtensions(ctx, runner, "startup") {
+		promptOptions.Skills = promptSkillsFor(commandCatalog.skills)
+		sess.SetSystemPromptSections(prompts.BuildSystemPromptSections(promptOptions))
 	}
+	publishedCatalog.Store(new(commandCatalog))
 
 	// ── Event forwarder ────────────────────────────────────────────────────
 	// Forward upstream-compatible AgentSessionEvent JSON objects. Upstream pi
@@ -827,27 +761,21 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 	// JSONL object (rpc-mode.ts:346); rpcAgentEvent adapts pig's internal
 	// event structs to that wire shape.
 
-	// The Session owns streaming state and abort, as upstream reads
-	// session.isStreaming and calls session.abort(), so a run an extension
-	// started is streaming and abortable too. promptPending covers the gap
-	// between accepting an RPC prompt and its run starting.
-	var promptPending atomic.Bool
-	streaming := func() bool { return sess.IsStreaming() || promptPending.Load() }
+	// Preflight is not an agent run. Admission marks the Session streaming only after before_agent_start and image normalization finish.
+	streaming := sess.IsStreaming
 	var promptWG sync.WaitGroup
 	var bashWG sync.WaitGroup
 	var commandWG sync.WaitGroup
-	cycleComplete := make(chan struct{})
-	close(cycleComplete)
 
-	handleCycleModel := func(id string, currentSession *coding.Session) {
+	handleCycleModel := func(id string, currentSession *coding.Session, turn *rpcResponseTurn) {
 		models, err := rpcAvailableModels(services, currentSession.Model())
 		if err != nil {
-			writeRPC(rpcError(id, "cycle_model", err.Error()))
+			turn.complete(rpcError(id, "cycle_model", err.Error()))
 			return
 		}
 		scoped := rpcScopedModels(models, flags.Models)
 		if len(scoped) <= 1 {
-			writeRPC(rpcSuccessNull(id, "cycle_model"))
+			turn.after(func() { writeRPC(rpcSuccessNull(id, "cycle_model")) })
 			return
 		}
 		currentIndex := -1
@@ -861,13 +789,25 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 			currentIndex = 0
 		}
 		next := scoped[(currentIndex+1)%len(scoped)]
-		if err := currentSession.CycleToModel(next); err != nil {
-			writeRPC(rpcError(id, "cycle_model", err.Error()))
+		complete, err := currentSession.BeginModelChange(ctx, next, extension.ModelSelectSourceCycle)
+		if err != nil {
+			turn.complete(rpcError(id, "cycle_model", err.Error()))
 			return
 		}
-		writeRPC(rpcSuccess(id, "cycle_model", RPCModelCycleResult{
-			Model: rpcModelValue(next), ThinkingLevel: currentSession.ThinkingLevel(), IsScoped: len(flags.Models) > 0,
-		}))
+		if err := currentSession.FlushEvents(ctx); err != nil {
+			turn.complete(rpcError(id, "cycle_model", err.Error()))
+			return
+		}
+		publish := func() {
+			writeRPC(rpcSuccess(id, "cycle_model", RPCModelCycleResult{
+				Model: rpcModelValue(next), ThinkingLevel: currentSession.ThinkingLevel(), IsScoped: len(flags.Models) > 0,
+			}))
+		}
+		if complete == nil {
+			turn.after(publish)
+		} else {
+			commandWG.Go(func() { complete(); turn.after(publish) })
+		}
 	}
 
 	// settlePrompt is upstream `await session.abort()`: the active run stops,
@@ -911,13 +851,13 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 
 	// ── Command loop ───────────────────────────────────────────────────────
 
-	inputLines := make(chan []byte, 64)
+	inputLines := make(chan [][]byte, 64)
 	inputDone := make(chan error, 1)
 	go func() {
 		defer close(inputLines)
-		err := rpcclient.ReadJSONLLines(os.Stdin, func(line []byte) bool {
+		err := rpcclient.ReadJSONLBatches(os.Stdin, func(lines [][]byte) bool {
 			select {
-			case inputLines <- line:
+			case inputLines <- lines:
 				return true
 			case <-ctx.Done():
 				return false
@@ -931,15 +871,58 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 		inputDone <- err
 	}()
 
-	for line := range inputLines {
-
+	admission := &rpcAdmission{
+		ctx: ctx, turn: responses, session: sess, runner: runner, catalog: commandCatalog,
+		write: writeImmediate, runs: &promptWG,
+		validateModel: func() error {
+			model := sess.Model()
+			if model == nil {
+				return errors.New(codingagent.FormatNoAPIKeyFoundMessage("unknown"))
+			}
+			providerID := model.ProviderMeta.ProviderID
+			if providerID == "" && model.Provider != nil {
+				providerID = model.Provider.ID()
+			}
+			if providerID != "test-faux" && !registry.HasConfiguredAuth(providerID) {
+				return errors.New(codingagent.FormatNoAPIKeyFoundMessage(providerID))
+			}
+			return nil
+		},
+	}
+	var inputBatch [][]byte
+	var inputTurn *rpcResponseTurn
+commandLoop:
+	for {
+		if len(inputBatch) == 0 && inputTurn != nil {
+			inputTurn.end()
+			inputTurn = nil
+		}
+		if ctx.Err() != nil {
+			break commandLoop
+		}
+		if len(inputBatch) == 0 {
+			select {
+			case <-ctx.Done():
+				break commandLoop
+			case next, ok := <-inputLines:
+				if !ok {
+					break commandLoop
+				}
+				inputBatch = next
+			}
+			responses.begin()
+			inputTurn = responses
+		}
+		line := inputBatch[0]
+		inputBatch = inputBatch[1:]
+		turn := inputTurn
 		env, parseErr := parseRPCCommand(line)
 		if parseErr != nil {
 			// Upstream uses rpcError(undefined, "parse", message): mirrors
 			// rpc-mode.ts:handleInputLine catch block. Translate Go json
 			// error wording to upstream's JS SyntaxError wording so the wire
 			// shape matches byte-for-byte across binaries.
-			writeRPC(rpcError("", "parse",
+			writeImmediate(rpcError("", "parse",
 				fmt.Sprintf("Failed to parse command: %s", jsifyJSONErrorMessage(parseErr))))
 			continue
 		}
@@ -958,83 +941,10 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 				continue
 			}
 			if name, args, ok := commandCatalog.extensionCommand(cmd.Message); ok {
-				go func(id, commandName, commandArgs string) {
-					commandCatalog.executeCommand(ctx, commandName, commandArgs)
-					writeRPC(rpcSuccess(id, "prompt", nil))
-				}(env.ID, name, args)
+				admission.command(env.ID, name, args)
 				continue
 			}
-			if sess.IsCompacting() {
-				writeRPC(rpcError(env.ID, "prompt", "Cannot submit a prompt while compaction is in progress. Wait for compaction to finish and retry."))
-				continue
-			}
-			message, images, handled, err := sess.RunInputHandlers(ctx, cmd.Message, rpcImages(cmd.Images), extension.InputSourceRPC, cmd.StreamingBehavior)
-			if err != nil {
-				writeRPC(rpcError(env.ID, "prompt", err.Error()))
-				continue
-			}
-			if handled {
-				writeRPC(rpcSuccess(env.ID, "prompt", nil))
-				continue
-			}
-			cmd.Message = commandCatalog.expandPrompt(message)
-			if streaming() {
-				switch cmd.StreamingBehavior {
-				case "steer":
-					sess.Steer(cmd.Message, images)
-				case "followUp":
-					sess.FollowUp(cmd.Message, images)
-				case "":
-					writeRPC(rpcError(env.ID, "prompt", "Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message."))
-					continue
-				default:
-					writeRPC(rpcError(env.ID, "prompt", fmt.Sprintf("Invalid streamingBehavior: %s", cmd.StreamingBehavior)))
-					continue
-				}
-				if err := sess.FlushEvents(ctx); err != nil {
-					writeRPC(rpcError(env.ID, "prompt", err.Error()))
-					continue
-				}
-				writeRPC(rpcSuccess(env.ID, "prompt", nil))
-				continue
-			}
-
-			if model := sess.Model(); model == nil {
-				writeRPC(rpcError(env.ID, "prompt", codingagent.FormatNoAPIKeyFoundMessage("unknown")))
-				continue
-			} else {
-				providerID := model.ProviderMeta.ProviderID
-				if providerID == "" && model.Provider != nil {
-					providerID = model.Provider.ID()
-				}
-				if providerID != "test-faux" && !registry.HasConfiguredAuth(providerID) {
-					writeRPC(rpcError(env.ID, "prompt", codingagent.FormatNoAPIKeyFoundMessage(providerID)))
-					continue
-				}
-			}
-
-			// Run Send in a goroutine so we don't block the command reader.
-			// Mirrors upstream: the response is written once preflight
-			// succeeds, a failure before that is the response, and a failure
-			// after it is swallowed (the run's events already report it).
-			promptPending.Store(true)
-			promptWG.Go(func() {
-				accepted := false
-				_, sendErr := sess.SendContentWithPreflight(ctx, coding.BuildUserContent(cmd.Message, images), func() {
-					accepted = true
-					promptPending.Store(false)
-					writeRPC(rpcSuccess(env.ID, "prompt", nil))
-				})
-				if accepted {
-					return
-				}
-				promptPending.Store(false)
-				if sendErr != nil {
-					writeRPC(rpcError(env.ID, "prompt", sendErr.Error()))
-				} else {
-					writeRPC(rpcSuccess(env.ID, "prompt", nil))
-				}
-			})
+			admission.prompt(env.ID, cmd)
 
 		// ── abort ────────────────────────────────────────────────────────
 		case "abort":
@@ -1153,20 +1063,7 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 			writeRPC(rpcSuccess(env.ID, "set_model", rpcModelValue(newModel)))
 
 		case "cycle_model":
-			commandID := env.ID
-			currentSession := sess
-			previousCycle := cycleComplete
-			cycleComplete = make(chan struct{})
-			currentCycle := cycleComplete
-			commandWG.Go(func() {
-				defer close(currentCycle)
-				select {
-				case <-ctx.Done():
-					return
-				case <-previousCycle:
-				}
-				handleCycleModel(commandID, currentSession)
-			})
+			handleCycleModel(env.ID, sess, turn)
 
 		// ── compact ─────────────────────────────────────────────────────
 		case "compact":
@@ -1275,55 +1172,19 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 		case "steer":
 			var cmd RPCSteerCommand
 			if err := json.Unmarshal(env.Raw, &cmd); err != nil {
-				writeRPC(rpcError(env.ID, "steer", err.Error()))
+				turn.complete(rpcError(env.ID, "steer", err.Error()))
 				continue
 			}
-			if name, _, ok := commandCatalog.extensionCommand(cmd.Message); ok {
-				writeRPC(rpcError(env.ID, "steer", fmt.Sprintf("Extension command %q cannot be queued. Use prompt() or execute the command when not streaming.", name)))
-				continue
-			}
-			// Upstream session.steer: input handlers first
-			// (_queueUserInput), then expansion and queueing.
-			message, images, handled, err := sess.RunInputHandlers(ctx, cmd.Message, rpcImages(cmd.Images), extension.InputSourceRPC, "steer")
-			if err != nil {
-				writeRPC(rpcError(env.ID, "steer", err.Error()))
-				continue
-			}
-			if !handled {
-				sess.Steer(commandCatalog.expandPrompt(message), images)
-			}
-			if err := sess.FlushEvents(ctx); err != nil {
-				writeRPC(rpcError(env.ID, "steer", err.Error()))
-				continue
-			}
-			writeRPC(rpcSuccess(env.ID, "steer", nil))
+			admission.queue(env.ID, "steer", cmd.Message, rpcImages(cmd.Images))
 
 		// ── follow_up ─────────────────────────────────────────────────────────
 		case "follow_up":
 			var cmd RPCFollowUpCommand
 			if err := json.Unmarshal(env.Raw, &cmd); err != nil {
-				writeRPC(rpcError(env.ID, "follow_up", err.Error()))
+				turn.complete(rpcError(env.ID, "follow_up", err.Error()))
 				continue
 			}
-			if name, _, ok := commandCatalog.extensionCommand(cmd.Message); ok {
-				writeRPC(rpcError(env.ID, "follow_up", fmt.Sprintf("Extension command %q cannot be queued. Use prompt() or execute the command when not streaming.", name)))
-				continue
-			}
-			// Upstream session.followUp: input handlers first
-			// (_queueUserInput), then expansion and queueing.
-			message, images, handled, err := sess.RunInputHandlers(ctx, cmd.Message, rpcImages(cmd.Images), extension.InputSourceRPC, "followUp")
-			if err != nil {
-				writeRPC(rpcError(env.ID, "follow_up", err.Error()))
-				continue
-			}
-			if !handled {
-				sess.FollowUp(commandCatalog.expandPrompt(message), images)
-			}
-			if err := sess.FlushEvents(ctx); err != nil {
-				writeRPC(rpcError(env.ID, "follow_up", err.Error()))
-				continue
-			}
-			writeRPC(rpcSuccess(env.ID, "follow_up", nil))
+			admission.queue(env.ID, "follow_up", cmd.Message, rpcImages(cmd.Images))
 
 		// ── bash ────────────────────────────────────────────────────────────────
 		case "bash":
@@ -1341,22 +1202,22 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 				// handler fails the request (#9068).
 				override, operations, err := rpcUserBashOverride(ctx, runner, command, excludeFromContext, sess.CWD())
 				if err != nil {
-					writeRPC(rpcError(id, "bash", err.Error()))
+					turn.complete(rpcError(id, "bash", err.Error()))
 					return
 				}
 				if override != nil {
 					sess.RecordBashResult(command, *override, excludeFromContext)
-					writeRPC(rpcSuccess(id, "bash", RPCBashResult(*override)))
+					turn.complete(rpcSuccess(id, "bash", RPCBashResult(*override)))
 					return
 				}
 				result, err := sess.ExecuteBashWithOperations(ctx, command, excludeFromContext, func(delta string) {
 					writeRPC(RPCBashExecutionUpdate{Type: "bash_execution_update", ID: id, Delta: delta})
 				}, operations)
 				if err != nil {
-					writeRPC(rpcError(id, "bash", err.Error()))
+					turn.complete(rpcError(id, "bash", err.Error()))
 					return
 				}
-				writeRPC(rpcSuccess(id, "bash", RPCBashResult{
+				turn.complete(rpcSuccess(id, "bash", RPCBashResult{
 					Output:         result.Output,
 					ExitCode:       result.ExitCode,
 					Cancelled:      result.Cancelled,
@@ -1412,7 +1273,11 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 				writeRPC(rpcError(env.ID, "export_html", "Cannot export an in-memory session"))
 				continue
 			}
-			outputPath, err := codingexport.ExportFromFile(sess.Path(), cmd.OutputPath)
+			var registered []extension.RegisteredTool
+			if runner != nil {
+				registered = runner.Tools()
+			}
+			outputPath, err := codingexport.ExportFromFileWithTools(sess.Path(), cmd.OutputPath, registered, cwd)
 			if err != nil {
 				writeRPC(rpcError(env.ID, "export_html", err.Error()))
 				continue
@@ -1590,14 +1455,20 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 			// request id so clients can correlate the error response.
 			writeRPC(rpcError(env.ID, env.Type,
 				fmt.Sprintf("Unknown command: %s", env.Type)))
-		} // end switch
-	} // end for scanner.Scan()
+		}
+	}
 
-	if scanErr := <-inputDone; scanErr != nil && !errors.Is(scanErr, io.EOF) {
-		writeRPC(RPCErrorEvent{
-			Type:    "error",
-			Message: fmt.Sprintf("stdin read error: %v", scanErr),
-		})
+	if inputTurn != nil {
+		inputTurn.end()
+	}
+
+	// Detach input on cancellation. The stdin reader belongs to the process, not the Session; process exit releases a pending OS read just as Pi pauses stdin before exiting.
+	select {
+	case scanErr := <-inputDone:
+		if scanErr != nil && !errors.Is(scanErr, io.EOF) {
+			writeRPC(RPCErrorEvent{Type: "error", Message: fmt.Sprintf("stdin read error: %v", scanErr)})
+		}
+	case <-ctx.Done():
 	}
 
 	// Stop admitting or blocking on extension work before joining commands.
@@ -1605,6 +1476,9 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 	// is in commandWG, so waiting first would deadlock on EOF.
 	cancel()
 	rpcUI.Close()
+	admission.tasks.CloseAndWait()
+	responses.begin()
+	responses.end()
 	settleSessionWork()
 	extensionEvents.CloseAndWait()
 

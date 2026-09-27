@@ -1,11 +1,13 @@
 import { createServer } from 'node:net';
 import { once } from 'node:events';
+import { randomUUID } from 'node:crypto';
 import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 const { CoordinatorConnection } = await import(pathToFileURL(`${process.env.PIG_TEST_ROOT}/.upstream/current/packages/coding-agent/src/experimental/coordinator.ts`));
 const [directory, cleanup] = process.argv.slice(2);
-const path = join(directory, 'c');
+// Node on Windows listens only on named pipes.
+const path = process.platform === 'win32' ? `\\\\.\\pipe\\pig-listener-oracle-${randomUUID()}` : join(directory, 'c');
 const fake = createServer();
 fake.listen(path);
 await once(fake, 'listening');

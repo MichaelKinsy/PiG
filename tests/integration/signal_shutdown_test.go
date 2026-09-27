@@ -1,4 +1,8 @@
-//go:build integration
+//go:build integration && !windows
+
+// These tests deliver POSIX signals (SIGTERM, SIGHUP, SIGINT) to pig in a tmux
+// pane and read the pane's terminal with stty, pgrep and ps. Windows has none
+// of them; its console interrupt is covered by the JSON-mode cancellation test.
 
 package integration
 
@@ -299,17 +303,6 @@ func waitForPaneText(t *testing.T, session, needle string, timeout time.Duration
 		time.Sleep(150 * time.Millisecond)
 	}
 	t.Fatalf("pane never showed %q; last capture:\n%s", needle, last)
-}
-
-func waitFor(timeout time.Duration, cond func() bool) bool {
-	deadline := time.Now().Add(timeout)
-	for time.Now().Before(deadline) {
-		if cond() {
-			return true
-		}
-		time.Sleep(50 * time.Millisecond)
-	}
-	return cond()
 }
 
 // processExited reports whether pid has exited. A process that has exited but

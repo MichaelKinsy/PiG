@@ -32,11 +32,7 @@
 # only text_delta, so the missing delimiters passed unnoticed. rpc_events.go
 # now synthesizes the run boundaries and the assertions below pin them.
 #
-# This scenario asserts the structural event stream, not just the command
-# response. It does not use output_equal because timestamps and JSON object
-# key order differ between Node's insertion-order serializer and Go's
-# encoding/json map key ordering. The required event types and nested
-# assistantMessageEvent text_delta payload must be present in both outputs.
+# Pi 0.87.1 rpc-mode.ts forwards every toJsonEvent record. Compare complete records, including nested messages, usage, event order and field presence. Only object-key order and wall-clock timestamps are canonicalized; explicit equivalent system prompts avoid configuration-identity differences.
 
 name = "06-rpc-chat-faux"
 description = "Prompt through faux provider emits upstream AgentSessionEvent stream and assistant text '42'"
@@ -52,22 +48,23 @@ tags = ["hermetic", "fast"]
 driver = "rpc-mode"
 
 [rpc]
-input_lines = [
-  '{"id":"p1","type":"prompt","message":"What is 20+22?"}',
-]
+canonical_json = true
 timeout_seconds = 15
-settle_seconds = 5
+[[rpc.steps]]
+line = '{"id":"p1","type":"prompt","message":"What is 20+22?"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 10
 
 [env]
 pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
-pig_args = ["--model", "test-faux/echo", "--session-dir", "{{TEMP}}/sessions"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC chat probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
 pi_extensions = ["../../testdata/test-faux-provider.ts"]
-pi_args = ["--model", "test-faux/echo", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC chat probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
 
 [assert]
 exit_code = 0
 both_contain = [
-  '"id":"p1","type":"response","command":"prompt","success":true',
+  '"command":"prompt","id":"p1","success":true,"type":"response"',
   '"type":"agent_start"',
   '"type":"turn_start"',
   '"type":"message_start"',
@@ -83,4 +80,10 @@ both_contain = [
   '"type":"text_end"',
 ]
 both_not_contain = ['"partial":']
-runs = 1
+output_equal = true
+runs = 3
+
+# normalize-rationale: Independent processes timestamp their messages with different wall clocks; no other field is replaced.
+[[assert.normalize_replace]]
+pattern = '"timestamp":[0-9]+'
+with = '"timestamp":0'

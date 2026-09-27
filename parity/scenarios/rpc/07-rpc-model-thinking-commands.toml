@@ -1,8 +1,7 @@
 # Behavior family: rpc
 # Surface: complete model/thinking/retry command dispatch from rpc-types.ts.
-# The exact Pi 0.84 command handlers return a full model record, the model's
-# supported thinking levels, null for a one-model cycle, and an abort-retry
-# acknowledgement. The fixed faux provider keeps all values hermetic.
+# Pi 0.87.1 rpc-mode.ts:482-487 awaits cycleModel, even when the sole model makes it a resolved undefined Promise. abort_retry (554-556) has no inner await. jsonl.ts:onData admits this entire batch before Promise continuations, so abort-retry precedes cycle.
+# A single pipe write makes the data-callback boundary explicit; separate per-line writes made the old comparator depend on OS read coalescing.
 
 name = "07-rpc-model-thinking-commands"
 description = "RPC model and thinking queries expose the full pinned Pi wire shape."
@@ -14,14 +13,14 @@ tags = ["hermetic", "fast"]
 driver = "rpc-mode"
 
 [rpc]
-input_lines = [
-  '{"id":"models","type":"get_available_models"}',
-  '{"id":"levels","type":"get_available_thinking_levels"}',
-  '{"id":"cycle","type":"cycle_model"}',
-  '{"id":"abort-retry","type":"abort_retry"}',
-]
 timeout_seconds = 15
-settle_seconds = 1
+[[rpc.steps]]
+line = '''{"id":"models","type":"get_available_models"}
+{"id":"levels","type":"get_available_thinking_levels"}
+{"id":"cycle","type":"cycle_model"}
+{"id":"abort-retry","type":"abort_retry"}'''
+wait_contains = ['"id":"cycle","type":"response","command":"cycle_model","success":true,"data":null', '"id":"abort-retry","type":"response","command":"abort_retry","success":true']
+wait_timeout_seconds = 10
 
 [env]
 pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
@@ -31,5 +30,5 @@ pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
 
 [assert]
 exit_code = 0
-output_normalized_equal = true
+output_equal = true
 runs = 3

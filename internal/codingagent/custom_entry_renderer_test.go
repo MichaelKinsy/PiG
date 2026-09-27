@@ -56,10 +56,11 @@ func TestCustomEntryUsesRegisteredEntryRenderer(t *testing.T) {
 		t.Fatalf("renderer input type=%q expanded=%t", gotType, gotExpanded)
 	}
 
-	// Ctrl+O toggles all tool output; the tracked entry proxy re-renders collapsed.
+	// Ctrl+O toggles all tool output; the tracked entry proxy re-renders
+	// collapsed, and the status reports the new state as upstream's does.
 	m.toggleAllTools()
 	lines = m.chatContainer.Render(80)
-	if len(lines) != 2 || strings.TrimSpace(lines[1]) != "entry:hi:expanded=false" {
+	if len(lines) != 4 || strings.TrimSpace(lines[1]) != "entry:hi:expanded=false" || !strings.Contains(lines[3], "Tool output: collapsed") {
 		t.Fatalf("collapsed lines = %#v", lines)
 	}
 }

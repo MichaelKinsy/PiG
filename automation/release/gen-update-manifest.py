@@ -10,12 +10,19 @@ matches what pig's self-update reads (internal/codingagent D39):
     {"version": "<v>", "packageName": "pig", "notes": "...",
      "binaries": {"<goos>/<goarch>": {"url": "<base>/<file>", "sha256": "<hex>"}}}
 
-Binaries are matched by the release naming pig uses: pig-<goos>-<goarch>
-(and pig-<goos>-<goarch>.exe on Windows).
+With --dir, binaries are matched by the naming pig-<goos>-<goarch> (and
+pig-<goos>-<goarch>.exe on Windows). With --sha256sums, each macOS and Linux
+entry points at the release archive pig-<version>-<goos>-<goarch>.tar.gz and
+takes its digest from the release SHA256SUMS; pig verifies the archive and
+installs the pig executable inside it. Windows is omitted: a standalone
+pig.exe is not replaced in place (D39).
 
 Usage:
     gen-update-manifest.py --version 0.2.0 --base-url https://ORG.github.io/pig \\
         --dir ./release-binaries [--notes "See the changelog."] > update.json
+    gen-update-manifest.py --version 0.2.1 \\
+        --base-url https://github.com/OWNER/PiG/releases/download/v0.2.1 \\
+        --sha256sums release/SHA256SUMS > update.json
 """
 from __future__ import annotations
 
@@ -74,6 +81,32 @@ def _valid_base_url(raw: str, *, allow_loopback_http: bool) -> bool:
         return False
 
 
+# Release archives a standalone pig can update itself from.
+ARCHIVE_PLATFORMS = [
+    ("linux", "amd64"),
+    ("linux", "arm64"),
+    ("darwin", "amd64"),
+    ("darwin", "arm64"),
+]
+
+_SUM_RE = re.compile(r"^([0-9a-f]{64})  (?:\./)?([^/\s]+)$")
+
+
+def _read_sha256sums(path: Path) -> dict[str, str] | None:
+    sums: dict[str, str] = {}
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        match = _SUM_RE.fullmatch(line)
+        if match is None:
+            continue
+        digest, name = match.groups()
+        if name in sums:
+            return None
+        sums[name] = digest
+    return sums
+
+
 def _binary_name(goos: str, goarch: str) -> str:
     name = f"pig-{goos}-{goarch}"
     return f"{name}.exe" if goos == "windows" else name
@@ -84,7 +117,9 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--version", required=True, help="release version, e.g. 0.2.0")
     ap.add_argument("--base-url", required=True, help="URL the binaries are served from (no trailing slash)")
-    ap.add_argument("--dir", required=True, type=Path, help="directory containing the pig-<os>-<arch> binaries")
+    source = ap.add_mutually_exclusive_group(required=True)
+    source.add_argument("--dir", type=Path, help="directory containing the pig-<os>-<arch> binaries")
+    source.add_argument("--sha256sums", type=Path, help="release SHA256SUMS naming the pig-<version>-<os>-<arch>.tar.gz archives")
     ap.add_argument("--package-name", default="pig", help="signed package-manager release identity")
     ap.add_argument(
         "--allow-loopback-http",
@@ -109,12 +144,24 @@ def main() -> int:
     base = args.base_url.rstrip("/")
 
     binaries: dict[str, dict[str, str]] = {}
-    for goos, goarch in PLATFORMS:
-        path = args.dir / _binary_name(goos, goarch)
-        if not path.is_file():
-            continue
-        digest = hashlib.sha256(path.read_bytes()).hexdigest()
-        binaries[f"{goos}/{goarch}"] = {"url": f"{base}/{path.name}", "sha256": digest}
+    if args.sha256sums is not None:
+        sums = _read_sha256sums(args.sha256sums)
+        if sums is None:
+            print(f"{args.sha256sums} is not a SHA256SUMS file with one entry per name", file=sys.stderr)
+            return 1
+        for goos, goarch in ARCHIVE_PLATFORMS:
+            name = f"pig-{args.version}-{goos}-{goarch}.tar.gz"
+            if name not in sums:
+                print(f"{args.sha256sums} has no entry for {name}", file=sys.stderr)
+                return 1
+            binaries[f"{goos}/{goarch}"] = {"url": f"{base}/{name}", "sha256": sums[name]}
+    else:
+        for goos, goarch in PLATFORMS:
+            path = args.dir / _binary_name(goos, goarch)
+            if not path.is_file():
+                continue
+            digest = hashlib.sha256(path.read_bytes()).hexdigest()
+            binaries[f"{goos}/{goarch}"] = {"url": f"{base}/{path.name}", "sha256": digest}
 
     if not binaries:
         print(f"no pig-<os>-<arch> binaries found in {args.dir}", file=sys.stderr)

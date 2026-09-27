@@ -1,0 +1,8 @@
+{
+  "name": "listing-fixture",
+  "pi": {
+    "extensions": ["./extensions"],
+    "skills": ["./skills"],
+    "prompts": ["./prompts"]
+  }
+}

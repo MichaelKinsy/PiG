@@ -59,6 +59,10 @@ func TestBuildRustPackedCellBuildsCachedRunner(t *testing.T) {
 	cmd.Env = append(os.Environ(), runtimecell.SocketEnvName("a-ext")+"="+sockA.Addr().String(), runtimecell.SocketEnvName("b-ext")+"="+sockB.Addr().String())
 	var stderr strings.Builder
 	cmd.Stderr = &stderr
+	// On Windows the deadline's kill is TerminateProcess(h, 1), which Wait
+	// reports as "exit status 1" and reads as a runner failure.
+	var deadline runnerDeadline
+	cmd.Cancel = deadline.cancel(cmd)
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("start rust runner: %v", err)
 	}
@@ -69,7 +73,27 @@ func TestBuildRustPackedCellBuildsCachedRunner(t *testing.T) {
 		t.Fatalf("registered names = %v/%v", regA.Name, regB.Name)
 	}
 	if err := cmd.Wait(); err != nil {
+		if deadline.killed {
+			t.Fatalf("rust runner did not exit within 20 s of its start, after both members registered and their connections closed; killed. Before the kill: %s\nstderr:\n%s", deadline.beforeKill, stderr.String())
+		}
 		t.Fatalf("rust runner wait: %v\nstderr:\n%s", err, stderr.String())
+	}
+}
+
+// runnerDeadline is a Cmd.Cancel that records what the runner was doing, then
+// kills it. killed reports whether the kill succeeded: a runner that exited on
+// its own as the deadline passed keeps its own exit error.
+type runnerDeadline struct {
+	beforeKill string
+	killed     bool
+}
+
+func (d *runnerDeadline) cancel(cmd *exec.Cmd) func() error {
+	return func() error {
+		d.beforeKill = describeProcess(cmd.Process.Pid)
+		err := cmd.Process.Kill()
+		d.killed = err == nil
+		return err
 	}
 }
 

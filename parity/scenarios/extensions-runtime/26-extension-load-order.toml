@@ -1,0 +1,71 @@
+# Behavior family: extensions-runtime
+# Scenario: extensions load in upstream's order, which decides override
+# precedence: -e paths, project settings entries, project auto-discovery, user
+# settings entries, user auto-discovery, then Packages.
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-26): resource-loader.ts merges
+# the -e paths before the resolved paths, and package-manager.ts sorts those by
+# resourcePrecedenceRank (project local 0, project auto 1, user local 2, user
+# auto 3, package 4). Six extensions, one per source, each register the command
+# "order"; the runner suffixes a name several extensions register in load
+# order, so get_commands lists order:1 through order:6 in that order:
+#
+#   cd load-order/project && PI_CODING_AGENT_DIR=load-order/pi-agent \
+#     pi -e test-faux-provider.ts -e load-order/cli.js --model test-faux/faux-1 --mode rpc
+#   stdin: {"id":"cmds","type":"get_commands"}
+#
+# Each command's sourceInfo is the resolved path's metadata: a settings entry
+# is {source: "local"} without a baseDir, a discovered one {source: "auto"}
+# with the config directory as baseDir, both in their own scope.
+#
+# PiG used to load Packages first, then user, then project resources, then -e
+# paths, and within a scope auto-discovered extensions before settings entries.
+# It reported user extensions with scope "temporary" and settings entries with
+# a baseDir.
+
+name = "26-extension-load-order"
+description = "Extensions load -e first, then project settings, project auto, user settings, user auto, then Packages"
+
+covers = [
+  "packages/coding-agent/src/core/package-manager.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"cmds","type":"get_commands"}']
+cwd = "testdata/load-order/project"
+timeout_seconds = 20
+settle_seconds = 1
+
+[env]
+# The base arguments pass --no-extensions, which drops every source but -e.
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/load-order/pig-agent"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pig_extensions = ["testdata/load-order/cli.js"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/load-order/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/load-order/cli.js"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_normalized_equal = true
+both_match_regex = [
+  '(?s)"name":"order:1","description":"cli".*"name":"order:2","description":"project-settings".*"name":"order:3","description":"project-auto".*"name":"order:4","description":"user-settings".*"name":"order:5","description":"user-auto".*"name":"order:6","description":"package"',
+]
+both_not_contain = ["Failed to load extension", "panic:"]
+
+# normalize-rationale: each binary runs in its own snapshot of the agent and
+# project fixtures, and the agent and project config directories are named
+# .pi and .pig.
+[[assert.normalize_replace]]
+pattern = '/[^"]*parity-snap-(PI|PIG)_CODING_AGENT_DIR-[0-9]+'
+with = '<agent>'
+
+[[assert.normalize_replace]]
+pattern = '/[^"]*parity-snap-cwd-[0-9]+/\.pig?'
+with = '<project>'

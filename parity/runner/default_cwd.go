@@ -31,7 +31,7 @@ const snapshotIDDigits = 10
 func mkdirTempFixed(prefix string) (string, error) {
 	root, err := cleanSnapshotRoot(os.TempDir())
 	if err != nil {
-		return "", fmt.Errorf("parity cwd temporary root: %w; set TMPDIR to an existing directory outside the checkout with no ancestor context files", err)
+		return "", fmt.Errorf("parity cwd temporary root: %w; set %s to an existing directory outside the checkout with no ancestor context files", err, tempDirVar)
 	}
 	return mkdirFixed(root, prefix)
 }
@@ -81,6 +81,11 @@ func cleanSnapshotRoot(root string) (string, error) {
 // mkdirFixed creates a new directory under root named prefix followed by
 // snapshotIDDigits random decimal digits.
 func mkdirFixed(root, prefix string) (string, error) {
+	// On Windows promptPathRoot is \t on the temp directory's drive, which
+	// exists only once a run creates it.
+	if err := os.MkdirAll(root, 0o755); err != nil {
+		return "", err
+	}
 	for range 100 {
 		name := fmt.Sprintf("%s%0*d", prefix, snapshotIDDigits, rand.Uint64N(10_000_000_000))
 		dir := filepath.Join(root, name)
@@ -112,8 +117,29 @@ func mkdirFixed(root, prefix string) (string, error) {
 // text has than Pi's, measured against Pi 0.87.1. TestPromptPathLengthsBalance
 // checks the arithmetic; the rpc get_session_stats scenario checks the
 // estimate itself.
+//
+// promptPathRoot is /tmp on Unix. Pi prints PI_PACKAGE_DIR resolved to an
+// absolute path while pig prints PIG_HOME as given, so on Windows the root is
+// an absolute path of the same four characters: the temp directory's drive
+// and \t (C:\t).
+var promptPathRoot = func() string {
+	if runtime.GOOS == "windows" {
+		return filepath.VolumeName(os.TempDir()) + `\t`
+	}
+	return "/tmp"
+}()
+
+// checkPromptPathRoot reports a promptPathRoot other than four characters,
+// which would make pig's and Pi's system prompts differ in length. On Windows
+// that happens when TMP is a UNC path (\\server\share\...).
+func checkPromptPathRoot() error {
+	if len(promptPathRoot) != len("/tmp") {
+		return fmt.Errorf("PIG_HOME's snapshot root %q must be four characters, as /tmp is, so the pig and Pi system prompts stay the same length; set TMP to a directory on a drive letter (C:\\...), not a UNC path", promptPathRoot)
+	}
+	return nil
+}
+
 const (
-	promptPathRoot  = "/tmp"
 	pigHomePrefix   = "parity-snap-PIG_HOME-"
 	piPackagePrefix = "parity-pi-pkg-"
 	piPackageLink   = "pi-coding-pkg"
@@ -210,12 +236,15 @@ func pinPiPackageDir(t *testing.T, ref BinaryRef) BinaryRef {
 	return ref
 }
 
-// piPackageRoot resolves bin's symlinks and walks up to the directory whose
-// package.json names the Pi coding-agent package.
+// piPackageRoot resolves bin's symlinks, or the npm shim it is, and walks up
+// to the directory whose package.json names the Pi coding-agent package.
 func piPackageRoot(bin string) (string, error) {
 	real, err := filepath.EvalSymlinks(bin)
 	if err != nil {
 		return "", err
+	}
+	if script, ok := npmCmdShimScript(real); ok {
+		real = script
 	}
 	for dir := filepath.Dir(real); ; dir = filepath.Dir(dir) {
 		data, err := os.ReadFile(filepath.Join(dir, "package.json"))
@@ -231,4 +260,28 @@ func piPackageRoot(bin string) (string, error) {
 			return "", fmt.Errorf("no pi-coding-agent package.json above %s", real)
 		}
 	}
+}
+
+// npmShimScriptPattern matches a path that an npm .cmd shim quotes relative to
+// its own directory: "%dp0%\..\pkg\dist\cli.js".
+var npmShimScriptPattern = regexp.MustCompile(`"%dp0%\\([^"%]+)"`)
+
+// npmCmdShimScript returns the script that the npm .cmd shim at bin runs. On
+// Windows npm installs node_modules/.bin/<name>.cmd where other hosts get a
+// symlink to the script. The shim's last %dp0%-relative path is the script;
+// the earlier ones name a node.exe beside it.
+func npmCmdShimScript(bin string) (string, bool) {
+	if !strings.EqualFold(filepath.Ext(bin), ".cmd") {
+		return "", false
+	}
+	data, err := os.ReadFile(bin)
+	if err != nil {
+		return "", false
+	}
+	matches := npmShimScriptPattern.FindAllStringSubmatch(string(data), -1)
+	if len(matches) == 0 {
+		return "", false
+	}
+	relative := strings.ReplaceAll(matches[len(matches)-1][1], `\`, "/")
+	return filepath.Join(filepath.Dir(bin), filepath.FromSlash(relative)), true
 }

@@ -273,6 +273,17 @@ function classify(messages: any[]) {
   if (lastText.includes("Run: extension echo hello")) {
     return { kind: "tool", toolCalls: [{ toolName: "echo_bridge", toolArgs: { text: "hello" } }] };
   }
+  if (lastText.includes("Run: extension render cards")) {
+    return {
+      kind: "tool",
+      toolCalls: [
+        { toolName: "render_card", toolArgs: { topic: "alpha" } },
+        { toolName: "render_self", toolArgs: { topic: "beta" } },
+        { toolName: "render_throw", toolArgs: { topic: "gamma" } },
+        { toolName: "render_fail", toolArgs: { topic: "delta" } },
+      ],
+    };
+  }
   if (lastText.includes("Run: extension details")) {
     return {
       kind: "tool",
@@ -305,6 +316,16 @@ function classify(messages: any[]) {
     };
   }
   // Parallel tool call parity: two tools dispatched simultaneously.
+  if (lastText.includes("Run: compact reads")) {
+    return {
+      kind: "tool",
+      toolCalls: [
+        { toolName: "read", toolArgs: { path: "skills/demo-skill/SKILL.md" } },
+        { toolName: "read", toolArgs: { path: "AGENTS.md", offset: 2, limit: 1 } },
+        { toolName: "read", toolArgs: { path: "notes.txt" } },
+      ],
+    };
+  }
   if (lastText.includes("Run: parallel reads")) {
     return {
       kind: "tool",
@@ -370,6 +391,12 @@ function classify(messages: any[]) {
       }
       return { kind: "error", text: "test-faux: extension details marker missing" };
     }
+    if (currentUserText.includes("Run: extension render cards")) {
+      if (historyText.includes("done alpha") && historyText.includes("cannot render delta")) {
+        return { kind: "text", text: "render-cards-done" };
+      }
+      return { kind: "error", text: "test-faux: render card results missing" };
+    }
     if (currentUserText.includes("Run: extension UI dialogs")) {
       for (const marker of ["dialogs-ok:", "dialogs-cancelled:"]) {
         const index = historyText.indexOf(marker);
@@ -397,6 +424,7 @@ function classify(messages: any[]) {
     if (currentUserText.includes("Run: tui live tool")) return { kind: "text", text: "LIVE-TOOL-DONE" };
     if (currentUserText.includes("Run: bash long output")) return { kind: "text", text: "ran" };
     if (currentUserText.includes("Run: parallel reads")) return { kind: "text", text: "parallel-done" };
+    if (currentUserText.includes("Run: compact reads")) return { kind: "text", text: "compact-reads-done" };
     if (currentUserText.includes("Run: bash control-chars")) return { kind: "text", text: "sanitized" };
     if (currentUserText.includes("Run: bash with invalid args")) return { kind: "text", text: "validation-handled" };
   }
@@ -522,7 +550,8 @@ function streamTestFaux(model: any, context: any, options: any) {
   }
 
   const emitPlan = (emitStart = true) => {
-    if (emitStart) stream.push({ type: "start", partial: output });
+    // Snapshot the initial event before queued emission mutates output. The Go fixture emits an empty pending start; sharing output made this depend on consumer scheduling.
+    if (emitStart) stream.push({ type: "start", partial: { ...structuredClone(output), stopReason: "pending" } });
     if (plan.kind === "text") {
       output.content.push({ type: "text", text: plan.text });
       stream.push({ type: "text_start", contentIndex: 0, partial: output });
@@ -537,7 +566,9 @@ function streamTestFaux(model: any, context: any, options: any) {
       for (const [index, call] of (plan as any).toolCalls.entries()) {
         const toolCall = { type: "toolCall", id: `call_test_faux_${firstID + BigInt(index)}`, name: call.toolName, arguments: call.toolArgs };
         output.content.push(toolCall);
-        const json = JSON.stringify(call.toolArgs);
+        // Go's fixture serializes argument maps in sorted key order. Keep the actual delta string identical, including nested object keys.
+        const sorted = (value: any): any => Array.isArray(value) ? value.map(sorted) : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map(key => [key, sorted(value[key])])) : value;
+        const json = JSON.stringify(sorted(call.toolArgs));
         stream.push({ type: "toolcall_start", contentIndex: index, partial: output });
         stream.push({ type: "toolcall_delta", contentIndex: index, delta: json, partial: output });
         stream.push({ type: "toolcall_end", contentIndex: index, toolCall, partial: output });

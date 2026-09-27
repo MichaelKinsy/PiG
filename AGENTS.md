@@ -24,6 +24,8 @@ Source of truth:
 
 No prose status claim overrides those files.
 
+If you change exported Go API, CLI flags, settings, parity scenarios, or docs mirrors, run `make generate` and commit the result. CI's drift gates compare these files. Never hand-edit generated files; regenerate.
+
 When landing a new port, record its full upstream source path in a production
 `// Ports packages/.../file.ts` comment and update PORT_MAP in the same change.
 The drift gate rejects explicit port claims left not-started, deferred, or n/a.
@@ -165,6 +167,10 @@ correspondence. Do not change a public extension or TUI contract for presumed
 speed: profile the representative path and prove allocations/inlining and
 byte-faithful behavior before and after.
 
+## Faithful, general implementations
+
+Port Pi's design, not one case's output. Use Pi's shared data (model catalog, `defaultModelPerProvider`, auth metadata) and one shared function where Pi has one. Never hard-code a provider or model in shared code; cite the Pi line when Pi itself special-cases one. Test shared paths with several provider shapes, never only Copilot or `test-faux`, and fix a special case's siblings together.
+
 ## TypeScript async/Promise parity
 
 Treat every upstream `async`, `Promise`, `.then`, `Promise.all`, `Promise.race`, and intentionally unawaited call as control-flow behavior, not syntax to erase. Before porting it, record whether the caller waits, what ordering is guaranteed, how cancellation and errors propagate, whether work is concurrent, and which executor/event loop owns callbacks. Then preserve that contract in Go:
@@ -265,7 +271,7 @@ make async-contracts` or `make verify` from `PORT_MAP.md` and `parity/scenarios/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 428 behavioral (96.0%), 4 weak-only (no behavioral verification), 14 untested.
+**Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 429 behavioral (96.2%), 3 weak-only (no behavioral verification), 14 untested.
 Raw PORT_MAP rows: 616. Breakdown: 74 n/a (designed out) · 24 🟡 partial · 72 ⬜ not started. See DIVERGENCES.md for the documented exceptions.
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 5 boot-only, 3 registration-only, 1 smoke-only.
@@ -281,25 +287,25 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 3 registrati
 | `experimental-pico3` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `export-html` | 5 | 5 | 0 | 0 | 0 | 5 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 20 | 20 | 0 | 0 | 0 | 21 | not run |
+| `extensions-runtime` | 32 | 32 | 0 | 0 | 0 | 31 | not run |
 | `footer` | 7 | 7 | 0 | 0 | 0 | 8 | not run |
 | `fullscreen` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
-| `interactive-rendering` | 29 | 27 | 2 | 0 | 0 | 25 | not run |
-| `json` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
+| `interactive-rendering` | 32 | 30 | 2 | 0 | 0 | 27 | not run |
+| `json` | 2 | 2 | 0 | 0 | 0 | 3 | not run |
 | `model-resolver-selector` | 17 | 17 | 0 | 0 | 0 | 13 | not run |
 | `model-runtime-store-catalog` | 3 | 3 | 0 | 0 | 0 | 7 | not run |
-| `oauth` | 12 | 12 | 0 | 0 | 0 | 14 | not run |
-| `print` | 1 | 1 | 0 | 0 | 0 | 3 | not run |
+| `oauth` | 8 | 8 | 0 | 0 | 0 | 12 | not run |
+| `print` | 3 | 3 | 0 | 0 | 0 | 4 | not run |
 | `project-trust` | 8 | 8 | 0 | 0 | 0 | 13 | not run |
 | `providers-faux-streaming` | 11 | 10 | 0 | 1 | 0 | 15 | not run |
 | `providers-registry` | 6 | 3 | 0 | 3 | 0 | 26 | not run |
-| `rpc` | 26 | 26 | 0 | 0 | 0 | 10 | not run |
+| `rpc` | 31 | 31 | 0 | 0 | 0 | 15 | not run |
 | `selectors` | 10 | 10 | 0 | 0 | 1 | 14 | not run |
 | `session` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
 | `settings` | 7 | 7 | 0 | 0 | 0 | 13 | not run |
 | `slash-commands` | 9 | 8 | 1 | 0 | 0 | 17 | not run |
-| `startup` | 5 | 4 | 1 | 0 | 0 | 2 | not run |
-| `tools` | 12 | 12 | 0 | 0 | 0 | 27 | not run |
+| `startup` | 8 | 7 | 1 | 0 | 0 | 5 | not run |
+| `tools` | 13 | 13 | 0 | 0 | 0 | 27 | not run |
 | `tree` | 5 | 4 | 1 | 0 | 0 | 5 | not run |
 | `tui-components` | 11 | 11 | 0 | 0 | 0 | 16 | not run |
 
@@ -328,7 +334,7 @@ Apply these rules to new work. Do not delete or weaken accepted tests to conform
 
 ## Verification-driven development
 
-For core parity surfaces (agent loop, message normalization, provider payload conversion, session persistence, auth, tool execution, interactive rendering), use a red → green → refactor loop.
+For core parity surfaces (agent loop, message normalization, provider payload conversion, session persistence, auth, tool execution, interactive rendering), use a red → green → refactor loop. Apply [Faithful, general implementations](#faithful-general-implementations).
 
 Bug fixes require a regression guard in the same PR. Add a new unit test, integration test, or parity scenario that would fail on the observed bug, or name the existing failing test that already proves it. If no automated guard is practical, say why in the PR and file a follow-up before merge. Do not rely on manual repro alone for a fixed bug.
 
@@ -337,25 +343,28 @@ Bug fixes require a regression guard in the same PR. Add a new unit test, integr
 3. **Fix at the source.** Patch the lowest shared layer that matches upstream semantics. Avoid UI/provider band-aids when message normalization or session conversion is the source.
 4. **Harden both boundaries.** For cross-layer bugs, add at least one unit test at the pure conversion layer and one regression at the nearest caller boundary when practical (e.g. NormalizeMessages + OpenAI converter; session loop + print/interactive error surfacing).
 5. **Verify poisoned history.** When a bug involves bad persisted sessions, test with historical/poisoned messages: errored assistant turns, aborted assistant turns, empty text blocks, nil content, orphaned tool calls, and model/provider switches.
-6. **No accepted flake.** Do not document “rerun standalone” as success. Increase deterministic time budgets, add env overrides, isolate shared resources, or mark the real external dependency as an explicit skip with a reason.
+6. **No accepted flake.** Do not document “rerun standalone” as success. Fix root causes instead of hiding failures with longer time budgets, retries, sleeps, env overrides, skips, or normalization. Use timeouts and retries only for faults outside our control, and surface those faults. An unavailable external dependency is a blocker, not passing evidence.
 7. **Report the red/green evidence.** Final summaries for fixes to core parity must state: failing symptom, new regression test names, upstream rule mirrored, and commands run. If a test was added after the fix, say it was not red-proven.
 8. **Production path required.** A new production API/method used to fix behavior must have at least one production call site or a test that drives the production path. Test-only call sites do not prove the product behavior changed.
 9. **Coverage quality over coverage quantity.** A PORT_MAP entry is not accepted as verified by a weak scenario. Boot-only, smoke-only, and deferred scenarios may stay in the report, but they do not count as behavioral verification. Registration-only scenarios count only for registry/catalog/auth-wiring paths, never for provider stream/payload conversion files.
 
-Provider/Copilot regressions specifically must cover both OpenAI-compatible paths when relevant, and must not rely on `--list-models` scenarios for stream/payload coverage:
+Use this acceptance matrix for shared provider, model, auth, and tool regressions. Explain inapplicable shapes from the upstream contract, not available credentials. Do not use `--list-models` as stream/payload proof.
+
+Cover both OpenAI-compatible API paths when the change reaches both:
 
 ```text
-ai/openai.go              # openai-completions, used by many github-copilot models
-ai/openai_responses.go    # openai-responses, used by reasoning/responses-tagged models
-agent/transform.go    # upstream transform-messages parity before provider conversion
+ai/openai.go             # openai-completions
+ai/openai_responses.go   # openai-responses
+agent/transform.go       # upstream transform-messages parity before provider conversion
 ```
 
-Provider file acceptance matrix for regressions:
+Shared-path acceptance matrix for regressions:
 
 | required axis | minimum cases |
 |---|---|
-| API path | `openai-completions` and `openai-responses` when both can apply |
-| mode | pure converter/unit plus nearest caller (`print` or interactive) |
+| provider shape | OAuth, API key, OpenAI-compatible with a custom base URL, and no default model, as the path allows |
+| API path | each API kind reached by the shared behavior, including `openai-completions` and `openai-responses` when both can apply |
+| mode | pure shared-function/converter unit test plus nearest caller (`print`, interactive, or RPC, as applicable) |
 | history | fresh plus poisoned persisted history when relevant |
 | assistant prior turn | error, aborted, empty text, tool-call/orphaned tool-call when relevant |
 | auth/network | hermetic success and hermetic failure when touching auth refresh/error display |
@@ -463,6 +472,8 @@ of how faithfully its interface is spelled. Record it and close it.
 
 ## Code and lint policy
 
+Apply [Faithful, general implementations](#faithful-general-implementations) to code review and provider/model literal guard exceptions; each exception requires a Pi source citation.
+
 Fix valid findings at the source. Preserve upstream behavior over stylistic lint suggestions. Use the narrowest suppression for real false positives and explain why a source fix would be less faithful or less correct. `nolintlint` is enabled; stale or unexplained pragmas fail. Security suppressions must name the CLI threat-model reason.
 
 Code and interface style:
@@ -519,8 +530,11 @@ Use `make lint-changed` in the development loop. It runs every configured linter
 
 ## Commands
 
+Run `make generate` after changing exported Go API, CLI flags, settings, parity scenarios, or docs mirrors. Commit the result. Never hand-edit generated files; regenerate.
+
 Primary gates:
 ```bash
+make generate
 make build
 make vet
 make lint
@@ -578,6 +592,8 @@ facts: the pinned Pi version, observed parity, named divergences, supported
 artifacts, and published evidence.
 
 ## Commit hygiene
+
+Every commit requires both a DCO `Signed-off-by` line and a signature GitHub marks **Verified**. Use `git commit --signoff -S`. Sign-off is not a cryptographic signature. See `CONTRIBUTING.md` for SSH signing setup and unsigned-commit repair. If signing is unavailable, a maintainer lands the change in a maintainer-signed commit with a `Co-authored-by:` trailer.
 
 Before committing, run `git diff --stat HEAD` and `git status --short`, then stage only files intentionally changed. Never `git add .`, `git add -A`, or add a whole directory without inspecting contents. Testdata dirs accumulate temp files.
 
