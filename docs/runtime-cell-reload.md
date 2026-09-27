@@ -35,6 +35,12 @@ next plan:  A | B | C
 A member that still fails can then be isolated without taking healthy members
 down. Quarantine is host runtime state and never changes the author's source.
 
+## Diagnostic logs
+
+PiG captures one temporary `pig-packed-*.log` stderr file per packed process (D20). Shutdown and reload close the process handles and remove that file. A load or crash diagnostic that names the file retains it for troubleshooting, including after reload. A cancelled load does not retain a log. Remove a retained file manually when you no longer need it.
+
+PiG does not sweep logs from earlier sessions. Their names do not identify an owner or prove that its process has exited. Automatic deletion could remove a live session's log or a retained failure diagnostic.
+
 ## Reload report
 
 `Host.LastReloadReport()` returns the last placement transaction.

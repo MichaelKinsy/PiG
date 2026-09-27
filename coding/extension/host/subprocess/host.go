@@ -1185,6 +1185,9 @@ func (h *Host) Shutdown(reason string) {
 	for _, process := range watched {
 		process.stop()
 		_ = process.wait()
+		if process.watchDone != nil {
+			<-process.watchDone
+		}
 		process.releaseUsageLease()
 	}
 
@@ -1265,6 +1268,9 @@ func (me *managedExt) reap() {
 	if me.packedProcess != nil {
 		if me.packedProcess.cmd != nil {
 			_ = me.packedProcess.wait()
+			if me.packedProcess.watchDone != nil {
+				<-me.packedProcess.watchDone
+			}
 			me.packedProcess.releaseUsageLease()
 		}
 		return
@@ -2600,6 +2606,11 @@ func (h *Host) awaitClosedProcess(me *managedExt) {
 
 func (h *Host) disablePackedMember(me *managedExt, reason string) {
 	h.mu.Lock()
+	// Reserve the diagnostic before detaching the member: the process watcher may finish as soon as it sees an empty registry.
+	logPath := ""
+	if h.onCrash != nil {
+		logPath = me.retainStderrLog()
+	}
 	if h.exts[me.config.Name] == me {
 		delete(h.exts, me.config.Name)
 	}
@@ -2618,7 +2629,7 @@ func (h *Host) disablePackedMember(me *managedExt, reason string) {
 	}
 	h.unregisterOAuthProviders(me, nil)
 	if h.onCrash != nil {
-		h.onCrash(me.config.Name, 0, true, withStderrLog(reason, me.stderrLogPath))
+		h.onCrash(me.config.Name, 0, true, withStderrLog(reason, logPath))
 	}
 }
 

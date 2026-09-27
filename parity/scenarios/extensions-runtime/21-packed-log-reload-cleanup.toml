@@ -1,0 +1,52 @@
+# Upstream evidence: Pi 0.87.1 loader.ts:538-550 awaits factories in-process; agent-session.ts:3291-3314
+# replaces the old runtime on /reload. Neither operation creates a process log.
+# D20 adds PiG's packed-process substrate. One active log is intentional; no
+# obsolete log may survive a successful reload. The fixture counts that difference
+# in each binary's private TMPDIR, without normalizing output or deleting files.
+# Crash-only diagnostics and final shutdown are checked by TestPackedStderrLogLifecycle.
+# A unique generation and Reloaded together acknowledge each replacement; a startup
+# notification alone can arrive while Pi's reload box still owns input focus.
+# The crop is the complete resource-count probe, not unrelated footer presentation.
+# Compiling mutation (remove() leaves the file): PiG reports obsolete=2 after two
+# reloads; real Pi 0.87.1 reports obsolete=0. The fixed outputs are identical.
+# Disable Node's optional compile cache so it cannot write into the private TMPDIR
+# while the terminal driver's cleanup removes that directory.
+name = "21-packed-log-reload-cleanup"
+description = "Repeated reload releases obsolete packed-process diagnostic logs"
+covers = ["packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "TMPDIR={{TEMP}}", "TMP={{TEMP}}", "TEMP={{TEMP}}", "NODE_DISABLE_COMPILE_CACHE=1"]
+pi = ["TMPDIR={{TEMP}}", "TMP={{TEMP}}", "TEMP={{TEMP}}", "NODE_DISABLE_COMPILE_CACHE=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/packed-log-probe.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/packed-log-probe.mjs"]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "packed-log-probe=1:"
+ready_pattern_pi = "packed-log-probe=1:"
+ready_timeout_seconds = 30
+capture_start = "packed-log-probe=3:"
+capture_end_regex = 'packed-log-probe=3:obsolete=-?\d+'
+
+[[tmux.steps]]
+wait_contains = ["packed-log-probe=1:obsolete=0"]
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+wait_contains = ["Reloaded", "packed-log-probe=2:"]
+
+[[tmux.steps]]
+keys = ["/reload", "Enter"]
+wait_contains = ["Reloaded", "packed-log-probe=3:"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["packed-log-probe=3:obsolete=0"]
+output_equal = true
+runs = 3
