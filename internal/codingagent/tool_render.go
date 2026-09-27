@@ -420,6 +420,8 @@ func greenWrap(s string, width int) string {
 	return styleAndWrap(s, c, width)
 }
 
+// styleAndWrap colors each wrapped row and closes it with the foreground
+// reset, as upstream theme.fg does, so an enclosing background continues.
 func styleAndWrap(s, ansi string, width int) string {
 	wrapped := widthx.WrapTextWithAnsi(s, width)
 	var out strings.Builder
@@ -429,7 +431,7 @@ func styleAndWrap(s, ansi string, width int) string {
 		}
 		out.WriteString(ansi)
 		out.WriteString(line)
-		out.WriteString("\033[0m")
+		out.WriteString(tui.SGRFgReset)
 	}
 	return out.String()
 }

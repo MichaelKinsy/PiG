@@ -33,7 +33,7 @@ func TestCWDFooterCropWidthBoundary(t *testing.T) {
 			}
 			cfg.CaptureStart = "$0.000"
 			if err := validateCWDFooterCrop(tt.cwd, cfg); err != nil {
-				t.Fatalf("non-cwd crops must not constrain TMPDIR: %v", err)
+				t.Fatalf("non-cwd crops must not constrain the temp root: %v", err)
 			}
 		})
 	}
@@ -51,7 +51,7 @@ func TestTerminalDriversRejectUnrenderableCWDCropBeforeLaunch(t *testing.T) {
 	}
 	for _, temp := range []string{root, alias} {
 		t.Run(filepath.Base(temp), func(t *testing.T) {
-			t.Setenv("TMPDIR", temp)
+			t.Setenv(tempDirVar, temp)
 			for _, name := range []string{"interactive-tmux", "headless-terminal"} {
 				for _, label := range []string{"pig", "pi"} {
 					t.Run(name+"/"+label, func(t *testing.T) {
@@ -59,7 +59,7 @@ func TestTerminalDriversRejectUnrenderableCWDCropBeforeLaunch(t *testing.T) {
 						sc.Tmux = TmuxDriverConfig{Width: 100, Height: 35, CaptureStart: "parity-snap-cwd-", CaptureStartLast: true}
 						bin := BinaryRef{Label: label, Path: filepath.Join(root, "must-not-launch")}
 						got := DriverRegistry[name].Run(t.Context(), t, bin, sc)
-						if got.Err == nil || !strings.Contains(got.Err.Error(), "footer cwd crop") || !strings.Contains(got.Err.Error(), "TMPDIR") || !strings.Contains(got.Err.Error(), "100 columns") {
+						if got.Err == nil || !strings.Contains(got.Err.Error(), "footer cwd crop") || !strings.Contains(got.Err.Error(), "set "+tempDirVar+" ") || !strings.Contains(got.Err.Error(), "100 columns") {
 							t.Fatalf("must reject an unrenderable crop before launch, got %v", got.Err)
 						}
 					})

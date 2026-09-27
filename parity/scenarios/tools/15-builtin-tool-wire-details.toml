@@ -1,0 +1,25 @@
+# Pi 0.87.1's published create*Tool functions are the oracle. Both probes use the same files, parameters and result objects.
+# Only the random bash full-output filename is replaced with OUTPUT_FILE, after checking that the file exists; both probes remove their own file.
+# Object keys are sorted recursively. No result field, string whitespace, empty object, null or omission is removed.
+name = "15-builtin-tool-wire-details"
+description = "Built-in tool results expose exactly Pi's content and sparse details"
+covers = ["packages/coding-agent/src/core/tools/read.ts", "packages/coding-agent/src/core/tools/write.ts", "packages/coding-agent/src/core/tools/edit.ts", "packages/coding-agent/src/core/tools/bash.ts", "packages/coding-agent/src/core/tools/grep.ts", "packages/coding-agent/src/core/tools/find.ts", "packages/coding-agent/src/core/tools/ls.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./parity/testdata/tool-details-pig.sh"]
+pi_args = ["node", "./parity/testdata/tool-details-pi.mjs"]
+
+[cli]
+cwd = "../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['TOOL_WIRE {"case":"read",', 'TOOL_WIRE {"case":"bash truncated",']
+runs = 3

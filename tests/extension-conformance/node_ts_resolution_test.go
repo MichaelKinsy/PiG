@@ -79,7 +79,8 @@ func TestNodeTypeScriptSourceResolutionAndShims(t *testing.T) {
 		// getAgentDir/CONFIG_DIR_NAME report pig's config root, never ".pi".
 		"configDir=.pig",
 		"agentDirUnderConfigRoot=true",
-		// HStack allocated the full 30 columns across a fixed and a growing child.
+		// HStack fills the full 30 columns across a fixed and a growing child
+		// (visible width: Pi's HStack composites with segment resets).
 		"stackWidth=30",
 		"settingsLines=true",
 		// estimateTokens keeps upstream's ceil(chars/4) heuristic: 20 chars -> 5.

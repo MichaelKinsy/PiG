@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -36,17 +37,23 @@ func runIntegrationTests(m *testing.M) int {
 	}()
 	tmuxHomeRoot = tmp
 	// Keep the private server alive between tests. Otherwise killing the last session races the next new-session while the server exits under load.
-	keeper := "parity-integration-keeper-" + randID()
-	if out, err := tmuxCommand("new-session", "-d", "-s", keeper).CombinedOutput(); err != nil {
-		fmt.Fprintf(os.Stderr, "integration: start private tmux server: %v\n%s", err, out)
-		return 2
-	}
-	defer func() {
-		if out, err := tmuxCommand("kill-session", "-t", keeper).CombinedOutput(); err != nil {
-			fmt.Fprintf(os.Stderr, "integration: remove tmux keeper: %v\n%s", err, out)
+	// Without tmux (native Windows), the tmux tests skip and the rest run.
+	if _, err := exec.LookPath("tmux"); err == nil {
+		keeper := "parity-integration-keeper-" + randID()
+		if out, err := tmuxCommand("new-session", "-d", "-s", keeper).CombinedOutput(); err != nil {
+			fmt.Fprintf(os.Stderr, "integration: start private tmux server: %v\n%s", err, out)
+			return 2
 		}
-	}()
+		defer func() {
+			if out, err := tmuxCommand("kill-session", "-t", keeper).CombinedOutput(); err != nil {
+				fmt.Fprintf(os.Stderr, "integration: remove tmux keeper: %v\n%s", err, out)
+			}
+		}()
+	}
 	bin := filepath.Join(tmp, "pig-it")
+	if runtime.GOOS == "windows" {
+		bin += ".exe"
+	}
 	cmd := exec.Command("go", "build", "-trimpath", "-buildvcs=false", "-o", bin, "./cmd/pig")
 	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
 	cmd.Dir = repoRoot

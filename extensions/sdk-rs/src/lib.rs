@@ -22,11 +22,13 @@ mod extension;
 mod login;
 mod oauth;
 mod protocol;
+mod tool_render;
 mod transport;
 
 pub use context::{
-    Context, ModelEventStream, ModelRegistry, RemoteComponent, RemoteComponentInvalidate,
-    RemoteComponentResult, TerminalInputResult, TerminalInputSubscription, message_role, message_text,
+    CommandInfo, Context, ModelEventStream, ModelRegistry, RemoteComponent,
+    RemoteComponentInvalidate, RemoteComponentResult, SourceInfo, TerminalInputResult,
+    TerminalInputSubscription, ToolInfo, message_role, message_text,
 };
 #[doc(hidden)]
 pub use extension::report_load_failure;
@@ -39,4 +41,8 @@ pub use oauth::{
     OAuthDeviceCodeInfo, OAuthGetApiKeyFn, OAuthLoginCallbacks, OAuthLoginFn, OAuthPrompt,
     OAuthProvider, OAuthRefreshFn, OAuthSelectOption, OAuthSelectPrompt,
 };
-pub use protocol::{ConstrainedSampling, Schema, empty_schema};
+pub use protocol::{AutocompleteItem, ConstrainedSampling, Schema, empty_schema};
+pub use tool_render::{
+    ToolRenderCallHandler, ToolRenderContext, ToolRenderResult, ToolRenderResultHandler,
+    ToolRenderResultOptions, ToolRenderShell,
+};

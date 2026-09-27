@@ -11,11 +11,11 @@ package rssdk
 
 import "embed"
 
-//go:embed LICENSE Cargo.toml Cargo.lock src/lib.rs src/context.rs src/extension.rs src/login.rs src/oauth.rs src/protocol.rs src/transport.rs
+//go:embed LICENSE Cargo.toml Cargo.lock src/lib.rs src/context.rs src/extension.rs src/login.rs src/oauth.rs src/protocol.rs src/tool_render.rs src/transport.rs
 var Source embed.FS
 
 // BundledFiles lists the embedded files, relative to the crate root, in a stable
 // order. Paths use forward slashes; a stager recreates subdirectories.
 func BundledFiles() []string {
-	return []string{"LICENSE", "Cargo.toml", "Cargo.lock", "src/lib.rs", "src/context.rs", "src/extension.rs", "src/login.rs", "src/oauth.rs", "src/protocol.rs", "src/transport.rs"}
+	return []string{"LICENSE", "Cargo.toml", "Cargo.lock", "src/lib.rs", "src/context.rs", "src/extension.rs", "src/login.rs", "src/oauth.rs", "src/protocol.rs", "src/tool_render.rs", "src/transport.rs"}
 }

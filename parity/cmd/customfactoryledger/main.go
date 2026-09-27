@@ -155,10 +155,10 @@ func main() {
 func verify(path string, generated []byte) error {
 	checkedIn, err := os.ReadFile(path)
 	if err != nil {
-		return err
+		return fmt.Errorf("%w; run: make generate (or: make custom-factory-ledger), then commit the result", err)
 	}
 	if !bytes.Equal(checkedIn, generated) {
-		return fmt.Errorf("%s: drift; regenerate with go run ./parity/cmd/customfactoryledger", path)
+		return fmt.Errorf("%s: drift; run: make generate (or: make custom-factory-ledger), then commit the result", path)
 	}
 	return nil
 }

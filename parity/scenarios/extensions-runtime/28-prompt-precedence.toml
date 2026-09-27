@@ -1,0 +1,63 @@
+# Behavior family: extensions-runtime
+# Scenario: prompt templates of the same name resolve in upstream's order,
+# the first winning: project settings entries, project auto-discovery, user
+# settings entries, user auto-discovery, then Packages.
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-26 with the load-order
+# fixture): package-manager.ts sorts resolved paths by
+# resourcePrecedenceRank and resource-loader.ts keeps the first prompt of a
+# name. Prompt "a" exists as a project settings entry and in project
+# auto-discovery, "b" in project auto-discovery and a user settings entry,
+# "c" in a user settings entry and user auto-discovery, "d" in user
+# auto-discovery and the Package; get_commands lists the first of each.
+# PiG listed auto-discovered prompts before settings entries in a scope.
+
+name = "28-prompt-precedence"
+description = "Same-name prompt templates resolve as upstream orders them: project settings, project auto, user settings, user auto, then Packages"
+
+covers = [
+  "packages/coding-agent/src/core/package-manager.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"cmds","type":"get_commands"}']
+cwd = "testdata/load-order/project"
+timeout_seconds = 20
+settle_seconds = 1
+
+[env]
+# The base arguments pass --no-extensions, which drops every source but -e.
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/load-order/pig-agent"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pig_extensions = ["testdata/load-order/cli.js"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/load-order/pi-agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/load-order/cli.js"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_normalized_equal = true
+both_match_regex = [
+  '"name":"a","description":"project-settings"',
+  '"name":"b","description":"project-auto"',
+  '"name":"c","description":"user-settings"',
+  '"name":"d","description":"user-auto"',
+]
+both_not_contain = ["Failed to load extension", "panic:"]
+
+# normalize-rationale: each binary runs in its own snapshot of the agent and
+# project fixtures, and the agent and project config directories are named
+# .pi and .pig.
+[[assert.normalize_replace]]
+pattern = '/[^"]*parity-snap-(PI|PIG)_CODING_AGENT_DIR-[0-9]+'
+with = '<agent>'
+
+[[assert.normalize_replace]]
+pattern = '/[^"]*parity-snap-cwd-[0-9]+/\.pig?'
+with = '<project>'

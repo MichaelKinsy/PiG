@@ -1,0 +1,48 @@
+# Behavior family: interactive-rendering
+# Surface: the editor cursor at the end of a line that fills the layout width.
+#
+# Without horizontal padding Pi's Editor reserves the rightmost column for the
+# cursor, so a line of width-1 characters wraps at width-1 and the cursor at
+# its end is a highlighted space in the reserved column. PiG highlighted the
+# last character instead.
+#
+# Upstream evidence (pi 0.87.1, tmux 80x30): after typing 79 "x", the editor
+# row is 79 plain "x" then "\x1b[7m \x1b[0m".
+
+name = "29-editor-cursor-after-full-line"
+description = "A line filling the editor's layout width shows the cursor as a highlighted space in the reserved column"
+covers = [
+  "packages/tui/src/components/editor.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 80
+height = 30
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+capture_end = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+[[tmux.steps]]
+keys = ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+settle_seconds = 1
+wait_contains = ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

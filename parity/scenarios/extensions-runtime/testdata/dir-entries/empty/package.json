@@ -1,0 +1,4 @@
+{
+  "name": "dir-entries-empty",
+  "pi": { "extensions": ["./extensions"] }
+}

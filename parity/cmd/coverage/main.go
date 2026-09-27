@@ -10,7 +10,7 @@
 //	go run ./parity/cmd/coverage \
 //	    -results /tmp/parity.json \
 //	    -port-map PORT_MAP.md \
-//	    -scenarios parity/scenarios > /tmp/coverage.md
+//	    -scenarios parity/scenarios -out /tmp/coverage.md
 //
 // The report shows, for every upstream file in PORT_MAP.md:
 //   - the port status as recorded in PORT_MAP.md
@@ -21,10 +21,12 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"flag"
 	"fmt"
 	"html"
+	"io"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -67,6 +69,7 @@ type portMapEntry struct {
 }
 
 func main() {
+	out := flag.String("out", "-", "output Markdown path or - for stdout")
 	results := flag.String("results", "", "JSON results from `go test -pig-parity.results=...`")
 	portMap := flag.String("port-map", "PORT_MAP.md", "path to PORT_MAP.md")
 	scenariosDir := flag.String("scenarios", "parity/scenarios", "scenarios directory")
@@ -75,6 +78,11 @@ func main() {
 	readme := flag.String("readme", "", "if set, patch the porting block beside the badges in this README in place")
 	strict := flag.Bool("strict", false, "exit 1 unless every intended-portable row is complete and behaviorally covered")
 	flag.Parse()
+	outSet := false
+	flag.Visit(func(f *flag.Flag) { outSet = outSet || f.Name == "out" })
+	if !outSet {
+		fmt.Fprintln(os.Stderr, "coverage: writing the report to stdout, not the committed files; run: make generate (or: make coverage RESULTS=). Use -out - for explicit stdout.")
+	}
 
 	// 1. Discover all scenarios and their covers.
 	scenarios, err := loadScenarios(*scenariosDir)
@@ -123,7 +131,16 @@ func main() {
 	addUnitEvidence(coverage, behavioralCoverage, units)
 
 	// 5. Emit the full report.
-	emitReport(os.Stdout, entries, coverage, behavioralCoverage, runOutcomes, scenarios)
+	var report bytes.Buffer
+	emitReport(&report, entries, coverage, behavioralCoverage, runOutcomes, scenarios)
+	if *out == "-" {
+		_, err = os.Stdout.Write(report.Bytes())
+	} else {
+		err = os.WriteFile(*out, report.Bytes(), 0o644)
+	}
+	if err != nil {
+		fail("write report: %v", err)
+	}
 
 	// 6. Optionally patch the condensed block into AGENTS.md.
 	if *agentsMd != "" {
@@ -287,7 +304,7 @@ func parsePortMap(path string) ([]portMapEntry, error) {
 	return entries, nil
 }
 
-func emitReport(w *os.File, entries []portMapEntry, coverage, behavioralCoverage map[string][]string, results map[string]jsonOutcome, scenarios []scenarioFile) {
+func emitReport(w io.Writer, entries []portMapEntry, coverage, behavioralCoverage map[string][]string, results map[string]jsonOutcome, scenarios []scenarioFile) {
 	_, _ = fmt.Fprintln(w, "# PORT_MAP coverage report")
 	_, _ = fmt.Fprintln(w)
 	_, _ = fmt.Fprintf(w, "Generated from `%d` PORT_MAP entries and `%d` parity scenarios.\n",

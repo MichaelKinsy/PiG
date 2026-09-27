@@ -18,4 +18,6 @@ regexes = [
 paths = [
   # Upstream test-file SHA-256 digests.
   '''^parity/upstream-sync/[^/]+\.tsv$''',
+  # SHA-256 digests of Pi's vendored provider data files.
+  '''^coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-ai/providers/data/\.manifest\.json$''',
 ]

@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"os"
-	"path/filepath"
 	"slices"
 	"strings"
 
@@ -74,24 +73,12 @@ func defaultModelPerProvider() map[string]string {
 	return defaults
 }
 
-// buildModelFromRef resolves the startup model with resolveStartupModelEntry
-// and builds it with coding.BuildModelFromEntry, the constructor /model uses.
-func buildModelFromRef(ctx context.Context, providerID, modelID string, services *coding.Services) (*ai.Model, error) {
+// buildModelFromRef resolves the startup model and builds it with
+// coding.BuildModelFromEntry, which resolves credentials the same way for
+// startup and /model.
+func buildModelFromRef(_ context.Context, providerID, modelID string, services *coding.Services) (*ai.Model, error) {
 	registry := services.Registry().ModelRegistry
 	entry := resolveStartupModelEntry(providerID, modelID, registry)
-
-	// A stored auth.json credential owns the provider ahead of the configured
-	// and environment keys, as upstream resolveProviderAuth does; its read or
-	// refresh failure surfaces before the first request.
-	if providerID != "test-faux" && providerID != "github-copilot" {
-		stored, ok, err := storedRequestAPIKey(ctx, registry, filepath.Join(services.AgentDir(), "auth.json"), providerID)
-		if err != nil {
-			return nil, fmt.Errorf("%s: %w", providerID, err)
-		}
-		if ok {
-			entry.APIKey = stored
-		}
-	}
 	return coding.BuildModelFromEntry(providerID, modelID, entry, services)
 }
 
@@ -114,24 +101,6 @@ func resolveStartupModelEntry(providerID, modelID string, registry *codingagent.
 		return fallback
 	}
 	return entry
-}
-
-// storedRequestAPIKey resolves the request key a runtime key (--api-key) or
-// a stored auth.json credential supplies for providerID. ok is false when
-// nothing is stored; an unopenable auth store counts as nothing stored.
-func storedRequestAPIKey(ctx context.Context, registry *codingagent.ModelRegistry, authPath, providerID string) (key string, ok bool, err error) {
-	if key, ok := registry.RuntimeAPIKey(providerID); ok {
-		return key, true, nil
-	}
-	auth, err := ai.NewAuthStorage(authPath)
-	if err != nil {
-		return "", false, nil
-	}
-	if _, stored, err := auth.GetRaw(providerID); err != nil || !stored {
-		return "", false, err
-	}
-	key, _, err = ai.ResolveStoredAPIKeyFromStorageContext(ctx, auth, providerID)
-	return key, true, err
 }
 
 // printModelDiagnostic writes a model-resolution warning to stderr in the

@@ -47,6 +47,11 @@ type Extension struct {
 	// Tools is keyed by the tool's `name` field (matches `RegisteredTool.Definition.Name`).
 	Tools map[string]RegisteredTool
 
+	// ToolOrder records tool registration order. Go maps do not retain
+	// insertion order; loaders populate this alongside Tools so tool lists
+	// keep upstream's registration order (a Map in extension.tools).
+	ToolOrder []string
+
 	// MessageRenderers is keyed by the custom message type the renderer handles.
 	MessageRenderers map[string]MessageRenderer
 

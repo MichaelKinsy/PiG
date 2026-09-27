@@ -69,6 +69,7 @@ func (m *InteractiveMode) renderSessionEntries() {
 	// Reset all component tracking: all are stale after a branch navigation.
 	m.toolMu.Lock()
 	clear(m.toolByID)
+	clear(m.toolFileCalls)
 	m.toolOrder = m.toolOrder[:0]
 	m.toolStarts = make(map[string]time.Time)
 	m.toolMu.Unlock()
@@ -248,11 +249,13 @@ func (m *InteractiveMode) renderSessionEntries() {
 				comp := tui.NewToolExecutionComponent(call.Name, argsPreview)
 				comp.BodyRenderer = toolBodyRendererForCall(call, agent.AgentToolResult{})
 				comp.Cwd = m.opts.CWD
-				m.setGenericToolArgs(comp, call.Name, json.RawMessage(args))
+				comp.SetHeaderArgs(json.RawMessage(args))
+				m.applyToolPresentation(comp, call.ID, call.Name, json.RawMessage(args))
 				comp.SetExpanded(m.toolsExpanded)
 				switch msg.Assistant.StopReason {
 				case ai.StopReasonAborted:
 					comp.BodyRenderer = toolBodyRendererForCall(call, agent.AgentToolResult{Content: "Operation aborted", IsError: true})
+					comp.SetResultValue(agent.AgentToolResult{Content: "Operation aborted", IsError: true})
 					comp.SetResult("Operation aborted", true, 0)
 				case ai.StopReasonError:
 					errorMessage := msg.Assistant.ErrorMessage
@@ -260,6 +263,7 @@ func (m *InteractiveMode) renderSessionEntries() {
 						errorMessage = "Error"
 					}
 					comp.BodyRenderer = toolBodyRendererForCall(call, agent.AgentToolResult{Content: errorMessage, IsError: true})
+					comp.SetResultValue(agent.AgentToolResult{Content: errorMessage, IsError: true})
 					comp.SetResult(errorMessage, true, 0)
 				default:
 					pendingCalls[call.ID] = call
@@ -295,6 +299,7 @@ func (m *InteractiveMode) renderSessionEntries() {
 				}
 				comp.ImageBlocks = blocks
 			}
+			comp.SetResultValue(result)
 			comp.SetResult(r.Text(), r.IsError, 0)
 			m.maybeConvertImagesForKitty(comp)
 		}

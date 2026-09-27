@@ -42,7 +42,7 @@ func TestCustomMessageUsesRegisteredProductionRenderer(t *testing.T) {
 	}
 	m.toggleAllTools()
 	lines = m.chatContainer.Render(80)
-	if len(lines) != 1 || strings.TrimSpace(lines[0]) != "renderer:hello:expanded=false" {
+	if len(lines) != 3 || strings.TrimSpace(lines[0]) != "renderer:hello:expanded=false" || !strings.Contains(lines[2], "Tool output: collapsed") {
 		t.Fatalf("collapsed renderer lines = %#v", lines)
 	}
 }

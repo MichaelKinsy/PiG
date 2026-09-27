@@ -24,6 +24,8 @@ Source of truth:
 
 No prose status claim overrides those files.
 
+If you change exported Go API, CLI flags, settings, parity scenarios, or docs mirrors, run `make generate` and commit the result. CI's drift gates compare these files. Never hand-edit generated files; regenerate.
+
 When landing a new port, record its full upstream source path in a production
 `// Ports packages/.../file.ts` comment and update PORT_MAP in the same change.
 The drift gate rejects explicit port claims left not-started, deferred, or n/a.
@@ -269,7 +271,7 @@ make async-contracts` or `make verify` from `PORT_MAP.md` and `parity/scenarios/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 428 behavioral (96.0%), 4 weak-only (no behavioral verification), 14 untested.
+**Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 429 behavioral (96.2%), 3 weak-only (no behavioral verification), 14 untested.
 Raw PORT_MAP rows: 616. Breakdown: 74 n/a (designed out) · 24 🟡 partial · 72 ⬜ not started. See DIVERGENCES.md for the documented exceptions.
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 5 boot-only, 3 registration-only, 1 smoke-only.
@@ -285,25 +287,25 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 3 registrati
 | `experimental-pico3` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `export-html` | 5 | 5 | 0 | 0 | 0 | 5 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 20 | 20 | 0 | 0 | 0 | 21 | not run |
+| `extensions-runtime` | 32 | 32 | 0 | 0 | 0 | 31 | not run |
 | `footer` | 7 | 7 | 0 | 0 | 0 | 8 | not run |
 | `fullscreen` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
-| `interactive-rendering` | 29 | 27 | 2 | 0 | 0 | 25 | not run |
-| `json` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
+| `interactive-rendering` | 32 | 30 | 2 | 0 | 0 | 27 | not run |
+| `json` | 2 | 2 | 0 | 0 | 0 | 3 | not run |
 | `model-resolver-selector` | 17 | 17 | 0 | 0 | 0 | 13 | not run |
 | `model-runtime-store-catalog` | 3 | 3 | 0 | 0 | 0 | 7 | not run |
 | `oauth` | 8 | 8 | 0 | 0 | 0 | 12 | not run |
-| `print` | 1 | 1 | 0 | 0 | 0 | 3 | not run |
+| `print` | 3 | 3 | 0 | 0 | 0 | 4 | not run |
 | `project-trust` | 8 | 8 | 0 | 0 | 0 | 13 | not run |
 | `providers-faux-streaming` | 11 | 10 | 0 | 1 | 0 | 15 | not run |
 | `providers-registry` | 6 | 3 | 0 | 3 | 0 | 26 | not run |
-| `rpc` | 26 | 26 | 0 | 0 | 0 | 10 | not run |
+| `rpc` | 31 | 31 | 0 | 0 | 0 | 15 | not run |
 | `selectors` | 10 | 10 | 0 | 0 | 1 | 14 | not run |
 | `session` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
 | `settings` | 7 | 7 | 0 | 0 | 0 | 13 | not run |
 | `slash-commands` | 9 | 8 | 1 | 0 | 0 | 17 | not run |
-| `startup` | 5 | 4 | 1 | 0 | 0 | 2 | not run |
-| `tools` | 12 | 12 | 0 | 0 | 0 | 27 | not run |
+| `startup` | 8 | 7 | 1 | 0 | 0 | 5 | not run |
+| `tools` | 13 | 13 | 0 | 0 | 0 | 27 | not run |
 | `tree` | 5 | 4 | 1 | 0 | 0 | 5 | not run |
 | `tui-components` | 11 | 11 | 0 | 0 | 0 | 16 | not run |
 
@@ -528,8 +530,11 @@ Use `make lint-changed` in the development loop. It runs every configured linter
 
 ## Commands
 
+Run `make generate` after changing exported Go API, CLI flags, settings, parity scenarios, or docs mirrors. Commit the result. Never hand-edit generated files; regenerate.
+
 Primary gates:
 ```bash
+make generate
 make build
 make vet
 make lint
@@ -587,6 +592,8 @@ facts: the pinned Pi version, observed parity, named divergences, supported
 artifacts, and published evidence.
 
 ## Commit hygiene
+
+Every commit requires both a DCO `Signed-off-by` line and a signature GitHub marks **Verified**. Use `git commit --signoff -S`. Sign-off is not a cryptographic signature. See `CONTRIBUTING.md` for SSH signing setup and unsigned-commit repair. If signing is unavailable, a maintainer lands the change in a maintainer-signed commit with a `Co-authored-by:` trailer.
 
 Before committing, run `git diff --stat HEAD` and `git status --short`, then stage only files intentionally changed. Never `git add .`, `git add -A`, or add a whole directory without inspecting contents. Testdata dirs accumulate temp files.
 

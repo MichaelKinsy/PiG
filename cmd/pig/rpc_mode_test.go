@@ -932,7 +932,7 @@ func TestRPCGetCommandsParseAndExactEmptyResponse(t *testing.T) {
 		t.Fatalf("command=%#v error=%v", command, err)
 	}
 	var output bytes.Buffer
-	writeJSONLine(&output, rpcGetCommandsResponse("", rpcCommandCatalog{}))
+	writeJSONLine(&output, rpcGetCommandsResponse("", headlessCommandCatalog{}))
 	want := "{\"type\":\"response\",\"command\":\"get_commands\",\"success\":true,\"data\":{\"commands\":[]}}\n"
 	if output.String() != want {
 		t.Fatalf("response:\n got %s want %s", output.String(), want)
@@ -954,7 +954,7 @@ func TestRPCGetCommandsCategoryAndLoaderOrderWithoutBuiltins(t *testing.T) {
 	// matches a skill by filepath.Dir of its path.
 	skillZ := &codingagent.SkillDef{Name: "z-skill", Description: "skill first", Path: filepath.FromSlash("/skills/z/SKILL.md"), Dir: filepath.FromSlash("/skills/z")}
 	skillA := &codingagent.SkillDef{Name: "a-skill", Description: "skill second", Path: filepath.FromSlash("/skills/a/SKILL.md"), Dir: filepath.FromSlash("/skills/a")}
-	catalog := rpcCommandCatalog{
+	catalog := headlessCommandCatalog{
 		runner: runner, promptTemplates: []codingagent.PromptTemplate{promptZ, promptA}, skills: []*codingagent.SkillDef{skillZ, skillA},
 		sourceInfo: map[string]codingagent.ResourceSourceInfo{
 			promptZ.FilePath: {Path: promptZ.FilePath, Scope: "user", Origin: "top-level", Source: "local", BaseDir: "/prompts"},
@@ -987,7 +987,7 @@ func TestRPCPromptRoutingPriorityAndInvocationConsistency(t *testing.T) {
 	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{{RegisteredCommand: extension.RegisteredCommand{Name: "skill:deploy"}, InvocationName: "skill:deploy"}}}
 	template := codingagent.PromptTemplate{Name: "deploy", Content: "prompt $1"}
 	skill := &codingagent.SkillDef{Name: "deploy", Body: "skill body", Path: "/skills/deploy/SKILL.md", Dir: "/skills/deploy"}
-	catalog := rpcCommandCatalog{runner: runner, promptTemplates: []codingagent.PromptTemplate{template}, skills: []*codingagent.SkillDef{skill}}
+	catalog := headlessCommandCatalog{runner: runner, promptTemplates: []codingagent.PromptTemplate{template}, skills: []*codingagent.SkillDef{skill}}
 
 	if expanded, handled := catalog.routePrompt(context.Background(), "/skill:deploy now"); !handled || expanded != "" {
 		t.Fatalf("extension priority expanded=%q handled=%v", expanded, handled)
@@ -1060,7 +1060,7 @@ func TestRPCResourceHandoffFlagsTrustExplicitAndPiglet(t *testing.T) {
 
 func TestRPCGetCommandsConcurrentQueriesRemainJSONL(t *testing.T) {
 	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{{RegisteredCommand: extension.RegisteredCommand{Name: "one", SourceInfo: RPCSourceInfo{Path: "/one", Source: "local", Scope: "user", Origin: "top-level"}}, InvocationName: "one"}}}
-	catalog := rpcCommandCatalog{runner: runner}
+	catalog := headlessCommandCatalog{runner: runner}
 	var output bytes.Buffer
 	var outputMu sync.Mutex
 	var wait sync.WaitGroup
@@ -1091,7 +1091,7 @@ func TestRPCPackageResourceSourceInfo(t *testing.T) {
 	// Skill paths are native, as the loader builds them.
 	skill := &codingagent.SkillDef{Name: "package-skill", Path: filepath.FromSlash("/packages/demo/skills/check/SKILL.md"), Dir: filepath.FromSlash("/packages/demo/skills/check")}
 	info := codingagent.ResourceSourceInfo{Scope: "project", Origin: "package", Source: "github:demo/package", BaseDir: "/packages/demo"}
-	catalog := rpcCommandCatalog{
+	catalog := headlessCommandCatalog{
 		promptTemplates: []codingagent.PromptTemplate{prompt}, skills: []*codingagent.SkillDef{skill},
 		sourceInfo: map[string]codingagent.ResourceSourceInfo{prompt.FilePath: info, skill.Dir: info},
 	}
@@ -1122,7 +1122,7 @@ func TestRPCGetCommandsExactRecordResponseShape(t *testing.T) {
 		InvocationName: "deploy",
 	}}}
 	var output bytes.Buffer
-	writeJSONLine(&output, rpcGetCommandsResponse("commands-1", rpcCommandCatalog{runner: runner}))
+	writeJSONLine(&output, rpcGetCommandsResponse("commands-1", headlessCommandCatalog{runner: runner}))
 	want := "{\"id\":\"commands-1\",\"type\":\"response\",\"command\":\"get_commands\",\"success\":true,\"data\":{\"commands\":[{\"name\":\"deploy\",\"description\":\"Deploy\",\"source\":\"extension\",\"sourceInfo\":{\"path\":\"/ext/deploy\",\"source\":\"local\",\"scope\":\"project\",\"origin\":\"top-level\",\"baseDir\":\"/ext\"}}]}}\n"
 	if output.String() != want {
 		t.Fatalf("response:\n got %s want %s", output.String(), want)
@@ -1131,7 +1131,7 @@ func TestRPCGetCommandsExactRecordResponseShape(t *testing.T) {
 
 func TestRPCLegacyLeadingSlashExtensionNameIsAdvertisedAndInvokedOnce(t *testing.T) {
 	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{{RegisteredCommand: extension.RegisteredCommand{Name: "/legacy", SourceInfo: RPCSourceInfo{Path: "builtin:legacy", Source: "builtin", Scope: "temporary", Origin: "top-level"}}, InvocationName: "/legacy"}}}
-	catalog := rpcCommandCatalog{runner: runner}
+	catalog := headlessCommandCatalog{runner: runner}
 	commands := catalog.commands()
 	if len(commands) != 1 || commands[0].Name != "legacy" {
 		t.Fatalf("commands=%#v", commands)

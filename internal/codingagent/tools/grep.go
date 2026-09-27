@@ -50,7 +50,7 @@ func (t *GrepTool) Schema() ai.ToolSchema {
 			"type": "object",
 			"properties": map[string]any{
 				"pattern":    map[string]any{"type": "string", "description": "Search pattern (regex or literal string)"},
-				"path":       map[string]any{"type": "string", "description": "File or directory to search (default: current directory)"},
+				"path":       map[string]any{"type": "string", "description": "Directory or file to search (default: current directory)"},
 				"glob":       map[string]any{"type": "string", "description": "Filter files by glob pattern, e.g. '*.ts' or '**/*.spec.ts'"},
 				"ignoreCase": map[string]any{"type": "boolean", "description": "Case-insensitive search (default: false)"},
 				"literal":    map[string]any{"type": "boolean", "description": "Treat pattern as literal string instead of regex (default: false)"},
@@ -150,14 +150,15 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	}
 
 	// No line limit: the match limit already capped rows.
-	tr := TruncateHead(strings.Join(outputLines, "\n"), DefaultMaxBytes, math.MaxInt)
+	// Number.MAX_SAFE_INTEGER is observable in the truncation details, even though only bytes cap this tool.
+	tr := TruncateHead(strings.Join(outputLines, "\n"), DefaultMaxBytes, 1<<53-1)
 	output := tr.Content
 	var notices []string
 	details := &GrepDetails{}
 	if run.matchLimitReached {
 		notices = append(notices, fmt.Sprintf("%s matches limit reached. Use limit=%s for more, or refine pattern",
 			jsNumber(effectiveLimit), jsNumber(effectiveLimit*2)))
-		details.MatchLimitReached = int(effectiveLimit)
+		details.MatchLimitReached = effectiveLimit
 	}
 	if tr.Truncated {
 		notices = append(notices, FormatSize(DefaultMaxBytes)+" limit reached")

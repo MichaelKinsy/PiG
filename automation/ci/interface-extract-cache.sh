@@ -25,6 +25,9 @@
 #   PIG_TMP                         scratch dir for temp files (default: /tmp).
 set -euo pipefail
 
+# Locale affects both tree ordering and Node's localeCompare output.
+export LC_ALL=C
+
 if [ $# -ne 7 ]; then
   echo "usage: interface-extract-cache.sh <source-root> <published-root> <upstream-version> <extractor-dir> <out-source> <out-published> <out-cli>" >&2
   exit 2
@@ -46,7 +49,7 @@ mkdir -p "$CACHE_ROOT"
 # The extraction command itself: pinning these strings in the key means a
 # change to how we invoke the extractor (flags, script set) forces a fresh
 # extraction even if every file on disk is unchanged.
-EXTRACT_INVOCATION="extract.mjs --max-old-space-size=3072 source+published; extract-cli.mjs; cache-format=1"
+EXTRACT_INVOCATION="LC_ALL=C; extract.mjs --max-old-space-size=3072 source+published; extract-cli.mjs; cache-format=1"
 
 hash_tree() {
   # Deterministic content hash of a directory: relative path + file content,

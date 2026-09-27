@@ -8,13 +8,14 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/rpcclient"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	codingcompaction "github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 )
 
@@ -186,20 +187,12 @@ type RPCClearQueueData struct {
 	FollowUp []string `json:"followUp"`
 }
 
-type RPCSourceInfo struct {
-	Path    string `json:"path"`
-	Source  string `json:"source"`
-	Scope   string `json:"scope"`
-	Origin  string `json:"origin"`
-	BaseDir string `json:"baseDir,omitempty"`
-}
+// RPCSourceInfo is upstream's SourceInfo on the RPC wire; extensions receive
+// the same shape.
+type RPCSourceInfo = codingagent.PiSourceInfo
 
-type RPCSlashCommand struct {
-	Name        string        `json:"name"`
-	Description string        `json:"description,omitempty"`
-	Source      string        `json:"source"`
-	SourceInfo  RPCSourceInfo `json:"sourceInfo"`
-}
+// RPCSlashCommand is upstream's RpcSlashCommand (SlashCommandInfo).
+type RPCSlashCommand = codingagent.PiSlashCommand
 
 type RPCCancelledResult struct {
 	Cancelled bool `json:"cancelled"`
@@ -575,19 +568,11 @@ func rpcSessionInfoChanged(name string) RPCSessionInfoChangedEvent {
 	return RPCSessionInfoChangedEvent{Type: "session_info_changed", Name: name}
 }
 
-// writeJSONLine serialises v to a JSON line (no HTML escaping) and writes
-// it followed by a newline. A broken writer is silently ignored because a
-// dead stdout means the client has gone away.
-//
-// Uses json.NewEncoder + SetEscapeHTML(false) per AGENTS.md rule: never use
-// json.Marshal for strings that appear in display/wire output containing
-// shell operators (&&, <, >, etc.).
+// writeJSONLine writes one JSON.stringify-compatible record. A broken writer is ignored because a dead stdout means the client has gone away.
 func writeJSONLine(w io.Writer, v any) {
-	var buf bytes.Buffer
-	enc := json.NewEncoder(&buf)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(v); err != nil {
-		return // encoding should never fail for our well-typed structs
+	line, err := rpcclient.SerializeJsonLine(v)
+	if err != nil {
+		return
 	}
-	_, _ = w.Write(buf.Bytes()) // Encode already appends '\n'
+	_, _ = w.Write(line)
 }
