@@ -224,8 +224,7 @@ func TestSelectStartupModelMatchesUpstream(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			dir := isolateProviderAuthEnv(t)
 			t.Setenv("ANTHROPIC_API_KEY", "sk-ant-test")
-			registry := codingagent.NewModelRegistry(dir)
-			selected, err := selectStartupModel(context.Background(), tc.options, tc.settings, registry)
+			selected, err := selectStartupModel(context.Background(), tc.options, tc.settings, testServices(t, dir))
 			if tc.errContains != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.errContains) {
 					t.Fatalf("err = %v, want %q", err, tc.errContains)
@@ -255,13 +254,7 @@ func TestSelectStartupModelUsesStoredLoginProvider(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "auth.json"), []byte(`{"openai":{"type":"api_key","key":"stored-key"}}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	registry := codingagent.NewModelRegistry(dir)
-	auth, err := ai.NewAuthStorage(filepath.Join(dir, "auth.json"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	registry.SetAuthStorage(auth)
-	selected, err := selectStartupModel(context.Background(), startupModelOptions{}, codingagent.Settings{}, registry)
+	selected, err := selectStartupModel(context.Background(), startupModelOptions{}, codingagent.Settings{}, testServices(t, dir))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -294,12 +287,12 @@ func TestSelectStartupModelAPIKey(t *testing.T) {
 		if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(`{"providers":{"openai":{"baseUrl":"`+server.URL+`"}}}`), 0o600); err != nil {
 			t.Fatal(err)
 		}
-		registry := codingagent.NewModelRegistry(dir)
-		selected, err := selectStartupModel(context.Background(), startupModelOptions{CLIModel: "openai/gpt-4o-mini", APIKey: "cli-key"}, codingagent.Settings{}, registry)
+		services := testServices(t, dir)
+		selected, err := selectStartupModel(context.Background(), startupModelOptions{CLIModel: "openai/gpt-4o-mini", APIKey: "cli-key"}, codingagent.Settings{}, services)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if key, ok := registry.RuntimeAPIKey("openai"); !ok || key != "cli-key" {
+		if key, ok := services.Registry().RuntimeAPIKey("openai"); !ok || key != "cli-key" {
 			t.Fatalf("runtime key = %q, %v", key, ok)
 		}
 		transcript := ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}})
@@ -320,7 +313,7 @@ func TestSelectStartupModelAPIKey(t *testing.T) {
 	t.Run("requires a CLI or scoped model", func(t *testing.T) {
 		dir := isolateProviderAuthEnv(t)
 		t.Setenv("ANTHROPIC_API_KEY", "sk-ant-test")
-		_, err := selectStartupModel(context.Background(), startupModelOptions{APIKey: "cli-key"}, codingagent.Settings{}, codingagent.NewModelRegistry(dir))
+		_, err := selectStartupModel(context.Background(), startupModelOptions{APIKey: "cli-key"}, codingagent.Settings{}, testServices(t, dir))
 		if err == nil || err.Error() != "--api-key requires a model to be specified via --model, --provider/--model, or --models" {
 			t.Fatalf("err = %v", err)
 		}
@@ -328,11 +321,11 @@ func TestSelectStartupModelAPIKey(t *testing.T) {
 	t.Run("a scoped model carries the key", func(t *testing.T) {
 		dir := isolateProviderAuthEnv(t)
 		t.Setenv("ANTHROPIC_API_KEY", "sk-ant-test")
-		registry := codingagent.NewModelRegistry(dir)
-		if _, err := selectStartupModel(context.Background(), startupModelOptions{ScopePatterns: []string{"anthropic/claude-sonnet-4-5"}, APIKey: "cli-key"}, codingagent.Settings{}, registry); err != nil {
+		services := testServices(t, dir)
+		if _, err := selectStartupModel(context.Background(), startupModelOptions{ScopePatterns: []string{"anthropic/claude-sonnet-4-5"}, APIKey: "cli-key"}, codingagent.Settings{}, services); err != nil {
 			t.Fatal(err)
 		}
-		if key, ok := registry.RuntimeAPIKey("anthropic"); !ok || key != "cli-key" {
+		if key, ok := services.Registry().RuntimeAPIKey("anthropic"); !ok || key != "cli-key" {
 			t.Fatalf("runtime key = %q, %v", key, ok)
 		}
 	})
@@ -344,7 +337,7 @@ func TestSelectStartupModelKeepsTestFaux(t *testing.T) {
 	dir := isolateProviderAuthEnv(t)
 	t.Setenv("PIG_TEST_FAUX", "1")
 	for _, options := range []startupModelOptions{{CLIModel: "test-faux/faux-1:high"}, {CLIProvider: "test-faux", CLIModel: "faux-1:high"}} {
-		selected, err := selectStartupModel(context.Background(), options, codingagent.Settings{}, codingagent.NewModelRegistry(dir))
+		selected, err := selectStartupModel(context.Background(), options, codingagent.Settings{}, testServices(t, dir))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -360,7 +353,7 @@ func TestSelectStartupModelKeepsTestFaux(t *testing.T) {
 func TestSelectStartupModelHidesTestFauxWithoutOptIn(t *testing.T) {
 	dir := isolateProviderAuthEnv(t)
 	t.Setenv("PIG_TEST_FAUX", "")
-	_, err := selectStartupModel(context.Background(), startupModelOptions{CLIModel: "test-faux/faux-1"}, codingagent.Settings{}, codingagent.NewModelRegistry(dir))
+	_, err := selectStartupModel(context.Background(), startupModelOptions{CLIModel: "test-faux/faux-1"}, codingagent.Settings{}, testServices(t, dir))
 	if err == nil || !strings.Contains(err.Error(), `Model "test-faux/faux-1" not found`) {
 		t.Fatalf("err = %v, want upstream's not-found error", err)
 	}

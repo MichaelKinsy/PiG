@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 // failingRefreshOAuthProvider is an OAuth provider whose stored token is expired
@@ -78,8 +77,7 @@ func TestBuildModel_OAuthRefreshFailureSurfacesWhenNoFallback(t *testing.T) {
 			ai.RegisterOAuthProvider(tc.provider, failingRefreshOAuthProvider{id: tc.provider})
 			t.Cleanup(func() { ai.UnregisterOAuthProvider(tc.provider) })
 
-			registry := codingagent.NewModelRegistry(t.TempDir())
-			_, _, _, err = buildModel(tc.spec, registry)
+			_, _, _, err = buildModel(tc.spec, testServices(t, dir))
 			if err == nil {
 				t.Fatalf("buildModel(%q) returned nil error; a genuine OAuth refresh failure was swallowed", tc.spec)
 			}
@@ -114,8 +112,7 @@ func TestBuildModel_StoredOAuthRefreshFailureBlocksEnvFallback(t *testing.T) {
 	ai.RegisterOAuthProvider("anthropic", failingRefreshOAuthProvider{id: "anthropic"})
 	t.Cleanup(func() { ai.UnregisterOAuthProvider("anthropic") })
 
-	registry := codingagent.NewModelRegistry(t.TempDir())
-	_, _, _, err = buildModel("anthropic/claude-sonnet-4-20250514", registry)
+	_, _, _, err = buildModel("anthropic/claude-sonnet-4-20250514", testServices(t, dir))
 	if err == nil || !strings.Contains(err.Error(), "refresh") {
 		t.Fatalf("buildModel error = %v, want stored credential refresh failure", err)
 	}
@@ -137,7 +134,7 @@ func TestBuildModelContextCancelsOAuthRefresh(t *testing.T) {
 	t.Cleanup(func() { ai.UnregisterOAuthProvider("anthropic") })
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	_, _, _, err = buildModelContext(ctx, "anthropic/claude-sonnet-4-20250514", codingagent.NewModelRegistry(t.TempDir()))
+	_, _, _, err = buildModelContext(ctx, "anthropic/claude-sonnet-4-20250514", testServices(t, dir))
 	if err == nil || !strings.Contains(err.Error(), context.Canceled.Error()) {
 		t.Fatalf("buildModelContext error = %v, want cancellation", err)
 	}

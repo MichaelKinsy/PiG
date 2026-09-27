@@ -344,7 +344,7 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 		ScopePatterns: scopePatterns,
 		Continuing:    resources.ResumePath != "",
 		APIKey:        flags.APIKey,
-	}, settings, registry.ModelRegistry)
+	}, settings, services)
 	for _, warning := range selected.Warnings {
 		printModelDiagnostic(warning)
 	}
