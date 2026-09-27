@@ -101,7 +101,7 @@ process.exit(7);
 
 func TestCLIModeDriverRemovesCaptureAfterSuccessAndFailure(t *testing.T) {
 	root := t.TempDir()
-	t.Setenv("TMPDIR", root)
+	t.Setenv(tempDirVar, root)
 	for _, tc := range []struct {
 		name, command, output string
 		code                  int

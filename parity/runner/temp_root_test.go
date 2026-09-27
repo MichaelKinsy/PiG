@@ -10,7 +10,7 @@ import (
 )
 
 // Pi's loadProjectContextFiles walks every ancestor, even above a git root.
-// These reproduce the review's checkout-TMPDIR overlay through the shared
+// These reproduce the review's checkout-temp-root overlay through the shared
 // snapshot path, including aliases whose spelling is outside the checkout.
 func TestSnapshotCWDRejectsCheckoutTempRoot(t *testing.T) {
 	checkout, err := findRepoRoot()
@@ -28,10 +28,10 @@ func TestSnapshotCWDRejectsCheckoutTempRoot(t *testing.T) {
 	}
 	for _, root := range []string{checkout, nested, alias} {
 		t.Run(filepath.Base(root), func(t *testing.T) {
-			t.Setenv("TMPDIR", root)
+			t.Setenv(tempDirVar, root)
 			_, err := defaultCWD(t)
-			if err == nil || !strings.Contains(err.Error(), "checkout") || !strings.Contains(err.Error(), "TMPDIR") {
-				t.Fatalf("defaultCWD with TMPDIR=%s: want actionable checkout rejection, got %v", root, err)
+			if err == nil || !strings.Contains(err.Error(), "checkout") || !strings.Contains(err.Error(), "set "+tempDirVar+" ") {
+				t.Fatalf("defaultCWD with %s=%s: want actionable checkout rejection, got %v", tempDirVar, root, err)
 			}
 		})
 	}
@@ -61,13 +61,13 @@ func TestSnapshotCWDRejectsAncestorContext(t *testing.T) {
 			}
 			for _, temp := range []string{ancestor, root, alias} {
 				t.Run(filepath.Base(temp), func(t *testing.T) {
-					t.Setenv("TMPDIR", temp)
+					t.Setenv(tempDirVar, temp)
 					_, err := snapshotCWD(t, defaultCWDFixture())
 					errorText := ""
 					if err != nil {
 						errorText = strings.ToLower(err.Error())
 					}
-					if err == nil || !strings.Contains(errorText, strings.ToLower(canonicalContextFile)) || !strings.Contains(err.Error(), "TMPDIR") {
+					if err == nil || !strings.Contains(errorText, strings.ToLower(canonicalContextFile)) || !strings.Contains(err.Error(), "set "+tempDirVar+" ") {
 						t.Fatalf("snapshotCWD: want actionable ancestor-context rejection naming %s, got %v", canonicalContextFile, err)
 					}
 				})
@@ -82,7 +82,7 @@ func TestSnapshotCWDCanonicalCleanRootAndCleanup(t *testing.T) {
 	if err := os.Symlink(root, alias); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("TMPDIR", alias)
+	t.Setenv(tempDirVar, alias)
 	var snapshot string
 	t.Run("copy", func(t *testing.T) {
 		var err error
@@ -118,7 +118,7 @@ func TestDriversRejectAncestorContextBeforeLaunch(t *testing.T) {
 	if err := os.Mkdir(root, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	t.Setenv("TMPDIR", root)
+	t.Setenv(tempDirVar, root)
 	for name, driver := range DriverRegistry {
 		for _, label := range []string{"pig", "pi"} {
 			t.Run(name+"/"+label, func(t *testing.T) {
@@ -136,7 +136,7 @@ func TestDriversRejectAncestorContextBeforeLaunch(t *testing.T) {
 					}
 					return
 				}
-				if got.Err == nil || !strings.Contains(got.Err.Error(), "AGENTS.md") || !strings.Contains(got.Err.Error(), "TMPDIR") {
+				if got.Err == nil || !strings.Contains(got.Err.Error(), "AGENTS.md") || !strings.Contains(got.Err.Error(), "set "+tempDirVar+" ") {
 					t.Fatalf("driver must reject context before attempting launch, got %v", got.Err)
 				}
 			})

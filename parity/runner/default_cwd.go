@@ -31,7 +31,7 @@ const snapshotIDDigits = 10
 func mkdirTempFixed(prefix string) (string, error) {
 	root, err := cleanSnapshotRoot(os.TempDir())
 	if err != nil {
-		return "", fmt.Errorf("parity cwd temporary root: %w; set TMPDIR to an existing directory outside the checkout with no ancestor context files", err)
+		return "", fmt.Errorf("parity cwd temporary root: %w; set %s to an existing directory outside the checkout with no ancestor context files", err, tempDirVar)
 	}
 	return mkdirFixed(root, prefix)
 }
