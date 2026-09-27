@@ -33,7 +33,7 @@ func ScriptCommand(t testing.TB, path string, args ...string) *exec.Cmd {
 	if !needsInterpreter {
 		return exec.Command(path, args...)
 	}
-	interpreter := shebangInterpreter(t, path)
+	interpreter := ShebangInterpreter(t, path)
 	var program string
 	switch interpreter {
 	case "bash":
@@ -50,9 +50,9 @@ func ScriptCommand(t testing.TB, path string, args ...string) *exec.Cmd {
 	return exec.Command(program, append([]string{path}, args...)...)
 }
 
-// shebangInterpreter is the program a script's #! line runs, with /usr/bin/env
+// ShebangInterpreter is the program a script's #! line runs, with /usr/bin/env
 // and the directory removed: "#!/usr/bin/env python3" is python3.
-func shebangInterpreter(t testing.TB, path string) string {
+func ShebangInterpreter(t testing.TB, path string) string {
 	t.Helper()
 	file, err := os.Open(path)
 	if err != nil {

@@ -99,6 +99,9 @@ func snapshotEnvDirs(t *testing.T, sourcePath string, envVars []string, preserve
 		// prompt carries; see "Documentation paths in the system prompt".
 		root := os.TempDir()
 		if k == "PIG_HOME" {
+			if err := checkPromptPathRoot(); err != nil {
+				t.Fatal(err)
+			}
 			root = promptPathRoot
 		}
 		tmp, err := mkdirFixed(root, fmt.Sprintf("parity-snap-%s-", k))

@@ -40,7 +40,12 @@ func envLauncherProgram(t *testing.T, name, pathList string) (string, error) {
 }
 
 // lookPathIn resolves name against pathList instead of the runner's own PATH.
+// A name containing a path separator is run as given, without a PATH search,
+// as env does.
 func lookPathIn(name, pathList string) (string, error) {
+	if strings.Contains(name, "/") || (runtime.GOOS == "windows" && strings.Contains(name, `\`)) {
+		return exec.LookPath(name)
+	}
 	for _, dir := range filepath.SplitList(pathList) {
 		if dir == "" {
 			continue
@@ -143,9 +148,13 @@ func (cliModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 		bin.Path, args = program, args[1:]
 	} else if runtime.GOOS == "windows" && scenarioBin != "" && isShebangScript(bin.Path) {
 		// Windows runs a file by its extension, not its #! line; run the
-		// interpreter that line names, as testenv.ScriptCommand does.
-		script := testenv.ScriptCommand(t, bin.Path, args...)
-		bin.Path, args = script.Path, script.Args[1:]
+		// interpreter that line names from the child's PATH, as a POSIX
+		// kernel and /usr/bin/env do.
+		program, err := envLauncherProgram(t, testenv.ShebangInterpreter(t, bin.Path), effectivePath(append(hermeticEnviron(), env...)))
+		if err != nil {
+			return Result{Err: err}
+		}
+		bin.Path, args = program, append([]string{bin.Path}, args...)
 	}
 
 	timeout := time.Duration(sc.CLI.TimeoutSeconds) * time.Second

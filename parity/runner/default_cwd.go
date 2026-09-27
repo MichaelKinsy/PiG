@@ -129,6 +129,16 @@ var promptPathRoot = func() string {
 	return "/tmp"
 }()
 
+// checkPromptPathRoot reports a promptPathRoot other than four characters,
+// which would make pig's and Pi's system prompts differ in length. On Windows
+// that happens when TMP is a UNC path (\\server\share\...).
+func checkPromptPathRoot() error {
+	if len(promptPathRoot) != len("/tmp") {
+		return fmt.Errorf("PIG_HOME's snapshot root %q must be four characters, as /tmp is, so the pig and Pi system prompts stay the same length; set TMP to a directory on a drive letter (C:\\...), not a UNC path", promptPathRoot)
+	}
+	return nil
+}
+
 const (
 	pigHomePrefix   = "parity-snap-PIG_HOME-"
 	piPackagePrefix = "parity-pi-pkg-"
