@@ -20,6 +20,7 @@ try {
   const sourceRoot = args.get("source-root");
   const upstreamVersion = args.get("upstream-version");
   const out = args.get("out") ?? "-";
+  if (!args.has("out")) process.stderr.write("behavior-input-extractor: writing to stdout, not the committed inventory; run: make generate (or: make behavior-input-inventory). Use --out - for explicit stdout.\n");
   if (!sourceRoot || !upstreamVersion) throw new Error("--source-root and --upstream-version are required");
   const inventory = extractBehaviorInputInventory({ sourceRoot: path.resolve(sourceRoot), upstreamVersion });
   const encoded = `${JSON.stringify(inventory, null, 2)}\n`;

@@ -45,6 +45,7 @@ Complete each applicable gate or explain why it does not apply:
 - [ ] Shared paths are data-driven like Pi; no hard-coded provider/model choices; tested across provider shapes.
 - [ ] Relevant declared-run parity scenarios
 - [ ] Cross-platform build or native test
+- [ ] `make generate` and the resulting generated-file changes are committed.
 - [ ] Documentation and generated-file drift checks
 
 ## Security, licensing, and provenance
@@ -68,5 +69,6 @@ Describe what can fail and how to return to the previous state without losing us
 ## Contributor declaration
 
 - [ ] I understand and reviewed any agent-assisted material in this submission.
-- [ ] Every non-merge commit includes a Developer Certificate of Origin `Signed-off-by` line.
+- [ ] Every commit includes a Developer Certificate of Origin `Signed-off-by` line.
+- [ ] Every commit has a cryptographic signature that GitHub marks **Verified** (separate from DCO sign-off; see `CONTRIBUTING.md`).
 - [ ] This contribution is submitted under the repository license and preserves third-party terms.

@@ -25,6 +25,7 @@ All notable public changes to PiG will be recorded in this file.
 - Preserve Unicode line and paragraph separators inside JSONL strings without treating them as record boundaries.
 - Match Pi's sparse tool-result field names and byte-truncation limits, and retain fractional grep and ls limits without rounding.
 - Include the empty details object in shell output updates, as Pi does.
+- Send `clear_thinking: false` with Z.ai thinking requests, as Pi does, so Z.ai keeps prior-turn reasoning instead of discarding it. Thanks @ByronFinn (#75).
 - Accept the pasted redirect URL or code in `/login` for Anthropic, as Pi does. The paste went to the model as a prompt, and a failure after the browser callback showed as "Login cancelled.". Login dialogs for every provider also accept a terminal paste, which they dropped.
 - Remove packed and isolated extension stderr logs after normal shutdown and `/reload` for Node, Go, Python and Rust. Keep logs referenced by load or crash diagnostics for troubleshooting.
 - Report an extension crash once, rather than again for each interrupted command or a racing socket-close notification. Preserve ordinary command errors and Pi's extension error presentation.
@@ -33,6 +34,12 @@ All notable public changes to PiG will be recorded in this file.
 - Preserve RPC prompt, steering and follow-up order when commands arrive together, so both queued messages reach the active run.
 - Keep RPC input and preflight callbacks from blocking later commands, and report streaming only after preflight completes.
 - Preserve empty prompt text blocks and the slash-prefixed command name when rejecting queued extension commands.
+
+### Contributing
+
+- Add `make generate` to refresh committed inventories, coverage, and documentation mirrors. Drift failures name the repair command. The Go interface generator writes its committed file by default and uses the same target on macOS and Linux.
+- Keep help regeneration independent of the invoking agent's configuration and project directory. A failed generator no longer truncates the committed help text.
+- Document the required GitHub-verified commit signature separately from DCO sign-off, with SSH signing setup and unsigned-commit repair instructions.
 
 ## [0.2.0] - 2026-09-25
 

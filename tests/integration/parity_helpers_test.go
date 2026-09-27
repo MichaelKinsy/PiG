@@ -27,6 +27,7 @@ func normalizeEscapedTmuxBlock(value string) string {
 
 func launchSystemWithReady(t *testing.T, config systemConfig, timeout time.Duration, markers ...string) (string, func()) {
 	t.Helper()
+	requireTmux(t)
 	session := "parity-live-" + config.name + "-" + randID()
 	if output, err := tmuxCommand("new-session", "-d", "-s", session, "-x", "130", "-y", "36").CombinedOutput(); err != nil {
 		t.Fatalf("create tmux session %s: %v\n%s", session, err, output)

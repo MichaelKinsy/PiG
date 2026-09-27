@@ -8,11 +8,31 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding"
 )
+
+// splitPath must end at the root of an absolute path. On Windows the root is a
+// volume (C:\), which filepath.Split returns unchanged, so a loop that stopped
+// only at "/" never ended and TestParity hung before its first scenario.
+func TestSplitPathEndsAtTheRoot(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "mise", "installs", "pi", "0.87.1", "bin", "pi")
+	parts := make(chan []string, 1)
+	go func() { parts <- splitPath(path) }()
+	select {
+	case got := <-parts:
+		want := []string{"mise", "installs", "pi", "0.87.1", "bin", "pi"}
+		if len(got) < len(want) || !slices.Equal(got[len(got)-len(want):], want) {
+			t.Fatalf("splitPath(%s) = %q, want it to end with %q", path, got, want)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatalf("splitPath(%s) did not return", path)
+	}
+}
 
 func TestResolvePigBinHonorsFreshBuildOverride(t *testing.T) {
 	bin := filepath.Join(t.TempDir(), "pig-under-test")

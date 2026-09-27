@@ -16,6 +16,9 @@ PARITY_FLOW_RUN ?= .
 
 ##@ Parity: faithfulness to the pinned Pi release
 
+# Node's locale-sensitive ordering must agree on every contributor host.
+interface-proposals interface-inventory-drift behavior-input-inventory behavior-input-inventory-drift test-inventory-generate test-inventory-drift: export LC_ALL := C
+
 typescript-extension-corpus: parity-bin ## Validate every pinned upstream TypeScript extension example
 	@go run ./parity/cmd/extensioncorpus \
 		-root "$(CURDIR)" \
@@ -25,14 +28,21 @@ typescript-extension-corpus: parity-bin ## Validate every pinned upstream TypeSc
 schedule-report: ## Print Go-test and parity scheduler buckets
 	@./automation/ci/report-schedule.sh
 
-behavior-input-inventory-drift:
+behavior-input-inventory: interface-deps ## Regenerate the upstream input and render inventory
+	@cd parity/interface-extractor && \
+		node src/extract-behavior-inputs.mjs \
+			--source-root ../../.upstream/current \
+			--upstream-version "$(UPSTREAM_VERSION)" \
+			--out ../interfaces/behavior-inputs-v$(UPSTREAM_VERSION).json
+
+behavior-input-inventory-drift: interface-deps
 	@tmp=$$($(MKTEMP)); trap 'rm -f "$$tmp"' EXIT; \
 		cd parity/interface-extractor && \
 		node src/extract-behavior-inputs.mjs \
 			--source-root ../../.upstream/current \
 			--upstream-version "$(UPSTREAM_VERSION)" \
 			--out "$$tmp" && \
-		cmp "$$tmp" ../interfaces/behavior-inputs-v$(UPSTREAM_VERSION).json
+		../../automation/ci/check-generated.sh "$$tmp" ../interfaces/behavior-inputs-v$(UPSTREAM_VERSION).json behavior-input-inventory
 	@echo "behavior-input-inventory-drift: clean"
 
 behavior-input-mapping-proposal:
@@ -48,14 +58,21 @@ behavior-input-mapping-proposal:
 # source tree and fails if it differs from the committed inventory, so an upstream
 # leap that adds, removes, or edits a test file forces the inventory (and, in
 # turn, the reviewed disposition mapping) to be brought current.
-test-inventory-drift: ## Test-inventory-drift regenerates the upstream-test denominator from the pinned
+test-inventory-generate: interface-deps ## Regenerate the upstream test inventory without changing reviewed dispositions
+	@cd parity/interface-extractor && \
+		node src/extract-test-inventory.mjs \
+			--source-root ../../.upstream/current \
+			--upstream-version "$(UPSTREAM_VERSION)" \
+			--out ../interfaces/upstream-tests-v$(UPSTREAM_VERSION).json
+
+test-inventory-drift: interface-deps ## Check the generated upstream test inventory
 	@tmp=$$($(MKTEMP)); trap 'rm -f "$$tmp"' EXIT; \
 		cd parity/interface-extractor && \
 		node src/extract-test-inventory.mjs \
 			--source-root ../../.upstream/current \
 			--upstream-version "$(UPSTREAM_VERSION)" \
 			--out "$$tmp" && \
-		cmp "$$tmp" ../interfaces/upstream-tests-v$(UPSTREAM_VERSION).json
+		../../automation/ci/check-generated.sh "$$tmp" ../interfaces/upstream-tests-v$(UPSTREAM_VERSION).json test-inventory-generate
 	@echo "test-inventory-drift: clean"
 
 # test-inventory validates the reviewed disposition mapping over the upstream-test
@@ -303,7 +320,7 @@ coverage: ## Regenerate coverage.md from PORT_MAP + scenarios
 	    -port-map PORT_MAP.md \
 	    -scenarios parity/scenarios \
 	    -agents-md "$$tmp/AGENTS.md" \
-	    -badge "$$tmp/badge.svg" > "$$tmp/coverage.md"; \
+	    -badge "$$tmp/badge.svg" -out "$$tmp/coverage.md"; \
 	    mv "$$tmp/coverage.md" parity/coverage.md; \
 	    mv "$$tmp/AGENTS.md" AGENTS.md; \
 	    mv "$$tmp/badge.svg" .github/badges/parity-coverage.svg
@@ -314,16 +331,14 @@ interface-proposals: parity-deps interface-deps ## Regenerate unreviewed interfa
 	@set -eu; tmp=$$($(MKTEMP_DIR)); trap 'rm -rf "$$tmp"' EXIT; \
 		cd parity/interface-extractor; \
 		npm test >/dev/null; \
-		node --max-old-space-size=3072 src/extract.mjs \
-			--source-root ../../.upstream/current \
-			--published-root "$(PI_PACKAGE_ROOT)" \
-			--upstream-version "$(UPSTREAM_VERSION)" \
-			--source-out "$$tmp/source.json" \
-			--published-out "$$tmp/upstream.json"; \
-		node src/extract-cli.mjs \
-			--source-root ../../.upstream/current \
-			--upstream-version "$(UPSTREAM_VERSION)" \
-			--out "$$tmp/cli.json"; \
+		cd "$(CURDIR)"; \
+		./automation/ci/interface-extract-cache.sh \
+			.upstream/current \
+			"$(PI_PACKAGE_ROOT)" \
+			"$(UPSTREAM_VERSION)" \
+			parity/interface-extractor \
+			"$$tmp/source.json" "$$tmp/upstream.json" "$$tmp/cli.json"; \
+		cd parity/interface-extractor; \
 		node src/extract-behavior-inputs.mjs \
 			--source-root ../../.upstream/current \
 			--upstream-version "$(UPSTREAM_VERSION)" \
@@ -359,10 +374,20 @@ interface-inventory: ## Validate the generated public package interface inventor
 		-inventory parity/interfaces/upstream-v$(UPSTREAM_VERSION).json \
 		-observable parity/interfaces/cli-v$(UPSTREAM_VERSION).json
 
+interface-go: ## Regenerate the committed Pig Go interface inventory
+	@go run ./parity/cmd/gointerfaces
+
+interface-recommendations-generate: interface-go ## Regenerate recommendations from the current inventories
+	@go run ./parity/cmd/interfacerecommend \
+		-inventory parity/interfaces/upstream-v$(UPSTREAM_VERSION).json \
+		-observable parity/interfaces/cli-v$(UPSTREAM_VERSION).json \
+		-go-inventory parity/interfaces/pig-go.json \
+		-out parity/interfaces/recommendations-v$(UPSTREAM_VERSION).json
+
 interface-go-drift:
 	@tmp=$$($(MKTEMP)); trap 'rm -f "$$tmp"' EXIT; \
 		go run ./parity/cmd/gointerfaces -out "$$tmp" && \
-		cmp "$$tmp" parity/interfaces/pig-go.json
+		./automation/ci/check-generated.sh "$$tmp" parity/interfaces/pig-go.json interface-go
 	@echo "interface-go-drift: clean"
 
 interface-recommendations-drift: interface-go-drift ## Regenerate Pig Go candidates and proposals
@@ -372,7 +397,7 @@ interface-recommendations-drift: interface-go-drift ## Regenerate Pig Go candida
 			-observable parity/interfaces/cli-v$(UPSTREAM_VERSION).json \
 			-go-inventory parity/interfaces/pig-go.json \
 			-out "$$tmp" && \
-		cmp "$$tmp" parity/interfaces/recommendations-v$(UPSTREAM_VERSION).json
+		./automation/ci/check-generated.sh "$$tmp" parity/interfaces/recommendations-v$(UPSTREAM_VERSION).json interface-recommendations-generate
 	@echo "interface-recommendations-drift: clean"
 
 interface-recommendations: ## Validate non-authoritative agent porting proposals
@@ -435,8 +460,8 @@ interface-inventory-drift: parity-deps interface-deps ## Regenerate from exact s
 			"$(UPSTREAM_VERSION)" \
 			parity/interface-extractor \
 			"$$tmp_source" "$$tmp_published" "$$tmp_cli" && \
-		cmp "$$tmp_published" parity/interfaces/upstream-v$(UPSTREAM_VERSION).json && \
-		cmp "$$tmp_cli" parity/interfaces/cli-v$(UPSTREAM_VERSION).json
+		./automation/ci/check-generated.sh "$$tmp_published" parity/interfaces/upstream-v$(UPSTREAM_VERSION).json interface-proposals && \
+		./automation/ci/check-generated.sh "$$tmp_cli" parity/interfaces/cli-v$(UPSTREAM_VERSION).json interface-proposals
 	@echo "interface-inventory-drift: clean ($(UPSTREAM_VERSION))"
 
 coverage-strict:
@@ -444,7 +469,7 @@ coverage-strict:
 	    -results $(RESULTS) \
 	    -port-map PORT_MAP.md \
 	    -scenarios parity/scenarios \
-	    -strict >/dev/null
+	    -strict -out - >/dev/null
 
 upstream-delta: ## Audit every changed source file in the pinned upstream leap
 	@go run ./parity/cmd/upstreamdelta
@@ -531,5 +556,7 @@ parity-new: ## Scaffold a new parity scenario (optionally under FAMILY=...)
 	    $(if $(TAGS),-tags '$(TAGS)',) \
 	    $(if $(MODEL),-model '$(MODEL)',)
 	@echo "wrote parity/scenarios/$(if $(FAMILY),$(FAMILY)/,)$(NAME).toml"
+
+.PHONY: behavior-input-inventory interface-go interface-recommendations-generate test-inventory-generate
 
 .PHONY: async-contracts behavior-contracts behavior-contracts-strict behavior-input-inventory-drift behavior-input-mapping-proposal check-contracts check-contracts-fast check-scratch-paths closure-check correspondence-check coverage coverage-drift coverage-strict custom-factory-ledger custom-factory-ledger-drift family-gaps format-version-inventory format-version-policy foundation-check interface-delta interface-delta-strict interface-go-drift interface-inventory interface-inventory-drift interface-inventory-test interface-mapping-quality interface-mapping-strict interface-proposal-check interface-proposals interface-recommendations interface-recommendations-drift lint-scenarios parity parity-bin parity-driver parity-durable parity-family parity-fast parity-flow-coverage parity-live parity-new parity-perf parity-stress port-groups port-map port-map-drift port-reconcile porter porter-campaign porter-check porter-smoke porter-task require-parity-ran schedule-report source-hygiene source-hygiene-full test-inventory test-inventory-drift test-inventory-strict typescript-extension-corpus upstream-delta

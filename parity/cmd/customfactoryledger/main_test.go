@@ -130,7 +130,7 @@ func TestCheckedInLedgerHasNoDrift(t *testing.T) {
 	if err := os.WriteFile(temp, drifted, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := verify(temp, generated); err == nil || !strings.Contains(err.Error(), "drift") {
+	if err := verify(temp, generated); err == nil || !strings.Contains(err.Error(), "run: make generate (or: make custom-factory-ledger)") {
 		t.Fatalf("verify drift error = %v", err)
 	}
 }
