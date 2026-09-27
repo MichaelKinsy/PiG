@@ -129,6 +129,11 @@ func TestPiPackageRootFollowsNpmCmdShim(t *testing.T) {
 }
 
 func TestPromptPathLengthsBalance(t *testing.T) {
+	// Pi prints PI_PACKAGE_DIR resolved to an absolute path and pig prints
+	// PIG_HOME as given, so only an absolute root prints the same on both.
+	if !filepath.IsAbs(promptPathRoot) {
+		t.Fatalf("promptPathRoot %q is not absolute; Pi would print a longer root than pig", promptPathRoot)
+	}
 	digits := strings.Repeat("0", snapshotIDDigits)
 	pigHome := filepath.Join(promptPathRoot, pigHomePrefix+digits)
 	piPackage := filepath.Join(promptPathRoot, piPackagePrefix+digits, piPackageLink)

@@ -81,8 +81,7 @@ func cleanSnapshotRoot(root string) (string, error) {
 // mkdirFixed creates a new directory under root named prefix followed by
 // snapshotIDDigits random decimal digits.
 func mkdirFixed(root, prefix string) (string, error) {
-	// On Windows promptPathRoot is \tmp on the current drive, which exists
-	// only once a run creates it.
+	// On Windows promptPathRoot (C:\t) exists only once a run creates it.
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return "", err
 	}
@@ -117,8 +116,19 @@ func mkdirFixed(root, prefix string) (string, error) {
 // text has than Pi's, measured against Pi 0.87.1. TestPromptPathLengthsBalance
 // checks the arithmetic; the rpc get_session_stats scenario checks the
 // estimate itself.
+//
+// promptPathRoot is /tmp on Unix. Pi prints PI_PACKAGE_DIR resolved to an
+// absolute path while pig prints PIG_HOME as given, so on Windows the root is
+// an absolute path of the same four characters: the temp directory's drive
+// and \t (C:\t).
+var promptPathRoot = func() string {
+	if runtime.GOOS == "windows" {
+		return filepath.VolumeName(os.TempDir()) + `\t`
+	}
+	return "/tmp"
+}()
+
 const (
-	promptPathRoot  = "/tmp"
 	pigHomePrefix   = "parity-snap-PIG_HOME-"
 	piPackagePrefix = "parity-pi-pkg-"
 	piPackageLink   = "pi-coding-pkg"
