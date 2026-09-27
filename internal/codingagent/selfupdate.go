@@ -458,7 +458,11 @@ func FetchUpdateManifest(ctx context.Context, client *http.Client, rawURL string
 	if strings.TrimSpace(signature) == "" {
 		// Static hosts such as GitHub release assets cannot set a response
 		// header; they publish the same signature beside the manifest.
-		signature, err = fetchDetachedSignature(ctx, client, manifestURL.String()+".sig")
+		// The sidecar extends the manifest's path; a query string stays a query.
+		signatureURL := *manifestURL
+		signatureURL.Path += ".sig"
+		signatureURL.RawPath = ""
+		signature, err = fetchDetachedSignature(ctx, client, signatureURL.String())
 		if err != nil {
 			return nil, err
 		}

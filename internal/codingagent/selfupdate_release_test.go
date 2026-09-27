@@ -132,6 +132,42 @@ func TestExtractPigFromTarGzRefusesAnythingButOnePigFile(t *testing.T) {
 	}
 }
 
+// The detached signature sits beside the manifest's path. A manifest URL with
+// a query string must not turn into ".../update.json?token=abc.sig".
+func TestFetchUpdateManifestFindsTheSignatureBesideAQueriedManifest(t *testing.T) {
+	allowLoopbackUpdateHTTP(t)
+	public, private, err := ed25519.GenerateKey(rand.Reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	trustPath := filepath.Join(t.TempDir(), "update-trust.pem")
+	if err := os.WriteFile(trustPath, pemPublicKey(t, public), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("PIG_UPDATE_TRUST_ROOT", trustPath)
+	body := []byte(`{"version":"9.9.9","packageName":"pig","binaries":{}}`)
+	signature := base64.StdEncoding.EncodeToString(ed25519.Sign(private, body))
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Query().Get("token") != "abc" {
+			http.Error(w, "missing token", http.StatusForbidden)
+			return
+		}
+		switch r.URL.Path {
+		case "/update.json":
+			_, _ = w.Write(body)
+		case "/update.json.sig":
+			_, _ = fmt.Fprintln(w, signature)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+	defer srv.Close()
+	manifest, err := FetchUpdateManifest(context.Background(), srv.Client(), srv.URL+"/update.json?token=abc")
+	if err != nil || manifest.Version != "9.9.9" {
+		t.Fatalf("manifest = %#v, err = %v", manifest, err)
+	}
+}
+
 func TestFetchUpdateManifestVerifiesADetachedSignature(t *testing.T) {
 	allowLoopbackUpdateHTTP(t)
 	public, private, err := ed25519.GenerateKey(rand.Reader)
