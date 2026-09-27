@@ -15,6 +15,7 @@ All notable public changes to PiG will be recorded in this file.
 
 ### Fixed
 
+- Accept the pasted redirect URL or code in `/login` for Anthropic, as Pi does. The paste went to the model as a prompt, and a failure after the browser callback showed as "Login cancelled.". Login dialogs for every provider also accept a terminal paste, which they dropped.
 - Defer stored credential refresh to the first request for providers that support request-time authentication. Startup no longer fails early on an expired login, and logging out during a session restores the environment key instead of reusing the deleted credential. Keep Radius credentials on their gateway-specific authentication path.
 - Preserve pending Pico3 tasks when a task kind is replaced just after the harness resumes. Only tasks with unknown kinds at the time of `Resume` are orphaned, as in Pi.
 - Fix the first request of a new session going to the wrong endpoint for providers without a dedicated builder, such as OpenCode, OpenCode Go, DeepSeek and Z.ai. A stored key was sent to OpenAI's default URL, and Anthropic-style models used the wrong client. Thanks @ShoichiTect (#59).
