@@ -87,7 +87,11 @@ For a behavior change:
 7. run the focused and cross-family scenarios;
 8. run the complete gate.
 
-Do not weaken a comparator or skip a scenario to make a defect green.
+Fix root causes instead of hiding failures with timeouts, retries, sleeps, skips, or weaker comparisons.
+
+### Faithful, general implementations
+
+Follow the repository `AGENTS.md` rule of the same name: keep Pi's shared data-driven paths, cite Pi's own provider-specific branches, and fix sibling defects together. Test applicable OAuth, API-key, custom-base-URL OpenAI-compatible, and no-default-model shapes; Copilot and `test-faux` alone are not enough.
 
 ## Extensions
 

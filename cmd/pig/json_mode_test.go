@@ -428,8 +428,12 @@ func TestJSONAndRPCProductionToolEventsMatchPersistedResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	persistedMap := persistedWire.(map[string]any)
-	if !reflect.DeepEqual(endResult["content"], persistedMap["content"]) || !reflect.DeepEqual(endResult["details"], persistedMap["details"]) || endResult["isError"] != persistedMap["isError"] {
+	// Pi 0.87.1 agent-loop.ts:870-894 puts isError beside result on the event, and inside the persisted toolResult message.
+	if !reflect.DeepEqual(endResult["content"], persistedMap["content"]) || !reflect.DeepEqual(endResult["details"], persistedMap["details"]) || toolEvents[2]["isError"] != persistedMap["isError"] {
 		t.Fatalf("execution end = %#v, persisted ToolResultMessage = %#v", endResult, persistedMap)
+	}
+	if _, exists := endResult["isError"]; exists {
+		t.Fatalf("nested result must not inject isError: %#v", endResult)
 	}
 }
 

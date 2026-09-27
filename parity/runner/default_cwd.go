@@ -81,7 +81,8 @@ func cleanSnapshotRoot(root string) (string, error) {
 // mkdirFixed creates a new directory under root named prefix followed by
 // snapshotIDDigits random decimal digits.
 func mkdirFixed(root, prefix string) (string, error) {
-	// On Windows promptPathRoot (C:\t) exists only once a run creates it.
+	// On Windows promptPathRoot is \t on the temp directory's drive, which
+	// exists only once a run creates it.
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return "", err
 	}

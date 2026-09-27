@@ -145,6 +145,19 @@ func (h *harness) sendKey(name string) {
 	}
 }
 
+// paste delivers text the way a terminal delivers Cmd+V or Ctrl+Shift+V:
+// wrapped in bracketed-paste markers once pig has enabled that mode.
+func (h *harness) paste(text string) {
+	h.t.Helper()
+	buffer := "pig-it-paste-" + randID()
+	if out, err := tmuxCommand("set-buffer", "-b", buffer, text).CombinedOutput(); err != nil {
+		h.t.Fatalf("tmux set-buffer: %v\n%s", err, out)
+	}
+	if out, err := tmuxCommand("paste-buffer", "-p", "-d", "-b", buffer, "-t", h.session).CombinedOutput(); err != nil {
+		h.t.Fatalf("tmux paste-buffer: %v\n%s", err, out)
+	}
+}
+
 // sendEnter sends a literal CR (the Enter key as pig sees it).
 
 // capture returns the visible pane text.

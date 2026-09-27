@@ -8,6 +8,7 @@ to move only this directory.
 
 ```json
 {
+  "defaultProvider": "anthropic",
   "defaultModel": "claude-sonnet-4",
   "theme": "dark",
   "compaction": { "enabled": true }
@@ -39,8 +40,8 @@ the value depends on what it detects.
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `defaultProvider` | string |  | Provider used when none is chosen. |
-| `defaultModel` | string |  | Model used when none is chosen. |
+| `defaultProvider` | string |  | Provider for the saved default model. Set it with `defaultModel`. |
+| `defaultModel` | string |  | Model ID within `defaultProvider`, without a provider prefix. A qualified ID such as `github-copilot/gpt-6-sol` is not supported here. |
 | `defaultThinkingLevel` | string |  | Thinking level applied to a new session. |
 | `modelThinkingLevels` | object |  | Thinking level for a new session per model, keyed by `provider/modelId`. It overrides `defaultThinkingLevel`. |
 | `enabledModels` | string[] | `all` | Models offered in the model selector. |

@@ -122,6 +122,8 @@ Supported drivers are:
 Driver-specific fields are defined in `parity/runner/schema.go`. Use an existing
 scenario in the same family as the closest example.
 
+RPC lifecycle scenarios set `terminate = true` to send SIGTERM after their final output barrier while stdin remains open. The driver waits for process exit instead of sending EOF. Use `exit_code = 143` for Pi's SIGTERM shutdown contract.
+
 The `cli-mode` driver connects both stdout and stderr to one temporary regular file. Node writes to files synchronously, so Pi's immediate `process.exit()` cannot discard queued pipe output from large one-shot listings. The driver reads the file after process exit and removes it with the run's temporary directory. This preserves complete combined-output bytes without changing the oracle, filtering rows, or normalizing output. Print and RPC drivers keep their existing transports.
 
 ## Assertions
@@ -134,7 +136,7 @@ The `cli-mode` driver connects both stdout and stderr to one temporary regular f
 | `pig_contains`, `pig_not_contain` | Only PiG output is checked. |
 | `pi_contains`, `pi_not_contain` | Only Pi output is checked. |
 | `both_match_regex` | Every expression matches both outputs. |
-| `output_equal` | Outputs are byte-identical. |
+| `output_equal` | Outputs are byte-identical. RPC `canonical_json = true` first parses each JSONL record and sorts object keys. It preserves all fields, nulls, array and record order, numeric precision and string whitespace; malformed records fail. |
 | `escaped_output_equal` | Escaped tmux captures are byte-identical. |
 | `output_layout_equal` | Terminal layout is equal under the layout comparator. |
 | `output_normalized_equal` | Outputs are equal after the declared normalization. |
