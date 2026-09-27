@@ -13,6 +13,10 @@ All notable public changes to PiG will be recorded in this file.
 
 - Handle every key of one terminal read before painting, as Pi does. Fast typing such as `/compact` no longer paints each prefix with a stale autocomplete popup, which scrolled the main screen further than Pi.
 
+### Fixed
+
+- Fix the first request of a new session going to the wrong endpoint for providers without a dedicated builder, such as OpenCode, OpenCode Go, DeepSeek and Z.ai. A stored key was sent to OpenAI's default URL, and Anthropic-style models used the wrong client. Thanks @ShoichiTect (#59).
+
 ## [0.2.0] - 2026-09-25
 
 First public release of PiG, a Go port of Pi 0.87.1. `pig --version` prints `0.2.0+0.87.1`. Release archives: macOS and Linux (amd64, arm64) and Windows (amd64, arm64, preview), with one `SHA256SUMS`.

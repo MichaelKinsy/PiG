@@ -74,12 +74,8 @@ func defaultModelPerProvider() map[string]string {
 	return defaults
 }
 
-// buildModelFromRef resolves one provider/model the way upstream
-// resolveCliModel does — an exact catalog entry, else a models.json
-// definition, else the provider's default model under the requested id
-// (buildFallbackModel), else the registry entry — then constructs it through
-// coding.BuildModelFromEntry so the CLI and /model paths share one API-kind,
-// base URL, and credential construction.
+// buildModelFromRef resolves the startup model with resolveStartupModelEntry
+// and builds it with coding.BuildModelFromEntry, the constructor /model uses.
 func buildModelFromRef(ctx context.Context, providerID, modelID string, services *coding.Services) (*ai.Model, error) {
 	registry := services.Registry().ModelRegistry
 	entry := resolveStartupModelEntry(providerID, modelID, registry)
@@ -99,12 +95,10 @@ func buildModelFromRef(ctx context.Context, providerID, modelID string, services
 	return coding.BuildModelFromEntry(providerID, modelID, entry, services)
 }
 
-// resolveStartupModelEntry mirrors upstream resolveCliModel's model resolution
-// for the CLI startup builder: the exact catalog entry, else a models.json
-// definition, else the provider's default model under the requested id
-// (buildFallbackModel), else the registry entry. The fallback and its warning
-// belong to resolution; provider construction stays in
-// coding.BuildModelFromEntry.
+// resolveStartupModelEntry resolves a model as upstream resolveCliModel does:
+// the exact catalog entry, else a models.json definition, else the provider's
+// default model under the requested id (buildFallbackModel), else the
+// registry entry.
 func resolveStartupModelEntry(providerID, modelID string, registry *codingagent.ModelRegistry) codingagent.ModelEntry {
 	spec := providerID + "/" + modelID
 	if generated, ok := ai.LookupModelExact(spec); ok {
