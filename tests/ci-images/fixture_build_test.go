@@ -17,7 +17,8 @@ func TestFixtureBuildsExportDistinctGoSDKConsumers(t *testing.T) {
 	bin := t.TempDir()
 	out := filepath.Join(t.TempDir(), "fixture output")
 	t.Setenv("PIG_TEST_FIXTURE_DIR", out)
-	t.Setenv("CARGO_TARGET_DIR", filepath.Join(t.TempDir(), "cargo target"))
+	cargoTarget := filepath.Join(t.TempDir(), "cargo target")
+	t.Setenv("CARGO_TARGET_DIR", cargoTarget)
 	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	for name, script := range map[string]string{
 		"go": `#!/usr/bin/env bash
@@ -66,5 +67,10 @@ printf '%s\n' "$PIG_TEST_SDK_FIXTURE_BIN" "${PIG_TEST_CONFORMANCE_SDK_FIXTURE_BI
 		if got, want := filepath.FromSlash(strings.TrimSpace(string(data))), filepath.Join(root, source); got != want {
 			t.Errorf("fixture %q built from %q, want %q", paths[i], got, want)
 		}
+	}
+	// The Rust fixture builds in the CARGO_TARGET_DIR given, which on
+	// Windows is a drive-letter path, not under the repository.
+	if _, err := os.Stat(filepath.Join(cargoTarget, "release", "rust-sdk-fixture")); err != nil {
+		t.Errorf("Rust fixture was not built in CARGO_TARGET_DIR: %v", err)
 	}
 }
