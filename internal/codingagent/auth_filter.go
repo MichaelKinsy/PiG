@@ -2,17 +2,17 @@
 //
 // AuthenticatedProviders + ReachableProviders are the single source of
 // truth for "which providers can the user actually talk to right now"
-// vs "which providers does coding.BuildModel even know how to wire".
+// vs "which providers can ModelRuntime compose". Reachable is the whole
+// built-in catalog plus ollama; authenticated is the subset whose
+// credentials resolve from the environment, models.json, or auth.json.
 //
-// Used by interactive `/model` overlay to default the picker scope to
-// {auth ∩ reachable} and clamp the all-scope view to {reachable} (the
-// other ~19 catalog providers would mis-route through BuildModel's
-// OpenAI-compatible default branch and silently fail at first token).
+// Used by the interactive model surfaces (cycleModel, showScopedModels,
+// --list-models) to default the picker scope to {auth ∩ reachable}.
 //
-// Mirrors upstream pi-coding-agent's
-// `model-selector.ts::scopedModels` filter logic: pig computes the
-// scoped set here at picker-open time rather than carrying it on
-// SettingsManager.
+// Mirrors upstream pi-coding-agent's model-runtime.ts availability filter:
+// upstream derives `available` from checkAuth() over the whole provider
+// catalog, so pig derives both sets from the catalog rather than a
+// hand-maintained provider list.
 package codingagent
 
 import (
@@ -22,57 +22,55 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// ReachableProviders returns the set of provider IDs that
-// coding.BuildModel has an explicit `case` for. Anything else falls
-// through BuildModel's default branch which constructs an
-// OpenAI-compatible client: fine for OpenAI-shaped APIs but a silent
-// mis-route for Anthropic/Bedrock/Vertex/etc. that would error at
-// first request.
+// ReachableProviders returns the set of provider IDs that ModelRuntime can
+// compose: every provider in the built-in catalog plus ollama, which is
+// configured from the environment rather than declared in the catalog.
 //
-// SINGLE SOURCE OF TRUTH. Keep this set aligned with
-// coding/model.go::BuildModel so provider additions touch one map entry here.
+// coding.BuildModel's buildProviderForEntry switches on a provider's API
+// kind, not its id, so every catalog provider is wireable. Deriving this
+// from the catalog keeps a new upstream provider from being silently
+// omitted from the picker.
 func ReachableProviders() map[string]bool {
-	return map[string]bool{
-		"github-copilot": true, // OAuth (auth.json)
-		"anthropic":      true, // ANTHROPIC_AUTH_TOKEN, ANTHROPIC_OAUTH_TOKEN, ANTHROPIC_API_KEY, or OAuth (auth.json)
-		"openai":         true, // OPENAI_API_KEY
-		"openai-codex":   true, // OAuth (auth.json → ChatGPT Plus/Pro subscription)
-		"openrouter":     true, // OPENROUTER_API_KEY
-		"groq":           true, // GROQ_API_KEY
-		"ollama":         true, // OLLAMA_HOST or http://localhost:11434/v1
-		"amazon-bedrock": true, // AWS default credentials chain or AWS_BEARER_TOKEN_BEDROCK
+	catalog := ai.ListRuntimeProviders()
+	out := make(map[string]bool, len(catalog)+1)
+	for _, providerID := range catalog {
+		out[providerID] = true
 	}
+	out["ollama"] = true
+	return out
 }
 
 // AuthenticatedProviders returns the subset of ReachableProviders for
 // which credentials are detectable in the environment / auth.json /
 // model registry, without probing the network.
 //
-//   - github-copilot: OAuth credential present and not expired
-//   - openai/openrouter/groq: <ID_UPPER>_API_KEY env var set OR
-//     registry has any non-empty APIKey entry for the provider
+//   - github-copilot / openai-codex: OAuth credential present with a
+//     refresh token (a half-completed login is not configured auth)
+//   - every other provider: its env API key, a models.json apiKey, or any
+//     stored auth.json credential (api_key or oauth)
 //   - ollama: OLLAMA_HOST env set (cheap heuristic; we do NOT probe
 //     localhost:11434: picking ollama with no daemon running is a
 //     user error caught at switch time)
+//   - amazon-bedrock: any AWS auth signal, including shared config files
+//   - google-vertex: GOOGLE_CLOUD_API_KEY or ADC (via hasEnvAuth)
 //
 // agentDir is the pig config dir (typically ~/.pig/agent). auth.json
 // and models.json are read from there.
 func AuthenticatedProviders(agentDir string) map[string]bool {
-	out := make(map[string]bool, 5)
 	if agentDir == "" {
 		// Caller didn't plumb agentDir: fall back to env-only checks
 		// rather than crashing. Better to under-detect than panic the
 		// picker.
-		auth := envOnlyAuthenticated()
-		return auth
+		return envOnlyAuthenticated()
 	}
 
-	// github-copilot OAuth: presence of a refresh token means the
-	// user has gone through the device flow; the access-token expiry
-	// is auto-refreshed at first request, so we don't gate on it here.
-	// (Upstream pi delegates the same decision to SettingsManager which
-	// probes the refresh path; we use the cheaper on-disk check.)
-	if auth, err := ai.NewAuthStorage(agentDir + "/auth.json"); err == nil {
+	out := make(map[string]bool)
+	registry := NewModelRegistry(agentDir)
+
+	// OAuth providers whose stored credential is only usable with a refresh
+	// token. A half-completed login must not count as configured auth.
+	if auth, err := ai.NewAuthStorage(filepath.Join(agentDir, "auth.json")); err == nil {
+		registry.SetAuthStorage(auth)
 		for _, providerID := range []string{"github-copilot", "openai-codex"} {
 			if cred, ok, _ := auth.Get(providerID); ok {
 				if cred.Type == ai.CredentialOAuth && cred.Refresh != "" {
@@ -82,22 +80,25 @@ func AuthenticatedProviders(agentDir string) map[string]bool {
 		}
 	}
 
-	// API-key / ADC providers: env var OR registry entry.
-	registry := NewModelRegistry(agentDir)
-	for _, p := range []string{"openai", "openrouter", "groq", "anthropic", "azure-openai-responses", "google", "google-vertex", "mistral"} {
-		if hasEnvAuth(p) || registry.HasAnyKey(p) {
-			out[p] = true
+	for providerID := range ReachableProviders() {
+		switch providerID {
+		case "github-copilot", "openai-codex":
+			// Handled above: these need a valid OAuth credential, not an env key.
+			continue
+		}
+		if hasEnvAuth(providerID) || registry.HasAnyKey(providerID) || registry.hasStoredCredential(providerID) {
+			out[providerID] = true
 		}
 	}
 
-	// ollama: heuristic: OLLAMA_HOST set.
 	if os.Getenv("OLLAMA_HOST") != "" {
 		out["ollama"] = true
 	}
 
-	// amazon-bedrock: detect any AWS auth signal. The AWS SDK resolves
-	// the actual credentials at request time; we only need a cheap
-	// boolean here to decide picker eligibility.
+	// amazon-bedrock: detect any AWS auth signal. The AWS SDK resolves the
+	// actual credentials at request time; we only need a cheap boolean here to
+	// decide picker eligibility. hasEnvAuth already covers the env signals;
+	// hasBedrockAuthSignal also covers the shared credentials/config files.
 	if hasBedrockAuthSignal() {
 		out["amazon-bedrock"] = true
 	}
@@ -105,12 +106,16 @@ func AuthenticatedProviders(agentDir string) map[string]bool {
 	return out
 }
 
-// envOnlyAuthenticated is the agentDir-less fallback path.
+// envOnlyAuthenticated is the agentDir-less fallback path: env-only checks.
 func envOnlyAuthenticated() map[string]bool {
-	out := make(map[string]bool, 5)
-	for _, p := range []string{"openai", "openrouter", "groq", "anthropic", "azure-openai-responses", "google", "google-vertex", "mistral"} {
-		if hasEnvAuth(p) {
-			out[p] = true
+	out := make(map[string]bool)
+	for providerID := range ReachableProviders() {
+		switch providerID {
+		case "github-copilot", "openai-codex":
+			continue
+		}
+		if hasEnvAuth(providerID) {
+			out[providerID] = true
 		}
 	}
 	if os.Getenv("OLLAMA_HOST") != "" {

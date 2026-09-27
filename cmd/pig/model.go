@@ -591,7 +591,7 @@ func printModelList(registry *codingagent.ModelRegistry, agentDir, search string
 	}
 
 	if len(entries) == 0 {
-		fmt.Println("No models available. Set API keys in environment variables.")
+		fmt.Println(codingagent.FormatNoModelsAvailableMessage())
 		return
 	}
 

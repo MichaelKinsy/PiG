@@ -1,52 +1,54 @@
 package ai
 
+import (
+	"slices"
+	"strings"
+)
+
 // APIKeyProviderInfo is a static description of a provider that authenticates
 // with a raw API key (as opposed to OAuth/subscription flow).
-//
-// Single source of truth for the API-key provider catalog. interactive.go's
-// /login → "Use an API key" selector and any other surface that needs the
-// full list MUST iterate APIKeyProviders(), not maintain a parallel slice.
 type APIKeyProviderInfo struct {
 	ID   string
 	Name string
 }
 
-// builtInAPIKeyProviders mirrors the upstream API-key provider catalog. Order
-// is the user-facing list order; keep it stable so the selector UI is stable.
-var builtInAPIKeyProviders = []APIKeyProviderInfo{
-	{ID: "amazon-bedrock", Name: "Amazon Bedrock"},
-	{ID: "azure-openai-responses", Name: "Azure OpenAI Responses"},
-	{ID: "cerebras", Name: "Cerebras"},
-	{ID: "fireworks", Name: "Fireworks"},
-	{ID: "google", Name: "Google Gemini"},
-	{ID: "google-vertex", Name: "Google Vertex AI"},
-	{ID: "groq", Name: "Groq"},
-	{ID: "huggingface", Name: "Hugging Face"},
-	{ID: "kimi-coding", Name: "Kimi For Coding"},
-	{ID: "mistral", Name: "Mistral"},
-	{ID: "minimax", Name: "MiniMax"},
-	{ID: "minimax-cn", Name: "MiniMax (China)"},
-	{ID: "openai", Name: "OpenAI"},
-	{ID: "openrouter", Name: "OpenRouter"},
-	{ID: "radius", Name: "Radius"},
-	{ID: "vercel-ai-gateway", Name: "Vercel AI Gateway"},
-	{ID: "xai", Name: "xAI"},
-	{ID: "zai", Name: "ZAI"},
-}
-
-// APIKeyProviders returns the canonical API-key provider catalog.
-// Callers must not mutate the returned slice; copy if you need to.
+// APIKeyProviders returns the built-in providers that expose an API-key auth
+// method, sorted by provider.name.
+//
+// Mirrors upstream interactive-mode.ts:getLoginProviderOptions filtered by
+// auth.apiKey: upstream iterates ModelRuntime.getProviders() (the whole
+// catalog) rather than a hand-maintained subset, so a provider such as
+// opencode-go appears in /login → "Sign in with an API key". Deriving the
+// list here keeps a newly added upstream provider from being silently
+// omitted.
 func APIKeyProviders() []APIKeyProviderInfo {
-	out := make([]APIKeyProviderInfo, len(builtInAPIKeyProviders))
-	copy(out, builtInAPIKeyProviders)
+	providerIDs := ListRuntimeProviders()
+	out := make([]APIKeyProviderInfo, 0, len(providerIDs))
+	for _, providerID := range providerIDs {
+		auth, err := BuiltinProviderAuth(providerID)
+		if err != nil || auth.APIKey == nil {
+			continue
+		}
+		out = append(out, APIKeyProviderInfo{ID: providerID, Name: ProviderDisplayName(providerID)})
+	}
+	slices.SortFunc(out, compareAPIKeyProviderNames)
 	return out
 }
 
+// compareAPIKeyProviderNames orders the selector the way upstream's
+// provider.name.localeCompare does: case-insensitive primary order with the
+// original spelling as the tie-break.
+func compareAPIKeyProviderNames(a, b APIKeyProviderInfo) int {
+	if c := strings.Compare(strings.ToLower(a.Name), strings.ToLower(b.Name)); c != 0 {
+		return c
+	}
+	return strings.Compare(a.Name, b.Name)
+}
+
 // APIKeyProviderName looks up the display name for an API-key provider id.
-// Returns the id unchanged if no built-in match exists, mirroring the old
-// buildAuthProviderName default branch.
+// Returns "" when the provider has no built-in API-key auth method.
 func APIKeyProviderName(id string) string {
-	for _, p := range builtInAPIKeyProviders {
+	for _, p := range APIKeyProviders() {
 		if p.ID == id {
 			return p.Name
 		}

@@ -1,0 +1,60 @@
+# Behavior family: providers-registry
+# Surface: --list-models exposes every catalog provider whose env API key is set.
+#
+# Upstream evidence: re-probed pinned Pi 0.87.1 with OPENCODE_API_KEY=x,
+# DEEPSEEK_API_KEY=x, XAI_API_KEY=x, and CEREBRAS_API_KEY=x. Pi lists the
+# opencode, opencode-go, deepseek, xai, and cerebras rows. PiG now matches
+# byte for byte (verified with an env-cleared regular-file capture).
+#
+# This locks the env-auth availability filter: upstream derives the available
+# set from checkAuth() over the whole provider catalog
+# (model-runtime.ts:runAvailabilityRefresh), so an env-key provider such as
+# opencode-go appears even though it is neither OAuth-backed nor one of the
+# historically hand-listed providers. PiG must derive the same filter from the
+# catalog rather than a hand-maintained allowlist.
+
+name = "06-list-models-catalog-env-providers"
+description = "registration-only: env-key catalog providers (including opencode-go) appear in --list-models."
+covers = [
+  "packages/ai/src/env-api-keys.ts",
+  "packages/coding-agent/src/core/model-registry.ts",
+  "packages/coding-agent/src/core/model-runtime.ts",
+]
+# verification-quality: registration-only. Proves provider catalog
+# visibility/registration from env auth, not provider stream or payload
+# conversion.
+tags = ["fast", "hermetic", "registration-only"]
+driver = "cli-mode"
+
+[env]
+pi = [
+  "PI_CODING_AGENT_DIR=testdata/env-agent",
+  "OPENCODE_API_KEY=x",
+  "DEEPSEEK_API_KEY=x",
+  "XAI_API_KEY=x",
+  "CEREBRAS_API_KEY=x",
+]
+pig = [
+  "PIG_CODING_AGENT_DIR=testdata/env-agent",
+  "OPENCODE_API_KEY=x",
+  "DEEPSEEK_API_KEY=x",
+  "XAI_API_KEY=x",
+  "CEREBRAS_API_KEY=x",
+]
+
+[cli]
+args = ["--list-models"]
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = [
+  "opencode",
+  "opencode-go",
+  "deepseek",
+  "xai",
+  "cerebras",
+]
+output_equal = true
+runtime_ratio_max = 2.0
+runs = 3
