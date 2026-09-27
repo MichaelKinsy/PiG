@@ -1402,6 +1402,46 @@ func TestHost_Integration_SDKFocusedComponentOwnsInputUntilCompletion(t *testing
 	}
 }
 
+// tsFixtureAllTools and tsFixtureCommands are what the host reports to the TS
+// fixture: an inactive built-in, an extension tool without prompt guidelines,
+// and a command of each source.
+var (
+	tsFixtureAllTools = []ToolInfo{
+		{Name: "read", Description: "Read the contents of a file.", Parameters: json.RawMessage(`{"type":"object","required":["path"],"properties":{"path":{"type":"string"}}}`),
+			PromptGuidelines: []string{"Use read to examine files instead of cat or sed."},
+			SourceInfo:       map[string]any{"path": "<builtin:read>", "source": "builtin", "scope": "temporary", "origin": "top-level"}},
+		{Name: "grep", Description: "Search file contents for a pattern.", Parameters: json.RawMessage(`{"type":"object","required":["pattern"],"properties":{"pattern":{"type":"string"}}}`),
+			SourceInfo: map[string]any{"path": "<builtin:grep>", "source": "builtin", "scope": "temporary", "origin": "top-level"}},
+		{Name: "echo_ts", Description: "Echo from TS shim", Parameters: json.RawMessage(`{"type":"object","required":["text"],"properties":{"text":{"type":"string","description":"Text to echo"}}}`),
+			SourceInfo: map[string]any{"path": "/ext/ts-fixture.ts", "source": "cli", "scope": "temporary", "origin": "top-level"}},
+	}
+	tsFixtureCommands = []CommandInfo{
+		{Name: "ping_ts", Description: "Notify from TS shim", Source: "extension", SourceInfo: map[string]any{"path": "/ext/ts-fixture.ts", "source": "cli", "scope": "temporary", "origin": "top-level"}},
+		{Name: "review", Source: "prompt", SourceInfo: map[string]any{"path": "/agent/prompts/review.md", "source": "local", "scope": "user", "origin": "top-level", "baseDir": "/agent/prompts"}},
+		{Name: "skill:lint", Description: "Lint code", Source: "skill", SourceInfo: map[string]any{"path": "/agent/skills/lint/SKILL.md", "source": "local", "scope": "user", "origin": "top-level", "baseDir": "/agent/skills"}},
+	}
+)
+
+// assertSameJSON reports whether got is the JSON encoding of want, ignoring
+// object key order.
+func assertSameJSON(t *testing.T, label string, got json.RawMessage, want any) {
+	t.Helper()
+	encoded, err := json.Marshal(want)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var gotValue, wantValue any
+	if err := json.Unmarshal(got, &gotValue); err != nil {
+		t.Fatalf("%s = %s: %v", label, got, err)
+	}
+	if err := json.Unmarshal(encoded, &wantValue); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(gotValue, wantValue) {
+		t.Errorf("%s = %s\nwant %s", label, got, encoded)
+	}
+}
+
 func TestHost_Integration_TSFileShim(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping integration test in short mode")
@@ -1426,8 +1466,8 @@ func TestHost_Integration_TSFileShim(t *testing.T) {
 			return extension.ExecCommand(context.Background(), t.TempDir(), command, args, opts)
 		},
 		GetActiveTools:   func() []string { return []string{"read", "write"} },
-		GetAllTools:      func() []ToolInfo { return []ToolInfo{{Name: "read"}, {Name: "write"}, {Name: "bash"}} },
-		GetCommands:      func() []CommandInfo { return []CommandInfo{{Name: "help"}, {Name: "ping_ts"}, {Name: "custom_ts"}} },
+		GetAllTools:      func() []ToolInfo { return tsFixtureAllTools },
+		GetCommands:      func() []CommandInfo { return tsFixtureCommands },
 		GetThinkingLevel: func() string { return "medium" },
 		GetSessionName:   func() string { return "TS Fixture Session" },
 		GetSessionID:     func() string { return "sess-ts-1" },
@@ -1508,27 +1548,27 @@ func TestHost_Integration_TSFileShim(t *testing.T) {
 	var res struct {
 		Content string `json:"Content"`
 		Details struct {
-			Source               string   `json:"source"`
-			ActiveTools          []string `json:"activeTools"`
-			AllTools             []string `json:"allTools"`
-			Commands             []string `json:"commands"`
-			ThinkingLevel        string   `json:"thinkingLevel"`
-			IsIdle               bool     `json:"isIdle"`
-			HasPendingMessages   bool     `json:"hasPendingMessages"`
-			SystemPrompt         string   `json:"systemPrompt"`
-			SessionID            string   `json:"sessionId"`
-			SessionName          string   `json:"sessionName"`
-			SessionFile          string   `json:"sessionFile"`
-			LeafID               string   `json:"leafId"`
-			BranchCount          int      `json:"branchCount"`
-			EntryCount           int      `json:"entryCount"`
-			BuiltContextMessages int      `json:"builtContextMessages"`
-			ModelID              string   `json:"modelId"`
-			ModelAPI             string   `json:"modelApi"`
-			FoundModelID         string   `json:"foundModelId"`
-			AuthOK               bool     `json:"authOk"`
-			ExecStdout           string   `json:"execStdout"`
-			ExecCode             int      `json:"execCode"`
+			Source               string          `json:"source"`
+			ActiveTools          []string        `json:"activeTools"`
+			AllTools             json.RawMessage `json:"allTools"`
+			Commands             json.RawMessage `json:"commands"`
+			ThinkingLevel        string          `json:"thinkingLevel"`
+			IsIdle               bool            `json:"isIdle"`
+			HasPendingMessages   bool            `json:"hasPendingMessages"`
+			SystemPrompt         string          `json:"systemPrompt"`
+			SessionID            string          `json:"sessionId"`
+			SessionName          string          `json:"sessionName"`
+			SessionFile          string          `json:"sessionFile"`
+			LeafID               string          `json:"leafId"`
+			BranchCount          int             `json:"branchCount"`
+			EntryCount           int             `json:"entryCount"`
+			BuiltContextMessages int             `json:"builtContextMessages"`
+			ModelID              string          `json:"modelId"`
+			ModelAPI             string          `json:"modelApi"`
+			FoundModelID         string          `json:"foundModelId"`
+			AuthOK               bool            `json:"authOk"`
+			ExecStdout           string          `json:"execStdout"`
+			ExecCode             int             `json:"execCode"`
 			MissingExec          *struct {
 				Stdout string `json:"stdout"`
 				Stderr string `json:"stderr"`
@@ -1551,12 +1591,10 @@ func TestHost_Integration_TSFileShim(t *testing.T) {
 	if !reflect.DeepEqual(res.Details.ActiveTools, []string{"read", "write"}) {
 		t.Errorf("activeTools = %v, want [read write] (raw=%s)", res.Details.ActiveTools, resJSON)
 	}
-	if !reflect.DeepEqual(res.Details.AllTools, []string{"read", "write", "bash"}) {
-		t.Errorf("allTools = %v, want [read write bash]", res.Details.AllTools)
-	}
-	if !reflect.DeepEqual(res.Details.Commands, []string{"help", "ping_ts", "custom_ts"}) {
-		t.Errorf("commands = %v, want [help ping_ts custom_ts]", res.Details.Commands)
-	}
+	// pi.getAllTools() and pi.getCommands() return upstream's ToolInfo and
+	// SlashCommandInfo objects, whole, not their names.
+	assertSameJSON(t, "allTools", res.Details.AllTools, tsFixtureAllTools)
+	assertSameJSON(t, "commands", res.Details.Commands, tsFixtureCommands)
 	if res.Details.ThinkingLevel != "medium" {
 		t.Errorf("thinkingLevel = %q, want medium", res.Details.ThinkingLevel)
 	}

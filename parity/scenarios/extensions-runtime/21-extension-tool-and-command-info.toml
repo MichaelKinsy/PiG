@@ -1,0 +1,75 @@
+# Behavior family: extensions-runtime
+# Scenario: pi.getAllTools() and pi.getCommands() return upstream's ToolInfo
+# and SlashCommandInfo objects.
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-25): AgentSession.getAllTools
+# maps the tool definition registry, active or not, to {name, description,
+# parameters, promptGuidelines, sourceInfo}: the eight built-ins in
+# createAllToolDefinitions order (grep, find, ls and powershell included
+# though inactive), then extension tools with their extension's sourceInfo
+# (source "cli" for a -e path). getCommands lists {name, description, source,
+# sourceInfo} for extension commands, the inline llama.cpp command after them,
+# then prompt templates and skills. A --prompt-template or --skill path is a
+# CLI resource: scope "temporary", as resolveExtensionSources({temporary:
+# true}) records it.
+#
+#   pi --no-extensions -e test-faux-provider.ts -e extension-api-info.mjs \
+#     --prompt-template ../testdata/api-info-review.md \
+#     --skill ../testdata/api-info-skill \
+#     --model test-faux/faux-1 --no-session --mode rpc
+#   stdin: {"id":"info","type":"prompt","message":"/api-info <file>"}
+#
+# RPC mode already ran extension commands, so this isolates the lists: pig's
+# Node runtime returned tool and command names, and only the active tools.
+
+name = "21-extension-tool-and-command-info"
+description = "pi.getAllTools() and pi.getCommands() match upstream's ToolInfo and SlashCommandInfo lists"
+
+covers = [
+  "packages/coding-agent/src/core/extensions/types.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/slash-commands.ts",
+  "packages/coding-agent/src/core/source-info.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = [
+  "--model", "test-faux/faux-1", "--no-session", "--mode", "rpc",
+  "--prompt-template", "../testdata/api-info-review.md",
+  "--skill", "../testdata/api-info-skill",
+]
+# Run from the scenario directory so both binaries resolve the CLI resource
+# paths, which the artifact records, to the same absolute paths.
+cwd = "."
+input_lines = ['{"id":"info","type":"prompt","message":"/api-info {{TEMP}}/api-info.json"}']
+# The command answers its prompt response only after writing the file; the
+# settle keeps stdin open until then.
+settle_seconds = 3
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/api-info.json"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["../testdata/extension-api-info.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "../testdata/extension-api-info.mjs",
+]
+
+[assert]
+exit_code = 0
+runs = 1
+both_contain = ['"id":"info","type":"response","command":"prompt","success":true']
+artifact_normalized_equal = true
+artifact_both_contain = [
+  '"name": "grep"',
+  '"name": "powershell"',
+  '"name": "api_info_lookup"',
+  '"source": "cli"',
+  '"name": "api-info-review"',
+  '"name": "skill:api-info-skill"',
+  '"scope": "temporary"',
+]

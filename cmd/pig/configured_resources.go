@@ -150,13 +150,14 @@ func collectExtensionConfigs(cwd, agentDir string, sm *codingagent.SettingsManag
 // cliExtensionConfigs resolves one -e path. Like upstream resource-loader.ts,
 // a missing local path is a load failure: "Extension path does not exist".
 // A directory that is not itself an extension loads the extensions inside it.
+// Each loaded extension carries upstream's CLI provenance.
 func cliExtensionConfigs(resolved string, resolvers ...extsource.ResolveFunc) []subprocess.ExtConfig {
 	if _, err := os.Stat(resolved); os.IsNotExist(err) {
 		return []subprocess.ExtConfig{subprocess.UnresolvedExtConfig(resolved, extensionPathMissingError{path: resolved})}
 	}
 	configs := pathToExtConfigs(resolved, resolvers...)
 	if len(configs) > 0 && configs[0].ResolveError() == nil {
-		return configs
+		return withCLISourceInfo(configs)
 	}
 	var expanded []subprocess.ExtConfig
 	for _, path := range collectResourceFilesFromPaths([]string{resolved}, "extensions") {
@@ -165,7 +166,22 @@ func cliExtensionConfigs(resolved string, resolvers ...extsource.ResolveFunc) []
 	if len(expanded) == 0 {
 		return configs
 	}
-	return expanded
+	return withCLISourceInfo(expanded)
+}
+
+// withCLISourceInfo stamps the SourceInfo upstream records for an extension
+// named on the command line, {source: "cli", scope: "temporary", origin:
+// "top-level"} with no baseDir (resource-loader.ts "Add CLI paths
+// metadata"), onto each config. Its tools and commands report it.
+func withCLISourceInfo(configs []subprocess.ExtConfig) []subprocess.ExtConfig {
+	for i := range configs {
+		path := configs[i].Source
+		if path == "" {
+			path = configs[i].Path
+		}
+		configs[i].SourceInfo = codingagent.CLISourceInfo(path)
+	}
+	return configs
 }
 
 func collectTopLevelExtensionConfigs(autoDir string, entries []string, resolvers ...extsource.ResolveFunc) []subprocess.ExtConfig {

@@ -25,8 +25,9 @@ mod protocol;
 mod transport;
 
 pub use context::{
-    Context, ModelEventStream, ModelRegistry, RemoteComponent, RemoteComponentInvalidate,
-    RemoteComponentResult, TerminalInputResult, TerminalInputSubscription, message_role, message_text,
+    CommandInfo, Context, ModelEventStream, ModelRegistry, RemoteComponent,
+    RemoteComponentInvalidate, RemoteComponentResult, SourceInfo, TerminalInputResult,
+    TerminalInputSubscription, ToolInfo, message_role, message_text,
 };
 #[doc(hidden)]
 pub use extension::report_load_failure;

@@ -73,8 +73,10 @@ func addInferredSourceInfo(infos map[string]codingagent.ResourceSourceInfo, path
 	case cwd != "" && isWithin(path, filepath.Join(cwd, ".pig", kind)):
 		info.Scope = "project"
 	default:
-		// CLI-provided paths behave like top-level project resources.
-		info.Scope = "project"
+		// A path named on the command line (--prompt-template, --skill,
+		// --theme) is temporary, as upstream resolves CLI resources with
+		// {temporary: true} (resource-loader.ts).
+		info.Scope = "temporary"
 	}
 	infos[path] = info
 }

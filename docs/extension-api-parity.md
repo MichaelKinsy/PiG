@@ -203,9 +203,9 @@ reload.
 | `appendEntry` | host request for custom persistent entry | entry persists through reload | wired; conformance covered |
 | `setSessionName` / `getSessionName` | host request/state query | session selector name scenario | wired; conformance covered |
 | `setLabel` | host request for entry labels | tree label scenario | planned |
-| `getCommands` | host query | extension/template/skill command provenance | planned |
+| `getCommands` | host query; the Node runtime answers from replicated state | `SlashCommandInfo` list (extension commands, the inline llama.cpp command, prompt templates, skills) with source and sourceInfo: `extensions-runtime/21-extension-tool-and-command-info`, `TestSubprocessGetCommands_ListsExtensionCommandsTemplatesAndSkills` | covered in print, JSON, RPC and interactive modes |
 | `exec` | host-mediated process execution | cancellation/timeout scenario | planned |
-| `getActiveTools` / `getAllTools` | host query | active/all tool list scenario | planned |
+| `getActiveTools` / `getAllTools` | host query; the Node runtime answers from replicated state | `getAllTools` returns upstream `ToolInfo` for the whole tool registry, inactive built-ins included: `extensions-runtime/21-extension-tool-and-command-info`, `TestExtensionToolInfosAppliesRegistryAllowlistAndDenylist`, `TestHost_Integration_TSFileShim`; `getActiveTools` planned | `getAllTools` covered; `getActiveTools` planned |
 | `setActiveTools` | host request | active tool set changes prompt/tools | planned |
 | `setModel` | host request | model changes or reports missing key | planned |
 | `getThinkingLevel` / `setThinkingLevel` | host query/request | thinking level event emitted | planned |

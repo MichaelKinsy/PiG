@@ -1,0 +1,50 @@
+# Behavior family: json
+# Scenario: an extension command given as the --mode json prompt runs the
+# command, so the stream holds the session header and no agent run.
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-25): print-mode.ts serves
+# `--mode json` from the same function as --print. It writes the session
+# header, then session.prompt() runs the registered extension command
+# (AgentSession._tryExecuteExtensionCommand) and no agent event follows:
+#
+#   pi --no-extensions -e test-faux-provider.ts -e extension-api-info.mjs \
+#     --model test-faux/faux-1 --no-session --mode json "/api-info <file>"
+#
+# pig prompted the model with the command text, streaming an agent run that
+# ended in the faux provider's `unhandled request` error.
+#
+# The header carries a session id, timestamp and cwd, and Node and Go order
+# its keys differently, so the stream is asserted structurally (as
+# json/01-json-mode-streams-events does); the artifact is compared exactly.
+
+name = "02-json-mode-extension-command"
+description = "--mode json with an extension command runs the command and streams no agent run"
+
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--mode", "json", "/api-info {{TEMP}}/api-info.json"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/api-info.json"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["../testdata/extension-api-info.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "../testdata/extension-api-info.mjs",
+]
+
+[assert]
+exit_code = 0
+runs = 1
+both_contain = ['"type":"session"']
+both_not_contain = ['"type":"agent_start"', '"type":"message_start"', "unhandled request"]
+artifact_normalized_equal = true
+artifact_both_contain = ['"name": "api-info"']

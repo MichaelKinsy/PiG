@@ -709,6 +709,10 @@ class Context:
         return list((self._call("getActiveTools").get("result") or {}).get("tools") or [])
 
     def get_all_tools(self) -> list[dict[str, Any]]:
+        """Every tool in the session's registry, active or not, as upstream's
+        ``pi.getAllTools()`` returns them: ``ToolInfo`` dicts with ``name``,
+        ``description``, ``parameters``, ``promptGuidelines`` (when set) and
+        ``sourceInfo``. Built-in tools come first."""
         return list((self._call("getAllTools").get("result") or {}).get("tools") or [])
 
     def set_active_tools(self, tools: list[str]) -> None:
@@ -718,6 +722,10 @@ class Context:
         self._call("refreshTools")
 
     def get_commands(self) -> list[dict[str, Any]]:
+        """The session's extension commands, prompt templates and skills, as
+        upstream's ``pi.getCommands()`` returns them: ``SlashCommandInfo``
+        dicts with ``name``, ``description`` (when set), ``source`` and
+        ``sourceInfo``."""
         return list((self._call("getCommands").get("result") or {}).get("commands") or [])
 
     def get_context_usage(self) -> dict[str, Any] | None:

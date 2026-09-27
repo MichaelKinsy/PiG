@@ -67,6 +67,14 @@ type printModeRuntime struct {
 	Session     coding.SessionStartOptions
 	ResumePath  string
 	SessionName string
+	// Commands carries the prompt templates, skills, resource provenance and
+	// built-in llama.cpp command of the session. runPrintMode binds it to
+	// the session's extension runner.
+	Commands headlessCommandCatalog
+	// ToolRegistryAllowed and ToolRegistryExcluded bound the tool registry
+	// pi.getAllTools() reports (see toolRegistryFilters).
+	ToolRegistryAllowed  map[string]struct{}
+	ToolRegistryExcluded map[string]struct{}
 }
 
 // printModeOptions mirrors upstream PrintModeOptions (print-mode.ts).
@@ -177,11 +185,27 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 	if opts.Mode == "json" {
 		extensionMode = extension.ModeJSON
 	}
-	bindSessionExtensionActions(rt.NewExtensionRunner(), host.Bridge, func() *coding.Session { return sess }, extension.ContextActions{
+	runner := rt.NewExtensionRunner()
+	bindSessionExtensionActions(runner, host.Bridge, func() *coding.Session { return sess }, extension.ContextActions{
 		ModelRegistry:    host.Services.Registry(),
 		IsProjectTrusted: host.Services.SettingsManager().IsProjectTrusted,
 		Mode:             extensionMode,
 	})
+	commands := host.Commands
+	commands.runner = runner
+	commands.mode = string(extensionMode)
+	if commands.notify == nil {
+		// Print mode binds no UI; ctx.ui.notify does nothing.
+		commands.notify = func(string, string) {}
+	}
+	if host.Bridge != nil {
+		host.Bridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
+			return codingagent.ExtensionToolInfos(runner, host.ToolRegistryAllowed, host.ToolRegistryExcluded)
+		})
+		host.Bridge.SetHostAction("getCommands", func() []subprocess.CommandInfo {
+			return commands.slashCatalog().SubprocessCommands()
+		})
+	}
 
 	// Persist --name to session_info so the display name survives resume.
 	// Mirrors upstream sessionManager.appendSessionInfo(name) (main.ts:580),
@@ -263,14 +287,16 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 	// not only interactive.
 	sess.EmitSessionStart("startup")
 
-	if opts.InitialMessage != "" {
-		_, runErr = sendPrintPrompt(ctx, sess, opts.InitialMessage, opts.InitialImages)
+	// A termination signal ends the run where it is: upstream's handler
+	// disposes the runtime and exits, so no later prompt starts.
+	if opts.InitialMessage != "" && ctx.Err() == nil {
+		_, runErr = sendPrintPrompt(ctx, sess, commands, opts.InitialMessage, opts.InitialImages)
 	}
 	for _, message := range opts.Messages {
-		if runErr != nil {
+		if runErr != nil || ctx.Err() != nil {
 			break
 		}
-		_, runErr = sendPrintPrompt(ctx, sess, message, nil)
+		_, runErr = sendPrintPrompt(ctx, sess, commands, message, nil)
 	}
 	// Upstream prompt() resolves only after every agent event's extension
 	// handlers have run and every event was written; Send returns while the
@@ -290,14 +316,22 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 }
 
 // sendPrintPrompt mirrors AgentSession.prompt for print and JSON mode's input
-// boundary. Input handlers run once, before the transformed text and images
-// enter the Session; RPC owns the equivalent dispatch in its command loop.
-func sendPrintPrompt(ctx context.Context, sess *coding.Session, text string, images []ai.ImageContent) (handled bool, err error) {
+// boundary: an extension command runs in place of the prompt
+// (_tryExecuteExtensionCommand), otherwise input handlers run once and skill
+// commands and prompt templates expand the transformed text before it enters
+// the Session. RPC owns the equivalent dispatch in its command loop.
+func sendPrintPrompt(ctx context.Context, sess *coding.Session, commands headlessCommandCatalog, text string, images []ai.ImageContent) (handled bool, err error) {
+	if name, args, ok := commands.extensionCommand(text); ok {
+		// A failing handler is reported through the extension error
+		// listener and still counts as handled, as upstream emitError does.
+		commands.executeCommand(ctx, name, args)
+		return true, nil
+	}
 	text, images, handled, err = sess.RunInputHandlers(ctx, text, images, extension.InputSourceUser, "")
 	if err != nil || handled {
 		return handled, err
 	}
-	_, err = sess.SendContent(ctx, coding.BuildUserContent(text, images))
+	_, err = sess.SendContent(ctx, coding.BuildUserContent(commands.expandPrompt(text), images))
 	return false, err
 }
 

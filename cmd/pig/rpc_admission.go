@@ -64,7 +64,7 @@ type rpcAdmission struct {
 	turn          *rpcResponseTurn
 	session       *coding.Session
 	runner        *inproc.Runner
-	catalog       rpcCommandCatalog
+	catalog       headlessCommandCatalog
 	validateModel func() error
 	write         func(any)
 	tasks         rpcTaskGroup

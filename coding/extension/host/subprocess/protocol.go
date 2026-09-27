@@ -340,8 +340,8 @@ type ReadyPayload struct {
 // notifies whenever the host knows it has changed.
 type StatePayload struct {
 	ActiveTools         []string                   `json:"activeTools,omitempty"`
-	AllTools            []string                   `json:"allTools,omitempty"`
-	Commands            []string                   `json:"commands,omitempty"`
+	AllTools            []ToolInfo                 `json:"allTools,omitempty"`
+	Commands            []CommandInfo              `json:"commands,omitempty"`
 	ThinkingLevel       string                     `json:"thinkingLevel,omitempty"`
 	Model               map[string]any             `json:"model,omitempty"`
 	Session             *SessionStatePayload       `json:"session,omitempty"`

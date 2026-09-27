@@ -1405,54 +1405,20 @@ impl Context {
 
     // ─── Context & Model Info ────────────────────────────────────────────
 
-    /// Get all registered tools with metadata.
+    /// Get every tool in the session's registry, active or not: built-in
+    /// tools, then extension tools. Mirrors upstream `pi.getAllTools()`.
     pub fn get_all_tools(&self) -> Vec<ToolInfo> {
         match self.call_wire("getAllTools", None) {
-            Ok(result) => {
-                let v = result.result.unwrap_or_default();
-                v.get("tools")
-                    .and_then(|a| a.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|t| {
-                                let name = t.get("name")?.as_str()?.to_string();
-                                let description = t
-                                    .get("description")
-                                    .and_then(|d| d.as_str())
-                                    .unwrap_or("")
-                                    .to_string();
-                                Some(ToolInfo { name, description })
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_default()
-            }
+            Ok(result) => list_field(result.result, "tools"),
             Err(_) => vec![],
         }
     }
 
-    /// Get all registered slash commands.
+    /// Get the session's extension commands, prompt templates and skills.
+    /// Mirrors upstream `pi.getCommands()`.
     pub fn get_commands(&self) -> Vec<CommandInfo> {
         match self.call_wire("getCommands", None) {
-            Ok(result) => {
-                let v = result.result.unwrap_or_default();
-                v.get("commands")
-                    .and_then(|a| a.as_array())
-                    .map(|arr| {
-                        arr.iter()
-                            .filter_map(|c| {
-                                let name = c.get("name")?.as_str()?.to_string();
-                                let description = c
-                                    .get("description")
-                                    .and_then(|d| d.as_str())
-                                    .unwrap_or("")
-                                    .to_string();
-                                Some(CommandInfo { name, description })
-                            })
-                            .collect()
-                    })
-                    .unwrap_or_default()
-            }
+            Ok(result) => list_field(result.result, "commands"),
             Err(_) => vec![],
         }
     }
@@ -1934,18 +1900,72 @@ pub struct ExecResult {
     pub exit_code: i32,
 }
 
-/// Tool metadata returned by `get_all_tools()`.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
-pub struct ToolInfo {
-    pub name: String,
-    pub description: String,
+/// Upstream `SourceInfo`: where a tool, command, prompt template or skill
+/// came from.
+#[derive(Debug, Clone, Default, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct SourceInfo {
+    pub path: String,
+    pub source: String,
+    pub scope: String,
+    pub origin: String,
+    #[serde(default, rename = "baseDir", skip_serializing_if = "Option::is_none")]
+    pub base_dir: Option<String>,
 }
 
-/// Command metadata returned by `get_commands()`.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+/// Upstream `ToolInfo`, one entry of `get_all_tools()`: a tool definition's
+/// name, description, parameter schema and prompt guidelines, and the
+/// `SourceInfo` of what registered it (`builtin` for built-in tools).
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct ToolInfo {
+    pub name: String,
+    #[serde(default)]
+    pub description: String,
+    #[serde(default)]
+    pub parameters: serde_json::Value,
+    /// `None` when the definition has no prompt guidelines.
+    #[serde(
+        default,
+        rename = "promptGuidelines",
+        skip_serializing_if = "Option::is_none"
+    )]
+    pub prompt_guidelines: Option<Vec<String>>,
+    #[serde(default, rename = "sourceInfo")]
+    pub source_info: SourceInfo,
+}
+
+/// Upstream `SlashCommandInfo`, one entry of `get_commands()`.
+#[derive(Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub struct CommandInfo {
     pub name: String,
+    /// Empty when the command has no description.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub description: String,
+    /// `extension`, `prompt` or `skill`.
+    #[serde(default)]
+    pub source: String,
+    #[serde(default, rename = "sourceInfo")]
+    pub source_info: SourceInfo,
+}
+
+/// Decodes the array under `field` of a host call result, skipping entries
+/// that do not decode.
+fn list_field<T: serde::de::DeserializeOwned>(
+    result: Option<serde_json::Value>,
+    field: &str,
+) -> Vec<T> {
+    result
+        .and_then(|mut v| v.get_mut(field).map(serde_json::Value::take))
+        .and_then(|v| match v {
+            serde_json::Value::Array(items) => Some(items),
+            _ => None,
+        })
+        .map(|items| {
+            items
+                .into_iter()
+                .filter_map(|item| serde_json::from_value(item).ok())
+                .collect()
+        })
+        .unwrap_or_default()
 }
 
 /// Context usage data returned by `get_context_usage()`.
@@ -2364,5 +2384,48 @@ mod model_stream_tests {
             "drained stream retained {} events",
             state.events.len()
         );
+    }
+}
+
+#[cfg(test)]
+mod tool_and_command_info_tests {
+    use super::*;
+
+    // The host answers getAllTools and getCommands with upstream's ToolInfo
+    // and SlashCommandInfo objects.
+    #[test]
+    fn decodes_upstream_tool_and_command_info() {
+        let result = serde_json::json!({"tools": [
+            {"name": "read", "description": "Read a file", "parameters": {"type": "object"},
+             "promptGuidelines": ["Use read."],
+             "sourceInfo": {"path": "<builtin:read>", "source": "builtin", "scope": "temporary", "origin": "top-level"}},
+            {"name": "probe", "description": "Probe", "parameters": {"type": "object", "properties": {}},
+             "sourceInfo": {"path": "/x/probe.ts", "source": "cli", "scope": "temporary", "origin": "top-level"}}
+        ]});
+        let tools: Vec<ToolInfo> = list_field(Some(result), "tools");
+        assert_eq!(tools.len(), 2);
+        assert_eq!(
+            tools[0].prompt_guidelines.as_deref(),
+            Some(&["Use read.".to_string()][..])
+        );
+        assert_eq!(tools[0].source_info.source, "builtin");
+        assert_eq!(tools[1].prompt_guidelines, None);
+        assert_eq!(
+            tools[1].parameters,
+            serde_json::json!({"type": "object", "properties": {}})
+        );
+        assert_eq!(tools[1].source_info.path, "/x/probe.ts");
+
+        let result = serde_json::json!({"commands": [
+            {"name": "probe", "description": "Probe command", "source": "extension",
+             "sourceInfo": {"path": "/x/probe.ts", "source": "cli", "scope": "temporary", "origin": "top-level"}},
+            {"name": "skill:review", "source": "skill",
+             "sourceInfo": {"path": "/s/SKILL.md", "source": "local", "scope": "user", "origin": "top-level", "baseDir": "/s"}}
+        ]});
+        let commands: Vec<CommandInfo> = list_field(Some(result), "commands");
+        assert_eq!(commands.len(), 2);
+        assert_eq!(commands[0].source, "extension");
+        assert_eq!(commands[1].description, "");
+        assert_eq!(commands[1].source_info.base_dir.as_deref(), Some("/s"));
     }
 }

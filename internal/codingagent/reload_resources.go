@@ -44,6 +44,7 @@ func (m *InteractiveMode) applyReloadResourceSnapshot(snapshot ReloadResourceSna
 	if snapshot.ResourceSourceInfo != nil {
 		m.resourceSourceInfo = cloneResourceSourceInfoMap(snapshot.ResourceSourceInfo)
 	}
+	m.publishSlashCommandCatalog()
 }
 
 func deduplicateAgentTools(ts []agent.AgentTool) []agent.AgentTool {
@@ -140,10 +141,12 @@ func (m *InteractiveMode) replaceExtensionRunner(exts []extension.Extension) []e
 func (m *InteractiveMode) reloadSkillsFromPaths() {
 	if m.opts.NoSkills {
 		m.opts.Skills = nil
+		m.publishSlashCommandCatalog()
 		return
 	}
 	if len(m.opts.SkillPaths) == 0 {
 		m.opts.Skills = nil
+		m.publishSlashCommandCatalog()
 		return
 	}
 	var allSkills []*SkillDef
@@ -162,6 +165,7 @@ func (m *InteractiveMode) reloadSkillsFromPaths() {
 		}
 	}
 	m.opts.Skills = DeduplicateSkills(allSkills)
+	m.publishSlashCommandCatalog()
 }
 
 func (m *InteractiveMode) rebuildSystemPromptFromResources() {

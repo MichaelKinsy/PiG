@@ -147,6 +147,10 @@ var pigOnlyRunnerMethods = map[string]string{
 	"ExtensionCount": "SDK-surface: read-only count accessor (avoids exposing the slice)",
 	"ExtensionNames": "SDK-surface: read-only names accessor (avoids exposing the slice)",
 	"ExecuteCommand": "SDK-surface: active-runner command bridge for AgentSession/RPC invocation parity",
+	// Upstream's getAllRegisteredTools returns each tool with its extension's
+	// sourceInfo; Pig's RegisteredTool.SourceInfo carries the D23 per-tool
+	// source instead, so getAllTools reads the extension's through this.
+	"ToolSourceInfo": "SDK-surface: registering extension's sourceInfo for getAllTools (upstream RegisteredTool.sourceInfo)",
 	// Upstream's withUIPrompt is private because every ctx.ui call passes
 	// through the runner's wrapped UI context. Pig's subprocess dialogs reach
 	// the terminal through the subprocess UI bridge, which opens the same
