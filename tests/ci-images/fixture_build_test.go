@@ -4,7 +4,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -14,9 +13,6 @@ import (
 // The grouped verifier must prebuild the same source each consumer builds
 // directly: host integration and cross-SDK conformance use different fixtures.
 func TestFixtureBuildsExportDistinctGoSDKConsumers(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("builds the Linux CI images with Linux tools; it runs on the Linux CI hosts")
-	}
 	root := repoRoot(t)
 	bin := t.TempDir()
 	out := filepath.Join(t.TempDir(), "fixture output")
@@ -27,7 +23,8 @@ func TestFixtureBuildsExportDistinctGoSDKConsumers(t *testing.T) {
 		"go": `#!/usr/bin/env bash
 set -euo pipefail
 [[ "$1" == build && "$2" == -o && "$4" == . ]]
-printf '%s\n' "$PWD" > "$3"
+# Git for Windows' pwd -W prints the native directory; other bash rejects -W.
+printf '%s\n' "$(pwd -W 2>/dev/null || pwd)" > "$3"
 `,
 		"cargo": `#!/usr/bin/env bash
 set -euo pipefail
@@ -66,7 +63,7 @@ printf '%s\n' "$PIG_TEST_SDK_FIXTURE_BIN" "${PIG_TEST_CONFORMANCE_SDK_FIXTURE_BI
 		if err != nil {
 			t.Fatalf("fixture for %s: %v", source, err)
 		}
-		if got, want := strings.TrimSpace(string(data)), filepath.Join(root, source); got != want {
+		if got, want := filepath.FromSlash(strings.TrimSpace(string(data))), filepath.Join(root, source); got != want {
 			t.Errorf("fixture %q built from %q, want %q", paths[i], got, want)
 		}
 	}
