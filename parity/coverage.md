@@ -262,7 +262,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/ai/src/api/openai-completions.ts` | ✅ | 3 (01-print-faux-text-streaming, 04-provider-wire-payloads, 09-orphaned-tool-result-wire) | 3 (01-print-faux-text-streaming, 04-provider-wire-payloads, 09-orphaned-tool-result-wire) | not run |  |
 | `packages/ai/src/api/openai-responses.ts` | ✅ | 1 (04-provider-wire-payloads) | 1 (04-provider-wire-payloads) | not run |  |
 | `packages/ai/src/api/openai-responses-shared.ts` | ✅ | 2 (04-provider-wire-payloads, 10-responses-tool-identity) | 2 (04-provider-wire-payloads, 10-responses-tool-identity) | not run |  |
-| `packages/ai/src/api/openai-codex-responses.ts` | 🟡 | 1 (04-provider-wire-payloads) | 1 (04-provider-wire-payloads) | not run |  |
+| `packages/ai/src/api/openai-codex-responses.ts` | 🟡 | 2 (04-provider-wire-payloads, 11-codex-ws-connect-fallback) | 2 (04-provider-wire-payloads, 11-codex-ws-connect-fallback) | not run |  |
 | `packages/ai/src/api/openai-prompt-cache.ts` | ✅ | 1 (01-ai-sdk-helpers) | 1 (01-ai-sdk-helpers) | not run |  |
 | `packages/ai/src/api/pi-messages.ts` | ✅ | 0 | 1 (unit:./ai:TestPiMessagesInMemoryPrematureEnd) | not run | ./ai:TestPiMessagesInMemoryPrematureEnd |
 | `packages/ai/src/providers/anthropic.ts` | ✅ | 2 (01-ai-sdk-helpers, 04-provider-wire-payloads) | 2 (01-ai-sdk-helpers, 04-provider-wire-payloads) | not run |  |

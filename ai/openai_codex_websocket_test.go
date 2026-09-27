@@ -3,8 +3,12 @@ package ai
 import (
 	"context"
 	"encoding/json"
+	"io"
+	"net"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"strings"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -163,12 +167,11 @@ func TestAcquireCodexWebSocket_BusyConnectionKeepsCachedOwner(t *testing.T) {
 }
 
 func TestOpenAICodexResponses_AutoFallsBackToSSEBeforeOutput(t *testing.T) {
-	var websocketAttempts atomic.Int32
 	var sseAttempts atomic.Int32
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
-			websocketAttempts.Add(1)
-			time.Sleep(100 * time.Millisecond)
+			// Keep the upgrade pending until the client's connect deadline expires.
+			<-r.Context().Done()
 			return
 		}
 		sseAttempts.Add(1)
@@ -199,12 +202,77 @@ func TestOpenAICodexResponses_AutoFallsBackToSSEBeforeOutput(t *testing.T) {
 	if result.StopReason != StopReasonStop || result.ResponseID != "resp_sse" {
 		t.Fatalf("result = stop %q response %q error %q", result.StopReason, result.ResponseID, result.ErrorMessage)
 	}
-	if websocketAttempts.Load() != 1 || sseAttempts.Load() != 1 {
-		t.Errorf("attempts = websocket %d SSE %d, want 1 each", websocketAttempts.Load(), sseAttempts.Load())
+	if sseAttempts.Load() != 1 {
+		t.Errorf("SSE attempts = %d, want 1", sseAttempts.Load())
 	}
+	// Pi's connect timeout can expire before the server dispatches the GET. Count the failed attempt at the provider, not in a handler that may never run.
+	// Upstream: packages/ai/test/openai-codex-stream.test.ts:1580-1665.
 	stats := GetOpenAICodexWebSocketDebugStats("session-fallback")
-	if stats == nil || stats.WebSocketFailures != 1 || stats.SSEFallbacks != 1 || !stats.WebSocketFallbackActive {
-		t.Errorf("debug stats = %+v, want one active fallback", stats)
+	if stats == nil || stats.WebSocketFailures != 1 || stats.SSEFallbacks != 1 || !stats.WebSocketFallbackActive || stats.LastWebSocketError == "" {
+		t.Errorf("debug stats = %+v, want one failed connection and active fallback", stats)
+	}
+	var events []string
+	for event := range stream.Events(t.Context()) {
+		events = append(events, string(event.EventType()))
+	}
+	if !slices.Equal(events, []string{"start", "done"}) {
+		t.Errorf("events = %v, want only SSE start and done", events)
+	}
+}
+
+func TestOpenAICodexResponses_AutoFallsBackBeforeHTTPHandler(t *testing.T) {
+	// Hold dispatch behind a barrier, so the connect timeout cannot reach a GET handler. SSE uses an independent transport, like Pi's fetch mock in packages/ai/test/openai-codex-stream.test.ts:1580-1665.
+	release := make(chan struct{})
+	var handled atomic.Int32
+	server := httptest.NewUnstartedServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		handled.Add(1)
+	}))
+	server.Config.ConnState = func(_ net.Conn, state http.ConnState) {
+		if state == http.StateActive {
+			<-release
+		}
+	}
+	server.Start()
+	defer server.Close()
+	defer close(release)
+	const sessionID = "session-before-handler"
+	defer CloseOpenAICodexWebSocketSessions(sessionID)
+	ResetOpenAICodexWebSocketDebugStats(sessionID)
+
+	var sseAttempts atomic.Int32
+	provider := NewOpenAICodexResponsesProvider(OpenAICodexResponsesConfig{
+		APIKey:     codexTestToken(t, "acct_fallback"),
+		Model:      "gpt-5.2",
+		ProviderID: "openai-codex",
+		BaseURL:    server.URL,
+	})
+	provider.(*openAIResponsesProvider).client = &http.Client{Transport: responsesTestRoundTripperFunc(func(request *http.Request) (*http.Response, error) {
+		if request.Method != http.MethodPost {
+			t.Errorf("SSE method = %s, want POST", request.Method)
+		}
+		sseAttempts.Add(1)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Header:     http.Header{"Content-Type": {"text/event-stream"}},
+			Body:       io.NopCloser(strings.NewReader("data: {\"type\":\"response.done\",\"response\":{\"id\":\"resp_sse\",\"status\":\"completed\"}}\n\n")),
+		}, nil
+	})}
+	stream, err := provider.Stream(t.Context(), NormalizeContext(Context{
+		Messages: []Message{UserMessage{Content: UserText("hello")}},
+	}), StreamOptions{Transport: TransportAuto, SessionID: sessionID, WebSocketConnectTimeoutMs: 10})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result := stream.Result()
+	if result.StopReason != StopReasonStop || result.ResponseID != "resp_sse" {
+		t.Fatalf("result = stop %q response %q error %q", result.StopReason, result.ResponseID, result.ErrorMessage)
+	}
+	if handled.Load() != 0 || sseAttempts.Load() != 1 {
+		t.Errorf("HTTP handlers = %d SSE attempts = %d, want 0 and 1", handled.Load(), sseAttempts.Load())
+	}
+	stats := GetOpenAICodexWebSocketDebugStats(sessionID)
+	if stats == nil || stats.WebSocketFailures != 1 || stats.SSEFallbacks != 1 || !stats.WebSocketFallbackActive || stats.LastWebSocketError == "" {
+		t.Errorf("debug stats = %+v, want one failed connection and active fallback", stats)
 	}
 }
 
