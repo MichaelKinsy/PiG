@@ -92,6 +92,42 @@ func TestPiPackageRootFindsOwningPackage(t *testing.T) {
 	}
 }
 
+// On Windows npm installs node_modules/.bin/pi.cmd, a batch shim that names
+// its script relative to its own directory, where other hosts get a symlink.
+func TestPiPackageRootFollowsNpmCmdShim(t *testing.T) {
+	root := t.TempDir()
+	pkg := filepath.Join(root, "node_modules", "@earendil-works", "pi-coding-agent")
+	if err := os.MkdirAll(filepath.Join(pkg, "dist", "bundle"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pkg, "package.json"), []byte(`{"name":"@earendil-works/pi-coding-agent"}`), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(pkg, "dist", "bundle", "cli.js"), nil, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	binDir := filepath.Join(root, "node_modules", ".bin")
+	if err := os.MkdirAll(binDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	// npm's cmd-shim output for the pinned Pi package.
+	shim := "@ECHO off\r\nGOTO start\r\n:find_dp0\r\nSET dp0=%~dp0\r\nEXIT /b\r\n:start\r\nSETLOCAL\r\nCALL :find_dp0\r\n\r\n" +
+		"IF EXIST \"%dp0%\\node.exe\" (\r\n  SET \"_prog=%dp0%\\node.exe\"\r\n) ELSE (\r\n  SET \"_prog=node\"\r\n  SET PATHEXT=%PATHEXT:;.JS;=;%\r\n)\r\n\r\n" +
+		"endLocal & goto #_undefined_# 2>NUL || title %COMSPEC% & \"%_prog%\"  \"%dp0%\\..\\@earendil-works\\pi-coding-agent\\dist\\bundle\\cli.js\" %*\r\n"
+	bin := filepath.Join(binDir, "pi.cmd")
+	if err := os.WriteFile(bin, []byte(shim), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	got, err := piPackageRoot(bin)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, _ := filepath.EvalSymlinks(pkg)
+	if got != want {
+		t.Fatalf("piPackageRoot = %s, want %s", got, want)
+	}
+}
+
 func TestPromptPathLengthsBalance(t *testing.T) {
 	digits := strings.Repeat("0", snapshotIDDigits)
 	pigHome := filepath.Join(promptPathRoot, pigHomePrefix+digits)

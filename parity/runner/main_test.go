@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 )
@@ -24,9 +25,11 @@ import (
 //	                                     Makefile's `trap` on EXIT covers
 //	                                     this case at the shell layer
 //
-// After cleanup, Unix re-raises the signal so the parent sees signal termination. Platforms that cannot signal themselves exit with the corresponding 128+signum status.
+// After cleanup the handler ends the process as the signal's default
+// handling would (exitWithSignal), so callers (make, shells, CI) see the
+// real exit status: 128+signum on Unix, STATUS_CONTROL_C_EXIT on Windows.
 func TestMain(m *testing.M) {
-	if filepath.Base(os.Args[0]) == fakeHTName {
+	if strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe") == fakeHTName {
 		os.Exit(runFakeHT(os.Args[1:]))
 	}
 	sigs := make(chan os.Signal, 1)
@@ -34,17 +37,10 @@ func TestMain(m *testing.M) {
 	go func() {
 		sig := <-sigs
 		cleanupAllSessions()
-		// Re-raise the signal with the default handler so the parent
+		// End the way the signal's default handling would, so the parent
 		// process observes the real cause of death.
-		signal.Reset(sig.(syscall.Signal))
-		self, err := os.FindProcess(os.Getpid())
-		if err == nil {
-			err = self.Signal(sig)
-			_ = self.Release()
-		}
-		if err != nil {
-			os.Exit(128 + int(sig.(syscall.Signal)))
-		}
+		signal.Reset(sig)
+		exitWithSignal(sig.(syscall.Signal))
 	}()
 
 	code := m.Run()

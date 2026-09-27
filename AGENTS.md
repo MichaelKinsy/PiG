@@ -24,6 +24,8 @@ Source of truth:
 
 No prose status claim overrides those files.
 
+If you change exported Go API, CLI flags, settings, parity scenarios, or docs mirrors, run `make generate` and commit the result. CI's drift gates compare these files. Never hand-edit generated files; regenerate.
+
 When landing a new port, record its full upstream source path in a production
 `// Ports packages/.../file.ts` comment and update PORT_MAP in the same change.
 The drift gate rejects explicit port claims left not-started, deferred, or n/a.
@@ -528,8 +530,11 @@ Use `make lint-changed` in the development loop. It runs every configured linter
 
 ## Commands
 
+Run `make generate` after changing exported Go API, CLI flags, settings, parity scenarios, or docs mirrors. Commit the result. Never hand-edit generated files; regenerate.
+
 Primary gates:
 ```bash
+make generate
 make build
 make vet
 make lint
@@ -587,6 +592,8 @@ facts: the pinned Pi version, observed parity, named divergences, supported
 artifacts, and published evidence.
 
 ## Commit hygiene
+
+Every commit requires both a DCO `Signed-off-by` line and a signature GitHub marks **Verified**. Use `git commit --signoff -S`. Sign-off is not a cryptographic signature. See `CONTRIBUTING.md` for SSH signing setup and unsigned-commit repair. If signing is unavailable, a maintainer lands the change in a maintainer-signed commit with a `Co-authored-by:` trailer.
 
 Before committing, run `git diff --stat HEAD` and `git status --short`, then stage only files intentionally changed. Never `git add .`, `git add -A`, or add a whole directory without inspecting contents. Testdata dirs accumulate temp files.
 

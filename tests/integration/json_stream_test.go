@@ -21,7 +21,6 @@ import (
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
 	"time"
 
@@ -124,9 +123,8 @@ func TestJSONModeEmitsEventsBeforeExit(t *testing.T) {
 		t.Fatalf("read only %d events before the deadline: %v", len(seen), seen)
 	}
 
-	// Still alive: Signal(0) reports an error once the process is gone.
-	if err := cmd.Process.Signal(syscall.Signal(0)); err != nil {
-		t.Fatalf("process already exited, so events were not streamed live: %v", err)
+	if !processRunning(cmd.Process) {
+		t.Fatal("process already exited, so events were not streamed live")
 	}
 	if seen[0] != "session" {
 		t.Fatalf("first line = %q, want the session header", seen[0])
@@ -164,6 +162,7 @@ func TestJSONModeCancellationTerminatesPromptly(t *testing.T) {
 			cmd.Stdout = writer
 			var stderr bytes.Buffer
 			cmd.Stderr = &stderr
+			prepareTermination(cmd)
 			if err := cmd.Start(); err != nil {
 				_ = writer.Close()
 				t.Fatal(err)
@@ -233,17 +232,18 @@ func TestJSONModeCancellationTerminatesPromptly(t *testing.T) {
 			}
 			deadline := time.NewTimer(30 * time.Second)
 			defer deadline.Stop()
-			if err := cmd.Process.Signal(syscall.SIGTERM); err != nil {
+			wantCode, err := requestTermination(cmd.Process)
+			if err != nil {
 				t.Fatal(err)
 			}
 			select {
 			case <-waitDone:
 				var exitErr *exec.ExitError
-				if !errors.As(waitErr, &exitErr) || exitErr.ExitCode() != 128+int(syscall.SIGTERM) {
-					t.Fatalf("wait = %v, want SIGTERM exit code %d; stderr: %s", waitErr, 128+int(syscall.SIGTERM), stderr.String())
+				if !errors.As(waitErr, &exitErr) || exitErr.ExitCode() != wantCode {
+					t.Fatalf("wait = %v, want termination exit code %d; stderr: %s", waitErr, wantCode, stderr.String())
 				}
 			case <-deadline.C:
-				t.Fatal("child did not exit within 30s of SIGTERM")
+				t.Fatal("child did not exit within 30s of the termination request")
 			}
 			select {
 			case <-readerDone:
@@ -251,7 +251,7 @@ func TestJSONModeCancellationTerminatesPromptly(t *testing.T) {
 					t.Fatalf("stdout reader: %v", readErr)
 				}
 			case <-deadline.C:
-				t.Fatal("stdout reader did not finish within 30s of SIGTERM")
+				t.Fatal("stdout reader did not finish within 30s of the termination request")
 			}
 		})
 	}

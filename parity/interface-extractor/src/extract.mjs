@@ -51,6 +51,7 @@ try {
     const origin = args.origin;
     const root = args.root;
     const out = args.out ?? "-";
+    if (args.out === undefined) process.stderr.write("interface-extractor: writing to stdout, not the committed inventory; run: make generate (or: make interface-proposals). Use --out - for explicit stdout.\n");
     if (!root || !["source", "published"].includes(origin)) {
       throw new Error("use --origin source|published --root <path> [--out <path>], or the paired source/published arguments");
     }

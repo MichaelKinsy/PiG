@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -39,7 +40,12 @@ func installFakeHT(t *testing.T) {
 		t.Fatal(err)
 	}
 	directory := t.TempDir()
-	if err := os.WriteFile(filepath.Join(directory, fakeHTName), binary, 0o700); err != nil {
+	name := fakeHTName
+	if runtime.GOOS == "windows" {
+		// A Windows PATH lookup finds only names with a PATHEXT extension.
+		name += ".exe"
+	}
+	if err := os.WriteFile(filepath.Join(directory, name), binary, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	t.Setenv("PATH", directory+string(os.PathListSeparator)+os.Getenv("PATH"))
