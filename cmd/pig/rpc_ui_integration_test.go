@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/json"
 	"fmt"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/rpcclient"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
@@ -104,20 +104,22 @@ func (p *rpcProcess) scanOutput(stdout io.Reader) {
 	go func() {
 		defer close(p.outputDone)
 		defer close(p.records)
-		scanner := bufio.NewScanner(stdout)
-		for scanner.Scan() {
+		readErr := rpcclient.ReadJSONLLines(stdout, func(line []byte) bool {
 			var value rpcRecord
-			if err := json.Unmarshal(scanner.Bytes(), &value); err != nil {
+			if err := json.Unmarshal(line, &value); err != nil {
 				p.outputErr = err
-				return
+				return false
 			}
 			select {
 			case p.records <- value:
+				return true
 			case <-p.stopOutput:
-				return
+				return false
 			}
+		})
+		if p.outputErr == nil {
+			p.outputErr = readErr
 		}
-		p.outputErr = scanner.Err()
 	}()
 }
 

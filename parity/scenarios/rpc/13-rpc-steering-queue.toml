@@ -1,47 +1,50 @@
-# Behavior family: rpc
-# Surface: steer and follow-up queues during an active RPC prompt.
-# Pi starts prompt work without blocking the JSONL reader. Following queue
-# commands are acknowledged, appear in queue_update, and are consumed in order.
-
+# Pi 0.87.1 agent-session.ts:1634-1767 awaits input, before_agent_start and image normalization before accepting a prompt. Queue input in the same JSONL batch advances during those awaits.
+# rpc-mode.ts:393-424,786-811 and agent-session.ts:1823-1903 place both queue_update records before prompt acceptance, then agent_start, then the steer/follow_up replies, then turn_start (agent-loop.ts:116-117).
+# One pipe write defines the input batch. agent_settled, not a delay, ends capture. Compare every record through settlement, including both consumed messages and replies. The explicit system prompt controls the D2/D22 configuration inputs without masking any output.
 name = "13-rpc-steering-queue"
-description = "RPC steer and follow-up messages are reported and consumed by the active run."
+description = "RPC prompt preflight admits both queues before accepting and consuming them in order."
 covers = [
   "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
   "packages/coding-agent/src/core/agent-session.ts",
+  # Agent.prompt claims the run and dispatches its first event before the queued replies; the complete stream checks its queued-message execution as well.
+  "packages/agent/src/agent.ts",
 ]
 tags = ["hermetic", "fast"]
 driver = "rpc-mode"
 
 [rpc]
-input_lines = [
-  '{"id":"prompt","type":"prompt","message":"TUI_LIVE_STREAM"}',
-  '{"id":"steer","type":"steer","message":"What is 20+22?"}',
-  '{"id":"follow","type":"follow_up","message":"Remember this exact code: letters A L P H A and digits 7 7 4 9"}',
-]
+canonical_json = true
 timeout_seconds = 15
-settle_seconds = 5
+[[rpc.steps]]
+line = '''{"id":"prompt","type":"prompt","message":"TUI_LIVE_STREAM"}
+{"id":"steer","type":"steer","message":"What is 20+22?"}
+{"id":"follow","type":"follow_up","message":"Remember this exact code: letters A L P H A and digits 7 7 4 9"}'''
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 10
 
 [env]
 pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
-pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC queue probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
 pi_extensions = ["../../testdata/test-faux-provider.ts"]
-pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC queue probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
 
 [assert]
 exit_code = 0
+output_equal = true
 both_contain = [
-  '"id":"prompt","type":"response","command":"prompt","success":true',
-  '"id":"steer","type":"response","command":"steer","success":true',
-  '"id":"follow","type":"response","command":"follow_up","success":true',
+  '"command":"prompt","id":"prompt","success":true,"type":"response"',
+  '"command":"steer","id":"steer","success":true,"type":"response"',
+  '"command":"follow_up","id":"follow","success":true,"type":"response"',
   '"steering":["What is 20+22?"]',
   '"followUp":["Remember this exact code: letters A L P H A and digits 7 7 4 9"]',
-  '"type":"queue_update","steering":[],"followUp":[]',
-  '"type":"text_delta"',
+  '"followUp":[],"steering":[],"type":"queue_update"',
   '"delta":"42"',
   '"delta":"Alpha"',
 ]
-both_not_contain = [
-  '"success":false',
-  'Agent is already processing',
-]
+both_not_contain = ['"success":false', 'Agent is already processing']
 runs = 3
+
+# normalize-rationale: Independent processes timestamp messages with different wall clocks. Preserve every other field and the complete record order.
+[[assert.normalize_replace]]
+pattern = '"timestamp":[0-9]+'
+with = '"timestamp":0'

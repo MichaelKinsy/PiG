@@ -65,7 +65,7 @@ func (s *Session) preparePrompt(_ context.Context, messages []agent.AgentMessage
 }
 
 func (s *Session) systemPrompt() string {
-	if prompt := s.agent.SystemPrompt(); prompt != "" || slices.ContainsFunc(s.agent.Messages(), func(message agent.AgentMessage) bool { return message.System != nil }) {
+	if prompt := s.agent.SystemPrompt(); prompt != "" || slices.ContainsFunc(s.agent.MessagesSnapshot(), func(message agent.AgentMessage) bool { return message.System != nil }) {
 		return prompt
 	}
 	return s.baseSystemPrompt

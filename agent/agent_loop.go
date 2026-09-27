@@ -16,6 +16,7 @@ import (
 // the queue getters are the only way the loop reads steering and follow-up
 // messages.
 type agentLoopConfig struct {
+	agentStarted        bool
 	getSteeringMessages func() []AgentMessage
 	getFollowUpMessages func() []AgentMessage
 	finishTurn          FinishTurn
@@ -87,7 +88,9 @@ func (a *Agent) runLoop(ctx context.Context, cfg agentLoopConfig, runStart int) 
 	}
 	a.stateMu.RUnlock()
 	err, failure := catchRunFailure(func() error {
-		a.emit(AgentStartEvent{})
+		if !cfg.agentStarted {
+			a.emit(AgentStartEvent{})
+		}
 		a.emit(TurnStartEvent{TurnIndex: 0, Timestamp: time.Now()})
 		for _, msg := range a.messages[runStart:] {
 			// message_start carries its own copy: a message_end replacement is
@@ -371,7 +374,7 @@ func (r *loopRun) emitTurnEnd(assistant *AssistantMessage, toolResults []ToolRes
 
 func (r *loopRun) endRun() {
 	r.a.emit(TimingEvent{Kind: "session_end", Snapshot: r.a.timings.Snapshot()})
-	r.a.emit(AgentEndEvent{Messages: r.a.agentEndMessages()})
+	r.a.emit(AgentEndEvent{Messages: slices.Clone(r.newMessages)})
 }
 
 // streamWithProvider is the default StreamFn: the model's own provider.
@@ -399,8 +402,8 @@ func (r *loopRun) streamAssistantResponse() (*AssistantMessage, []pendingToolCal
 	if transform := a.opts.TransformLLMMessages; transform != nil {
 		llmMsgs = transform(llmMsgs)
 	}
-	if a.forcedSystemPrompt != nil {
-		llmMsgs = projectSystemPrompt(llmMsgs, *a.forcedSystemPrompt)
+	if prompt := a.systemPromptOverride(); prompt != nil {
+		llmMsgs = projectSystemPrompt(llmMsgs, *prompt)
 	}
 
 	transcript := ai.NormalizeContext(ai.Context{Messages: llmMsgs})

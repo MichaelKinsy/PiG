@@ -11,6 +11,8 @@ This guide complements the async-specific rules in
 [Extension authoring](extension-authoring.md) and the parity process in
 `AGENTS.md`.
 
+Apply [Faithful, general implementations](../AGENTS.md#faithful-general-implementations) when choosing shared paths, provider data, and test shapes.
+
 ## Translation worksheet
 
 Before editing Go, record the upstream contract that matters for the family.

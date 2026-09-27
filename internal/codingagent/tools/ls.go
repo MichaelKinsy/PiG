@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"slices"
@@ -114,13 +113,14 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 	}
 
 	// Byte truncation only; the entry count is already capped.
-	tr := TruncateHead(strings.Join(results, "\n"), DefaultMaxBytes, math.MaxInt)
+	// Number.MAX_SAFE_INTEGER is observable in the truncation details, even though only bytes cap this tool.
+	tr := TruncateHead(strings.Join(results, "\n"), DefaultMaxBytes, 1<<53-1)
 	output := tr.Content
 	details := &LsDetails{}
 	var notices []string
 	if entryLimitReached {
 		notices = append(notices, fmt.Sprintf("%s entries limit reached. Use limit=%s for more", jsNumber(effectiveLimit), jsNumber(effectiveLimit*2)))
-		details.EntryLimitReached = int(effectiveLimit)
+		details.EntryLimitReached = effectiveLimit
 	}
 	if tr.Truncated {
 		notices = append(notices, FormatSize(DefaultMaxBytes)+" limit reached")

@@ -22,9 +22,9 @@ import (
 type listResultDetails struct {
 	Truncated          bool
 	MaxBytes           int
-	MatchLimitReached  int
+	MatchLimitReached  float64
 	ResultLimitReached int
-	EntryLimitReached  int
+	EntryLimitReached  float64
 	LinesTruncated     bool
 }
 
@@ -58,10 +58,10 @@ func listDetailsFrom(details any) listResultDetails {
 				Truncated bool `json:"truncated"`
 				MaxBytes  int  `json:"maxBytes"`
 			} `json:"truncation"`
-			MatchLimitReached  int  `json:"matchLimitReached"`
-			ResultLimitReached int  `json:"resultLimitReached"`
-			EntryLimitReached  int  `json:"entryLimitReached"`
-			LinesTruncated     bool `json:"linesTruncated"`
+			MatchLimitReached  float64 `json:"matchLimitReached"`
+			ResultLimitReached int     `json:"resultLimitReached"`
+			EntryLimitReached  float64 `json:"entryLimitReached"`
+			LinesTruncated     bool    `json:"linesTruncated"`
 		}
 		if data, err := json.Marshal(d); err == nil && json.Unmarshal(data, &wire) == nil {
 			if wire.Truncation != nil {
@@ -96,7 +96,7 @@ func listToolWarnings(toolName string, d listResultDetails) []string {
 	switch toolName {
 	case "grep":
 		if d.MatchLimitReached != 0 {
-			warnings = append(warnings, strconv.Itoa(d.MatchLimitReached)+" matches limit")
+			warnings = append(warnings, strconv.FormatFloat(d.MatchLimitReached, 'f', -1, 64)+" matches limit")
 		}
 		if d.Truncated {
 			warnings = append(warnings, limit())
@@ -113,7 +113,7 @@ func listToolWarnings(toolName string, d listResultDetails) []string {
 		}
 	case "ls":
 		if d.EntryLimitReached != 0 {
-			warnings = append(warnings, strconv.Itoa(d.EntryLimitReached)+" entries limit")
+			warnings = append(warnings, strconv.FormatFloat(d.EntryLimitReached, 'f', -1, 64)+" entries limit")
 		}
 		if d.Truncated {
 			warnings = append(warnings, limit())

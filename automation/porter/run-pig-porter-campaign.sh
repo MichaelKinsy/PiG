@@ -130,6 +130,10 @@ process or tmux session, remove temporary state, use broad process matching, or
 run destructive git commands. Build tools may create their normal ephemeral
 outputs inside this disposable snapshot.
 
+Apply AGENTS.md's "Faithful, general implementations" rule and the Pig Porter Skill: Pi's shared data-driven paths, no uncited provider/model special cases, and evidence across applicable OAuth, API-key, custom-base-URL OpenAI-compatible, and no-default-model shapes. Copilot and test-faux alone are insufficient. Report sibling defects without editing this read-only snapshot. Refuse completion for a provider-specific branch without a Pi citation or a shared path verified with a single provider; report missing proof as a blocker.
+
+Fix root causes, not failures hidden by timeouts, retries, sleeps, skips, or normalization. Retries and timeouts are only for surfaced faults outside our control.
+
 Be patient with every build, test, extraction, and oracle probe. Wait for its
 declared timeout. Do not duplicate, prematurely terminate, or repeatedly retry
 a quiet or slow command. If an operation times out or is externally blocked,
