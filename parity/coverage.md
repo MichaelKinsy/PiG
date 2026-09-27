@@ -1,6 +1,6 @@
 # PORT_MAP coverage report
 
-Generated from `616` PORT_MAP entries and `259` parity scenarios.
+Generated from `616` PORT_MAP entries and `260` parity scenarios.
 
 **Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 428 behavioral (96.0%), 4 weak-only (no behavioral verification), 14 untested.
 Raw PORT_MAP rows: 616. Breakdown: 74 n/a (designed out) · 24 🟡 partial · 72 ⬜ not started. See DIVERGENCES.md for the documented exceptions.
@@ -9,7 +9,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 
 | upstream | port | scenarios | behavioral | last run | unit tests |
 |---|---|---|---|---|---|
-| `packages/agent/src/agent.ts` | ✅ | 1 (01-print-mode-arithmetic) | 1 (01-print-mode-arithmetic) | not run |  |
+| `packages/agent/src/agent.ts` | ✅ | 3 (01-print-mode-arithmetic, 02-print-prepared-prompt, 13-rpc-steering-queue) | 3 (01-print-mode-arithmetic, 02-print-prepared-prompt, 13-rpc-steering-queue) | not run |  |
 | `packages/agent/src/agent-loop.ts` | ✅ | 3 (02-print-faux-tool-cycle, 07-print-faux-parallel-tools, 28-rpc-tool-result-wire) | 3 (02-print-faux-tool-cycle, 07-print-faux-parallel-tools, 28-rpc-tool-result-wire) | not run |  |
 | `packages/agent/src/types.ts` | ✅ | 2 (02-print-faux-tool-cycle, 07-print-faux-parallel-tools) | 2 (02-print-faux-tool-cycle, 07-print-faux-parallel-tools) | not run |  |
 | `packages/agent/src/proxy.ts` | 🟡 | 0 | 0 | not run |  |
@@ -411,7 +411,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/coding-agent/src/modes/interactive/theme/theme.ts` | ✅ | 1 (04-settings-theme-submenu) | 1 (04-settings-theme-submenu) | not run |  |
 | `packages/coding-agent/src/modes/interactive/theme/theme-controller.ts` | ✅ | 0 | 1 (unit:./tui:TestResolveThemeSetting) | not run | ./tui:TestResolveThemeSetting |
 | `packages/coding-agent/src/modes/interactive/model-search.ts` | ✅ | 2 (13-scoped-models-fuzzy-filter, 14-model-picker-fuzzy-filter) | 2 (13-scoped-models-fuzzy-filter, 14-model-picker-fuzzy-filter) | not run |  |
-| `packages/coding-agent/src/modes/print-mode.ts` | ✅ | 2 (01-json-mode-streams-events, 01-print-mode-arithmetic) | 2 (01-json-mode-streams-events, 01-print-mode-arithmetic) | not run |  |
+| `packages/coding-agent/src/modes/print-mode.ts` | ✅ | 3 (01-json-mode-streams-events, 01-print-mode-arithmetic, 02-print-prepared-prompt) | 3 (01-json-mode-streams-events, 01-print-mode-arithmetic, 02-print-prepared-prompt) | not run |  |
 | `packages/coding-agent/src/modes/rpc/rpc-mode.ts` | ✅ | 29 (01-rpc-malformed-input, 02-rpc-unknown-command, 03-rpc-state-setters, 05-rpc-query-commands, 06-rpc-chat-faux, 07-rpc-model-thinking-commands, 08-rpc-new-session, 09-rpc-clone-session, 10-rpc-fork-session, 11-rpc-switch-session, 12-rpc-export-html, 13-rpc-steering-queue, 14-rpc-bash-streaming, 15-rpc-compaction-result, 16-rpc-extension-ui-events, 17-rpc-abort-retry, 18-rpc-session-replacement-cancel, 19-rpc-extension-ui-select, 20-rpc-runtime-boundary-values, 21-rpc-extension-session-events, 22-rpc-unknown-model-preflight, 23-rpc-multi-model-cycle-order, 24-rpc-prompt-during-compaction, 25-rpc-clear-queue, 26-rpc-session-stats-context-estimate, 28-rpc-tool-result-wire, 29-rpc-sigterm-open-stdin, 31-rpc-cycle-await-interleaving, 32-rpc-cycle-prefix-and-completion) | 29 (01-rpc-malformed-input, 02-rpc-unknown-command, 03-rpc-state-setters, 05-rpc-query-commands, 06-rpc-chat-faux, 07-rpc-model-thinking-commands, 08-rpc-new-session, 09-rpc-clone-session, 10-rpc-fork-session, 11-rpc-switch-session, 12-rpc-export-html, 13-rpc-steering-queue, 14-rpc-bash-streaming, 15-rpc-compaction-result, 16-rpc-extension-ui-events, 17-rpc-abort-retry, 18-rpc-session-replacement-cancel, 19-rpc-extension-ui-select, 20-rpc-runtime-boundary-values, 21-rpc-extension-session-events, 22-rpc-unknown-model-preflight, 23-rpc-multi-model-cycle-order, 24-rpc-prompt-during-compaction, 25-rpc-clear-queue, 26-rpc-session-stats-context-estimate, 28-rpc-tool-result-wire, 29-rpc-sigterm-open-stdin, 31-rpc-cycle-await-interleaving, 32-rpc-cycle-prefix-and-completion) | not run |  |
 | `packages/coding-agent/src/modes/rpc/rpc-types.ts` | ✅ | 12 (02-rpc-unknown-command, 03-rpc-state-setters, 05-rpc-query-commands, 07-rpc-model-thinking-commands, 08-rpc-new-session, 09-rpc-clone-session, 10-rpc-fork-session, 11-rpc-switch-session, 12-rpc-export-html, 16-rpc-extension-ui-events, 19-rpc-extension-ui-select, 25-rpc-clear-queue) | 12 (02-rpc-unknown-command, 03-rpc-state-setters, 05-rpc-query-commands, 07-rpc-model-thinking-commands, 08-rpc-new-session, 09-rpc-clone-session, 10-rpc-fork-session, 11-rpc-switch-session, 12-rpc-export-html, 16-rpc-extension-ui-events, 19-rpc-extension-ui-select, 25-rpc-clear-queue) | not run |  |
 | `packages/coding-agent/src/modes/rpc/rpc-client.ts` | ✅ | 0 | 1 (unit:./coding/rpcclient:TestRPCCommandWirePreservesOptionalValues) | not run | ./coding/rpcclient:TestRPCCommandWirePreservesOptionalValues |

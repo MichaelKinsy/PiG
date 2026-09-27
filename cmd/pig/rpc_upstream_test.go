@@ -32,7 +32,7 @@ type upstreamRPC struct {
 	startedOnce sync.Once
 }
 
-func newUpstreamRPC(t *testing.T, blocked bool) *upstreamRPC {
+func newUpstreamRPC(t *testing.T, blocked bool, args ...string) *upstreamRPC {
 	t.Helper()
 	f := &upstreamRPC{release: make(chan struct{}), started: make(chan struct{})}
 	if !blocked {
@@ -106,7 +106,7 @@ func newUpstreamRPC(t *testing.T, blocked bool) *upstreamRPC {
 			t.Fatal(err)
 		}
 	}
-	f.p = startRPCProcessAt(t, t.TempDir(), []string{"HOME=" + home, "PIG_HOME=" + home, "PIG_CODING_AGENT_DIR=" + f.agentDir, "PIG_TEST_FAUX=", "ANTHROPIC_API_KEY=", "ANTHROPIC_OAUTH_TOKEN="}, "--offline", "--no-extensions", "--no-skills", "--no-context-files", "--system-prompt", "Test", "--provider", "anthropic", "--model", "claude-sonnet-4-5")
+	f.p = startRPCProcessAt(t, t.TempDir(), []string{"HOME=" + home, "PIG_HOME=" + home, "PIG_CODING_AGENT_DIR=" + f.agentDir, "PIG_TEST_FAUX=", "ANTHROPIC_API_KEY=", "ANTHROPIC_OAUTH_TOKEN="}, append([]string{"--offline", "--no-extensions", "--no-skills", "--no-context-files", "--system-prompt", "Test", "--provider", "anthropic", "--model", "claude-sonnet-4-5"}, args...)...)
 	t.Cleanup(f.unblock)
 	return f
 }

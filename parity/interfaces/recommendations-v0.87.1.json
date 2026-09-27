@@ -67277,7 +67277,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "16 normalized-name Pig candidates are ambiguous."
+        "17 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -67295,6 +67295,7 @@
         "go:github.com/MichaelKinsy/PiG/agent/harness/pico3#Tx.input",
         "go:github.com/MichaelKinsy/PiG/agent/harness/pico3#stager.input",
         "go:github.com/MichaelKinsy/PiG/cmd/pig#loginPreviewUI.Input",
+        "go:github.com/MichaelKinsy/PiG/cmd/pig#rpcAdmission.input",
         "go:github.com/MichaelKinsy/PiG/cmd/pig#rpcUIContext.Input",
         "go:github.com/MichaelKinsy/PiG/cmd/pig#startupTrustUI.Input",
         "go:github.com/MichaelKinsy/PiG/coding/extension#noopUIContext.Input",
@@ -362812,7 +362813,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "16 normalized-name Pig candidates are ambiguous."
+        "17 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -362830,6 +362831,7 @@
         "go:github.com/MichaelKinsy/PiG/agent/harness/pico3#Tx.input",
         "go:github.com/MichaelKinsy/PiG/agent/harness/pico3#stager.input",
         "go:github.com/MichaelKinsy/PiG/cmd/pig#loginPreviewUI.Input",
+        "go:github.com/MichaelKinsy/PiG/cmd/pig#rpcAdmission.input",
         "go:github.com/MichaelKinsy/PiG/cmd/pig#rpcUIContext.Input",
         "go:github.com/MichaelKinsy/PiG/cmd/pig#startupTrustUI.Input",
         "go:github.com/MichaelKinsy/PiG/coding/extension#noopUIContext.Input",

@@ -564,13 +564,10 @@ func (s *Session) currentRunner() *inproc.Runner {
 	return s.runner
 }
 
-// BuildUserContent constructs the upstream user-content block list: optional
-// leading text block plus any image attachments.
+// BuildUserContent constructs the upstream user-content block list: a leading text block, including empty text, followed by any image attachments.
 func BuildUserContent(text string, images []ai.ImageContent) []ai.UserContentBlock {
-	content := make([]ai.UserContentBlock, 0, len(images))
-	if text != "" {
-		content = append(content, ai.TextContent{Text: text})
-	}
+	content := make([]ai.UserContentBlock, 1, 1+len(images))
+	content[0] = ai.TextContent{Text: text}
 	for _, img := range images {
 		content = append(content, img)
 	}
@@ -590,107 +587,27 @@ func (s *Session) SendContent(ctx context.Context, content []ai.UserContentBlock
 	return s.SendContentWithPreflight(ctx, content, nil)
 }
 
-// SendContentWithPreflight calls preflight after prompt validation and
-// extension input processing complete, immediately before the agent run starts.
-// The run is active (IsStreaming) from then until agent_settled, and Abort
-// cancels it. Prompts extensions send while agent_settled is dispatched run
-// before this returns, as upstream prompt() awaits them.
+// SendContentWithPreflight awaits prompt preparation before acceptance and agent admission. Suspended preflight does not mark the Session streaming or hold its run lock. Once accepted, the run owns cancellation and completes through agent_settled.
 func (s *Session) SendContentWithPreflight(ctx context.Context, content []ai.UserContentBlock, preflight func()) ([]agent.AgentMessage, error) {
-	msgs, err := s.sendContent(ctx, content, preflight)
-	s.runDeferredSettledActions()
-	return msgs, err
-}
-
-func (s *Session) sendContent(ctx context.Context, content []ai.UserContentBlock, preflight func()) ([]agent.AgentMessage, error) {
-	s.mu.Lock()
-	select {
-	case <-s.closeDone:
-		s.mu.Unlock()
-		return nil, errors.New("coding: session is closed")
-	default:
+	if s.IsStreaming() {
+		return nil, errAgentAlreadyProcessing
 	}
-
-	if err := s.checkPromptCompactionLocked(ctx); err != nil {
-		s.mu.Unlock()
+	if err := s.CheckPromptCompaction(ctx); err != nil {
 		return nil, err
 	}
-
-	// Persist user prompt BEFORE Send so an aborted call doesn't lose it.
-	defer s.mu.Unlock()
-	// Flush any bash results buffered during this turn into agent state +
-	// persistence before releasing s.mu, so they land after the completed
-	// tool_use/tool_result sequence. Runs LIFO before the unlock above.
-	defer s.flushPendingBashLocked()
-
-	// The user prompt is persisted by the OnMessagePersist hook (wired in
-	// NewSession), driven by the agent's message_end during SendContent's
-	// runLoop replay: not here. This mirrors upstream's single message_end
-	// persistence site (agent-session.ts:511-525): the message is built, the
-	// before_agent_start event fires, then agent.send() persists via message_end.
-	// Persisting here as well double-wrote every prompt.
-
-	// Fire before_agent_start extension event before each agent turn.
-	// Mirrors upstream agent-session.ts:1073-1106 which emits this event
-	// after building the user message but before calling agent.send().
-	// Extensions (e.g. manager, messaging) use this to inject role-specific
-	// system prompts, register dynamic tools, and add context messages.
-	forcedSystemPrompt := false
-	runner := s.currentRunner()
-	if runner != nil && runner.HasHandlers("before_agent_start") {
-		var promptText string
-		for _, blk := range content {
-			if tc, ok := blk.(ai.TextContent); ok {
-				promptText = tc.Text
-				break
-			}
-		}
-		var images []extension.ImageContent
-		for _, block := range content {
-			if image, ok := block.(ai.ImageContent); ok {
-				images = append(images, image)
-			}
-		}
-		result, err := runner.EmitBeforeAgentStart(
-			ctx, promptText, images,
-			s.systemPrompt(),
-			extension.BuildSystemPromptOptions{},
-		)
-		if err == nil && result != nil {
-			if result.SystemPrompt != nil {
-				s.agent.SetSystemPrompt(*result.SystemPrompt)
-				forcedSystemPrompt = true
-			}
-			s.QueueAgentStartMessages(result.Messages)
-		}
+	prepared, err := s.PreparePrompt(ctx, content)
+	if err != nil {
+		return nil, err
 	}
-
+	prepared.NormalizeImages()
 	if preflight != nil {
 		preflight()
 	}
-	content = icodingagent.NormalizePromptContent(content, s.services.SettingsManager().GetImageAutoResize(), s.agent.Model())
-	runCtx, cancelRun := s.beginAgentRun(ctx)
-	defer cancelRun()
-	msgs, sendErr := s.agent.SendContent(runCtx, content)
-	// Retries, overflow and length recovery, and threshold compaction finish
-	// before the run settles, as in Pi's _runAgentPrompt loop.
-	msgs, sendErr = s.runPostAgentRuns(runCtx, msgs, sendErr)
-	// A before_agent_start system prompt applies to this run only: upstream
-	// resets _runSystemPromptOptions in _runAgentPrompt's finally.
-	if forcedSystemPrompt {
-		s.agent.ClearSystemPrompt()
+	run, err := s.BeginPreparedPrompt(ctx, prepared)
+	if err != nil {
+		return nil, err
 	}
-
-	// Upstream's _runAgentPrompt finally calls _emitAgentSettled, which
-	// notifies the extension runner and then emits agent_settled on the session
-	// event stream: the terminal event JSON and RPC consumers see. Only print,
-	// json, and rpc reach this path; interactive drives the agent itself and
-	// emits its own agent_settled once continuations and follow-ups drain.
-	//
-	// It goes through the agent's own event funnel rather than straight to the
-	// wire channel, so it lands after every event this turn already queued.
-	s.emitAgentSettled()
-
-	return msgs, sendErr
+	return run.Run()
 }
 
 // checkPromptCompactionLocked is prompt()'s check before a new user message
@@ -767,10 +684,11 @@ func (s *Session) Events() <-chan agent.AgentEvent { return s.events }
 // The slice is a defensive copy; callers may mutate it without
 // affecting future Send calls.
 func (s *Session) Messages() []agent.AgentMessage {
-	src := s.agent.Messages()
-	out := make([]agent.AgentMessage, len(src))
-	copy(out, src)
-	return out
+	messages := s.agent.MessagesSnapshot()
+	if messages == nil {
+		return []agent.AgentMessage{}
+	}
+	return messages
 }
 
 // providerID extracts the provider identifier from a model.
@@ -1491,12 +1409,7 @@ func (s *Session) RecordBashResult(command string, result BashResult, excludeFro
 	s.recordBashResult(command, result, excludeFromContext)
 }
 
-// recordBashResult adds a bash result to the session. If no agent turn is
-// active (s.mu free) it appends to live agent state + persists
-// immediately; if a turn is streaming it buffers the record for the
-// end-of-turn flush so it can't split a tool_use/tool_result pair.
-// Mirrors upstream recordBashResult's isStreaming branch
-// (agent-session.ts:2620-2630).
+// recordBashResult buffers results whenever a run is claimed, including before its first event. Otherwise it appends to the live transcript when the Session lock is available. Buffered results flush after the run's tool/result sequence.
 func (s *Session) recordBashResult(command string, result BashResult, excludeFromContext bool) {
 	rec := pendingBashRecord{command: command, result: result, excludeFromContext: excludeFromContext}
 	// Serialise the queue-vs-direct decision against flushPendingBashLocked
@@ -1505,7 +1418,7 @@ func (s *Session) recordBashResult(command string, result BashResult, excludeFro
 	// s.mu -> pendingBashMu in the flush is deadlock-free because TryLock
 	// cannot block).
 	s.pendingBashMu.Lock()
-	if s.mu.TryLock() {
+	if !s.IsStreaming() && s.mu.TryLock() {
 		s.pendingBashMu.Unlock()
 		s.appendBashLocked(rec)
 		s.mu.Unlock()

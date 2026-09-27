@@ -223,6 +223,7 @@ func (p *TestFauxProvider) Stream(ctx context.Context, transcript TranscriptCont
 			}
 			builder.done(StopReasonToolUse, nil, "")
 		case "error":
+			builder.start()
 			builder.fail(StopReasonError, errors.New(text))
 		default:
 			builder.fail(StopReasonError, fmt.Errorf("test-faux: unknown kind %q", kind))

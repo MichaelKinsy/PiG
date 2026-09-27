@@ -21,9 +21,11 @@ func (t *rpcResponseTurn) begin() {
 
 func (t *rpcResponseTurn) complete(response any) { t.after(func() { t.write(response) }) }
 
-func (t *rpcResponseTurn) after(continuation func()) {
+func (t *rpcResponseTurn) after(continuation func()) { t.enqueue([]func(){continuation}) }
+
+func (t *rpcResponseTurn) enqueue(continuations []func()) {
 	t.mu.Lock()
-	t.pending = append(t.pending, continuation)
+	t.pending = append(t.pending, continuations...)
 	// A busy executor owns the queued work. Do not block its producers: an input command can be joining the operation that just completed.
 	if t.active || !t.execution.TryLock() {
 		t.mu.Unlock()

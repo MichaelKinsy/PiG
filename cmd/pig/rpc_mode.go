@@ -18,7 +18,6 @@ import (
 	"slices"
 	"strings"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -272,7 +271,7 @@ func rpcResolvedSkills(skills []*codingagent.SkillDef, activePiglet *piglet.Pigl
 	return out
 }
 
-// runRPCMode owns the `--mode rpc` runtime until EOF or termination. It returns 0 on EOF, 1 on failure, or 128+signum after signal-triggered disposal without waiting for more stdin.
+// runRPCMode owns the `--mode rpc` runtime until EOF or termination. Completed queue and shell operations publish through the input-turn executor. It returns 0 on EOF, 1 on failure, or 128+signum after signal-triggered disposal without waiting for more stdin.
 func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet, resources rpcModeResources) (exitCode int) {
 	defer func() {
 		if sig := receivedTerminationSignal.Load(); sig != 0 {
@@ -283,10 +282,19 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 	defer cancel()
 
 	var writeMu sync.Mutex
-	writeRPC := func(v any) {
+	writeImmediate := func(v any) {
 		writeMu.Lock()
 		defer writeMu.Unlock()
 		writeJSONLine(os.Stdout, v)
+	}
+	responses := &rpcResponseTurn{write: writeImmediate}
+	writeRPC := func(v any) {
+		switch v.(type) {
+		case RPCResponse, rpcNullResponse:
+			responses.complete(v)
+		default:
+			writeImmediate(v)
+		}
 	}
 	rpcUI := newRPCUIContext(writeRPC)
 	defer rpcUI.Close()
@@ -831,12 +839,8 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 	// JSONL object (rpc-mode.ts:346); rpcAgentEvent adapts pig's internal
 	// event structs to that wire shape.
 
-	// The Session owns streaming state and abort, as upstream reads
-	// session.isStreaming and calls session.abort(), so a run an extension
-	// started is streaming and abortable too. promptPending covers the gap
-	// between accepting an RPC prompt and its run starting.
-	var promptPending atomic.Bool
-	streaming := func() bool { return sess.IsStreaming() || promptPending.Load() }
+	// Preflight is not an agent run. Admission marks the Session streaming only after before_agent_start and image normalization finish.
+	streaming := sess.IsStreaming
 	var promptWG sync.WaitGroup
 	var bashWG sync.WaitGroup
 	var commandWG sync.WaitGroup
@@ -849,7 +853,7 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 		}
 		scoped := rpcScopedModels(models, flags.Models)
 		if len(scoped) <= 1 {
-			turn.complete(rpcSuccessNull(id, "cycle_model"))
+			turn.after(func() { writeRPC(rpcSuccessNull(id, "cycle_model")) })
 			return
 		}
 		currentIndex := -1
@@ -945,8 +949,25 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 		inputDone <- err
 	}()
 
+	admission := &rpcAdmission{
+		ctx: ctx, turn: responses, session: sess, runner: runner, catalog: commandCatalog,
+		write: writeImmediate, runs: &promptWG,
+		validateModel: func() error {
+			model := sess.Model()
+			if model == nil {
+				return errors.New(codingagent.FormatNoAPIKeyFoundMessage("unknown"))
+			}
+			providerID := model.ProviderMeta.ProviderID
+			if providerID == "" && model.Provider != nil {
+				providerID = model.Provider.ID()
+			}
+			if providerID != "test-faux" && !registry.HasConfiguredAuth(providerID) {
+				return errors.New(codingagent.FormatNoAPIKeyFoundMessage(providerID))
+			}
+			return nil
+		},
+	}
 	var inputBatch [][]byte
-	responses := &rpcResponseTurn{write: writeRPC}
 	var inputTurn *rpcResponseTurn
 commandLoop:
 	for {
@@ -979,7 +1000,7 @@ commandLoop:
 			// rpc-mode.ts:handleInputLine catch block. Translate Go json
 			// error wording to upstream's JS SyntaxError wording so the wire
 			// shape matches byte-for-byte across binaries.
-			writeRPC(rpcError("", "parse",
+			writeImmediate(rpcError("", "parse",
 				fmt.Sprintf("Failed to parse command: %s", jsifyJSONErrorMessage(parseErr))))
 			continue
 		}
@@ -998,83 +1019,10 @@ commandLoop:
 				continue
 			}
 			if name, args, ok := commandCatalog.extensionCommand(cmd.Message); ok {
-				go func(id, commandName, commandArgs string) {
-					commandCatalog.executeCommand(ctx, commandName, commandArgs)
-					writeRPC(rpcSuccess(id, "prompt", nil))
-				}(env.ID, name, args)
+				admission.command(env.ID, name, args)
 				continue
 			}
-			if sess.IsCompacting() {
-				writeRPC(rpcError(env.ID, "prompt", "Cannot submit a prompt while compaction is in progress. Wait for compaction to finish and retry."))
-				continue
-			}
-			message, images, handled, err := sess.RunInputHandlers(ctx, cmd.Message, rpcImages(cmd.Images), extension.InputSourceRPC, cmd.StreamingBehavior)
-			if err != nil {
-				writeRPC(rpcError(env.ID, "prompt", err.Error()))
-				continue
-			}
-			if handled {
-				writeRPC(rpcSuccess(env.ID, "prompt", nil))
-				continue
-			}
-			cmd.Message = commandCatalog.expandPrompt(message)
-			if streaming() {
-				switch cmd.StreamingBehavior {
-				case "steer":
-					sess.Steer(cmd.Message, images)
-				case "followUp":
-					sess.FollowUp(cmd.Message, images)
-				case "":
-					writeRPC(rpcError(env.ID, "prompt", "Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message."))
-					continue
-				default:
-					writeRPC(rpcError(env.ID, "prompt", fmt.Sprintf("Invalid streamingBehavior: %s", cmd.StreamingBehavior)))
-					continue
-				}
-				if err := sess.FlushEvents(ctx); err != nil {
-					writeRPC(rpcError(env.ID, "prompt", err.Error()))
-					continue
-				}
-				writeRPC(rpcSuccess(env.ID, "prompt", nil))
-				continue
-			}
-
-			if model := sess.Model(); model == nil {
-				writeRPC(rpcError(env.ID, "prompt", codingagent.FormatNoAPIKeyFoundMessage("unknown")))
-				continue
-			} else {
-				providerID := model.ProviderMeta.ProviderID
-				if providerID == "" && model.Provider != nil {
-					providerID = model.Provider.ID()
-				}
-				if providerID != "test-faux" && !registry.HasConfiguredAuth(providerID) {
-					writeRPC(rpcError(env.ID, "prompt", codingagent.FormatNoAPIKeyFoundMessage(providerID)))
-					continue
-				}
-			}
-
-			// Run Send in a goroutine so we don't block the command reader.
-			// Mirrors upstream: the response is written once preflight
-			// succeeds, a failure before that is the response, and a failure
-			// after it is swallowed (the run's events already report it).
-			promptPending.Store(true)
-			promptWG.Go(func() {
-				accepted := false
-				_, sendErr := sess.SendContentWithPreflight(ctx, coding.BuildUserContent(cmd.Message, images), func() {
-					accepted = true
-					promptPending.Store(false)
-					writeRPC(rpcSuccess(env.ID, "prompt", nil))
-				})
-				if accepted {
-					return
-				}
-				promptPending.Store(false)
-				if sendErr != nil {
-					writeRPC(rpcError(env.ID, "prompt", sendErr.Error()))
-				} else {
-					writeRPC(rpcSuccess(env.ID, "prompt", nil))
-				}
-			})
+			admission.prompt(env.ID, cmd)
 
 		// ── abort ────────────────────────────────────────────────────────
 		case "abort":
@@ -1302,55 +1250,19 @@ commandLoop:
 		case "steer":
 			var cmd RPCSteerCommand
 			if err := json.Unmarshal(env.Raw, &cmd); err != nil {
-				writeRPC(rpcError(env.ID, "steer", err.Error()))
+				turn.complete(rpcError(env.ID, "steer", err.Error()))
 				continue
 			}
-			if name, _, ok := commandCatalog.extensionCommand(cmd.Message); ok {
-				writeRPC(rpcError(env.ID, "steer", fmt.Sprintf("Extension command %q cannot be queued. Use prompt() or execute the command when not streaming.", name)))
-				continue
-			}
-			// Upstream session.steer: input handlers first
-			// (_queueUserInput), then expansion and queueing.
-			message, images, handled, err := sess.RunInputHandlers(ctx, cmd.Message, rpcImages(cmd.Images), extension.InputSourceRPC, "steer")
-			if err != nil {
-				writeRPC(rpcError(env.ID, "steer", err.Error()))
-				continue
-			}
-			if !handled {
-				sess.Steer(commandCatalog.expandPrompt(message), images)
-			}
-			if err := sess.FlushEvents(ctx); err != nil {
-				writeRPC(rpcError(env.ID, "steer", err.Error()))
-				continue
-			}
-			writeRPC(rpcSuccess(env.ID, "steer", nil))
+			admission.queue(env.ID, "steer", cmd.Message, rpcImages(cmd.Images))
 
 		// ── follow_up ─────────────────────────────────────────────────────────
 		case "follow_up":
 			var cmd RPCFollowUpCommand
 			if err := json.Unmarshal(env.Raw, &cmd); err != nil {
-				writeRPC(rpcError(env.ID, "follow_up", err.Error()))
+				turn.complete(rpcError(env.ID, "follow_up", err.Error()))
 				continue
 			}
-			if name, _, ok := commandCatalog.extensionCommand(cmd.Message); ok {
-				writeRPC(rpcError(env.ID, "follow_up", fmt.Sprintf("Extension command %q cannot be queued. Use prompt() or execute the command when not streaming.", name)))
-				continue
-			}
-			// Upstream session.followUp: input handlers first
-			// (_queueUserInput), then expansion and queueing.
-			message, images, handled, err := sess.RunInputHandlers(ctx, cmd.Message, rpcImages(cmd.Images), extension.InputSourceRPC, "followUp")
-			if err != nil {
-				writeRPC(rpcError(env.ID, "follow_up", err.Error()))
-				continue
-			}
-			if !handled {
-				sess.FollowUp(commandCatalog.expandPrompt(message), images)
-			}
-			if err := sess.FlushEvents(ctx); err != nil {
-				writeRPC(rpcError(env.ID, "follow_up", err.Error()))
-				continue
-			}
-			writeRPC(rpcSuccess(env.ID, "follow_up", nil))
+			admission.queue(env.ID, "follow_up", cmd.Message, rpcImages(cmd.Images))
 
 		// ── bash ────────────────────────────────────────────────────────────────
 		case "bash":
@@ -1368,22 +1280,22 @@ commandLoop:
 				// handler fails the request (#9068).
 				override, operations, err := rpcUserBashOverride(ctx, runner, command, excludeFromContext, sess.CWD())
 				if err != nil {
-					writeRPC(rpcError(id, "bash", err.Error()))
+					turn.complete(rpcError(id, "bash", err.Error()))
 					return
 				}
 				if override != nil {
 					sess.RecordBashResult(command, *override, excludeFromContext)
-					writeRPC(rpcSuccess(id, "bash", RPCBashResult(*override)))
+					turn.complete(rpcSuccess(id, "bash", RPCBashResult(*override)))
 					return
 				}
 				result, err := sess.ExecuteBashWithOperations(ctx, command, excludeFromContext, func(delta string) {
 					writeRPC(RPCBashExecutionUpdate{Type: "bash_execution_update", ID: id, Delta: delta})
 				}, operations)
 				if err != nil {
-					writeRPC(rpcError(id, "bash", err.Error()))
+					turn.complete(rpcError(id, "bash", err.Error()))
 					return
 				}
-				writeRPC(rpcSuccess(id, "bash", RPCBashResult{
+				turn.complete(rpcSuccess(id, "bash", RPCBashResult{
 					Output:         result.Output,
 					ExitCode:       result.ExitCode,
 					Cancelled:      result.Cancelled,
@@ -1638,6 +1550,9 @@ commandLoop:
 	// is in commandWG, so waiting first would deadlock on EOF.
 	cancel()
 	rpcUI.Close()
+	admission.tasks.CloseAndWait()
+	responses.begin()
+	responses.end()
 	settleSessionWork()
 	extensionEvents.CloseAndWait()
 

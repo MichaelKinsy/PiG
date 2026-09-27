@@ -265,7 +265,7 @@ func TestParity(t *testing.T) {
 					t.Errorf("stale allowed skip %q: no such scenario", name)
 					continue
 				}
-				if !scenario.HasTag("deferred") && !scenario.HasTag("requires-auth") && scenario.Driver != "headless-terminal" && !(scenario.HasTag("posix-signals") && runtime.GOOS == "windows") {
+				if !scenario.HasTag("deferred") && !scenario.HasTag("requires-auth") && scenario.Driver != "headless-terminal" && (runtime.GOOS != "windows" || !scenario.HasTag("posix-signals")) {
 					t.Errorf("stale allowed skip %q: scenario can no longer skip", name)
 				}
 			}
