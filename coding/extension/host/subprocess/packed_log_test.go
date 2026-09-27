@@ -74,13 +74,12 @@ func TestPackedStderrLogLifecycle(t *testing.T) {
 	}
 }
 
+// privatePackedLogTemp gives the test its own temp directory for packed logs.
+// shortSockDir keeps socket paths under the Unix socket length limit, which
+// t.TempDir paths exceed on Windows runners.
 func privatePackedLogTemp(t *testing.T) string {
 	t.Helper()
-	dir := t.TempDir()
-	for _, key := range []string{"TMPDIR", "TMP", "TEMP"} {
-		t.Setenv(key, dir)
-	}
-	return dir
+	return shortSockDir(t)
 }
 
 func assertPackedLogs(t *testing.T, dir string, want ...string) {
