@@ -155,16 +155,11 @@ func readTextResult(p readParams, textContent string) (agent.AgentToolResult, er
 	default:
 		output = tr.Content
 	}
-	return agent.AgentToolResult{
-		Content: output,
-		Details: &ReadDetails{
-			Path:       p.Path,
-			StartLine:  startLineDisplay,
-			TotalLines: totalFileLines,
-			Truncated:  truncation != nil,
-			Truncation: truncation,
-		},
-	}, nil
+	result := agent.AgentToolResult{Content: output}
+	if truncation != nil {
+		result.Details = &ReadDetails{Truncation: truncation}
+	}
+	return result, nil
 }
 
 // readImage uses the execution model profile before the standalone fallback,

@@ -245868,7 +245868,7 @@
       "recommendedDisposition": "pending",
       "confidence": "low",
       "basis": [
-        "5 normalized-name Pig candidates are ambiguous."
+        "6 normalized-name Pig candidates are ambiguous."
       ],
       "alternatives": [
         "ported",
@@ -245879,6 +245879,7 @@
       ],
       "pigCandidates": [
         "go:github.com/MichaelKinsy/PiG/agent/harness/runtime#Drive.complete",
+        "go:github.com/MichaelKinsy/PiG/cmd/pig#rpcResponseTurn.complete",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRegistry.Complete",
         "go:github.com/MichaelKinsy/PiG/coding#ModelRuntime.Complete",
         "go:github.com/MichaelKinsy/PiG/extensions/sdk#Context.Complete",

@@ -602,17 +602,6 @@
       "shapeHash": "sha256:b0e031a76039682f63e875ff3e0bfe6dbf5d6c92c9423d5debc5008a946f0b1b"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/agent#Agent.agentEndMessages",
-      "package": "github.com/MichaelKinsy/PiG/agent",
-      "name": "Agent.agentEndMessages",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() []AgentMessage"
-      },
-      "shapeHash": "sha256:273aaa867ac515842b78dbfed1f38a18de9cb3a0d64bbd31c1a348d641d4b44b"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/agent#Agent.appendMessages",
       "package": "github.com/MichaelKinsy/PiG/agent",
       "name": "Agent.appendMessages",
@@ -58814,6 +58803,61 @@
       "shapeHash": "sha256:f7d4bdee7b76479fd75cd1773eb9c40cbff39e3db07d4441c28d495f93f0f7c9"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#rpcResponseTurn",
+      "package": "github.com/MichaelKinsy/PiG/cmd/pig",
+      "name": "rpcResponseTurn",
+      "kind": "type",
+      "exported": false,
+      "shape": {
+        "type": "rpcResponseTurn"
+      },
+      "shapeHash": "sha256:50ebae75e50e80cee38e43a884d3cc3dc4a09ad644cf7b9423fda6a76e4fe031"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#rpcResponseTurn.after",
+      "package": "github.com/MichaelKinsy/PiG/cmd/pig",
+      "name": "rpcResponseTurn.after",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(continuation func())"
+      },
+      "shapeHash": "sha256:df27800ad30f8269466973a33fb7fa0a6db8348fad5e8620cced47c2338c36f0"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#rpcResponseTurn.begin",
+      "package": "github.com/MichaelKinsy/PiG/cmd/pig",
+      "name": "rpcResponseTurn.begin",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#rpcResponseTurn.complete",
+      "package": "github.com/MichaelKinsy/PiG/cmd/pig",
+      "name": "rpcResponseTurn.complete",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(response any)"
+      },
+      "shapeHash": "sha256:3b938e91e41e410e84be649578c0f25f49bc4cb8317cd64bcd7c07ea377c61ae"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#rpcResponseTurn.end",
+      "package": "github.com/MichaelKinsy/PiG/cmd/pig",
+      "name": "rpcResponseTurn.end",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func()"
+      },
+      "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#rpcResultCancelled",
       "package": "github.com/MichaelKinsy/PiG/cmd/pig",
       "name": "rpcResultCancelled",
@@ -58985,9 +59029,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(text string, images []github.com/MichaelKinsy/PiG/ai.ImageContent, isError bool, details any) any"
+        "type": "func(text string, images []github.com/MichaelKinsy/PiG/ai.ImageContent, details any) any"
       },
-      "shapeHash": "sha256:542b06a3b96425589bd2d26edeb02114f1be9a57b8b79e6f63c6660664cc0e5c"
+      "shapeHash": "sha256:5713eb5b8ed5cc1d5f8cfa943908c35e116a000661d39f8d0fe53cbc0448f16e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#rpcTree",
@@ -59777,9 +59821,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, flags CLIFlags, activePiglet *github.com/MichaelKinsy/PiG/coding/piglet.Piglet, resources rpcModeResources) int"
+        "type": "func(ctx context.Context, flags CLIFlags, activePiglet *github.com/MichaelKinsy/PiG/coding/piglet.Piglet, resources rpcModeResources) (exitCode int)"
       },
-      "shapeHash": "sha256:4923ef20ae9349189d68a973767fa9de83f5d9a1648cea58458e560429ebfdc1"
+      "shapeHash": "sha256:242dafdb1a16e09b0b0cf4f23d8ad402fbf26941272c1a267d712026d9af0472"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#runRetiredCommand",
@@ -63355,6 +63399,17 @@
         "type": "func() []github.com/MichaelKinsy/PiG/ai.ThinkingLevel"
       },
       "shapeHash": "sha256:6b7f344d3bc8eda390ebb1576119be88c4a77798cd2ded952f41f6b85cbce5d2"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding#Session.BeginModelChange",
+      "package": "github.com/MichaelKinsy/PiG/coding",
+      "name": "Session.BeginModelChange",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(ctx context.Context, m *github.com/MichaelKinsy/PiG/ai.Model, source github.com/MichaelKinsy/PiG/coding/extension.ModelSelectSource, options ...ModelMutationOptions) (func(), error)"
+      },
+      "shapeHash": "sha256:d838786f466b479cddd30c6c731e49a0d52e707611c826fb45f4be8ae6fa250d"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding#Session.CWD",
@@ -93211,6 +93266,17 @@
       "shapeHash": "sha256:6a799f662114b1b8fdb385dab7f1347f69be60abbcfa252100cdfb3779fa76b7"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/rpcclient#ReadJSONLBatches",
+      "package": "github.com/MichaelKinsy/PiG/coding/rpcclient",
+      "name": "ReadJSONLBatches",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(r io.Reader, onBatch func([][]byte) bool) error"
+      },
+      "shapeHash": "sha256:9d5dc099988d5fcee4baad1704bef43ec44656237715debe9c2b496f0cb31699"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/coding/rpcclient#ReadJSONLLines",
       "package": "github.com/MichaelKinsy/PiG/coding/rpcclient",
       "name": "ReadJSONLLines",
@@ -93957,6 +94023,17 @@
         "type": "RpcSourceInfo"
       },
       "shapeHash": "sha256:72df61823bfcebe17dd5718fac372b8abf73f1fc59f2ce9210587aaaac6605ba"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/coding/rpcclient#SerializeJsonLine",
+      "package": "github.com/MichaelKinsy/PiG/coding/rpcclient",
+      "name": "SerializeJsonLine",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func(value any) ([]byte, error)"
+      },
+      "shapeHash": "sha256:7b47921c49c2fbd9197c848e0acd90609fcdd2e8d83951c2e88874505832bac1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/coding/rpcclient#SessionEntry",

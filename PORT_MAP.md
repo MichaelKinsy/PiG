@@ -485,10 +485,10 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/theme/theme-controller.ts` | `tui/theme.go (0.79.10 Automatic option; AC-6 / Stage 2)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/model-search.ts` | `tui/model_search.go (ModelSearchItem, GetModelSearchText, GetModelSelectorSearchText); GetModelSelectorSearchText feeds tui/model_select.go applyFilter over ModelSelectorItem.Name (raw model name), GetModelSearchText feeds tui/scoped_models_list.go refresh and internal/codingagent/interactive_commands.go modelArgCompletions. tui/model_search_test.go proxy-provider fixture (openrouter/vercel-ai-gateway openai/gpt-5 ids) asserts the Pi 0.87.1 fuzzyFilter order for both functions and the selector` | ✅ |
 | `packages/coding-agent/src/modes/print-mode.ts` | `cmd/pig/print_mode.go (text) and cmd/pig/json_mode.go (json): upstream runs both modes from one function, pig splits them by mode. json streams the session event stream as JSONL while the turn runs; text still prints only the final assistant message. Behavioral coverage: print/01-print-mode-arithmetic, json/01-json-mode-streams-events` | ✅ |
-| `packages/coding-agent/src/modes/rpc/rpc-mode.ts` | `cmd/pig/rpc_mode.go + cmd/pig/rpc_ui.go` | ✅ |
+| `packages/coding-agent/src/modes/rpc/rpc-mode.ts` | `cmd/pig/rpc_mode.go + cmd/pig/rpc_dispatch.go + cmd/pig/rpc_ui.go` | ✅ |
 | `packages/coding-agent/src/modes/rpc/rpc-types.ts` | `cmd/pig/rpc_types.go` | ✅ |
 | `packages/coding-agent/src/modes/rpc/rpc-client.ts` | `coding/rpcclient/rpc_client.go + commands.go + types.go + process_unix.go/process_windows.go (RpcClient spawns the pig executable in --mode rpc where upstream spawns node cliPath; typed wire structs replace the TypeScript imports, with raw JSON kept for entries, messages, and events). coding/rpcclient/rpc_client_test.go ports rpc-client-clear-queue/clone/process-exit tests against scripted child processes; rpc_mode_test.go ports rpc.test.ts against a pig binary built in TestMain, using test-faux in place of the live Anthropic model` | ✅ |
-| `packages/coding-agent/src/modes/rpc/jsonl.ts` | `(inlined)` | ✅ |
+| `packages/coding-agent/src/modes/rpc/jsonl.ts` | `coding/rpcclient/jsonl.go; cmd/pig/rpc_types.go` | ✅ |
 | `packages/coding-agent/src/modes/index.ts` | `(barrel)` | n/a |
 | `packages/coding-agent/src/utils/changelog.ts` | `embed.go + internal/codingagent/changelog.go` | ✅ |
 | `packages/coding-agent/src/utils/ansi.ts` | `internal/codingagent/export/ansi_html.go` | ✅ |

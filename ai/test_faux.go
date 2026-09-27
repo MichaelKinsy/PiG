@@ -129,7 +129,7 @@ func (p *TestFauxProvider) Stream(ctx context.Context, transcript TranscriptCont
 	if err := validateProviderRequest(ctx, transcript); err != nil {
 		return nil, fmt.Errorf("test-faux: invalid transcript: %w", err)
 	}
-	builder := newAssistantStreamBuilder(ctx, "faux", p.ID(), "faux-1")
+	builder := newAssistantStreamBuilder(ctx, "test-faux", p.ID(), "faux-1")
 	messages := transcript.Messages()
 	go func() {
 		if err := ctx.Err(); err != nil {

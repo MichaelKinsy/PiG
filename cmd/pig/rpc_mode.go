@@ -272,11 +272,13 @@ func rpcResolvedSkills(skills []*codingagent.SkillDef, activePiglet *piglet.Pigl
 	return out
 }
 
-// runRPCMode is the entrypoint for `pig --rpc`.
-// It initialises a coding.Session, starts the event forwarder goroutine,
-// then reads commands from stdin until EOF.
-// Returns 0 on clean shutdown, 1 on fatal error.
-func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet, resources rpcModeResources) int {
+// runRPCMode owns the `--mode rpc` runtime until EOF or termination. It returns 0 on EOF, 1 on failure, or 128+signum after signal-triggered disposal without waiting for more stdin.
+func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet, resources rpcModeResources) (exitCode int) {
+	defer func() {
+		if sig := receivedTerminationSignal.Load(); sig != 0 {
+			exitCode = 128 + int(sig)
+		}
+	}()
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 
@@ -814,6 +816,8 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 	// after binding, with shutdown deferred so it only runs when start did.
 	sess.EmitSessionStart("startup")
 	defer sess.EmitSessionShutdown("quit")
+	setTerminationShutdownHook(func() { sess.EmitSessionShutdown("quit") })
+	defer setTerminationShutdownHook(nil)
 
 	commandCatalog := rpcCommandCatalog{
 		runner: runner, promptTemplates: resources.PromptTemplates, skills: resources.Skills,
@@ -836,18 +840,16 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 	var promptWG sync.WaitGroup
 	var bashWG sync.WaitGroup
 	var commandWG sync.WaitGroup
-	cycleComplete := make(chan struct{})
-	close(cycleComplete)
 
-	handleCycleModel := func(id string, currentSession *coding.Session) {
+	handleCycleModel := func(id string, currentSession *coding.Session, turn *rpcResponseTurn) {
 		models, err := rpcAvailableModels(services, currentSession.Model())
 		if err != nil {
-			writeRPC(rpcError(id, "cycle_model", err.Error()))
+			turn.complete(rpcError(id, "cycle_model", err.Error()))
 			return
 		}
 		scoped := rpcScopedModels(models, flags.Models)
 		if len(scoped) <= 1 {
-			writeRPC(rpcSuccessNull(id, "cycle_model"))
+			turn.complete(rpcSuccessNull(id, "cycle_model"))
 			return
 		}
 		currentIndex := -1
@@ -861,13 +863,25 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 			currentIndex = 0
 		}
 		next := scoped[(currentIndex+1)%len(scoped)]
-		if err := currentSession.CycleToModel(next); err != nil {
-			writeRPC(rpcError(id, "cycle_model", err.Error()))
+		complete, err := currentSession.BeginModelChange(ctx, next, extension.ModelSelectSourceCycle)
+		if err != nil {
+			turn.complete(rpcError(id, "cycle_model", err.Error()))
 			return
 		}
-		writeRPC(rpcSuccess(id, "cycle_model", RPCModelCycleResult{
-			Model: rpcModelValue(next), ThinkingLevel: currentSession.ThinkingLevel(), IsScoped: len(flags.Models) > 0,
-		}))
+		if err := currentSession.FlushEvents(ctx); err != nil {
+			turn.complete(rpcError(id, "cycle_model", err.Error()))
+			return
+		}
+		publish := func() {
+			writeRPC(rpcSuccess(id, "cycle_model", RPCModelCycleResult{
+				Model: rpcModelValue(next), ThinkingLevel: currentSession.ThinkingLevel(), IsScoped: len(flags.Models) > 0,
+			}))
+		}
+		if complete == nil {
+			turn.after(publish)
+		} else {
+			commandWG.Go(func() { complete(); turn.after(publish) })
+		}
 	}
 
 	// settlePrompt is upstream `await session.abort()`: the active run stops,
@@ -911,13 +925,13 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 
 	// ── Command loop ───────────────────────────────────────────────────────
 
-	inputLines := make(chan []byte, 64)
+	inputLines := make(chan [][]byte, 64)
 	inputDone := make(chan error, 1)
 	go func() {
 		defer close(inputLines)
-		err := rpcclient.ReadJSONLLines(os.Stdin, func(line []byte) bool {
+		err := rpcclient.ReadJSONLBatches(os.Stdin, func(lines [][]byte) bool {
 			select {
-			case inputLines <- line:
+			case inputLines <- lines:
 				return true
 			case <-ctx.Done():
 				return false
@@ -931,8 +945,34 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 		inputDone <- err
 	}()
 
-	for line := range inputLines {
-
+	var inputBatch [][]byte
+	responses := &rpcResponseTurn{write: writeRPC}
+	var inputTurn *rpcResponseTurn
+commandLoop:
+	for {
+		if len(inputBatch) == 0 && inputTurn != nil {
+			inputTurn.end()
+			inputTurn = nil
+		}
+		if ctx.Err() != nil {
+			break commandLoop
+		}
+		if len(inputBatch) == 0 {
+			select {
+			case <-ctx.Done():
+				break commandLoop
+			case next, ok := <-inputLines:
+				if !ok {
+					break commandLoop
+				}
+				inputBatch = next
+			}
+			responses.begin()
+			inputTurn = responses
+		}
+		line := inputBatch[0]
+		inputBatch = inputBatch[1:]
+		turn := inputTurn
 		env, parseErr := parseRPCCommand(line)
 		if parseErr != nil {
 			// Upstream uses rpcError(undefined, "parse", message): mirrors
@@ -1153,20 +1193,7 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 			writeRPC(rpcSuccess(env.ID, "set_model", rpcModelValue(newModel)))
 
 		case "cycle_model":
-			commandID := env.ID
-			currentSession := sess
-			previousCycle := cycleComplete
-			cycleComplete = make(chan struct{})
-			currentCycle := cycleComplete
-			commandWG.Go(func() {
-				defer close(currentCycle)
-				select {
-				case <-ctx.Done():
-					return
-				case <-previousCycle:
-				}
-				handleCycleModel(commandID, currentSession)
-			})
+			handleCycleModel(env.ID, sess, turn)
 
 		// ── compact ─────────────────────────────────────────────────────
 		case "compact":
@@ -1590,14 +1617,20 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 			// request id so clients can correlate the error response.
 			writeRPC(rpcError(env.ID, env.Type,
 				fmt.Sprintf("Unknown command: %s", env.Type)))
-		} // end switch
-	} // end for scanner.Scan()
+		}
+	}
 
-	if scanErr := <-inputDone; scanErr != nil && !errors.Is(scanErr, io.EOF) {
-		writeRPC(RPCErrorEvent{
-			Type:    "error",
-			Message: fmt.Sprintf("stdin read error: %v", scanErr),
-		})
+	if inputTurn != nil {
+		inputTurn.end()
+	}
+
+	// Detach input on cancellation. The stdin reader belongs to the process, not the Session; process exit releases a pending OS read just as Pi pauses stdin before exiting.
+	select {
+	case scanErr := <-inputDone:
+		if scanErr != nil && !errors.Is(scanErr, io.EOF) {
+			writeRPC(RPCErrorEvent{Type: "error", Message: fmt.Sprintf("stdin read error: %v", scanErr)})
+		}
+	case <-ctx.Done():
 	}
 
 	// Stop admitting or blocking on extension work before joining commands.

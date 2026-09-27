@@ -371,7 +371,7 @@ func (r *loopRun) emitTurnEnd(assistant *AssistantMessage, toolResults []ToolRes
 
 func (r *loopRun) endRun() {
 	r.a.emit(TimingEvent{Kind: "session_end", Snapshot: r.a.timings.Snapshot()})
-	r.a.emit(AgentEndEvent{Messages: r.a.agentEndMessages()})
+	r.a.emit(AgentEndEvent{Messages: slices.Clone(r.newMessages)})
 }
 
 // streamWithProvider is the default StreamFn: the model's own provider.

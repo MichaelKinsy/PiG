@@ -832,8 +832,22 @@ func (s *Session) CycleToModel(m *ai.Model, options ...ModelMutationOptions) err
 }
 
 func (s *Session) setModel(m *ai.Model, source extension.ModelSelectSource, options ...ModelMutationOptions) error {
+	complete, err := s.BeginModelChange(context.Background(), m, source, options...)
+	if err != nil {
+		return err
+	}
+	if complete != nil {
+		complete()
+	}
+	return nil
+}
+
+// Ports packages/coding-agent/src/core/agent-session.ts
+
+// BeginModelChange applies the synchronous model mutation and returns its awaited extension notification, or nil when it is already complete. RPC admits the next command after this prefix; blocking SDK callers invoke a non-nil completion before returning. The caller owns and joins completion, which must be invoked once.
+func (s *Session) BeginModelChange(ctx context.Context, m *ai.Model, source extension.ModelSelectSource, options ...ModelMutationOptions) (func(), error) {
 	if m == nil {
-		return fmt.Errorf("coding: SetModel: model is nil")
+		return nil, fmt.Errorf("coding: SetModel: model is nil")
 	}
 	previous := s.Model()
 	thinkingLevel := s.thinkingLevelForModelSwitch(m)
@@ -843,26 +857,26 @@ func (s *Session) setModel(m *ai.Model, source extension.ModelSelectSource, opti
 	}
 	if s.inner != nil {
 		if err := s.inner.AppendModelSwitch(providerID(m), m.ID, m.DisplayName); err != nil {
-			return fmt.Errorf("coding: SetModel: persist audit: %w", err)
+			return nil, fmt.Errorf("coding: SetModel: persist audit: %w", err)
 		}
 	}
 	if len(options) > 0 && options[0].Persist {
 		if err := s.services.SettingsManager().SetDefaultModelAndProvider(providerID(m), m.ID); err != nil {
-			return fmt.Errorf("coding: SetModel: persist default: %w", err)
+			return nil, fmt.Errorf("coding: SetModel: persist default: %w", err)
 		}
 	}
 	if err := s.SetThinkingLevel(thinkingLevel); err != nil {
-		return fmt.Errorf("coding: SetModel: thinking level: %w", err)
+		return nil, fmt.Errorf("coding: SetModel: thinking level: %w", err)
 	}
-	if runner := s.currentRunner(); runner != nil && !ai.ModelsAreEqual(previous, m) && runner.HasHandlers(icodingagent.EventModelSelect) {
-		_, _ = runner.Emit(context.Background(), extension.ModelSelectEvent{
-			Type:          icodingagent.EventModelSelect,
-			Model:         m,
-			PreviousModel: previous,
-			Source:        source,
+	runner := s.currentRunner()
+	if runner == nil || ai.ModelsAreEqual(previous, m) || !runner.HasHandlers(icodingagent.EventModelSelect) {
+		return nil, nil
+	}
+	return func() {
+		_, _ = runner.Emit(ctx, extension.ModelSelectEvent{
+			Type: icodingagent.EventModelSelect, Model: m, PreviousModel: previous, Source: source,
 		})
-	}
-	return nil
+	}, nil
 }
 
 // thinkingLevelForModelSwitch mirrors upstream _getThinkingLevelForModelSwitch:

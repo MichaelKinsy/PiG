@@ -1046,9 +1046,9 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/
 [[files]]
 path = "packages/coding-agent/src/core/agent-session.ts"
 disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/session.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+contracts = ["awaited", "concurrent-joined", "cancellable", "microtask-ordering"]
+evidence = ["test:coding/session_model_dispatch_test.go", "scenario:parity/scenarios/rpc/31-rpc-cycle-await-interleaving.toml", "scenario:parity/scenarios/rpc/32-rpc-cycle-prefix-and-completion.toml", "probe:docs/findings/rpc-command-dispatch.md"]
+rationale = "The model-cycle synchronous state prefix, independently awaited model_select notification, and post-await response state are covered. The existing blocking Go model API still waits for notification. The complete Session Promise contract remains deferred; these model regressions do not close unrelated queue, replacement, retry or compaction ordering."
 
 [[files]]
 path = "packages/coding-agent/src/core/auth-storage.ts"
@@ -1837,9 +1837,9 @@ rationale = "PORT_MAP marks this file ⏸ deferred: `(deferred: PiG exposes the 
 [[files]]
 path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
 disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/rpc_mode.go + cmd/pig/rpc_ui.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+contracts = ["awaited", "concurrent-joined", "cancellable", "microtask-ordering"]
+evidence = ["test:cmd/pig/rpc_dispatch_test.go", "scenario:parity/scenarios/rpc/07-rpc-model-thinking-commands.toml", "scenario:parity/scenarios/rpc/31-rpc-cycle-await-interleaving.toml", "scenario:parity/scenarios/rpc/32-rpc-cycle-prefix-and-completion.toml", "probe:docs/findings/rpc-command-dispatch.md"]
+rationale = "All 33 upstream command branches and their conditional await boundaries are inventoried in the dispatch report. Model-cycle completion cannot run inside the admitting input callback, even when already fulfilled; input turns do not wait for future input, and suspended notifications do not serialize later cycle prefixes. Full-file async closure remains deferred for the other command implementations."
 
 [[files]]
 path = "packages/coding-agent/src/modes/rpc/rpc-types.ts"

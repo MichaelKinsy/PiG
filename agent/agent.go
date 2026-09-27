@@ -841,17 +841,6 @@ func (a *Agent) appendMessages(msgs ...AgentMessage) {
 	a.messagesMu.Unlock()
 }
 
-// agentEndMessages returns a snapshot of the message history for an
-// AgentEndEvent. The agent keeps appending to a.messages on retry or
-// continuation after agent_end fires, while consumers read the event's
-// Messages on other goroutines (e.g. the session's forwardAgentEvents loop
-// computing willRetry and dispatching to extensions). Sharing the live slice
-// races the loop's append, so each agent_end carries its own copy. The copy
-// runs on the agent goroutine at emit time, so it never races the append.
-func (a *Agent) agentEndMessages() []AgentMessage {
-	return append([]AgentMessage(nil), a.messages...)
-}
-
 // SystemPrompt returns the current replayed instructions or an explicit provider prompt override.
 func (a *Agent) SystemPrompt() string {
 	if a.forcedSystemPrompt != nil {

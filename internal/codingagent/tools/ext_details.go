@@ -2,20 +2,7 @@ package tools
 
 import "github.com/MichaelKinsy/PiG/coding/extension"
 
-// This file implements extension.ToolDetailsConverter for the built-in tools'
-// internal result Details structs, mapping each to the upstream extension SDK
-// wire shape (the `details` field of a tool_result event). It mirrors
-// upstream's per-tool detail construction: each object is sparse (fields
-// present only when their condition held) and the whole object is omitted
-// (nil) when empty.
-//
-// pig keeps richer internal detail structs for the TUI renderer (e.g.
-// ReadDetails carries StartLine/TotalLines). These methods are the boundary
-// that converts them into the lean upstream SDK shapes extensions and
-// PostToolUse hooks expect. The edit tool's *EditToolDetails is already
-// SDK-shaped and intentionally does not implement this interface (it passes
-// through unchanged). Write returns nil because upstream attaches no details
-// to write results (write.ts:223).
+// These converters expose the typed extension details contract. Absent details stay nil, and renderer-only state never becomes extension metadata.
 
 // ToolResultDetails maps bash result details to extension.BashToolDetails.
 // Upstream attaches details only when output was truncated (bash.ts:354).
@@ -84,7 +71,7 @@ func (d *LsDetails) ToolResultDetails() any {
 }
 
 // ToolResultDetails reports that write results carry no SDK details, matching
-// upstream (write.ts:223 sets details: undefined). The internal WriteDetails
+// upstream (write.ts:87 sets details: undefined). The internal WriteDetails
 // exists only for the TUI renderer.
 func (d *WriteDetails) ToolResultDetails() any { return nil }
 

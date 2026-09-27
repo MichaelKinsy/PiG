@@ -78,6 +78,10 @@ type CLIDriverConfig struct {
 
 // RPCDriverConfig configures the rpc-mode driver.
 type RPCDriverConfig struct {
+	// CanonicalJSON sorts object keys without dropping fields, reordering records or changing string contents.
+	CanonicalJSON bool `toml:"canonical_json"`
+	// Terminate sends SIGTERM with stdin deliberately open after the final output barrier.
+	Terminate      bool           `toml:"terminate"`
 	InputLines     []string       `toml:"input_lines"` // JSON lines to write to stdin
 	Steps          []RPCInputStep `toml:"steps"`
 	TimeoutSeconds int            `toml:"timeout_seconds"`

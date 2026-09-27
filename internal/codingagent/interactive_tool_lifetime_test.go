@@ -29,8 +29,8 @@ func TestInteractiveReusedToolIDKeepsCompletedCards(t *testing.T) {
 			t.Errorf("want one retained card for %s, got %d:\n%s", path, count, chat)
 		}
 	}
-	if len(m.toolByID) != 0 || len(m.toolStarts) != 0 {
-		t.Errorf("completed calls remain pending: %d identities, %d timers", len(m.toolByID), len(m.toolStarts))
+	if len(m.toolByID) != 0 || len(m.toolStarts) != 0 || len(m.toolFileCalls) != 0 {
+		t.Errorf("completed calls remain pending: %d identities, %d timers, %d file calls", len(m.toolByID), len(m.toolStarts), len(m.toolFileCalls))
 	}
 }
 
@@ -51,8 +51,9 @@ func TestInteractivePendingToolLifetime(t *testing.T) {
 			if card == nil {
 				t.Fatal("missing streaming card")
 			}
+			m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: call.ID, ToolName: call.Name, Args: json.RawMessage(`{"path":"pending.txt"}`)})
 			m.handleAgentEvent(boundary.event)
-			if len(m.toolByID) != 0 || len(m.pendingArgs) != 0 {
+			if len(m.toolByID) != 0 || len(m.pendingArgs) != 0 || len(m.toolFileCalls) != 0 {
 				t.Fatalf("%s left stale pending state", boundary.name)
 			}
 			if boundary.name == "abort" && card.State != tui.ToolStateError {

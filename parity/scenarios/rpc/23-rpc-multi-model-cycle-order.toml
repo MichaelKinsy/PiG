@@ -1,10 +1,7 @@
 # Behavior family: rpc
 # Surface: repeated cycle_model ordering over multiple available models.
 #
-# Upstream evidence (Pi 0.84.0): each cycle_model command waits for the prior
-# mutation. Three pipelined commands over model-one, model-two, model-three
-# therefore return model-two, model-three, model-one in input order. The
-# response preserves each configured model display name.
+# Pi 0.87.1 agent-session.ts:2178-2238 mutates each model before awaiting model_select; it does not serialize complete cycles. With no listeners, the same-depth resolved continuations return model-two, model-three, model-one in input order. Scenario 31 separately holds a listener and proves out-of-order completion.
 
 name = "23-rpc-multi-model-cycle-order"
 description = "Pipelined model cycles mutate and respond in input order."

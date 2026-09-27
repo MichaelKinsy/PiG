@@ -1,0 +1,29 @@
+# Pi 0.87.1 agent-session.ts:2211-2240 changes model/thinking synchronously, then constructs the result's thinkingLevel after await _emitModelSelect.
+# Both cycles therefore report high after the second prefix selects model-three. Sorting already-built responses would still return the wrong first thinkingLevel.
+name = "32-rpc-cycle-prefix-and-completion"
+description = "Cycle prefixes run in input order but response state is sampled after await"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+canonical_json = true
+timeout_seconds = 15
+[[rpc.steps]]
+line = '''{"id":"one","type":"cycle_model"}
+{"id":"two","type":"cycle_model"}
+{"id":"abort-retry","type":"abort_retry"}'''
+wait_contains = ['"id":"one","type":"response","command":"cycle_model","success":true', '"id":"two","type":"response","command":"cycle_model","success":true', '"id":"abort-retry","type":"response","command":"abort_retry","success":true']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_HOME=testdata/cycle-thinking"]
+pi = ["PI_CODING_AGENT_DIR=testdata/cycle-thinking/agent"]
+pig_args = ["--offline", "--no-session", "--model", "fixture/model-one"]
+pi_args = ["--offline", "--no-session", "--model", "fixture/model-one"]
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"thinkingLevel":"high"', '"id":"model-two"', '"id":"model-three"']
+runs = 3
