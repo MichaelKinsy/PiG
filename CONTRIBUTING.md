@@ -33,6 +33,36 @@ The sign-off certifies that you have the right to submit the contribution under 
 
 PiG does not require a Contributor License Agreement.
 
+## Signed commits
+
+Every commit requires a signature that GitHub marks **Verified**. DCO sign-off is separate and is also required. A `Signed-off-by` line does not satisfy the signature requirement.
+
+To sign with an existing SSH key, configure Git in your checkout:
+
+```bash
+git config gpg.format ssh
+git config user.signingkey /path/to/key.pub
+git config commit.gpgsign true
+```
+
+Add the public key to GitHub under **Settings → SSH and GPG keys → New SSH key**. Select **Signing Key** as the key type, even if you already added the same key for authentication. See [GitHub's SSH signing setup](https://docs.github.com/en/authentication/managing-commit-signature-verification/telling-git-about-your-signing-key#telling-git-about-your-ssh-key).
+
+Create commits with `git commit --signoff`. Git signs them automatically with the configuration above. Confirm that GitHub shows **Verified** after you push.
+
+To sign an existing unsigned tip commit without changing its message:
+
+```bash
+git commit --amend -S --no-edit
+```
+
+To sign every commit on a topic branch, replace `<base>` with its base commit:
+
+```bash
+git rebase --exec 'git commit --amend -S --no-edit' <base>
+```
+
+These commands rewrite commit IDs. Coordinate with a maintainer before replacing commits already pushed. Keep each DCO sign-off in the commit message. If you cannot set up signing, ask a maintainer to re-sign your commit while keeping you as its author.
+
 ## Agent-assisted contributions
 
 Agent assistance is allowed. The contributor remains responsible for every
@@ -68,9 +98,10 @@ installing software.
 5. Add or identify a test that can fail on the behavior under review.
 6. Implement the smallest correct change.
 7. Run the relevant local tests early.
-8. Run `make check` before requesting review.
-9. Sign off every commit.
-10. Describe the problem, change, verification, and any divergence in the pull request.
+8. If you change exported Go API, CLI flags, settings, parity scenarios, or docs mirrors, run `make generate` and commit the result. CI's drift gates compare these files.
+9. Run `make check` before requesting review.
+10. Sign off and cryptographically sign every commit. Confirm that GitHub marks each signature **Verified**.
+11. Describe the problem, change, verification, and any divergence in the pull request.
 
 A documentation-only or mechanical change can explain why it does not need an issue.
 
@@ -82,6 +113,7 @@ A pull request must:
 
 - have a clear and bounded purpose;
 - pass required checks;
+- include both a DCO `Signed-off-by` line and a GitHub-verified signature on every commit;
 - contain no credentials or private data;
 - include tests or explain why the existing tests prove the change;
 - update `DIVERGENCES.md` for an approved observable difference;

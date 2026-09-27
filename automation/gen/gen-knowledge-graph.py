@@ -69,7 +69,7 @@ outputs = {
 stale = [str(p.relative_to(root)) for p, text in outputs.items() if not p.exists() or p.read_text() != text]
 if "--check" in sys.argv:
     if stale:
-        sys.exit("stale knowledge-graph outputs; run automation/gen/gen-knowledge-graph.py: " + ", ".join(stale))
+        sys.exit("stale knowledge-graph outputs; run: make generate (or: make knowledge-graph), then commit the result: " + ", ".join(stale))
     sys.exit(0)
 for path, text in outputs.items():
     path.write_text(text)
