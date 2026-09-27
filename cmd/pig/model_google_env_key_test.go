@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 // Pi's google provider authenticates only from GEMINI_API_KEY
@@ -47,7 +46,7 @@ func TestBuildModelGoogleKeysMatchUpstreamEnvVars(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(config), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			model, _, _, err := buildModel(tc.provider+"/gemini-2.5-flash", codingagent.NewModelRegistry(dir))
+			model, _, _, err := buildModel(tc.provider+"/gemini-2.5-flash", testServices(t, dir))
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -27,7 +27,8 @@ func TestCoordinatorConnectionLifecycle(t *testing.T) {
 			peer := controlDial(t, control)
 			peer.send(t, map[string]any{"type": "register_peer", "protocol": CoordinatorProtocolVersion, "peerId": "worker"})
 			peer.want(t, `{"type":"peer_registered","peerId":"worker"}`)
-			server := NewCoordinatorConnection(CoordinatorConnectionOptions{ControlPath: control, Endpoint: public + ".backend", ServerConnectionID: new("s1")})
+			serverControl := productControlPath(t, control)
+			server := NewCoordinatorConnection(CoordinatorConnectionOptions{ControlPath: serverControl, Endpoint: public + ".backend", ServerConnectionID: new("s1")})
 			t.Cleanup(server.Close)
 			if err := server.Send("worker", nil); err == nil {
 				t.Fatal("send before registration")
@@ -62,7 +63,7 @@ func TestCoordinatorConnectionLifecycle(t *testing.T) {
 				t.Fatal(err)
 			}
 			peer.want(t, `{"type":"message","from":"server","payload":"broadcast"}`)
-			second := NewCoordinatorConnection(CoordinatorConnectionOptions{ControlPath: control, Endpoint: public + ".b2", ServerConnectionID: new("s2")})
+			second := NewCoordinatorConnection(CoordinatorConnectionOptions{ControlPath: serverControl, Endpoint: public + ".b2", ServerConnectionID: new("s2")})
 			t.Cleanup(second.Close)
 			if err := second.Connect(t.Context()); err != nil {
 				t.Fatal(err)
@@ -99,7 +100,7 @@ func TestCoordinatorSlowPeerDoesNotBlockOtherPeers(t *testing.T) {
 				peer.send(t, map[string]any{"type": "register_peer", "protocol": CoordinatorProtocolVersion, "peerId": id})
 				peer.want(t, fmt.Sprintf(`{"type":"peer_registered","peerId":%q}`, id))
 				if id == "fast" {
-					server := NewCoordinatorConnection(CoordinatorConnectionOptions{ControlPath: control, Endpoint: public + ".backend", ServerConnectionID: new("server")})
+					server := NewCoordinatorConnection(CoordinatorConnectionOptions{ControlPath: productControlPath(t, control), Endpoint: public + ".backend", ServerConnectionID: new("server")})
 					defer server.Close()
 					if err := server.Connect(t.Context()); err != nil {
 						t.Fatal(err)

@@ -31,7 +31,7 @@ func TestPublicationHonorsCrossProcessStoreLock(t *testing.T) {
 	if err == nil || !strings.Contains(string(output), "store is busy") {
 		t.Fatalf("publication ignored the lock: %v %s", err, output)
 	}
-	for path := range snapshotTree(t, os.Getenv("PIG_HOME")) {
+	for _, path := range treePaths(t, os.Getenv("PIG_HOME")) {
 		if strings.HasSuffix(path, ".pull") || filepath.Base(path) == "pig-porter" || filepath.Base(path) == "current" {
 			t.Errorf("busy store published %s", path)
 		}

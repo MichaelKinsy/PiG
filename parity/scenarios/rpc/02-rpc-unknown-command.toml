@@ -1,3 +1,4 @@
+# Pi 0.87.1 rpc-jsonl.test.ts:6 and #5868:93: literal U+2028/U+2029 survive serialization and unknown-command errors preserve the request id.
 # Behavior family: rpc
 # Surface: unknown command type → error response shape
 #
@@ -21,6 +22,7 @@ description = "Unknown command types produce byte-equal error responses"
 covers = [
   "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
   "packages/coding-agent/src/modes/rpc/rpc-types.ts",
+  "packages/coding-agent/src/modes/rpc/jsonl.ts",
 ]
 tags = ["hermetic", "fast"]
 driver = "rpc-mode"
@@ -30,6 +32,8 @@ input_lines = [
   '{"type":"hello"}',
   '{"type":"nonexistent"}',
   '{"type":"does_not_exist","id":"test-id"}',
+  '{"id":"test","type":"foobar"}',
+  '{"id":"unicode","type":"a b c"}',
 ]
 timeout_seconds = 15
 # Pi 0.84 dispatches JSONL handlers asynchronously; closing stdin immediately

@@ -44,7 +44,7 @@ func main() {
 }
 
 func run() error {
-	out := flag.String("out", "-", "output JSON path or - for stdout")
+	out := flag.String("out", "parity/interfaces/pig-go.json", "output JSON path or - for stdout")
 	flag.Parse()
 	patterns := flag.Args()
 	if len(patterns) == 0 {
@@ -74,7 +74,11 @@ func run() error {
 }
 
 func extract(patterns []string) (inventory, error) {
-	cfg := &packages.Config{Mode: packages.NeedName | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedDeps}
+	// Inventory one canonical build target, independent of the contributor's OS, architecture, cgo toolchain, and local build tags.
+	cfg := &packages.Config{
+		Mode: packages.NeedName | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedDeps,
+		Env:  append(os.Environ(), "GOOS=linux", "GOARCH=amd64", "CGO_ENABLED=0", "GOFLAGS="),
+	}
 	loaded, err := packages.Load(cfg, patterns...)
 	if err != nil {
 		return inventory{}, err

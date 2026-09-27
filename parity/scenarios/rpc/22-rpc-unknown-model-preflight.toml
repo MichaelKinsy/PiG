@@ -55,7 +55,8 @@ with = '"sessionId":"<SESSION_ID>"'
 
 # normalize-rationale: Pi reports package-local documentation paths while PiG
 # reports its materialized embedded-documentation paths. Both paths identify the
-# same provider and model guidance in their respective distributions.
+# same provider and model guidance in their respective distributions. The
+# separators are / on Unix and JSON-escaped \\ on Windows.
 [[assert.normalize_replace]]
-pattern = '  [^\"]*/docs/providers\.md\\n  [^\"]*/docs/models\.md'
+pattern = '  [^\"]*[/\\]+docs[/\\]+providers\.md\\n  [^\"]*[/\\]+docs[/\\]+models\.md'
 with = '  <DOCS>/providers.md\\n  <DOCS>/models.md'

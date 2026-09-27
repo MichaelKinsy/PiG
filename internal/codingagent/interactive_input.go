@@ -416,7 +416,7 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 		return nil
 	}
 
-	// A background OAuth login (github-copilot / anthropic device/PKCE flow)
+	// A background OAuth login (the github-copilot device flow)
 	// polls while the main loop stays live and shows a "Ctrl+C to cancel" hint.
 	// Esc or Ctrl+C aborts that polling window, matching the hint and upstream's
 	// login-dialog abort. This takes priority over the idle clear-editor /
@@ -736,31 +736,18 @@ func (m *InteractiveMode) syncExtensionSlashCommands() {
 	commands := m.newRunner.Commands()
 	dynamic := make([]SlashCommand, 0, len(commands))
 	for _, rc := range commands {
-		handler := rc.Handler
 		nr := m.newRunner
 		cmdName := strings.TrimPrefix(rc.InvocationName, "/")
 		dynamic = append(dynamic, SlashCommand{
 			Name:        cmdName,
 			Description: rc.Description,
 			Handler: func(_ *ExtensionContext, args string) error {
-				if handler == nil {
-					return nil
-				}
-				cmdCtx := nr.CreateCommandContext()
 				baseCtx := m.runCtx
 				if baseCtx == nil {
 					baseCtx = context.Background()
 				}
-				newCtx := extension.WithContext(baseCtx, cmdCtx.Context)
-				newCtx = extension.WithCommandContext(newCtx, cmdCtx)
-				go func() {
-					if err := handler(newCtx, args); err != nil {
-						m.runOnMain(baseCtx, func() {
-							m.appendChatBlock(tui.NewText("\033[31mError: " + err.Error() + "\033[0m"))
-							m.tuiInst.Render()
-						})
-					}
-				}()
+				// Use the runner's command context and error channel, as Session command dispatch does. IPC stays off the input loop.
+				go nr.ExecuteCommand(baseCtx, cmdName, args)
 				return nil
 			},
 		})

@@ -1,0 +1,49 @@
+# Upstream evidence: Pi 0.87.1 packages/coding-agent/src/core/agent-session.ts:1778-1788
+# awaits a command and emits one error for its rejection. runner.ts:699-703 invokes
+# the registered error listeners. An ordinary Error("connection closed") is not a
+# subprocess transport failure and must not be suppressed by lifecycle ownership.
+# Capture the whole block between independent begin/end markers so a duplicated
+# diagnostic also fails equality. Process death itself has no in-process Pi
+# equivalent (D56); TestCrashingCommandHasOneDiagnostic tests that host boundary.
+# Initial PiG output used a separate generic Error line with an extra spacer.
+# Routing interactive commands through the runner, omitting command stacks as Pi
+# does, and using showExtensionError's unspaced blocks reproduces Pi's complete crop.
+name = "22-command-error-once"
+description = "A rejected extension command reports one error and leaves the extension usable"
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/extensions/runner.ts", "packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/error-once.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/error-once.mjs"]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "error-probe-begin"
+capture_end = "error-probe-end"
+
+[[tmux.steps]]
+keys = ["/error-probe begin", "Enter"]
+wait_contains = ["error-probe-begin"]
+
+[[tmux.steps]]
+keys = ["/error-probe fail", "Enter"]
+wait_contains = ["connection closed"]
+
+[[tmux.steps]]
+keys = ["/error-probe end", "Enter"]
+wait_contains = ["error-probe-end"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["connection closed", "error-probe-end"]
+output_equal = true
+runs = 3

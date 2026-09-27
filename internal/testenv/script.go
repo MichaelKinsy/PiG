@@ -26,14 +26,14 @@ func Sh(t testing.TB) string {
 // ScriptCommand returns a command that runs the repository script at path
 // with args. A POSIX host runs the script directly. Windows cannot run a
 // script by its #! line, so there the command names the interpreter that
-// line selects: bash or sh through Bash or Sh, and python3 as found on PATH.
-// A script with any other interpreter skips the test on Windows.
+// line selects: bash or sh through Bash or Sh, and python3 or node as found
+// on PATH. A script with any other interpreter skips the test on Windows.
 func ScriptCommand(t testing.TB, path string, args ...string) *exec.Cmd {
 	t.Helper()
 	if !needsInterpreter {
 		return exec.Command(path, args...)
 	}
-	interpreter := shebangInterpreter(t, path)
+	interpreter := ShebangInterpreter(t, path)
 	var program string
 	switch interpreter {
 	case "bash":
@@ -42,15 +42,17 @@ func ScriptCommand(t testing.TB, path string, args ...string) *exec.Cmd {
 		program = Sh(t)
 	case "python3":
 		program = python3(t)
+	case "node":
+		program = node(t)
 	default:
 		t.Skipf("%s: Windows cannot run a #!%s script", path, interpreter)
 	}
 	return exec.Command(program, append([]string{path}, args...)...)
 }
 
-// shebangInterpreter is the program a script's #! line runs, with /usr/bin/env
+// ShebangInterpreter is the program a script's #! line runs, with /usr/bin/env
 // and the directory removed: "#!/usr/bin/env python3" is python3.
-func shebangInterpreter(t testing.TB, path string) string {
+func ShebangInterpreter(t testing.TB, path string) string {
 	t.Helper()
 	file, err := os.Open(path)
 	if err != nil {
@@ -81,4 +83,13 @@ func python3(t testing.TB) string {
 	}
 	t.Skip("python3 is not on PATH")
 	return ""
+}
+
+func node(t testing.TB) string {
+	t.Helper()
+	path, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node is not on PATH")
+	}
+	return path
 }

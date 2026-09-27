@@ -334,7 +334,7 @@ func (h *Harness) loadOwnerTasks(ctx context.Context, conversations []Conversati
 	return nil
 }
 
-// Resume orphans live tasks of unknown kinds, then starts the scheduler.
+// Resume captures unknown live tasks before returning, then asynchronously orphans that set and starts the scheduler.
 func (h *Harness) Resume() error {
 	h.lifecycleMu.Lock()
 	if h.suspended {
@@ -347,10 +347,14 @@ func (h *Harness) Resume() error {
 	}
 	h.resumed = true
 	h.resumeDone = make(chan struct{})
+	// The prefix before reconcileOrphans' first await runs in the resume caller in Pi.
+	orphaned := slices.DeleteFunc(h.session.liveTaskList(), func(task Task) bool {
+		return h.kinds.get(task.Kind) != nil
+	})
 	h.lifecycleMu.Unlock()
 	go func() {
 		defer close(h.resumeDone)
-		if err := h.reconcileOrphans(); err != nil {
+		if err := h.reconcileOrphans(orphaned); err != nil {
 			h.onReport(err)
 			return
 		}
@@ -364,22 +368,17 @@ func (h *Harness) Resume() error {
 	return nil
 }
 
-func (h *Harness) reconcileOrphans() error {
-	var orphaned []Task
+func (h *Harness) reconcileOrphans(orphaned []Task) error {
+	if len(orphaned) == 0 {
+		return nil
+	}
 	var docs []DocRef
 	seen := map[Id]bool{}
-	for _, task := range h.session.liveTaskList() {
-		if h.kinds.get(task.Kind) != nil {
-			continue
-		}
-		orphaned = append(orphaned, task)
+	for _, task := range orphaned {
 		if !seen[task.ConversationId] {
 			seen[task.ConversationId] = true
 			docs = append(docs, StickyDoc(task.ConversationId))
 		}
-	}
-	if len(orphaned) == 0 {
-		return nil
 	}
 	_, err := h.session.commit(h.ctx, kernelInvoker(nil), func(_ context.Context, tx *Tx, _ TransactionControl) (any, error) {
 		for _, task := range orphaned {

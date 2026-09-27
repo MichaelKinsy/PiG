@@ -119,7 +119,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/agent/src/harness/pico3/bounded.ts` | `agent/harness/pico3/bounded.go; tool_bounds_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/chord.ts` | `agent/harness/pico3/{chord,chord_service,chord_ops}.go (typed service tokens, scoped forwarding, bounded caller-supplied state publication; chord_test.go, chord_lifecycle_test.go)` | ✅ |
 | `packages/agent/src/harness/pico3/context.ts` | `agent/harness/pico3/context.go; turn_test.go` | ✅ |
-| `packages/agent/src/harness/pico3/harness.ts` | `agent/harness/pico3/harness.go, conversation.go; lifecycle_test.go, transactions_test.go` | ✅ |
+| `packages/agent/src/harness/pico3/harness.ts` | `agent/harness/pico3/harness.go, conversation.go; lifecycle_test.go, transactions_test.go, scheduler_resume_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/hooks.ts` | `agent/harness/pico3/hooks.go; tool_bounds_test.go, turn_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/index.ts` | `agent/harness/pico3/ (export surface correspondence; upstream re-exports implementations from sibling files; their behavior tests belong to the owning sibling rows, not blanket barrel coverage)` | ✅ |
 | `packages/agent/src/harness/pico3/jsonl.ts` | `agent/harness/pico3/jsonl.go; atomicity_test.go, lifecycle_test.go` | ✅ |
@@ -134,7 +134,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/agent/src/harness/pico3/kinds/tool.ts` | `agent/harness/pico3/kinds_tool.go; tool_bounds_test.go, atomicity_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/membrane.ts` | `agent/harness/pico3/membrane.go; membrane_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/memory.ts` | `agent/harness/pico3/memory.go; storage_test.go, turn_test.go` | ✅ |
-| `packages/agent/src/harness/pico3/scheduler.ts` | `agent/harness/pico3/scheduler.go; lifecycle_test.go, waiters_test.go` | ✅ |
+| `packages/agent/src/harness/pico3/scheduler.ts` | `agent/harness/pico3/scheduler.go; lifecycle_test.go, waiters_test.go, spec_scheduler_process_test.go, scheduler_resume_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/session.ts` | `agent/harness/pico3/session.go, session_docs.go, tx.go, tx_writes.go; transactions_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/system.ts` | `agent/harness/pico3/system.go; turn_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/types.ts` | `agent/harness/pico3/types.go, kind.go, runtime.go, json.go; transactions_test.go, lifecycle_test.go` | ✅ |
@@ -395,7 +395,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/cli/project-trust.ts` | `cmd/pig/project_trust.go` | ✅ |
 | `packages/coding-agent/src/cli/startup-ui.ts` | `internal/codingagent/startup_ui.go (ShowStartupSelector/ShowStartupInput/SelectStartupSession; startStartupTui color-scheme + OSC 11 background query with reply consumption). First-time setup is designed out: upstream shouldRunFirstTimeSetup returns false unless package @earendil-works/pi-coding-agent, app pi and .pi config dir, so it never runs for this binary` | ✅ |
 | `packages/coding-agent/src/core/sdk.ts` | `coding/session.go + coding/runtime.go + coding/services.go` | ✅ |
-| `packages/coding-agent/src/core/agent-session.ts` | `coding/session.go + ai/assistant_retry.go + internal/codingagent/auto_recovery.go (coding/session_zero_usage_compaction_test.go; coding/session_dns_retry_test.go; ai/assistant_retry_test.go; internal/codingagent/classifier_parity_test.go)` | ✅ |
+| `packages/coding-agent/src/core/agent-session.ts` | `coding/session.go + coding/session_preflight.go + ai/assistant_retry.go + internal/codingagent/auto_recovery.go (coding/session_zero_usage_compaction_test.go; coding/session_dns_retry_test.go; ai/assistant_retry_test.go; internal/codingagent/classifier_parity_test.go)` | ✅ |
 | `packages/coding-agent/src/core/agent-session-runtime.ts` | `partial: coding/runtime.go, coding/session.go, and cmd/pig/rpc_mode.go; Session replacement retains the host-scoped extension runner (D30) and startup-project Services and Resources (D61)` | 🟡 |
 | `packages/coding-agent/src/core/agent-session-services.ts` | `coding/services.go` | ✅ |
 | `packages/coding-agent/src/core/auth-storage.ts` | `ai/auth.go + ai/auth_store.go (CredentialStore, ReadOnlyAuthStorage, in-memory store)` | ✅ |
@@ -485,10 +485,10 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/coding-agent/src/modes/interactive/theme/theme-controller.ts` | `tui/theme.go (0.79.10 Automatic option; AC-6 / Stage 2)` | ✅ |
 | `packages/coding-agent/src/modes/interactive/model-search.ts` | `tui/model_search.go (ModelSearchItem, GetModelSearchText, GetModelSelectorSearchText); GetModelSelectorSearchText feeds tui/model_select.go applyFilter over ModelSelectorItem.Name (raw model name), GetModelSearchText feeds tui/scoped_models_list.go refresh and internal/codingagent/interactive_commands.go modelArgCompletions. tui/model_search_test.go proxy-provider fixture (openrouter/vercel-ai-gateway openai/gpt-5 ids) asserts the Pi 0.87.1 fuzzyFilter order for both functions and the selector` | ✅ |
 | `packages/coding-agent/src/modes/print-mode.ts` | `cmd/pig/print_mode.go (text) and cmd/pig/json_mode.go (json): upstream runs both modes from one function, pig splits them by mode. json streams the session event stream as JSONL while the turn runs; text still prints only the final assistant message. Behavioral coverage: print/01-print-mode-arithmetic, json/01-json-mode-streams-events` | ✅ |
-| `packages/coding-agent/src/modes/rpc/rpc-mode.ts` | `cmd/pig/rpc_mode.go + cmd/pig/rpc_ui.go` | ✅ |
+| `packages/coding-agent/src/modes/rpc/rpc-mode.ts` | `cmd/pig/rpc_mode.go + cmd/pig/rpc_dispatch.go + cmd/pig/rpc_admission.go + cmd/pig/rpc_ui.go` | ✅ |
 | `packages/coding-agent/src/modes/rpc/rpc-types.ts` | `cmd/pig/rpc_types.go` | ✅ |
 | `packages/coding-agent/src/modes/rpc/rpc-client.ts` | `coding/rpcclient/rpc_client.go + commands.go + types.go + process_unix.go/process_windows.go (RpcClient spawns the pig executable in --mode rpc where upstream spawns node cliPath; typed wire structs replace the TypeScript imports, with raw JSON kept for entries, messages, and events). coding/rpcclient/rpc_client_test.go ports rpc-client-clear-queue/clone/process-exit tests against scripted child processes; rpc_mode_test.go ports rpc.test.ts against a pig binary built in TestMain, using test-faux in place of the live Anthropic model` | ✅ |
-| `packages/coding-agent/src/modes/rpc/jsonl.ts` | `(inlined)` | ✅ |
+| `packages/coding-agent/src/modes/rpc/jsonl.ts` | `coding/rpcclient/jsonl.go; cmd/pig/rpc_types.go` | ✅ |
 | `packages/coding-agent/src/modes/index.ts` | `(barrel)` | n/a |
 | `packages/coding-agent/src/utils/changelog.ts` | `embed.go + internal/codingagent/changelog.go` | ✅ |
 | `packages/coding-agent/src/utils/ansi.ts` | `internal/codingagent/export/ansi_html.go` | ✅ |

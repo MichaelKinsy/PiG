@@ -42,6 +42,7 @@ func TestLiveRenderingAdvancesWithoutInput(t *testing.T) {
 	}
 
 	t.Run("parallel-tools", func(t *testing.T) {
+		requireTmux(t)
 		cwd := t.TempDir()
 		paths := []string{
 			filepath.Join(cwd, ".pig-live-parallel-a"),

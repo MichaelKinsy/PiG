@@ -236,6 +236,9 @@ func UpstreamVersion(ref BinaryRef) string {
 	return "unknown"
 }
 
+// splitPath returns p's names, root excluded. The walk ends at a relative
+// path's first name or at the root, which filepath.Split returns unchanged:
+// "/", a volume such as C:\, or a UNC share.
 func splitPath(p string) []string {
 	var out []string
 	for {
@@ -243,10 +246,11 @@ func splitPath(p string) []string {
 		if base != "" {
 			out = append([]string{base}, out...)
 		}
-		if dir == "" || dir == "/" {
+		next := filepath.Clean(dir)
+		if dir == "" || next == p {
 			break
 		}
-		p = filepath.Clean(dir)
+		p = next
 	}
 	return out
 }

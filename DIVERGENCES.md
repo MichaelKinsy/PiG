@@ -909,6 +909,8 @@ latency-sensitive and the host can retain the last completed frame. A logical
 packed-member failure never quarantines healthy siblings. Shared process death
 remains the packed-cell quarantine authority.
 
+The lifecycle handler owns a failed connection's diagnostic when a crash handler is installed. Commands, shortcuts and events interrupted by that connection still fail, but do not emit duplicate notifications. Without a crash handler, the runner reports the invocation error. Ordinary handler rejections are not transport failures. Packed socket-close and process-exit detectors claim each member under the same registry lock, so a late observation neither reports it twice nor unregisters a replacement. Subprocess stderr logs are removed after teardown unless a load or lifecycle diagnostic names them.
+
 Remove when: Pig no longer hosts extensions across a subprocess boundary, or
 upstream provides an equivalent subprocess liveness contract that Pig can port
 without this divergence.
@@ -918,6 +920,8 @@ Call-site markers:
   cancellation, and typed transport failures.
 - `coding/extension/host/subprocess/host.go`: handler inactivity and
   supervision.
+- `coding/extension/host/inproc/runner.go`: lifecycle-owned invocation diagnostics.
+- `internal/codingagent/interactive_helpers.go`: lifecycle-owned shortcut diagnostics.
 - `coding/extension/host/subprocess/render_proxy.go`: generation-scoped
   renderer inactivity and last-frame retention.
 
@@ -927,7 +931,7 @@ liveness tests, and `coding/extension/host/subprocess/protocol_sdk_sync_test.go`
 The tests use an injected monotonic clock and deterministic channels. They cover
 healthy and missing heartbeat, unbounded tool/command/event/shortcut waits,
 renderer retention, cancellation ordering, writer failure, and packed-member
-versus packed-process failure.
+versus packed-process failure. `coding/extension/host/subprocess/crash_once_test.go` covers both detector orders, replacement, real crashing commands in packed/isolated mode, and ordinary errors. `isolated_log_test.go` covers normal runs, reload, cancellation and retained failure logs. `internal/codingagent/interactive_command_error_test.go` proves command and shortcut diagnostic ownership through the interactive dispatch path; `22-command-error-once` compares ordinary command rejection and recovery against Pi.
 Ratification: explicitly approved by the user for section SHA-256 `a4109be02ff4f48b03c168073e2288b032971cff63982741e7582b68464bca81`.
 SCRUTINIZED:approved
 ## D57 Installing an extension directory as a package is refused

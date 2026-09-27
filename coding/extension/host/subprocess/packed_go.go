@@ -35,10 +35,12 @@ type packedProcessState struct {
 	stopOnce     sync.Once
 	waitOnce     sync.Once
 	waitDone     chan struct{}
+	watchDone    chan struct{}
 	waitErr      error
 	processTree  *processTree
 	lease        *runtimecell.UsageLease
 	releaseLease sync.Once
+	stderrLog    *processStderrLog
 }
 
 func (p *packedProcessState) stop() {
@@ -57,6 +59,9 @@ func (p *packedProcessState) stop() {
 
 func (p *packedProcessState) wait() error {
 	<-p.startWait()
+	if p.stopping.Load() {
+		p.stderrLog.remove()
+	}
 	return p.waitErr
 }
 
@@ -158,7 +163,7 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 		// packed mode must report the same per-extension path an isolated
 		// extension would, or two packed members that both register the same
 		// tool stop looking like a conflict because they share one binary.
-		me := &managedExt{config: ExtConfig{Name: desc.Name, Path: cell.BinaryPath, Source: desc.Root, Enabled: true}, host: h, supervisor: NewSupervisor(DefaultSupervisorConfig()), sockPath: sockPath, packedCellKey: cell.Key}
+		me := &managedExt{config: ExtConfig{Name: desc.Name, Path: cell.BinaryPath, Source: desc.Root, Enabled: true}, host: h, parentCtx: ctx, supervisor: NewSupervisor(DefaultSupervisorConfig()), sockPath: sockPath, packedCellKey: cell.Key}
 		pendingExts = append(pendingExts, packedPendingExt{desc: desc, me: me, ln: ln})
 		env = append(env, fmt.Sprintf("%s=%s", runtimecell.SocketEnvName(desc.Name), sockPath))
 	}
@@ -194,21 +199,28 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 	)
 	cmd.Env = env
 	cmd.Dir = h.cwd
+	// pig additive (D20): packed-process diagnostics live only until teardown unless a reported failure retains them.
 	stderrFile, _ := os.CreateTemp("", fmt.Sprintf("pig-packed-%s-*.log", sanitizeLogName(cell.Key)))
 	if stderrFile != nil {
 		cmd.Stderr = stderrFile
-		defer func() { _ = stderrFile.Close() }()
+		processState.stderrLog = &processStderrLog{path: stderrFile.Name()}
 	}
 	for _, pending := range pendingExts {
 		h.markExtension(pending.me.config.Name, "spawn-start")
 	}
 	processTree, err := startProcessTree(cmd)
+	if stderrFile != nil {
+		// The child owns its inherited handle; close ours before any waiter can remove the file, including on Windows.
+		_ = stderrFile.Close()
+	}
 	if err != nil {
 		processState.releaseUsageLease()
 		cancel()
 		loadErr := newLoadError(cell.Key, "spawn", "spawn_failed", fmt.Errorf("spawn packed runner %s: %w", cell.BinaryPath, err))
-		if stderrFile != nil {
-			loadErr.StderrLog = stderrFile.Name()
+		if ctx.Err() != nil {
+			processState.stderrLog.remove()
+		} else {
+			loadErr.StderrLog = processState.stderrLog.retain()
 		}
 		return nil, nil, loadErr
 	}
@@ -264,6 +276,7 @@ func (h *Host) startGoPackedCell(ctx context.Context, cell *runtimecell.GoPacked
 		h.watchedPacked = make(map[*packedProcessState]struct{})
 	}
 	h.watchedPacked[processState] = struct{}{}
+	processState.watchDone = make(chan struct{})
 	h.mu.Unlock()
 	go h.watchPackedProcess(processState)
 	if acceptErr != nil {
@@ -378,8 +391,12 @@ func (h *Host) rollbackPartialPackedCell(staged []stagedManagedExt) {
 
 func (h *Host) watchPackedProcess(process *packedProcessState) {
 	defer func() {
+		process.stderrLog.remove()
 		process.releaseUsageLease()
 		h.mu.Lock()
+		if process.watchDone != nil {
+			close(process.watchDone)
+		}
 		delete(h.watchedPacked, process)
 		h.mu.Unlock()
 	}()
@@ -400,7 +417,16 @@ func (h *Host) watchPackedProcess(process *packedProcessState) {
 	h.quarantinePackedCellGeneration(process.key, process.generation, reason)
 }
 
-func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Listener) (*extension.Extension, error) {
+func (h *Host) acceptPackedExt(ctx context.Context, me *managedExt, ln net.Listener) (_ *extension.Extension, err error) {
+	defer func() {
+		if loadErr, ok := errors.AsType[*LoadError](err); ok {
+			if ctx.Err() != nil {
+				loadErr.StderrLog = ""
+			} else {
+				loadErr.StderrLog = me.retainStderrLog()
+			}
+		}
+	}()
 	connCh := make(chan net.Conn, 1)
 	errCh := make(chan error, 1)
 	go func() {

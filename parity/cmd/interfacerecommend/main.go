@@ -62,6 +62,11 @@ func main() {
 	goPath := flag.String("go-inventory", "parity/interfaces/pig-go.json", "Pig Go inventory")
 	out := flag.String("out", "-", "output path or -")
 	flag.Parse()
+	outSet := false
+	flag.Visit(func(f *flag.Flag) { outSet = outSet || f.Name == "out" })
+	if !outSet {
+		fmt.Fprintln(os.Stderr, "interfacerecommend: writing to stdout, not the committed inventory; run: make generate (or: make interface-recommendations-generate). Use -out - for explicit stdout.")
+	}
 
 	var upstream semanticInventory
 	mustDecode(*upstreamPath, &upstream)

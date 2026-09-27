@@ -6,7 +6,6 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -24,9 +23,7 @@ type harness struct {
 
 func newHarness(t *testing.T) *harness {
 	t.Helper()
-	if _, err := exec.LookPath("tmux"); err != nil {
-		t.Skip("tmux not on PATH:", err)
-	}
+	requireTmux(t)
 	bin := buildBinary(t)
 	id := randID()
 	session := "pig-it-" + id
@@ -145,6 +142,19 @@ func (h *harness) sendKey(name string) {
 	cmd := tmuxCommand("send-keys", "-t", h.session, name)
 	if out, err := cmd.CombinedOutput(); err != nil {
 		h.t.Fatalf("tmux send-keys %s: %v\n%s", name, err, out)
+	}
+}
+
+// paste delivers text the way a terminal delivers Cmd+V or Ctrl+Shift+V:
+// wrapped in bracketed-paste markers once pig has enabled that mode.
+func (h *harness) paste(text string) {
+	h.t.Helper()
+	buffer := "pig-it-paste-" + randID()
+	if out, err := tmuxCommand("set-buffer", "-b", buffer, text).CombinedOutput(); err != nil {
+		h.t.Fatalf("tmux set-buffer: %v\n%s", err, out)
+	}
+	if out, err := tmuxCommand("paste-buffer", "-p", "-d", "-b", buffer, "-t", h.session).CombinedOutput(); err != nil {
+		h.t.Fatalf("tmux paste-buffer: %v\n%s", err, out)
 	}
 }
 

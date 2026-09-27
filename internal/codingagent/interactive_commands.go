@@ -1199,50 +1199,9 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 	return sc
 }
 
-// buildAuthProviderName returns the user-facing provider label used by /login and /logout.
+// buildAuthProviderName returns the user-facing provider label used by /login
+// and /logout. Upstream renders provider.name in the login selector and in
+// login/logout status labels, so delegate to the catalog name.
 func buildAuthProviderName(provider string) string {
-	switch provider {
-	case "anthropic":
-		return "Anthropic"
-	case "github-copilot":
-		return "GitHub Copilot"
-	case "openai-codex":
-		return ai.OpenAICodexOAuthDisplayName
-	case "amazon-bedrock":
-		return "Amazon Bedrock"
-	case "azure-openai-responses":
-		return "Azure OpenAI Responses"
-	case "cerebras":
-		return "Cerebras"
-	case "fireworks":
-		return "Fireworks"
-	case "google":
-		return "Google Gemini"
-	case "google-vertex":
-		return "Google Vertex AI"
-	case "groq":
-		return "Groq"
-	case "huggingface":
-		return "Hugging Face"
-	case "kimi-coding":
-		return "Kimi For Coding"
-	case "mistral":
-		return "Mistral"
-	case "minimax":
-		return "MiniMax"
-	case "minimax-cn":
-		return "MiniMax (China)"
-	case "openai":
-		return "OpenAI"
-	case "openrouter":
-		return "OpenRouter"
-	case "vercel-ai-gateway":
-		return "Vercel AI Gateway"
-	case "xai":
-		return "xAI"
-	case "zai":
-		return "ZAI"
-	default:
-		return provider
-	}
+	return ai.ProviderDisplayName(provider)
 }

@@ -24,6 +24,20 @@ Reject a missing mode, family, or upgrade tag. Combine families only when the
 upstream contract and production call path require it. State the coupling before
 editing.
 
+## Faithful, general implementations
+
+Apply `AGENTS.md`'s faithful, general implementation rule before proposing a patch or accepting evidence. Port Pi's design, not just its output for the case in front of you. Pi drives provider, model, auth, and tool behavior from shared data (the model catalog, `defaultModelPerProvider`, provider auth metadata, API kinds) and a small number of shared functions. PiG must do the same:
+
+- **One shared path per Pi function.** When Pi has one function for every provider (for example `completeProviderAuthentication`, `resolveCliModel`, `resolveProviderAuth`), PiG has one too. Do not add a provider-specific copy, and delete existing copies when you touch them.
+- **No hard-coded provider or model choices.** A provider ID, model ID, API kind, base URL, or credential variable name belongs in generated catalog data or the provider's own implementation, not in a branch of shared code. If Pi itself special-cases a provider, cite the Pi file:line next to the branch.
+- **Test across provider shapes.** A shared path is not verified by one provider. Cover at least an OAuth provider, an API-key provider, an OpenAI-compatible provider with a custom base URL, and a provider with no default model, as the path allows. GitHub Copilot and the `test-faux` provider alone are never enough; most past sessions used only those, which is how provider-specific bugs shipped.
+- **Fix the class, not the instance.** When you find a special case that diverges from Pi, look for its siblings and fix them together. Report out-of-scope siblings and coordinate ownership before expanding the task.
+- **Root causes only.** Do not weaken tests, raise a timeout, add a retry or sleep, skip a test, or normalize a comparison to make a failure go away. Retries and timeouts are for faults outside our control, and they must be surfaced, not hidden.
+
+Review provider/model literal lint-guard findings under `AGENTS.md`. Each allowlisted exception must cite the Pi source that makes it provider-specific. If the guard is unavailable, perform the same review manually and report that limit. Lint cannot replace provider-shape evidence.
+
+Refuse to report a port complete if it introduces a provider-specific branch without a Pi citation or verifies a shared path with a single provider. Record missing citations and missing provider-shape evidence as blockers. Explain an inapplicable shape from the upstream contract, not unavailable credentials or fixtures. This refusal applies to review and verification tasks as well as source-changing tasks.
+
 ## Preflight
 
 1. Find the nearest ancestor that contains `AGENTS.md` and
@@ -100,6 +114,7 @@ After approval:
 
 ## Evidence rules
 
+- [ ] Check [Faithful, general implementations](#faithful-general-implementations) against the branch citations and provider-shape assertions.
 - Prefer hermetic unit proof, then local protocol proof, then terminal parity.
   Use live credentials only when the contract requires an external provider.
 - Registration, startup, and declaration presence do not prove dispatch,
@@ -110,8 +125,7 @@ After approval:
   public surfaces as unverified until current evidence supports them.
 - Do not edit `.upstream/current` directly.
 - Do not hand-edit generated inventories.
-- Do not weaken tests, add skips, hide failures with retries or normalization,
-  or claim coverage for unobserved behavior.
+- Do not claim coverage for unobserved behavior.
 - Do not run blocking extension IPC or unbounded work on the TUI loop.
 - Own every goroutine, process, file descriptor, temporary directory, and tmux
   session. Bound cancellation and shutdown.
@@ -141,6 +155,7 @@ Report:
 - upstream behavior observed;
 - failing evidence and source fix;
 - tests and scenarios added or tightened;
+- [ ] shared-path Pi citations, provider-shape results, and contract-based reasons for inapplicable shapes;
 - mapping and divergence changes;
 - exact commands run and their results;
 - remaining blockers.

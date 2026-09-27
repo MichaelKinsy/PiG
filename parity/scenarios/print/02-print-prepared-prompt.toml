@@ -1,0 +1,22 @@
+# Pi 0.87.1 print-mode.ts:132-155 awaits Session.prompt and prints the final assistant text after settlement. This exercises the blocking Session/Agent APIs that share RPC's prepared-run implementation, without a live provider or credentials.
+name = "02-print-prepared-prompt"
+description = "Print mode drains the shared prepared prompt and prints the final assistant text."
+covers = ["packages/coding-agent/src/modes/print-mode.ts", "packages/agent/src/agent.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+
+[print]
+prompt = "What is 20+22?"
+timeout_seconds = 15
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--no-context-files", "--no-skills", "--system-prompt", "Print admission probe."]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--no-context-files", "--no-skills", "--system-prompt", "Print admission probe."]
+
+[assert]
+runs = 3
+exit_code = 0
+output_equal = true
+both_contain = ["42"]

@@ -80,15 +80,35 @@ func TestForkSynthesizesMissingToolResult(t *testing.T) {
 func TestWatchFoldMatchesFreshAfterSummaryHead(t *testing.T) {
 	env := openEnv(t, openOptions{tools: []*ToolDeclaration{newTool("a", toolOptions{}).ToolDeclaration}, root: &RootSpec{Rewindable: JsonObject{"model": testModel, "selectedTools": []any{"a"}, "keepRecent": 10}}, models: newFake(fakeOptions{respond: summaryScript})})
 	state := must(env.h.Namespace("watch-private", NamespaceDefaults{Rewindable: JsonObject{"w": 0}}, nil))
-	collector := collectWatch(t, env.root)
+	watch := must(env.root.Watch(bg))
+	t.Cleanup(watch.Stop)
+	var envelopes []*Envelope
+	finished := make(chan struct{})
+	watch.Start(func(envelope *Envelope) {
+		envelopes = append(envelopes, envelope)
+		for _, event := range envelope.Events {
+			if event["type"] == "compaction.finished" {
+				watch.Stop()
+				close(finished)
+				return
+			}
+		}
+	})
 	env.wait(env.send(env.root, "tool:a"))
 	_, err := env.root.Commit(bg, func(_ context.Context, tx *Tx) (any, error) { must(tx.Plugins(state)).Set("w", 1); return nil, nil })
 	check(t, err)
 	env.untilTerminal(must(env.root.Collapse(bg, nil)))
 	env.idle()
-	collector.watch.Stop()
-	folded := collector.view
-	for _, envelope := range collector.Envelopes() {
+	// Pi's kinds.test.ts waits for delivery after terminal/idle state. Those reads do not join post-line listeners; acknowledge the terminal envelope before folding instead of sleeping.
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	select {
+	case <-finished:
+	case <-ctx.Done():
+		t.Fatal("watch did not deliver compaction.finished:", context.Cause(ctx))
+	}
+	folded := watch.View
+	for _, envelope := range envelopes {
 		folded = must(ApplyEnvelope(folded, envelope))
 	}
 	fresh := must(env.root.Watch(bg))

@@ -7,9 +7,12 @@ FIXTURE_EXT_BIN="$OUT_DIR/fixture-ext"
 SDK_FIXTURE_BIN="$OUT_DIR/sdk-fixture"
 CONFORMANCE_SDK_FIXTURE_BIN="$OUT_DIR/conformance-sdk-fixture"
 RUST_TARGET=${CARGO_TARGET_DIR:-"$OUT_DIR/rust-target"}
-if [[ "$RUST_TARGET" != /* ]]; then
-  RUST_TARGET="$ROOT/$RUST_TARGET"
-fi
+# A drive-letter path is absolute too: Git for Windows' bash passes a Windows
+# CARGO_TARGET_DIR through unchanged.
+case "$RUST_TARGET" in
+  /* | [A-Za-z]:[\\/]*) ;;
+  *) RUST_TARGET="$ROOT/$RUST_TARGET" ;;
+esac
 RUST_SDK_FIXTURE_BIN="$OUT_DIR/rust-sdk-fixture"
 
 mkdir -p "$OUT_DIR"

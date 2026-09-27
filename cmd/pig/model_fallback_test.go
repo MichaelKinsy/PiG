@@ -8,11 +8,11 @@ import (
 )
 
 func TestBuildModelParsesMaxThinkingSuffix(t *testing.T) {
-	agentDirForModelOverride = t.TempDir()
+	dir := t.TempDir()
+	agentDirForModelOverride = dir
 	t.Cleanup(func() { agentDirForModelOverride = "" })
-	registry := codingagent.NewModelRegistry(t.TempDir())
 
-	model, thinking, _, err := buildModel("github-copilot/gpt-5.4:max", registry)
+	model, thinking, _, err := buildModel("github-copilot/gpt-5.4:max", testServices(t, dir))
 	if err != nil {
 		t.Fatalf("buildModel: %v", err)
 	}
@@ -24,11 +24,11 @@ func TestBuildModelParsesMaxThinkingSuffix(t *testing.T) {
 // An exact provider/model catalog entry resolves with its real capabilities
 // and no warning.
 func TestResolveModel_ExactCatalog_NoWarning(t *testing.T) {
-	agentDirForModelOverride = t.TempDir()
+	dir := t.TempDir()
+	agentDirForModelOverride = dir
 	t.Cleanup(func() { agentDirForModelOverride = "" })
-	registry := codingagent.NewModelRegistry(t.TempDir())
 
-	model, _, warning, err := resolveModel("github-copilot/gpt-5.4", "", codingagent.Settings{}, registry)
+	model, _, warning, err := resolveModel("github-copilot/gpt-5.4", "", codingagent.Settings{}, testServices(t, dir))
 	if err != nil {
 		t.Fatalf("resolveModel: %v", err)
 	}
@@ -46,11 +46,11 @@ func TestResolveModel_ExactCatalog_NoWarning(t *testing.T) {
 // warning. Guards against the cross-provider LookupModel borrow that made
 // `github-copilot/gpt-4o` silently inherit openai gpt-4o's 128k window.
 func TestResolveModel_UnknownUnderProvider_FallsBackAndWarns(t *testing.T) {
-	agentDirForModelOverride = t.TempDir()
+	dir := t.TempDir()
+	agentDirForModelOverride = dir
 	t.Cleanup(func() { agentDirForModelOverride = "" })
-	registry := codingagent.NewModelRegistry(t.TempDir())
 
-	model, _, warning, err := resolveModel("github-copilot/gpt-4o", "", codingagent.Settings{}, registry)
+	model, _, warning, err := resolveModel("github-copilot/gpt-4o", "", codingagent.Settings{}, testServices(t, dir))
 	if err != nil {
 		t.Fatalf("resolveModel: %v", err)
 	}
