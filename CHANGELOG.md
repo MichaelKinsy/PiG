@@ -15,6 +15,9 @@ All notable public changes to PiG will be recorded in this file.
 
 ### Fixed
 
+- Fixed Node extensions that export their default with `export { name as default }`, as bundlers emit, or with `module.exports`, being rejected with "has no default extension export". PiG now imports the module and checks its default export at load time, as Pi does, and reports a module without one with Pi's "does not export a valid factory function" message.
+- Fixed Node extensions failing to load when they import any value from `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui` or `@earendil-works/pi-ai` that PiG's modules did not provide, such as `isToolCallEventType`. PiG now provides every export of Pi 0.87.1's packages, checked in CI against Pi's own `index.ts`. Helpers that run unchanged outside Pi (session context, frontmatter parsing with the same YAML library, transcript and message conversion) are Pi's own code; values that only exist inside Pi's own process throw a clear error naming them when called (D73).
+- Fixed `pi-mcp-adapter`'s `/mcp` panel crashing the extension process, and with it every extension sharing that process, because PiG's `Container` had no `clear()`. PiG's `Box`, `Container`, `Text`, `Spacer`, `Markdown` and `Stack` now render and update exactly as Pi's, checked against Pi's pi-tui in CI.
 - Preserve RPC response order when `cycle_model` and `abort_retry` arrive together, including cycles that complete immediately.
 - Let later RPC model cycles finish while an earlier extension listener is waiting, and report the thinking level after the listener completes, as Pi does.
 - Keep read-tool display metadata out of RPC events and saved sessions, while preserving read previews and truncation details.

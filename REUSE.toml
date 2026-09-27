@@ -109,3 +109,18 @@ path = "tui/widthx/unicode_tables.go"
 precedence = "aggregate"
 SPDX-FileCopyrightText = "Copyright © 1991-2026 Unicode, Inc."
 SPDX-License-Identifier = "Unicode-3.0"
+
+# Verbatim copies of the pinned Pi release's dist modules, served to Node
+# extensions (automation/gen/vendor-pi-dist.sh).
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/pi-dist/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
+SPDX-License-Identifier = "MIT"
+
+# The unmodified ES module build of yaml 2.9.0, the YAML library Pi uses.
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/yaml/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright Eemeli Aro <eemeli@gmail.com>"
+SPDX-License-Identifier = "ISC"

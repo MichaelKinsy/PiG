@@ -13,7 +13,7 @@ import (
 
 	"golang.org/x/mod/semver"
 
-	"github.com/MichaelKinsy/PiG/coding/packagecontent"
+	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
 )
 
 const nodeRuntimeVersion = "v2"
@@ -32,7 +32,7 @@ const nodeLauncherFormat = "direct-node-v3"
 // extension entry the launcher runs.
 const nodeEntryFile = "entry"
 
-//go:embed runtime-node/*.mjs runtime-node/shims/*.mjs runtime-node/shims/get-east-asian-width
+//go:embed runtime-node/*.mjs runtime-node/shims/*.mjs runtime-node/shims/get-east-asian-width runtime-node/shims/pi-dist runtime-node/shims/yaml
 var nodeRuntimeFS embed.FS
 
 func isNodeSourcePath(path string) bool {
@@ -73,7 +73,7 @@ func resolveNodeEntrypoint(src string) (string, error) {
 	// that before the conventional file names. Without this pig cannot load a
 	// package in its published form, only one that happens to keep an index at
 	// the root.
-	declared, missing, err := piPackageEntrypoints(src)
+	declared, missing, hasManifest, err := extsource.NodeManifestEntries(src)
 	if err != nil {
 		return "", err
 	}
@@ -92,6 +92,12 @@ func resolveNodeEntrypoint(src string) (string, error) {
 		return "", fmt.Errorf(
 			"package %s declares pi.extensions %v but none exist; build the package first",
 			src, missing)
+	}
+	if hasManifest {
+		// Upstream loads only what pi.extensions names; a declared directory
+		// with no entry file contributes nothing, and the root's own index is
+		// never consulted in its place.
+		return "", fmt.Errorf("package %s declares pi.extensions directories with no extension entry file", src)
 	}
 	for _, name := range []string{"index.ts", "index.js", "main.ts", "main.js", "extension.ts", "extension.js"} {
 		candidate := filepath.Join(src, name)
@@ -228,33 +234,6 @@ func copyEmbeddedTree(efs embed.FS, root, dst string) error {
 		}
 		return os.WriteFile(target, data, mode)
 	})
-}
-
-// piPackageEntrypoints returns the existing files named by package.json
-// "pi.extensions", resolved against dir. A package without the field, or with a
-// malformed one, yields no entries so resolution falls through to the
-// conventional names, matching upstream readPiManifest returning null.
-func piPackageEntrypoints(dir string) (entries, missing []string, err error) {
-	packageJSON := filepath.Join(dir, "package.json")
-	if _, err := os.Stat(packageJSON); err != nil {
-		if os.IsNotExist(err) {
-			return nil, nil, nil
-		}
-		return nil, nil, err
-	}
-	manifest := packagecontent.ReadPiManifest(packageJSON)
-	if manifest == nil {
-		return nil, nil, nil
-	}
-	for _, rel := range manifest.Extensions {
-		candidate := filepath.Join(dir, filepath.FromSlash(rel))
-		if fileExists(candidate) {
-			entries = append(entries, candidate)
-			continue
-		}
-		missing = append(missing, rel)
-	}
-	return entries, missing, nil
 }
 
 func fileExists(path string) bool {

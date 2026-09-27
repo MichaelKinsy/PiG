@@ -2058,7 +2058,7 @@ export async function loadExtension(entry) {
   const mod = await import(pathToFileURL(entry).href);
   const install = mod?.default ?? mod;
   if (typeof install !== "function") {
-    throw new Error(`extension ${entry} must default-export a function`);
+    throw new Error(`Extension does not export a valid factory function: ${entry}`);
   }
   await install(runtime.api);
   await runtime.run();

@@ -22,6 +22,8 @@ PiG embeds the following third-party browser assets in exported HTML transcripts
 - Highlight.js 11.9.0, Copyright (c) 2006, Ivan Sagalaev, BSD-3-Clause.
 - Marked 15.0.4, Copyright (c) 2018+, MarkedJS and Copyright (c) 2011-2018, Christopher Jeffrey, MIT; bundled Markdown material is Copyright 2004 John Gruber, BSD-3-Clause.
 
+The Node extension runtime embeds `yaml` 2.9.0, Copyright Eemeli Aro, ISC.
+
 See `THIRD_PARTY_NOTICES.md` for the applicable license texts. Dependencies included in a release are recorded in that release's SPDX SBOM.
 
 PiG also contains a Go port of `grok-mermaid` 0.2.2 and data generated from its width table:

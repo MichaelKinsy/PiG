@@ -18,6 +18,7 @@ import (
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
 	"github.com/MichaelKinsy/PiG/coding/hookconfig"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/frontmatter"
+	"github.com/MichaelKinsy/PiG/internal/ignorerules"
 )
 
 // Kind identifies a discoverable package resource class.
@@ -1626,8 +1627,8 @@ func discoverSkillDirs(dir string, agentsMode bool) []string {
 	}
 	var paths []string
 	seenDirs := make(map[string]struct{})
-	var walk func(string, []skillIgnoreRule)
-	walk = func(current string, rules []skillIgnoreRule) {
+	var walk func(string, []ignorerules.Rule)
+	walk = func(current string, rules []ignorerules.Rule) {
 		canonical, err := filepath.EvalSymlinks(current)
 		if err != nil {
 			return
@@ -1636,7 +1637,7 @@ func discoverSkillDirs(dir string, agentsMode bool) []string {
 			return
 		}
 		seenDirs[canonical] = struct{}{}
-		rules = appendSkillIgnoreRules(rules, current, root)
+		rules = ignorerules.Append(rules, current, root)
 		entries, err := os.ReadDir(current)
 		if err != nil {
 			return
@@ -1647,7 +1648,7 @@ func discoverSkillDirs(dir string, agentsMode bool) []string {
 			}
 			fullPath := filepath.Join(current, entry.Name())
 			info, err := os.Stat(fullPath)
-			if err == nil && info.Mode().IsRegular() && !skillPathIgnored(fullPath, false, root, rules) {
+			if err == nil && info.Mode().IsRegular() && !ignorerules.Ignored(fullPath, false, root, rules) {
 				paths = append(paths, current)
 				return
 			}
@@ -1661,7 +1662,7 @@ func discoverSkillDirs(dir string, agentsMode bool) []string {
 			if err != nil {
 				continue
 			}
-			if skillPathIgnored(fullPath, info.IsDir(), root, rules) {
+			if ignorerules.Ignored(fullPath, info.IsDir(), root, rules) {
 				continue
 			}
 			switch {
@@ -1674,80 +1675,6 @@ func discoverSkillDirs(dir string, agentsMode bool) []string {
 	}
 	walk(root, nil)
 	return paths
-}
-
-type skillIgnoreRule struct {
-	pattern string
-	negated bool
-}
-
-func appendSkillIgnoreRules(rules []skillIgnoreRule, dir, root string) []skillIgnoreRule {
-	relDir, err := filepath.Rel(root, dir)
-	if err != nil {
-		return rules
-	}
-	prefix := ""
-	if relDir != "." {
-		prefix = filepath.ToSlash(relDir) + "/"
-	}
-	for _, name := range []string{".gitignore", ".ignore", ".fdignore"} {
-		data, err := os.ReadFile(filepath.Join(dir, name))
-		if err != nil {
-			continue
-		}
-		for line := range strings.SplitSeq(strings.ReplaceAll(string(data), "\r\n", "\n"), "\n") {
-			trimmed := strings.TrimSpace(line)
-			if trimmed == "" || strings.HasPrefix(trimmed, "#") {
-				continue
-			}
-			negated := strings.HasPrefix(trimmed, "!")
-			if negated {
-				trimmed = strings.TrimPrefix(trimmed, "!")
-			}
-			trimmed = strings.TrimPrefix(trimmed, "/")
-			rules = append(rules, skillIgnoreRule{pattern: prefix + trimmed, negated: negated})
-		}
-	}
-	return rules
-}
-
-func skillPathIgnored(candidate string, directory bool, root string, rules []skillIgnoreRule) bool {
-	rel, err := filepath.Rel(root, candidate)
-	if err != nil {
-		return false
-	}
-	rel = filepath.ToSlash(rel)
-	ignored := false
-	for _, rule := range rules {
-		pattern := strings.TrimSuffix(rule.pattern, "/")
-		matched := skillIgnoreMatch(pattern, rel)
-		if directory && !matched {
-			matched = skillIgnoreMatch(pattern, rel+"/")
-		}
-		if matched {
-			ignored = !rule.negated
-		}
-	}
-	return ignored
-}
-
-func skillIgnoreMatch(pattern, candidate string) bool {
-	if pattern == "" {
-		return false
-	}
-	if !strings.Contains(pattern, "/") {
-		for part := range strings.SplitSeq(candidate, "/") {
-			if matched, _ := path.Match(pattern, part); matched {
-				return true
-			}
-		}
-	}
-	re := regexp.QuoteMeta(pattern)
-	re = strings.ReplaceAll(re, `\*\*`, `.*`)
-	re = strings.ReplaceAll(re, `\*`, `[^/]*`)
-	re = strings.ReplaceAll(re, `\?`, `[^/]`)
-	matched, _ := regexp.MatchString(`^`+re+`(?:/.*)?$`, candidate)
-	return matched
 }
 
 func validAgentPluginSkills(paths []string) []string {
