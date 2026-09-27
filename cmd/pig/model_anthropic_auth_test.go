@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 // TestBuildModelAnthropicAuthRequestShapes drives the startup model builder
@@ -85,7 +84,7 @@ func TestBuildModelAnthropicAuthRequestShapes(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(config), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			model, _, _, err := buildModel("anthropic/claude-haiku-4-5", codingagent.NewModelRegistry(dir))
+			model, _, _, err := buildModel("anthropic/claude-haiku-4-5", testServices(t, dir))
 			if err != nil {
 				t.Fatal(err)
 			}

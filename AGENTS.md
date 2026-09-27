@@ -268,7 +268,7 @@ make async-contracts` or `make verify` from `PORT_MAP.md` and `parity/scenarios/
 **Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 428 behavioral (96.0%), 4 weak-only (no behavioral verification), 14 untested.
 Raw PORT_MAP rows: 616. Breakdown: 74 n/a (designed out) · 24 🟡 partial · 72 ⬜ not started. See DIVERGENCES.md for the documented exceptions.
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
-Weak scenarios not counted as behavioral verification: 5 boot-only, 2 registration-only, 1 smoke-only.
+Weak scenarios not counted as behavioral verification: 5 boot-only, 3 registration-only, 1 smoke-only.
 
 | family | scenarios | behavioral | boot-only | weak | deferred | upstream behavioral covered | last run |
 |---|---:|---:|---:|---:|---:|---:|---|
@@ -278,6 +278,7 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 2 registrati
 | `cli-utils` | 9 | 9 | 0 | 0 | 0 | 12 | not run |
 | `clipboard-images` | 4 | 4 | 0 | 0 | 2 | 7 | not run |
 | `compaction` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
+| `experimental-pico3` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `export-html` | 5 | 5 | 0 | 0 | 0 | 5 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `extensions-runtime` | 20 | 20 | 0 | 0 | 0 | 21 | not run |
@@ -290,10 +291,10 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 2 registrati
 | `oauth` | 8 | 8 | 0 | 0 | 0 | 12 | not run |
 | `print` | 1 | 1 | 0 | 0 | 0 | 3 | not run |
 | `project-trust` | 8 | 8 | 0 | 0 | 0 | 13 | not run |
-| `providers-faux-streaming` | 10 | 9 | 0 | 1 | 0 | 14 | not run |
-| `providers-registry` | 5 | 3 | 0 | 2 | 0 | 26 | not run |
+| `providers-faux-streaming` | 11 | 10 | 0 | 1 | 0 | 15 | not run |
+| `providers-registry` | 6 | 3 | 0 | 3 | 0 | 26 | not run |
 | `rpc` | 26 | 26 | 0 | 0 | 0 | 10 | not run |
-| `selectors` | 9 | 9 | 0 | 0 | 1 | 14 | not run |
+| `selectors` | 10 | 10 | 0 | 0 | 1 | 14 | not run |
 | `session` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
 | `settings` | 7 | 7 | 0 | 0 | 0 | 13 | not run |
 | `slash-commands` | 9 | 8 | 1 | 0 | 0 | 17 | not run |

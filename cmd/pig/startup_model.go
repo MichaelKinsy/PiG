@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -188,7 +189,8 @@ type startupModel struct {
 // selectStartupModel picks the session's starting model the way upstream
 // main.ts and createAgentSession do. A nil Model with a nil error means no
 // model is available.
-func selectStartupModel(ctx context.Context, options startupModelOptions, settings codingagent.Settings, registry *codingagent.ModelRegistry) (startupModel, error) {
+func selectStartupModel(ctx context.Context, options startupModelOptions, settings codingagent.Settings, services *coding.Services) (startupModel, error) {
+	registry := services.Registry().ModelRegistry
 	rt := newStartupModelRuntime(registry.RuntimeModels(), registry.HasConfiguredAuth)
 	var result startupModel
 	selected, err := selectSessionOptionModel(rt, options, settings, &result)
@@ -206,7 +208,7 @@ func selectStartupModel(ctx context.Context, options startupModelOptions, settin
 			return result, nil
 		}
 	}
-	result.Model, _, _, err = buildModelFromRef(ctx, selected.Provider, selected.ID, registry)
+	result.Model, err = buildModelFromRef(ctx, selected.Provider, selected.ID, services)
 	return result, err
 }
 

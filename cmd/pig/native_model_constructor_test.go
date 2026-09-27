@@ -52,7 +52,7 @@ func TestModelConstructorsPreserveNativeResponsesCompat(t *testing.T) {
 					var model *ai.Model
 					var err error
 					if constructor == "cli" {
-						model, _, _, err = resolveModel("native-constructor-fixture", provider, codingagent.Settings{}, codingagent.NewModelRegistry(dir))
+						model, _, _, err = resolveModel("native-constructor-fixture", provider, codingagent.Settings{}, testServices(t, dir))
 					} else {
 						services, e := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: dir})
 						if e != nil {
