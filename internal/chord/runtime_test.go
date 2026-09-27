@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"reflect"
 	"sync"
 	"testing"
@@ -182,8 +183,39 @@ func TestReplicatedStateRejectsNonObjectJSON(t *testing.T) {
 }
 
 func TestSingletonReplicaHydratesThenReceivesOperationStream(t *testing.T) {
+	for _, tc := range []struct {
+		name              string
+		snapshotInstalled bool
+	}{
+		{"snapshot-pending", false},
+		{"snapshot-installed", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			testSingletonReplicaHydratesThenReceivesOperationStream(t, tc.snapshotInstalled)
+		})
+	}
+}
+
+func testSingletonReplicaHydratesThenReceivesOperationStream(t *testing.T, snapshotInstalled bool) {
+	t.Helper()
 	ctx := context.Background()
 	fixture := newRemoteFixture(t, SingletonService(counterDefinition))
+	entered, releaseSnapshot := make(chan struct{}), make(chan struct{})
+	release := sync.OnceFunc(func() { close(releaseSnapshot) })
+	// Gate snapshot installation on the real JSON-copy path before UseRemote starts it.
+	fixture.binding.transport = reviewPausedTransport{
+		RemoteServiceTransport: fixture.binding.transport, entered: entered, release: releaseSnapshot,
+	}
+	t.Cleanup(func() {
+		release()
+		if err := fixture.binding.Dispose(ctx); err != nil {
+			t.Error(err)
+		}
+		fixture.endpoint.Dispose()
+		if err := fixture.provider.Dispose(); err != nil {
+			t.Error(err)
+		}
+	})
 	counter := newCounter(t)
 	if _, err := counter.Add(ctx, 1, "before-subscribe"); err != nil {
 		t.Fatal(err)
@@ -199,11 +231,17 @@ func TestSingletonReplicaHydratesThenReceivesOperationStream(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, hydrated := replica.Value(); hydrated {
-		t.Fatal("replica hydrated before the subscription snapshot")
+	// Pi packages/chord/src/services/consumer.ts:575-613 installs the snapshot before activating buffered updates.
+	// Its use/ready methods (:464-474,501-519) start/join that work. Unlike a JS caller's synchronous stack, this Go goroutine may run after installation completes.
+	<-entered
+	if snapshotInstalled {
+		release()
+		if err := fixture.binding.Ready(ctx); err != nil {
+			t.Fatal(err)
+		}
 	}
-	if err := fixture.binding.Ready(ctx); err != nil {
-		t.Fatal(err)
+	if _, hydrated := replica.Value(); hydrated != snapshotInstalled {
+		t.Fatalf("replica hydrated = %v, snapshot installed = %v", hydrated, snapshotInstalled)
 	}
 	rec := newRecorder()
 	if _, err := TypedReplica[*counterState](replica).Subscribe(rec.listen); err != nil {
@@ -216,7 +254,14 @@ func TestSingletonReplicaHydratesThenReceivesOperationStream(t *testing.T) {
 	if string(raw) != "4" {
 		t.Fatalf("add result = %s", raw)
 	}
-	got := rec.waitFor(t, 2)
+	if !snapshotInstalled && len(rec.snapshot()) != 0 {
+		t.Fatal("replica delivered before snapshot installation was released")
+	}
+	release()
+	if err := fixture.binding.Ready(ctx); err != nil {
+		t.Fatal(err)
+	}
+	got := rec.snapshot()
 	want := []delivery{
 		{DeliveryHydrate, 1, counterState{Count: 1, Log: []string{"before-subscribe"}}},
 		{DeliveryUpdate, 2, counterState{Count: 4, Log: []string{"before-subscribe", "remote"}}},
@@ -254,6 +299,11 @@ func TestSingletonReplicaHydratesThenReceivesOperationStream(t *testing.T) {
 		t.Fatalf("unexpected binding error: %v", err)
 	default:
 	}
+	encoded, err := json.Marshal(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("CHORD_REPLICA installed=%t %s\n", snapshotInstalled, encoded)
 }
 
 func TestProviderClassificationUsesContractMethodSet(t *testing.T) {

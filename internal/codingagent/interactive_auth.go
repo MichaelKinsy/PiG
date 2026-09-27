@@ -143,8 +143,6 @@ func (m *InteractiveMode) runOAuthLogin(loginCtx context.Context, provider strin
 	switch provider {
 	case "github-copilot":
 		return m.runLoginGitHubCopilot(loginCtx)
-	case "anthropic":
-		return m.runLoginAnthropic(loginCtx)
 	case "openai-codex":
 		return m.runLoginOpenAICodex(loginCtx)
 	default:
@@ -503,109 +501,6 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 		m.showStatus(fmt.Sprintf("Logged in to OpenAI Codex. Credentials saved to %s", authPath))
 		m.updateProviderInfo()
 	}
-	return nil
-}
-
-// runLoginAnthropic runs the Anthropic Claude Pro/Max OAuth flow (PKCE +
-// localhost callback). Mirrors the github-copilot login layout but uses
-// the authorization-code/PKCE shape from ai.LoginAnthropic. The manual
-// "paste redirect URL" fallback used by upstream's LoginDialogComponent
-// is intentionally not wired here: the pig line renderer does not own
-// the editor input the way the upstream overlay does, and the localhost
-// callback covers the same-machine path. To use the manual-paste path on
-// a remote machine, run `pig login anthropic` from a terminal that can
-// reach the callback URL, or set ANTHROPIC_API_KEY directly.
-func (m *InteractiveMode) runLoginAnthropic(loginCtx context.Context) error {
-	auth, err := ai.NewAuthStorage(filepath.Join(m.opts.AgentDir, "auth.json"))
-	if err != nil {
-		return fmt.Errorf("auth storage: %w", err)
-	}
-
-	m.appendChatBlock(tui.NewMarkdown("**Login to " + ai.AnthropicOAuthDisplayName + "**"))
-
-	loginCtx, loginCancel := context.WithCancel(loginCtx)
-	loginToken := m.beginLogin(loginCancel)
-
-	cb := ai.OAuthLoginCallbacks{
-		OnAuth: func(info ai.OAuthAuthInfo) {
-			msg := fmt.Sprintf(
-				"1. Open: %s\n2. Authorize in your browser.\n3. The callback will return automatically.\n\n%s\n\nWaiting for authorization... (Ctrl+C to cancel)",
-				info.URL, info.Instructions)
-			m.runOnMain(m.runCtx, func() {
-				m.appendChatBlock(tui.NewMarkdown(msg))
-				m.tuiInst.Render()
-			})
-			_ = openBrowser(info.URL)
-		},
-		OnProgress: func(msg string) { m.runOnMain(m.runCtx, func() { m.showStatus(msg) }) },
-	}
-
-	go func() {
-		defer loginCancel()
-		defer m.endLogin(loginToken)
-
-		cred, err := ai.LoginAnthropic(loginCtx, cb)
-		if err != nil {
-			m.runOnMain(m.runCtx, func() {
-				if loginCtx.Err() != nil {
-					m.appendChatBlock(tui.NewMarkdown("Login cancelled."))
-				} else {
-					m.appendChatBlock(tui.NewMarkdown(fmt.Sprintf("Login failed: %v", err)))
-				}
-				m.tuiInst.ForceFullRender()
-				m.tuiInst.Render()
-			})
-			return
-		}
-
-		anthCred := ai.Credential{
-			Type:    ai.CredentialOAuth,
-			Refresh: cred.Refresh,
-			Access:  cred.Access,
-			Expires: cred.Expires,
-		}
-		if err := auth.Set("anthropic", anthCred); err != nil {
-			m.runOnMain(m.runCtx, func() {
-				m.appendChatBlock(tui.NewMarkdown(fmt.Sprintf("Failed to store credentials: %v", err)))
-				m.tuiInst.ForceFullRender()
-				m.tuiInst.Render()
-			})
-			return
-		}
-
-		if m.opts.ModelRegistry != nil {
-			m.opts.ModelRegistry.Refresh()
-		}
-
-		// Model selection touches shared state (m.opts.Model, statusLine, the
-		// agent/session model) that the main loop reads, so apply it there.
-		m.runOnMain(m.runCtx, func() {
-			authPath := auth.Path()
-			status := fmt.Sprintf("Logged in to Anthropic. Credentials saved to %s", authPath)
-			if m.opts.Model == nil && m.opts.ModelBuilder != nil {
-				if newModel, err := m.opts.ModelBuilder("anthropic/claude-sonnet-4-5"); err == nil {
-					if m.opts.SessionHandle != nil {
-						_ = m.opts.SessionHandle.SetModel(newModel)
-					} else if m.agent != nil {
-						m.agent.SetModel(newModel)
-					}
-					m.opts.Model = newModel
-					m.statusLine.SetModel(newModel)
-					m.refreshThinkingLevel()
-					if m.opts.SettingsManager != nil {
-						_ = m.opts.SettingsManager.SetDefaultModelAndProvider(newModel.Provider.ID(), newModel.ID)
-					}
-					status = fmt.Sprintf("Logged in to Anthropic. Selected %s. Credentials saved to %s", newModel.ID, authPath)
-				}
-			}
-			m.showStatus(status)
-			m.appendToChat(tui.NewMarkdown("✓ " + status))
-			m.updateProviderInfo()
-			m.tuiInst.ForceFullRender()
-			m.tuiInst.Render()
-		})
-	}()
-
 	return nil
 }
 
