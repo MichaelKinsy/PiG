@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -96,10 +97,7 @@ func TestResolveUpstreamPiBinStagesOptedInRealAuth(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PIG_PARITY_REAL_AUTH", authPath)
-	bin := filepath.Join(t.TempDir(), "pi-under-test")
-	if err := os.WriteFile(bin, []byte("#!/bin/sh\nprintf '%s\\n' '"+coding.UpstreamVersion+"'\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	bin := writeFakePi(t, "pi-under-test", coding.UpstreamVersion)
 	t.Setenv("PIG_PARITY_PI_BIN", bin)
 	resolved := ResolveUpstreamPiBin(t)
 	var agentDir string
@@ -132,10 +130,7 @@ func TestResolveUpstreamPiBinNeverStagesRealAuthWithoutOptIn(t *testing.T) {
 	if err := os.WriteFile(authPath, realCreds, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	bin := filepath.Join(t.TempDir(), "pi-under-test")
-	if err := os.WriteFile(bin, []byte("#!/bin/sh\nprintf '%s\\n' '"+coding.UpstreamVersion+"'\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	bin := writeFakePi(t, "pi-under-test", coding.UpstreamVersion)
 	t.Setenv("PIG_PARITY_PI_BIN", bin)
 	resolved := ResolveUpstreamPiBin(t)
 	var agentDir string
@@ -217,10 +212,7 @@ func runVersionMismatchHelper(t *testing.T, extraEnv ...string) helperOutcome {
 // t.Skipf, so this test failed (the helper skipped instead of failing) on the
 // old code.
 func TestResolveUpstreamPiBinFailsOnVersionMismatchByDefault(t *testing.T) {
-	bin := filepath.Join(t.TempDir(), "pi-wrong-version")
-	if err := os.WriteFile(bin, []byte("#!/bin/sh\nprintf '0.0.0-not-the-pin\\n'\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	bin := writeFakePi(t, "pi-wrong-version", "0.0.0-not-the-pin")
 	outcome := runVersionMismatchHelper(t, "PIG_PARITY_PI_BIN="+bin, "PIG_PARITY_ALLOW_VERSION_SKEW=")
 	if !outcome.failed || outcome.skipped || outcome.passed {
 		t.Fatalf("version mismatch: %+v, want failed=true (a mismatched reference pi must fail the run, not skip it)\n%s",
@@ -232,10 +224,7 @@ func TestResolveUpstreamPiBinFailsOnVersionMismatchByDefault(t *testing.T) {
 // opt-out still works: PIG_PARITY_ALLOW_VERSION_SKEW=1 turns the failure back
 // into a skip.
 func TestResolveUpstreamPiBinAllowsVersionSkewWithOptOut(t *testing.T) {
-	bin := filepath.Join(t.TempDir(), "pi-wrong-version")
-	if err := os.WriteFile(bin, []byte("#!/bin/sh\nprintf '0.0.0-not-the-pin\\n'\n"), 0o755); err != nil {
-		t.Fatal(err)
-	}
+	bin := writeFakePi(t, "pi-wrong-version", "0.0.0-not-the-pin")
 	outcome := runVersionMismatchHelper(t, "PIG_PARITY_PI_BIN="+bin, "PIG_PARITY_ALLOW_VERSION_SKEW=1")
 	if outcome.failed || !outcome.skipped {
 		t.Fatalf("version mismatch with opt-out: %+v, want skipped=true\n%s", outcome, outcome.output)
@@ -258,10 +247,7 @@ func TestResolveUpstreamPiBinFailsWhenVersionCheckErrorsByDefault(t *testing.T) 
 }
 
 func TestResolveUpstreamPiBinHonorsExplicitOverride(t *testing.T) {
-	bin := filepath.Join(t.TempDir(), "pi-under-test")
-	if err := os.WriteFile(bin, []byte("#!/bin/sh\nprintf '%s\\n' '"+coding.UpstreamVersion+"'\n"), 0o755); err != nil {
-		t.Fatalf("write fake pi: %v", err)
-	}
+	bin := writeFakePi(t, "pi-under-test", coding.UpstreamVersion)
 	t.Setenv("PIG_PARITY_PI_BIN", bin)
 
 	got := ResolveUpstreamPiBin(t)
@@ -271,4 +257,20 @@ func TestResolveUpstreamPiBinHonorsExplicitOverride(t *testing.T) {
 	if got.Label != "pi" {
 		t.Fatalf("ResolveUpstreamPiBin label = %q", got.Label)
 	}
+}
+
+// writeFakePi writes a stand-in pi that prints version for --version. Windows
+// runs a file by its extension, not by a #! line, so there it is a .cmd script.
+func writeFakePi(t *testing.T, name, version string) string {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), name)
+	content := "#!/bin/sh\nprintf '%s\\n' '" + version + "'\n"
+	if runtime.GOOS == "windows" {
+		path += ".cmd"
+		content = "@echo off\r\necho " + version + "\r\n"
+	}
+	if err := os.WriteFile(path, []byte(content), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	return path
 }

@@ -271,7 +271,7 @@ make async-contracts` or `make verify` from `PORT_MAP.md` and `parity/scenarios/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 428 behavioral (96.0%), 4 weak-only (no behavioral verification), 14 untested.
+**Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 429 behavioral (96.2%), 3 weak-only (no behavioral verification), 14 untested.
 Raw PORT_MAP rows: 616. Breakdown: 74 n/a (designed out) · 24 🟡 partial · 72 ⬜ not started. See DIVERGENCES.md for the documented exceptions.
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
 Weak scenarios not counted as behavioral verification: 5 boot-only, 3 registration-only, 1 smoke-only.
@@ -304,7 +304,7 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 3 registrati
 | `session` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
 | `settings` | 7 | 7 | 0 | 0 | 0 | 13 | not run |
 | `slash-commands` | 9 | 8 | 1 | 0 | 0 | 17 | not run |
-| `startup` | 5 | 4 | 1 | 0 | 0 | 2 | not run |
+| `startup` | 6 | 5 | 1 | 0 | 0 | 5 | not run |
 | `tools` | 13 | 13 | 0 | 0 | 0 | 27 | not run |
 | `tree` | 5 | 4 | 1 | 0 | 0 | 5 | not run |
 | `tui-components` | 11 | 11 | 0 | 0 | 0 | 16 | not run |

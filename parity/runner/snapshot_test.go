@@ -8,7 +8,9 @@ import (
 	"encoding/json"
 	"maps"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
 	"testing"
@@ -162,7 +164,11 @@ func TestCopyDir_PreservesExecutableBit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("stat copied executable: %v", err)
 	}
-	if info.Mode()&0o111 == 0 {
+	if data, err := os.ReadFile(filepath.Join(dst, "tool.sh")); err != nil || string(data) != "#!/bin/sh\necho ok\n" {
+		t.Fatalf("copied content = %q, %v", data, err)
+	}
+	// Windows has no execute permission; it runs a file by its extension.
+	if runtime.GOOS != "windows" && info.Mode()&0o111 == 0 {
 		t.Fatalf("copied file lost executable bit: mode=%#o", info.Mode().Perm())
 	}
 }
@@ -251,6 +257,16 @@ func trustSeedCheckout(t *testing.T) (scenario, root string) {
 	return filepath.Join(family, "01-scenario.toml"), root
 }
 
+// jsonString encodes s as a JSON string, escaping a Windows path's backslashes.
+func jsonString(t *testing.T, s string) string {
+	t.Helper()
+	encoded, err := json.Marshal(s)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(encoded)
+}
+
 func writeTrustFixture(t *testing.T, dir, body string) {
 	t.Helper()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
@@ -319,17 +335,17 @@ func TestSnapshotEnvDirsKeepsFixtureTrustDecisions(t *testing.T) {
 	}{
 		{
 			name:    "other paths are kept and the root is added",
-			fixture: `{"` + project + `": true, "/elsewhere": null}`,
+			fixture: `{` + jsonString(t, project) + `: true, "/elsewhere": null}`,
 			want:    map[string]string{project: "true", "/elsewhere": "null", root: "false"},
 		},
 		{
 			name:    "a fixture that decides the root wins",
-			fixture: `{"` + root + `": true}`,
+			fixture: `{` + jsonString(t, root) + `: true}`,
 			want:    map[string]string{root: "true"},
 		},
 		{
 			name:    "a decided ancestor already covers the root",
-			fixture: `{"` + filepath.Dir(root) + `": true}`,
+			fixture: `{` + jsonString(t, filepath.Dir(root)) + `: true}`,
 			want:    map[string]string{filepath.Dir(root): "true"},
 		},
 	}
@@ -354,6 +370,18 @@ func TestSnapshotEnvDirsKeepsFixtureTrustDecisions(t *testing.T) {
 	}
 }
 
+// physicalPWD is a pig stand-in that prints its working directory with
+// symlinks resolved, as pwd -P does. Node runs on every parity host; Windows
+// has no /bin/pwd.
+func physicalPWD(t *testing.T) BinaryRef {
+	t.Helper()
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Fatal(err)
+	}
+	return BinaryRef{Label: "pig", Path: node, Args: []string{"-e", "process.stdout.write(require('fs').realpathSync.native(process.cwd()))"}}
+}
+
 func TestCLIDriverSnapshotCWDRunsOutsideTheFixture(t *testing.T) {
 	scenario, root := trustSeedCheckout(t)
 	project := filepath.Join(filepath.Dir(scenario), "testdata", "project")
@@ -366,7 +394,7 @@ func TestCLIDriverSnapshotCWDRunsOutsideTheFixture(t *testing.T) {
 		SourcePath: scenario,
 		CLI:        CLIDriverConfig{CWD: "testdata/project", SnapshotCWD: true},
 	}
-	res := cliModeDriver{}.Run(context.Background(), t, BinaryRef{Label: "pig", Path: "/bin/pwd", Args: []string{"-P"}}, sc)
+	res := cliModeDriver{}.Run(context.Background(), t, physicalPWD(t), sc)
 	if res.Err != nil || res.ExitCode != 0 {
 		t.Fatalf("pwd: exit=%d err=%v output=%q", res.ExitCode, res.Err, res.Output)
 	}
@@ -379,7 +407,7 @@ func TestCLIDriverSnapshotCWDRunsOutsideTheFixture(t *testing.T) {
 	}
 
 	sc.CLI.SnapshotCWD = false
-	res = cliModeDriver{}.Run(context.Background(), t, BinaryRef{Label: "pig", Path: "/bin/pwd", Args: []string{"-P"}}, sc)
+	res = cliModeDriver{}.Run(context.Background(), t, physicalPWD(t), sc)
 	if got := strings.TrimSpace(res.Output); got != project {
 		t.Fatalf("plain cwd ran in %q, want the fixture %s", got, project)
 	}

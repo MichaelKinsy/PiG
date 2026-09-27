@@ -81,8 +81,8 @@ func cleanSnapshotRoot(root string) (string, error) {
 // mkdirFixed creates a new directory under root named prefix followed by
 // snapshotIDDigits random decimal digits.
 func mkdirFixed(root, prefix string) (string, error) {
-	// On Windows promptPathRoot is \tmp on the current drive, which exists
-	// only once a run creates it.
+	// On Windows promptPathRoot is \t on the temp directory's drive, which
+	// exists only once a run creates it.
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return "", err
 	}
@@ -117,8 +117,29 @@ func mkdirFixed(root, prefix string) (string, error) {
 // text has than Pi's, measured against Pi 0.87.1. TestPromptPathLengthsBalance
 // checks the arithmetic; the rpc get_session_stats scenario checks the
 // estimate itself.
+//
+// promptPathRoot is /tmp on Unix. Pi prints PI_PACKAGE_DIR resolved to an
+// absolute path while pig prints PIG_HOME as given, so on Windows the root is
+// an absolute path of the same four characters: the temp directory's drive
+// and \t (C:\t).
+var promptPathRoot = func() string {
+	if runtime.GOOS == "windows" {
+		return filepath.VolumeName(os.TempDir()) + `\t`
+	}
+	return "/tmp"
+}()
+
+// checkPromptPathRoot reports a promptPathRoot other than four characters,
+// which would make pig's and Pi's system prompts differ in length. On Windows
+// that happens when TMP is a UNC path (\\server\share\...).
+func checkPromptPathRoot() error {
+	if len(promptPathRoot) != len("/tmp") {
+		return fmt.Errorf("PIG_HOME's snapshot root %q must be four characters, as /tmp is, so the pig and Pi system prompts stay the same length; set TMP to a directory on a drive letter (C:\\...), not a UNC path", promptPathRoot)
+	}
+	return nil
+}
+
 const (
-	promptPathRoot  = "/tmp"
 	pigHomePrefix   = "parity-snap-PIG_HOME-"
 	piPackagePrefix = "parity-pi-pkg-"
 	piPackageLink   = "pi-coding-pkg"

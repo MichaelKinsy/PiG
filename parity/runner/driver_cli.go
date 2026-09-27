@@ -5,6 +5,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -39,7 +40,12 @@ func envLauncherProgram(t *testing.T, name, pathList string) (string, error) {
 }
 
 // lookPathIn resolves name against pathList instead of the runner's own PATH.
+// A name containing a path separator is run as given, without a PATH search,
+// as env does.
 func lookPathIn(name, pathList string) (string, error) {
+	if strings.Contains(name, "/") || (runtime.GOOS == "windows" && strings.Contains(name, `\`)) {
+		return exec.LookPath(name)
+	}
 	for _, dir := range filepath.SplitList(pathList) {
 		if dir == "" {
 			continue
@@ -64,6 +70,18 @@ func effectivePath(environ []string) string {
 }
 
 func (cliModeDriver) Name() string { return "cli-mode" }
+
+// isShebangScript reports whether the file at path starts with a #! line.
+func isShebangScript(path string) bool {
+	file, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = file.Close() }()
+	prefix := make([]byte, 2)
+	n, _ := io.ReadFull(file, prefix)
+	return n == 2 && string(prefix) == "#!"
+}
 
 func (cliModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scenario) Result {
 	t.Helper()
@@ -128,6 +146,15 @@ func (cliModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 			return Result{Err: err}
 		}
 		bin.Path, args = program, args[1:]
+	} else if runtime.GOOS == "windows" && scenarioBin != "" && isShebangScript(bin.Path) {
+		// Windows runs a file by its extension, not its #! line; run the
+		// interpreter that line names from the child's PATH, as a POSIX
+		// kernel and /usr/bin/env do.
+		program, err := envLauncherProgram(t, testenv.ShebangInterpreter(t, bin.Path), effectivePath(append(hermeticEnviron(), env...)))
+		if err != nil {
+			return Result{Err: err}
+		}
+		bin.Path, args = program, append([]string{bin.Path}, args...)
 	}
 
 	timeout := time.Duration(sc.CLI.TimeoutSeconds) * time.Second

@@ -1,8 +1,8 @@
 # PORT_MAP coverage report
 
-Generated from `616` PORT_MAP entries and `262` parity scenarios.
+Generated from `616` PORT_MAP entries and `263` parity scenarios.
 
-**Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 428 behavioral (96.0%), 4 weak-only (no behavioral verification), 14 untested.
+**Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 429 behavioral (96.2%), 3 weak-only (no behavioral verification), 14 untested.
 Raw PORT_MAP rows: 616. Breakdown: 74 n/a (designed out) · 24 🟡 partial · 72 ⬜ not started. See DIVERGENCES.md for the documented exceptions.
 
 Behavioral evidence includes paired scenarios and reviewed mutation-proven Go unit tests. Unit tests are listed separately; last run refers only to paired scenarios, not unit execution or exhaustive parity.
@@ -152,7 +152,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/ai/src/auth/context.ts` | ✅ | 1 (01-list-models-env-builtins) | **0 (weak-only)** | not run |  |
 | `packages/ai/src/auth/credential-store.ts` | ✅ | 1 (02-list-models-oauth-builtins) | **0 (weak-only)** | not run |  |
 | `packages/ai/src/auth/helpers.ts` | ✅ | 2 (01-ai-sdk-helpers, 01-list-models-env-builtins) | 1 (01-ai-sdk-helpers) | not run |  |
-| `packages/ai/src/auth/resolve.ts` | ✅ | 2 (01-list-models-env-builtins, 02-list-models-oauth-builtins) | **0 (weak-only)** | not run |  |
+| `packages/ai/src/auth/resolve.ts` | ✅ | 3 (01-list-models-env-builtins, 02-list-models-oauth-builtins, 05-startup-credential-lifecycle) | 1 (05-startup-credential-lifecycle) | not run |  |
 | `packages/ai/src/auth/types.ts` | ✅ | 4 (01-ai-sdk-helpers, 01-list-models-env-builtins, 01-oauth-shared, 02-list-models-oauth-builtins) | 2 (01-ai-sdk-helpers, 01-oauth-shared) | not run |  |
 | `packages/ai/src/auth/oauth/anthropic.ts` | ✅ | 1 (02-oauth-anthropic) | 1 (02-oauth-anthropic) | not run |  |
 | `packages/ai/src/auth/oauth/device-code.ts` | ✅ | 1 (03-oauth-github-copilot) | 1 (03-oauth-github-copilot) | not run |  |
@@ -238,7 +238,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/ai/src/providers/qwen-token-plan.ts` | ✅ | 0 | 1 (unit:./ai:TestQwenTokenPlanCatalogRoutes) | not run | ./ai:TestQwenTokenPlanCatalogRoutes |
 | `packages/ai/src/providers/qwen-token-plan-cn.ts` | ✅ | 0 | 1 (unit:./ai:TestQwenTokenPlanCatalogRoutes) | not run | ./ai:TestQwenTokenPlanCatalogRoutes |
 | `packages/ai/src/providers/radius-config.ts` | ✅ | 1 (11-radius-metadata-import) | 1 (11-radius-metadata-import) | not run |  |
-| `packages/ai/src/providers/radius.ts` | ✅ | 1 (11-radius-metadata-import) | 1 (11-radius-metadata-import) | not run |  |
+| `packages/ai/src/providers/radius.ts` | ✅ | 2 (05-startup-credential-lifecycle, 11-radius-metadata-import) | 2 (05-startup-credential-lifecycle, 11-radius-metadata-import) | not run |  |
 | `packages/ai/src/providers/together.ts` | ✅ | 1 (01-ai-sdk-helpers) | 1 (01-ai-sdk-helpers) | not run |  |
 | `packages/ai/src/providers/vercel-ai-gateway.ts` | ✅ | 1 (01-ai-sdk-helpers) | 1 (01-ai-sdk-helpers) | not run |  |
 | `packages/ai/src/providers/xai.ts` | ✅ | 1 (01-ai-sdk-helpers) | 1 (01-ai-sdk-helpers) | not run |  |
@@ -354,7 +354,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/coding-agent/src/core/remote-catalog-provider.ts` | ⬜ | 0 | 0 | not run |  |
 | `packages/coding-agent/src/core/runtime-credentials.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/coding-agent/src/core/usage-totals.ts` | ✅ | 2 (06-footer-resumed-stored-cost, 08-session-info-populated-all-entries) | 2 (06-footer-resumed-stored-cost, 08-session-info-populated-all-entries) | not run |  |
-| `packages/coding-agent/src/core/model-resolver.ts` | ✅ | 4 (03-model-invalid, 05-model-direct-switch, 06-model-scope-toggle, 07-model-spec-thinking-suffix) | 4 (03-model-invalid, 05-model-direct-switch, 06-model-scope-toggle, 07-model-spec-thinking-suffix) | not run |  |
+| `packages/coding-agent/src/core/model-resolver.ts` | ✅ | 5 (03-model-invalid, 05-model-direct-switch, 05-startup-credential-lifecycle, 06-model-scope-toggle, 07-model-spec-thinking-suffix) | 5 (03-model-invalid, 05-model-direct-switch, 05-startup-credential-lifecycle, 06-model-scope-toggle, 07-model-spec-thinking-suffix) | not run |  |
 | `packages/coding-agent/src/core/output-guard.ts` | ✅ | 1 (01-print-bash-tool-exec) | 1 (01-print-bash-tool-exec) | not run |  |
 | `packages/coding-agent/src/core/package-manager.ts` | ✅ | 5 (01-noninteractive-undecided-denies-project-extension, 02-no-approve-denies-project-extension, 03-approve-loads-project-extension, 05-package-list-empty, 06-package-list-git-source) | 5 (01-noninteractive-undecided-denies-project-extension, 02-no-approve-denies-project-extension, 03-approve-loads-project-extension, 05-package-list-empty, 06-package-list-git-source) | not run |  |
 | `packages/coding-agent/src/core/prompt-templates.ts` | 🟡 | 1 (06-prompt-template-migration-expand) | 1 (06-prompt-template-migration-expand) | not run |  |
