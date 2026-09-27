@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"slices"
 	"testing"
 	"time"
@@ -92,11 +91,6 @@ func TestCoordinatorConnectionListenerIdentitySocket(t *testing.T) {
 	}
 	for _, cleanup := range []int{0, 1} {
 		t.Run(fmt.Sprintf("upstream/%d", cleanup), func(t *testing.T) {
-			if runtime.GOOS == "windows" {
-				// The upstream probe listens on a socket file path; Node on
-				// Windows listens only on named pipes (EACCES).
-				t.Skip("upstream's experimental coordinator cannot listen on Windows: Node listens only on named pipes, not socket file paths")
-			}
 			ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
 			defer cancel()
 			cmd := exec.CommandContext(ctx, "node", "--import", upstreamLoaderImport(root), filepath.Join(root, "internal/experimental/testdata/coordinator-listener-oracle.mjs"), t.TempDir(), fmt.Sprint(cleanup))

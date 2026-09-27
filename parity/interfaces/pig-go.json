@@ -103914,17 +103914,6 @@
       "shapeHash": "sha256:adab5dac4071b9812167d02eff4a895f619945e32d9d8d6341bedce217a4598f"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.runLoginAnthropic",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "InteractiveMode.runLoginAnthropic",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(loginCtx context.Context) error"
-      },
-      "shapeHash": "sha256:34958c5d7ff03b920280bbc3f9ac85d70eb47667f7388a9640e747ada3de6bb0"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.runLoginGitHubCopilot",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.runLoginGitHubCopilot",

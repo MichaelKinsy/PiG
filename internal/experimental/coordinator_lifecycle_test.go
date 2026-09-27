@@ -15,7 +15,7 @@ import (
 
 func echoBackend(t *testing.T, path, greeting string) {
 	t.Helper()
-	listener, err := net.Listen("unix", path)
+	listener, err := listenTestSocket(path)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,7 +53,8 @@ func TestCoordinatorPublicGenerationReplacement(t *testing.T) {
 			backend1, backend2 := public+"1", public+"2"
 			echoBackend(t, backend1, "one\n")
 			echoBackend(t, backend2, "two\n")
-			first := NewCoordinatorConnection(CoordinatorConnectionOptions{ControlPath: control, Endpoint: backend1})
+			serverControl := productControlPath(t, control)
+			first := NewCoordinatorConnection(CoordinatorConnectionOptions{ControlPath: serverControl, Endpoint: backend1})
 			defer first.Close()
 			if err := first.Connect(t.Context()); err != nil {
 				t.Fatal(err)
@@ -75,7 +76,7 @@ func TestCoordinatorPublicGenerationReplacement(t *testing.T) {
 			if !bytes.Equal(got, payload) {
 				t.Fatal("public relay changed opaque bytes")
 			}
-			second := NewCoordinatorConnection(CoordinatorConnectionOptions{ControlPath: control, Endpoint: backend2})
+			second := NewCoordinatorConnection(CoordinatorConnectionOptions{ControlPath: serverControl, Endpoint: backend2})
 			defer second.Close()
 			if err := second.Connect(t.Context()); err != nil {
 				t.Fatal(err)

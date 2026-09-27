@@ -348,6 +348,8 @@ shorter.
 
 ## Code and public API quality
 
+Apply [Faithful, general implementations](../../AGENTS.md#faithful-general-implementations) to shared-path design and provider-shape evidence review.
+
 Every exported symbol must be one of:
 
 - a supported public API;
@@ -421,6 +423,8 @@ The extension adapts typed requests. Deterministic Go packages calculate facts
 and evidence. The Skill defines the agent procedure. Campaign workers remain
 read-only. Source-changing work remains serialized. A maintainer owns every Git
 operation.
+
+Brief or restart active agents after changing their instructions.
 
 ## Setup Skill
 
