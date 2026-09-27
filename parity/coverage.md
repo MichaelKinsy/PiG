@@ -1,6 +1,6 @@
 # PORT_MAP coverage report
 
-Generated from `616` PORT_MAP entries and `253` parity scenarios.
+Generated from `616` PORT_MAP entries and `254` parity scenarios.
 
 **Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 428 behavioral (96.0%), 4 weak-only (no behavioral verification), 14 untested.
 Raw PORT_MAP rows: 616. Breakdown: 74 n/a (designed out) · 24 🟡 partial · 72 ⬜ not started. See DIVERGENCES.md for the documented exceptions.
