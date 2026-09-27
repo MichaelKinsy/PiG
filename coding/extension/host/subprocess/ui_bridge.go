@@ -44,6 +44,8 @@ type UIBridge struct {
 	// terminalInputSubs holds the retire func for each extension's raw
 	// terminal-input subscription, keyed by extension name.
 	terminalInputSubs map[string]func()
+	// terminalCapabilities reports the host terminal's resolved capabilities.
+	terminalCapabilities func() TerminalCapabilitiesPayload
 
 	uiCtx            extension.UIContext
 	uiReady          bool
@@ -336,6 +338,7 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	b.mu.RLock()
 	actions := b.actions
 	uiCtx := b.uiCtx
+	terminalCapabilities := b.terminalCapabilities
 	b.mu.RUnlock()
 
 	// Defaults mirror the upstream runner's unbound defaults: idle, has UI, and
@@ -347,6 +350,10 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	// dispatching a tool, command, or event handler, so these are current when
 	// an extension reads them. They come from the UI context rather than the
 	// host actions, so they are filled before the unbound-actions return.
+	if terminalCapabilities != nil {
+		caps := terminalCapabilities()
+		state.TerminalCapabilities = &caps
+	}
 	if ui := uiCtx; ui != nil {
 		state.EditorText = ui.GetEditorText()
 		state.ToolsExpanded = ui.GetToolsExpanded()
@@ -450,6 +457,14 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 		}
 	}
 	return state
+}
+
+// SetTerminalCapabilitiesFunc registers the source of the host terminal's
+// resolved capabilities, sent to extensions with every state snapshot.
+func (b *UIBridge) SetTerminalCapabilitiesFunc(fn func() TerminalCapabilitiesPayload) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.terminalCapabilities = fn
 }
 
 func NewUIBridge(invalidateTUI func()) *UIBridge {

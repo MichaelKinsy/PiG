@@ -7,7 +7,7 @@ package tui
 // simplified to colored text lines.
 
 import (
-	"fmt"
+	"encoding/json"
 	"strings"
 )
 
@@ -86,22 +86,31 @@ type CustomMessage struct {
 	Content    any // string or []ContentBlock
 }
 
-// CustomMessageText extracts text from a CustomMessage's Content field.
+// CustomMessageText extracts text from a CustomMessage's Content field the
+// way upstream CustomMessageComponent does: a string is shown as is, and an
+// array's text blocks are joined with newlines. Content from an extension is
+// JSON-decoded ([]any of map[string]any); typed block slices from Go callers
+// are read through the same JSON shape.
 func CustomMessageText(cm *CustomMessage) string {
-	switch v := cm.Content.(type) {
-	case string:
-		return v
-	case []map[string]any:
-		var parts []string
-		for _, block := range v {
-			if block["type"] == "text" {
-				if t, ok := block["text"].(string); ok {
-					parts = append(parts, t)
-				}
-			}
-		}
-		return strings.Join(parts, "\n")
-	default:
-		return fmt.Sprintf("%v", cm.Content)
+	if s, ok := cm.Content.(string); ok {
+		return s
 	}
+	raw, err := json.Marshal(cm.Content)
+	if err != nil {
+		return ""
+	}
+	var blocks []struct {
+		Type string `json:"type"`
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(raw, &blocks); err != nil {
+		return ""
+	}
+	parts := make([]string, 0, len(blocks))
+	for _, block := range blocks {
+		if block.Type == "text" {
+			parts = append(parts, block.Text)
+		}
+	}
+	return strings.Join(parts, "\n")
 }

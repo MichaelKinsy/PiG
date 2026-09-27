@@ -1,6 +1,4 @@
-// Verbatim copy of dist/utils.js from @earendil-works/pi-tui@0.87.1 (MIT, Copyright (c) 2025 Mario Zechner),
-// importing the vendored get-east-asian-width. Regenerate with automation/gen/vendor-pi-tui-utils.sh.
-import { eastAsianWidth } from "./get-east-asian-width/index.js";
+import { eastAsianWidth } from "../../get-east-asian-width/index.js";
 // segmenters (shared instance)
 const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
 const wordSegmenter = new Intl.Segmenter(undefined, { granularity: "word" });
