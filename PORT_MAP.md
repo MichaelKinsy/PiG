@@ -119,7 +119,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/agent/src/harness/pico3/bounded.ts` | `agent/harness/pico3/bounded.go; tool_bounds_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/chord.ts` | `agent/harness/pico3/{chord,chord_service,chord_ops}.go (typed service tokens, scoped forwarding, bounded caller-supplied state publication; chord_test.go, chord_lifecycle_test.go)` | ✅ |
 | `packages/agent/src/harness/pico3/context.ts` | `agent/harness/pico3/context.go; turn_test.go` | ✅ |
-| `packages/agent/src/harness/pico3/harness.ts` | `agent/harness/pico3/harness.go, conversation.go; lifecycle_test.go, transactions_test.go` | ✅ |
+| `packages/agent/src/harness/pico3/harness.ts` | `agent/harness/pico3/harness.go, conversation.go; lifecycle_test.go, transactions_test.go, scheduler_resume_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/hooks.ts` | `agent/harness/pico3/hooks.go; tool_bounds_test.go, turn_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/index.ts` | `agent/harness/pico3/ (export surface correspondence; upstream re-exports implementations from sibling files; their behavior tests belong to the owning sibling rows, not blanket barrel coverage)` | ✅ |
 | `packages/agent/src/harness/pico3/jsonl.ts` | `agent/harness/pico3/jsonl.go; atomicity_test.go, lifecycle_test.go` | ✅ |
@@ -134,7 +134,7 @@ The tmux scenario harness cannot drive a Windows `.exe`. Windows verification re
 | `packages/agent/src/harness/pico3/kinds/tool.ts` | `agent/harness/pico3/kinds_tool.go; tool_bounds_test.go, atomicity_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/membrane.ts` | `agent/harness/pico3/membrane.go; membrane_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/memory.ts` | `agent/harness/pico3/memory.go; storage_test.go, turn_test.go` | ✅ |
-| `packages/agent/src/harness/pico3/scheduler.ts` | `agent/harness/pico3/scheduler.go; lifecycle_test.go, waiters_test.go` | ✅ |
+| `packages/agent/src/harness/pico3/scheduler.ts` | `agent/harness/pico3/scheduler.go; lifecycle_test.go, waiters_test.go, spec_scheduler_process_test.go, scheduler_resume_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/session.ts` | `agent/harness/pico3/session.go, session_docs.go, tx.go, tx_writes.go; transactions_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/system.ts` | `agent/harness/pico3/system.go; turn_test.go` | ✅ |
 | `packages/agent/src/harness/pico3/types.ts` | `agent/harness/pico3/types.go, kind.go, runtime.go, json.go; transactions_test.go, lifecycle_test.go` | ✅ |

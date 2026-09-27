@@ -280,6 +280,7 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 3 registrati
 | `cli-utils` | 9 | 9 | 0 | 0 | 0 | 12 | not run |
 | `clipboard-images` | 4 | 4 | 0 | 0 | 2 | 7 | not run |
 | `compaction` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
+| `experimental-pico3` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `export-html` | 5 | 5 | 0 | 0 | 0 | 5 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `extensions-runtime` | 20 | 20 | 0 | 0 | 0 | 21 | not run |
@@ -292,7 +293,7 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 3 registrati
 | `oauth` | 8 | 8 | 0 | 0 | 0 | 12 | not run |
 | `print` | 1 | 1 | 0 | 0 | 0 | 3 | not run |
 | `project-trust` | 8 | 8 | 0 | 0 | 0 | 13 | not run |
-| `providers-faux-streaming` | 10 | 9 | 0 | 1 | 0 | 14 | not run |
+| `providers-faux-streaming` | 11 | 10 | 0 | 1 | 0 | 15 | not run |
 | `providers-registry` | 6 | 3 | 0 | 3 | 0 | 26 | not run |
 | `rpc` | 26 | 26 | 0 | 0 | 0 | 10 | not run |
 | `selectors` | 10 | 10 | 0 | 0 | 1 | 14 | not run |

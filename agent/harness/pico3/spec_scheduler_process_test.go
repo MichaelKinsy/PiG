@@ -238,37 +238,44 @@ func TestSchedulerSuspendRecoversDurableInvocation(t *testing.T) {
 }
 
 func TestSchedulerHoldReplacementRunsPendingRecord(t *testing.T) {
-	var mu sync.Mutex
-	var ran []string
-	makeKind := func(label string) *Kind {
-		return &Kind{Name: "spec.held-kind", Initial: func(context.Context, Task, *Runtime) (Step, error) {
-			mu.Lock()
-			ran = append(ran, label)
-			mu.Unlock()
-			return Step{Next: Checkpoint{"phase": "done"}}, nil
-		}, Phases: map[string]PhaseHandler{"done": func(context.Context, Task, *Runtime) (Step, error) { return done(Completed(label)), nil }}}
-	}
-	env := openEnv(t, openOptions{})
-	equal(t, env.h.Quiescent(), true, "initially quiescent")
-	release := must(env.h.Hold())
-	old := makeKind("old")
-	off := must(env.h.RegisterTaskKind(old))
-	ref := createTestTask(t, env, old, nil)
-	must(env.root.Write(bg, NewEntry{Kind: "commit.while.held"}))
-	equal(t, must(env.h.GetTask(bg, ref.Id)).Status, TaskPending, "held record")
-	mu.Lock()
-	equal(t, len(ran), 0, "dispatch waits")
-	mu.Unlock()
-	off()
-	must(env.h.RegisterTaskKind(makeKind("replacement")))
-	release()
-	task := env.untilTerminal(ref.Id)
-	equal(t, task.Outcome.Status, OutcomeCompleted, "replacement outcome")
-	equal(t, task.Outcome.Result, "replacement", "replacement code")
-	mu.Lock()
-	equal(t, slices.Clone(ran), []string{"replacement"}, "only replacement runs")
-	mu.Unlock()
-	equal(t, env.h.Quiescent(), true, "terminal quiescence")
+	synctest.Test(t, func(t *testing.T) {
+		var mu sync.Mutex
+		var ran []string
+		makeKind := func(label string) *Kind {
+			return &Kind{Name: "spec.held-kind", Initial: func(context.Context, Task, *Runtime) (Step, error) {
+				mu.Lock()
+				ran = append(ran, label)
+				mu.Unlock()
+				return Step{Next: Checkpoint{"phase": "done"}}, nil
+			}, Phases: map[string]PhaseHandler{"done": func(context.Context, Task, *Runtime) (Step, error) { return done(Completed(label)), nil }}}
+		}
+		var release func()
+		env := openEnv(t, openOptions{setup: func(t *testing.T, h *Harness) {
+			equal(t, h.Quiescent(), true, "initially quiescent")
+			// Hold before Resume so no reservation is already queued. Pi's scheduler.ts:142-149 also lets an in-flight reservation finish while held.
+			release = must(h.Hold())
+		}})
+		old := makeKind("old")
+		off := must(env.h.RegisterTaskKind(old))
+		ref := createTestTask(t, env, old, nil)
+		must(env.root.Write(bg, NewEntry{Kind: "commit.while.held"}))
+		equal(t, must(env.h.GetTask(bg, ref.Id)).Status, TaskPending, "held record")
+		mu.Lock()
+		equal(t, len(ran), 0, "dispatch waits")
+		mu.Unlock()
+		off()
+		synctest.Wait()
+		must(env.h.RegisterTaskKind(makeKind("replacement")))
+		release()
+		task := must(env.h.WaitForTask(bg, ref.Id))
+		equal(t, task.Outcome, &Outcome{Status: OutcomeCompleted, Result: "replacement"}, "replacement outcome")
+		mu.Lock()
+		equal(t, slices.Clone(ran), []string{"replacement"}, "only replacement runs")
+		mu.Unlock()
+		// Terminal state is published before invocation cleanup (scheduler.ts:218-232, 297-302). Wait for cleanup, not a polling interval.
+		synctest.Wait()
+		equal(t, env.h.Quiescent(), true, "terminal quiescence")
+	})
 }
 
 func TestSchedulerSleepingJobIsNotQuiescent(t *testing.T) {

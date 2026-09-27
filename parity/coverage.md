@@ -1,6 +1,6 @@
 # PORT_MAP coverage report
 
-Generated from `616` PORT_MAP entries and `252` parity scenarios.
+Generated from `616` PORT_MAP entries and `254` parity scenarios.
 
 **Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 428 behavioral (96.0%), 4 weak-only (no behavioral verification), 14 untested.
 Raw PORT_MAP rows: 616. Breakdown: 74 n/a (designed out) · 24 🟡 partial · 72 ⬜ not started. See DIVERGENCES.md for the documented exceptions.
@@ -61,7 +61,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/agent/src/harness/pico3/bounded.ts` | ✅ | 0 | 1 (unit:./agent/harness/pico3:TestBoundedSlicesOversizedChunksAndCapsLines) | not run | ./agent/harness/pico3:TestBoundedSlicesOversizedChunksAndCapsLines |
 | `packages/agent/src/harness/pico3/chord.ts` | ✅ | 0 | 1 (unit:./agent/harness/pico3:TestChordRejectsInvalidCapacity) | not run | ./agent/harness/pico3:TestChordRejectsInvalidCapacity |
 | `packages/agent/src/harness/pico3/context.ts` | ✅ | 0 | 1 (unit:./agent/harness/pico3:TestForkMissingToolResultPreservesCallIdentity) | not run | ./agent/harness/pico3:TestForkMissingToolResultPreservesCallIdentity |
-| `packages/agent/src/harness/pico3/harness.ts` | ✅ | 0 | 1 (unit:./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends) | not run | ./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends |
+| `packages/agent/src/harness/pico3/harness.ts` | ✅ | 1 (01-resume-orphan-snapshot) | 2 (01-resume-orphan-snapshot, unit:./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends) | not run | ./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends |
 | `packages/agent/src/harness/pico3/hooks.ts` | ✅ | 0 | 1 (unit:./agent/harness/pico3:TestBeforeCollapseDeclineSummaryAndInstructions) | not run | ./agent/harness/pico3:TestBeforeCollapseDeclineSummaryAndInstructions |
 | `packages/agent/src/harness/pico3/index.ts` | ✅ | **0 (untested)** | **0** | not run |  |
 | `packages/agent/src/harness/pico3/jsonl.ts` | ✅ | 0 | 2 (unit:./agent/harness/pico3:TestHarnessPicoJSONLPublicationRecovery, unit:./agent/harness/pico3:TestHarnessPicoJSONLRetirementAndHighWater) | not run | ./agent/harness/pico3:TestHarnessPicoJSONLPublicationRecovery, ./agent/harness/pico3:TestHarnessPicoJSONLRetirementAndHighWater |
@@ -76,7 +76,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/agent/src/harness/pico3/kinds/tool.ts` | ✅ | 0 | 1 (unit:./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends) | not run | ./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends |
 | `packages/agent/src/harness/pico3/membrane.ts` | ✅ | 0 | 1 (unit:./agent/harness/pico3:TestMembraneIdentityRevocationAndPlainInputs) | not run | ./agent/harness/pico3:TestMembraneIdentityRevocationAndPlainInputs |
 | `packages/agent/src/harness/pico3/memory.ts` | ✅ | 0 | 1 (unit:./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends) | not run | ./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends |
-| `packages/agent/src/harness/pico3/scheduler.ts` | ✅ | 0 | 1 (unit:./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends) | not run | ./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends |
+| `packages/agent/src/harness/pico3/scheduler.ts` | ✅ | 1 (01-resume-orphan-snapshot) | 2 (01-resume-orphan-snapshot, unit:./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends) | not run | ./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends |
 | `packages/agent/src/harness/pico3/session.ts` | ✅ | 0 | 1 (unit:./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends) | not run | ./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends |
 | `packages/agent/src/harness/pico3/system.ts` | ✅ | 0 | 1 (unit:./agent/harness/pico3:TestSystemSectionsBaselineDeltaAndHeadOmissions) | not run | ./agent/harness/pico3:TestSystemSectionsBaselineDeltaAndHeadOmissions |
 | `packages/agent/src/harness/pico3/types.ts` | ✅ | 0 | 1 (unit:./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends) | not run | ./agent/harness/pico3:TestOneTurnWithTwoToolsOnBothBackends |
@@ -262,7 +262,7 @@ Behavioral evidence includes paired scenarios and reviewed mutation-proven Go un
 | `packages/ai/src/api/openai-completions.ts` | ✅ | 3 (01-print-faux-text-streaming, 04-provider-wire-payloads, 09-orphaned-tool-result-wire) | 3 (01-print-faux-text-streaming, 04-provider-wire-payloads, 09-orphaned-tool-result-wire) | not run |  |
 | `packages/ai/src/api/openai-responses.ts` | ✅ | 1 (04-provider-wire-payloads) | 1 (04-provider-wire-payloads) | not run |  |
 | `packages/ai/src/api/openai-responses-shared.ts` | ✅ | 2 (04-provider-wire-payloads, 10-responses-tool-identity) | 2 (04-provider-wire-payloads, 10-responses-tool-identity) | not run |  |
-| `packages/ai/src/api/openai-codex-responses.ts` | 🟡 | 1 (04-provider-wire-payloads) | 1 (04-provider-wire-payloads) | not run |  |
+| `packages/ai/src/api/openai-codex-responses.ts` | 🟡 | 2 (04-provider-wire-payloads, 11-codex-ws-connect-fallback) | 2 (04-provider-wire-payloads, 11-codex-ws-connect-fallback) | not run |  |
 | `packages/ai/src/api/openai-prompt-cache.ts` | ✅ | 1 (01-ai-sdk-helpers) | 1 (01-ai-sdk-helpers) | not run |  |
 | `packages/ai/src/api/pi-messages.ts` | ✅ | 0 | 1 (unit:./ai:TestPiMessagesInMemoryPrematureEnd) | not run | ./ai:TestPiMessagesInMemoryPrematureEnd |
 | `packages/ai/src/providers/anthropic.ts` | ✅ | 2 (01-ai-sdk-helpers, 04-provider-wire-payloads) | 2 (01-ai-sdk-helpers, 04-provider-wire-payloads) | not run |  |

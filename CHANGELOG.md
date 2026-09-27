@@ -13,6 +13,11 @@ All notable public changes to PiG will be recorded in this file.
 
 - Handle every key of one terminal read before painting, as Pi does. Fast typing such as `/compact` no longer paints each prefix with a stale autocomplete popup, which scrolled the main screen further than Pi.
 
+### Fixed
+
+- Preserve pending Pico3 tasks when a task kind is replaced just after the harness resumes. Only tasks with unknown kinds at the time of `Resume` are orphaned, as in Pi.
+- Fix the first request of a new session going to the wrong endpoint for providers without a dedicated builder, such as OpenCode, OpenCode Go, DeepSeek and Z.ai. A stored key was sent to OpenAI's default URL, and Anthropic-style models used the wrong client. Thanks @ShoichiTect (#59).
+
 ### Contributing
 
 - Add `make generate` to refresh committed inventories, coverage, and documentation mirrors. Drift failures name the repair command. The Go interface generator writes its committed file by default and uses the same target on macOS and Linux.

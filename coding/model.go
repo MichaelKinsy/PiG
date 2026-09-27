@@ -63,7 +63,20 @@ func BuildModel(spec string, svcs *Services) (*ai.Model, error) {
 	} else {
 		entry, _ = registry.Resolve(providerID, modelID)
 	}
+	return BuildModelFromEntry(providerID, modelID, entry, svcs)
+}
 
+// BuildModelFromEntry constructs the Model for an already-resolved entry. The
+// CLI model resolver resolves the entry itself (catalog match, models.json, or
+// the provider's default-model fallback) and shares this construction with
+// BuildModel, so both paths branch on the API kind and carry the catalog base
+// URL and credentials the same way.
+func BuildModelFromEntry(providerID, modelID string, entry icodingagent.ModelEntry, svcs *Services) (*ai.Model, error) {
+	if svcs == nil {
+		return nil, fmt.Errorf("coding: BuildModelFromEntry: Services is required")
+	}
+	entry.ProviderID = providerID
+	entry.ModelID = modelID
 	apiKind := ai.API(entry.API)
 	provider, err := buildProviderForEntry(providerID, modelID, apiKind, entry, svcs)
 	if err != nil {
@@ -237,6 +250,7 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 			ProviderID:     providerID,
 			ExtraHeaders:   extraHeaders,
 			SamplingParams: maps.Clone(entry.SamplingParams),
+			Env:            ai.ProviderEnv(maps.Clone(entry.Env)),
 		}), nil
 	case ai.APIAnthropicMessages:
 		config := ai.AnthropicConfig{
@@ -247,6 +261,7 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 			ExtraHeaders: extraHeaders,
 			Compat:       cloneCompat(entry.Compat),
 			GetAPIKey:    resolveAPIKey,
+			Env:          ai.ProviderEnv(maps.Clone(entry.Env)),
 		}
 		return ai.NewAnthropicProvider(config), nil
 	case ai.APIGoogleGenerativeAI:

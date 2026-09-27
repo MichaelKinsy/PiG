@@ -1,0 +1,30 @@
+# Pi 0.87.1: packages/ai/src/api/openai-codex-responses.ts:293-374 attempts WebSocket before SSE, records a pre-output transport failure, and remembers fallback for the session.
+# Lines 1116-1120 expire a connection that never opens; lines 1453-1465 defer start until the first event.
+# The server deliberately never completes an upgrade. Its GET handler need not run before the 10 ms deadline.
+# Probed with real Pi's provider and native WebSocket via codex-ws-fallback-pi.mjs: each turn emits start,done and resp_sse; failure count stays 1, SSE count is 1,2.
+# Compare event order, result identity, timeout classification and fallback state, not platform-specific socket error strings or transient transport diagnostics.
+name = "11-codex-ws-connect-fallback"
+description = "Codex connect timeout falls back before output and retains SSE for the next turn."
+covers = ["packages/ai/src/api/openai-codex-responses.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./parity/testdata/codex-ws-fallback-pig"]
+pi_args = ["node", "./parity/testdata/codex-ws-fallback-pi.mjs"]
+
+[cli]
+cwd = "../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = [
+  "turn=1 events=start,done stop=stop response=resp_sse failures=1 fallbacks=1 active=true sse=1 timeout=true",
+  "turn=2 events=start,done stop=stop response=resp_sse failures=1 fallbacks=2 active=true sse=2 timeout=true",
+]
+runs = 5

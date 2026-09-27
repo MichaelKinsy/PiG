@@ -1109,7 +1109,7 @@ func main() {
 		ScopePatterns: settings.EnabledModels,
 		Continuing:    startupSession.resumePath != "" || startupSession.forkPath != "",
 		APIKey:        flags.APIKey,
-	}, settings, registry.ModelRegistry)
+	}, settings, services)
 	// Surface model-resolution warnings (e.g. an unknown model under a known
 	// provider that fell back to the provider's default caps, or a scope
 	// pattern that matches nothing) the way upstream reportDiagnostics does:

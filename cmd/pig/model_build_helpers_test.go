@@ -4,17 +4,30 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
-// buildModel constructs a Model from a "provider/model[:thinking]" spec string.
-func buildModel(spec string, registry *codingagent.ModelRegistry) (*ai.Model, string, string, error) {
-	return buildModelContext(context.Background(), spec, registry)
+// testServices builds a Services container rooted at dir, the shared input for
+// the CLI model builder and startup selection.
+func testServices(t *testing.T, dir string) *coding.Services {
+	t.Helper()
+	services, err := coding.NewServices(coding.ServicesOptions{AgentDir: dir, CWD: dir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return services
 }
 
-func buildModelContext(ctx context.Context, spec string, registry *codingagent.ModelRegistry) (*ai.Model, string, string, error) {
+// buildModel constructs a Model from a "provider/model[:thinking]" spec string.
+func buildModel(spec string, services *coding.Services) (*ai.Model, string, string, error) {
+	return buildModelContext(context.Background(), spec, services)
+}
+
+func buildModelContext(ctx context.Context, spec string, services *coding.Services) (*ai.Model, string, string, error) {
 	// Parse "provider/model[:thinking]": split on the last colon to extract an
 	// optional thinking level suffix.
 	var thinkingOverride string
@@ -26,14 +39,14 @@ func buildModelContext(ctx context.Context, spec string, registry *codingagent.M
 	if !ok {
 		return nil, "", "", fmt.Errorf("model %q has no provider prefix", spec)
 	}
-	model, _, warning, err := buildModelFromRef(ctx, providerID, modelID, registry)
-	return model, thinkingOverride, warning, err
+	model, err := buildModelFromRef(ctx, providerID, modelID, services)
+	return model, thinkingOverride, "", err
 }
 
 // resolveModel runs startup model selection for a CLI --model and --provider
 // and returns the model, its thinking level and the first warning.
-func resolveModel(modelFlag, providerFlag string, settings codingagent.Settings, registry *codingagent.ModelRegistry) (*ai.Model, string, string, error) {
-	selected, err := selectStartupModel(context.Background(), startupModelOptions{CLIProvider: providerFlag, CLIModel: modelFlag}, settings, registry)
+func resolveModel(modelFlag, providerFlag string, settings codingagent.Settings, services *coding.Services) (*ai.Model, string, string, error) {
+	selected, err := selectStartupModel(context.Background(), startupModelOptions{CLIProvider: providerFlag, CLIModel: modelFlag}, settings, services)
 	warning := ""
 	if len(selected.Warnings) > 0 {
 		warning = selected.Warnings[0]
