@@ -257,15 +257,21 @@ func ExpandTildePath(path string) string {
 	return path
 }
 
+// resolveAgainstCwd is Node's path.resolve(cwd, filePath). On Windows Node
+// treats a rooted path without a drive (/x or \x) as absolute, on cwd's drive.
 func resolveAgainstCwd(filePath, cwd string) string {
 	if filepath.IsAbs(filePath) {
 		return filepath.Clean(filePath)
 	}
+	if runtime.GOOS == "windows" && filepath.VolumeName(filePath) == "" && strings.HasPrefix(filepath.ToSlash(filePath), "/") {
+		return filepath.Clean(filepath.VolumeName(cwd) + filePath)
+	}
 	return filepath.Clean(filepath.Join(cwd, filePath))
 }
 
-// GetCwdRelativePath returns the slash-normalized path relative to cwd when
-// filePath resolves inside cwd, or "" when it is outside cwd.
+// GetCwdRelativePath returns the path relative to cwd, with the platform
+// separator as Pi's path.relative gives it, when filePath resolves inside
+// cwd, or "" when it is outside cwd.
 func GetCwdRelativePath(filePath, cwd string) string {
 	resolvedCwd := filepath.Clean(cwd)
 	resolvedPath := resolveAgainstCwd(filePath, resolvedCwd)
@@ -277,10 +283,7 @@ func GetCwdRelativePath(filePath, cwd string) string {
 	if !isInsideCwd {
 		return ""
 	}
-	if relativePath == "." {
-		return "."
-	}
-	return filepath.ToSlash(relativePath)
+	return relativePath
 }
 
 // FormatPathRelativeToCwdOrAbsolute returns a slash-normalized path relative to
@@ -288,7 +291,7 @@ func GetCwdRelativePath(filePath, cwd string) string {
 func FormatPathRelativeToCwdOrAbsolute(filePath, cwd string) string {
 	absolutePath := resolveAgainstCwd(filePath, cwd)
 	if relativePath := GetCwdRelativePath(absolutePath, cwd); relativePath != "" {
-		return relativePath
+		return filepath.ToSlash(relativePath)
 	}
 	return filepath.ToSlash(absolutePath)
 }

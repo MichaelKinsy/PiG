@@ -228,14 +228,16 @@ func TestLoadedResourcesContextMatchesUpstream(t *testing.T) {
 	cwd := filepath.Join(home, "Development", "pi-mono")
 	context := []ContextFile{{Path: filepath.Join(home, ".pi", "agent", "AGENTS.md")}, {Path: filepath.Join(cwd, "AGENTS.md")}}
 	m := &InteractiveMode{opts: InteractiveOptions{CWD: cwd, NoThemes: true, ContextFiles: context}, loadedResourcesContainer: tui.NewContainer()}
+	// Pi keeps the platform separator: formatDisplayPath replaces only the
+	// home prefix, and getCwdRelativePath returns path.relative's result.
 	// shows context paths relative to cwd while preserving full external paths
-	if got := renderedListing(m); got != "\n[Context]\n  ~/.pi/agent/AGENTS.md, AGENTS.md" {
-		t.Fatalf("compact context = %q", got)
+	if got, want := renderedListing(m), filepath.FromSlash("\n[Context]\n  ~/.pi/agent/AGENTS.md, AGENTS.md"); got != want {
+		t.Fatalf("compact context = %q, want %q", got, want)
 	}
 	// shows full context paths when expanded
 	m.toolsExpanded = true
-	if got := renderedListing(m); got != "\n[Context]\n  ~/.pi/agent/AGENTS.md\n  ~/Development/pi-mono/AGENTS.md" {
-		t.Fatalf("expanded context = %q", got)
+	if got, want := renderedListing(m), filepath.FromSlash("\n[Context]\n  ~/.pi/agent/AGENTS.md\n  ~/Development/pi-mono/AGENTS.md"); got != want {
+		t.Fatalf("expanded context = %q, want %q", got, want)
 	}
 	// shows system prompt context paths before project context files
 	project := &InteractiveMode{opts: InteractiveOptions{
@@ -243,8 +245,8 @@ func TestLoadedResourcesContextMatchesUpstream(t *testing.T) {
 		SystemPromptSourcePaths: []string{"/tmp/project/.pi/SYSTEM.md", "/tmp/project/.pi/APPEND_SYSTEM.md"},
 		ContextFiles:            []ContextFile{{Path: "/tmp/project/AGENTS.md"}},
 	}, loadedResourcesContainer: tui.NewContainer()}
-	if got := renderedListing(project); got != "\n[Context]\n  .pi/SYSTEM.md, .pi/APPEND_SYSTEM.md, AGENTS.md" {
-		t.Fatalf("system prompt context = %q", got)
+	if got, want := renderedListing(project), filepath.FromSlash("\n[Context]\n  .pi/SYSTEM.md, .pi/APPEND_SYSTEM.md, AGENTS.md"); got != want {
+		t.Fatalf("system prompt context = %q, want %q", got, want)
 	}
 }
 

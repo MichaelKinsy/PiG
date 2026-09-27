@@ -254,11 +254,7 @@ func (m *InteractiveMode) formatContextPath(path string) string {
 	if err != nil {
 		cwd = filepath.Clean(m.opts.CWD)
 	}
-	absolute := path
-	if !filepath.IsAbs(absolute) {
-		absolute = filepath.Join(cwd, absolute)
-	}
-	absolute = filepath.Clean(absolute)
+	absolute := resolveAgainstCwd(path, cwd)
 	if relative := GetCwdRelativePath(absolute, cwd); relative != "" {
 		return relative
 	}
