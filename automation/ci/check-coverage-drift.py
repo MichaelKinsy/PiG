@@ -19,6 +19,7 @@ import tempfile
 
 ROW_PREFIX = "| `"
 COLUMNS = 5
+REPAIR = "run: make generate (or: make coverage RESULTS=), then commit the result"
 
 
 def strip_run_column(text: str) -> list[str]:
@@ -39,7 +40,7 @@ def generate(pig_root: pathlib.Path) -> tuple[str, str]:
         badge = pathlib.Path(directory) / "parity-coverage.svg"
         proc = subprocess.run(
             [
-                "go", "run", "./parity/cmd/coverage",
+                "go", "run", "./parity/cmd/coverage", "-out", "-",
                 "-port-map", "PORT_MAP.md",
                 "-scenarios", "parity/scenarios",
                 "-badge", str(badge),
@@ -64,9 +65,9 @@ def main() -> int:
     committed_path = pig_root / args.coverage
     badge_path = pig_root / args.badge
     if not committed_path.is_file():
-        sys.exit(f"coverage-drift: {args.coverage} not found")
+        sys.exit(f"coverage-drift: {args.coverage} not found; {REPAIR}")
     if not badge_path.is_file():
-        sys.exit(f"coverage-drift: {args.badge} not found")
+        sys.exit(f"coverage-drift: {args.badge} not found; {REPAIR}")
     generated_report, generated_badge = generate(pig_root)
     committed = strip_run_column(committed_path.read_text(encoding="utf-8"))
     current = strip_run_column(generated_report)
@@ -78,9 +79,9 @@ def main() -> int:
         print(f"coverage-drift: {args.coverage} and {args.badge} are current")
         return 0
 
-    print("coverage-drift: generated coverage evidence is stale; regenerate it with", file=sys.stderr)
-    print("    make coverage RESULTS=<parity results json>", file=sys.stderr)
-    print("(omitting RESULTS blanks the 'last run' column for every family)", file=sys.stderr)
+    print("coverage-drift: generated coverage evidence is stale", file=sys.stderr)
+    print(REPAIR, file=sys.stderr)
+    print("Use make coverage RESULTS=<path> to include a measured parity run.", file=sys.stderr)
     if not badge_current:
         print(f"\nbadge differs: {args.badge}", file=sys.stderr)
     if not report_current:

@@ -315,6 +315,57 @@ func TestModelRuntimePreparesRealProviderWireRequests(t *testing.T) {
 	}
 }
 
+// TestModelRuntimePreparesZaiThinkingWirePayload checks the zai thinking
+// payload on the wire through the Model Runtime path.
+func TestModelRuntimePreparesZaiThinkingWirePayload(t *testing.T) {
+	var gotBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if err := json.NewDecoder(request.Body).Decode(&gotBody); err != nil {
+			t.Errorf("decode request: %v", err)
+		}
+		w.Header().Set("Content-Type", "text/event-stream")
+		_, _ = fmt.Fprint(w, "data: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\ndata: [DONE]\n\n")
+	}))
+	defer server.Close()
+
+	agentDir := t.TempDir()
+	models := fmt.Sprintf(`{"providers":{"zaiwire":{"baseUrl":%q,"api":"openai-completions","authHeader":false,"compat":{"thinkingFormat":"zai"},"models":[{"id":"model","name":"Model"}]}}}`, server.URL+"/v1")
+	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(models), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	services, err := NewServices(ServicesOptions{CWD: t.TempDir(), AgentDir: agentDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	model, err := BuildModel("zaiwire/model", services)
+	if err != nil {
+		t.Fatal(err)
+	}
+	messages := func(text string) ai.Context {
+		return ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText(text)}}}
+	}
+	result := services.ModelRuntime().Complete(context.Background(), model, messages("hello"), ai.StreamOptions{IsReasoning: true, Thinking: ai.ThinkingHigh})
+	if result.StopReason != ai.StopReasonStop {
+		t.Fatalf("result = %#v", result)
+	}
+	thinking, _ := gotBody["thinking"].(map[string]any)
+	if thinking["type"] != "enabled" || thinking["clear_thinking"] != false {
+		t.Fatalf("wire thinking = %#v, want {type:enabled,clear_thinking:false}", gotBody["thinking"])
+	}
+
+	result = services.ModelRuntime().Complete(context.Background(), model, messages("again"), ai.StreamOptions{IsReasoning: true, Thinking: ai.ThinkingOff})
+	if result.StopReason != ai.StopReasonStop {
+		t.Fatalf("off result = %#v", result)
+	}
+	off, _ := gotBody["thinking"].(map[string]any)
+	if off["type"] != "disabled" {
+		t.Fatalf("wire thinking(off) = %#v, want {type:disabled}", gotBody["thinking"])
+	}
+	if _, present := off["clear_thinking"]; present {
+		t.Fatalf("wire thinking(off) = %#v, want no clear_thinking field", gotBody["thinking"])
+	}
+}
+
 func TestModelRuntimeRequestModelRefreshDoesNotMutateOriginal(t *testing.T) {
 	agentDir := t.TempDir()
 	writeModels := func(baseURL string) {

@@ -139,7 +139,7 @@ def coverage_block(root: pathlib.Path) -> Coverage:
         agents,
     )
     if not match:
-        sys.exit("public-claims: AGENTS.md has no generated coverage summary; run make coverage")
+        sys.exit("public-claims: AGENTS.md has no generated coverage summary; run: make generate (or: make coverage RESULTS=)")
     ported, intended, porting_pct, behavioral, behavioral_pct = match.groups()
     return Coverage(int(ported), int(intended), porting_pct, int(behavioral), behavioral_pct)
 

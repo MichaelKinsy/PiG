@@ -137,6 +137,27 @@ install: ## Install a stripped pig to PIG_BIN (default ~/.local/bin/pig)
 	@[ "$$(uname -s)" = "Darwin" ] && command -v codesign >/dev/null 2>&1 && codesign --force --sign - $(PIG_BIN) >/dev/null 2>&1 || true
 	@echo "installed: $$($(PIG_BIN) --version) → $(PIG_BIN)"
 
+##@ Generated files
+
+# Keep producer/consumer order even under make -j. Reviewed mappings and evidence ledgers are inputs, not generated dispositions. Coverage deliberately ignores machine-local parity results so every checkout writes the same bytes.
+generate: export LC_ALL := C
+generate help-text: export FORCE_COLOR := 0
+
+generate: ## Regenerate committed inventories, coverage, catalogs, help, and docs mirrors
+	@$(MAKE) model-catalogs
+	@$(MAKE) help-text
+	@$(MAKE) knowledge-graph
+	@$(MAKE) interface-proposals
+	@$(MAKE) test-inventory-generate
+	@$(MAKE) custom-factory-ledger
+	@$(MAKE) coverage RESULTS=
+	@echo "Generated files refreshed. Review and commit the diff; CI compares these files."
+
+help-text: parity-deps ## Regenerate the pinned upstream CLI help with PiG's identity
+	@./automation/gen/gen-help.sh
+
+.PHONY: generate help-text
+
 ##@ Test and lint
 
 vet: ## Run go vet on every package
@@ -283,6 +304,7 @@ divergence-guard: ## Fail on unrecorded invented limits, dropped events and swal
 # documented command must exist, every listable command must be documented, and
 # every page must be reachable from the index.
 docs-drift: ## Fail when generated documentation no longer matches its source
+	@python3 automation/gen/gen-knowledge-graph.py --check
 	@go test ./tests/docs-drift/ -count=1
 
 npm-dist-test: ## Unit-test the npm package generator and launcher

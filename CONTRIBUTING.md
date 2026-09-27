@@ -33,6 +33,38 @@ The sign-off certifies that you have the right to submit the contribution under 
 
 PiG does not require a Contributor License Agreement.
 
+## Signed commits
+
+Every commit requires a signature that GitHub marks **Verified**. DCO sign-off is separate and is also required. A `Signed-off-by` line does not satisfy the signature requirement.
+
+To sign with an existing SSH key, configure Git in your checkout:
+
+```bash
+git config gpg.format ssh
+git config user.signingkey /path/to/key.pub
+git config commit.gpgsign true
+```
+
+Add the public key to GitHub under **Settings → SSH and GPG keys → New SSH key**. Select **Signing Key** as the key type, even if you already added the same key for authentication. See [GitHub's SSH signing setup](https://docs.github.com/en/authentication/managing-commit-signature-verification/telling-git-about-your-signing-key#telling-git-about-your-ssh-key).
+
+Create commits with `git commit --signoff`. Git signs them automatically with the configuration above. Confirm that GitHub shows **Verified** after you push.
+
+To sign an existing unsigned tip commit without changing its message:
+
+```bash
+git commit --amend -S --no-edit
+```
+
+To sign every commit on a linear topic branch (one with no merge commits), replace `<base>` with its base commit:
+
+```bash
+git rebase --exec 'git commit --amend -S --no-edit' <base>
+```
+
+A default rebase drops merge commits, including any conflict resolution they contain, so rebase onto the current `main` first to make the branch linear. These commands rewrite commit IDs. Coordinate with a maintainer before replacing commits already pushed. Keep each DCO sign-off in the commit message.
+
+If you cannot set up signing, say so in the pull request. A maintainer can land your change in a maintainer-signed commit that credits you with a `Co-authored-by:` trailer, which GitHub shows as Verified. Re-signing a commit that keeps you as its author is not enough if your account uses vigilant mode, because GitHub then marks it only Partially verified.
+
 ## Agent-assisted contributions
 
 Agent assistance is allowed. The contributor remains responsible for every
@@ -69,9 +101,10 @@ installing software.
 5. Add or identify a test that can fail on the behavior under review.
 6. Implement the smallest correct change through Pi's shared data-driven paths, without uncited provider/model special cases.
 7. Run the relevant local tests early across applicable provider shapes, not only Copilot or `test-faux`.
-8. Run `make check` before requesting review.
-9. Sign off every commit.
-10. Describe the problem, change, verification, and any divergence in the pull request.
+8. If you change exported Go API, CLI flags, settings, parity scenarios, or docs mirrors, run `make generate` and commit the result. CI's drift gates compare these files.
+9. Run `make check` before requesting review.
+10. Sign off and cryptographically sign every commit. Confirm that GitHub marks each signature **Verified**.
+11. Describe the problem, change, verification, and any divergence in the pull request.
 
 A documentation-only or mechanical change can explain why it does not need an issue.
 
@@ -83,6 +116,7 @@ A pull request must:
 
 - have a clear and bounded purpose;
 - pass required checks;
+- include both a DCO `Signed-off-by` line and a GitHub-verified signature on every commit;
 - contain no credentials or private data;
 - include tests or explain why the existing tests prove the change;
 - update `DIVERGENCES.md` for an approved observable difference;
