@@ -114,7 +114,7 @@ func TestCLIModeDriverRemovesCaptureAfterSuccessAndFailure(t *testing.T) {
 				Name: "capture-cleanup", SourcePath: filepath.Join(root, "scenario.toml"),
 				CLI: CLIDriverConfig{CWD: root, Args: []string{"-c", tc.command}},
 			}
-			result := (cliModeDriver{}).Run(t.Context(), t, BinaryRef{Label: "pig", Path: "/bin/sh"}, scenario)
+			result := (cliModeDriver{}).Run(t.Context(), t, BinaryRef{Label: "pig", Path: testenv.Sh(t)}, scenario)
 			if result.Err != nil || result.ExitCode != tc.code || result.Output != tc.output {
 				t.Fatalf("result = %+v, want code %d and output %q", result, tc.code, tc.output)
 			}
@@ -147,7 +147,7 @@ func TestRunCmdWithInputPropagatesBrokenPipe(t *testing.T) {
 		t.Run(fmt.Sprintf("file=%t", file), func(t *testing.T) {
 			_, _, _, err := runCmdWithInput(
 				context.Background(),
-				"/bin/sh",
+				testenv.Sh(t),
 				[]string{"-c", "IFS= read -r first; exit 0"},
 				nil,
 				[]string{"first", strings.Repeat("x", 4<<20)},
@@ -169,7 +169,7 @@ func TestRunCmdWithInputCancellationInterruptsSettle(t *testing.T) {
 			start := time.Now()
 			_, _, _, err := runCmdWithInput(
 				context.Background(),
-				"/bin/sh",
+				testenv.Sh(t),
 				[]string{"-c", "cat >/dev/null"},
 				nil,
 				[]string{"input"},
