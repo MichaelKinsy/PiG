@@ -361,7 +361,10 @@ The update source resolves as `PIG_UPDATE_URL` env, else a transport-neutral
 sidecar at `<config-root>/update-url` (written by an installer that knows its
 origin at install time, e.g. the marketplace bootstrap), else an optional
 build-time `internal/codingagent.DefaultUpdateURL` set by a product's own
-release build. A Marketplace installer that used an explicit private CA copies
+release build. PiG's own release builds set it to the latest release's signed
+`update.json`, whose `update.json.sig` sits beside it because GitHub release
+assets cannot send the `X-Pig-Release-Signature` header, and `install.sh` writes
+the standalone receipt, so a script installation updates in place. A Marketplace installer that used an explicit private CA copies
 those CA bytes into owner-only `<config-root>/update-ca.pem`; it never persists
 the caller's source path. The standalone receipt binds that file's SHA256 to the
 executable, release, and update origin. Update HTTP clients add those certificates

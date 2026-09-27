@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
 
@@ -403,6 +404,51 @@ func TestDownloadTool_ConcurrentDedup(t *testing.T) {
 	// Only one download should have happened despite n concurrent callers.
 	if srv.dlHits != 1 {
 		t.Errorf("expected 1 download, got %d", srv.dlHits)
+	}
+}
+
+// A caller that misses the installed-tool lookup, then takes the in-flight
+// lock only after a concurrent download has installed the tool and cleared its
+// in-flight entry, must reuse that install instead of downloading again.
+func TestDownloadTool_LateCallerReusesFinishedDownload(t *testing.T) {
+	asset := buildTarGz(t, "fd-v9.0.0-aarch64-apple-darwin/fd", []byte("#!/bin/sh\n"))
+	srv := newFakeReleaseServer(t, "sharkdp/fd", "v9.0.0", "fd-v9.0.0-aarch64-apple-darwin.tar.gz", asset)
+	tm := makeTestManager(t, srv, "darwin", "arm64")
+	t.Setenv("PATH", t.TempDir())
+
+	lateAtBoundary := make(chan struct{})
+	releaseLate := make(chan struct{})
+	var calls atomic.Int32
+	tm.beforeInflightLock = func(string) {
+		if calls.Add(1) == 1 {
+			// The late caller: its lookup has missed; hold it here until the
+			// other caller's download has finished and left the in-flight map.
+			close(lateAtBoundary)
+			<-releaseLate
+		}
+	}
+
+	late := make(chan string, 1)
+	go func() { late <- tm.EnsureTool(context.Background(), "fd", nil) }()
+	<-lateAtBoundary
+
+	first := tm.EnsureTool(context.Background(), "fd", nil)
+	if first == "" {
+		t.Fatal("first EnsureTool returned empty")
+	}
+	tm.mu.Lock()
+	_, stillInflight := tm.inflight["fd"]
+	tm.mu.Unlock()
+	if stillInflight {
+		t.Fatal("first download left its in-flight entry")
+	}
+
+	close(releaseLate)
+	if got := <-late; got != first {
+		t.Fatalf("late EnsureTool = %q, want the installed path %q", got, first)
+	}
+	if srv.dlHits != 1 {
+		t.Fatalf("expected 1 download, got %d", srv.dlHits)
 	}
 }
 

@@ -11,6 +11,10 @@ All notable public changes to PiG will be recorded in this file.
 
 ## [0.3.0] - 2026-09-27
 
+### Added
+
+- `pig update` updates a script installation (install.sh) in place on macOS and Linux. Releases publish a signed `update.json`; release binaries know its URL and signing key; the installer records an owner-only install receipt. Windows script installations still update by running the installer again (D39).
+
 ### Terminal UI
 
 - Handle every key of one terminal read before painting, as Pi does. Fast typing such as `/compact` no longer paints each prefix with a stale autocomplete popup, which scrolled the main screen further than Pi.
