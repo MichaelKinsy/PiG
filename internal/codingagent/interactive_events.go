@@ -18,6 +18,7 @@ func (m *InteractiveMode) finalizeRunningTools() {
 			comp.FinalizeAborted(time.Since(start))
 		}
 		delete(m.toolStarts, id)
+		delete(m.toolFileCalls, id)
 	}
 	m.toolMu.Unlock()
 }
@@ -47,6 +48,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		m.toolMu.Lock()
 		clear(m.toolByID)
 		clear(m.toolStarts)
+		clear(m.toolFileCalls)
 		clear(m.pendingArgs)
 		m.toolMu.Unlock()
 		if m.opts.Settings.GetShowTerminalProgress() {
@@ -228,6 +230,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			}
 			clear(m.toolByID)
 			clear(m.toolStarts)
+			clear(m.toolFileCalls)
 		} else {
 			for _, pta := range m.pendingArgs {
 				if pta.id != "" {
@@ -252,6 +255,14 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		}
 		argsPreview := tui.HeaderForTool(e.ToolName, e.Args, m.opts.CWD)
 		m.toolMu.Lock()
+		if e.ToolName == "read" || e.ToolName == "write" {
+			var args map[string]any
+			_ = json.Unmarshal(e.Args, &args)
+			if m.toolFileCalls == nil {
+				m.toolFileCalls = make(map[string]ai.ToolCall)
+			}
+			m.toolFileCalls[e.ToolCallID] = ai.ToolCall{Name: e.ToolName, Arguments: args}
+		}
 		comp := m.toolByID[e.ToolCallID]
 		if comp != nil {
 			// Component was created during streaming: update with
@@ -316,6 +327,8 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		delete(m.toolByID, e.ToolCallID)
 		start := m.toolStarts[e.ToolCallID]
 		delete(m.toolStarts, e.ToolCallID)
+		call, hasFileCall := m.toolFileCalls[e.ToolCallID]
+		delete(m.toolFileCalls, e.ToolCallID)
 		m.toolMu.Unlock()
 		debugLog("tool end id=%q name=%q matched=%v outlen=%d", e.ToolCallID, e.ToolName, comp != nil, len(e.Result.Content))
 		if comp == nil {
@@ -330,6 +343,10 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		// Attach a per-tool body renderer so Ctrl+O reveals a diff /
 		// line-numbered view instead of raw text.
 		comp.BodyRenderer = toolBodyRenderer(e.ToolName, e.Result, took)
+		if hasFileCall {
+			// File renderers own their call arguments; wire results carry no private preview state.
+			comp.BodyRenderer = toolBodyRendererForCall(call, e.Result)
+		}
 		// Wire image blocks from tool results so they render inline.
 		// Mirrors upstream tool-execution.ts updateResult → image block handling.
 		if len(e.Result.Images) > 0 {

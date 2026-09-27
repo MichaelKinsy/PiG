@@ -769,11 +769,10 @@ type ReadToolDetails struct {
 	Truncation *ToolTruncation `json:"truncation,omitempty"`
 }
 
-// GrepToolDetails mirrors upstream grep.ts:41. Each field is set only when
-// its condition holds; the whole object is omitted when empty.
+// GrepToolDetails mirrors upstream grep.ts:41. Sparse fields retain the requested numeric limit without rounding.
 type GrepToolDetails struct {
 	Truncation        *ToolTruncation `json:"truncation,omitempty"`
-	MatchLimitReached int             `json:"matchLimitReached,omitempty"`
+	MatchLimitReached float64         `json:"matchLimitReached,omitempty"`
 	LinesTruncated    bool            `json:"linesTruncated,omitempty"`
 }
 
@@ -783,10 +782,10 @@ type FindToolDetails struct {
 	ResultLimitReached int             `json:"resultLimitReached,omitempty"`
 }
 
-// LsToolDetails mirrors upstream ls.ts:23.
+// LsToolDetails mirrors upstream ls.ts:23, including fractional requested limits.
 type LsToolDetails struct {
 	Truncation        *ToolTruncation `json:"truncation,omitempty"`
-	EntryLimitReached int             `json:"entryLimitReached,omitempty"`
+	EntryLimitReached float64         `json:"entryLimitReached,omitempty"`
 }
 
 // BashToolResultEvent: upstream types.ts BashToolResultEvent.

@@ -15,10 +15,23 @@ All notable public changes to PiG will be recorded in this file.
 
 ### Fixed
 
+- Preserve RPC response order when `cycle_model` and `abort_retry` arrive together, including cycles that complete immediately.
+- Let later RPC model cycles finish while an earlier extension listener is waiting, and report the thinking level after the listener completes, as Pi does.
+- Keep read-tool display metadata out of RPC events and saved sessions, while preserving read previews and truncation details.
+- Keep write-tool previews out of RPC events and saved sessions, while retaining the preview in the terminal UI.
+- Put `isError` on tool execution events and saved tool-result messages, not inside the nested RPC result.
+- Dispose RPC sessions and exit on SIGTERM or SIGHUP even when the client keeps stdin open.
+- Include only the current run's messages in `agent_end`, rather than replaying earlier conversation turns.
+- Preserve Unicode line and paragraph separators inside JSONL strings without treating them as record boundaries.
+- Match Pi's sparse tool-result field names and byte-truncation limits, and retain fractional grep and ls limits without rounding.
+- Include the empty details object in shell output updates, as Pi does.
 - Accept the pasted redirect URL or code in `/login` for Anthropic, as Pi does. The paste went to the model as a prompt, and a failure after the browser callback showed as "Login cancelled.". Login dialogs for every provider also accept a terminal paste, which they dropped.
 - Defer stored credential refresh to the first request for providers that support request-time authentication. Startup no longer fails early on an expired login, and logging out during a session restores the environment key instead of reusing the deleted credential. Keep Radius credentials on their gateway-specific authentication path.
 - Preserve pending Pico3 tasks when a task kind is replaced just after the harness resumes. Only tasks with unknown kinds at the time of `Resume` are orphaned, as in Pi.
 - Fix the first request of a new session going to the wrong endpoint for providers without a dedicated builder, such as OpenCode, OpenCode Go, DeepSeek and Z.ai. A stored key was sent to OpenAI's default URL, and Anthropic-style models used the wrong client. Thanks @ShoichiTect (#59).
+- Preserve RPC prompt, steering and follow-up order when commands arrive together, so both queued messages reach the active run.
+- Keep RPC input and preflight callbacks from blocking later commands, and report streaming only after preflight completes.
+- Preserve empty prompt text blocks and the slash-prefixed command name when rejecting queued extension commands.
 
 ## [0.2.0] - 2026-09-25
 

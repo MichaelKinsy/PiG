@@ -522,7 +522,8 @@ function streamTestFaux(model: any, context: any, options: any) {
   }
 
   const emitPlan = (emitStart = true) => {
-    if (emitStart) stream.push({ type: "start", partial: output });
+    // Snapshot the initial event before queued emission mutates output. The Go fixture emits an empty pending start; sharing output made this depend on consumer scheduling.
+    if (emitStart) stream.push({ type: "start", partial: { ...structuredClone(output), stopReason: "pending" } });
     if (plan.kind === "text") {
       output.content.push({ type: "text", text: plan.text });
       stream.push({ type: "text_start", contentIndex: 0, partial: output });
@@ -537,7 +538,9 @@ function streamTestFaux(model: any, context: any, options: any) {
       for (const [index, call] of (plan as any).toolCalls.entries()) {
         const toolCall = { type: "toolCall", id: `call_test_faux_${firstID + BigInt(index)}`, name: call.toolName, arguments: call.toolArgs };
         output.content.push(toolCall);
-        const json = JSON.stringify(call.toolArgs);
+        // Go's fixture serializes argument maps in sorted key order. Keep the actual delta string identical, including nested object keys.
+        const sorted = (value: any): any => Array.isArray(value) ? value.map(sorted) : value && typeof value === "object" ? Object.fromEntries(Object.keys(value).sort().map(key => [key, sorted(value[key])])) : value;
+        const json = JSON.stringify(sorted(call.toolArgs));
         stream.push({ type: "toolcall_start", contentIndex: index, partial: output });
         stream.push({ type: "toolcall_delta", contentIndex: index, delta: json, partial: output });
         stream.push({ type: "toolcall_end", contentIndex: index, toolCall, partial: output });

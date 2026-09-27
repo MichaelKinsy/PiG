@@ -16,6 +16,8 @@ It combines:
 - the procedure in `skills/pig-porter/SKILL.md`;
 - one interactive launcher and one read-only campaign launcher.
 
+Follow [Faithful, general implementations](skills/pig-porter/SKILL.md#faithful-general-implementations). Porter must refuse completion for uncited provider-specific branches or single-provider proof of shared paths.
+
 Use Make targets from the repository root:
 
 ```bash

@@ -171,6 +171,16 @@ func (s *Session) emitAgentSettled() {
 	s.runState.mu.Lock()
 	s.runState.cancel = nil
 	s.runState.mu.Unlock()
+	s.publishAgentSettled()
+}
+
+// A prompt rejected by the busy Agent still runs AgentSession's settled notification, but must not steal the running Agent's abort controller.
+func (s *Session) emitAgentSettledNotification() {
+	s.OnAgentSettled()
+	s.publishAgentSettled()
+}
+
+func (s *Session) publishAgentSettled() {
 	s.runState.active.Store(false)
 	if !s.hasAgentLoopHandlers() {
 		s.emitOrderedEvent(agent.AgentSettledEvent{})

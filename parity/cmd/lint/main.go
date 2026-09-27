@@ -207,6 +207,8 @@ type printBlock struct {
 }
 
 type rpcBlock struct {
+	CanonicalJSON  bool           `toml:"canonical_json"`
+	Terminate      bool           `toml:"terminate"`
 	InputLines     []string       `toml:"input_lines"`
 	Steps          []rpcInputStep `toml:"steps"`
 	TimeoutSeconds int            `toml:"timeout_seconds"`

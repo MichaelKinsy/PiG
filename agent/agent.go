@@ -640,6 +640,8 @@ func (a *Agent) SetTools(tools []AgentTool) {
 
 // SetSystemPrompt projects a replacement system prompt onto subsequent provider requests without rewriting transcript history.
 func (a *Agent) SetSystemPrompt(prompt string) {
+	a.stateMu.Lock()
+	defer a.stateMu.Unlock()
 	a.opts.SystemPrompt = prompt
 	a.forcedSystemPrompt = new(prompt)
 }
@@ -647,7 +649,15 @@ func (a *Agent) SetSystemPrompt(prompt string) {
 // ClearSystemPrompt removes a SetSystemPrompt projection, so later requests
 // use the transcript's own system prompt again.
 func (a *Agent) ClearSystemPrompt() {
+	a.stateMu.Lock()
+	defer a.stateMu.Unlock()
 	a.forcedSystemPrompt = nil
+}
+
+func (a *Agent) systemPromptOverride() *string {
+	a.stateMu.RLock()
+	defer a.stateMu.RUnlock()
+	return a.forcedSystemPrompt
 }
 
 // ErrNoModelSelected is returned when a turn is requested with no usable model.
@@ -717,15 +727,73 @@ func (a *Agent) Send(ctx context.Context, content string) ([]AgentMessage, error
 
 // SendContent is the structured-content variant of Send.
 func (a *Agent) SendContent(ctx context.Context, content []ai.UserContentBlock) ([]AgentMessage, error) {
+	run, err := a.BeginSendContent(content)
+	if err != nil {
+		return nil, err
+	}
+	return run.Run(ctx)
+}
+
+// PromptRun is a claimed prompt. Start dispatches agent_start; Run drains the remaining events and releases the claim. The owner must call Run exactly once, even if Start fails or the context is cancelled.
+type PromptRun struct {
+	agent    *Agent
+	content  []ai.UserContentBlock
+	started  bool
+	prepared bool
+	runStart int
+	startErr error
+}
+
+// Start prepares the prompt and dispatches agent_start without requesting a Provider response. Repeated calls return the first result.
+func (r *PromptRun) Start(ctx context.Context) error {
+	if r.started {
+		return r.startErr
+	}
+	r.started = true
+	a := r.agent
+	var messages []AgentMessage
+	messages, r.startErr = a.prepareContent(ctx, r.content)
+	if r.startErr != nil {
+		return r.startErr
+	}
+	r.runStart = len(a.messages)
+	a.appendMessages(a.declareToolChanges(a.messages, messages)...)
+	r.prepared = true
+	err, failure := catchRunFailure(func() error { a.emit(AgentStartEvent{}); return nil })
+	if failure != nil {
+		err = a.handleRunFailure(failure, ctx.Err() != nil, a.Model())
+	}
+	r.startErr = err
+	return err
+}
+
+// Run drains the claimed prompt and releases its active-run state, including when Start failed. The owner calls Run once; it calls Start when needed.
+func (r *PromptRun) Run(ctx context.Context) ([]AgentMessage, error) {
+	defer r.agent.finishRun()
+	if err := r.Start(ctx); err != nil {
+		if r.prepared {
+			return r.agent.messages, err
+		}
+		return nil, err
+	}
+	cfg := r.agent.createLoopConfig(false)
+	cfg.agentStarted = true
+	return r.agent.runLoop(ctx, cfg, r.runStart)
+}
+
+// BeginSendContent claims the agent synchronously without starting its event stream. A pending preflight is not an active agent run; a successfully claimed prompt is active before its first awaited listener finishes.
+func (a *Agent) BeginSendContent(content []ai.UserContentBlock) (*PromptRun, error) {
 	if err := a.beginRun(ErrAlreadyProcessingPrompt); err != nil {
 		return nil, err
 	}
-	defer a.finishRun()
-	// Reject before appending the user message so a rejected turn leaves history
-	// unchanged (mirrors upstream prompt() validating the model first).
 	if err := a.ensureModel(); err != nil {
+		a.finishRun()
 		return nil, err
 	}
+	return &PromptRun{agent: a, content: append([]ai.UserContentBlock(nil), content...)}, nil
+}
+
+func (a *Agent) prepareContent(ctx context.Context, content []ai.UserContentBlock) ([]AgentMessage, error) {
 	userMsg := AgentMessage{
 		User: &UserMessage{
 			Role:      RoleUser,
@@ -741,7 +809,7 @@ func (a *Agent) SendContent(ctx context.Context, content []ai.UserContentBlock) 
 			return nil, err
 		}
 	}
-	return a.runPromptMessages(ctx, msgs, a.createLoopConfig(false))
+	return msgs, nil
 }
 
 // SendMessages seeds a turn with already-built messages instead of a user
@@ -841,23 +909,12 @@ func (a *Agent) appendMessages(msgs ...AgentMessage) {
 	a.messagesMu.Unlock()
 }
 
-// agentEndMessages returns a snapshot of the message history for an
-// AgentEndEvent. The agent keeps appending to a.messages on retry or
-// continuation after agent_end fires, while consumers read the event's
-// Messages on other goroutines (e.g. the session's forwardAgentEvents loop
-// computing willRetry and dispatching to extensions). Sharing the live slice
-// races the loop's append, so each agent_end carries its own copy. The copy
-// runs on the agent goroutine at emit time, so it never races the append.
-func (a *Agent) agentEndMessages() []AgentMessage {
-	return append([]AgentMessage(nil), a.messages...)
-}
-
 // SystemPrompt returns the current replayed instructions or an explicit provider prompt override.
 func (a *Agent) SystemPrompt() string {
-	if a.forcedSystemPrompt != nil {
-		return *a.forcedSystemPrompt
+	if prompt := a.systemPromptOverride(); prompt != nil {
+		return *prompt
 	}
-	return ai.GetCurrentSystemPrompt(systemMessages(a.messages))
+	return ai.GetCurrentSystemPrompt(systemMessages(a.MessagesSnapshot()))
 }
 
 // SetMessages replaces the message history (used for session restore). The

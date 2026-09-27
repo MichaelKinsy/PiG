@@ -150,14 +150,15 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	}
 
 	// No line limit: the match limit already capped rows.
-	tr := TruncateHead(strings.Join(outputLines, "\n"), DefaultMaxBytes, math.MaxInt)
+	// Number.MAX_SAFE_INTEGER is observable in the truncation details, even though only bytes cap this tool.
+	tr := TruncateHead(strings.Join(outputLines, "\n"), DefaultMaxBytes, 1<<53-1)
 	output := tr.Content
 	var notices []string
 	details := &GrepDetails{}
 	if run.matchLimitReached {
 		notices = append(notices, fmt.Sprintf("%s matches limit reached. Use limit=%s for more, or refine pattern",
 			jsNumber(effectiveLimit), jsNumber(effectiveLimit*2)))
-		details.MatchLimitReached = int(effectiveLimit)
+		details.MatchLimitReached = effectiveLimit
 	}
 	if tr.Truncated {
 		notices = append(notices, FormatSize(DefaultMaxBytes)+" limit reached")

@@ -7,7 +7,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 
@@ -27,6 +26,16 @@ func writeCIFixture(t *testing.T, root, path, content string) {
 	}
 }
 
+// mockedBash returns a command that runs bash with args and the mocks
+// directory first on PATH. Git for Windows' bash puts its own tool
+// directories ahead of the PATH it inherits, which would select Git's curl,
+// tar and rm over the mocks, so bash prepends the directory itself.
+func mockedBash(t *testing.T, mocks string, args ...string) *exec.Cmd {
+	t.Helper()
+	prepend := `PATH="$(cd "$1" && pwd):$PATH" && shift && exec bash "$@"`
+	return exec.CommandContext(t.Context(), testenv.Bash(t), append([]string{"-c", prepend, "bash", mocks}, args...)...)
+}
+
 func copyCIFixture(t *testing.T, root, path string) {
 	t.Helper()
 	data, err := os.ReadFile(filepath.Join(repoRoot(t), filepath.FromSlash(path)))
@@ -39,9 +48,6 @@ func copyCIFixture(t *testing.T, root, path string) {
 // Sentinel versions prove that verification follows the inputs, not today's pins.
 // Docker is replaced at the process boundary; its actual validation shell runs.
 func TestCIImageValidationDerivesToolchainInputs(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("builds the Linux CI images with Linux tools; it runs on the Linux CI hosts")
-	}
 	root := t.TempDir()
 	copyCIFixture(t, root, "automation/ci/build-ci-image.sh")
 	for _, image := range []string{"ci-go", "ci-parity"} {
@@ -53,7 +59,6 @@ func TestCIImageValidationDerivesToolchainInputs(t *testing.T) {
 		"coding/pigversion/pigversion.go": "const UpstreamVersion = \"7.6.5\"\n",
 		"automation/images/npm-runtime/package.json": `{"dependencies":{"npm":"8.7.6"}}`,
 		".github/workflows/ci.yml":                   "env:\n  RUST_VERSION: 6.5.4\n",
-		"automation/images/ci-parity/packages.lock":  "python-3.12=3.12.99-r0\n",
 		"bin/docker": `#!/usr/bin/env bash
 set -euo pipefail
 case "$1" in
@@ -75,20 +80,33 @@ esac
 	} {
 		writeCIFixture(t, root, path, content)
 	}
-	t.Setenv("PATH", filepath.Join(root, "bin")+string(os.PathListSeparator)+os.Getenv("PATH"))
+	bin := filepath.Join(root, "bin")
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv("SOURCE_REVISION", strings.Repeat("a", 40))
 	t.Setenv("CI_BASE_DIR", "")
+	// The mocked docker runs the parity validation with the host's python3,
+	// so the lock pins that interpreter's version.
+	version, err := mockedBash(t, bin, "-c", `python3 -c 'import sys; print("%d.%d" % sys.version_info[:2])'`).Output()
+	if err != nil {
+		t.Fatalf("python3 version: %v", err)
+	}
+	python := strings.TrimSpace(string(version))
+	writeCIFixture(t, root, "automation/images/ci-parity/packages.lock", "python-"+python+"="+python+".99-r0\n")
+	script := filepath.Join(root, "automation/ci/build-ci-image.sh")
 	for _, image := range []string{"go", "parity"} {
-		cmd := exec.CommandContext(t.Context(), testenv.Bash(t), filepath.Join(root, "automation/ci/build-ci-image.sh"), image)
-		if output, err := cmd.CombinedOutput(); err != nil {
+		if output, err := mockedBash(t, bin, script, image).CombinedOutput(); err != nil {
 			t.Errorf("validate %s with changed authoritative pins: %v\n%s", image, err, output)
 		}
 	}
-	// A wrong executable must still fail the identity check.
+	// A wrong executable or interpreter must still fail the identity check.
 	writeCIFixture(t, root, "bin/pi", "#!/bin/sh\nprintf 'wrong-version\\n'\n")
-	cmd := exec.CommandContext(t.Context(), testenv.Bash(t), filepath.Join(root, "automation/ci/build-ci-image.sh"), "parity")
-	if output, err := cmd.CombinedOutput(); err == nil {
+	if output, err := mockedBash(t, bin, script, "parity").CombinedOutput(); err == nil {
 		t.Fatalf("mismatched oracle accepted: %s", output)
+	}
+	writeCIFixture(t, root, "bin/pi", "#!/bin/sh\nprintf '7.6.5\\n'\n")
+	writeCIFixture(t, root, "automation/images/ci-parity/packages.lock", "python-0.1=0.1.99-r0\n")
+	if output, err := mockedBash(t, bin, script, "parity").CombinedOutput(); err == nil {
+		t.Fatalf("mismatched python accepted: %s", output)
 	}
 }
 
@@ -114,9 +132,6 @@ func TestCIImageWorkflowWatchesAuthoritativePins(t *testing.T) {
 }
 
 func TestCIImageSeederUsesDockerfileDigests(t *testing.T) {
-	if runtime.GOOS == "windows" {
-		t.Skip("builds the Linux CI images with Linux tools; it runs on the Linux CI hosts")
-	}
 	root := t.TempDir()
 	copyCIFixture(t, root, "automation/ci/seed-ci-image-bases.sh")
 	digest := "@sha256:" + strings.Repeat("a", 64)
@@ -145,7 +160,7 @@ cp "$MOCK_CRANE" "$2/crane"
 	t.Setenv("PLATFORM", "linux/amd64")
 	for _, image := range []string{"go", "parity"} {
 		t.Setenv("CI_BASE_DIR", filepath.Join(root, "bases-"+image))
-		cmd := exec.CommandContext(t.Context(), testenv.Bash(t), filepath.Join(root, "automation/ci/seed-ci-image-bases.sh"), image)
+		cmd := mockedBash(t, filepath.Join(root, "bin"), filepath.Join(root, "automation/ci/seed-ci-image-bases.sh"), image)
 		if output, err := cmd.CombinedOutput(); err != nil {
 			t.Fatalf("seed %s: %v\n%s", image, err, output)
 		}

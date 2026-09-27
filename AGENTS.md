@@ -165,6 +165,10 @@ correspondence. Do not change a public extension or TUI contract for presumed
 speed: profile the representative path and prove allocations/inlining and
 byte-faithful behavior before and after.
 
+## Faithful, general implementations
+
+Port Pi's design, not one case's output. Use Pi's shared data (model catalog, `defaultModelPerProvider`, auth metadata) and one shared function where Pi has one. Never hard-code a provider or model in shared code; cite the Pi line when Pi itself special-cases one. Test shared paths with several provider shapes, never only Copilot or `test-faux`, and fix a special case's siblings together.
+
 ## TypeScript async/Promise parity
 
 Treat every upstream `async`, `Promise`, `.then`, `Promise.all`, `Promise.race`, and intentionally unawaited call as control-flow behavior, not syntax to erase. Before porting it, record whether the caller waits, what ordering is guaranteed, how cancellation and errors propagate, whether work is concurrent, and which executor/event loop owns callbacks. Then preserve that contract in Go:
@@ -289,17 +293,17 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 3 registrati
 | `model-resolver-selector` | 17 | 17 | 0 | 0 | 0 | 13 | not run |
 | `model-runtime-store-catalog` | 3 | 3 | 0 | 0 | 0 | 7 | not run |
 | `oauth` | 8 | 8 | 0 | 0 | 0 | 12 | not run |
-| `print` | 1 | 1 | 0 | 0 | 0 | 3 | not run |
+| `print` | 2 | 2 | 0 | 0 | 0 | 3 | not run |
 | `project-trust` | 8 | 8 | 0 | 0 | 0 | 13 | not run |
 | `providers-faux-streaming` | 11 | 10 | 0 | 1 | 0 | 15 | not run |
 | `providers-registry` | 6 | 3 | 0 | 3 | 0 | 26 | not run |
-| `rpc` | 26 | 26 | 0 | 0 | 0 | 10 | not run |
+| `rpc` | 30 | 30 | 0 | 0 | 0 | 14 | not run |
 | `selectors` | 10 | 10 | 0 | 0 | 1 | 14 | not run |
 | `session` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
 | `settings` | 7 | 7 | 0 | 0 | 0 | 13 | not run |
 | `slash-commands` | 9 | 8 | 1 | 0 | 0 | 17 | not run |
 | `startup` | 6 | 5 | 1 | 0 | 0 | 5 | not run |
-| `tools` | 12 | 12 | 0 | 0 | 0 | 27 | not run |
+| `tools` | 13 | 13 | 0 | 0 | 0 | 27 | not run |
 | `tree` | 5 | 4 | 1 | 0 | 0 | 5 | not run |
 | `tui-components` | 11 | 11 | 0 | 0 | 0 | 16 | not run |
 
@@ -328,7 +332,7 @@ Apply these rules to new work. Do not delete or weaken accepted tests to conform
 
 ## Verification-driven development
 
-For core parity surfaces (agent loop, message normalization, provider payload conversion, session persistence, auth, tool execution, interactive rendering), use a red → green → refactor loop.
+For core parity surfaces (agent loop, message normalization, provider payload conversion, session persistence, auth, tool execution, interactive rendering), use a red → green → refactor loop. Apply [Faithful, general implementations](#faithful-general-implementations).
 
 Bug fixes require a regression guard in the same PR. Add a new unit test, integration test, or parity scenario that would fail on the observed bug, or name the existing failing test that already proves it. If no automated guard is practical, say why in the PR and file a follow-up before merge. Do not rely on manual repro alone for a fixed bug.
 
@@ -337,25 +341,28 @@ Bug fixes require a regression guard in the same PR. Add a new unit test, integr
 3. **Fix at the source.** Patch the lowest shared layer that matches upstream semantics. Avoid UI/provider band-aids when message normalization or session conversion is the source.
 4. **Harden both boundaries.** For cross-layer bugs, add at least one unit test at the pure conversion layer and one regression at the nearest caller boundary when practical (e.g. NormalizeMessages + OpenAI converter; session loop + print/interactive error surfacing).
 5. **Verify poisoned history.** When a bug involves bad persisted sessions, test with historical/poisoned messages: errored assistant turns, aborted assistant turns, empty text blocks, nil content, orphaned tool calls, and model/provider switches.
-6. **No accepted flake.** Do not document “rerun standalone” as success. Increase deterministic time budgets, add env overrides, isolate shared resources, or mark the real external dependency as an explicit skip with a reason.
+6. **No accepted flake.** Do not document “rerun standalone” as success. Fix root causes instead of hiding failures with longer time budgets, retries, sleeps, env overrides, skips, or normalization. Use timeouts and retries only for faults outside our control, and surface those faults. An unavailable external dependency is a blocker, not passing evidence.
 7. **Report the red/green evidence.** Final summaries for fixes to core parity must state: failing symptom, new regression test names, upstream rule mirrored, and commands run. If a test was added after the fix, say it was not red-proven.
 8. **Production path required.** A new production API/method used to fix behavior must have at least one production call site or a test that drives the production path. Test-only call sites do not prove the product behavior changed.
 9. **Coverage quality over coverage quantity.** A PORT_MAP entry is not accepted as verified by a weak scenario. Boot-only, smoke-only, and deferred scenarios may stay in the report, but they do not count as behavioral verification. Registration-only scenarios count only for registry/catalog/auth-wiring paths, never for provider stream/payload conversion files.
 
-Provider/Copilot regressions specifically must cover both OpenAI-compatible paths when relevant, and must not rely on `--list-models` scenarios for stream/payload coverage:
+Use this acceptance matrix for shared provider, model, auth, and tool regressions. Explain inapplicable shapes from the upstream contract, not available credentials. Do not use `--list-models` as stream/payload proof.
+
+Cover both OpenAI-compatible API paths when the change reaches both:
 
 ```text
-ai/openai.go              # openai-completions, used by many github-copilot models
-ai/openai_responses.go    # openai-responses, used by reasoning/responses-tagged models
-agent/transform.go    # upstream transform-messages parity before provider conversion
+ai/openai.go             # openai-completions
+ai/openai_responses.go   # openai-responses
+agent/transform.go       # upstream transform-messages parity before provider conversion
 ```
 
-Provider file acceptance matrix for regressions:
+Shared-path acceptance matrix for regressions:
 
 | required axis | minimum cases |
 |---|---|
-| API path | `openai-completions` and `openai-responses` when both can apply |
-| mode | pure converter/unit plus nearest caller (`print` or interactive) |
+| provider shape | OAuth, API key, OpenAI-compatible with a custom base URL, and no default model, as the path allows |
+| API path | each API kind reached by the shared behavior, including `openai-completions` and `openai-responses` when both can apply |
+| mode | pure shared-function/converter unit test plus nearest caller (`print`, interactive, or RPC, as applicable) |
 | history | fresh plus poisoned persisted history when relevant |
 | assistant prior turn | error, aborted, empty text, tool-call/orphaned tool-call when relevant |
 | auth/network | hermetic success and hermetic failure when touching auth refresh/error display |
@@ -462,6 +469,8 @@ another SDK has, or that answers the same call differently, is drift regardless
 of how faithfully its interface is spelled. Record it and close it.
 
 ## Code and lint policy
+
+Apply [Faithful, general implementations](#faithful-general-implementations) to code review and provider/model literal guard exceptions; each exception requires a Pi source citation.
 
 Fix valid findings at the source. Preserve upstream behavior over stylistic lint suggestions. Use the narrowest suppression for real false positives and explain why a source fix would be less faithful or less correct. `nolintlint` is enabled; stale or unexplained pragmas fail. Security suppressions must name the CLI threat-model reason.
 

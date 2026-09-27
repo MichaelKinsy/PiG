@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -186,8 +187,11 @@ func (rpcModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 		}
 	}
 
-	// Close stdin to signal EOF.
-	inputErr = errors.Join(inputErr, stdinPipe.Close())
+	if sc.RPC.Terminate {
+		inputErr = errors.Join(inputErr, cmd.Process.Signal(syscall.SIGTERM))
+	} else {
+		inputErr = errors.Join(inputErr, stdinPipe.Close())
+	}
 
 	// Wait for process exit.
 	waitErr := cmd.Wait()
@@ -205,6 +209,11 @@ func (rpcModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 	waitErr = errors.Join(waitErr, inputErr)
 
 	output := strings.TrimRight(stdout.String(), "\n\r ")
+	if sc.RPC.CanonicalJSON {
+		var canonicalErr error
+		output, canonicalErr = canonicalJSONL(output)
+		waitErr = errors.Join(waitErr, canonicalErr)
+	}
 
 	if waitErr != nil && stderr.Len() > 0 {
 		waitErr = fmt.Errorf("%w\nstderr: %s", waitErr, stderr.String())
@@ -220,6 +229,28 @@ func (rpcModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 		RuntimeMs: elapsed,
 		Err:       waitErr,
 	}
+}
+
+func canonicalJSONL(output string) (string, error) {
+	var lines []string
+	for i, line := range strings.Split(output, "\n") {
+		var value any
+		decoder := json.NewDecoder(strings.NewReader(line))
+		decoder.UseNumber()
+		if err := decoder.Decode(&value); err != nil {
+			return "", fmt.Errorf("JSONL record %d: %w", i+1, err)
+		}
+		var extra any
+		if err := decoder.Decode(&extra); err != io.EOF {
+			return "", fmt.Errorf("JSONL record %d has trailing data", i+1)
+		}
+		data, err := json.Marshal(value)
+		if err != nil {
+			return "", err
+		}
+		lines = append(lines, string(data))
+	}
+	return strings.Join(lines, "\n"), nil
 }
 
 func latestRPCRequestID(output string) (string, error) {
