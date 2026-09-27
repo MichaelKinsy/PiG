@@ -179,6 +179,38 @@ func TestLlamaLoginStoresServerAndKeyThenGuidesModelSelection(t *testing.T) {
 	}
 }
 
+func TestLlamaLoginNeverRendersSubmittedSecret(t *testing.T) {
+	m, _, _, _ := newLlamaTestMode(t)
+	requestStarted, release := make(chan string, 4), make(chan struct{})
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requestStarted <- r.Header.Get("Authorization")
+		<-release
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"data":[]}`)
+	}))
+	defer server.Close()
+	handled := make(chan bool, 1)
+	go func() { handled <- m.loginAPIKeyProvider(llama.LlamaProviderID) }()
+	waitForRender(t, m.editorContainer, "llama.cpp server URL")
+	deliverModalInput(t, m, []byte(server.URL))
+	deliverModalInput(t, m, []byte("\r"))
+	waitForRender(t, m.editorContainer, "API key (optional)")
+	const secret = "secret-never-on-screen"
+	deliverModalInput(t, m, []byte(secret))
+	deliverModalInput(t, m, []byte("\r"))
+	header := <-requestStarted
+	leaked := strings.Contains(plainRender(m.editorContainer), secret)
+	close(release)
+	<-handled
+	m.backgroundTasks.Wait()
+	if header != "Bearer "+secret {
+		t.Fatalf("secret was not delivered to provider")
+	}
+	if leaked {
+		t.Fatal("secret prompt retained its raw submitted value on screen")
+	}
+}
+
 func TestLlamaLoginCancelShowsNoError(t *testing.T) {
 	m, auth, _, _ := newLlamaTestMode(t)
 	handled := make(chan bool, 1)
@@ -231,7 +263,7 @@ func TestLlamaSlashHandlerAndLoginRouting(t *testing.T) {
 		ShowLoginAuthType:   func() (string, bool) { return "api_key", true },
 		ShowOAuthSelector:   func(string) (string, bool) { return llama.LlamaProviderID, true },
 		SetAPIKey:           func(string, string) error { return nil },
-		ShowTextInput:       func(string, string) (string, bool) { textInput = true; return "", false },
+		ShowAPIKeyInput:     func(string) (string, bool) { textInput = true; return "", false },
 		LoginAPIKeyProvider: func(provider string) bool { routed = provider; return true },
 	}
 	if err := loginHandler(login); err != nil || routed != llama.LlamaProviderID || textInput {

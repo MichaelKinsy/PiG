@@ -1411,3 +1411,28 @@ Parity allowance: no paired scenario runs an extension's direct provider call; t
 Remove when: PiG ships the vendor SDKs to extensions and runs upstream's API implementations, or upstream removes the compat entry point's global dispatch.
 
 SCRUTINIZED:approved
+
+## D80 Configurable secret-input privacy
+
+What: `maskSecretInput` is a boolean setting with default `true`. `/settings` exposes **Mask secret input** and explains that false restores Pi's plain-text behavior. Masked prompts show up to eight dots, a grapheme count and the last four graphemes. Inputs shorter than five graphemes expose no suffix. Submitted dialog history retains only the preview. The hint reads `Input hidden (PiG default). Show like Pi: /settings → Mask secret input`.
+
+False restores Pi 0.87.1's ordinary prompt and submitted-text rendering without the extra count or hint. Ordinary text and manual-code prompts are unaffected. A new dialog captures the setting; change it in `/settings`, then reopen `/login`. Normal project/global precedence applies. Pi ignores the extra JSON key and preserves it when updating settings. This is JSON-content compatibility, not a claim that PiG's and Pi's settings locking protocols interoperate.
+
+Authentication progress and errors redact masked input, including trimmed credential forms. Login input is not appended to Session messages. The authentication flow and authorized credential store still receive the credential: display privacy does not encrypt auth.json or a provider-owned store, and the shown suffix is intentionally visible.
+
+Why: the owner requires verification by length and suffix without echoing a complete secret, with a Pi-compatible opt-out. Pi's `packages/ai/src/auth/helpers.ts:12-16` declares secret prompts, but `packages/coding-agent/src/modes/interactive/interactive-mode.ts:6085-6093` routes them to ordinary showPrompt. The host owns authentication input and diagnostics; the approved default changes Stock PiG's visible behavior without activating a product workflow.
+
+Call-site markers:
+- `internal/codingagent/settings.go`: default and persistence.
+- `internal/codingagent/slash_session_handlers.go`: the settings row.
+- `internal/codingagent/interactive_auth.go`, `interactive_llama.go` and `slash_commands.go`: prompt policy and diagnostic redaction.
+- `tui/login_dialog.go`: preview, count, hint and retained content.
+
+Locked by: `TestLoginDialogMaskedPreview`, `TestLoginDialogSecretValueNeverRendered`, `TestLoginDialogMaskDisabledMatchesPi`, `TestMaskSecretInputSettingsRoundTrip`, `TestMaskSecretInputSettingsMenuAppliesToNextDialog`, `TestLoginMaskSettingReachesStandardDialog`, `TestPiIgnoresMaskSecretInputInSharedSettings`, `TestMaskedLoginErrorDoesNotEnterFramesOrSession`, and standard/llama.cpp prompt tests.
+
+Parity allowance: the owner-approved enabled default differs from Pi's plain-text input and is guarded by masked-preview, redaction and persisted-history tests. `parity/scenarios/oauth/14-login-secret-mask-disabled.toml` compares the disabled production dialog against real Pi with escaped-output equality.
+
+Remove when: upstream provides equivalent configurable privacy, or PiG removes the option.
+
+Ratification: owner decision 2026-09-27 requires the configurable default-on feature. D80 retains that approval without extending its scope.
+SCRUTINIZED:approved

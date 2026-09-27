@@ -466,6 +466,7 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		}()
 	})
 	b.SetHostAction("setModel", func(ctx context.Context, spec string) (bool, error) {
+		m.invalidatePostLoginSelection()
 		extension.CallInitiated(ctx)
 		if m.opts.ModelBuilder == nil {
 			return false, fmt.Errorf("model switching not configured")

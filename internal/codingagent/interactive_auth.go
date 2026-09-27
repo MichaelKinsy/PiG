@@ -99,6 +99,19 @@ func oauthCredentialStore(providerID string) (ai.OAuthCredentialStore, bool) {
 	return store, ok
 }
 
+func (m *InteractiveMode) maskSecretInput() bool {
+	if m.opts.SettingsManager != nil {
+		return m.opts.SettingsManager.Get().GetMaskSecretInput()
+	}
+	return m.opts.Settings.GetMaskSecretInput()
+}
+
+func (m *InteractiveMode) newLoginDialog(name string, cancel func()) *tui.LoginDialog {
+	dialog := tui.NewLoginDialog(name, cancel)
+	dialog.SetMaskSecretInput(m.maskSecretInput())
+	return dialog
+}
+
 // runOAuthLogin runs the provider's interactive OAuth dialog.
 func (m *InteractiveMode) runOAuthLogin(loginCtx context.Context, provider string) error {
 	switch provider {
@@ -203,7 +216,7 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 	if providerName == provider.ID() {
 		providerName = provider.Name()
 	}
-	dlg := tui.NewLoginDialog(providerName, loginCancel)
+	dlg := m.newLoginDialog(providerName, loginCancel)
 	renderNotify := make(chan struct{}, 16)
 	notify := func() {
 		select {
@@ -283,6 +296,7 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 		OnSelectContext: selectMethod,
 	}
 
+	authPath := auth.Path()
 	go func() {
 		defer loginCancel()
 
@@ -296,7 +310,8 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 		}
 
 		if store, ok := provider.(ai.OAuthCredentialStore); ok {
-			_, err = store.StoreOAuthCredentials(cred)
+			// pig additive (D40): a contributed credential store reports its own saved location.
+			authPath, err = store.StoreOAuthCredentials(cred)
 		} else {
 			err = auth.Set(provider.ID(), ai.Credential{Type: ai.CredentialOAuth, Refresh: cred.Refresh, Access: cred.Access, Expires: cred.Expires, ProjectID: cred.ProjectID, Scope: cred.Scope})
 		}
@@ -315,7 +330,7 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 
 	ok := m.runEditorSlotLoginDialog(dlg, renderNotify)
 	if ok {
-		m.completeProviderAuthentication(provider.ID(), providerName, ai.CredentialOAuth, previousModel)
+		m.completeProviderAuthentication(provider.ID(), providerName, ai.CredentialOAuth, previousModel, authPath, dlg.Redact)
 	}
 	return nil
 }
@@ -347,7 +362,7 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 	}
 
 	loginCtx, loginCancel := context.WithCancel(loginCtx)
-	dlg := tui.NewLoginDialog(buildAuthProviderName("openai-codex"), loginCancel)
+	dlg := m.newLoginDialog(buildAuthProviderName("openai-codex"), loginCancel)
 	renderNotify := make(chan struct{}, 16)
 	notify := func() {
 		select {
@@ -431,7 +446,7 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 	// select, so it did not drain uiTaskCh and a runOnMain post would deadlock.
 	// ok == !Cancelled() is true only when the goroutine reached dlg.Success().
 	if ok {
-		m.completeProviderAuthentication("openai-codex", buildAuthProviderName("openai-codex"), ai.CredentialOAuth, previousModel)
+		m.completeProviderAuthentication("openai-codex", buildAuthProviderName("openai-codex"), ai.CredentialOAuth, previousModel, auth.Path(), dlg.Redact)
 	}
 	return nil
 }
@@ -445,7 +460,7 @@ func (m *InteractiveMode) runLoginGitHubCopilotDialog(loginCtx context.Context) 
 	}
 
 	loginCtx, loginCancel := context.WithCancel(loginCtx)
-	dlg := tui.NewLoginDialog(buildAuthProviderName("github-copilot"), loginCancel)
+	dlg := m.newLoginDialog(buildAuthProviderName("github-copilot"), loginCancel)
 	renderNotify := make(chan struct{}, 16)
 	notify := func() {
 		select {
@@ -509,9 +524,53 @@ func (m *InteractiveMode) runLoginGitHubCopilotDialog(loginCtx context.Context) 
 
 	ok := m.runEditorSlotLoginDialog(dlg, renderNotify)
 	if ok {
-		m.completeProviderAuthentication("github-copilot", buildAuthProviderName("github-copilot"), ai.CredentialOAuth, previousModel)
+		m.completeProviderAuthentication("github-copilot", buildAuthProviderName("github-copilot"), ai.CredentialOAuth, previousModel, auth.Path(), dlg.Redact)
 	}
 	return nil
+}
+
+// showAPIKeyInput displays the standard API-key auth method's secret prompt in the editor slot.
+func (m *InteractiveMode) showAPIKeyInput(providerID string) (string, bool) {
+	if m.layout == nil || m.tuiInst == nil {
+		return "", false
+	}
+	dialog := m.newLoginDialog(buildAuthProviderName(providerID), nil)
+	// pig divergence (D80): the API-key method honors the configured input privacy policy.
+	methodName := "API key"
+	if auth, err := ai.BuiltinProviderAuth(providerID); err == nil && auth.APIKey != nil {
+		methodName = auth.APIKey.Name
+	}
+	answer := dialog.ShowSecretInput("Enter "+methodName, "")
+	m.editorContainer.SetChildren(dialog)
+	m.tuiInst.Render()
+	defer func() { m.editorContainer.SetChildren(m.editor); m.tuiInst.Render() }()
+	inputCh, releaseInput := m.acquireModalInputChannel()
+	defer releaseInput()
+	var done <-chan struct{}
+	if m.runCtx != nil {
+		done = m.runCtx.Done()
+	}
+	for {
+		select {
+		case value, ok := <-answer:
+			return value, ok
+		case buf, ok := <-inputCh:
+			if !ok {
+				return "", false
+			}
+			for _, chunk := range dropKeyReleases(dialog, []string{string(buf)}) {
+				dialog.HandleInput(chunk)
+				select {
+				case value, ok := <-answer:
+					return value, ok
+				default:
+				}
+			}
+		case <-done:
+			return "", false
+		}
+		m.tuiInst.Render()
+	}
 }
 
 // runOAuthLogout removes stored OAuth credentials for a provider.

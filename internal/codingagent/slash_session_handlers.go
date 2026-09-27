@@ -936,6 +936,14 @@ func settingsItems() []settingItem {
 			},
 			apply: func(s *Settings, v string) { s.TreeFilterMode = v },
 		},
+		// pig divergence (D80): configurable input privacy leaves the upstream setting order intact.
+		{
+			id: "mask-secret-input", label: "Mask secret input",
+			desc:   "PiG default: hide secret input with a count and last four characters. Differs from Pi; false restores Pi's plain-text behavior.",
+			values: []string{"true", "false"},
+			get:    func(s Settings) string { return boolStr(s.GetMaskSecretInput()) },
+			apply:  func(s *Settings, v string) { enabled := v == "true"; s.MaskSecretInput = &enabled },
+		},
 		{
 			id: "warnings", label: "Warnings",
 			desc:   "Enable or disable individual warnings",

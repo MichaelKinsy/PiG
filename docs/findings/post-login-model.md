@@ -1,4 +1,4 @@
-# Post-login model selection evidence
+# Post-login model selection and input privacy evidence
 
 ## Reference contract
 
@@ -6,65 +6,72 @@ The reference is Pi 0.87.1 (`f07218c4d4bbc12bef056a7058c3dd49dfe41abe`). Paths b
 
 | Behavior | Pi source | PiG implementation |
 |---|---|---|
-| Provider default table and declaration order | `packages/coding-agent/src/core/model-resolver.ts:20` | `internal/codingagent/default_models.go`; startup and authentication use this one table |
-| Unknown-model condition | `packages/coding-agent/src/modes/interactive/interactive-mode.ts:298-300` | `isUnknownModel`; PiG represents the initial unknown sentinel as nil |
-| Immediate selection, deferred discovery, provider-specific guidance, status/error text | `packages/coding-agent/src/modes/interactive/interactive-mode.ts:5879-5949` | `completeProviderAuthentication`, `finishProviderAuthentication`, `postLoginModel` |
-| Bounded refresh, warnings, model/session replacement guard | `packages/coding-agent/src/modes/interactive/interactive-mode.ts:5951-5975` | Owned background work, 15-second context, lossless owner-loop delivery and identity checks |
-| API-key and OAuth callers | `packages/coding-agent/src/modes/interactive/interactive-mode.ts:6003-6049,6134-6166` | API-key setter, registered OAuth dialog, Codex dialog, Copilot dialog and llama.cpp dialog |
-| Explicit persistence and nonempty scope | `packages/coding-agent/src/core/agent-session.ts:2108-2158` | `SessionHandle.SetModel(..., Persist: true)` and shared scope update |
-| Submitted input becomes text | `packages/coding-agent/src/modes/interactive/components/login-dialog.ts:56-64,77-81` | `tui.LoginDialog.ShowInput` retains the prompt, placeholder, submitted text and hint |
+| Provider defaults and declaration order | `packages/coding-agent/src/core/model-resolver.ts:20-64` | `internal/codingagent/default_models.go`; startup and login share one table |
+| Unknown-model condition | `packages/coding-agent/src/modes/interactive/interactive-mode.ts:298-300` | `isUnknownModel`; nil represents PiG's initial unknown sentinel |
+| Selection, discovery, guidance and messages | `packages/coding-agent/src/modes/interactive/interactive-mode.ts:5879-5975` | `completeProviderAuthentication`, `finishProviderAuthentication`, `postLoginModel` |
+| Model/default/thinking mutation before awaited notifications | `packages/coding-agent/src/core/agent-session.ts:2110-2137` | `Session.SetModelOnMain` separates owner-loop state mutation from worker-side notifications |
+| Submitted text and prompt layout | `packages/coding-agent/src/modes/interactive/components/login-dialog.ts:56-64,77-81,156-182` | `tui.LoginDialog`, with the selectable privacy feature disabled |
+| Secret-prompt classification | `packages/ai/src/auth/helpers.ts:12-16`; `interactive-mode.ts:6085-6093` | Standard API-key prompts use the provider's auth-method name and secret classification |
 
-The only provider-specific selection rules are Pi's own Radius catalog-order fallback and llama.cpp guidance. Authentication completion never picks a literal Copilot or Anthropic model. `TestDefaultModelPerProviderMatchesPinnedUpstream` derives the defaults and their order from the pinned TypeScript table.
+Radius's catalog-order fallback and llama.cpp guidance remain Pi's own special cases. No login path hard-codes a Copilot or Anthropic model. `TestDefaultModelPerProviderMatchesPinnedUpstream` independently parses the pinned table. Tests cover OAuth, ordinary API keys, custom-base-URL OpenAI-compatible providers and providers without a default.
 
-A call-site audit found that the inline Copilot reauthentication implementation had no reachable production caller. The slash-context callback intercepted Copilot before `runOAuthLogin` could enter that branch. The duplicate implementation and its private cancellation state are removed. There is one Copilot dialog route. `TestOAuthLoginCancellationDoesNotCompleteAuthentication` replaces cancellation tests of the dead implementation with the real prompt, cancellation, credential and subsequent-login path.
+## Model completion and credential paths
 
-## Translation and lifetime
+Model construction runs off the input loop. `Session.SetModelOnMain` dispatches synchronous model, transcript, default and thinking-state changes to the owner loop before awaiting extension notifications on the worker. It uses public main's existing `BeginModelChange` state reducer. The ordinary and RPC paths preserve their existing thinking-notification ordering. This does not import the candidate's Model Runtime, provider or Session changes.
 
-Pi awaits local authentication completion before starting its unawaited catalog refresh. PiG runs potentially blocking model construction and Session extension callbacks off the input loop. It posts the completion to the owner loop before starting refresh. Catalog completion also returns through that loop. Refresh work uses the interactive lifetime's context and wait group. Shutdown cancels and drains it. Deferred selection checks both the current Session identity and the original model pointer. No login selection scans Session history.
+Generation and Session/handle/model checks reject stale work before mutation and before UI/scope changes. Model and Session commands invalidate the generation even when the model pointer stays the same. A late notification callback never re-applies or re-persists an old choice. Refreshes remain bounded to 15 seconds and owned by the interactive lifetime. No selection scans Session history.
 
-`TestPostLoginModelDiscovery` ports the discovery cases from `packages/coding-agent/test/suite/regressions/7027-credential-refresh-hang.test.ts:128-219`. It uses the real registry and a controlled catalog store. Fake time proves the 15-second bound without longer test timeouts. It covers preferred default, catalog order, empty catalog, refresh error, replacement and shutdown. `TestPostLoginCompletesBeforeBackgroundRefresh` covers the known-model completion ordering from the same Pi test file.
+External credential stores belong to PiG's existing capability D40. Pi always reports `getAuthPath()` at `interactive-mode.ts:5933,5937,5947`; it does not return a provider-owned store path. PiG preserves the actual `StoreOAuthCredentials` result through immediate and deferred completion, and uses `auth.Path()` for core storage.
 
-## Red and mutation evidence
+Regression guards:
 
-- Before the implementation, `TestAPIKeyLoginSelectsProviderDefault` failed for both OpenAI and Anthropic because the selected model remained empty.
-- Before the implementation, `TestAPIKeyLoginWithoutDefaultReportsGuidance` received only `Configured API key for custom-provider` instead of Pi's status and guidance.
-- Before the dialog change, `TestLoginDialog_SubmittedInputRemainsVisible` failed because the prompt, placeholder, submitted value and submit hint disappeared.
-- `TestLoginDialog_BracketedPasteReachesInput` already passed. It is the requested platform-independent guard for the paste fix in #63, not a newly fixed defect.
-- A compiling mutation that made `isUnknownModel` always false failed all four new paired scenarios. Real Pi selected and persisted its default; PiG did not reach the required selected-model status.
-- A compiling mutation that removed the model/session identity checks failed both replacement cases in `TestPostLoginModelDiscovery` by selecting Radius's balanced model after replacement.
+- `TestAPIKeyLoginSelectsProviderDefault` and `TestAPIKeyLoginWithoutDefaultReportsGuidance`: shared completion after API-key authentication.
+- `TestAPIKeyLoginCustomEndpointDoesNotInventDefault`: preserve the configured endpoint and report missing-default guidance rather than choosing the first custom model.
+- `TestPostLoginModelDiscovery`: Pi's `test/suite/regressions/7027-credential-refresh-hang.test.ts:128-219`, including preferred default, catalog order, empty catalog, errors, timeout, replacement and shutdown. It also checks an external credential path across deferred discovery.
+- `TestRegisteredOAuthLoginReportsReturnedCredentialPath`: report an external store with and without a selected default.
+- `TestPostLoginSelectionLosesToOwnerLoopCommands` and `TestPostLoginSelectionRechecksSessionMutationAndCompletion`: reject delayed construction or completion after a newer choice.
+- `TestSetModelOnMainDispatchesAllStateBeforeNotifications`: the real Session boundary, including rejected mutation and notifications completing after a newer model is selected. A compiling mutation that moves state mutation before dispatch fails both cases with `state changed before owner dispatch`.
 
-The new scenarios are `oauth/10-post-login-oauth-model`, `11-post-login-api-key-model`, `12-post-login-oauth-status` and `13-post-login-api-key-status`. Each passed three pairs against the installed real Pi binary. The state cases compare exact command-context and persisted-settings output. The status cases compare the complete notice, normalizing only the isolated credential-file path. Status and state are separate because Pi replaces consecutive status notices. The observer never selects a model.
+The four model/status scenarios under `parity/scenarios/oauth/10-*` through `13-*` compare real runtime state, persisted defaults and completion messages against Pi. Status comparisons normalize only isolated credential-file paths. The observer never selects a model.
 
-The OAuth scenario uses the existing faux device/token transport and supplies an enabled catalog entry. The API-key scenario stores a synthetic key through `/login`. Neither makes an inference request. Every new scenario explicitly overrides both agent-directory variables so an inherited worker configuration cannot redirect its credential writes.
+## Configurable input privacy
 
-Run paired evidence with the qualified Go and Node toolchains and `rg`, `fd` and tmux available. Resolve tool-manager shims to installed tool binaries on PATH before changing HOME; this also applies to `uv` for Python extension tests. Keep compiler and package caches separate from the isolated credential directories.
+Owner-approved divergence D80 defines `maskSecretInput`. It defaults to true and appears as **Mask secret input** in `/settings`. The description and prompt hint explain the difference from Pi and the false opt-out.
 
-```sh
-isolation=$(mktemp -d)
-mkdir -p "$isolation/home" "$isolation/pig-agent" "$isolation/pi-agent" "$isolation/pig-home"
-env HOME="$isolation/home" PIG_HOME="$isolation/pig-home" \
-  PIG_CODING_AGENT_DIR="$isolation/pig-agent" \
-  PI_CODING_AGENT_DIR="$isolation/pi-agent" \
-  PIG_PARITY_PI_BIN="$PWD/extensions/sdk-ts/node_modules/.bin/pi" \
-  make parity-family FAMILY=oauth
-```
+When enabled, the dialog shows up to eight dots, a grapheme count and the last four graphemes. Inputs shorter than five graphemes show no suffix. Submission retains the preview, not the full input. Authentication progress and error text redact submitted masked values and their trimmed forms before display. Login input is not appended to Session messages. The authentication flow still receives the submitted value, and the authorized credential store still stores credentials: this is display privacy, not credential encryption.
 
-The complete OAuth, selectors and model-resolver-selector families passed. Linux and Windows vet, touched-package and full-repository lint, TUI race tests, focused authentication race tests, `go fix -diff ./...`, and `make ci-contracts ci-drift` passed. The Go interface inventory and coverage report are regenerated. Coverage is generated with `RESULTS=` so another worktree's transient run file cannot supply verification claims.
+When disabled, PiG displays the full text while editing and after submission. Pi 0.87.1 does this even for `type: "secret"`. No comparison substitutes dots for Pi's plaintext output. The exact comparison exposed dialog spacing, prompt/placeholder/hint styling, API-key prompt-label and dynamic-border reset differences; these are fixed at their owning components.
 
-## Resource measurement
+Guards:
 
-`BenchmarkPostLoginModelSelection` uses the complete generated catalog. On the lane's Linux Xeon host it measured approximately 44 microseconds and 76 KB in four allocations per selection. The allocation profile attributes most allocation to the temporary catalog slice. These measurements describe the pure selection pass, not network or extension latency. The catalog refresh remains independently bounded and cancellation-tested.
+- `TestLoginDialogMaskedPreview`: empty, short, ordinary, long and Unicode inputs, with suffixes, counts, hint, retained text and redacted progress.
+- `TestLoginDialogSecretValueNeverRendered`: inspect both rendered frames and `LoginDialog.lines`, so render-time redaction cannot hide retained plaintext.
+- `TestLoginDialogMaskDisabledMatchesPi`: compare complete ANSI frames from the installed Pi dialog before typing, during typing, after submission and after progress, without ANSI or whitespace normalization.
+- `TestMaskSecretInputSettingsRoundTrip`, `TestMaskSecretInputSettingsMenuAppliesToNextDialog` and `TestLoginMaskSettingReachesStandardDialog`: default, explicit values, persistence, menu and production-dialog wiring.
+- `TestAPIKeyLoginPromptMasksInput`, `TestLlamaLoginNeverRendersSubmittedSecret` and `TestMaskedLoginErrorDoesNotEnterFramesOrSession`: standard and typed prompt boundaries, diagnostics and persisted Session privacy.
+- `TestPiIgnoresMaskSecretInputInSharedSettings`: Pi reads the Go-serialized boolean, ignores it for its behavior and preserves it when changing another setting; PiG then reads the result. This tests JSON content, not interoperability of the two settings-lock protocols. No candidate lock implementation is included.
+- `oauth/14-login-secret-mask-disabled`: escaped-output equality against real Pi, with three runs.
 
-```sh
-env HOME="$isolation/home" PIG_HOME="$isolation/pig-home" \
-  PIG_CODING_AGENT_DIR="$isolation/pig-agent" \
-  PI_CODING_AGENT_DIR="$isolation/pi-agent" \
-  go test ./internal/codingagent -run '^$' -bench BenchmarkPostLoginModelSelection \
-  -benchmem -cpuprofile "$isolation/post-login.cpu" -memprofile "$isolation/post-login.mem"
-```
+The settings correspondence rules account for exactly one D80 row and still reject undeclared additions or reordered Pi rows. The settings scenario asserts each raw row count before accounting for this approved difference. The process and tmux launchers discard ambient agent-directory overrides before applying their snapshotted configuration; unit tests guard both boundaries.
 
-## Integration boundaries
+## Verification environment and scope
 
-The changelog entries live under `## [Unreleased]`, matching the base branch's release convention. The release identity and `TestParseChangelog_RealFile` remain unchanged. The full `go test ./...` run passes with HOME, PIG_HOME and both agent-directory variables pointing at temporary directories and installed tool binaries on PATH.
+The clean public branch starts at `10111db80`: original #74 plus public main `c1550a84a`. It contains no candidate merge. Only login/privacy code, its tests, documentation and feature-derived inventories are added. Release notes are in `CHANGELOG.md` under `[0.3.0]`.
 
-An initial observer experiment also exposed independent spacing differences after a status when displaying string widgets or custom messages. Those rendering surfaces are outside authentication selection. The final scenarios use status notifications and compare completion notices separately; they do not normalize away the rendering differences. Those observations remain for the UI-surface owner.
+Use Go 1.27.1 and real Pi 0.87.1. Resolve tool-manager shims to installed Go, Node, Rust and uv executables before changing HOME. Every test and probe isolates HOME, PIG_HOME and both agent directories. Compiler/package caches are separate from credentials. The `make ci-parity` comparison runs that target on this branch and an unmodified archive of public main `c1550a84a`, with the same installed oracle and toolchains.
+
+The earlier review identified a full-suite claim that contradicted a reported `TestParseChangelog_RealFile` failure. That historical claim is not acceptance evidence. The clean branch passes `TestParseChangelog_RealFile`; no full `go test ./...` pass is inferred from focused testing.
+
+## Verification results
+
+Build, Linux vet, Windows application vet, full lint with integration/live/parity tags, changed-package lint, `go fix -diff ./...` and focused/race tests pass. Complete `coding`, `internal/codingagent` and `tui` package tests pass. `make ci-contracts` and `make ci-drift` pass. The coverage and Go-interface inventories are regenerated from this branch, not copied from the candidate; committing those feature-derived updates fixes the stale-inventory failures.
+
+| Check | Public main `c1550a84a` | Clean PR branch |
+|---|---|---|
+| `make ci-parity` | Pass, 274 scenarios run | Pass, 279 scenarios run |
+| Branch-only failures | None | None |
+| OAuth, settings, model-resolver-selector and selectors declared durability | Not separately repeated | Pass |
+
+The five additional scenarios are the original PR's four post-login cases and the masking-off case. All tracked blobs in the public-main archive were checked against the Git tree after the run; none changed. There are no inherited failures to allow and no comparator weakenings, retries or longer timeouts. The existing disabled-masking scenario also rejects a compiling mutation that ignores the setting, reporting a missing plaintext key and unequal escaped output.
+
+The local evidence includes the paired-run result files, gate logs, rejected owner-dispatch and retained-secret mutations, and the installed-Pi ANSI comparison. No `go test ./...` pass is claimed.

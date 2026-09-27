@@ -1,13 +1,11 @@
 # Behavior family: settings
 # Surface: main /settings selector overlay
 #
-# Upstream evidence (Pi 0.84.0, 2026-08-07, re-probed through the
-# interactive-tmux production path at 100×35): `/settings`, Enter. The current
-# selector contains 28 non-image-capability entries; the crop from Auto-compact
-# through the help line is byte- and escape-equal to Pig.
+# Upstream evidence (Pi 0.87.1): `/settings`, Enter at 100×35 renders 31 visible rows: the compiled 33-entry upstream roster minus two image-only rows.
+# Divergence D80 adds exactly one PiG setting. Assert both raw counts, then map only that approved count difference before comparing the complete crop and ANSI. The independent setting/menu tests verify the added row.
 
 name = "02-settings-selector"
-description = "Both binaries render the main /settings selector block exactly."
+description = "The main /settings block matches Pi except for the explicit D80 additional row count."
 covers = [
   "packages/coding-agent/src/core/settings-manager.ts",
   "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
@@ -46,4 +44,11 @@ both_not_contain = ["unknown command", "panic:", "goroutine "]
 output_equal = true
 escaped_output_equal = true
 runtime_ratio_max = 1.25
-runs = 1
+runs = 3
+pig_contains = ["(1/32)"]
+pi_contains = ["(1/31)"]
+
+# normalize-rationale: divergence D80 introduces one visible PiG-only setting; the raw assertions above reject any other count change.
+[[assert.normalize_replace]]
+pattern = '\(1/32\)'
+with = '(1/31)'

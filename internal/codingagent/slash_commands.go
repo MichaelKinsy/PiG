@@ -316,9 +316,10 @@ type SlashContext struct {
 
 	// Mirrors upstream showLoginDialog (interactive-mode.ts:4325-4444).
 	// May be nil in headless/test contexts; handlers must guard.
-	Login         func(ctx context.Context, provider string) error
-	SetAPIKey     func(provider, value string) error
-	ShowTextInput func(title, placeholder string) (string, bool)
+	Login     func(ctx context.Context, provider string) error
+	SetAPIKey func(provider, value string) error
+	// ShowAPIKeyInput requests the standard API-key auth method's secret value.
+	ShowAPIKeyInput func(provider string) (string, bool)
 	// LoginAPIKeyProvider runs a provider's own api-key login flow and
 	// reports whether the provider has one (llama.cpp prompts for its server
 	// URL and optional key instead of a bare key).
@@ -860,7 +861,7 @@ func loginHandler(sc *SlashContext) error {
 			return nil
 		}
 		if authType == "api_key" {
-			if sc.ShowOAuthSelector == nil || sc.SetAPIKey == nil || sc.ShowTextInput == nil {
+			if sc.ShowOAuthSelector == nil || sc.SetAPIKey == nil || sc.ShowAPIKeyInput == nil {
 				sc.Append("API key login is not available in this context.")
 				return nil
 			}
@@ -871,12 +872,17 @@ func loginHandler(sc *SlashContext) error {
 			if sc.LoginAPIKeyProvider != nil && sc.LoginAPIKeyProvider(picked) {
 				return nil
 			}
-			value, ok := sc.ShowTextInput("Enter API key", "sk-...")
+			value, ok := sc.ShowAPIKeyInput(picked)
 			if !ok {
 				return nil
 			}
 			if err := sc.SetAPIKey(picked, strings.TrimSpace(value)); err != nil {
-				sc.Append(fmt.Sprintf("Login failed: %v", err))
+				message := fmt.Sprintf("Login failed: %v", err)
+				// pig divergence (D80): authentication diagnostics must not echo masked input.
+				if sc.SettingsManager == nil || sc.SettingsManager.Get().GetMaskSecretInput() {
+					message = tui.RedactSecretInput(message, value)
+				}
+				sc.Append(message)
 			}
 			return nil
 		}

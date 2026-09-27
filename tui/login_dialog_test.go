@@ -4,7 +4,69 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
+
+func TestLoginDialogSecretValueNeverRendered(t *testing.T) {
+	for _, value := range []string{"sk-secret-never-render", "", "key-密碼-🔑"} {
+		dlg := NewLoginDialog("Test", nil)
+		answer := dlg.ShowSecretInput("API key", "")
+		dlg.HandleInput("\x1b[200~" + value + "\x1b[201~")
+		check := func(phase string) {
+			if got := strings.Join(dlg.Render(120), "\n"); value != "" && strings.Contains(got, value) {
+				t.Errorf("secret appears during %s", phase)
+			}
+			if value != "" && strings.Contains(strings.Join(dlg.lines, "\n"), value) {
+				t.Errorf("secret retained in dialog lines during %s", phase)
+			}
+		}
+		check("editing")
+		dlg.HandleInput("\r")
+		if got := <-answer; got != value {
+			t.Fatalf("submitted secret was changed")
+		}
+		check("submission")
+		dlg.ShowProgress("Checking credentials...")
+		check("progress")
+		dlg.ShowInput("Next non-secret prompt", "")
+		check("next prompt")
+	}
+}
+
+func TestLoginDialogMaskedPreview(t *testing.T) {
+	for _, tc := range []struct{ value, preview, count string }{
+		{"", "", "0 characters"},
+		{"abcd", "••••", "4 characters"},
+		{"abcdefgh", "••••efgh", "8 characters"},
+		{"prefix-long-abcd", "••••••••abcd", "16 characters"},
+		{"x😀界e\u0301Z", "•😀界e\u0301Z", "5 characters"},
+	} {
+		t.Run(tc.count, func(t *testing.T) {
+			d := NewLoginDialog("Test", nil)
+			answer := d.ShowSecretInput("API key", "")
+			d.HandleInput(tc.value)
+			got := strings.Join(d.Render(150), "\n")
+			for _, want := range []string{tc.preview, tc.count, "Input hidden (PiG default). Show like Pi: /settings → Mask secret input"} {
+				if !strings.Contains(got, want) {
+					t.Errorf("missing %q in masked editing frame", want)
+				}
+			}
+			d.HandleInput("\r")
+			if value := <-answer; value != tc.value {
+				t.Fatal("mask changed submitted value")
+			}
+			d.ShowProgress("Server echoed " + tc.value)
+			got = strings.Join(d.Render(150), "\n")
+			if !strings.Contains(got, "> "+tc.preview) {
+				t.Error("submitted preview missing")
+			}
+			if tc.value != "" && strings.Contains(got, tc.value) {
+				t.Error("full secret leaked through dialog content")
+			}
+		})
+	}
+}
 
 func TestLoginDialog_Render(t *testing.T) {
 	dlg := NewLoginDialog("GitHub Copilot", nil)
@@ -44,7 +106,7 @@ func TestLoginDialog_ShowWaiting(t *testing.T) {
 	if !strings.Contains(joined, "Waiting for authorization...") {
 		t.Errorf("missing waiting message:\n%s", joined)
 	}
-	if !strings.Contains(joined, "Esc to cancel") {
+	if !strings.Contains(widthx.StripAnsi(joined), "escape/ctrl+c to cancel") {
 		t.Errorf("missing cancel hint:\n%s", joined)
 	}
 }
@@ -87,7 +149,7 @@ func TestLoginDialog_SubmittedInputRemainsVisible(t *testing.T) {
 	dlg.HandleInput("\r")
 	<-ch
 	dlg.ShowProgress("Exchanging code...")
-	got := strings.Join(dlg.Render(120), "\n")
+	got := widthx.StripAnsi(strings.Join(dlg.Render(120), "\n"))
 	for _, want := range []string{"Paste URL:", "e.g., redirect URL", "> https://example.test/callback?code=hello", "to submit)", "Exchanging code..."} {
 		if !strings.Contains(got, want) {
 			t.Errorf("missing %q after submit:\n%s", want, got)

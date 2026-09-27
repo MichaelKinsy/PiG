@@ -197,6 +197,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		ShowWarning:     m.showWarning,
 		Quit:            m.requestShutdown,
 		Reset: func() {
+			m.invalidatePostLoginSelection()
 			// Emit session_before_switch for extensions. Mirrors upstream
 			// emitBeforeSwitch("new") before teardown.
 			emitSessionBeforeSwitch(m.newRunner, "new", "")
@@ -211,6 +212,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			emitSessionStart(m.newRunner, "new")
 		},
 		NewSession: func() error {
+			m.invalidatePostLoginSelection()
 			m.clearStatusIndicator("")
 			// pig divergence (D30): reuse the host-scoped runner after /new.
 			emitSessionBeforeSwitch(m.newRunner, "new", "")
@@ -424,6 +426,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		// showUserMessageSelector → runtimeHost.fork(entryId)
 		// (interactive-mode.ts:4381-4419, position "before").
 		ForkToNewSession: func(userMsgEntryID string) error {
+			m.invalidatePostLoginSelection()
 			sess := m.currentSession()
 			if sess == nil {
 				return fmt.Errorf("no active session")
@@ -534,6 +537,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 		},
 		WriteDebugLog: func() (string, error) { return m.writeDebugLog() },
 		CloneCurrent: func() (string, error) {
+			m.invalidatePostLoginSelection()
 			if m.currentSession() == nil {
 				return "", fmt.Errorf("no active session")
 			}
@@ -655,6 +659,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			return m.currentSession().AppendLabelChange(targetID, lp)
 		},
 		LoadSessionPath: func(path string) error {
+			m.invalidatePostLoginSelection()
 			m.clearStatusIndicator("")
 			// pig divergence (D30): reuse the host-scoped runner after /resume.
 			sm := m.newSessionManager()
@@ -687,6 +692,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			return nil
 		},
 		SwitchModel: func(spec string) error {
+			m.invalidatePostLoginSelection()
 			if m.opts.ModelBuilder == nil {
 				return fmt.Errorf("model switching is not configured (no ModelBuilder)")
 			}
@@ -722,6 +728,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			return m.resolveAvailableModel(input)
 		},
 		PickModel: func(initialQuery string) (string, bool) {
+			m.invalidatePostLoginSelection()
 			spec, ok, persist := m.pickModel(ctx, initialQuery)
 			sc.modelSelectionPersist = persist
 			return spec, ok
@@ -1147,37 +1154,14 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			if m.opts.ModelRegistry != nil {
 				m.opts.ModelRegistry.Refresh()
 			}
-			m.completeProviderAuthentication(provider, buildAuthProviderName(provider), ai.CredentialAPIKey, previousModel)
+			var redact func(string) string
+			if m.maskSecretInput() {
+				redact = func(text string) string { return tui.RedactSecretInput(text, value) }
+			}
+			m.completeProviderAuthentication(provider, buildAuthProviderName(provider), ai.CredentialAPIKey, previousModel, auth.Path(), redact)
 			return nil
 		},
-		ShowTextInput: func(title, placeholder string) (string, bool) {
-			if m.layout == nil || m.tuiInst == nil {
-				return "", false
-			}
-			input := tui.NewExtensionInputComponent(title, placeholder)
-			m.editorContainer.SetChildren(input)
-			m.tuiInst.Render()
-			defer func() {
-				m.editorContainer.SetChildren(m.editor)
-				m.tuiInst.Render()
-			}()
-			inputCh, releaseInput := m.acquireModalInputChannel()
-			defer releaseInput()
-			for !input.Done() {
-				buf := <-inputCh
-				for _, chunk := range dropKeyReleases(input, []string{string(buf)}) {
-					input.HandleInput(chunk)
-					if input.Done() {
-						break
-					}
-				}
-				m.tuiInst.Render()
-			}
-			if input.Cancelled() {
-				return "", false
-			}
-			return input.Text(), true
-		},
+		ShowAPIKeyInput: m.showAPIKeyInput,
 		// /logout: remove stored credentials.
 		Logout: func(provider string) error {
 			return m.runOAuthLogout(provider)

@@ -548,9 +548,9 @@ func TestSlashLoginAPIKeyFlow(t *testing.T) {
 		}
 		return "openai", true
 	}
-	sc.ShowTextInput = func(title, placeholder string) (string, bool) {
-		if title == "" || placeholder == "" {
-			t.Fatalf("expected title+placeholder for api key input")
+	sc.ShowAPIKeyInput = func(provider string) (string, bool) {
+		if provider != "openai" {
+			t.Fatalf("secret prompt provider = %q, want openai", provider)
 		}
 		return "sk-test", true
 	}

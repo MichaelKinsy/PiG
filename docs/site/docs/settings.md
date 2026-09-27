@@ -99,6 +99,7 @@ set it in `~/.pig/agent/settings.json`:
 | `fullscreenScrollbar` | string | `auto` | Scrollbar in fullscreen mode: `auto`, `always`, or `hidden`. No effect in regular mode. |
 | `fullscreenExitOutput` | string | `transcript` | `transcript` prints the final transcript when fullscreen exits. `resume-hint` restores the previous screen and prints only the resume hint. |
 | `fullscreenCopyOnSelect` | boolean | `true` | Copy selected fullscreen text automatically. When disabled, `ctrl+x` copies the active selection. No effect in regular mode. |
+| `maskSecretInput` | boolean | `true` | PiG-only login-input privacy (divergence D80). Show dots, a character count and the last four characters; fewer than five characters show no suffix. False restores Pi's plain-text typing and submitted history. Change **Mask secret input** in `/settings`. Pi harmlessly ignores this key in shared settings. |
 | `hideThinkingBlock` | boolean | `false` | Hide thinking blocks in the transcript. |
 | `doubleEscapeAction` | string | `tree` | Action bound to pressing escape twice. |
 | `treeFilterMode` | string | `default` | Filter `/tree` opens with. |

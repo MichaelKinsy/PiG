@@ -13,17 +13,20 @@ All notable public changes to PiG will be recorded in this file.
 
 ### Added
 
+- `Mask secret input` in `/settings` controls login-input privacy (D80). It defaults to on, showing dots, a character count and a last-four suffix instead of the full secret. Turn it off to use Pi's plain-text input.
 - `pig update` updates a script installation (install.sh) in place on macOS and Linux. Releases publish a signed `update.json`; release binaries know its URL and signing key; the installer records an owner-only install receipt. Windows script installations still update by running the installer again (D39).
 
 ### Terminal UI
 
 - Handle every key of one terminal read before painting, as Pi does. Fast typing such as `/compact` no longer paints each prefix with a stale autocomplete popup, which scrolled the main screen further than Pi.
-Hotfix for Pi extensions from npm that failed to load or crashed in 0.2.0, reported on Reddit by rokrdev and WorriedAcanthisitta3. `pig --version` prints `0.2.1+0.87.1`.
+This release fixes Pi extensions from npm that failed to load or crashed in 0.2.0, reported on Reddit by rokrdev and WorriedAcanthisitta3. `pig --version` prints `0.3.0+0.87.1`.
 
 ### Fixed
 
 - Select and save the provider's default model after `/login` when no model is selected, for OAuth and API-key providers alike. Wait for dynamic catalogs when needed, preserve a model chosen during refresh, and report Pi's selection guidance and errors. Thanks @kanishkaverma for identifying the gap in #63.
-- Keep submitted login-dialog input visible as `> <value>`, as Pi does, including pasted redirect URLs.
+- Keep submitted redirect URLs visible as Pi does. Mask secret submissions and authentication diagnostics by default, and keep login input out of Session history (D80).
+- Report a contributed OAuth credential store's actual saved path after login, including after catalog refresh.
+- Commit post-login model selection on the owner loop. A later model or Session change supersedes pending selection before it can update the model, saved defaults or status.
 
 - Fixed `pi-mcp-adapter`'s `/mcp` panel crashing the extension process, and with it every extension sharing that process. PiG's `Container` had no `clear()`, and `ctx.ui.custom` factories received an empty object instead of a keybindings manager, so the first arrow key or Enter threw. Factories now get pi-tui's `KeybindingsManager` with Pi's default bindings, and the component they return is focused, as in Pi, so an `Input` or `Editor` shows its cursor.
 - Fixed Node extensions that export their default with `export { name as default }`, as bundlers emit, or with `module.exports`, being rejected with "has no default extension export". PiG now imports the module and checks its default export at load time, as Pi does, and reports a module without one with Pi's "does not export a valid factory function" message.

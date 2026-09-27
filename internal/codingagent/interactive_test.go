@@ -1585,6 +1585,9 @@ func (h *recordingCompactHandle) Agent() *agent.Agent                           
 func (h *recordingCompactHandle) Inner() *Session                                   { return h.inner }
 func (h *recordingCompactHandle) Events() <-chan agent.AgentEvent                   { return nil }
 func (h *recordingCompactHandle) SetModel(*ai.Model, ...ModelMutationOptions) error { return nil }
+func (h *recordingCompactHandle) SetModelOnMain(model *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
+	return dispatch(func() error { return h.SetModel(model, options) })
+}
 func (h *recordingCompactHandle) SetThinkingLevel(level ai.ThinkingLevel, _ ...ModelMutationOptions) error {
 	previous := h.agent.ThinkingLevel()
 	effective := ai.ClampThinkingLevel(h.agent.Model(), level)

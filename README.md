@@ -64,6 +64,8 @@ cd /path/to/project
 pig
 ```
 
+Interactive `/login` masks secret input by default. Turn off **Mask secret input** in `/settings` to restore Pi's plain-text typing and submitted input (D80). See [login privacy](docs/site/docs/providers.md#authentication).
+
 The [documentation](https://pi-in-go.dev/docs/latest) covers everything else, starting with the [quickstart](https://pi-in-go.dev/docs/latest/quickstart). You can also ask PiG to explain itself.
 
 ## Upstream Pi

@@ -7,14 +7,15 @@ import (
 )
 
 type Rules struct {
-	ID                  string               `json:"id"`
-	TableTargets        map[string]string    `json:"tableTargets"`
-	ConstantTargets     map[string]string    `json:"constantTargets"`
-	FunctionTargets     map[string]string    `json:"functionTargets"`
-	CalleeTargets       map[string]string    `json:"calleeTargets"`
-	CancellableCalls    []string             `json:"cancellableCalls"`
-	CallContracts       []string             `json:"callContracts"`
-	TransitionContracts []TransitionContract `json:"transitionContracts"`
+	ID                  string                       `json:"id"`
+	TableTargets        map[string]string            `json:"tableTargets"`
+	AdditiveTableItems  map[string]map[string]string `json:"additiveTableItems,omitempty"`
+	ConstantTargets     map[string]string            `json:"constantTargets"`
+	FunctionTargets     map[string]string            `json:"functionTargets"`
+	CalleeTargets       map[string]string            `json:"calleeTargets"`
+	CancellableCalls    []string                     `json:"cancellableCalls"`
+	CallContracts       []string                     `json:"callContracts"`
+	TransitionContracts []TransitionContract         `json:"transitionContracts"`
 }
 
 type TransitionContract struct {
@@ -60,6 +61,9 @@ func CompactionSettingsRules() Rules {
 		ID: "pi-0.84-compaction-settings",
 		TableTargets: map[string]string{
 			"table:settings-selector": "table:settings-selector",
+		},
+		AdditiveTableItems: map[string]map[string]string{
+			"table:settings-selector": {"mask-secret-input": "DIVERGENCES.md#D80"},
 		},
 		ConstantTargets: map[string]string{
 			"SUMMARIZATION_PROMPT":             "SUMMARIZATION_PROMPT",
@@ -324,8 +328,18 @@ func compareTables(report *Report, source, target *Inventory, rules Rules) {
 			})
 			compareTableItem(report, sourceID, targetID, sourceItem, targetItem)
 		}
+		additions := rules.AdditiveTableItems[targetID]
+		for id, lineage := range additions {
+			if _, exists := targetItems[id]; !exists || lineage == "" {
+				report.Findings = append(report.Findings, Finding{ID: "finding:table-item:missing-additive:" + id, Severity: "error", Kind: "missing-additive-table-item", TargetID: targetID + "#" + id, Detail: "declared additive table item or its lineage is missing"})
+			}
+		}
 		for _, targetItem := range targetTable.Items {
 			if _, ok := sourceItems[targetItem.ID]; !ok {
+				if lineage := additions[targetItem.ID]; lineage != "" {
+					report.Mappings = append(report.Mappings, MappingFact{ID: "correspondence:additive-table-item:" + targetItem.ID, SourceID: lineage, TargetID: targetID + "#" + targetItem.ID, Kind: "additive-table-item", TargetHash: targetItem.SourceHash})
+					continue
+				}
 				report.Findings = append(report.Findings, Finding{
 					ID: "finding:table-item:extra:" + targetItem.ID, Severity: "error", Kind: "extra-table-item",
 					SourceID: sourceID, TargetID: targetID + "#" + targetItem.ID,
@@ -334,7 +348,7 @@ func compareTables(report *Report, source, target *Inventory, rules Rules) {
 			}
 		}
 		sourceOrder := itemIDs(sourceTable.Items)
-		targetOrder := itemIDs(targetTable.Items)
+		targetOrder := slices.DeleteFunc(itemIDs(targetTable.Items), func(id string) bool { return additions[id] != "" && sourceItems[id].ID == "" })
 		if !slices.Equal(sourceOrder, targetOrder) {
 			report.Findings = append(report.Findings, Finding{
 				ID: "finding:table-order:" + sourceID, Severity: "error", Kind: "table-order",

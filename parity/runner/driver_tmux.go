@@ -717,7 +717,7 @@ func tmuxEnvPrefix(coverDir string) string {
 	// The tmux server can inherit capability signals from an outer Herdr pane.
 	// The scenario's tmux pane is the terminal under test, so those outer signals
 	// must not authorize images or other intermediary-owned features.
-	prefix := "unset HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy ALL_PROXY all_proxy " +
+	prefix := "unset " + strings.Join(snapshotEnvKeys, " ") + " HTTP_PROXY HTTPS_PROXY NO_PROXY http_proxy https_proxy no_proxy ALL_PROXY all_proxy " +
 		"HERDR_ENV HERDR_KITTY_GRAPHICS HERDR_PANE_ID HERDR_SOCKET_PATH HERDR_TAB_ID HERDR_WORKSPACE_ID; " +
 		"export COLORTERM=truecolor; "
 	if coverDir != "" {

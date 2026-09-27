@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"slices"
 	"sync"
 
@@ -173,7 +174,7 @@ func (m *InteractiveMode) loginAPIKeyProvider(providerID string) bool {
 	}
 	loginCtx, cancel := context.WithCancelCause(parent)
 	defer cancel(nil)
-	dialog := tui.NewLoginDialog(name, func() { cancel(errLoginAborted) })
+	dialog := m.newLoginDialog(name, func() { cancel(errLoginAborted) })
 	renderNotify := make(chan struct{}, 1)
 	requestRender := func() {
 		select {
@@ -188,7 +189,12 @@ func (m *InteractiveMode) loginAPIKeyProvider(providerID string) bool {
 		loginErr = m.opts.Llama.Login(llama.AuthInteraction{
 			Ctx: loginCtx,
 			Prompt: func(prompt llama.AuthPrompt) (string, error) {
-				answer := dialog.ShowInput(prompt.Message, prompt.Placeholder)
+				showInput := dialog.ShowInput
+				// pig divergence (D80): preserve secret prompt metadata while allowing the configured Pi-compatible opt-out.
+				if prompt.Type == "secret" {
+					showInput = dialog.ShowSecretInput
+				}
+				answer := showInput(prompt.Message, prompt.Placeholder)
 				requestRender()
 				select {
 				case value, ok := <-answer:
@@ -205,11 +211,11 @@ func (m *InteractiveMode) loginAPIKeyProvider(providerID string) bool {
 	m.runEditorSlotCustom(dialog, renderNotify, nil, done)
 	if loginErr != nil {
 		if loginErr.Error() != errLoginCancelled.Error() {
-			m.showError(fmt.Sprintf("Failed to save API key for %s: %v", name, loginErr))
+			m.showError(dialog.Redact(fmt.Sprintf("Failed to save API key for %s: %v", name, loginErr)))
 		}
 		return true
 	}
-	m.completeProviderAuthentication(providerID, name, ai.CredentialAPIKey, previousModel)
+	m.completeProviderAuthentication(providerID, name, ai.CredentialAPIKey, previousModel, filepath.Join(m.opts.AgentDir, "auth.json"), dialog.Redact)
 	return true
 }
 

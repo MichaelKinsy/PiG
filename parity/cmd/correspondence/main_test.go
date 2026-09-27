@@ -38,14 +38,18 @@ func TestCompareCurrentPin(t *testing.T) {
 	if err := json.Unmarshal(stdout.Bytes(), &report); err != nil {
 		t.Fatal(err)
 	}
-	// 39 = all 33 shared settings rows (independently counted from the 33
-	// `id:` entries between "autocompact" and "terminal-progress" in pinned
-	// packages/coding-agent/src/modes/interactive/components/settings-selector.ts,
-	// matching golang.go's "table:settings-selector" extraction of the Go
-	// selector), 4 compaction prompt constants, and 2 compaction functions.
-	// Reproduce with:
-	//   go run ./parity/cmd/correspondence compare -root . -upstream-version 0.87.1 -target-worktree -node "$(command -v node)"
-	if len(report.Mappings) != 39 || len(report.Findings) != len(knownCorrespondenceGaps(t, root)) {
+	source, err := correspondence.ExtractTypeScript(t.Context(), node,
+		filepath.Join(root, "parity/interface-extractor/src/extract-correspondence.mjs"),
+		filepath.Join(root, ".upstream/current"), coding.UpstreamVersion)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rules := correspondence.CompactionSettingsRules()
+	wantMappings := len(source.Constants) + len(rules.CallContracts)
+	for _, table := range source.Tables {
+		wantMappings += len(table.Items) + len(rules.AdditiveTableItems[rules.TableTargets[table.ID]])
+	}
+	if len(report.Mappings) != wantMappings || len(report.Findings) != len(knownCorrespondenceGaps(t, root)) {
 		t.Fatalf("report mappings=%d findings=%d", len(report.Mappings), len(report.Findings))
 	}
 }

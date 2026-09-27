@@ -244,6 +244,7 @@ type settingsWire struct {
 	FullscreenExitOutput   string                   `json:"fullscreenExitOutput,omitempty"`
 	FullscreenScrollbar    string                   `json:"fullscreenScrollbar,omitempty"`
 	FullscreenCopyOnSelect *bool                    `json:"fullscreenCopyOnSelect,omitempty"`
+	MaskSecretInput        *bool                    `json:"maskSecretInput,omitempty"`
 	Theme                  string                   `json:"theme,omitempty"`
 	Compaction             *CompactionSettingsJSON  `json:"compaction,omitempty"`
 	BranchSummary          *branchSummaryWire       `json:"branchSummary,omitempty"`
@@ -437,6 +438,9 @@ type Settings struct {
 	// FullscreenCopyOnSelect controls automatic clipboard copy when a fullscreen
 	// text selection completes. Default: true; it has no effect in regular mode.
 	FullscreenCopyOnSelect *bool `json:"fullscreenCopyOnSelect,omitempty"`
+
+	// MaskSecretInput controls configurable login-input privacy. Nil means true; false restores Pi's plain-text prompts.
+	MaskSecretInput *bool `json:"maskSecretInput,omitempty"`
 
 	// CollapseChangelog, when true, shows a condensed "Updated to vX.Y.Z"
 	// summary instead of the full changelog on /changelog.
@@ -737,6 +741,7 @@ func cloneSettings(s Settings) Settings {
 		FullscreenExitOutput:    s.FullscreenExitOutput,
 		FullscreenScrollbar:     s.FullscreenScrollbar,
 		FullscreenCopyOnSelect:  cloneBoolPtr(s.FullscreenCopyOnSelect),
+		MaskSecretInput:         cloneBoolPtr(s.MaskSecretInput),
 		CollapseChangelog:       s.CollapseChangelog,
 		collapseChangelogSet:    s.collapseChangelogSet,
 		ShowCacheMissNotices:    s.ShowCacheMissNotices,
@@ -784,6 +789,7 @@ func (s Settings) MarshalJSON() ([]byte, error) {
 		FullscreenExitOutput:   s.FullscreenExitOutput,
 		FullscreenScrollbar:    s.FullscreenScrollbar,
 		FullscreenCopyOnSelect: s.FullscreenCopyOnSelect,
+		MaskSecretInput:        s.MaskSecretInput,
 		Theme:                  s.Theme,
 		Compaction:             s.Compaction,
 		Retry:                  s.Retry,
@@ -928,6 +934,7 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 	s.FullscreenExitOutput = w.FullscreenExitOutput
 	s.FullscreenScrollbar = w.FullscreenScrollbar
 	s.FullscreenCopyOnSelect = w.FullscreenCopyOnSelect
+	s.MaskSecretInput = w.MaskSecretInput
 	s.Theme = w.Theme
 	s.Compaction = w.Compaction
 	if w.BranchSummary != nil {
@@ -1117,6 +1124,12 @@ func deleteJSONPath(object map[string]any, path []string) bool {
 // create a cycle).
 func (s Settings) GetShellPath() (string, error) { return normalizeSettingsPath(s.ShellPath) }
 func (s Settings) GetCommandPrefix() string      { return s.CommandPrefix }
+
+// GetMaskSecretInput returns the login-input privacy setting, enabled by default.
+func (s Settings) GetMaskSecretInput() bool {
+	// pig divergence (D80): the user can restore Pi's plain-text input behavior with false.
+	return s.MaskSecretInput == nil || *s.MaskSecretInput
+}
 
 // GetShowImages returns whether inline images should be rendered. Default true.
 func (s Settings) GetShowImages() bool {
@@ -2592,6 +2605,9 @@ func mergeSettings(global, project Settings) Settings {
 	}
 	if project.FullscreenScrollbar != "" {
 		m.FullscreenScrollbar = project.FullscreenScrollbar
+	}
+	if project.MaskSecretInput != nil {
+		m.MaskSecretInput = cloneBoolPtr(project.MaskSecretInput)
 	}
 	if project.FullscreenCopyOnSelect != nil {
 		m.FullscreenCopyOnSelect = cloneBoolPtr(project.FullscreenCopyOnSelect)

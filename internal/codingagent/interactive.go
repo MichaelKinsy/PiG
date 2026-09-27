@@ -304,6 +304,8 @@ type InteractiveMode struct {
 	// first Ctrl+C clears the editor, a second within 500ms shuts down.
 	lastSigintTime time.Time
 
+	modelSelectionGeneration uint64 // owner-loop generation for pending post-login selection
+
 	// Last assistant message text (for /copy).
 	lastAssistantText string
 	lastStatusSpacer  *tui.Spacer

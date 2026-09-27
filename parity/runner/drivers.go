@@ -44,14 +44,14 @@ func uniqueID() string {
 	return fmt.Sprintf("%d-%d", time.Now().UnixNano()%1_000_000, counter.Add(1))
 }
 
-// hermeticEnviron returns the host environment with ambient HTTP proxy
-// settings removed and COLORTERM pinned to truecolor, so scenarios are not
-// perturbed by a CI runner's proxy or color-depth. Applies to pig and pi
-// identically.
+// hermeticEnviron removes ambient proxies and agent-directory overrides and pins COLORTERM. Each driver supplies its own snapshotted agent/home configuration; inherited overrides must not redirect credential writes or bypass fixture resources.
 func hermeticEnviron() []string {
 	drop := map[string]bool{
 		"HTTP_PROXY": true, "HTTPS_PROXY": true, "NO_PROXY": true,
 		"http_proxy": true, "https_proxy": true, "no_proxy": true, "ALL_PROXY": true, "all_proxy": true,
+	}
+	for _, key := range snapshotEnvKeys {
+		drop[key] = true
 	}
 	out := make([]string, 0, len(os.Environ())+1)
 	hasColor := false

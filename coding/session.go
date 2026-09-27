@@ -748,6 +748,26 @@ func (s *Session) CycleToModel(m *ai.Model, options ...ModelMutationOptions) err
 	return s.setModel(m, extension.ModelSelectSourceCycle, options...)
 }
 
+// SetModelOnMain dispatches the synchronous model, persistence and thinking mutation to the owner loop, then waits for extension notifications on the caller. The dispatcher can reject superseded work without executing the mutation.
+func (s *Session) SetModelOnMain(m *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
+	var complete func()
+	mutate := func() error {
+		var err error
+		complete, err = s.beginModelChangeState(context.Background(), m, extension.ModelSelectSourceUser, true, options)
+		return err
+	}
+	if dispatch == nil {
+		dispatch = func(mutate func() error) error { return mutate() }
+	}
+	if err := dispatch(mutate); err != nil {
+		return err
+	}
+	if complete != nil {
+		complete()
+	}
+	return nil
+}
+
 func (s *Session) setModel(m *ai.Model, source extension.ModelSelectSource, options ...ModelMutationOptions) error {
 	complete, err := s.BeginModelChange(context.Background(), m, source, options...)
 	if err != nil {
@@ -763,6 +783,10 @@ func (s *Session) setModel(m *ai.Model, source extension.ModelSelectSource, opti
 
 // BeginModelChange applies the synchronous model mutation and returns its awaited extension notification, or nil when it is already complete. RPC admits the next command after this prefix; blocking SDK callers invoke a non-nil completion before returning. The caller owns and joins completion, which must be invoked once.
 func (s *Session) BeginModelChange(ctx context.Context, m *ai.Model, source extension.ModelSelectSource, options ...ModelMutationOptions) (func(), error) {
+	return s.beginModelChangeState(ctx, m, source, false, options...)
+}
+
+func (s *Session) beginModelChangeState(ctx context.Context, m *ai.Model, source extension.ModelSelectSource, deferThinking bool, options ...ModelMutationOptions) (func(), error) {
 	if m == nil {
 		return nil, fmt.Errorf("coding: SetModel: model is nil")
 	}
@@ -782,17 +806,28 @@ func (s *Session) BeginModelChange(ctx context.Context, m *ai.Model, source exte
 			return nil, fmt.Errorf("coding: SetModel: persist default: %w", err)
 		}
 	}
-	if err := s.SetThinkingLevel(thinkingLevel); err != nil {
+	notifyThinking, err := s.setThinkingLevelState(thinkingLevel)
+	if err != nil {
 		return nil, fmt.Errorf("coding: SetModel: thinking level: %w", err)
 	}
+	if !deferThinking && notifyThinking != nil {
+		notifyThinking()
+		notifyThinking = nil
+	}
 	runner := s.currentRunner()
-	if runner == nil || ai.ModelsAreEqual(previous, m) || !runner.HasHandlers(icodingagent.EventModelSelect) {
+	notifyModel := runner != nil && !ai.ModelsAreEqual(previous, m) && runner.HasHandlers(icodingagent.EventModelSelect)
+	if !notifyModel && notifyThinking == nil {
 		return nil, nil
 	}
 	return func() {
-		_, _ = runner.Emit(ctx, extension.ModelSelectEvent{
-			Type: icodingagent.EventModelSelect, Model: m, PreviousModel: previous, Source: source,
-		})
+		if notifyThinking != nil {
+			notifyThinking()
+		}
+		if notifyModel {
+			_, _ = runner.Emit(ctx, extension.ModelSelectEvent{
+				Type: icodingagent.EventModelSelect, Model: m, PreviousModel: previous, Source: source,
+			})
+		}
 	}, nil
 }
 
@@ -1283,30 +1318,44 @@ func (s *Session) ThinkingLevel() ai.ThinkingLevel {
 // SetThinkingLevel records a changed, clamped level in the Session transcript.
 // With Persist, it saves the requested level as the global default even when the effective level is unchanged.
 func (s *Session) SetThinkingLevel(level ai.ThinkingLevel, options ...ModelMutationOptions) error {
+	notify, err := s.setThinkingLevelState(level, options...)
+	if err != nil {
+		return err
+	}
+	if notify != nil {
+		notify()
+	}
+	return nil
+}
+
+func (s *Session) setThinkingLevelState(level ai.ThinkingLevel, options ...ModelMutationOptions) (func(), error) {
 	model := s.Model()
 	effective := ai.ClampThinkingLevel(model, level)
 	previous := s.agent.ThinkingLevel()
 	s.agent.SetThinkingLevel(effective)
 	if len(options) > 0 && options[0].Persist {
 		if err := s.services.SettingsManager().SetDefaultThinkingLevel(string(level)); err != nil {
-			return err
+			return nil, err
 		}
 	}
 	if effective == previous {
-		return nil
+		return nil, nil
 	}
 	if err := s.inner.AppendThinkingLevelChange(string(effective)); err != nil {
-		return err
+		return nil, err
 	}
 	s.emitOrderedEvent(agent.ThinkingLevelChangedEvent{Level: effective})
-	if runner := s.currentRunner(); runner != nil && runner.HasHandlers(icodingagent.EventThinkingLevelSelect) {
+	runner := s.currentRunner()
+	if runner == nil || !runner.HasHandlers(icodingagent.EventThinkingLevelSelect) {
+		return nil, nil
+	}
+	return func() {
 		_, _ = runner.Emit(context.Background(), extension.ThinkingLevelSelectEvent{
 			Type:          icodingagent.EventThinkingLevelSelect,
 			Level:         string(effective),
 			PreviousLevel: string(previous),
 		})
-	}
-	return nil
+	}, nil
 }
 
 // ─── Direct bash execution ───────────────────────────────────────────────────

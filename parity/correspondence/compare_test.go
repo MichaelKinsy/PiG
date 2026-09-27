@@ -36,10 +36,13 @@ func TestCompactionSettingsCorrespondenceCurrentPin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	// 39 = all 33 shared settings rows, 4 compaction prompt constants, and 2
-	// compaction functions.
-	if len(report.Mappings) != 39 {
-		t.Fatalf("mapping count = %d, want 39", len(report.Mappings))
+	rules := CompactionSettingsRules()
+	wantMappings := len(source.Constants) + len(rules.CallContracts)
+	for _, table := range source.Tables {
+		wantMappings += len(table.Items) + len(rules.AdditiveTableItems[rules.TableTargets[table.ID]])
+	}
+	if len(report.Mappings) != wantMappings {
+		t.Fatalf("mapping count = %d, want %d from Pi inventory and explicit additive lineage", len(report.Mappings), wantMappings)
 	}
 	// Every finding must be a listed known gap, and every listed gap must still
 	// be observed; parity/known-gaps.toml is the denominator.

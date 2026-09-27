@@ -114,6 +114,7 @@ func (m *InteractiveMode) handleModelPicker() {
 //
 // upstream: keybindings.ts:76-82 (app.model.cycleForward / cycleBackward)
 func (m *InteractiveMode) cycleModel(forward bool) {
+	m.invalidatePostLoginSelection()
 	// Build the same filtered model list that PickModel uses.
 	catalog := ai.ListModels("")
 	if len(catalog) == 0 {

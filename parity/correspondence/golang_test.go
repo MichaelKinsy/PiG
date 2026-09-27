@@ -37,7 +37,7 @@ func TestExtractGoCurrentSettingsAndPrompts(t *testing.T) {
 		"show-hardware-cursor", "editor-padding", "output-padding", "autocomplete-max-visible", "clear-on-shrink",
 		"terminal-progress", "steering-mode", "follow-up-mode", "transport", "http-idle-timeout", "cache-warming-mode",
 		"hide-thinking", "mermaid-rendering", "cache-miss-notices", "collapse-changelog", "quiet-startup", "install-telemetry",
-		"default-project-trust", "double-escape-action", "tree-filter-mode", "warnings", "model-thinking", "tui-mode",
+		"default-project-trust", "double-escape-action", "tree-filter-mode", "mask-secret-input", "warnings", "model-thinking", "tui-mode",
 		"fullscreen-exit-output", "fullscreen-scrollbar", "fullscreen-copy-on-select", "theme",
 	}
 	if !reflect.DeepEqual(ids, wantIDs) {

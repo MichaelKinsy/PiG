@@ -1,122 +1,190 @@
 package tui
 
-// login_dialog.go: OAuth login dialog overlay.
-//
-// Faithful port of upstream login-dialog.ts: bordered overlay with
-// title "Login to <Provider>", async state updates for the device-flow
-// (URL, waiting, progress, manual input), and "(Esc to cancel)" footer.
-//
-// The component owns no I/O. The caller feeds state updates via the
-// Show* methods and drives the input event loop.
+// Ports packages/coding-agent/src/modes/interactive/components/login-dialog.ts
 
 import (
+	"fmt"
 	"runtime"
+	"slices"
 	"strings"
 	"sync"
-
-	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
-// LoginDialog is a stateful bordered overlay for the OAuth device flow
-// (port of LoginDialogComponent in login-dialog.ts).
+const secretInputSuffixCharacters = 4 // pig divergence (D80): reveal only the final four characters of inputs longer than four.
+const secretInputMaxDots = 8          // pig divergence (D80): bound the preview independently of input length; the counter reports the full length.
+const secretInputHint = "Input hidden (PiG default). Show like Pi: /settings → Mask secret input"
+
+// SecretInputPreview returns a bounded masked preview and the number of user-perceived characters. Inputs shorter than five characters reveal no suffix.
+func SecretInputPreview(value string) (string, int) {
+	segments := graphemeSegments(value)
+	count := len(segments)
+	hidden, suffix := count, ""
+	if count > secretInputSuffixCharacters {
+		hidden -= secretInputSuffixCharacters
+		suffix = value[segments[hidden].Start:]
+	}
+	return strings.Repeat("•", min(hidden, secretInputMaxDots)) + suffix, count
+}
+
+// RedactSecretInput removes a submitted input and its trimmed credential form from an authentication diagnostic. It does not modify credentials or persist the input.
+func RedactSecretInput(text, value string) string {
+	for _, candidate := range []string{value, strings.TrimSpace(value)} {
+		if candidate != "" {
+			masked, _ := SecretInputPreview(candidate)
+			text = strings.ReplaceAll(text, candidate, masked)
+		}
+	}
+	return text
+}
+
+// LoginDialog renders provider authentication in the editor slot. The caller owns I/O and feeds prompt, progress and completion events.
 type LoginDialog struct {
 	invalidatable
-	mu               sync.Mutex
-	providerName     string
-	lines            []string // content lines (plain text, may contain ANSI)
-	inputPrompt      string   // set when input is requested
-	inputPlaceholder string
-	input            *TextInput
-	inputActive      bool
-	inputCh          chan string // receives user input on Enter
-	done             bool
-	cancelled        bool
-	onCancel         func()
+	mu              sync.Mutex
+	providerName    string
+	lines           []string
+	input           *TextInput
+	inputIndex      int
+	inputActive     bool
+	inputMasked     bool
+	maskSecretInput bool
+	secrets         []string
+	inputCh         chan string
+	done            bool
+	cancelled       bool
+	onCancel        func()
 }
 
-// NewLoginDialog creates the dialog for providerName.
+// NewLoginDialog creates a provider dialog with PiG's configurable input privacy default enabled.
 func NewLoginDialog(providerName string, onCancel func()) *LoginDialog {
-	return &LoginDialog{
-		providerName: providerName,
-		onCancel:     onCancel,
-	}
+	// pig divergence (D80): callers can select Pi's plain-text behavior before prompting.
+	return &LoginDialog{providerName: providerName, onCancel: onCancel, maskSecretInput: true, inputIndex: -1}
 }
 
-// ShowAuth sets the content to URL + hint.
+// SetMaskSecretInput selects masking for subsequent secret prompts. Already masked history stays masked.
+func (d *LoginDialog) SetMaskSecretInput(enabled bool) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.maskSecretInput = enabled
+}
+
+func loginKeyHint(action TUIKeybinding, description string) string {
+	key := FormatKeyText(strings.Join(GetTUIKeybindings().GetKeys(action), "/"), false)
+	return ActiveTheme().FgText("dim", key) + ActiveTheme().FgText("muted", " "+description)
+}
+
+// ShowAuth replaces the dialog content with a URL and optional instructions.
 func (d *LoginDialog) ShowAuth(url, instructions string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	// Wrap the URL in an OSC 8 terminal hyperlink so terminals that support
-	// it render it as a clickable link. Mirrors upstream login-dialog.ts.
-	linkedURL := "\x1b]8;;" + url + "\x07" + url + "\x1b]8;;\x07"
-	clickHint := " Ctrl+click to open"
+	t := ActiveTheme()
+	linked := func(label string) string { return "\x1b]8;;" + url + "\x07" + label + "\x1b]8;;\x07" }
+	hint := "Ctrl+click to open"
 	if runtime.GOOS == "darwin" {
-		clickHint = " Cmd+click to open"
+		hint = "Cmd+click to open"
 	}
-	d.lines = []string{
-		" " + linkedURL,
-		clickHint,
-	}
+	d.lines = []string{"", " " + t.FgText("accent", linked(url)), " " + t.FgText("dim", linked(hint))}
+	d.inputIndex = -1
 	if instructions != "" {
-		d.lines = append(d.lines, "")
-		d.lines = append(d.lines, " "+instructions)
+		d.lines = append(d.lines, "", " "+t.FgText("warning", d.redactLocked(instructions)))
 	}
 	d.Invalidate()
 }
 
-// ShowWaiting appends a waiting message.
+// ShowWaiting appends a waiting message and cancellation hint.
 func (d *LoginDialog) ShowWaiting(msg string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.lines = append(d.lines, " "+msg)
-	d.lines = append(d.lines, " (Esc to cancel)")
+	d.lines = append(d.lines, "", " "+ActiveTheme().FgText("dim", d.redactLocked(msg)), " ("+loginKeyHint(KBSelectCancel, "to cancel")+")")
 	d.Invalidate()
 }
 
-// ShowProgress appends a progress line.
+// ShowProgress appends an authentication diagnostic, redacting masked prompt values.
 func (d *LoginDialog) ShowProgress(msg string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.lines = append(d.lines, " "+msg)
+	d.lines = append(d.lines, " "+ActiveTheme().FgText("dim", d.redactLocked(msg)))
 	d.Invalidate()
 }
 
-// ShowInput activates the text input row with a prompt.
-// Returns a channel that receives the submitted string (closed on cancel).
-func (d *LoginDialog) ShowInput(prompt, placeholder string) <-chan string {
+// Redact removes masked prompt values from authentication errors emitted after the dialog closes.
+func (d *LoginDialog) Redact(text string) string {
 	d.mu.Lock()
 	defer d.mu.Unlock()
-	d.inputPrompt = prompt
-	d.inputPlaceholder = placeholder
+	return d.redactLocked(text)
+}
+func (d *LoginDialog) redactLocked(text string) string {
+	values := slices.Clone(d.secrets)
+	if d.inputActive && d.inputMasked && d.input != nil {
+		values = append(values, d.input.Text())
+	}
+	slices.SortFunc(values, func(a, b string) int { return len(b) - len(a) })
+	for _, value := range values {
+		text = RedactSecretInput(text, value)
+	}
+	return text
+}
+
+// ShowInput appends a text prompt. Its returned channel delivers the original submitted value and closes on cancellation.
+func (d *LoginDialog) ShowInput(prompt, placeholder string) <-chan string {
+	return d.showInput(prompt, placeholder, false)
+}
+
+// ShowSecretInput honors the configured privacy setting; false uses Pi's ordinary prompt and submitted-text rendering.
+func (d *LoginDialog) ShowSecretInput(prompt, placeholder string) <-chan string {
+	return d.showInput(prompt, placeholder, true)
+}
+
+func (d *LoginDialog) showInput(prompt, placeholder string, secret bool) <-chan string {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	t := ActiveTheme()
+	d.inputMasked = secret && d.maskSecretInput
+	d.lines = append(d.lines, "", " "+t.FgText("text", d.redactLocked(prompt)))
+	if placeholder != "" {
+		d.lines = append(d.lines, " "+t.FgText("dim", "e.g., "+d.redactLocked(placeholder)))
+	}
+	// pig divergence (D80): the hint explains both the selected default and its Pi-compatible opt-out.
+	if d.inputMasked {
+		d.lines = append(d.lines, " "+t.FgText("dim", secretInputHint))
+	}
+	d.inputIndex = len(d.lines)
+	d.lines = append(d.lines, "", " ("+loginKeyHint(KBSelectCancel, "to cancel,")+" "+loginKeyHint(KBSelectConfirm, "to submit")+")")
 	d.inputActive = true
 	d.inputCh = make(chan string, 1)
 	d.input = NewInput(InputOptions{})
 	d.input.OnSubmit = func(value string) {
-		d.lines = append(d.lines, "", " "+d.inputPrompt)
-		if d.inputPlaceholder != "" {
-			d.lines = append(d.lines, " e.g., "+d.inputPlaceholder)
+		submitted := value
+		// pig divergence (D80): only the preview is retained in dialog history when masking is enabled.
+		if d.inputMasked {
+			submitted, _ = SecretInputPreview(value)
+			if value != "" {
+				d.secrets = append(d.secrets, value)
+			}
 		}
-		d.lines = append(d.lines, "> "+value, " (escape/ctrl+c to cancel, enter to submit)")
+		if d.inputIndex >= 0 {
+			d.lines[d.inputIndex] = "> " + submitted
+		}
 		if d.inputCh != nil {
 			d.inputCh <- value
 			close(d.inputCh)
 			d.inputCh = nil
 		}
 		d.inputActive = false
+		d.input = nil
 	}
 	d.Invalidate()
 	return d.inputCh
 }
 
-// HandleInput processes Esc and, when input is active, text editing keys.
+// HandleInput routes editing to the active prompt and cancels with the configured selector binding.
 func (d *LoginDialog) HandleInput(data string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	if d.done {
 		return
 	}
-	// Esc or Ctrl+C cancels.
-	if data == "\x1b" || data == "\x03" {
+	if GetTUIKeybindings().Matches(data, KBSelectCancel) {
 		d.done = true
 		d.cancelled = true
 		if d.inputCh != nil {
@@ -135,78 +203,45 @@ func (d *LoginDialog) HandleInput(data string) {
 	d.Invalidate()
 }
 
-// Render returns bordered ANSI lines.
+// Render returns Pi's dialog layout, adding the preview, count and hint only for masked prompts.
 func (d *LoginDialog) Render(width int) []string {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	t := ActiveTheme()
 	border := NewDynamicBorder("")
-
-	var out []string
-	out = append(out, border.Render(width)...)
-	// Upstream: Text(theme.fg("accent", theme.bold(title)), 1, 0).
-	out = append(out, wrapWithIndent(" "+t.Accent+"\x1b[1mLogin to "+d.providerName+SGRBoldDimReset+t.Reset, width)...)
-	out = append(out, "")
-
-	for _, line := range d.lines {
-		out = append(out, wrapWithIndent(line, width)...)
-	}
-
-	if d.inputActive {
-		out = append(out, "")
-		out = append(out, wrapWithIndent(" "+d.inputPrompt, width)...)
-		if d.inputPlaceholder != "" {
-			out = append(out, wrapWithIndent(" e.g., "+d.inputPlaceholder, width)...)
-		}
-		out = append(out, d.input.Render(width)...)
-		out = append(out, wrapWithIndent(" (escape/ctrl+c to cancel, enter to submit)", width)...)
-	}
-
-	out = append(out, "")
-	out = append(out, border.Render(width)...)
-
-	// Pad lines to width.
-	for i, line := range out {
-		w := widthx.VisibleWidth(line)
-		if w < width {
-			out[i] = line + strings.Repeat(" ", width-w)
+	out := border.Render(width)
+	out = append(out, NewPaddedText(t.FgText("accent", "\x1b[1mLogin to "+d.providerName+SGRBoldDimReset), 1, 0, nil).Render(width)...)
+	for i, line := range d.lines {
+		if d.inputActive && i == d.inputIndex {
+			input := d.input
+			// pig divergence (D80): a bounded preview shows the suffix and count, never the full secret.
+			if d.inputMasked {
+				preview, count := SecretInputPreview(d.input.Text())
+				unit := "characters"
+				if count == 1 {
+					unit = "character"
+				}
+				input = NewInput(InputOptions{})
+				input.SetText(fmt.Sprintf("%s (%d %s)", preview, count, unit))
+				input.cursor = len(preview)
+				input.Focused = d.input.Focused
+			}
+			out = append(out, input.Render(width)...)
+		} else {
+			out = append(out, wrapWithIndent(d.redactLocked(line), width)...)
 		}
 	}
-	return out
+	return append(out, border.Render(width)...)
 }
 
-// Done reports whether the dialog is finished.
-func (d *LoginDialog) Done() bool {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return d.done
-}
+func (d *LoginDialog) Done() bool      { d.mu.Lock(); defer d.mu.Unlock(); return d.done }
+func (d *LoginDialog) Cancelled() bool { d.mu.Lock(); defer d.mu.Unlock(); return d.cancelled }
 
-// Cancelled reports whether the user pressed Esc.
-func (d *LoginDialog) Cancelled() bool {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	return d.cancelled
-}
+// Success marks the provider operation complete; the caller restores the editor.
+func (d *LoginDialog) Success() { d.mu.Lock(); defer d.mu.Unlock(); d.done = true; d.Invalidate() }
 
-// Success marks the dialog as completed successfully.
-func (d *LoginDialog) Success() {
-	d.mu.Lock()
-	defer d.mu.Unlock()
-	d.lines = append(d.lines, " ✓ Login successful")
-	d.done = true
-	d.Invalidate()
-}
-
-// Compile-time check.
 var _ Component = (*LoginDialog)(nil)
 
-// wrapWithIndent renders `line` the way upstream `Text(content, paddingX, 0)`
-// does in @earendil-works/pi-tui, taking the leading-space count as paddingX:
-// the content wraps inside that padding on both sides (the padding shrinks
-// when the width cannot hold it), and every row fits the width. OSC 8
-// hyperlink sequences are zero-width, so a hyperlinked URL wraps by its
-// visible text.
 func wrapWithIndent(line string, width int) []string {
 	if line == "" {
 		return []string{""}

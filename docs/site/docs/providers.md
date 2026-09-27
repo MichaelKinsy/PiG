@@ -79,6 +79,8 @@ PiG stores credentials in `~/.pig/agent/auth.json`. The file is created on deman
 
 `auth.json` can contain API keys and OAuth tokens. Keep it private and do not commit it.
 
+Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 0.87.1's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
+
 ### Load an API key from a command
 
 To use a secret manager without writing the key to disk, set a stored key to a command that starts with `!`:

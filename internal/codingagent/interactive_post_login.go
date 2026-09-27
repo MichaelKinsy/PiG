@@ -4,6 +4,7 @@ package codingagent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"slices"
@@ -18,8 +19,19 @@ func isUnknownModel(model *ai.Model) bool {
 	return model == nil || (model.ID == "unknown" && model.ProviderMeta.ProviderID == "unknown" && model.ProviderMeta.API == "unknown")
 }
 
-// completeProviderAuthentication completes local selection before starting the bounded catalog refresh. Deferred selection never replaces a model or session chosen during that refresh.
-func (m *InteractiveMode) completeProviderAuthentication(providerID, providerName string, authType ai.CredentialType, previousModel *ai.Model) {
+// invalidatePostLoginSelection invalidates pending authentication selection when an owner-loop model or Session command starts, including commands that retain the same model pointer.
+func (m *InteractiveMode) invalidatePostLoginSelection() { m.modelSelectionGeneration++ }
+
+// completeProviderAuthentication completes local selection before starting the bounded catalog refresh. Deferred selection never replaces a model or session chosen during that refresh. authPath is the credential store's reported location; an empty path uses the ordinary auth.json store.
+func (m *InteractiveMode) completeProviderAuthentication(providerID, providerName string, authType ai.CredentialType, previousModel *ai.Model, authPath string, redact func(string) string) {
+	if redact == nil {
+		redact = func(text string) string { return text }
+	}
+	m.invalidatePostLoginSelection()
+	generation := m.modelSelectionGeneration
+	if authPath == "" {
+		authPath = filepath.Join(m.opts.AgentDir, "auth.json")
+	}
 	actionLabel := "Logged in to " + providerName
 	if authType == ai.CredentialAPIKey {
 		actionLabel = "Saved API key for " + providerName
@@ -29,6 +41,7 @@ func (m *InteractiveMode) completeProviderAuthentication(providerID, providerNam
 		return model.Provider == providerID && model.ID == defaultID
 	})
 	session, handle := m.currentSession(), m.opts.SessionHandle
+	registry, llamaHost := m.opts.ModelRegistry, m.opts.Llama
 	refresh := func() {
 		ctx := m.backgroundCtx
 		if ctx == nil {
@@ -38,7 +51,6 @@ func (m *InteractiveMode) completeProviderAuthentication(providerID, providerNam
 		if ctx == nil {
 			ctx = context.Background()
 		}
-		registry, llamaHost := m.opts.ModelRegistry, m.opts.Llama
 		m.backgroundTasks.Go(func() {
 			// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:completeProviderAuthentication
 			refreshCtx, cancel := context.WithTimeout(ctx, 15*time.Second)
@@ -59,10 +71,10 @@ func (m *InteractiveMode) completeProviderAuthentication(providerID, providerNam
 					return
 				}
 				if warning := catalogRefreshWarning(actionLabel, result); warning != "" {
-					m.showWarning(warning)
+					m.showWarning(redact(warning))
 				}
-				if deferSelection && m.currentSession() == session && m.opts.SessionHandle == handle && m.opts.Model == previousModel {
-					m.finishProviderAuthentication(providerID, actionLabel, previousModel, nil)
+				if deferSelection && m.modelSelectionGeneration == generation && m.currentSession() == session && m.opts.SessionHandle == handle && m.opts.Model == previousModel {
+					m.finishProviderAuthentication(providerID, actionLabel, previousModel, authPath, redact, nil)
 				}
 				m.updateProviderInfo()
 				if m.tuiInst != nil {
@@ -72,10 +84,10 @@ func (m *InteractiveMode) completeProviderAuthentication(providerID, providerNam
 		})
 	}
 	if deferSelection {
-		m.showStatus(fmt.Sprintf("%s. Credentials saved to %s. Refreshing model catalog…", actionLabel, filepath.Join(m.opts.AgentDir, "auth.json")))
+		m.showStatus(redact(fmt.Sprintf("%s. Credentials saved to %s. Refreshing model catalog…", actionLabel, authPath)))
 		refresh()
 	} else {
-		m.finishProviderAuthentication(providerID, actionLabel, previousModel, refresh)
+		m.finishProviderAuthentication(providerID, actionLabel, previousModel, authPath, redact, refresh)
 	}
 }
 
@@ -102,7 +114,9 @@ func postLoginModel(providerID, actionLabel string, models []tui.ModelSelectorIt
 	return "", fmt.Sprintf(`%s, but its default model "%s" is not available. Use /model to select a model.`, actionLabel, defaultID)
 }
 
-func (m *InteractiveMode) finishProviderAuthentication(providerID, actionLabel string, previousModel *ai.Model, after func()) {
+var errPostLoginSelectionSuperseded = errors.New("post-login model selection superseded")
+
+func (m *InteractiveMode) finishProviderAuthentication(providerID, actionLabel string, previousModel *ai.Model, authPath string, redact func(string) string, after func()) {
 	var modelID, selectionError string
 	if isUnknownModel(previousModel) {
 		modelID, selectionError = postLoginModel(providerID, actionLabel, m.availableModelItems())
@@ -117,9 +131,9 @@ func (m *InteractiveMode) finishProviderAuthentication(providerID, actionLabel s
 		if selected != nil {
 			status += " Selected " + selected.ID + "."
 		}
-		m.showStatus(status + " Credentials saved to " + filepath.Join(m.opts.AgentDir, "auth.json"))
+		m.showStatus(redact(status + " Credentials saved to " + authPath))
 		if selectionError != "" {
-			m.showError(selectionError)
+			m.showError(redact(selectionError))
 		} else {
 			m.maybeWarnAboutAnthropicSubscriptionAuthAsync()
 		}
@@ -132,12 +146,17 @@ func (m *InteractiveMode) finishProviderAuthentication(providerID, actionLabel s
 		return
 	}
 
-	// Building a model can resolve credentials, and SetModel awaits extension handlers. Both belong off the input/render loop; UI mutation returns to that loop in order.
 	ctx := m.backgroundCtx
 	if ctx == nil {
 		ctx = m.runCtx
 	}
+	generation, session := m.modelSelectionGeneration, m.currentSession()
 	builder, handle, agent := m.opts.ModelBuilder, m.opts.SessionHandle, m.agent
+	expected := previousModel
+	// Only the owner loop reads these identities. Model construction and extension notifications may wait, but the checked state commit cannot interleave with another owner-loop command.
+	isCurrent := func() bool {
+		return m.modelSelectionGeneration == generation && m.currentSession() == session && m.opts.SessionHandle == handle && m.opts.Model == expected
+	}
 	m.backgroundTasks.Go(func() {
 		var model *ai.Model
 		var err error
@@ -147,27 +166,69 @@ func (m *InteractiveMode) finishProviderAuthentication(providerID, actionLabel s
 			model, err = builder(providerID + "/" + modelID)
 		}
 		if err == nil {
+			apply := func(mutate func() error) error {
+				result := make(chan error, 1)
+				if postErr := m.postToMain(ctx, func() {
+					if ctx != nil && ctx.Err() != nil {
+						result <- ctx.Err()
+						return
+					}
+					if !isCurrent() {
+						result <- errPostLoginSelectionSuperseded
+						return
+					}
+					if mutationErr := mutate(); mutationErr != nil {
+						result <- mutationErr
+						return
+					}
+					if !isCurrent() {
+						result <- errPostLoginSelectionSuperseded
+						return
+					}
+					m.opts.Model = model
+					expected = model
+					if m.statusLine != nil {
+						m.statusLine.SetModel(model)
+					}
+					m.refreshThinkingLevel()
+					if handle != nil {
+						result <- m.addPersistedDefaultToNonEmptyScope(model)
+					} else {
+						result <- m.persistDefaultModel(model)
+					}
+				}); postErr != nil {
+					return postErr
+				}
+				if ctx == nil {
+					return <-result
+				}
+				select {
+				case applyErr := <-result:
+					return applyErr
+				case <-ctx.Done():
+					return ctx.Err()
+				}
+			}
 			if handle != nil {
-				err = handle.SetModel(model, ModelMutationOptions{Persist: true})
-			} else if agent != nil {
-				agent.SetModel(model)
+				err = handle.SetModelOnMain(model, ModelMutationOptions{Persist: true}, apply)
+			} else {
+				err = apply(func() error {
+					if agent != nil {
+						agent.SetModel(model)
+					}
+					return nil
+				})
 			}
 		}
 		m.runOnMain(ctx, func() {
 			if ctx != nil && ctx.Err() != nil {
 				return
 			}
-			if err == nil {
-				m.opts.Model = model
-				if m.statusLine != nil {
-					m.statusLine.SetModel(model)
+			if errors.Is(err, errPostLoginSelectionSuperseded) || !isCurrent() {
+				if after != nil {
+					after()
 				}
-				m.refreshThinkingLevel()
-				if handle != nil {
-					err = m.addPersistedDefaultToNonEmptyScope(model)
-				} else {
-					err = m.persistDefaultModel(model)
-				}
+				return
 			}
 			finish(model, err)
 		})

@@ -43,6 +43,8 @@ type InteractiveSessionHandle interface {
 	// SetModel swaps the active LLM model mid-session and persists a
 	// model_change audit entry.
 	SetModel(*ai.Model, ...ModelMutationOptions) error
+	// SetModelOnMain dispatches the synchronous state mutation to the owner loop, then waits for extension notifications on the caller. The dispatcher may reject a superseded mutation.
+	SetModelOnMain(*ai.Model, ModelMutationOptions, func(func() error) error) error
 	// SetThinkingLevel applies and records reasoning without changing defaults unless Persist is set.
 	SetThinkingLevel(ai.ThinkingLevel, ...ModelMutationOptions) error
 	// StreamModel starts a mode-independent model operation through the

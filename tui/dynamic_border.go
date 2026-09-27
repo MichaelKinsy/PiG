@@ -20,7 +20,7 @@ func NewDynamicBorder(color string) *DynamicBorder {
 func (d *DynamicBorder) Render(width int) []string {
 	color := d.color
 	if color == "" {
-		color = ActiveTheme().Border
+		return []string{ActiveTheme().FgText("border", repeatRune('─', max(1, width)))}
 	}
 	w := max(1, width)
 	line := color + repeatRune('─', w) + "\x1b[0m"

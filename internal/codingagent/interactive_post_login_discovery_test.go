@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/synctest"
@@ -53,7 +54,7 @@ func TestPostLoginModelSelectionRules(t *testing.T) {
 // The real registry reads a blocked store; discovery, deadlines, and owner-loop delivery are deterministic.
 func TestPostLoginModelDiscovery(t *testing.T) {
 	t.Setenv("PI_OFFLINE", "1")
-	for _, name := range []string{"prefer default", "catalog order", "empty", "preserve model", "preserve session", "timeout", "refresh error", "shutdown"} {
+	for _, name := range []string{"prefer default", "catalog order", "external path", "empty", "preserve model", "preserve session", "timeout", "refresh error", "shutdown"} {
 		t.Run(name, func(t *testing.T) {
 			registry, _, store := radiusTestRegistry(t, `{"providers":{"radius":{"oauth":"radius","baseUrl":"https://local.invalid"}}}`, map[string]ai.Credential{"radius": {Type: ai.CredentialAPIKey, Key: "test-key"}})
 			synctest.Test(t, func(t *testing.T) {
@@ -61,11 +62,18 @@ func TestPostLoginModelDiscovery(t *testing.T) {
 				m.opts.ModelRegistry = registry
 				blocked := &interactiveCatalogStore{InMemoryModelsStore: store, release: make(chan struct{}), started: make(chan context.Context, 4)}
 				registry.SetModelsStore(blocked)
-				m.completeProviderAuthentication("radius", "Radius", ai.CredentialOAuth, nil)
+				authPath := ""
+				if name == "external path" {
+					authPath = filepath.Join(m.opts.AgentDir, "external-store.json")
+				}
+				m.completeProviderAuthentication("radius", "Radius", ai.CredentialOAuth, nil, authPath, nil)
 				refreshCtx := <-blocked.started
 				synctest.Wait()
 				if got := plainRender(m.chatContainer); !strings.Contains(got, "Refreshing model catalog…") || strings.Contains(got, "Error:") || m.opts.Model != nil {
 					t.Fatalf("login did not defer: %s", got)
+				}
+				if name == "external path" && !strings.Contains(plainRender(m.chatContainer), authPath+". Refreshing model catalog…") {
+					t.Fatal("deferred notice lost the external credential path")
 				}
 				switch name {
 				case "preserve model":
@@ -96,8 +104,11 @@ func TestPostLoginModelDiscovery(t *testing.T) {
 				close(blocked.release)
 				drainPostLoginTasks(m)
 				got := plainRender(m.chatContainer)
+				if name == "external path" && (!strings.Contains(got, "Selected balanced. Credentials saved to "+authPath) || strings.Contains(got, "auth.json")) {
+					t.Fatal("deferred completion reported the wrong store")
+				}
 				switch name {
-				case "prefer default", "catalog order":
+				case "prefer default", "catalog order", "external path":
 					want := "balanced"
 					if name == "catalog order" {
 						want = "powerful"
@@ -152,7 +163,7 @@ func TestPostLoginCompletesBeforeBackgroundRefresh(t *testing.T) {
 		blocked := &interactiveCatalogStore{InMemoryModelsStore: store, release: make(chan struct{}), started: make(chan context.Context, 4)}
 		registry.SetModelsStore(blocked)
 		before := time.Now()
-		m.completeProviderAuthentication("radius", "Radius", ai.CredentialAPIKey, previous)
+		m.completeProviderAuthentication("radius", "Radius", ai.CredentialAPIKey, previous, "", nil)
 		<-blocked.started
 		synctest.Wait()
 		if time.Since(before) != 0 {
@@ -251,6 +262,6 @@ func TestPostLoginPersistsDefaultIntoNonEmptyScope(t *testing.T) {
 
 type postLoginFailingHandle struct{ recordingCompactHandle }
 
-func (*postLoginFailingHandle) SetModel(*ai.Model, ...ModelMutationOptions) error {
-	return errors.New("cannot persist")
+func (*postLoginFailingHandle) SetModelOnMain(_ *ai.Model, _ ModelMutationOptions, dispatch func(func() error) error) error {
+	return dispatch(func() error { return errors.New("cannot persist") })
 }
