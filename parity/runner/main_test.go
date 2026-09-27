@@ -36,10 +36,10 @@ func TestMain(m *testing.M) {
 	go func() {
 		sig := <-sigs
 		cleanupAllSessions()
-		// Re-raise the signal with the default handler so the parent
+		// End the way the signal's default handling would, so the parent
 		// process observes the real cause of death.
-		signal.Reset(sig.(syscall.Signal))
-		_ = syscall.Kill(syscall.Getpid(), sig.(syscall.Signal))
+		signal.Reset(sig)
+		exitWithSignal(sig.(syscall.Signal))
 	}()
 
 	code := m.Run()
