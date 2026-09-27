@@ -416,7 +416,7 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 		return nil
 	}
 
-	// A background OAuth login (github-copilot / anthropic device/PKCE flow)
+	// A background OAuth login (the github-copilot device flow)
 	// polls while the main loop stays live and shows a "Ctrl+C to cancel" hint.
 	// Esc or Ctrl+C aborts that polling window, matching the hint and upstream's
 	// login-dialog abort. This takes priority over the idle clear-editor /
