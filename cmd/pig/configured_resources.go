@@ -68,17 +68,19 @@ func collectPromptPaths(cwd, agentDir string, sm *codingagent.SettingsManager, f
 	return dedupStrings(paths)
 }
 
+// collectThemePaths lists theme paths in upstream precedence order, the first
+// theme of a name winning: --theme paths, project, user, then Packages.
 func collectThemePaths(cwd, agentDir string, sm *codingagent.SettingsManager, flags CLIFlags, projectTrusted bool, resolvers ...extsource.ResolveFunc) []string {
 	paths := make([]string, 0)
+	for _, p := range flags.Themes {
+		paths = append(paths, collectResourceFilesFromPaths([]string{resolveSettingsPath(cwd, p)}, "themes")...)
+	}
 	if !flags.NoThemes {
-		paths = append(paths, collectPackageThemePaths(cwd, sm, resolvers...)...)
-		paths = append(paths, collectTopLevelResourcePaths(filepath.Join(agentDir, "themes"), sm.GetGlobalSettings().Themes, "themes")...)
 		if projectRoot, ok := projectResourceRoot(cwd); projectTrusted && ok {
 			paths = append(paths, collectTopLevelResourcePaths(filepath.Join(projectRoot, "themes"), sm.GetProjectSettings().Themes, "themes")...)
 		}
-	}
-	for _, p := range flags.Themes {
-		paths = append(paths, collectResourceFilesFromPaths([]string{resolveSettingsPath(cwd, p)}, "themes")...)
+		paths = append(paths, collectTopLevelResourcePaths(filepath.Join(agentDir, "themes"), sm.GetGlobalSettings().Themes, "themes")...)
+		paths = append(paths, collectPackageThemePaths(cwd, sm, resolvers...)...)
 	}
 	return dedupStrings(paths)
 }
@@ -129,22 +131,32 @@ func collectSkillInputs(cwd, agentDir string, sm *codingagent.SettingsManager, f
 }
 
 func collectExtensionConfigs(cwd, agentDir string, sm *codingagent.SettingsManager, flags CLIFlags, ambientScopes *[]string, resolvers ...extsource.ResolveFunc) []subprocess.ExtConfig {
+	// Upstream resource-loader.ts loads -e paths first, then the resolved
+	// paths in package-manager.ts resourcePrecedenceRank order: project
+	// settings entries, project auto-discovery, user settings entries, user
+	// auto-discovery, then Packages. It reports a missing -e path after
+	// loading. --no-extensions keeps only the -e paths.
 	configs := make([]subprocess.ExtConfig, 0)
-	// --no-extensions suppresses settings/auto-discovery but preserves CLI -e paths.
-	// Mirrors upstream resource-loader.ts: noExtensions ? cliEnabledExtensions : merged
-	if !flags.NoExtensions {
-		configs = append(configs, collectPackageExtensionConfigs(cwd, sm, ambientScopes, resolvers...)...)
-		if ambientSourceEnabled(ambientScopes, "user") {
-			configs = append(configs, collectTopLevelExtensionConfigs(filepath.Join(agentDir, "extensions"), sm.GetGlobalSettings().Extensions, resolvers...)...)
-		}
-		if projectRoot, ok := projectResourceRoot(cwd); ambientSourceEnabled(ambientScopes, "workspace") && ok {
-			configs = append(configs, collectTopLevelExtensionConfigs(filepath.Join(projectRoot, "extensions"), sm.GetProjectSettings().Extensions, resolvers...)...)
-		}
-	}
+	var missing []subprocess.ExtConfig
 	for _, p := range flags.Extensions {
-		configs = append(configs, cliExtensionConfigs(resolveSettingsPath(cwd, p), resolvers...)...)
+		for _, config := range cliExtensionConfigs(resolveSettingsPath(cwd, p), resolvers...) {
+			if _, absent := errors.AsType[extensionPathMissingError](config.ResolveError()); absent {
+				missing = append(missing, config)
+				continue
+			}
+			configs = append(configs, config)
+		}
 	}
-	return mergeExtConfigs(configs)
+	if !flags.NoExtensions {
+		if projectRoot, ok := projectResourceRoot(cwd); ambientSourceEnabled(ambientScopes, "workspace") && ok {
+			configs = append(configs, collectTopLevelExtensionConfigs(filepath.Join(projectRoot, "extensions"), sm.GetProjectSettings().Extensions, "project", resolvers...)...)
+		}
+		if ambientSourceEnabled(ambientScopes, "user") {
+			configs = append(configs, collectTopLevelExtensionConfigs(filepath.Join(agentDir, "extensions"), sm.GetGlobalSettings().Extensions, "user", resolvers...)...)
+		}
+		configs = append(configs, collectPackageExtensionConfigs(cwd, sm, ambientScopes, resolvers...)...)
+	}
+	return mergeExtConfigs(append(configs, missing...))
 }
 
 // cliExtensionConfigs resolves one -e path. Like upstream resource-loader.ts,
@@ -152,8 +164,16 @@ func collectExtensionConfigs(cwd, agentDir string, sm *codingagent.SettingsManag
 // A directory that is not itself an extension loads the extensions inside it.
 // Each loaded extension carries upstream's CLI provenance.
 func cliExtensionConfigs(resolved string, resolvers ...extsource.ResolveFunc) []subprocess.ExtConfig {
-	if _, err := os.Stat(resolved); os.IsNotExist(err) {
+	info, err := os.Stat(resolved)
+	if os.IsNotExist(err) {
 		return []subprocess.ExtConfig{subprocess.UnresolvedExtConfig(resolved, extensionPathMissingError{path: resolved})}
+	}
+	if err == nil && info.IsDir() && packagecontent.HasPiManifest(resolved) {
+		// Upstream resolves a directory with a "pi" manifest as a Package
+		// (resolveLocalExtensionSource, collectPackageResources): each entry
+		// its manifest yields is its own extension, and a manifest that yields
+		// none loads nothing.
+		return withCLISourceInfo(packageExtensionConfigs(resolved, nil, resolvers...))
 	}
 	configs := pathToExtConfigs(resolved, resolvers...)
 	if len(configs) > 0 && configs[0].ResolveError() == nil {
@@ -184,33 +204,46 @@ func withCLISourceInfo(configs []subprocess.ExtConfig) []subprocess.ExtConfig {
 	return configs
 }
 
-func collectTopLevelExtensionConfigs(autoDir string, entries []string, resolvers ...extsource.ResolveFunc) []subprocess.ExtConfig {
+// collectTopLevelExtensionConfigs resolves a scope's settings entries, then
+// its auto-discovered extensions, stamping the SourceInfo upstream
+// package-manager.ts records for each: {source: "local"} without a baseDir for
+// a settings entry, {source: "auto", baseDir: <config dir>} for a discovered
+// one.
+func collectTopLevelExtensionConfigs(autoDir string, entries []string, scope string, resolvers ...extsource.ResolveFunc) []subprocess.ExtConfig {
 	baseDir := filepath.Dir(autoDir)
 	automatic := filterAutoDiscoveredPaths(collectAutoDiscoveredResourcePaths(autoDir, "extensions"), entries, autoDir, "extensions")
 	configs := make([]subprocess.ExtConfig, 0, len(automatic)+len(entries))
+	// Settings entries rank before auto-discovery in the same scope.
+	for _, path := range resolveConfiguredResourceEntries(entries, baseDir, "extensions") {
+		for _, config := range pathToExtConfigs(path, resolvers...) {
+			config.SourceInfo = codingagent.PiSourceInfo{Path: path, Source: "local", Scope: scope, Origin: "top-level"}
+			configs = append(configs, config)
+		}
+	}
 	for _, path := range automatic {
 		selected := path
-		if name := filepath.Base(path); name == "index.ts" || name == "index.js" {
+		if name := filepath.Base(path); (name == "index.ts" || name == "index.js") && !extsource.NodeDeclaresExtensions(filepath.Dir(path)) {
 			selected = filepath.Dir(path)
 		}
 		// Upstream loads and names the discovered entry file; PiG loads the
 		// selected directory and names the entry file in load errors.
 		for _, config := range pathToExtConfigs(selected, resolvers...) {
+			config.SourceInfo = codingagent.PiSourceInfo{Path: path, Source: "auto", Scope: scope, Origin: "top-level", BaseDir: baseDir}
 			configs = append(configs, config.SelectedAs(path))
 		}
-	}
-	for _, path := range resolveConfiguredResourceEntries(entries, baseDir, "extensions") {
-		configs = append(configs, pathToExtConfigs(path, resolvers...)...)
 	}
 	return configs
 }
 
+// collectTopLevelResourcePaths lists a scope's settings entries, then its
+// auto-discovered resources, as upstream package-manager.ts
+// resourcePrecedenceRank orders them.
 func collectTopLevelResourcePaths(autoDir string, entries []string, kind string) []string {
 	auto := collectAutoDiscoveredResourcePaths(autoDir, kind)
 	baseDir := filepath.Dir(autoDir)
 	explicit := resolveConfiguredResourceEntries(entries, baseDir, kind)
 	auto = filterAutoDiscoveredPaths(auto, entries, baseDir, kind)
-	return append(auto, explicit...)
+	return append(explicit, auto...)
 }
 
 func resolveConfiguredResourceEntries(entries []string, baseDir string, kind string) []string {
@@ -486,25 +519,41 @@ func collectPackageExtensionConfigs(cwd string, sm *codingagent.SettingsManager,
 		if err != nil {
 			continue
 		}
-		resources, err := packagecontent.Discover(root)
+		for _, config := range packageExtensionConfigs(root, filters[packagecontent.Extensions], resolvers...) {
+			path := config.Source
+			if path == "" {
+				path = config.Path
+			}
+			config.SourceInfo = codingagent.PiSourceInfo{Path: path, Source: pkg.Source.Source, Scope: pkg.Scope, Origin: "package", BaseDir: root}
+			configs = append(configs, config)
+		}
+	}
+	return configs
+}
+
+// packageExtensionConfigs resolves each extension entry the Package at root
+// exposes and filter enables as its own extension, as upstream loads every
+// file its manifest entries collect.
+func packageExtensionConfigs(root string, filter []string, resolvers ...extsource.ResolveFunc) []subprocess.ExtConfig {
+	resources, err := packagecontent.Discover(root)
+	if err != nil {
+		return nil
+	}
+	var configs []subprocess.ExtConfig
+	for _, src := range resources.ExtensionEntries {
+		rel, _ := filepath.Rel(root, src)
+		if !packagecontent.ResourceEnabled(rel, filter) {
+			continue
+		}
+		name, err := packagecontent.PublicName(packagecontent.Extensions, src, "")
 		if err != nil {
 			continue
 		}
-		for _, src := range resources.ExtensionEntries {
-			rel, _ := filepath.Rel(root, src)
-			if !packagecontent.ResourceEnabled(rel, filters[packagecontent.Extensions]) {
-				continue
-			}
-			name, err := packagecontent.PublicName(packagecontent.Extensions, src, "")
-			if err != nil {
-				continue
-			}
-			config, _, err := subprocess.ResolveExtConfigWithResolver(src, name, configuredExtensionResolver(resolvers))
-			if err != nil {
-				config = subprocess.UnresolvedExtConfig(src, err)
-			}
-			configs = append(configs, config)
+		config, _, err := subprocess.ResolveExtConfigWithResolver(src, name, configuredExtensionResolver(resolvers))
+		if err != nil {
+			config = subprocess.UnresolvedExtConfig(src, err)
 		}
+		configs = append(configs, config)
 	}
 	return configs
 }

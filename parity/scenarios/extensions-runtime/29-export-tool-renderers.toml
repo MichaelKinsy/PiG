@@ -1,0 +1,63 @@
+# Behavior family: extensions-runtime
+# Surface: HTML export draws extension tools with their renderCall and
+# renderResult.
+#
+# Upstream evidence (Pi 0.87.1, core/export-html/tool-renderer.ts and
+# index.ts preRenderCustomTools): AgentSession.exportToHtml passes a tool
+# renderer that calls each registered definition's renderCall (collapsed,
+# partial) and renderResult (collapsed and expanded, final) and converts the
+# ANSI lines to HTML in renderedTools; a renderer that throws leaves the
+# default rendering. RPC export_html goes through the same path.
+# PiG skipped renderers that run in an extension process, and RPC
+# export_html rendered no extension tool at all.
+
+name = "29-export-tool-renderers"
+description = "HTML export pre-renders Node extension tool renderers as upstream does"
+covers = [
+  "packages/coding-agent/src/core/export-html/tool-renderer.ts",
+  "packages/coding-agent/src/core/export-html/index.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+cwd = "testdata/export-cwd"
+timeout_seconds = 40
+
+[[rpc.steps]]
+line = '{"id":"run","type":"prompt","message":"Run: extension render cards"}'
+wait_contains = ['"type":"agent_end"']
+wait_timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"export","type":"export_html","outputPath":"cards.html"}'
+wait_contains = ['"id":"export","type":"response","command":"export_html"']
+wait_timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"dump","type":"bash","command":"node export-rendered-tools.mjs cards.html"}'
+wait_contains = ['"id":"dump","type":"response","command":"bash"']
+wait_timeout_seconds = 20
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--model", "test-faux/faux-1", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/tool-renderers.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/tool-renderers.mjs",
+]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_normalized_equal = true
+both_contain = ["RENDERED {", "render_card#0", "render_self#1"]
+
+# normalize-rationale: the comparison is the export's renderedTools, which
+# the last step prints; the session events before it carry each product's own
+# system prompt and are covered by other scenarios.
+[[assert.normalize_replace]]
+pattern = '(?s)\A.*?(\{"id":"dump")'
+with = '$1'

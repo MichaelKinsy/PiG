@@ -1,0 +1,54 @@
+# Behavior family: extensions-runtime
+# Scenario: a Package directory whose pi.extensions entry is a directory
+# without an index loads each .ts/.js file and each subdirectory entry in it as
+# its own extension; a directory entry with no extension entry loads nothing.
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-26): a -e directory with a "pi"
+# manifest resolves as a Package (resolveLocalExtensionSource,
+# collectPackageResources). collectFilesFromManifestEntries expands the
+# "./extensions" directory with collectAutoExtensionEntries: alpha.ts, beta.js
+# and gamma/index.ts load as three extensions with source "cli"; .hidden.ts and
+# notes.md are skipped. The "empty" Package's directory has no entry, so it
+# loads nothing and startup reports no error.
+#
+#   pi --no-extensions -e test-faux-provider.ts -e dir-entries/pkg \
+#     -e dir-entries/empty --model test-faux/faux-1 --mode rpc
+#   stdin: {"id":"cmds","type":"get_commands"}
+#
+# PiG used to resolve each directory as one extension and failed with "resolves
+# to 3 entrypoints" and "declares pi.extensions directories with no extension
+# entry file".
+
+name = "23-extension-directory-entries"
+description = "pi.extensions directory entries load one extension per file or subdirectory entry, and none for an empty directory"
+
+covers = [
+  "packages/coding-agent/src/core/package-manager.ts",
+  "packages/coding-agent/src/core/source-info.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"cmds","type":"get_commands"}']
+timeout_seconds = 20
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pig_extensions = ["testdata/dir-entries/pkg", "testdata/dir-entries/empty"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/dir-entries/pkg",
+  "testdata/dir-entries/empty",
+]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+
+[assert]
+exit_code = 0
+output_normalized_equal = true
+runs = 3
+both_contain = ['"name":"alpha-entry"', '"name":"beta-entry"', '"name":"gamma-entry"', '"source":"cli"']
+both_not_contain = ["Failed to load extension", "hidden directory entries"]

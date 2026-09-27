@@ -79,10 +79,23 @@ func NodeDirectoryEntries(dir string) []string {
 	return entries
 }
 
-// nodeRootEntries is upstream's resolveExtensionEntries: the existing entries
-// dir's package.json "pi.extensions" declares, else index.ts, else index.js,
-// else nil. Declared entries are returned as declared, without expanding a
-// directory among them, as upstream does.
+// NodeRootEntries is upstream's resolveExtensionEntries
+// (core/package-manager.ts): the existing entries dir's package.json
+// "pi.extensions" declares, else index.ts, else index.js, else nil. Declared
+// entries are returned as declared, without expanding a directory among them,
+// as upstream does.
+func NodeRootEntries(dir string) []string {
+	return nodeRootEntries(dir)
+}
+
+// NodeDeclaresExtensions reports whether dir's package.json has a "pi"
+// manifest with a non-empty "pi.extensions" list. Upstream loads only what
+// such a manifest names.
+func NodeDeclaresExtensions(dir string) bool {
+	_, ok, _ := nodeManifestDeclared(dir)
+	return ok
+}
+
 func nodeRootEntries(dir string) []string {
 	if declared, ok, _ := nodeManifestDeclared(dir); ok {
 		var entries []string

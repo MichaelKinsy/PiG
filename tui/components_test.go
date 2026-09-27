@@ -270,8 +270,9 @@ func TestEditorCursorAtTerminalWidthUsesReservedCursorColumn(t *testing.T) {
 	if len(contentRows) != 2 {
 		t.Fatalf("content rows = %d, want 2: %q", len(contentRows), contentRows)
 	}
-	if got := lineDisplayWidth(contentRows[0]); got != width-1 {
-		t.Fatalf("first row width = %d, want %d", got, width-1)
+	// Pi pads every row to the content width; the reserved column is a space.
+	if got, want := stripANSI(contentRows[0]), strings.Repeat("a", width-1)+" "; got != want {
+		t.Fatalf("first row = %q, want %q", got, want)
 	}
 	if strings.Contains(contentRows[0], "\033[7m") {
 		t.Fatalf("first row contains cursor: %q", contentRows[0])

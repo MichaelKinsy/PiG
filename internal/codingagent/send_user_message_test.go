@@ -351,3 +351,41 @@ func TestSendUserMessageAcceptsTheUpstreamDeliveryModes(t *testing.T) {
 		})
 	}
 }
+
+// Upstream sendUserMessage is prompt(), which renders the user message only
+// when the agent emits message_start for it. A ctx.ui.notify the handler makes
+// right after pi.sendUserMessage (pi-msg-queue's /q) therefore appears before
+// the user message. pig used to render the prompt eagerly when the main loop
+// started the turn, which reversed the order.
+func TestInteractiveMode_SendUserMessageRendersAfterSameHandlerNotify(t *testing.T) {
+	m, seen, sendUserMessage := newSendUserMessageHarness(t)
+	m.isIdle = true
+
+	if err := sendUserMessage("remember the tests", subprocess.SendUserMessageOptions{DeliverAs: "followUp"}); err != nil {
+		t.Fatalf("sendUserMessage returned error: %v", err)
+	}
+	drainOneUITask(t, m)
+	m.showExtensionNotify("Follow-up message sent.", "info")
+	select {
+	case <-seen:
+	case <-time.After(2 * time.Second):
+		t.Fatal("idle sendUserMessage did not start a turn")
+	}
+	if rendered := strings.Join(m.chatContainer.Render(100), "\n"); strings.Contains(rendered, "remember the tests") {
+		t.Fatalf("user message rendered before the agent emitted message_start:\n%s", rendered)
+	}
+	m.handleAgentEvent(agent.MessageStartEvent{Message: agent.AgentMessage{User: &agent.UserMessage{
+		Role:    agent.RoleUser,
+		Content: []ai.UserContentBlock{ai.TextContent{Text: "remember the tests"}},
+	}}})
+
+	rendered := strings.Join(m.chatContainer.Render(100), "\n")
+	notice := strings.Index(rendered, "Follow-up message sent.")
+	user := strings.Index(rendered, "remember the tests")
+	if notice < 0 || user < 0 || notice > user {
+		t.Fatalf("want the notify before the user message, got:\n%s", rendered)
+	}
+	if strings.Count(rendered, "remember the tests") != 1 {
+		t.Fatalf("user message rendered more than once:\n%s", rendered)
+	}
+}

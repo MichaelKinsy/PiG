@@ -20,11 +20,14 @@ import (
 // /reload. It mirrors the upstream resource-loader/session.reload flow where
 // prompt/theme/skill/context inputs are re-resolved from current settings.
 type ReloadResourceSnapshot struct {
-	PromptPaths        []string
-	ThemePaths         []string
-	SkillPaths         []string
-	ContextFiles       []ContextFile
-	ResourceSourceInfo map[string]ResourceSourceInfo
+	PromptPaths  []string
+	ThemePaths   []string
+	SkillPaths   []string
+	ContextFiles []ContextFile
+	// SystemPromptSourcePaths are the system prompt files the loaded
+	// resources [Context] section lists before ContextFiles.
+	SystemPromptSourcePaths []string
+	ResourceSourceInfo      map[string]ResourceSourceInfo
 }
 
 func cloneResourceSourceInfoMap(in map[string]ResourceSourceInfo) map[string]ResourceSourceInfo {
@@ -41,6 +44,7 @@ func (m *InteractiveMode) applyReloadResourceSnapshot(snapshot ReloadResourceSna
 	m.opts.ThemePaths = append([]string(nil), snapshot.ThemePaths...)
 	m.opts.SkillPaths = append([]string(nil), snapshot.SkillPaths...)
 	m.opts.ContextFiles = append([]ContextFile(nil), snapshot.ContextFiles...)
+	m.opts.SystemPromptSourcePaths = append([]string(nil), snapshot.SystemPromptSourcePaths...)
 	if snapshot.ResourceSourceInfo != nil {
 		m.resourceSourceInfo = cloneResourceSourceInfoMap(snapshot.ResourceSourceInfo)
 	}
@@ -222,6 +226,22 @@ func extensionBaseDir(extensionPath string) string {
 	return filepath.Dir(extensionPath)
 }
 
+// ExtensionDiscoveredSourceInfo is the provenance upstream
+// buildExtensionResourcePaths records for a resource path an extension's
+// resources_discover handler returned: source "extension:<name>", scope
+// "temporary", and the extension's directory as baseDir.
+func ExtensionDiscoveredSourceInfo(path, kind, extensionPath string) ResourceSourceInfo {
+	return ResourceSourceInfo{
+		Path:         path,
+		ResourceType: kind,
+		Enabled:      true,
+		Scope:        "temporary",
+		Origin:       "top-level",
+		Source:       extensionSourceLabel(extensionPath),
+		BaseDir:      extensionBaseDir(extensionPath),
+	}
+}
+
 // extendResourcesFromExtensions merges extension-discovered resources. Its
 // caller shows the final prompt diagnostics once, as upstream
 // showLoadedResources does after startup and after reload.
@@ -241,39 +261,15 @@ func (m *InteractiveMode) extendResourcesFromExtensions(reason string) {
 	}
 	for _, entry := range agg.SkillPaths {
 		m.opts.SkillPaths = mergeUniqueStrings(m.opts.SkillPaths, entry.Path)
-		m.resourceSourceInfo[entry.Path] = ResourceSourceInfo{
-			Path:         entry.Path,
-			ResourceType: "skills",
-			Enabled:      true,
-			Scope:        "temporary",
-			Origin:       "top-level",
-			Source:       extensionSourceLabel(entry.ExtensionPath),
-			BaseDir:      extensionBaseDir(entry.ExtensionPath),
-		}
+		m.resourceSourceInfo[entry.Path] = ExtensionDiscoveredSourceInfo(entry.Path, "skills", entry.ExtensionPath)
 	}
 	for _, entry := range agg.PromptPaths {
 		m.opts.PromptPaths = mergeUniqueStrings(m.opts.PromptPaths, entry.Path)
-		m.resourceSourceInfo[entry.Path] = ResourceSourceInfo{
-			Path:         entry.Path,
-			ResourceType: "prompts",
-			Enabled:      true,
-			Scope:        "temporary",
-			Origin:       "top-level",
-			Source:       extensionSourceLabel(entry.ExtensionPath),
-			BaseDir:      extensionBaseDir(entry.ExtensionPath),
-		}
+		m.resourceSourceInfo[entry.Path] = ExtensionDiscoveredSourceInfo(entry.Path, "prompts", entry.ExtensionPath)
 	}
 	for _, entry := range agg.ThemePaths {
 		m.opts.ThemePaths = mergeUniqueStrings(m.opts.ThemePaths, entry.Path)
-		m.resourceSourceInfo[entry.Path] = ResourceSourceInfo{
-			Path:         entry.Path,
-			ResourceType: "themes",
-			Enabled:      true,
-			Scope:        "temporary",
-			Origin:       "top-level",
-			Source:       extensionSourceLabel(entry.ExtensionPath),
-			BaseDir:      extensionBaseDir(entry.ExtensionPath),
-		}
+		m.resourceSourceInfo[entry.Path] = ExtensionDiscoveredSourceInfo(entry.Path, "themes", entry.ExtensionPath)
 	}
 
 	if m.opts.NoPromptTemplates {
@@ -284,11 +280,9 @@ func (m *InteractiveMode) extendResourcesFromExtensions(reason string) {
 	m.reloadSkillsFromPaths()
 	if !m.opts.NoThemes {
 		registry := tui.ActiveThemeRegistry()
-		for _, themePath := range m.opts.ThemePaths {
-			if err := loadThemePath(registry, themePath); err != nil {
-				_, _ = fmt.Fprintf(stderrWriter(), "theme reload: %v\n", err)
-			}
-		}
+		loadThemePaths(registry, m.opts.ThemePaths, func(err error) {
+			_, _ = fmt.Fprintf(stderrWriter(), "theme reload: %v\n", err)
+		})
 	}
 	m.rebuildSystemPromptFromResources()
 }

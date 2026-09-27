@@ -108,6 +108,18 @@ func (c SlashCommandCatalog) SubprocessCommands() []subprocess.CommandInfo {
 // SourceInfoForPath returns the SourceInfo of a resource of kind
 // ("extensions", "prompts" or "skills") loaded from path.
 func (c SlashCommandCatalog) SourceInfoForPath(path, kind string) PiSourceInfo {
+	// Upstream findSourceInfoForPath checks the paths extensions discovered
+	// first, for the path or any directory above it.
+	for current := path; current != ""; {
+		if info, ok := c.SourceInfo[current]; ok && strings.HasPrefix(info.Source, "extension:") {
+			return PiSourceInfo{Path: path, Source: info.Source, Scope: info.Scope, Origin: info.Origin, BaseDir: info.BaseDir}
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			break
+		}
+		current = parent
+	}
 	for _, candidate := range []string{path, filepath.Dir(path)} {
 		if info, ok := c.SourceInfo[candidate]; ok {
 			scope := info.Scope
@@ -122,11 +134,9 @@ func (c SlashCommandCatalog) SourceInfoForPath(path, kind string) PiSourceInfo {
 			if source == "" {
 				source = "local"
 			}
-			baseDir := info.BaseDir
-			if baseDir == "" && path != "" {
-				baseDir = filepath.Dir(path)
-			}
-			return PiSourceInfo{Path: path, Source: source, Scope: scope, Origin: origin, BaseDir: baseDir}
+			// Upstream createSourceInfo: the recorded metadata's baseDir, which
+			// a settings entry does not have.
+			return PiSourceInfo{Path: path, Source: source, Scope: scope, Origin: origin, BaseDir: info.BaseDir}
 		}
 	}
 	info := PiSourceInfo{Path: path, Source: "local", Scope: "temporary", Origin: "top-level"}

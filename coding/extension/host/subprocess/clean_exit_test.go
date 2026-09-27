@@ -37,7 +37,12 @@ func TestCleanExtensionExitIsReported(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := ext.Commands["quit"].Handler(testbudget.Context(t), ""); err != nil {
+	// The command's reply and the exit it schedules race in the extension
+	// process: on Windows a pipe write still pending at process.exit is
+	// dropped, so the command may end with the transport's EOF instead of its
+	// reply. Either way the host must report the exit, which is what this
+	// test checks.
+	if err := ext.Commands["quit"].Handler(testbudget.Context(t), ""); err != nil && !strings.Contains(err.Error(), "read failed: EOF") {
 		t.Fatal(err)
 	}
 	select {

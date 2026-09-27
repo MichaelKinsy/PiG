@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
 type rpcUIResponse struct {
@@ -267,9 +268,11 @@ func (*rpcUIContext) GetEditorText() string                                     
 func (*rpcUIContext) AddAutocompleteProvider(extension.AutocompleteProviderFactory) {}
 func (*rpcUIContext) SetEditorComponent(any)                                        {}
 func (*rpcUIContext) GetEditorComponent() any                                       { return nil }
-func (*rpcUIContext) Theme() extension.Theme                                        { return nil }
-func (*rpcUIContext) GetAllThemes() []extension.ThemeMeta                           { return nil }
-func (*rpcUIContext) GetTheme(string) (extension.Theme, error)                      { return nil, nil }
+
+// Theme is upstream rpc-mode.ts ui.theme, the active global theme.
+func (*rpcUIContext) Theme() extension.Theme                   { return codingagent.ActiveExtensionTheme() }
+func (*rpcUIContext) GetAllThemes() []extension.ThemeMeta      { return nil }
+func (*rpcUIContext) GetTheme(string) (extension.Theme, error) { return nil, nil }
 func (*rpcUIContext) SetTheme(any) extension.SetThemeResult {
 	return extension.SetThemeResult{Success: false, Error: "Theme switching not supported in RPC mode"}
 }

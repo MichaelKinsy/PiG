@@ -149,6 +149,13 @@ type ToolDecl struct {
 	PromptGuidelines    []string          `json:"prompt_guidelines,omitempty"`
 	Annotations         map[string]string `json:"annotations,omitempty"`
 	Source              string            `json:"source,omitempty"` // pig additive (D23): per-tool source override; default: extension name
+	// RenderShell is upstream ToolDefinition.renderShell: "self" when the
+	// tool's renderers draw their own framing, else empty for "default".
+	RenderShell string `json:"render_shell,omitempty"`
+	// RendersCall and RendersResult report that the tool defines renderCall
+	// and renderResult. The host asks for them with RequestRenderTool.
+	RendersCall   bool `json:"renders_call,omitempty"`
+	RendersResult bool `json:"renders_result,omitempty"`
 }
 
 // CommandDecl declares a slash command the extension provides.
@@ -156,6 +163,10 @@ type CommandDecl struct {
 	Name        string `json:"name"`
 	Description string `json:"description"`
 	Args        string `json:"args,omitempty"` // Argument hint shown in /help
+	// ArgumentCompletions reports that the command defines upstream
+	// getArgumentCompletions. The host asks for them with
+	// RequestCommandArgumentCompletions.
+	ArgumentCompletions bool `json:"argument_completions,omitempty"`
 }
 
 // ShortcutDecl declares a keyboard shortcut the extension binds.
@@ -364,6 +375,11 @@ type StatePayload struct {
 	// capability cache with it, so Pi's Markdown renders links as the host
 	// terminal supports them.
 	TerminalCapabilities *TerminalCapabilitiesPayload `json:"terminalCapabilities,omitempty"`
+	// Theme is the host's active theme as extensions see it (ctx.ui.theme):
+	// its name, foreground and background escape sequences by token, and
+	// whether chalk styles draw. The Node runtime's theme helpers
+	// (getSelectListTheme, highlightCode, keyHint, ...) color with it.
+	Theme any `json:"theme,omitempty"`
 }
 
 // TerminalCapabilitiesPayload mirrors pi-tui's TerminalCapabilities.
@@ -420,7 +436,7 @@ type extensionContextUsageDTO struct {
 
 // RequestPayload carries a host request that expects a response.
 type RequestPayload struct {
-	Method     string          `json:"method"` // "tool_call", "event", "command", "shortcut", "render_message", "render_entry"
+	Method     string          `json:"method"` // "tool_call", "event", "command", "shortcut", "render_message", "render_entry", "render_tool"
 	Tool       string          `json:"tool,omitempty"`
 	Event      string          `json:"event,omitempty"`
 	HandlerID  int             `json:"handler_id,omitempty"`
@@ -675,4 +691,77 @@ func (r *ToolResult) UnmarshalJSON(data []byte) error {
 // RenderResult is the structured result from a renderer execution.
 type RenderResult struct {
 	Lines []string `json:"lines,omitempty"`
+}
+
+// RequestRenderTool (host→ext) runs a tool's renderCall or renderResult for
+// one tool card and renders the component it returns, as upstream
+// ToolExecutionComponent.updateDisplay and render do. Args is a
+// RenderToolPayload; the response is a RenderResult, and an error response
+// means the renderer threw, so the card draws upstream's fallback.
+const RequestRenderTool = "render_tool"
+
+// RequestCommandArgumentCompletions (host→ext) runs a command's
+// getArgumentCompletions for the editor's autocomplete. Tool names the
+// command and Args is the argument prefix as a JSON string; the response is
+// the items as a JSON array, or null for none.
+const RequestCommandArgumentCompletions = "command_argument_completions"
+
+// NotifyToolRenderInvalidate (ext→host) is a renderer's context.invalidate():
+// the host runs the card's renderers again and repaints. Args is a
+// ToolRenderCardPayload.
+const NotifyToolRenderInvalidate = "tool_render_invalidate"
+
+// NotifyToolRenderRelease (host→ext) reports that a tool card no longer
+// exists, so the extension drops the card's renderer state and components.
+// Args is a ToolRenderCardPayload.
+const NotifyToolRenderRelease = "tool_render_release"
+
+// ToolRenderCardPayload names one tool card.
+type ToolRenderCardPayload struct {
+	Card string `json:"card"`
+}
+
+// RenderToolPayload is the RequestRenderTool argument. Card identifies the
+// tool card; upstream keeps one renderer state per card, shared by both
+// renderers, and one last component per renderer. Rerender runs the renderer
+// again; without it the extension renders the card's last component at Width,
+// as a resize does upstream, and runs the renderer only when it has none.
+type RenderToolPayload struct {
+	Card     string                             `json:"card"`
+	Phase    string                             `json:"phase"` // "call" | "result"
+	Rerender bool                               `json:"rerender"`
+	Args     json.RawMessage                    `json:"args"`
+	Result   *RenderToolResult                  `json:"result,omitempty"`
+	Options  *extension.ToolRenderResultOptions `json:"options,omitempty"`
+	Context  RenderToolContext                  `json:"context"`
+	Width    int                                `json:"width"`
+}
+
+// RenderToolResult is the result renderResult receives: upstream's
+// {content, details}.
+type RenderToolResult struct {
+	Content []RenderToolContent `json:"content"`
+	Details json.RawMessage     `json:"details,omitempty"`
+}
+
+// RenderToolContent is one text or image block of a RenderToolResult.
+type RenderToolContent struct {
+	Type     string `json:"type"`
+	Text     string `json:"text,omitempty"`
+	Data     string `json:"data,omitempty"`
+	MimeType string `json:"mimeType,omitempty"`
+}
+
+// RenderToolContext carries the serializable fields of upstream
+// ToolRenderContext. The extension supplies args, state, lastComponent and
+// invalidate from the card.
+type RenderToolContext struct {
+	ToolCallID       string `json:"toolCallId"`
+	Cwd              string `json:"cwd"`
+	ExecutionStarted bool   `json:"executionStarted"`
+	ArgsComplete     bool   `json:"argsComplete"`
+	IsPartial        bool   `json:"isPartial"`
+	Expanded         bool   `json:"expanded"`
+	ShowImages       bool   `json:"showImages"`
+	IsError          bool   `json:"isError"`
 }

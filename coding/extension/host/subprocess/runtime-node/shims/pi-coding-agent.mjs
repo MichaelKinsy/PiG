@@ -4,7 +4,8 @@ import { join } from "node:path";
 import { getRuntime } from "../state.mjs";
 import { EventEmitter } from "node:events";
 import { Type } from "./typebox.mjs";
-import { Text } from "./pi-tui.mjs";
+import { getKeybindings, Text } from "./pi-tui.mjs";
+import { highlight, supportsLanguage } from "./pi-dist/pi-coding-agent/utils/syntax-highlight.js";
 // Pi's own code for these, copied verbatim from the pinned release
 // (automation/gen/vendor-pi-dist.sh).
 export { convertToLlm } from "./pi-dist/pi-coding-agent/core/messages.js";
@@ -107,8 +108,9 @@ export function defineTool(tool) {
   return tool;
 }
 
+// modes/interactive/components/dynamic-border.ts
 export class DynamicBorder {
-  constructor(colorize = (s) => s) { this.colorize = colorize; }
+  constructor(colorize = (s) => activeTheme().fg("border", s)) { this.colorize = colorize; }
   render(width = 80) { return [this.colorize("─".repeat(Math.max(1, width)))]; }
   invalidate() {}
 }
@@ -119,10 +121,6 @@ export class BorderedLoader {
   invalidate() {}
   dispose() {}
   render(width = 80) { return [this.message.slice(0, width)]; }
-}
-
-export function getMarkdownTheme() {
-  return {};
 }
 
 // Upstream reads CONFIG_DIR_NAME/getAgentDir from its own package config and
@@ -210,19 +208,6 @@ export function estimateTokens(message) {
   }
 }
 
-// Upstream colorizes through the active interactive theme. A subprocess
-// extension has no theme handle, so the shim keeps the same callable shape and
-// renders uncolored text.
-export function getSettingsListTheme() {
-  return {
-    label: (text) => text,
-    value: (text) => text,
-    description: (text) => text,
-    cursor: "→ ",
-    hint: (text) => text,
-  };
-}
-
 export function copyToClipboard(text) {
   try {
     const proc = spawnSync("pbcopy", [], { input: String(text ?? "") });
@@ -232,9 +217,6 @@ export function copyToClipboard(text) {
   }
 }
 
-export function keyHint(_action, fallback = "") {
-  return fallback || "";
-}
 
 export async function compact(ctx, options = {}) {
   return ctx.compact(options);
@@ -398,32 +380,150 @@ export function getLanguageFromPath(filePath) {
   return EXT_TO_LANG[ext];
 }
 
-// Like getSettingsListTheme above: the host owns the theme, so the extension
-// process keeps upstream's callable shape and renders uncolored text.
-export function getSelectListTheme() {
+// The theme helpers of modes/interactive/theme/theme.ts and
+// components/keybinding-hints.ts. Pi colors them through its global theme; an
+// extension here colors them through ctx.ui.theme, which carries the host's
+// active theme (its colors and whether chalk styles draw) with every state
+// snapshot, and highlights with the same highlight.js build Pi uses.
+function activeTheme() {
+  try {
+    const theme = getRuntime().ui?.theme;
+    if (theme) return theme;
+  } catch {}
+  return { fg: (_token, text) => String(text ?? ""), bold: (text) => String(text ?? ""), italic: (text) => String(text ?? ""), underline: (text) => String(text ?? ""), strikethrough: (text) => String(text ?? "") };
+}
+
+function buildCliHighlightTheme(t) {
   return {
-    selectedPrefix: (text) => text,
-    selectedText: (text) => text,
-    description: (text) => text,
-    scrollInfo: (text) => text,
-    noMatch: (text) => text,
+    keyword: (s) => t.fg("syntaxKeyword", s),
+    built_in: (s) => t.fg("syntaxType", s),
+    literal: (s) => t.fg("syntaxNumber", s),
+    number: (s) => t.fg("syntaxNumber", s),
+    regexp: (s) => t.fg("syntaxString", s),
+    string: (s) => t.fg("syntaxString", s),
+    comment: (s) => t.fg("syntaxComment", s),
+    doctag: (s) => t.fg("syntaxComment", s),
+    meta: (s) => t.fg("muted", s),
+    function: (s) => t.fg("syntaxFunction", s),
+    title: (s) => t.fg("syntaxFunction", s),
+    class: (s) => t.fg("syntaxType", s),
+    type: (s) => t.fg("syntaxType", s),
+    tag: (s) => t.fg("syntaxPunctuation", s),
+    name: (s) => t.fg("syntaxKeyword", s),
+    attr: (s) => t.fg("syntaxVariable", s),
+    variable: (s) => t.fg("syntaxVariable", s),
+    params: (s) => t.fg("syntaxVariable", s),
+    operator: (s) => t.fg("syntaxOperator", s),
+    punctuation: (s) => t.fg("syntaxPunctuation", s),
+    emphasis: (s) => t.italic(s),
+    strong: (s) => t.bold(s),
+    link: (s) => t.underline(s),
+    addition: (s) => t.fg("toolDiffAdded", s),
+    deletion: (s) => t.fg("toolDiffRemoved", s),
   };
 }
 
-export function highlightCode(code) {
-  return String(code ?? "").split("\n");
+export function highlightCode(code, lang) {
+  const theme = activeTheme();
+  const validLang = lang && supportsLanguage(lang) ? lang : undefined;
+  if (!validLang) {
+    return code.split("\n").map((line) => theme.fg("mdCodeBlock", line));
+  }
+  try {
+    return highlight(code, { language: validLang, ignoreIllegals: true, theme: buildCliHighlightTheme(theme) }).split("\n");
+  } catch {
+    return code.split("\n");
+  }
 }
 
+export function getMarkdownTheme() {
+  const theme = activeTheme();
+  return {
+    heading: (text) => theme.fg("mdHeading", text),
+    link: (text) => theme.fg("mdLink", text),
+    linkUrl: (text) => theme.fg("mdLinkUrl", text),
+    code: (text) => theme.fg("mdCode", text),
+    codeBlock: (text) => theme.fg("mdCodeBlock", text),
+    codeBlockBorder: (text) => theme.fg("mdCodeBlockBorder", text),
+    quote: (text) => theme.fg("mdQuote", text),
+    quoteBorder: (text) => theme.fg("mdQuoteBorder", text),
+    hr: (text) => theme.fg("mdHr", text),
+    listBullet: (text) => theme.fg("mdListBullet", text),
+    bold: (text) => theme.bold(text),
+    italic: (text) => theme.italic(text),
+    underline: (text) => theme.underline(text),
+    strikethrough: (text) => theme.strikethrough(text),
+    highlightCode: (code, lang) => {
+      const validLang = lang && supportsLanguage(lang) ? lang : undefined;
+      if (!validLang) {
+        return code.split("\n").map((line) => theme.fg("mdCodeBlock", line));
+      }
+      try {
+        return highlight(code, { language: validLang, ignoreIllegals: true, theme: buildCliHighlightTheme(theme) }).split("\n");
+      } catch {
+        return code.split("\n").map((line) => theme.fg("mdCodeBlock", line));
+      }
+    },
+  };
+}
+
+export function getSelectListTheme() {
+  const theme = activeTheme();
+  return {
+    selectedPrefix: (text) => theme.fg("accent", text),
+    selectedText: (text) => theme.fg("accent", text),
+    description: (text) => theme.fg("muted", text),
+    scrollInfo: (text) => theme.fg("muted", text),
+    noMatch: (text) => theme.fg("muted", text),
+  };
+}
+
+export function getSettingsListTheme() {
+  const theme = activeTheme();
+  return {
+    label: (text, selected) => (selected ? theme.fg("accent", text) : text),
+    value: (text, selected) => (selected ? theme.fg("accent", text) : theme.fg("muted", text)),
+    description: (text) => theme.fg("dim", text),
+    cursor: theme.fg("accent", "→ "),
+    hint: (text) => theme.fg("dim", text),
+  };
+}
+
+// pig divergence (D73): Pi's initTheme selects its process-wide theme. The
+// host owns the theme here, so an extension cannot switch it.
 export function initTheme() {}
 
-// modes/interactive/components/keybinding-hints.ts (uncolored; the host owns
-// keybindings and theme).
+// modes/interactive/components/keybinding-hints.ts. The keybindings are
+// pi-tui's manager in this process, which holds Pi's defaults (D73).
+function formatKeyPart(part, options) {
+  const displayPart = process.platform === "darwin" && part.toLowerCase() === "alt" ? "option" : part;
+  return options.capitalize ? displayPart.charAt(0).toUpperCase() + displayPart.slice(1) : displayPart;
+}
+
+function formatKeyText(key, options = {}) {
+  return key
+    .split("/")
+    .map((k) => k.split("+").map((part) => formatKeyPart(part, options)).join("+"))
+    .join("/");
+}
+
+function formatKeys(keys, options = {}) {
+  if (keys.length === 0) return "";
+  return formatKeyText(keys.join("/"), options);
+}
+
 export function keyText(keybinding) {
-  return String(keybinding ?? "");
+  return formatKeys(getKeybindings().getKeys(keybinding));
+}
+
+export function keyHint(keybinding, description) {
+  const theme = activeTheme();
+  return theme.fg("dim", keyText(keybinding)) + theme.fg("muted", ` ${description}`);
 }
 
 export function rawKeyHint(key, description) {
-  return `${key} ${description}`;
+  const theme = activeTheme();
+  return theme.fg("dim", formatKeyText(key)) + theme.fg("muted", ` ${description}`);
 }
 
 // modes/interactive/components/visual-truncate.ts

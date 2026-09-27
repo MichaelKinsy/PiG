@@ -3,6 +3,9 @@
 use crate::context::{Context, ModelStreams, RemoteComponents, TerminalInputSubs};
 use crate::oauth::{OAuthLoginCallbacks, OAuthProvider, ProviderOAuthConfig};
 use crate::protocol::*;
+use crate::tool_render::{
+    ToolRenderContext, ToolRenderResult, ToolRenderResultOptions, ToolRenderShell, ToolRenderers,
+};
 use crate::transport::UnixStream;
 use serde_json::Value;
 use std::collections::HashMap;
@@ -49,6 +52,9 @@ pub type ToolHandler = Box<dyn Fn(&Context, Value) -> ToolResult + Send + Sync>;
 
 /// Type alias for command handler functions.
 pub type CommandHandler = Box<dyn Fn(&Context, &str) -> CommandResult + Send + Sync>;
+/// Command argument completions (upstream getArgumentCompletions).
+pub type CommandCompletionHandler =
+    Box<dyn Fn(&str) -> Option<Vec<AutocompleteItem>> + Send + Sync>;
 
 /// Type alias for event handler functions.
 /// Errors are returned to the host as request failures.
@@ -253,6 +259,8 @@ pub struct Extension {
     // oauth_fns holds OAuth closures for providers registered with an OAuth
     // capability, keyed by provider name for oauth_* dispatch.
     oauth_fns: HashMap<String, OAuthProvider>,
+    tool_renderers: ToolRenderers,
+    command_completion_fns: HashMap<String, CommandCompletionHandler>,
 }
 
 impl Extension {
@@ -276,7 +284,55 @@ impl Extension {
             renderer_fns: HashMap::new(),
             entry_renderer_fns: HashMap::new(),
             oauth_fns: HashMap::new(),
+            tool_renderers: ToolRenderers::default(),
+            command_completion_fns: HashMap::new(),
         }
+    }
+
+    /// Set the render shell of the registered tool `name` (upstream
+    /// ToolDefinition.renderShell).
+    pub fn tool_render_shell(&mut self, name: &str, shell: ToolRenderShell) {
+        for tool in self.tools.iter_mut().filter(|tool| tool.name == name) {
+            tool.render_shell = (shell == ToolRenderShell::SelfShell).then(|| "self".to_string());
+        }
+    }
+
+    /// Set the call renderer of the registered tool `name` (upstream
+    /// ToolDefinition.renderCall). An error draws upstream's fallback.
+    pub fn render_tool_call(
+        &mut self,
+        name: &str,
+        handler: impl Fn(&Context, Value, &mut ToolRenderContext, u32) -> Result<Vec<String>, String>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        for tool in self.tools.iter_mut().filter(|tool| tool.name == name) {
+            tool.renders_call = true;
+        }
+        self.tool_renderers.call.insert(name.to_string(), Box::new(handler));
+    }
+
+    /// Set the result renderer of the registered tool `name` (upstream
+    /// ToolDefinition.renderResult). An error draws upstream's fallback.
+    pub fn render_tool_result(
+        &mut self,
+        name: &str,
+        handler: impl Fn(
+            &Context,
+            ToolRenderResult,
+            ToolRenderResultOptions,
+            &mut ToolRenderContext,
+            u32,
+        ) -> Result<Vec<String>, String>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        for tool in self.tools.iter_mut().filter(|tool| tool.name == name) {
+            tool.renders_result = true;
+        }
+        self.tool_renderers.result.insert(name.to_string(), Box::new(handler));
     }
 
     /// Returns the extension's registered name.
@@ -300,6 +356,9 @@ impl Extension {
             constrained_sampling: None,
             prompt_guidelines: Vec::new(),
             source: None,
+            render_shell: None,
+            renders_call: false,
+            renders_result: false,
         });
         self.tool_fns.insert(n, Box::new(handler));
     }
@@ -337,6 +396,9 @@ impl Extension {
             constrained_sampling: None,
             prompt_guidelines: guidelines,
             source: None,
+            render_shell: None,
+            renders_call: false,
+            renders_result: false,
         });
         self.tool_fns.insert(n, Box::new(handler));
     }
@@ -363,6 +425,9 @@ impl Extension {
             constrained_sampling: None,
             prompt_guidelines: guidelines,
             source: Some(source.into()),
+            render_shell: None,
+            renders_call: false,
+            renders_result: false,
         });
         self.tool_fns.insert(n, Box::new(handler));
     }
@@ -387,6 +452,9 @@ impl Extension {
             constrained_sampling: Some(sampling),
             prompt_guidelines: Vec::new(),
             source: None,
+            render_shell: None,
+            renders_call: false,
+            renders_result: false,
         });
         self.tool_fns.insert(n, Box::new(handler));
     }
@@ -402,8 +470,24 @@ impl Extension {
         self.commands.push(CmdDef {
             name: n.clone(),
             description: description.into(),
+            argument_completions: false,
         });
         self.command_fns.insert(n, Box::new(handler));
+    }
+
+    /// Set the argument completions of the registered command `name`
+    /// (upstream RegisteredCommand.getArgumentCompletions): the items for the
+    /// text after "/<command> ", or `None` for none.
+    pub fn command_argument_completions(
+        &mut self,
+        name: &str,
+        handler: impl Fn(&str) -> Option<Vec<AutocompleteItem>> + Send + Sync + 'static,
+    ) {
+        for command in self.commands.iter_mut().filter(|command| command.name == name) {
+            command.argument_completions = true;
+        }
+        self.command_completion_fns
+            .insert(name.to_string(), Box::new(handler));
     }
 
     /// Register a keyboard shortcut handler.
@@ -738,6 +822,9 @@ impl Extension {
                 "notify" => {
                     if let Some(notify) = env.notify {
                         match notify.method.as_str() {
+                            "tool_render_release" => {
+                                ext.tool_renderers.release(notify.args.as_ref());
+                            }
                             "model_stream_event" => {
                                 if let Some(args) = &notify.args {
                                     let stream_id = args.get("streamId").and_then(|value| value.as_str()).unwrap_or("");
@@ -1220,6 +1307,36 @@ impl Extension {
                             message: format!("unknown renderer: {}", custom_type),
                         }),
                     );
+                }
+            }
+            "command_argument_completions" => {
+                let cmd_name = req.tool.as_deref().unwrap_or("");
+                if let Some(handler) = self.command_completion_fns.get(cmd_name) {
+                    let prefix = req.args.as_ref().and_then(|v| v.as_str()).unwrap_or("");
+                    let items = handler(prefix).filter(|items| !items.is_empty());
+                    let result = items.and_then(|items| serde_json::to_value(items).ok());
+                    let _ = conn.respond(id, result, None);
+                } else {
+                    let _ = conn.respond(
+                        id,
+                        None,
+                        Some(ErrorInfo {
+                            code: None,
+                            message: format!("command {} has no getArgumentCompletions", cmd_name),
+                        }),
+                    );
+                }
+            }
+            "render_tool" => {
+                let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                let tool = req.tool.as_deref().unwrap_or("");
+                match self.tool_renderers.render(&ctx, conn, tool, req.args.as_ref()) {
+                    Ok(lines) => {
+                        let _ = conn.respond(id, Some(serde_json::json!({"lines": lines})), None);
+                    }
+                    Err(message) => {
+                        let _ = conn.respond(id, None, Some(ErrorInfo { code: None, message }));
+                    }
                 }
             }
             "render_entry" => {

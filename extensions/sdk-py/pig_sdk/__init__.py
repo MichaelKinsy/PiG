@@ -87,6 +87,10 @@ Schema: TypeAlias = dict[str, Any]
 ToolPrepareArguments: TypeAlias = Callable[[dict[str, Any]], dict[str, Any]]
 ToolHandler: TypeAlias = Callable[["Context", dict[str, Any]], Any]
 CommandHandler: TypeAlias = Callable[["Context", str], None]
+# Upstream RegisteredCommand.getArgumentCompletions: the pi-tui AutocompleteItem
+# dicts ({"value", "label"?, "description"?}) for the text after
+# "/<command> ", or None for none.
+ArgumentCompletionsHandler: TypeAlias = Callable[[str], "list[dict[str, Any]] | None"]
 EventHandler: TypeAlias = Callable[["Context", dict[str, Any]], Any]
 
 
@@ -98,6 +102,38 @@ class ProjectTrustResult(TypedDict):
 ProjectTrustHandler: TypeAlias = Callable[["Context", dict[str, Any]], ProjectTrustResult]
 ShortcutHandler: TypeAlias = Callable[["Context"], None]
 RendererHandler: TypeAlias = Callable[["Context", dict[str, Any], dict[str, Any], int], list[str]]
+
+
+@dataclass
+class ToolRenderContext:
+    """Upstream ToolRenderContext for a renderer that returns lines.
+
+    ``state`` is the tool card's renderer state: it starts empty and is shared
+    by the call and result renderers of one card. ``invalidate()`` asks the
+    host to run both renderers again, as upstream ``context.invalidate()``
+    does.
+    """
+
+    args: dict[str, Any]
+    tool_call_id: str
+    cwd: str
+    execution_started: bool
+    args_complete: bool
+    is_partial: bool
+    expanded: bool
+    show_images: bool
+    is_error: bool
+    state: dict[str, Any]
+    _invalidate: Callable[[], None] = field(repr=False, default=lambda: None)
+
+    def invalidate(self) -> None:
+        self._invalidate()
+
+
+# A call renderer: (ctx, args, render context, width) -> lines.
+ToolRenderCallHandler: TypeAlias = Callable[["Context", dict[str, Any], ToolRenderContext, int], list[str]]
+# A result renderer: (ctx, {content, details}, {expanded, isPartial}, render context, width) -> lines.
+ToolRenderResultHandler: TypeAlias = Callable[["Context", dict[str, Any], dict[str, Any], ToolRenderContext, int], list[str]]
 Factory: TypeAlias = Callable[[], "Extension"]
 
 
@@ -1134,10 +1170,16 @@ class Extension:
         self._tool_handlers: dict[str, ToolHandler] = {}
         self._tool_prepare_handlers: dict[str, ToolPrepareArguments] = {}
         self._command_handlers: dict[str, CommandHandler] = {}
+        self._command_completions: dict[str, ArgumentCompletionsHandler] = {}
         self._event_handlers: dict[int, EventHandler] = {}
         self._shortcut_handlers: dict[str, ShortcutHandler] = {}
         self._renderer_handlers: dict[str, RendererHandler] = {}
         self._entry_renderer_handlers: dict[str, RendererHandler] = {}
+        self._tool_call_renderers: dict[str, ToolRenderCallHandler] = {}
+        self._tool_result_renderers: dict[str, ToolRenderResultHandler] = {}
+        # One renderer state per tool card; renders of one card run one at a time.
+        self._tool_render_cards: dict[str, tuple[threading.Lock, dict[str, Any]]] = {}
+        self._tool_render_lock = threading.Lock()
         self._flag_defaults: dict[str, Any] = {}
         self._session_name: str = ""
         self._session_file: str = ""
@@ -1188,8 +1230,16 @@ class Extension:
         if prepare_arguments is not None:
             self._tool_prepare_handlers[name] = prepare_arguments
 
-    def command(self, name: str, description: str, handler: CommandHandler) -> None:
-        self._commands.append({"name": name, "description": description})
+    def command(self, name: str, description: str, handler: CommandHandler, *, get_argument_completions: ArgumentCompletionsHandler | None = None) -> None:
+        """Register a slash command, as upstream ``pi.registerCommand`` does.
+
+        ``get_argument_completions`` is upstream's ``getArgumentCompletions``.
+        """
+        declaration: dict[str, Any] = {"name": name, "description": description}
+        if get_argument_completions is not None:
+            declaration["argument_completions"] = True
+            self._command_completions[name] = get_argument_completions
+        self._commands.append(declaration)
         self._command_handlers[name] = handler
 
     def shortcut(self, key: str, description: str, handler: ShortcutHandler) -> None:
@@ -1233,6 +1283,57 @@ class Extension:
         _ensure_jsonable(config, f"provider config for {name}")
         self._providers.append({"name": name, "config": config})
         self._oauth_providers[name] = provider
+
+    def tool_renderers(self, name: str, *, render_call: ToolRenderCallHandler | None = None, render_result: ToolRenderResultHandler | None = None, render_shell: str = "default") -> None:
+        """Set upstream renderShell, renderCall and renderResult of the registered tool ``name``.
+
+        A renderer that raises draws upstream's fallback in its place.
+        """
+        if render_shell not in {"default", "self"}:
+            raise ValueError("render_shell must be 'default' or 'self'")
+        for tool in self._tools:
+            if tool.get("name") != name:
+                continue
+            tool.pop("render_shell", None)
+            if render_shell == "self":
+                tool["render_shell"] = "self"
+            tool["renders_call"] = render_call is not None
+            tool["renders_result"] = render_result is not None
+        if render_call is not None:
+            self._tool_call_renderers[name] = render_call
+        if render_result is not None:
+            self._tool_result_renderers[name] = render_result
+
+    def _render_tool(self, ctx: "Context", name: str, args: dict[str, Any]) -> list[str]:
+        card_id = str(args.get("card") or "")
+        with self._tool_render_lock:
+            card = self._tool_render_cards.setdefault(card_id, (threading.Lock(), {}))
+        wire = args.get("context") or {}
+        with card[0]:
+            render = ToolRenderContext(
+                args=args.get("args") or {},
+                tool_call_id=str(wire.get("toolCallId") or ""),
+                cwd=str(wire.get("cwd") or ""),
+                execution_started=bool(wire.get("executionStarted")),
+                args_complete=bool(wire.get("argsComplete")),
+                is_partial=bool(wire.get("isPartial")),
+                expanded=bool(wire.get("expanded")),
+                show_images=bool(wire.get("showImages")),
+                is_error=bool(wire.get("isError")),
+                state=card[1],
+                _invalidate=lambda: self._notify("tool_render_invalidate", {"card": card_id}),
+            )
+            width = int(args.get("width") or 0)
+            if args.get("phase") == "result":
+                handler = self._tool_result_renderers.get(name)
+                if handler is None:
+                    raise RuntimeError(f"tool {name} has no result renderer")
+                result = args.get("result") or {"content": []}
+                return handler(ctx, result, args.get("options") or {}, render, width)
+            call = self._tool_call_renderers.get(name)
+            if call is None:
+                raise RuntimeError(f"tool {name} has no call renderer")
+            return call(ctx, args.get("args") or {}, render, width)
 
     def message_renderer(self, custom_type: str, handler: RendererHandler) -> None:
         self._renderers.append({"custom_type": custom_type})
@@ -1380,6 +1481,10 @@ class Extension:
         notify = env.get("notify") or {}
         method = notify.get("method", "")
         args = notify.get("args") or {}
+        if method == "tool_render_release":
+            with self._tool_render_lock:
+                self._tool_render_cards.pop(str(args.get("card") or ""), None)
+            return
         if method == "model_stream_event":
             stream_id = str(args.get("streamId") or "")
             with self._model_stream_lock:
@@ -1460,6 +1565,11 @@ class Extension:
                 args = req.get("args") or ""
                 self._command_handlers[name](ctx, args if isinstance(args, str) else json.dumps(args))
                 self._respond(req_id, None, None)
+            elif method == "command_argument_completions":
+                name = req.get("tool", "")
+                prefix = req.get("args") or ""
+                items = self._command_completions[name](prefix if isinstance(prefix, str) else "")
+                self._respond(req_id, list(items) if items else None, None)
             elif method == "terminal_input":
                 # The host is blocked on this reply and upstream's handler is
                 # synchronous, so handlers run inline. A raising handler
@@ -1514,6 +1624,9 @@ class Extension:
                 custom_type = req.get("tool", "")
                 args = req.get("args") or {}
                 lines = self._renderer_handlers[custom_type](ctx, args.get("message") or {}, args.get("options") or {}, int(args.get("width") or 0))
+                self._respond(req_id, {"lines": lines}, None)
+            elif method == "render_tool":
+                lines = self._render_tool(ctx, req.get("tool", ""), req.get("args") or {})
                 self._respond(req_id, {"lines": lines}, None)
             elif method == "render_entry":
                 custom_type = req.get("tool", "")

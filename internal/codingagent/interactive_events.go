@@ -87,15 +87,11 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		if e.Message.User != nil {
 			text := strings.TrimSpace(extractAgentMessageText(e.Message))
 			if text != "" {
-				if m.skipNextUserMessageText == text {
-					m.skipNextUserMessageText = ""
-				} else {
-					if !m.chatContainer.IsEmpty() {
-						m.appendToChat(tui.NewSpacer(1))
-					}
-					m.appendToChat(m.newUserMessageBlock(text))
-					m.tuiInst.RequestRender()
+				if !m.chatContainer.IsEmpty() {
+					m.appendToChat(tui.NewSpacer(1))
 				}
+				m.appendToChat(m.newUserMessageBlock(text))
+				m.tuiInst.RequestRender()
 			}
 			// A queued steering/follow-up message that just got injected as a
 			// user turn must leave the pending queue immediately, not linger
@@ -166,7 +162,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 				argsPreview := tui.HeaderForTool(pta.name, nil, m.opts.CWD)
 				comp = tui.NewToolExecutionComponent(pta.name, argsPreview)
 				comp.Cwd = m.opts.CWD
-				m.setGenericToolArgs(comp, pta.name, json.RawMessage(pta.args.String()))
+				m.applyToolPresentation(comp, pta.id, pta.name, json.RawMessage(pta.args.String()))
 				if m.opts.SettingsManager != nil {
 					s := m.opts.SettingsManager.Get()
 					comp.ShowImages = s.GetShowImages() && !s.BlockImages
@@ -180,7 +176,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 				m.toolMu.Unlock()
 				m.appendToChat(comp)
 			} else {
-				m.setGenericToolArgs(comp, pta.name, json.RawMessage(pta.args.String()))
+				m.applyToolPresentation(comp, pta.id, pta.name, json.RawMessage(pta.args.String()))
 				comp.UpdateArgs(pta.name, pta.args.String())
 				m.toolMu.Unlock()
 			}
@@ -226,6 +222,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 				errMsg = e.Message.Assistant.ErrorMessage
 			}
 			for _, comp := range m.toolByID {
+				comp.SetResultValue(agent.AgentToolResult{Content: errMsg, IsError: true})
 				comp.SetResult(errMsg, true, 0)
 			}
 			clear(m.toolByID)
@@ -269,7 +266,8 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			// final (complete) args and mark execution started.
 			comp.Cwd = m.opts.CWD
 			comp.ArgsPreview = argsPreview
-			m.setGenericToolArgs(comp, e.ToolName, e.Args)
+			comp.SetHeaderArgs(e.Args)
+			m.applyToolPresentation(comp, e.ToolCallID, e.ToolName, e.Args)
 			if e.ToolLabel != "" {
 				comp.Label = e.ToolLabel
 			}
@@ -281,7 +279,8 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			// or providers that don't emit per-delta tool IDs).
 			comp = tui.NewToolExecutionComponent(e.ToolName, argsPreview)
 			comp.Cwd = m.opts.CWD
-			m.setGenericToolArgs(comp, e.ToolName, e.Args)
+			comp.SetHeaderArgs(e.Args)
+			m.applyToolPresentation(comp, e.ToolCallID, e.ToolName, e.Args)
 			if e.ToolLabel != "" {
 				comp.Label = e.ToolLabel
 			}
@@ -317,6 +316,10 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			// Shell tools render partial results through the shared shell
 			// renderer (upstream renderers/bash.ts, isPartial).
 			comp.BodyRenderer = makeShellBodyRenderer(e.Content, e.Details, true, nil)
+		}
+		if comp.HasDefinition() {
+			// Upstream hands a partial result to renderResult with isPartial.
+			comp.SetResultValue(agent.AgentToolResult{Content: e.Content, Details: e.Details})
 		}
 		comp.SetStreaming(e.Content)
 		m.tuiInst.RequestRender()
@@ -356,6 +359,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			}
 			comp.ImageBlocks = blocks
 		}
+		comp.SetResultValue(e.Result)
 		comp.SetResult(e.Result.Content, e.Result.IsError, elapsed)
 		m.maybeConvertImagesForKitty(comp)
 		m.tuiInst.Render()

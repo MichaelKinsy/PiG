@@ -137,6 +137,14 @@ SPDX-FileCopyrightText = [
 ]
 SPDX-License-Identifier = "MIT AND BSD-3-Clause"
 
+# The unmodified CommonJS build (lib/) of highlight.js 10.7.3, which Pi
+# 0.87.1's highlightCode tokenizes code with.
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/highlight.js/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2006, Ivan Sagalaev"
+SPDX-License-Identifier = "BSD-3-Clause"
+
 # The unmodified get-east-asian-width 1.6.0 package, which pi-tui measures
 # character widths with.
 [[annotations]]

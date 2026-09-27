@@ -1,0 +1,58 @@
+# Behavior family: extensions-runtime
+# Surface: renderCall/renderResult of Node extension tools, expanded with Ctrl+O.
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-26 with tool-renderers.mjs and
+# the e2e model): ToolExecutionComponent draws a registered tool definition
+# with its renderers. The default shell is a Spacer over Box(1, 1) in the
+# pending, success or error background; renderShell "self" draws the
+# components after one blank line. renderCall and renderResult share one state
+# per card and receive their last component; context.invalidate reruns both.
+# The result renderer gets {content, details} with isPartial while the tool
+# streams. A renderer that throws falls back to the tool name and the
+# first-ten-lines result preview. A result never changes the expansion, so an
+# error result stays collapsed until Ctrl+O.
+# PiG used to draw every extension tool with its generic header.
+
+name = "25-tool-renderers-expanded"
+description = "Node extension tool renderers draw the tool card as upstream does (expanded with Ctrl+O)"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/tool-execution.ts",
+  "packages/coding-agent/src/core/extensions/types.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/tool-renderers.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/tool-renderers.mjs",
+]
+
+[tmux]
+width = 100
+height = 60
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Run: extension render cards"
+capture_end = "render-cards-done"
+
+[[tmux.steps]]
+keys = ["Run: extension render cards", "Enter"]
+wait_contains = ["render-cards-done", "invalidated=true"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["C-o"]
+wait_contains = ["expandedOption=true"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["card alpha invalidated=true", "self result done beta partial=false", "render_throw", "cannot render delta", "render-cards-done"]
+both_not_contain = ["panic:", "goroutine ", "test-faux:"]
+escaped_output_equal = true
+runs = 3

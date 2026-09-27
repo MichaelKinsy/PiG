@@ -1,0 +1,51 @@
+# Behavior family: startup
+# Upstream evidence: interactive-mode.ts showLoadedResources adds one
+# ExpandableText per resource kind below the header: "[Name]" in mdHeading on
+# its own line, then the compact list in dim, then a blank line. Extensions
+# are labelled by getCompactExtensionLabels: a package entry as
+# "<package>:<entry>" ("index" entries by their directory, an entry under
+# extensions/ without that prefix), any other extension by the shortest
+# unique trailing path without its index file. Lists sort with localeCompare.
+# Probed on Pi 0.87.1 at 100x45 with a git Package (extensions/alpha.ts,
+# extensions/beta/index.ts, a skill and a prompt), a user extension file and
+# directory, a user skill, prompt and theme, and no model:
+#   [Skills]
+#     fixture-skill, local-skill
+#   [Prompts]
+#     /fixture-prompt, /local-prompt
+#   [Extensions]
+#     auto-dir, auto-one.ts, pig-parity/listing-fixture:alpha.ts, pig-parity/listing-fixture:beta
+#   [Themes]
+#     fixture-theme
+# PiG used to print each heading and its list on one Markdown line, label
+# extensions by entry name ("alpha", "beta", "index"), and omit [Themes].
+name = "05-startup-loaded-resources"
+description = "The startup listing puts each section's list under its heading and labels Package extensions by package and entry."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_OFFLINE=1", "PIG_CODING_AGENT_DIR=testdata/listing/pig-agent"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/listing/pi-agent"]
+# The base arguments pass --no-extensions, which also drops Packages and
+# auto-discovered extensions from the listing under test.
+override_base_args = true
+
+[tmux]
+width = 100
+height = 45
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "[Skills]"
+capture_end = "fixture-theme"
+
+[[tmux.steps]]
+wait_contains = ["fixture-theme"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["[Extensions]", "auto-dir, auto-one.ts, pig-parity/listing-fixture:alpha.ts, pig-parity/listing-fixture:beta", "[Themes]"]
+escaped_output_equal = true
+runs = 3
