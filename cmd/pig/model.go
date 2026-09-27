@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"maps"
 	"os"
 	"path/filepath"
 	"slices"
@@ -12,6 +11,7 @@ import (
 	"golang.org/x/term"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -74,328 +74,46 @@ func defaultModelPerProvider() map[string]string {
 	return defaults
 }
 
-// buildModelFromRef constructs the Model for one provider and model id. The
-// warning reports an id unknown under a known provider.
-func buildModelFromRef(ctx context.Context, providerID, modelID string, registry *codingagent.ModelRegistry) (*ai.Model, string, string, error) {
-	spec := providerID + "/" + modelID
-	entry, entryOK := registry.Resolve(providerID, modelID)
-	apiKey := entry.APIKey
-	baseURL := entry.BaseURL
-	apiKind := ai.API(entry.API)
-	if apiKind == "" {
-		if generated, ok := ai.LookupModel(spec); ok {
-			apiKind = generated.API
-		} else if generated, ok := ai.LookupModel(modelID); ok {
-			apiKind = generated.API
-		}
-	}
+// buildModelFromRef resolves the startup model with resolveStartupModelEntry
+// and builds it with coding.BuildModelFromEntry, the constructor /model uses.
+func buildModelFromRef(ctx context.Context, providerID, modelID string, services *coding.Services) (*ai.Model, error) {
+	registry := services.Registry().ModelRegistry
+	entry := resolveStartupModelEntry(providerID, modelID, registry)
 
-	// Auto-detect compat if not explicitly set in models.json.
-	// Mirrors upstream getCompat() merge: explicit compat overrides detected compat.
-	compat := entry.Compat
-	if compat == nil {
-		compat = ai.DetectCompat(providerID, baseURL)
-	}
-
-	var provider ai.Provider
-	// A runtime (--api-key) or stored auth.json credential owns the provider
-	// ahead of the configured and environment keys, as in upstream
-	// resolveProviderAuth; its read or refresh failure surfaces without an
-	// env fallback. Radius and Copilot resolve their own stored credentials
-	// after a runtime key.
-	if _, radius := registry.RadiusOAuth(providerID); radius {
-		if key, ok := registry.RuntimeAPIKey(providerID); ok && key != "" {
-			apiKey = key
-		}
-	} else if providerID != "test-faux" && providerID != "github-copilot" {
-		stored, ok, err := storedRequestAPIKey(ctx, registry, filepath.Join(agentDirForModel(), "auth.json"), providerID)
+	// A stored auth.json credential owns the provider ahead of the configured
+	// and environment keys, as upstream resolveProviderAuth does; its read or
+	// refresh failure surfaces before the first request.
+	if providerID != "test-faux" && providerID != "github-copilot" {
+		stored, ok, err := storedRequestAPIKey(ctx, registry, filepath.Join(services.AgentDir(), "auth.json"), providerID)
 		if err != nil {
-			return nil, "", "", fmt.Errorf("%s: %w", providerID, err)
+			return nil, fmt.Errorf("%s: %w", providerID, err)
 		}
 		if ok {
-			apiKey = stored
+			entry.APIKey = stored
 		}
 	}
-	switch providerID {
-	case "test-faux":
-		if os.Getenv("PIG_TEST_FAUX") != "1" {
-			return nil, "", "", fmt.Errorf("test-faux provider is test-only; set PIG_TEST_FAUX=1 to enable it")
-		}
-		provider = &ai.TestFauxProvider{Scenario: os.Getenv("PIG_TEST_FAUX_SCENARIO")}
-	case "github-copilot":
-		auth, err := ai.NewAuthStorage(filepath.Join(agentDirForModel(), "auth.json"))
-		if err != nil {
-			return nil, "", "", fmt.Errorf("github-copilot: %w", err)
-		}
-		prov, err := ai.NewCopilotProvider(ai.CopilotProviderConfig{
-			Auth:      auth,
-			Model:     modelID,
-			API:       apiKind,
-			Reasoning: entry.Reasoning,
-			// entry.APIKey carries the env-resolved key (COPILOT_GITHUB_TOKEN/
-			// GH_TOKEN/GITHUB_TOKEN) for github-copilot; pass it so the provider
-			// can fall back to it when auth.json has no OAuth credential.
-			EnvToken: apiKey,
-			RuntimeToken: func() (string, bool) {
-				return registry.RuntimeAPIKey("github-copilot")
-			},
-		})
-		if err != nil {
-			return nil, "", "", err
-		}
-		provider = prov
-	case "openai":
-		if apiKey == "" {
-			apiKey = os.Getenv("OPENAI_API_KEY")
-		}
-		if apiKind == ai.APIOpenAIResponses {
-			provider = ai.NewOpenAIResponsesProvider(ai.OpenAIResponsesConfig{
-				BaseURL:     baseURL,
-				APIKey:      apiKey,
-				Model:       modelID,
-				ProviderID:  "openai",
-				Compat:      aiCloneCompat(compat),
-				IsReasoning: entry.Reasoning,
-				Env:         entry.Env,
-			})
-		} else {
-			provider = ai.NewOpenAIProvider(ai.OpenAIConfig{
-				BaseURL:    baseURL,
-				APIKey:     apiKey,
-				Model:      modelID,
-				ProviderID: "openai",
-				Compat:     compat,
-				Env:        entry.Env,
-			})
-		}
-	case "openrouter":
-		if apiKey == "" {
-			apiKey = os.Getenv("OPENROUTER_API_KEY")
-		}
-		provider = ai.NewOpenAIProvider(ai.OpenAIConfig{
-			BaseURL:    "https://openrouter.ai/api/v1",
-			APIKey:     apiKey,
-			Model:      modelID,
-			ProviderID: "openrouter",
-			Compat:     compat,
-			Env:        entry.Env,
-			ExtraHeaders: map[string]string{
-				"HTTP-Referer": "https://github.com/MichaelKinsy/PiG",
-				"X-Title":      "pig",
-			},
-		})
-	case "together":
-		if apiKey == "" {
-			apiKey = os.Getenv("TOGETHER_API_KEY")
-		}
-		if baseURL == "" {
-			baseURL = "https://api.together.ai/v1"
-		}
-		provider = ai.NewOpenAIProvider(ai.OpenAIConfig{
-			BaseURL:    baseURL,
-			APIKey:     apiKey,
-			Model:      modelID,
-			ProviderID: "together",
-			Compat:     compat,
-			Env:        entry.Env,
-		})
-	case "groq":
-		if apiKey == "" {
-			apiKey = os.Getenv("GROQ_API_KEY")
-		}
-		provider = ai.NewOpenAIProvider(ai.OpenAIConfig{
-			BaseURL:    "https://api.groq.com/openai/v1",
-			APIKey:     apiKey,
-			Model:      modelID,
-			ProviderID: "groq",
-			Compat:     compat,
-			Env:        entry.Env,
-		})
-	case "anthropic":
-		// ANTHROPIC_AUTH_TOKEN outranks the key variables; the provider sends
-		// it as an Authorization bearer header when no key is set.
-		if apiKey == "" && os.Getenv(ai.AnthropicAuthTokenEnv) == "" {
-			apiKey = os.Getenv(ai.AnthropicAPIKeyEnv)
-		}
-		provider = ai.NewAnthropicProvider(ai.AnthropicConfig{
-			BaseURL:      baseURL,
-			APIKey:       apiKey,
-			Model:        modelID,
-			ProviderID:   "anthropic",
-			ExtraHeaders: entry.Headers,
-			Compat:       (*ai.AnthropicMessagesCompat)(aiCloneCompat(compat)),
-			Env:          entry.Env,
-		})
-	case "ollama":
-		ollamaURL := baseURL
-		if ollamaURL == "" {
-			ollamaURL = os.Getenv("OLLAMA_HOST")
-		}
-		if ollamaURL == "" {
-			ollamaURL = "http://localhost:11434/v1"
-		}
-		provider = ai.NewOpenAIProvider(ai.OpenAIConfig{
-			BaseURL:    ollamaURL,
-			Model:      modelID,
-			ProviderID: "ollama",
-			Compat:     compat,
-			Env:        entry.Env,
-		})
-	case "azure-openai-responses":
-		if apiKey == "" {
-			apiKey = os.Getenv("AZURE_OPENAI_API_KEY")
-		}
-		provider = ai.NewAzureOpenAIResponsesProvider(ai.AzureOpenAIResponsesConfig{
-			Compat:     aiCloneCompat(compat),
-			BaseURL:    baseURL,
-			APIKey:     apiKey,
-			Model:      modelID,
-			ProviderID: providerID,
-			Env:        entry.Env,
-		})
-	case "openai-codex":
-		if apiKey == "" {
-			apiKey = os.Getenv("OPENAI_API_KEY")
-		}
-		provider = ai.NewOpenAICodexResponsesProvider(ai.OpenAICodexResponsesConfig{
-			Compat:  aiCloneCompat(compat),
-			BaseURL: baseURL,
-			APIKey:  apiKey,
-			Model:   modelID,
-		})
-	case "google":
-		// Pi's google provider reads only GEMINI_API_KEY (providers/google.ts).
-		if apiKey == "" {
-			apiKey = os.Getenv("GEMINI_API_KEY")
-		}
-		provider = ai.NewGoogleProvider(ai.GoogleConfig{
-			APIKey:     apiKey,
-			Model:      modelID,
-			ProviderID: providerID,
-			BaseURL:    baseURL,
-		})
-	case "google-vertex":
-		// Pi's google-vertex provider reads only GOOGLE_CLOUD_API_KEY and
-		// otherwise uses ADC (providers/google-vertex.ts).
-		if apiKey == "" {
-			apiKey = os.Getenv("GOOGLE_CLOUD_API_KEY")
-		}
-		provider = ai.NewGoogleVertexProvider(ai.GoogleVertexConfig{
-			APIKey:     apiKey,
-			Model:      modelID,
-			BaseURL:    baseURL,
-			ProviderID: providerID,
-			Headers:    entry.Headers,
-		})
-	case "mistral":
-		if apiKey == "" {
-			apiKey = os.Getenv("MISTRAL_API_KEY")
-		}
-		provider = ai.NewMistralProvider(ai.MistralConfig{
-			APIKey:     apiKey,
-			Model:      modelID,
-			ProviderID: providerID,
-		})
-	default:
-		if apiKind == ai.APIPiMessages {
-			provider = ai.NewPiMessagesProvider(ai.PiMessagesConfig{BaseURL: baseURL, APIKey: apiKey, Model: modelID, ProviderID: providerID, ExtraHeaders: entry.Headers})
-			break
-		}
-		// Treat as OpenAI-compatible with env key
-		envKey := strings.ToUpper(providerID) + "_API_KEY"
-		if apiKey == "" {
-			apiKey = os.Getenv(envKey)
-		}
-		// Build extra headers from models.json config.
-		// If authHeader=true, include API key in Authorization header.
-		headers := entry.Headers
-		if entry.AuthHeader && apiKey != "" {
-			if headers == nil {
-				headers = make(map[string]string)
-			}
-			headers["Authorization"] = "Bearer " + apiKey
-		}
-		provider = ai.NewOpenAIProvider(ai.OpenAIConfig{
-			BaseURL:      baseURL,
-			APIKey:       apiKey,
-			Model:        modelID,
-			ProviderID:   providerID,
-			ExtraHeaders: headers,
-			Compat:       compat,
-			Env:          entry.Env,
-			Insecure:     entry.Insecure,
-		})
-	}
+	return coding.BuildModelFromEntry(providerID, modelID, entry, services)
+}
 
-	// Resolve catalog metadata (context window, cost, capabilities).
-	// Mirrors upstream resolveCliModel + buildFallbackModel: prefer an exact
-	// provider/model catalog entry, then a user-defined models.json model,
-	// then a provider-scoped fallback (the provider's default model caps with
-	// the requested id) that emits a warning. A model unknown under its
-	// provider must NOT silently borrow another provider's same-named caps.
-	caps := ai.ModelCapabilities{SupportsToolUse: true}
-	displayName := modelID
-	var modelWarning string
-	switch providerID {
-	case "test-faux":
-		displayName = "Test Faux"
-		apiKind = ai.API("test-faux")
-		baseURL = "http://localhost:0"
-		caps.ContextWindow = ai.TestFauxContextWindow
-		caps.MaxOutputTokens = ai.TestFauxMaxTokens
-		caps.SupportsImages = true
-	default:
-		if m, ok := ai.LookupModelExact(spec); ok {
-			caps = m.ToCapabilities()
-			if m.DisplayName != "" {
-				displayName = m.DisplayName
-			}
-		} else if entryOK && registry.HasModelDefinition(providerID, modelID) {
-			caps = entryCapabilities(entry)
-			if entry.DisplayName != "" {
-				displayName = entry.DisplayName
-			}
-		} else if base, ok := providerFallbackModel(providerID); ok {
-			caps = base.ToCapabilities()
-			displayName = modelID
-			modelWarning = fmt.Sprintf("Model %q not found for provider %q. Using custom model id.", modelID, providerID)
-		} else if entryOK {
-			caps = entryCapabilities(entry)
-			if entry.DisplayName != "" {
-				displayName = entry.DisplayName
-			}
-		}
+// resolveStartupModelEntry resolves a model as upstream resolveCliModel does:
+// the exact catalog entry, else a models.json definition, else the provider's
+// default model under the requested id (buildFallbackModel), else the
+// registry entry.
+func resolveStartupModelEntry(providerID, modelID string, registry *codingagent.ModelRegistry) codingagent.ModelEntry {
+	spec := providerID + "/" + modelID
+	if generated, ok := ai.LookupModelExact(spec); ok {
+		return registry.ResolveGeneratedModel(providerID, modelID, generated)
 	}
-
-	// Resolve ThinkingLevelMap: prefer the registry entry (user overrides),
-	// fall back to the generated catalog. Without this, models like gpt-5-mini
-	// whose catalog maps "off" → null get an empty map from the registry entry,
-	// making GetSupportedThinkingLevels return the full level set including
-	// "off" when the model explicitly disables it.
-	tlm := cloneThinkingLevelMap(entry.ThinkingLevelMap)
-	if len(tlm) == 0 {
-		if m, ok := ai.LookupModelExact(spec); ok {
-			tlm = cloneThinkingLevelMap(m.ThinkingLevelMap)
-		} else if base, ok := providerFallbackModel(providerID); ok {
-			tlm = cloneThinkingLevelMap(base.ThinkingLevelMap)
-		}
+	entry, entryOK := registry.Resolve(providerID, modelID)
+	if entryOK && registry.HasModelDefinition(providerID, modelID) {
+		return entry
 	}
-
-	return &ai.Model{
-		ID:               modelID,
-		DisplayName:      displayName,
-		Provider:         provider,
-		Capabilities:     caps,
-		ThinkingLevelMap: tlm,
-		ProviderMeta: ai.ProviderMetadata{
-			ProviderID: providerID,
-			API:        apiKind,
-			BaseURL:    baseURL,
-			Headers:    aiCloneHeaders(entry.Headers),
-			Compat:     aiCloneCompat(compat),
-			Reasoning:  entry.Reasoning,
-		},
-	}, "", modelWarning, nil
+	if base, ok := providerFallbackModel(providerID); ok {
+		fallback := registry.ResolveGeneratedModel(providerID, modelID, base)
+		fallback.DisplayName = modelID
+		return fallback
+	}
+	return entry
 }
 
 // storedRequestAPIKey resolves the request key a runtime key (--api-key) or
@@ -428,32 +146,6 @@ func printModelDiagnostic(msg string) {
 	fmt.Fprintln(os.Stderr, text)
 }
 
-// entryCapabilities lifts a registry ModelEntry (a models.json-defined model
-// or provider config) into runtime capabilities.
-func entryCapabilities(entry codingagent.ModelEntry) ai.ModelCapabilities {
-	caps := ai.ModelCapabilities{
-		SupportsToolUse:     true,
-		ContextWindow:       entry.ContextWindow,
-		MaxOutputTokens:     entry.MaxTokens,
-		InputCostPer1M:      entry.InputCost,
-		OutputCostPer1M:     entry.OutputCost,
-		CacheReadCostPer1M:  entry.CacheReadCost,
-		CacheWriteCostPer1M: entry.CacheWriteCost,
-	}
-	if entry.Reasoning {
-		caps.MaxThinking = ai.ThinkingHigh
-		for _, level := range []ai.ThinkingLevel{ai.ThinkingXHigh, ai.ThinkingMax} {
-			if mapped, ok := entry.ThinkingLevelMap[level]; ok && mapped != nil {
-				caps.MaxThinking = level
-			}
-		}
-	}
-	if slices.Contains(entry.Input, "image") {
-		caps.SupportsImages = true
-	}
-	return caps
-}
-
 // providerFallbackModel returns the catalog model whose capabilities are
 // borrowed when a requested model is unknown under providerID: the
 // provider's default model when catalogued, else its first catalogued model.
@@ -471,47 +163,6 @@ func providerFallbackModel(providerID string) (*ai.GeneratedModel, bool) {
 		return &models[0], true
 	}
 	return nil, false
-}
-
-func cloneThinkingLevelMap(in ai.ThinkingLevelMap) ai.ThinkingLevelMap {
-	if len(in) == 0 {
-		return nil
-	}
-	out := make(ai.ThinkingLevelMap, len(in))
-	for k, v := range in {
-		if v == nil {
-			out[k] = nil
-			continue
-		}
-		value := *v
-		out[k] = &value
-	}
-	return out
-}
-
-func aiCloneHeaders(in map[string]string) map[string]string {
-	if len(in) == 0 {
-		return nil
-	}
-	out := make(map[string]string, len(in))
-	maps.Copy(out, in)
-	return out
-}
-
-func aiCloneCompat(in *ai.OpenAICompat) *ai.ModelCompat {
-	if in == nil {
-		return nil
-	}
-	out := ai.ModelCompat(*in)
-	if in.OpenRouterRouting != nil {
-		out.OpenRouterRouting = make(map[string]any, len(in.OpenRouterRouting))
-		maps.Copy(out.OpenRouterRouting, in.OpenRouterRouting)
-	}
-	if in.VercelGatewayRouting != nil {
-		out.VercelGatewayRouting = make(map[string]any, len(in.VercelGatewayRouting))
-		maps.Copy(out.VercelGatewayRouting, in.VercelGatewayRouting)
-	}
-	return &out
 }
 
 // agentDirForModel returns the path passed to NewAuthStorage. We don't have
@@ -591,7 +242,7 @@ func printModelList(registry *codingagent.ModelRegistry, agentDir, search string
 	}
 
 	if len(entries) == 0 {
-		fmt.Println("No models available. Set API keys in environment variables.")
+		fmt.Println(codingagent.FormatNoModelsAvailableMessage())
 		return
 	}
 

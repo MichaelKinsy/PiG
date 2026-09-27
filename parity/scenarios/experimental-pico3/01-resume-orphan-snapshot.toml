@@ -1,0 +1,36 @@
+# Pi 0.87.1 probe: node parity/testdata/pico3-resume-pi.mjs.
+# Red/green, stress, and release-gate evidence: parity/testdata/pico3-resume-evidence.md.
+# The installed, version-checked experimental/pico3 package executes the real Harness and MemoryStorage.
+# harness.ts:366-389 captures orphan identities synchronously before resume returns; only persistence and scheduler startup are asynchronous.
+# A held task known at resume, or created after it, survives an unregister gap and runs replacement code. A task unknown at resume remains orphaned even after registration.
+# The Go probe drives OpenHarness -> Hold -> Resume -> RegisterTaskKind -> WaitForTask and uses synctest to finish startup during the unregister gap.
+# Pico3 is not reachable from Pi's CLI, so invoke its published experimental API instead of asserting unrelated CLI output.
+name = "01-resume-orphan-snapshot"
+description = "Resume captures unknown tasks before returning, preserving held work across kind replacement."
+covers = [
+  "packages/agent/src/harness/pico3/harness.ts",
+  "packages/agent/src/harness/pico3/scheduler.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./parity/testdata/pico3-resume-pig.sh"]
+pi_args = ["node", "./parity/testdata/pico3-resume-pi.mjs"]
+
+[cli]
+cwd = "../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = [
+  "PICO3_RESUME known pending completed replacement",
+  "PICO3_RESUME new pending completed replacement",
+  "PICO3_RESUME unknown terminal orphaned -",
+]
+runs = 5

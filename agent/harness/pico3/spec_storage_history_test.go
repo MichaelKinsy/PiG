@@ -97,8 +97,8 @@ func TestStorageRejectedPersistenceFaultsWithoutPublishingCache(t *testing.T) {
 
 func TestStorageJSONLPartialSidecarAppendIsUnpublished(t *testing.T) {
 	kind := quickKind(t, "never", func(Task) JsonValue { return nil })
-	env := openEnv(t, openOptions{backend: "jsonl", taskKinds: []*Kind{kind}})
-	must(env.h.Hold())
+	// Hold before Resume so the durable baseline is pending, not an in-flight reservation's running record.
+	env := openEnv(t, openOptions{backend: "jsonl", taskKinds: []*Kind{kind}, setup: func(_ *testing.T, h *Harness) { must(h.Hold()) }})
 	ref := createTestTask(t, env, kind, nil)
 	env.crash()
 	storage := must(OpenJsonlStorage(bg, env.dir, JsonlOptions{Fsync: new(false)}))

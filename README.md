@@ -15,7 +15,7 @@ SPDX-License-Identifier: MIT
 [![OpenSSF Best Practices](https://www.bestpractices.dev/projects/14941/badge)](https://www.bestpractices.dev/projects/14941)
 [![REUSE status](https://api.reuse.software/badge/github.com/MichaelKinsy/PiG)](https://api.reuse.software/info/github.com/MichaelKinsy/PiG)
 [![Go Reference](https://pkg.go.dev/badge/github.com/MichaelKinsy/PiG.svg)](https://pkg.go.dev/github.com/MichaelKinsy/PiG)
-[![Go version](https://img.shields.io/github/go-mod/go-version/MichaelKinsy/PiG)](go.mod)
+[![Minimum Go version](https://img.shields.io/github/go-mod/go-version/MichaelKinsy/PiG?label=Go%20%E2%89%A5)](go.mod)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/MichaelKinsy/PiG?sort=semver)](https://github.com/MichaelKinsy/PiG/releases)
 [![Pi pin 0.87.1](https://img.shields.io/badge/Pi%20pin-0.87.1-8A2BE2)](https://github.com/earendil-works/pi/releases/tag/v0.87.1)
@@ -293,4 +293,4 @@ See [docs/supply-chain.md](docs/supply-chain.md) for the inventory, SBOM, vulner
 
 PiG would not exist without Pi and the work of its maintainers and contributors. Their design and open-source work provide the reference that PiG follows.
 
-Thank you to everyone who contributes to Pi and PiG.
+Thank you to everyone who contributes to Pi and PiG. Maintainers are listed in [`MAINTAINERS.md`](MAINTAINERS.md), every contributor appears on [GitHub's contributors page](https://github.com/MichaelKinsy/PiG/graphs/contributors), and the [changelog](CHANGELOG.md) credits each fix to the person who reported or contributed it.
