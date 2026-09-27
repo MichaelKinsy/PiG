@@ -335,6 +335,7 @@ type InteractiveMode struct {
 	toolMu        sync.Mutex
 	toolByID      map[string]*tui.ToolExecutionComponent
 	toolStarts    map[string]time.Time
+	toolFileCalls map[string]ai.ToolCall
 	toolOrder     []*tui.ToolExecutionComponent
 	bashOrder     []*tui.BashExecutionBlock // row 2.8a: Ctrl+O drives bash blocks too
 	toolsExpanded bool

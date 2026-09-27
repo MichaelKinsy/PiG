@@ -9,6 +9,7 @@ import (
 	"io"
 	"net"
 	"os"
+	"slices"
 	"sync"
 	"time"
 	"unsafe"
@@ -56,14 +57,18 @@ func ListenExtension(sockPath string, node bool) (net.Listener, string, error) {
 // connects and closes before the connect is issued, ConnectNamedPipe returns
 // ERROR_NO_DATA, and Accept returns that the same way instead of waiting for
 // another client, as go-winio's listener does.
+//
+// Accept may be called concurrently. Each call waits on an instance of its
+// own, the listener records every one, and Close cancels them all. The
+// listener owns at most one spare instance that no Accept is waiting on.
 type pipeListener struct {
 	path  string
 	attrs *windows.SecurityAttributes
 
 	mu        sync.Mutex
 	closed    bool
-	next      *pipeInstance // waiting for the next Accept
-	accepting *pipeInstance // an Accept is waiting on it
+	next      *pipeInstance   // the spare, waiting for the next Accept
+	accepting []*pipeInstance // the instance each waiting Accept waits on
 }
 
 // pipeInstance is one server instance of the pipe and its connect.
@@ -184,6 +189,7 @@ func (l *pipeListener) Accept() (net.Conn, error) {
 		l.mu.Unlock()
 		return nil, net.ErrClosed
 	}
+	// A concurrent Accept that finds the spare taken waits on a new instance.
 	instance := l.next
 	l.next = nil
 	if instance == nil {
@@ -193,17 +199,17 @@ func (l *pipeListener) Accept() (net.Conn, error) {
 			return nil, err
 		}
 	}
-	l.accepting = instance
+	l.accepting = append(l.accepting, instance)
 	l.mu.Unlock()
 
 	err := instance.wait()
 
 	l.mu.Lock()
-	l.accepting = nil
+	l.accepting = slices.DeleteFunc(l.accepting, func(p *pipeInstance) bool { return p == instance })
 	closed := l.closed
-	if err == nil && !closed {
+	if err == nil && !closed && l.next == nil {
 		// Keep an instance waiting for the next client before this one
-		// is handed out.
+		// is handed out. A concurrent Accept may already have made it.
 		if next, nextErr := newPipeInstance(l.path, l.attrs, false); nextErr == nil {
 			l.next = next
 		} else {
@@ -240,7 +246,7 @@ func (l *pipeListener) Accept() (net.Conn, error) {
 	return &pipeConn{pipeFile: conn, addr: pipeAddr(l.path)}, nil
 }
 
-// Close stops accepting. A waiting Accept returns net.ErrClosed.
+// Close stops accepting. Every waiting Accept returns net.ErrClosed.
 func (l *pipeListener) Close() error {
 	l.mu.Lock()
 	defer l.mu.Unlock()
@@ -248,9 +254,9 @@ func (l *pipeListener) Close() error {
 		return nil
 	}
 	l.closed = true
-	if l.accepting != nil {
+	for _, instance := range l.accepting {
 		// The waiting Accept sees the cancellation and releases it.
-		_ = windows.CancelIoEx(l.accepting.handle, l.accepting.overlapped)
+		_ = windows.CancelIoEx(instance.handle, instance.overlapped)
 	}
 	if l.next != nil {
 		l.next.cancel()

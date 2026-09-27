@@ -1,0 +1,1 @@
+{"providers":{"fixture":{"baseUrl":"http://127.0.0.1:1/v1","apiKey":"fixture-key","api":"openai-completions","models":[{"id":"model-one","name":"One"},{"id":"model-two","name":"Two"},{"id":"model-three","name":"Three","reasoning":true}]}}}

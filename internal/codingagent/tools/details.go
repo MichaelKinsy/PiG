@@ -15,9 +15,7 @@ type EditToolDetails struct {
 	FirstChangedLine int `json:"firstChangedLine,omitempty"`
 }
 
-// WriteDetails is attached to a WriteTool result. The TUI uses the path to
-// select syntax highlighting and the content to render the upstream ten-line
-// collapsed preview or complete expanded body.
+// WriteDetails is display-only metadata derived from the retained write call. Tool results do not carry it.
 type WriteDetails struct {
 	Path    string
 	Content string
@@ -25,17 +23,15 @@ type WriteDetails struct {
 	Overwrote bool
 }
 
-// ReadDetails is attached to a ReadTool result. The TUI uses the path for
-// syntax highlighting and the truncation details for the warning shown after
-// the complete expanded body.
+// ReadDetails carries the optional upstream truncation object. The renderer derives display-only fields from the retained read call.
 type ReadDetails struct {
-	Path       string
-	StartLine  int // 1-indexed line number of the first emitted line
-	TotalLines int // total lines in the file (before truncation)
-	Truncated  bool
+	Path       string `json:"-"`
+	StartLine  int    `json:"-"`
+	TotalLines int    `json:"-"`
+	Truncated  bool   `json:"-"`
 	// Truncation is the upstream-shaped truncation object for the extension SDK
 	// contract and the TUI warning. It is nil unless truncation occurred.
-	Truncation *TruncationResult
+	Truncation *TruncationResult `json:"truncation,omitempty"`
 }
 
 // BashDetails is attached to a BashTool result. The renderer reads
@@ -47,31 +43,26 @@ type ReadDetails struct {
 // Either field may be zero/nil; both nil means the bash output fit
 // fully in the rolling buffer.
 type BashDetails struct {
-	Truncation     *TruncationResult
-	FullOutputPath string
+	Truncation     *TruncationResult `json:"truncation,omitempty"`
+	FullOutputPath string            `json:"fullOutputPath,omitempty"`
 }
 
-// LsDetails is attached to a LsTool result. It carries the upstream SDK
-// contract (ls.ts:23 LsToolDetails): a truncation object when the byte
-// limit was hit and the entry-limit cap when reached. The TUI has no
-// dedicated ls renderer; this exists only for the extension wire.
+// LsDetails carries the sparse upstream ls result metadata. Limits retain the requested number rather than an integer-rounded rendering count.
 type LsDetails struct {
-	Truncation        *TruncationResult
-	EntryLimitReached int
+	Truncation        *TruncationResult `json:"truncation,omitempty"`
+	EntryLimitReached float64           `json:"entryLimitReached,omitempty"`
 }
 
-// GrepDetails mirrors upstream GrepToolDetails (grep.ts:41): a truncation
-// object when the byte limit was hit, the match-limit cap when reached,
-// and a flag when individual lines were truncated to the max length.
+// GrepDetails carries sparse truncation metadata and the requested match limit, including fractional values.
 type GrepDetails struct {
-	Truncation        *TruncationResult
-	MatchLimitReached int
-	LinesTruncated    bool
+	Truncation        *TruncationResult `json:"truncation,omitempty"`
+	MatchLimitReached float64           `json:"matchLimitReached,omitempty"`
+	LinesTruncated    bool              `json:"linesTruncated,omitempty"`
 }
 
 // FindDetails mirrors upstream FindToolDetails (find.ts:32): a truncation
 // object when the byte limit was hit and the result-limit cap when reached.
 type FindDetails struct {
-	Truncation         *TruncationResult
-	ResultLimitReached int
+	Truncation         *TruncationResult `json:"truncation,omitempty"`
+	ResultLimitReached int               `json:"resultLimitReached,omitempty"`
 }

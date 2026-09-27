@@ -42,6 +42,7 @@ Complete each applicable gate or explain why it does not apply:
 - [ ] `make lint-scenarios`
 - [ ] `reuse lint`
 - [ ] `make check`
+- [ ] Shared paths are data-driven like Pi; no hard-coded provider/model choices; tested across provider shapes.
 - [ ] Relevant declared-run parity scenarios
 - [ ] Cross-platform build or native test
 - [ ] `make generate` and the resulting generated-file changes are committed.

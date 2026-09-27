@@ -80,9 +80,6 @@ func (t *WriteTool) Execute(ctx context.Context, _ string, rawParams json.RawMes
 		return agent.AgentToolResult{}, fmt.Errorf("write: invalid params: %w", err)
 	}
 	path := resolvePath(t.CWD, p.Path)
-	// Overwrite-vs-create is only for the TUI renderer; it is not SDK detail.
-	info, statErr := os.Stat(path)
-	overwrote := statErr == nil && info.Mode().IsRegular()
 
 	var failure string
 	if err := runQueued(ctx, t.Queue, path, func() error {
@@ -117,8 +114,5 @@ func (t *WriteTool) Execute(ctx context.Context, _ string, rawParams json.RawMes
 	if failure != "" {
 		return agent.AgentToolResult{Content: failure, IsError: true}, nil
 	}
-	return agent.AgentToolResult{
-		Content: "Successfully wrote to " + p.Path,
-		Details: &WriteDetails{Path: p.Path, Content: p.Content, Overwrote: overwrote},
-	}, nil
+	return agent.AgentToolResult{Content: "Successfully wrote to " + p.Path}, nil
 }

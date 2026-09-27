@@ -75,6 +75,7 @@ Before submitting agent-assisted work:
 - read and understand the changed code;
 - reproduce the reported problem yourself;
 - confirm that the tests can detect the behavior they claim;
+- check agent output against [Faithful, general implementations](AGENTS.md#faithful-general-implementations);
 - remove generated speculation, unrelated changes, and private data; and
 - be prepared to explain the design and its interaction with the rest of PiG.
 
@@ -98,8 +99,8 @@ installing software.
 3. Use a focused topic branch.
 4. Read the pinned upstream source and tests before changing parity-bound behavior.
 5. Add or identify a test that can fail on the behavior under review.
-6. Implement the smallest correct change.
-7. Run the relevant local tests early.
+6. Implement the smallest correct change through Pi's shared data-driven paths, without uncited provider/model special cases.
+7. Run the relevant local tests early across applicable provider shapes, not only Copilot or `test-faux`.
 8. If you change exported Go API, CLI flags, settings, parity scenarios, or docs mirrors, run `make generate` and commit the result. CI's drift gates compare these files.
 9. Run `make check` before requesting review.
 10. Sign off and cryptographically sign every commit. Confirm that GitHub marks each signature **Verified**.
