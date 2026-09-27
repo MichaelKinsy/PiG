@@ -18,7 +18,7 @@ func validateCWDFooterCrop(cwd string, cfg TmuxDriverConfig) error {
 		line += " (" + cfg.GitBranch + ")"
 	}
 	if needed := widthx.VisibleWidth(line); needed > cfg.Width {
-		return fmt.Errorf("footer cwd crop %q requires %d columns for %q, but terminal has %d columns; set TMPDIR to a shorter clean root or increase tmux.width", cfg.CaptureStart, needed, line, cfg.Width)
+		return fmt.Errorf("footer cwd crop %q requires %d columns for %q, but terminal has %d columns; set %s to a shorter clean root or increase tmux.width", cfg.CaptureStart, needed, line, cfg.Width, tempDirVar)
 	}
 	return nil
 }

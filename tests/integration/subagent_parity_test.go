@@ -146,6 +146,7 @@ func upstreamIsolatedHome(t *testing.T) string {
 // launchSystem starts a binary in tmux and waits for it to be ready.
 func launchSystem(t *testing.T, cfg systemConfig) (session string, cleanup func()) {
 	t.Helper()
+	requireTmux(t)
 	session = fmt.Sprintf("parity-%s-%s", cfg.name, randID())
 
 	if err := tmuxCommand("new-session", "-d", "-s", session, "-x", "130", "-y", "36").Run(); err != nil {

@@ -1369,7 +1369,8 @@ func (p *openAIProvider) Stream(ctx context.Context, transcript TranscriptContex
 		switch thinkingFormat {
 		case "zai":
 			if reasoningOn {
-				req.Thinking = map[string]any{"type": "enabled"}
+				// Z.ai clears prior-turn reasoning_content by default; Pi opts out.
+				req.Thinking = map[string]any{"type": "enabled", "clear_thinking": false}
 			} else {
 				req.Thinking = map[string]any{"type": "disabled"}
 			}

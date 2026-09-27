@@ -942,17 +942,27 @@ func captureThinkingPayload(t *testing.T, providerID, baseURL string, compat *Op
 	return reqBody
 }
 
+// TestStreamZaiThinkingPayload checks the zai thinking payload as Pi sends it
+// (openai-completions.ts:873-878).
 func TestStreamZaiThinkingPayload(t *testing.T) {
 	compat := &OpenAICompat{ThinkingFormat: "zai", MaxTokensField: "max_tokens"}
-	// reasoning on -> thinking:{type:enabled}
+	// reasoning on -> thinking:{type:enabled,clear_thinking:false}
 	req := captureThinkingPayload(t, "zai", "https://api.z.ai/v1", compat, ThinkingHigh)
-	if th, _ := req.Thinking.(map[string]any); th["type"] != "enabled" {
-		t.Fatalf("zai thinking = %#v, want {type:enabled}", req.Thinking)
+	th, _ := req.Thinking.(map[string]any)
+	if th["type"] != "enabled" {
+		t.Fatalf("zai thinking = %#v, want {type:enabled,clear_thinking:false}", req.Thinking)
 	}
-	// reasoning off -> thinking:{type:disabled}
+	if v, ok := th["clear_thinking"].(bool); !ok || v {
+		t.Fatalf("zai thinking.clear_thinking = %#v, want false", th["clear_thinking"])
+	}
+	// reasoning off -> thinking:{type:disabled}, no clear_thinking
 	reqOff := captureThinkingPayload(t, "zai", "https://api.z.ai/v1", compat, ThinkingOff)
-	if th, _ := reqOff.Thinking.(map[string]any); th["type"] != "disabled" {
+	thOff, _ := reqOff.Thinking.(map[string]any)
+	if thOff["type"] != "disabled" {
 		t.Fatalf("zai thinking(off) = %#v, want {type:disabled}", reqOff.Thinking)
+	}
+	if _, present := thOff["clear_thinking"]; present {
+		t.Fatalf("zai thinking(off) = %#v, want no clear_thinking field", reqOff.Thinking)
 	}
 	if reqOff.ReasoningEffort != "" {
 		t.Fatalf("zai must not send reasoning_effort, got %q", reqOff.ReasoningEffort)
