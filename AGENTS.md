@@ -584,7 +584,7 @@ artifacts, and published evidence.
 
 ## Commit hygiene
 
-Every commit requires both a DCO `Signed-off-by` line and a signature GitHub marks **Verified**. Use `git commit --signoff -S`. Sign-off is not a cryptographic signature. See `CONTRIBUTING.md` for SSH signing setup and unsigned-commit repair. If signing is unavailable, ask a maintainer to re-sign while preserving the contributor as author.
+Every commit requires both a DCO `Signed-off-by` line and a signature GitHub marks **Verified**. Use `git commit --signoff -S`. Sign-off is not a cryptographic signature. See `CONTRIBUTING.md` for SSH signing setup and unsigned-commit repair. If signing is unavailable, a maintainer lands the change in a maintainer-signed commit with a `Co-authored-by:` trailer.
 
 Before committing, run `git diff --stat HEAD` and `git status --short`, then stage only files intentionally changed. Never `git add .`, `git add -A`, or add a whole directory without inspecting contents. Testdata dirs accumulate temp files.
 
