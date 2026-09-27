@@ -54134,9 +54134,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(ctx context.Context, providerID string, modelID string, services *github.com/MichaelKinsy/PiG/coding.Services) (*github.com/MichaelKinsy/PiG/ai.Model, error)"
+        "type": "func(_ context.Context, providerID string, modelID string, services *github.com/MichaelKinsy/PiG/coding.Services) (*github.com/MichaelKinsy/PiG/ai.Model, error)"
       },
-      "shapeHash": "sha256:0a5f8c8afc16f4359d5121c95774df3f19484f0e5a3b2332d06a394b956ca1d0"
+      "shapeHash": "sha256:563c1d284215cc39b3c999cd99d8279e2ed4d5eb689fd9ba4e82eddbab54f242"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#builtPigVersion",
@@ -61188,17 +61188,6 @@
         "type": "func()"
       },
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#storedRequestAPIKey",
-      "package": "github.com/MichaelKinsy/PiG/cmd/pig",
-      "name": "storedRequestAPIKey",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(ctx context.Context, registry *github.com/MichaelKinsy/PiG/internal/codingagent.ModelRegistry, authPath string, providerID string) (key string, ok bool, err error)"
-      },
-      "shapeHash": "sha256:9f13514d94f4e26aac3b26b983b00c8d51c5a133de001e9ab6e4435bd4dfaef1"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#systemPromptRebuilder",
