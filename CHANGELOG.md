@@ -16,6 +16,7 @@ All notable public changes to PiG will be recorded in this file.
 ### Fixed
 
 - Preserve pending Pico3 tasks when a task kind is replaced just after the harness resumes. Only tasks with unknown kinds at the time of `Resume` are orphaned, as in Pi.
+- Fix the first request of a new session going to the wrong endpoint for providers without a dedicated builder, such as OpenCode, OpenCode Go, DeepSeek and Z.ai. A stored key was sent to OpenAI's default URL, and Anthropic-style models used the wrong client. Thanks @ShoichiTect (#59).
 
 ## [0.2.0] - 2026-09-25
 
