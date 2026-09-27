@@ -8,7 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
-// rpcAgentEvent converts an internal agent event to Pi 0.86.1 JSON/RPC event
+// rpcAgentEvent converts an internal agent event to the pinned Pi JSON/RPC event
 // shapes. Conversion errors are returned so writer paths can terminate loudly.
 func rpcAgentEvent(event agent.AgentEvent) ([]any, error) {
 	switch event := event.(type) {
@@ -113,12 +113,12 @@ func rpcAgentEvent(event agent.AgentEvent) ([]any, error) {
 		return []any{map[string]any{
 			"type": "tool_execution_update", "toolCallId": event.ToolCallID,
 			"toolName": event.ToolName, "args": args,
-			"partialResult": rpcToolResultPayload(event.Content, nil, false, event.Details),
+			"partialResult": rpcToolResultPayload(event.Content, nil, event.Details),
 		}}, nil
 	case agent.ToolExecutionEndEvent:
 		return []any{map[string]any{
 			"type": "tool_execution_end", "toolCallId": event.ToolCallID, "toolName": event.ToolName,
-			"result":  rpcToolResultPayload(event.Result.Content, event.Result.Images, event.Result.IsError, event.Result.Details),
+			"result":  rpcToolResultPayload(event.Result.Content, event.Result.Images, event.Result.Details),
 			"isError": event.Result.IsError,
 		}}, nil
 	default:
@@ -268,13 +268,13 @@ func rpcToolResultMessage(message agent.ToolResultMessage) (any, error) {
 	return out, nil
 }
 
-func rpcToolResultPayload(text string, images []ai.ImageContent, isError bool, details any) any {
+func rpcToolResultPayload(text string, images []ai.ImageContent, details any) any {
 	content := make([]any, 0, 1+len(images))
 	content = append(content, map[string]any{"type": "text", "text": text})
 	for _, image := range images {
 		content = append(content, map[string]any{"type": "image", "data": image.Data, "mimeType": image.MimeType})
 	}
-	out := map[string]any{"content": content, "isError": isError}
+	out := map[string]any{"content": content}
 	if details != nil {
 		out["details"] = details
 	}

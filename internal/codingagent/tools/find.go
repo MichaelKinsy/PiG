@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"math"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -145,7 +144,8 @@ func (t *FindTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 		relativized = append(relativized, relativizeFindResultPath(line, searchPath))
 	}
 	resultLimitReached := float64(len(relativized)) >= effectiveLimit
-	tr := TruncateHead(strings.Join(relativized, "\n"), DefaultMaxBytes, math.MaxInt)
+	// Number.MAX_SAFE_INTEGER is observable in the truncation details, even though only bytes cap this tool.
+	tr := TruncateHead(strings.Join(relativized, "\n"), DefaultMaxBytes, 1<<53-1)
 	resultOutput := tr.Content
 	details := &FindDetails{}
 	var notices []string

@@ -93,14 +93,10 @@ func (u *shellUpdateScheduler) emit() {
 	u.mu.Unlock()
 	u.lastUpdateAt = time.Now()
 	snapshot := u.output.Snapshot(true)
-	var details any
-	if snapshot.Truncation.Truncated || snapshot.FullOutputPath != "" {
-		bd := &BashDetails{FullOutputPath: snapshot.FullOutputPath}
-		if snapshot.Truncation.Truncated {
-			tr := snapshot.Truncation
-			bd.Truncation = &tr
-		}
-		details = bd
+	details := &BashDetails{FullOutputPath: snapshot.FullOutputPath}
+	if snapshot.Truncation.Truncated {
+		tr := snapshot.Truncation
+		details.Truncation = &tr
 	}
 	u.onUpdate(snapshot.Content, details)
 }

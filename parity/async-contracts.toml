@@ -10,9 +10,9 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`agent/a
 [[files]]
 path = "packages/agent/src/agent.ts"
 disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`agent/agent.go + agent/queue.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+contracts = ["awaited", "cancellable", "microtask-ordering"]
+evidence = ["test:coding/session_preflight_test.go", "test:cmd/pig/rpc_prompt_admission_test.go", "scenario:parity/scenarios/rpc/13-rpc-steering-queue.toml", "probe:docs/findings/pr70-steering-admission.md"]
+rationale = "Prompt claim, first-event dispatch, concurrent-run rejection and release are separated so RPC preflight can settle before Agent execution. A claimed run drains even after Start failure or cancellation. Full-file async obligations outside prompt admission remain deferred."
 
 [[files]]
 path = "packages/agent/src/harness/agent-harness.ts"
@@ -1046,9 +1046,9 @@ rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/
 [[files]]
 path = "packages/coding-agent/src/core/agent-session.ts"
 disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`coding/session.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+contracts = ["awaited", "concurrent-joined", "cancellable", "microtask-ordering"]
+evidence = ["test:coding/session_model_dispatch_test.go", "test:coding/session_preflight_test.go", "test:cmd/pig/rpc_preflight_admission_test.go", "scenario:parity/scenarios/rpc/13-rpc-steering-queue.toml", "scenario:parity/scenarios/rpc/31-rpc-cycle-await-interleaving.toml", "scenario:parity/scenarios/rpc/32-rpc-cycle-prefix-and-completion.toml", "probe:docs/findings/rpc-command-dispatch.md", "probe:docs/findings/pr70-steering-admission.md"]
+rationale = "Model-cycle prefix/notification and prompt preflight admission are covered. Input and before_agent_start awaits do not reserve the Agent or hold the Session run lock; streaming is sampled after input, normalization follows before_agent_start, and acceptance precedes the Agent claim. Suspended preflight permits another prompt and both queues. Full-file async closure remains deferred for unrelated replacement, retry and compaction obligations."
 
 [[files]]
 path = "packages/coding-agent/src/core/auth-storage.ts"
@@ -1837,9 +1837,9 @@ rationale = "PORT_MAP marks this file ⏸ deferred: `(deferred: PiG exposes the 
 [[files]]
 path = "packages/coding-agent/src/modes/rpc/rpc-mode.ts"
 disposition = "deferred"
-contracts = []
-evidence = []
-rationale = "async/Promise source; PORT_MAP marks this file ✅ ported (`cmd/pig/rpc_mode.go + cmd/pig/rpc_ui.go`), but a per-file cross-language ordering/cancellation/error contract has not yet been reviewed for 0.87.1; delivery/unresolved.tsv row 'Review the v0.87.1 denominators'"
+contracts = ["awaited", "concurrent-joined", "cancellable", "microtask-ordering"]
+evidence = ["test:cmd/pig/rpc_dispatch_test.go", "test:cmd/pig/rpc_admission_test.go", "test:cmd/pig/rpc_preflight_admission_test.go", "test:cmd/pig/rpc_queue_await_test.go", "test:cmd/pig/rpc_prompt_admission_test.go", "scenario:parity/scenarios/rpc/07-rpc-model-thinking-commands.toml", "scenario:parity/scenarios/rpc/13-rpc-steering-queue.toml", "scenario:parity/scenarios/rpc/31-rpc-cycle-await-interleaving.toml", "scenario:parity/scenarios/rpc/32-rpc-cycle-prefix-and-completion.toml", "probe:docs/findings/rpc-command-dispatch.md", "probe:docs/findings/pr70-steering-admission.md"]
+rationale = "All 33 command branches and their conditional await boundaries are inventoried in the dispatch report. Prompt/input/preflight and nested queue completions resume through the FIFO await executor. Handler invocation reaches its first suspension before later input is admitted; completion remains independently awaited. Preflight is idle, rechecks streaming after input, accepts before claiming the Agent, and drains on EOF. Model-cycle prefixes and notifications retain their ordering. Shell completion does not wait for a pending Provider. Full-file async closure remains deferred for other command implementations."
 
 [[files]]
 path = "packages/coding-agent/src/modes/rpc/rpc-types.ts"

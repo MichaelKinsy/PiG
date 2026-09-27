@@ -658,6 +658,10 @@ func main() {
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGTERM)
+	if flags.Mode == "rpc" && runtime.GOOS != "windows" {
+		signal.Notify(sigCh, syscall.SIGHUP)
+	}
+	defer signal.Stop(sigCh)
 	go func() {
 		sig := <-sigCh
 		if sysSig, ok := sig.(syscall.Signal); ok {

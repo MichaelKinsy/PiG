@@ -69,6 +69,7 @@ func (m *InteractiveMode) renderSessionEntries() {
 	// Reset all component tracking: all are stale after a branch navigation.
 	m.toolMu.Lock()
 	clear(m.toolByID)
+	clear(m.toolFileCalls)
 	m.toolOrder = m.toolOrder[:0]
 	m.toolStarts = make(map[string]time.Time)
 	m.toolMu.Unlock()
