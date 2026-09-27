@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"testing"
 )
@@ -24,11 +25,11 @@ import (
 //	                                     Makefile's `trap` on EXIT covers
 //	                                     this case at the shell layer
 //
-// We intentionally do NOT call os.Exit from the signal handler: we
-// re-raise the signal after cleanup so callers (make, shells, CI) see
-// the correct exit status (128+signum).
+// After cleanup the handler ends the process as the signal's default
+// handling would (exitWithSignal), so callers (make, shells, CI) see the
+// real exit status: 128+signum on Unix, STATUS_CONTROL_C_EXIT on Windows.
 func TestMain(m *testing.M) {
-	if filepath.Base(os.Args[0]) == fakeHTName {
+	if strings.TrimSuffix(filepath.Base(os.Args[0]), ".exe") == fakeHTName {
 		os.Exit(runFakeHT(os.Args[1:]))
 	}
 	sigs := make(chan os.Signal, 1)
