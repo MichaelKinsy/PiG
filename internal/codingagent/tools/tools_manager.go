@@ -145,6 +145,10 @@ type ToolsManager struct {
 	// platform/arch overrides for testing. Empty means use runtime values.
 	platformOverride string
 	archOverride     string
+
+	// beforeInflightLock, when set by a test, runs after EnsureTool's first
+	// installed-tool lookup misses and before it takes the in-flight lock.
+	beforeInflightLock func(tool string)
 }
 
 // NewToolsManager constructs a manager rooted at agentDir.
@@ -256,6 +260,9 @@ func (m *ToolsManager) EnsureTool(ctx context.Context, tool string, onStatus fun
 	}
 
 	// Deduplicate concurrent EnsureTool calls for the same tool.
+	if m.beforeInflightLock != nil {
+		m.beforeInflightLock(tool)
+	}
 	m.mu.Lock()
 	if ch, busy := m.inflight[tool]; busy {
 		m.mu.Unlock()
