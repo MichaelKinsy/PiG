@@ -35,7 +35,17 @@ func tmuxCommand(args ...string) *exec.Cmd {
 	return exec.Command("tmux", append([]string{"-L", tmuxSocket, "-f", "/dev/null"}, args...)...)
 }
 
+// requireTmux skips a test that drives tmux on a host without it, such as
+// native Windows.
+func requireTmux(t *testing.T) {
+	t.Helper()
+	if _, err := exec.LookPath("tmux"); err != nil {
+		t.Skip("tmux not on PATH:", err)
+	}
+}
+
 func TestTmuxServerSurvivesSessionCleanup(t *testing.T) {
+	requireTmux(t)
 	t.Run("owned-session", func(t *testing.T) {
 		newHarness(t)
 	})
@@ -45,6 +55,7 @@ func TestTmuxServerSurvivesSessionCleanup(t *testing.T) {
 }
 
 func TestTmuxSessionsHaveSeparateHomes(t *testing.T) {
+	requireTmux(t)
 	for _, key := range []string{"PIG_CODING_AGENT_DIR", "PIG_CODING_AGENT_SESSION_DIR", "PI_CODING_AGENT_DIR", "PI_CODING_AGENT_SESSION_DIR", "HERDR_ENV", "HERDR_KITTY_GRAPHICS"} {
 		t.Setenv(key, t.TempDir())
 	}

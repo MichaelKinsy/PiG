@@ -30,6 +30,19 @@ func pollUntil(timeout time.Duration, cond func() bool) bool {
 	return cond()
 }
 
+// waitFor runs cond every 50ms until it returns true or timeout elapses, for
+// waits that need a finer cadence than pollUntil's.
+func waitFor(timeout time.Duration, cond func() bool) bool {
+	deadline := time.Now().Add(timeout)
+	for time.Now().Before(deadline) {
+		if cond() {
+			return true
+		}
+		time.Sleep(50 * time.Millisecond)
+	}
+	return cond()
+}
+
 // waitForPaneContains polls a tmux pane until every needle appears, or
 // timeout. Returns the last captured pane plus a bool indicating
 // success. Unlike waitForContent (parity_test.go), this does NOT call
