@@ -3,7 +3,7 @@
 name = "29-rpc-sigterm-open-stdin"
 description = "SIGTERM ends idle RPC with status 143 while its client keeps stdin open"
 covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
-tags = ["hermetic", "fast"]
+tags = ["hermetic", "fast", "posix-signals"]
 driver = "rpc-mode"
 
 [rpc]

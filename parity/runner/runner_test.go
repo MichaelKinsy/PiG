@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -151,6 +152,12 @@ func TestParity(t *testing.T) {
 					"expose the operator's real credentials). Set PIG_PARITY_REAL_AUTH=/path/to/auth.json to opt in (path=%s)",
 					sc.SourcePath)
 			}
+			if sc.HasTag("posix-signals") && runtime.GOOS == "windows" {
+				resultsMu.Lock()
+				skipped = append(skipped, sc.Name+" (posix-signals)")
+				resultsMu.Unlock()
+				t.Skipf("scenario sends POSIX signals, which Windows processes cannot receive (path=%s)", sc.SourcePath)
+			}
 			if sc.Driver == "headless-terminal" {
 				if _, err := exec.LookPath("ht"); err != nil {
 					resultsMu.Lock()
@@ -258,7 +265,7 @@ func TestParity(t *testing.T) {
 					t.Errorf("stale allowed skip %q: no such scenario", name)
 					continue
 				}
-				if !scenario.HasTag("deferred") && !scenario.HasTag("requires-auth") && scenario.Driver != "headless-terminal" {
+				if !scenario.HasTag("deferred") && !scenario.HasTag("requires-auth") && scenario.Driver != "headless-terminal" && !(scenario.HasTag("posix-signals") && runtime.GOOS == "windows") {
 					t.Errorf("stale allowed skip %q: scenario can no longer skip", name)
 				}
 			}
