@@ -12,11 +12,13 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/Microsoft/go-winio"
 	"golang.org/x/sys/windows"
 )
 
@@ -160,6 +162,146 @@ func TestPipeListenerReportsAClientThatClosedBeforeConnect(t *testing.T) {
 	buf := make([]byte, 4)
 	if _, err := io.ReadFull(conn, buf); err != nil || string(buf) != "ping" {
 		t.Fatalf("read %q, %v from the next client, want ping", buf, err)
+	}
+}
+
+// ListenExtension returns a net.Listener, whose Close must unblock every
+// waiting Accept. The listener once recorded one waiting instance, so a second
+// concurrent Accept replaced the first one's record and Close cancelled only
+// the second: the first stayed blocked with its pipe instance. Afterwards no
+// instance of the pipe may exist.
+func TestPipeListenerCloseUnblocksEveryConcurrentAccept(t *testing.T) {
+	ln, path := listenTestPipe(t)
+	first := startAccept(ln)
+	waitForAcceptEntry(t, ln, 1)
+	second := startAccept(ln)
+	waitForAcceptEntry(t, ln, 2)
+	if err := ln.Close(); err != nil {
+		t.Fatal(err)
+	}
+	for i, accepted := range []<-chan acceptResult{first, second} {
+		if got := awaitAccept(t, accepted); !errors.Is(got.err, net.ErrClosed) {
+			t.Fatalf("Accept %d after Close = %v, %v; want net.ErrClosed", i+1, got.conn, got.err)
+		}
+	}
+	requireNoPipeInstance(t, path)
+}
+
+// Two Accepts that complete together each return their own client, and the
+// listener keeps one spare instance. Each completing Accept once made a spare
+// and replaced the previous one, which then waited for a client after Close.
+func TestPipeListenerConcurrentAcceptsKeepOneSpare(t *testing.T) {
+	ln, path := listenTestPipe(t)
+	first := startAccept(ln)
+	waitForAcceptEntry(t, ln, 1)
+	second := startAccept(ln)
+	waitForAcceptEntry(t, ln, 2)
+	var clients []net.Conn
+	for _, name := range []string{"a", "b"} {
+		timeout := 10 * time.Second
+		client, err := winio.DialPipe(path, &timeout)
+		if err != nil {
+			t.Fatalf("client %s: %v", name, err)
+		}
+		t.Cleanup(func() { _ = client.Close() })
+		clients = append(clients, client)
+		if _, err := client.Write([]byte(name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	var names []string
+	for _, accepted := range []<-chan acceptResult{first, second} {
+		got := awaitAccept(t, accepted)
+		if got.err != nil {
+			t.Fatal(got.err)
+		}
+		buf := make([]byte, 1)
+		_, err := io.ReadFull(got.conn, buf)
+		_ = got.conn.Close()
+		if err != nil {
+			t.Fatal(err)
+		}
+		names = append(names, string(buf))
+	}
+	if slices.Sort(names); !slices.Equal(names, []string{"a", "b"}) {
+		t.Fatalf("accepted clients %q, want a and b once each", names)
+	}
+	for _, client := range clients {
+		_ = client.Close()
+	}
+	if err := ln.Close(); err != nil {
+		t.Fatal(err)
+	}
+	requireNoPipeInstance(t, path)
+}
+
+type acceptResult struct {
+	conn net.Conn
+	err  error
+}
+
+func listenTestPipe(t *testing.T) (*pipeListener, string) {
+	t.Helper()
+	listener, path, err := ListenExtension(filepath.Join(t.TempDir(), "e.sock"), true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ln := listener.(*pipeListener)
+	t.Cleanup(func() { _ = ln.Close() })
+	return ln, path
+}
+
+func startAccept(ln net.Listener) <-chan acceptResult {
+	accepted := make(chan acceptResult, 1)
+	go func() {
+		conn, err := ln.Accept()
+		accepted <- acceptResult{conn, err}
+	}()
+	return accepted
+}
+
+func awaitAccept(t *testing.T, accepted <-chan acceptResult) acceptResult {
+	t.Helper()
+	select {
+	case got := <-accepted:
+		return got
+	case <-time.After(10 * time.Second):
+		t.Fatal("Accept is still waiting")
+		return acceptResult{}
+	}
+}
+
+// waitForAcceptEntry waits until n Accept calls have entered ln, so the test
+// acts only after each call is waiting. It counts the instances the listener
+// records for its waiting calls.
+func waitForAcceptEntry(t *testing.T, ln *pipeListener, n int) {
+	t.Helper()
+	deadline := time.Now().Add(10 * time.Second)
+	for {
+		ln.mu.Lock()
+		entered := len(ln.accepting)
+		ln.mu.Unlock()
+		if entered >= n {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatalf("%d of %d Accept calls entered the listener", entered, n)
+		}
+		runtime.Gosched()
+	}
+}
+
+// requireNoPipeInstance fails if any server instance of the pipe still exists:
+// a client could then connect to it, or would find it busy.
+func requireNoPipeInstance(t *testing.T, path string) {
+	t.Helper()
+	client, err := os.OpenFile(path, os.O_RDWR, 0)
+	if err == nil {
+		_ = client.Close()
+		t.Fatalf("a client connected to %s after the listener closed: a pipe instance was never released", path)
+	}
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("open %s after the listener closed = %v, want no instance", path, err)
 	}
 }
 
