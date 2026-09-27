@@ -13,9 +13,7 @@ All notable public changes to PiG will be recorded in this file.
 
 - Handle every key of one terminal read before painting, as Pi does. Fast typing such as `/compact` no longer paints each prefix with a stale autocomplete popup, which scrolled the main screen further than Pi.
 
-## [0.2.1]
-
-### Fixed
+### Contributing
 
 - Add `make generate` to refresh committed inventories, coverage, and documentation mirrors. Drift failures name the repair command. The Go interface generator writes its committed file by default and uses the same target on macOS and Linux.
 - Keep help regeneration independent of the invoking agent's configuration and project directory. A failed generator no longer truncates the committed help text.
