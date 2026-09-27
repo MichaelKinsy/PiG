@@ -59,9 +59,26 @@ var vendoredImportRewrites = map[string][2]string{
 		`import { parse as partialParse } from "../../../partial-json/dist/index.js";`},
 	"pi-ai/utils/typebox-helpers.js": {`import { Type } from "typebox";`,
 		`import { Type } from "../../../typebox.mjs";`},
+	"pi-ai/index.js": {`export { Type } from "typebox";`,
+		`export { Type } from "../../typebox.mjs";`},
 	"pi-coding-agent/utils/frontmatter.js": {`import { parse } from "yaml";`,
 		`import { parse } from "../../../yaml/index.js";`},
 }
+
+// vendoredBridgeStubs are pi-ai's builtin API implementations, which import
+// vendor SDKs; each is a stub that loads PiG's bridge to its host providers.
+var vendoredBridgeStubs = func() map[string]string {
+	stubs := map[string]string{
+		"pi-ai/api/openrouter-images.js": "// PiG: image generation has no host provider (D74); see automation/gen/vendor-pi-dist.sh.\n" +
+			"import { bridgeImages } from \"../../../pi-ai-bridge.mjs\";\nexport const generateImages = bridgeImages(\"openrouter-images\");\n",
+	}
+	for _, api := range []string{"anthropic-messages", "azure-openai-responses", "bedrock-converse-stream", "google-generative-ai", "google-vertex",
+		"mistral-conversations", "openai-codex-responses", "openai-completions", "openai-responses", "pi-messages"} {
+		stubs["pi-ai/api/"+api+".js"] = "// PiG: the " + api + " implementation runs in PiG's host (D74); see automation/gen/vendor-pi-dist.sh.\n" +
+			"import { bridgeApi } from \"../../../pi-ai-bridge.mjs\";\nexport const { stream, streamSimple } = bridgeApi(\"" + api + "\");\n"
+	}
+	return stubs
+}()
 
 // validation.js rewrites two imports.
 var vendoredValidationRewrites = [][2]string{
@@ -120,6 +137,15 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		}
 		if rel == "pi-coding-agent/core/session-manager.js" {
 			continue // a section, checked below
+		}
+		if stub, ok := vendoredBridgeStubs[rel]; ok {
+			// The pinned implementation imports a vendor SDK; PiG's host runs
+			// it instead (D74).
+			readPinned(t, append(append([]string{}, pinnedPackageDist["pi-ai"]...), strings.Split(strings.TrimPrefix(rel, "pi-ai/"), "/")...)...)
+			if string(got) != stub {
+				t.Errorf("shims/pi-dist/%s = %q, want the bridge stub: run automation/gen/vendor-pi-dist.sh", rel, got)
+			}
+			continue
 		}
 		pkg, file, _ := strings.Cut(rel, "/")
 		dist, ok := pinnedPackageDist[pkg]

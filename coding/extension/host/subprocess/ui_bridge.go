@@ -39,6 +39,12 @@ type UIBridge struct {
 	// extension subprocess.
 	extConns map[string]*Conn
 
+	// modelStreams cancels an in-flight modelStream call, keyed by the
+	// owning connection and its stream ID, so an extension's AbortSignal
+	// (upstream options.signal) ends the provider request.
+	modelStreamMu sync.Mutex
+	modelStreams  map[modelStreamKey]context.CancelFunc
+
 	// uiCtx is the per-mode UI surface. Initially [extension.NoopUIContext],
 	// upgraded to the real TUI after startup via [SetUIContext].
 	// terminalInputSubs holds the retire func for each extension's raw
@@ -488,6 +494,7 @@ func NewUIBridge(invalidateTUI func()) *UIBridge {
 		customOverlays:   make(map[string]extension.RemoteOverlayHandle),
 		interactiveFocus: make(chan struct{}, 1),
 		extConns:         make(map[string]*Conn),
+		modelStreams:     make(map[modelStreamKey]context.CancelFunc),
 		uiCtx:            extension.NoopUIContext,
 		pendingStatuses:  make(map[string]string),
 		invalidateTUI:    invalidateTUI,
@@ -1049,6 +1056,8 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleComplete(ctx, actions, call.Args)
 	case "modelStream":
 		return b.handleModelStream(ctx, owner, actions, call.Args)
+	case "cancelModelStream":
+		return b.handleCancelModelStream(owner, call.Args)
 
 	// Agent control.
 	case "isIdle":
@@ -2857,7 +2866,20 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 	if err != nil {
 		return nil, fmt.Errorf("parse modelStream request: %w", err)
 	}
-	stream, err := actions.StreamModel(ctx, request.Model, decodedRequest)
+	// Cancellation reaches the provider request only; delivery below keeps the
+	// call's context so the provider's terminal aborted event still arrives.
+	providerCtx, cancel := context.WithCancel(ctx)
+	defer cancel()
+	key := modelStreamKey{owner: owner, streamID: request.StreamID}
+	b.modelStreamMu.Lock()
+	b.modelStreams[key] = cancel
+	b.modelStreamMu.Unlock()
+	defer func() {
+		b.modelStreamMu.Lock()
+		delete(b.modelStreams, key)
+		b.modelStreamMu.Unlock()
+	}()
+	stream, err := actions.StreamModel(providerCtx, request.Model, decodedRequest)
 	if err != nil {
 		return nil, err
 	}
@@ -2878,6 +2900,31 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 		return nil, fmt.Errorf("marshal model stream result: %w", err)
 	}
 	return &CallResultPayload{Result: result}, nil
+}
+
+type modelStreamKey struct {
+	owner    *Conn
+	streamID string
+}
+
+// handleCancelModelStream cancels the caller's in-flight modelStream call, as
+// an aborted upstream options.signal cancels the provider request. The stream
+// then ends the way the provider ends a cancelled request. An unknown or
+// finished stream is a no-op.
+func (b *UIBridge) handleCancelModelStream(owner *Conn, args json.RawMessage) (*CallResultPayload, error) {
+	var request struct {
+		StreamID string `json:"streamId"`
+	}
+	if err := json.Unmarshal(args, &request); err != nil {
+		return nil, fmt.Errorf("parse cancelModelStream args: %w", err)
+	}
+	b.modelStreamMu.Lock()
+	cancel := b.modelStreams[modelStreamKey{owner: owner, streamID: request.StreamID}]
+	b.modelStreamMu.Unlock()
+	if cancel != nil {
+		cancel()
+	}
+	return &CallResultPayload{}, nil
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

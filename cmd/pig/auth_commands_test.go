@@ -472,8 +472,11 @@ func TestAuthInspectionContainsBrokenPackageExtensions(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(packageRoot, "package.json"), []byte(manifest), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := authExtensionConfigs(cwd, agentDir, settings); err == nil || !strings.Contains(err.Error(), "prompts/missing.md") {
-		t.Fatalf("missing non-extension Package member error = %v", err)
+	// Upstream skips a declared member that matches nothing, so a missing
+	// prompt leaves the Package's extensions available.
+	configs, _, err = authExtensionConfigs(cwd, agentDir, settings)
+	if err != nil || len(configs) != 1 {
+		t.Fatalf("missing non-extension Package member: configs = %#v, err = %v", configs, err)
 	}
 }
 

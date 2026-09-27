@@ -99,6 +99,22 @@ func (m *InteractiveMode) activeBuiltinToolNames(extTools ...extension.Registere
 	return active
 }
 
+// activeToolNames returns the tools the agent sends with its next request, in
+// that order. Mirrors upstream AgentSession.getActiveToolNames
+// (agent.state.tools): a tool an extension deactivated with setActiveTools is
+// not reported, so a getActiveTools/setActiveTools round trip keeps it off.
+func (m *InteractiveMode) activeToolNames() []string {
+	if m.agent == nil {
+		return m.activeBuiltinToolNames()
+	}
+	active := m.agent.Tools()
+	names := make([]string, len(active))
+	for i, tool := range active {
+		names[i] = tool.Name()
+	}
+	return names
+}
+
 // wireInprocContextActions populates the inproc runner's ContextActions and
 // the extension action callbacks needed by bundled Go extensions. In-process
 // extension handlers (piglet, onboard, etc.) can query session state via
@@ -153,16 +169,7 @@ func (m *InteractiveMode) wireInprocContextActions() {
 			}
 			return result
 		},
-		GetActiveTools: func() []string {
-			extTools := m.newRunner.Tools()
-			builtinNames := m.activeBuiltinToolNames(extTools...)
-			names := make([]string, 0, len(extTools)+len(builtinNames))
-			for _, t := range extTools {
-				names = append(names, t.Definition.Name)
-			}
-			names = append(names, builtinNames...)
-			return names
-		},
+		GetActiveTools: m.activeToolNames,
 		SetActiveTools: func(names []string) {
 			m.opts.AllowedTools = make(map[string]struct{}, len(names)+len(m.opts.ActiveBuiltinTools))
 			for _, name := range names {
@@ -345,19 +352,7 @@ func (m *InteractiveMode) wireSubprocessHostCallbacks() func() {
 		return nil
 	})
 
-	b.SetHostAction("getActiveTools", func() []string {
-		if m.newRunner == nil {
-			return m.activeBuiltinToolNames()
-		}
-		extTools := m.newRunner.Tools()
-		builtinNames := m.activeBuiltinToolNames(extTools...)
-		names := make([]string, 0, len(extTools)+len(builtinNames))
-		for _, t := range extTools {
-			names = append(names, t.Definition.Name)
-		}
-		names = append(names, builtinNames...)
-		return names
-	})
+	b.SetHostAction("getActiveTools", m.activeToolNames)
 	b.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
 		var runner ExtensionToolLister
 		if m.newRunner != nil {
@@ -1367,6 +1362,23 @@ func subprocessStreamOptions(request map[string]any, defaults ai.StreamOptions) 
 			return ai.StreamOptions{}, fmt.Errorf("model request.thinking must be a string")
 		}
 		options.Thinking = ai.ThinkingLevel(text)
+	} else if value, exists := request["reasoning"]; exists {
+		// Upstream SimpleStreamOptions.reasoning: the thinking level of a
+		// streamSimple/completeSimple request.
+		text, ok := value.(string)
+		if !ok {
+			return ai.StreamOptions{}, fmt.Errorf("model request.reasoning must be a string")
+		}
+		options.Thinking = ai.ThinkingLevel(text)
+	}
+	if value, exists := request["apiKey"]; exists {
+		// Upstream options.apiKey: the request's credential, ahead of the
+		// configured one.
+		text, ok := value.(string)
+		if !ok {
+			return ai.StreamOptions{}, fmt.Errorf("model request.apiKey must be a string")
+		}
+		options.APIKey = text
 	}
 	if value, exists := request["isReasoning"]; exists {
 		boolean, ok := value.(bool)
@@ -1457,11 +1469,31 @@ func WireModelOperations(bridge ModelOperationBridge, bindings ModelOperationBin
 		if bindings.Registry == nil {
 			return map[string]any{"ok": false, "error": "model registry not available"}
 		}
+		if providerID == "test-faux" && os.Getenv("PIG_TEST_FAUX") == "1" {
+			// The scripted test provider authenticates as the upstream side of
+			// the parity harness registers it (parity/testdata/test-faux-provider.ts:
+			// apiKey "unused"), so extensions take the same authenticated path.
+			return map[string]any{"ok": true, "apiKey": "unused", "baseUrl": "http://localhost:0"}
+		}
 		entry, ok := bindings.Registry.Resolve(providerID, modelID)
 		if !ok {
 			return map[string]any{"ok": false, "error": "model not found"}
 		}
-		result := map[string]any{"ok": true, "apiKey": entry.APIKey, "headers": entry.Headers, "baseURL": entry.BaseURL, "env": entry.Env}
+		// Upstream ResolvedRequestAuth: ok, apiKey, headers, baseUrl, env, each
+		// left out when there is none rather than sent as null.
+		result := map[string]any{"ok": true}
+		if entry.APIKey != "" {
+			result["apiKey"] = entry.APIKey
+		}
+		if len(entry.Headers) > 0 {
+			result["headers"] = entry.Headers
+		}
+		if entry.BaseURL != "" {
+			result["baseUrl"] = entry.BaseURL
+		}
+		if len(entry.Env) > 0 {
+			result["env"] = entry.Env
+		}
 		if entry.APIKey == "" && len(entry.Headers) == 0 && !bindings.Registry.HasConfiguredAuth(providerID) {
 			result["ok"] = false
 			result["error"] = "auth not configured"
@@ -1507,6 +1539,16 @@ func streamModelForSubprocess(ctx context.Context, model map[string]any, request
 	if err != nil {
 		return nil, err
 	}
+	// A null option is an absent one: upstream providers read undefined and
+	// null alike, and extensions pass getApiKeyAndHeaders' null headers and
+	// env straight through.
+	present := make(map[string]any, len(request))
+	for key, value := range request {
+		if value != nil {
+			present[key] = value
+		}
+	}
+	request = present
 	messages, err := subprocessRequestMessages(request["messages"])
 	if err != nil {
 		return nil, err

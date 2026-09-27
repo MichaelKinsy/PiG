@@ -129,9 +129,6 @@ func TestPowerShellToolActivatedByAllowlist(t *testing.T) {
 	}
 	m.wireInprocContextActions()
 
-	if active := runner.CreateCommandContext().GetActiveTools(); !slices.Contains(active, "powershell") {
-		t.Fatalf("GetActiveTools() = %v, want powershell active", active)
-	}
 	m.refreshAgentTools()
 	var names []string
 	for _, tool := range m.agent.Tools() {
@@ -139,6 +136,49 @@ func TestPowerShellToolActivatedByAllowlist(t *testing.T) {
 	}
 	if !slices.Equal(names, []string{"read", "powershell"}) {
 		t.Fatalf("agent tools = %v, want [read powershell]", names)
+	}
+	if active := runner.CreateCommandContext().GetActiveTools(); !slices.Equal(active, names) {
+		t.Fatalf("GetActiveTools() = %v, want the agent's tools %v", active, names)
+	}
+}
+
+// Upstream getActiveTools reports the agent's tools (getActiveToolNames), so
+// a tool an extension deactivated stays off across a getActiveTools and
+// setActiveTools round trip. pi-lens deactivates its lazy tools at
+// session_start and later merges additions into getActiveTools().
+func TestActiveToolsReportTheAgentLoadout(t *testing.T) {
+	runner := inproc.NewRunner([]extension.Extension{{
+		Name: "lazy-ext",
+		Tools: map[string]extension.RegisteredTool{
+			"lazy_tool": {Definition: extension.ToolDefinition{Name: "lazy_tool", Description: "lazy"}, SourceInfo: "lazy-ext"},
+		},
+	}}, t.TempDir())
+	m := &InteractiveMode{
+		newRunner: runner,
+		tuiInst:   tui.NewWithOutput(io.Discard, 80, 24),
+		layout:    tui.NewContainer(),
+		agent:     agent.NewAgent(agent.AgentOptions{}),
+		opts: InteractiveOptions{
+			CWD:                t.TempDir(),
+			ActiveBuiltinTools: map[string]struct{}{"read": {}},
+			BridgeExtensionTools: func(registered []extension.RegisteredTool) ([]agent.AgentTool, []error) {
+				var bridged []agent.AgentTool
+				for _, tool := range registered {
+					bridged = append(bridged, namedTool{name: tool.Definition.Name})
+				}
+				return bridged, nil
+			},
+		},
+	}
+	m.wireInprocContextActions()
+	m.refreshAgentTools()
+	ctx := runner.CreateCommandContext()
+	if active := ctx.GetActiveTools(); !slices.Equal(active, []string{"read", "lazy_tool"}) {
+		t.Fatalf("GetActiveTools() = %v, want [read lazy_tool]", active)
+	}
+	ctx.SetActiveTools([]string{"read"})
+	if active := ctx.GetActiveTools(); slices.Contains(active, "lazy_tool") {
+		t.Fatalf("GetActiveTools() = %v after deactivating lazy_tool", active)
 	}
 }
 

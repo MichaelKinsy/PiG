@@ -57,7 +57,9 @@ upstream-compatible `package.json` `pi` block may select explicit members:
 ```
 
 PiG-specific membership uses the additive `pig` block without changing Pi's
-fields:
+fields. As in Pi, a package with a `pi` block loads only what it declares: its
+hooks, MCP servers, and agent environments come from the `pig` block, not from
+conventional directories.
 
 ```json
 {
@@ -193,9 +195,11 @@ pig config --local
 ```
 
 Use `pig config --local` to edit project-scoped overrides. The TUI updates
-settings. It does not update the Package's `package.json`. An enabled missing
-member still stops startup. A disabled missing member does not stop startup.
-`pig package validate` remains strict for publication.
+settings. It does not update the Package's `package.json`. At startup a
+declared extension, skill, prompt, or theme that matches nothing is skipped, as
+Pi skips it, and the rest of the Package loads; `pig config` lists it as
+missing so you can disable it. `pig package validate` remains strict for
+publication.
 
 ## Toolchains and first use
 

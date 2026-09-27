@@ -327,12 +327,10 @@ func validateConfiguredPackagesForStartup(cwd string, sm *codingagent.SettingsMa
 		if !loadsExtensions(pkg.Scope) {
 			filters[packagecontent.Extensions] = []string{}
 		}
-		_, missing, _, err := packagecontent.ValidateConfiguredForStartupWithResolver(pkg.InstalledPath, filters, configuredExtensionResolver(resolvers))
-		if err != nil {
+		// A declared member that matches nothing is skipped, as upstream's
+		// package manager skips it; the rest of the Package still loads.
+		if _, _, _, err := packagecontent.ValidateConfiguredForStartupWithResolver(pkg.InstalledPath, filters, configuredExtensionResolver(resolvers)); err != nil {
 			return invalidConfiguredPackageError(pkg, err)
-		}
-		if len(missing) > 0 {
-			return missingConfiguredMemberError(pkg, missing[0])
 		}
 	}
 	return nil
@@ -394,11 +392,6 @@ func reportExtensionLoadFailures(diagnostics []codingagent.AgentSessionRuntimeDi
 
 func invalidConfiguredPackageError(pkg configuredPackage, err error) error {
 	return fmt.Errorf("%s Package %q at %s is invalid: %w", pkg.Scope, pkg.Source.Source, pkg.InstalledPath, err)
-}
-
-func missingConfiguredMemberError(pkg configuredPackage, member packagecontent.MissingMember) error {
-	kind := strings.TrimSuffix(string(member.Kind), "s")
-	return fmt.Errorf("Package %q declares missing %s %q. Run `pig config` and disable the missing member, restore the file, or correct the authored Package", pkg.Source.Source, kind, member.Pattern)
 }
 
 func collectPackagePromptPaths(cwd string, sm *codingagent.SettingsManager, resolvers ...extsource.ResolveFunc) []string {

@@ -5,9 +5,9 @@ import { stripTypeScriptTypes } from "node:module";
 // Specifiers Pi's extension loader serves from its own bundle
 // (core/extensions/virtual-modules.ts). Pi resolves the pi-ai root to its
 // compat entry point, so both names share one shim here. The pi-ai/oauth entry
-// point is type-only. Pi's pi-agent-core and pi-ai/providers/all modules have
-// no shim yet; those imports still resolve through the extension's own
-// node_modules.
+// point is type-only; pi-ai/providers/all is Pi's own module. Pi's
+// pi-agent-core has no shim yet; its imports still resolve through the
+// extension's own node_modules.
 const shims = new Map([
   ["@mariozechner/pi-coding-agent", new URL("./shims/pi-coding-agent.mjs", import.meta.url).href],
   ["@earendil-works/pi-coding-agent", new URL("./shims/pi-coding-agent.mjs", import.meta.url).href],
@@ -19,6 +19,8 @@ const shims = new Map([
   ["@earendil-works/pi-ai/compat", new URL("./shims/pi-ai.mjs", import.meta.url).href],
   ["@mariozechner/pi-ai/oauth", new URL("./shims/pi-ai-oauth.mjs", import.meta.url).href],
   ["@earendil-works/pi-ai/oauth", new URL("./shims/pi-ai-oauth.mjs", import.meta.url).href],
+  ["@mariozechner/pi-ai/providers/all", new URL("./shims/pi-dist/pi-ai/providers/all.js", import.meta.url).href],
+  ["@earendil-works/pi-ai/providers/all", new URL("./shims/pi-dist/pi-ai/providers/all.js", import.meta.url).href],
   // Pi aliases these to the TypeBox it ships; shims/typebox*.mjs bundle the
   // same pinned release (automation/gen/vendor-typebox.sh).
   ["typebox", new URL("./shims/typebox.mjs", import.meta.url).href],

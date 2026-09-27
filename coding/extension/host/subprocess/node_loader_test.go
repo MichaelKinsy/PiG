@@ -144,10 +144,8 @@ func registerLoaderURL(t *testing.T, runtimeRoot string) string {
 // (core/extensions/virtual-modules.ts) that the Node runtime does not shim
 // yet. Imports of them resolve only through the extension's node_modules.
 var piVirtualModulesWithoutShim = map[string]string{
-	"@earendil-works/pi-agent-core":       "no shim for the in-process Agent runtime",
-	"@mariozechner/pi-agent-core":         "no shim for the in-process Agent runtime",
-	"@earendil-works/pi-ai/providers/all": "no shim for the provider factory bundle",
-	"@mariozechner/pi-ai/providers/all":   "no shim for the provider factory bundle",
+	"@earendil-works/pi-agent-core": "no shim for the in-process Agent runtime",
+	"@mariozechner/pi-agent-core":   "no shim for the in-process Agent runtime",
 }
 
 // Every specifier in Pi's VIRTUAL_MODULES table is served by a loader shim
@@ -207,12 +205,17 @@ func TestNodeRuntimeShimsExportEveryPinnedPiValue(t *testing.T) {
 	}
 	modRoot := findModuleRoot(t)
 	runtimeRoot := filepath.Join(modRoot, "coding", "extension", "host", "subprocess", "runtime-node")
-	for spec, index := range map[string]string{
-		"@earendil-works/pi-coding-agent": "coding-agent",
-		"@earendil-works/pi-tui":          "tui",
-		"@earendil-works/pi-ai":           "ai",
+	// Each specifier maps to the upstream module Pi serves for it
+	// (core/extensions/virtual-modules.ts): the pi-ai root and its compat
+	// entry are both compat.ts, a superset of pi-ai's index.ts.
+	for spec, entry := range map[string]string{
+		"@earendil-works/pi-coding-agent":     "coding-agent/src/index.ts",
+		"@earendil-works/pi-tui":              "tui/src/index.ts",
+		"@earendil-works/pi-ai":               "ai/src/compat.ts",
+		"@earendil-works/pi-ai/compat":        "ai/src/compat.ts",
+		"@earendil-works/pi-ai/providers/all": "ai/src/providers/all.ts",
 	} {
-		upstream := filepath.Join(modRoot, ".upstream", "current", "packages", index, "src", "index.ts")
+		upstream := filepath.Join(modRoot, ".upstream", "current", "packages", filepath.FromSlash(entry))
 		script := `import fs from "node:fs";
 const spec = process.argv[1], upstream = process.argv[2];
 import path from "node:path";
@@ -229,7 +232,7 @@ function collect(file) {
   for (const m of src.matchAll(/export\s+\*\s+from\s+"(\.[^"]+)"/g)) collect(path.resolve(path.dirname(file), m[1]));
 }
 collect(upstream);
-if (names.size < 10) { console.log("parsed only " + names.size + " upstream exports"); process.exit(2); }
+if (names.size < 8) { console.log("parsed only " + names.size + " upstream exports"); process.exit(2); }
 const mod = await import(spec);
 const missing = [...names].filter((n) => !(n in mod)).sort();
 if (missing.length) { console.log(missing.join(" ")); process.exit(1); }`

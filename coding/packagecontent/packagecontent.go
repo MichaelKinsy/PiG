@@ -123,6 +123,17 @@ func Discover(root string) (Resources, error) {
 }
 
 func discover(root string, manifest *packageManifest, plugin *pluginManifest) Resources {
+	// Upstream loads a package that has a "pi" manifest from what the manifest
+	// declares and never from conventional directories. PiG's own kinds follow
+	// that rule: without a "pig" block such a package declares none, so a
+	// hooks/ or mcp/ directory another agent's tooling ships is not read.
+	pigEntries := func(kind Kind) *[]string {
+		entries := coalesceEntries(manifestEntries(manifest, kind), pluginEntries(plugin, kind))
+		if entries == nil && manifest != nil && manifest.PI != nil && manifest.Pig == nil {
+			return &[]string{}
+		}
+		return entries
+	}
 	skillEntries := coalesceEntries(manifestEntries(manifest, Skills), pluginEntries(plugin, Skills))
 	if plugin != nil && plugin.AgentPlugins {
 		skillEntries = manifestEntries(manifest, Skills)
@@ -133,9 +144,9 @@ func discover(root string, manifest *packageManifest, plugin *pluginManifest) Re
 		SkillDirs:         collectManifestResources(root, Skills, skillEntries),
 		ExtensionEntries:  collectExtensionResources(root, coalesceEntries(manifestEntries(manifest, Extensions), pluginEntries(plugin, Extensions))),
 		AgentFiles:        collectManifestResources(root, Agents, pluginEntries(plugin, Agents)),
-		MCPFiles:          collectMCPResources(root, coalesceEntries(manifestEntries(manifest, MCP), pluginEntries(plugin, MCP))),
-		HookFiles:         collectManifestResources(root, Hooks, coalesceEntries(manifestEntries(manifest, Hooks), pluginEntries(plugin, Hooks))),
-		AgentEnvironments: collectAgentEnvironments(root, manifestEntries(manifest, AgentEnvironments)),
+		MCPFiles:          collectMCPResources(root, pigEntries(MCP)),
+		HookFiles:         collectManifestResources(root, Hooks, pigEntries(Hooks)),
+		AgentEnvironments: collectAgentEnvironments(root, pigEntries(AgentEnvironments)),
 	}
 	if plugin != nil && plugin.AgentPlugins {
 		resources.SkillDirs = validAgentPluginSkills(resources.SkillDirs)
@@ -214,9 +225,10 @@ type ExtensionIssue struct {
 }
 
 // ValidateConfiguredForStartup applies ValidateConfigured's checks for session
-// startup with two differences. When enabled declarations are missing, it
-// returns them with no error and no resources, so the caller can name the
-// member to disable. An enabled extension whose source does not resolve is
+// startup with two differences. An enabled declaration that matches nothing is
+// skipped, as upstream's package manager skips a declared path that does not
+// exist, and is returned so a caller can list it; the rest of the Package
+// loads. An enabled extension whose source does not resolve is
 // returned as an ExtensionIssue, every one of them, and removed from the
 // resources instead of failing the Package; upstream loadExtensions likewise
 // records each failing extension and continues with the rest. Every other
@@ -238,10 +250,7 @@ func ValidateConfiguredForStartupWithResolver(root string, filters map[Kind][]st
 		return Resources{}, nil, nil, err
 	}
 	missing = slices.DeleteFunc(missing, func(member MissingMember) bool { return !member.Enabled })
-	if len(missing) > 0 {
-		return Resources{}, missing, nil, nil
-	}
-	if err := validateDeclaredResourcesFiltered(absoluteRoot, manifest, plugin, filters); err != nil {
+	if err := validateDeclaredEntries(absoluteRoot, manifest, plugin, filters, false); err != nil {
 		return Resources{}, nil, nil, err
 	}
 	var issues []ExtensionIssue
@@ -249,7 +258,7 @@ func ValidateConfiguredForStartupWithResolver(root string, filters map[Kind][]st
 	if err != nil {
 		return Resources{}, nil, nil, err
 	}
-	return resources, nil, issues, nil
+	return resources, missing, issues, nil
 }
 
 // InspectConfigured returns the authored configuration inventory, including
@@ -313,13 +322,17 @@ func configuredMissingMembers(absoluteRoot string, manifest *packageManifest, pl
 			if entry != "" && strings.ContainsRune("+-!", rune(entry[0])) {
 				continue
 			}
+			// Upstream collects a declared path as it exists: a file is itself and
+			// a directory is searched (collectFilesFromPaths in
+			// core/package-manager.ts), so a skills directory that holds several
+			// skills is present even though it has no SKILL.md of its own.
+			candidate := filepath.Join(absoluteRoot, filepath.FromSlash(entry))
 			pattern := entry
 			if kind == Skills && path.Base(pattern) != "SKILL.md" {
 				pattern = path.Join(pattern, "SKILL.md")
 			}
-			candidate := filepath.Join(absoluteRoot, filepath.FromSlash(pattern))
 			missingEntry := false
-			if strings.ContainsAny(pattern, "*?") {
+			if strings.ContainsAny(entry, "*?") {
 				matches, globErr := filepath.Glob(candidate)
 				if globErr != nil {
 					return nil, fmt.Errorf("%s manifest entry %q: %w", kind, declared, globErr)
@@ -574,6 +587,15 @@ func validateDeclaredResources(root string, manifest *packageManifest, plugin *p
 }
 
 func validateDeclaredResourcesFiltered(root string, manifest *packageManifest, plugin *pluginManifest, filters map[Kind][]string) error {
+	return validateDeclaredEntries(root, manifest, plugin, filters, true)
+}
+
+// validateDeclaredEntries checks every declared entry stays inside the
+// Package and that every enabled entry of PiG's own kinds exists. With
+// requireEnabled, an enabled entry of Pi's kinds (extensions, skills, prompts,
+// themes) must exist too; without it one that does not exist is skipped, as
+// upstream's package manager skips it.
+func validateDeclaredEntries(root string, manifest *packageManifest, plugin *pluginManifest, filters map[Kind][]string, requireEnabled bool) error {
 	for _, kind := range []Kind{Extensions, Skills, Prompts, Themes, Agents, MCP, Hooks, AgentEnvironments} {
 		entries := manifestEntries(manifest, kind)
 		if kind == Agents {
@@ -593,7 +615,8 @@ func validateDeclaredResourcesFiltered(root string, manifest *packageManifest, p
 			if kind == Skills && path.Base(resourcePath) != "SKILL.md" {
 				resourcePath = path.Join(resourcePath, "SKILL.md")
 			}
-			requirePresent := !filtered || ResourceEnabled(resourcePath, patterns)
+			piKind := kind == Extensions || kind == Skills || kind == Prompts || kind == Themes
+			requirePresent := (requireEnabled || !piKind) && (!filtered || ResourceEnabled(resourcePath, patterns))
 			if err := validateDeclaredEntry(root, kind, declared, requirePresent); err != nil {
 				return err
 			}

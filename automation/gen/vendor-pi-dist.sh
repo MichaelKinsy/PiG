@@ -11,9 +11,13 @@
 # extension loader:
 # - pi-tui utils.js imports shims/get-east-asian-width and
 #   components/markdown.js shims/marked;
-# - pi-ai utils/json-parse.js imports shims/partial-json, and
+# - pi-ai utils/json-parse.js imports shims/partial-json, and index.js,
 #   utils/validation.js and utils/typebox-helpers.js the TypeBox bundle
 #   (shims/typebox*.mjs, built by vendor-typebox.sh);
+# - pi-ai's builtin API implementations (api/<api>.js, which import the
+#   vendor SDKs) are one-line stubs that load shims/pi-ai-bridge.mjs, so
+#   Pi's lazy wrappers, api registry and compat dispatch run unchanged over
+#   PiG's providers (D74);
 # - pi-coding-agent utils/frontmatter.js imports shims/yaml;
 # - pi-coding-agent core/session-manager.js keeps only its pure section (entry
 #   parsing and migration, context projection, from CURRENT_SESSION_VERSION
@@ -63,12 +67,26 @@ sed 's#^import { eastAsianWidth } from "get-east-asian-width";$#import { eastAsi
 sed 's#^import { Marked, Tokenizer } from "marked";$#import { Marked, Tokenizer } from "../../../marked/lib/marked.esm.js";#' \
   "$tui/dist/components/markdown.js" >"$dist/pi-tui/components/markdown.js"
 
-# pi-ai: everything its index exports except the session-resource registry,
-# whose cleanups Pi's session runs (D73), with the modules it imports.
-copy "$ai/dist" "$dist/pi-ai" \
-  utils/text.js utils/transcript.js utils/diagnostics.js utils/event-stream.js utils/overflow.js utils/retry.js \
-  utils/assistant-message-frame.js utils/abort.js models.js models-store.js images-models.js api/lazy.js \
-  auth/context.js auth/credential-store.js auth/helpers.js auth/resolve.js providers/faux.js utils/uuid.js
+# pi-ai: the whole release (its compat entry is what Pi serves for the pi-ai
+# root), except the builtin API implementations, which are bridge stubs.
+bridged_apis="anthropic-messages azure-openai-responses bedrock-converse-stream google-generative-ai google-vertex mistral-conversations openai-codex-responses openai-completions openai-responses pi-messages"
+sdk_only="google-shared"
+(cd "$ai/dist" && find . \( -name '*.js' -o -path './providers/data/*.json' \) | sed 's#^\./##' | sort) | while read -r file; do
+  case "$file" in
+    utils/json-parse.js | utils/validation.js | utils/typebox-helpers.js | index.js | api/openrouter-images.js) continue ;;
+  esac
+  name=${file#api/}
+  name=${name%.js}
+  if [ "$file" = "api/$name.js" ] && [[ " $bridged_apis $sdk_only " == *" $name "* ]]; then
+    continue
+  fi
+  copy "$ai/dist" "$dist/pi-ai" "$file"
+done
+for api in $bridged_apis; do
+  printf '// PiG: the %s implementation runs in PiG'"'"'s host (D74); see automation/gen/vendor-pi-dist.sh.\nimport { bridgeApi } from "../../../pi-ai-bridge.mjs";\nexport const { stream, streamSimple } = bridgeApi("%s");\n' "$api" "$api" >"$dist/pi-ai/api/$api.js"
+done
+printf '// PiG: image generation has no host provider (D74); see automation/gen/vendor-pi-dist.sh.\nimport { bridgeImages } from "../../../pi-ai-bridge.mjs";\nexport const generateImages = bridgeImages("openrouter-images");\n' >"$dist/pi-ai/api/openrouter-images.js"
+sed 's#^export { Type } from "typebox";$#export { Type } from "../../typebox.mjs";#' "$ai/dist/index.js" >"$dist/pi-ai/index.js"
 sed 's#^import { parse as partialParse } from "partial-json";$#import { parse as partialParse } from "../../../partial-json/dist/index.js";#' \
   "$ai/dist/utils/json-parse.js" >"$dist/pi-ai/utils/json-parse.js"
 sed -e 's#^import { Compile } from "typebox/compile";$#import { Compile } from "../../../typebox-compile.mjs";#' \
@@ -106,6 +124,7 @@ for check in \
   "$dist/pi-ai/utils/validation.js:../../../typebox-compile.mjs" \
   "$dist/pi-ai/utils/validation.js:../../../typebox-value.mjs" \
   "$dist/pi-ai/utils/typebox-helpers.js:../../../typebox.mjs" \
+  "$dist/pi-ai/index.js:../../typebox.mjs" \
   "$dist/pi-coding-agent/utils/frontmatter.js:../../../yaml/index.js"; do
   grep -qF "\"${check#*:}\"" "${check%%:*}" || { echo "vendor-pi-dist: import rewrite failed in ${check%%:*}" >&2; exit 1; }
 done
