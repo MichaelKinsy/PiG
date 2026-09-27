@@ -55,13 +55,15 @@ To sign an existing unsigned tip commit without changing its message:
 git commit --amend -S --no-edit
 ```
 
-To sign every commit on a topic branch, replace `<base>` with its base commit:
+To sign every commit on a linear topic branch (one with no merge commits), replace `<base>` with its base commit:
 
 ```bash
 git rebase --exec 'git commit --amend -S --no-edit' <base>
 ```
 
-These commands rewrite commit IDs. Coordinate with a maintainer before replacing commits already pushed. Keep each DCO sign-off in the commit message. If you cannot set up signing, ask a maintainer to re-sign your commit while keeping you as its author.
+A default rebase drops merge commits, including any conflict resolution they contain, so rebase onto the current `main` first to make the branch linear. These commands rewrite commit IDs. Coordinate with a maintainer before replacing commits already pushed. Keep each DCO sign-off in the commit message.
+
+If you cannot set up signing, say so in the pull request. A maintainer can land your change in a maintainer-signed commit that credits you with a `Co-authored-by:` trailer, which GitHub shows as Verified. Re-signing a commit that keeps you as its author is not enough if your account uses vigilant mode, because GitHub then marks it only Partially verified.
 
 ## Agent-assisted contributions
 
