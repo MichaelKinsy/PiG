@@ -9,6 +9,8 @@ All notable public changes to PiG will be recorded in this file.
 
 ## [Unreleased]
 
+## [0.3.0] - 2026-09-27
+
 ### Terminal UI
 
 - Handle every key of one terminal read before painting, as Pi does. Fast typing such as `/compact` no longer paints each prefix with a stale autocomplete popup, which scrolled the main screen further than Pi.
