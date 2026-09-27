@@ -1,6 +1,8 @@
 package subprocess
 
 import (
+	"errors"
+	"io/fs"
 	"os"
 	"sync"
 )
@@ -33,8 +35,10 @@ func (l *packedStderrLog) remove() {
 	}
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	if !l.retained && !l.removed {
-		_ = os.Remove(l.path)
+	if l.retained || l.removed {
+		return
+	}
+	if err := os.Remove(l.path); err == nil || errors.Is(err, fs.ErrNotExist) {
 		l.removed = true
 	}
 }
