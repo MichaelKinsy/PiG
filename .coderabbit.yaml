@@ -18,6 +18,11 @@ reviews:
     # "@coderabbitai review" on the pull request to request another pass.
     auto_incremental_review: false
     drafts: false
+  path_instructions:
+    - path: "{ai,coding,cmd/pig,internal/codingagent}/**/*.go"
+      instructions: |
+        Flag hard-coded provider/model literals, provider-name branches without Pi citations, and provider-specific copies of Pi's shared functions in shared code.
+        Flag single-provider tests of shared paths and timeouts, retries, or skips that hide failures.
   path_filters:
     # Generated or locked files: reviewing them adds noise, not signal.
     - "!**/package-lock.json"

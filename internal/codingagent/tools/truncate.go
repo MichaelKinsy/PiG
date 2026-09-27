@@ -57,23 +57,23 @@ const (
 //	  outputLines, outputBytes, lastLinePartial, firstLineExceedsLimit,
 //	  maxLines, maxBytes }
 type TruncationResult struct {
-	Content     string
-	Truncated   bool
-	TruncatedBy string // "lines" | "bytes" | ""
-	TotalLines  int
-	TotalBytes  int
-	OutputLines int
-	OutputBytes int
+	Content     string `json:"content"`
+	Truncated   bool   `json:"truncated"`
+	TruncatedBy string `json:"truncatedBy"` // "lines" | "bytes" | ""
+	TotalLines  int    `json:"totalLines"`
+	TotalBytes  int    `json:"totalBytes"`
+	OutputLines int    `json:"outputLines"`
+	OutputBytes int    `json:"outputBytes"`
 	// LastLinePartial: the last line of the original output is the
 	// only one that fit (and was truncated from its end). Bash-only
 	// edge case.
-	LastLinePartial bool
+	LastLinePartial bool `json:"lastLinePartial"`
 	// FirstLineExceedsLimit: head-truncation case where the first line
 	// alone exceeds maxBytes. We return empty content and let the
 	// caller decide.
-	FirstLineExceedsLimit bool
-	MaxLines              int
-	MaxBytes              int
+	FirstLineExceedsLimit bool `json:"firstLineExceedsLimit"`
+	MaxLines              int  `json:"maxLines"`
+	MaxBytes              int  `json:"maxBytes"`
 }
 
 // TruncateTail keeps the last lines/bytes of content. Used for bash

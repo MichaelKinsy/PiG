@@ -42,13 +42,16 @@ type controlTestSocket struct {
 
 func controlDial(t *testing.T, path string) *controlTestSocket {
 	t.Helper()
-	conn, err := net.Dial("unix", path)
+	conn, err := dialTestSocket(path)
 	if err != nil {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 	return &controlTestSocket{conn, bufio.NewReader(conn)}
 }
+
+// isPipeName reports whether path names a Windows named pipe.
+func isPipeName(path string) bool { return strings.HasPrefix(path, `\\.\pipe\`) }
 
 func (s *controlTestSocket) send(t *testing.T, message any) {
 	t.Helper()
@@ -97,13 +100,7 @@ func startTestCoordinator(t *testing.T, oracle bool) (string, string, <-chan str
 	public, control := filepath.Join(dir, "p"), filepath.Join(dir, "c")
 	var done <-chan struct{}
 	if oracle {
-		if runtime.GOOS == "windows" {
-			// Upstream's coordinator listens on the file paths it is given
-			// (coordinator.ts listen), and Node on Windows listens only on
-			// named pipes, failing with EACCES. There is no upstream
-			// coordinator to compare with on Windows.
-			t.Skip("upstream's experimental coordinator cannot listen on Windows: Node listens only on named pipes, not socket file paths")
-		}
+		public, control = oracleListenPath(public), oracleListenPath(control)
 		root, err := filepath.Abs("../..")
 		if err != nil {
 			t.Fatal(err)
@@ -144,12 +141,13 @@ func startTestCoordinator(t *testing.T, oracle bool) (string, string, <-chan str
 	// accept it after a test registers a server and relay it there.
 	deadline := time.Now().Add(10 * time.Second)
 	for {
-		conn, err := net.Dial("unix", public)
+		conn, err := dialTestSocket(public)
 		if err == nil {
 			_ = conn.SetReadDeadline(deadline)
 			_, err = conn.Read(make([]byte, 1))
 			_ = conn.Close()
-			if !errors.Is(err, os.ErrDeadlineExceeded) {
+			var timeout net.Error
+			if !errors.As(err, &timeout) || !timeout.Timeout() {
 				break
 			}
 			t.Fatal("coordinator did not close the startup probe")
@@ -174,6 +172,11 @@ func TestCoordinatorGenerationRouting(t *testing.T) {
 		t.Run(fmt.Sprintf("upstream=%t", oracle), func(t *testing.T) {
 			public, control, done := startTestCoordinator(t, oracle)
 			for _, path := range []string{public, control} {
+				if isPipeName(path) {
+					// A named pipe has no mode bits, and querying one
+					// opens a client connection to it.
+					continue
+				}
 				// Both coordinators restrict the socket with chmod 0600
 				// except on Windows, which has no POSIX mode bits.
 				// coordinator.ts listens, then chmods asynchronously, so a

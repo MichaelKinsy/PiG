@@ -2,7 +2,6 @@ package rpcclient
 
 import (
 	"bytes"
-	"encoding/json"
 	"time"
 )
 
@@ -67,12 +66,11 @@ func (c rpcCommand) marshal(id string) ([]byte, error) {
 }
 
 func encodeJSON(buf *bytes.Buffer, value any) error {
-	enc := json.NewEncoder(buf)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(value); err != nil {
+	line, err := SerializeJsonLine(value)
+	if err != nil {
 		return err
 	}
-	buf.Truncate(buf.Len() - 1) // Encode appends '\n'
+	buf.Write(line[:len(line)-1])
 	return nil
 }
 
