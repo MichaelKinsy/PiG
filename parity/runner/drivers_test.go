@@ -39,6 +39,33 @@ func TestCLIModeDriverRunsEnvLauncherPrograms(t *testing.T) {
 	}
 }
 
+// A scenario's pig_bin or pi_bin may be a script run by its #! line, such as
+// parity/testdata/pi-ai-copilot-wrapper.mjs. Windows runs a file by its
+// extension, so there the driver runs the interpreter that line names.
+func TestCLIModeDriverRunsShebangScriptBins(t *testing.T) {
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Fatal(err)
+	}
+	cwd := t.TempDir()
+	script := filepath.Join(cwd, "fake-bin.mjs")
+	if err := os.WriteFile(script, []byte("#!/usr/bin/env node\nprocess.stdout.write(`script ${process.argv.length} ${process.argv[2]}\\n`);\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, label := range []string{"pig", "pi"} {
+		t.Run(label, func(t *testing.T) {
+			scenario := &Scenario{
+				Name: "shebang-bin", SourcePath: filepath.Join(cwd, "scenario.toml"),
+				Env: EnvOverrides{OverrideBaseArgs: true, PigBin: script, PiBin: script, PigArgs: []string{"arg"}, PiArgs: []string{"arg"}},
+				CLI: CLIDriverConfig{CWD: cwd, TimeoutSeconds: 10},
+			}
+			result := (cliModeDriver{}).Run(t.Context(), t, BinaryRef{Label: label, Path: "unused"}, scenario)
+			if result.Err != nil || result.ExitCode != 0 || result.Output != "script 3 arg\n" {
+				t.Fatalf("output=%q exit code=%d err=%v, want the script's output", result.Output, result.ExitCode, result.Err)
+			}
+		})
+	}
+}
+
 // A scenario's "/usr/bin/env bash script.sh" must run Git for Windows' bash on
 // Windows. exec.LookPath("bash") there usually finds System32\bash.exe, the
 // WSL launcher, which ran the scenario scripts inside a Linux distribution.

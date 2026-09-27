@@ -5,6 +5,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -64,6 +65,18 @@ func effectivePath(environ []string) string {
 }
 
 func (cliModeDriver) Name() string { return "cli-mode" }
+
+// isShebangScript reports whether the file at path starts with a #! line.
+func isShebangScript(path string) bool {
+	file, err := os.Open(path)
+	if err != nil {
+		return false
+	}
+	defer func() { _ = file.Close() }()
+	prefix := make([]byte, 2)
+	n, _ := io.ReadFull(file, prefix)
+	return n == 2 && string(prefix) == "#!"
+}
 
 func (cliModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *Scenario) Result {
 	t.Helper()
@@ -128,6 +141,11 @@ func (cliModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 			return Result{Err: err}
 		}
 		bin.Path, args = program, args[1:]
+	} else if runtime.GOOS == "windows" && scenarioBin != "" && isShebangScript(bin.Path) {
+		// Windows runs a file by its extension, not its #! line; run the
+		// interpreter that line names, as testenv.ScriptCommand does.
+		script := testenv.ScriptCommand(t, bin.Path, args...)
+		bin.Path, args = script.Path, script.Args[1:]
 	}
 
 	timeout := time.Duration(sc.CLI.TimeoutSeconds) * time.Second
