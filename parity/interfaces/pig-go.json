@@ -12488,9 +12488,9 @@
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func() error"
+        "type": "func(orphaned []Task) error"
       },
-      "shapeHash": "sha256:6af1cd6889de8772da28bb1f2998d0262659331d5ba93f6bf1933b49a3efd5e9"
+      "shapeHash": "sha256:2b98adfb28a54453837ecafd6124e41efff3aa0156e02354f7057092b49ee388"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/agent/harness/pico3#Harness.registerInitial",

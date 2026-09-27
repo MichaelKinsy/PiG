@@ -278,6 +278,7 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 3 registrati
 | `cli-utils` | 9 | 9 | 0 | 0 | 0 | 12 | not run |
 | `clipboard-images` | 4 | 4 | 0 | 0 | 2 | 7 | not run |
 | `compaction` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
+| `experimental-pico3` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `export-html` | 5 | 5 | 0 | 0 | 0 | 5 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
 | `extensions-runtime` | 20 | 20 | 0 | 0 | 0 | 21 | not run |
