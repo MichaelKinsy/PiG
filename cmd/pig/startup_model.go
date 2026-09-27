@@ -151,9 +151,9 @@ func findInitialModel(rt *startupModelRuntime, defaultProvider, defaultModelID s
 	if len(available) == 0 {
 		return nil
 	}
-	for _, entry := range defaultModelPerProviderOrder {
+	for _, entry := range codingagent.DefaultModelPerProviderOrder {
 		index := slices.IndexFunc(available, func(model codingagent.RuntimeModel) bool {
-			return model.Provider == entry.provider && model.ID == entry.modelID
+			return model.Provider == entry.Provider && model.ID == entry.ModelID
 		})
 		if index >= 0 {
 			return &available[index]

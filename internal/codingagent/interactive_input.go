@@ -416,18 +416,6 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 		return nil
 	}
 
-	// A background OAuth login (the github-copilot device flow)
-	// polls while the main loop stays live and shows a "Ctrl+C to cancel" hint.
-	// Esc or Ctrl+C aborts that polling window, matching the hint and upstream's
-	// login-dialog abort. This takes priority over the idle clear-editor /
-	// double-Esc handling; cancelActiveLogin is a no-op when no login is active.
-	if action == actionInterrupt || action == actionClearEditor {
-		if m.cancelActiveLogin() {
-			m.tuiInst.Render()
-			return nil
-		}
-	}
-
 	// When the slash-autocomplete popup is open, intercept
 	// Esc (dismiss) and Enter (accept + maybe submit) before the
 	// idle/working state machine sees them. Tab and arrows are

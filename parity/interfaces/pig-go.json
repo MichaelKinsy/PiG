@@ -54898,28 +54898,6 @@
       "shapeHash": "sha256:58fbe3a4996d200865f66d314ee9cb9656e6e1ca9f27a8731a246238b65b708a"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#defaultModelPerProvider",
-      "package": "github.com/MichaelKinsy/PiG/cmd/pig",
-      "name": "defaultModelPerProvider",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() map[string]string"
-      },
-      "shapeHash": "sha256:22f41c934ea78ede7d40353ffae8120c47cfb3814041833b80a2d310cbdb0241"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#defaultModelPerProviderOrder",
-      "package": "github.com/MichaelKinsy/PiG/cmd/pig",
-      "name": "defaultModelPerProviderOrder",
-      "kind": "variable",
-      "exported": false,
-      "shape": {
-        "type": "[]struct{provider string; modelID string}"
-      },
-      "shapeHash": "sha256:89eacde5eeda07981ae2156c5e3fa155d45e1177e886890dcc5fa8a12a9e2cdb"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/cmd/pig#defaultNpmCommand",
       "package": "github.com/MichaelKinsy/PiG/cmd/pig",
       "name": "defaultNpmCommand",
@@ -100383,6 +100361,28 @@
       "shapeHash": "sha256:bd0f147bab5a233565224ebdb2e02ffec5dfe79126bd694247dc2afc9ba756bb"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#DefaultModelPerProvider",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "DefaultModelPerProvider",
+      "kind": "function",
+      "exported": true,
+      "shape": {
+        "type": "func() map[string]string"
+      },
+      "shapeHash": "sha256:22f41c934ea78ede7d40353ffae8120c47cfb3814041833b80a2d310cbdb0241"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#DefaultModelPerProviderOrder",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "DefaultModelPerProviderOrder",
+      "kind": "variable",
+      "exported": true,
+      "shape": {
+        "type": "[]struct{Provider string; ModelID string}"
+      },
+      "shapeHash": "sha256:e69333480f50199bbfdf77fb2845273767633b596010018960319d93f53eb8bf"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#DefaultSkillsDir",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "DefaultSkillsDir",
@@ -101813,6 +101813,17 @@
       "shapeHash": "sha256:5ff06a705a080affeda0e5ef69dd7001b408a6046a1b38ceb726211a605a07a3"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.addPersistedDefaultToNonEmptyScope",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.addPersistedDefaultToNonEmptyScope",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(model *github.com/MichaelKinsy/PiG/ai.Model) error"
+      },
+      "shapeHash": "sha256:deb3ef4c34f31a87645ec6244f9d55ce5428f7fb3458db108954d82ff0cab93e"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.addRemoteTerminalInputHandler",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.addRemoteTerminalInputHandler",
@@ -102000,17 +102011,6 @@
       "shapeHash": "sha256:3e779541da0c5013c1602899e267a1d2dfd647f8294f6e2282be0be5c13d8966"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.beginLogin",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "InteractiveMode.beginLogin",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(cancel context.CancelFunc) int"
-      },
-      "shapeHash": "sha256:a303216ac60cf600820723696a2951f5aa94f02e4ae7d286200e1c39be69b1e8"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.bindExtensionCommandActions",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.bindExtensionCommandActions",
@@ -102099,17 +102099,6 @@
       "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.cancelActiveLogin",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "InteractiveMode.cancelActiveLogin",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func() bool"
-      },
-      "shapeHash": "sha256:f632619397f10a7f0e472ad47d2824ec7e080d15ac9eb0994e24800757b3fb96"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.checkPromptCompaction",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.checkPromptCompaction",
@@ -102165,15 +102154,15 @@
       "shapeHash": "sha256:9f921b0d645d262778fe26bdf2928fddc34adea94eefae075778b323fc6302de"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.completeLlamaAuthentication",
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.completeProviderAuthentication",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "InteractiveMode.completeLlamaAuthentication",
+      "name": "InteractiveMode.completeProviderAuthentication",
       "kind": "function",
       "exported": false,
       "shape": {
-        "type": "func(providerName string)"
+        "type": "func(providerID string, providerName string, authType github.com/MichaelKinsy/PiG/ai.CredentialType, previousModel *github.com/MichaelKinsy/PiG/ai.Model)"
       },
-      "shapeHash": "sha256:c87490916dc17eef515870ce120ef28dfb58cc39fca21aa7a638d686309c55d5"
+      "shapeHash": "sha256:0c3fa947b7136aa23204f345f6a0de07d73bd846600ca24659c02d45e27e0c58"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.confirmMessageCopied",
@@ -102407,17 +102396,6 @@
       "shapeHash": "sha256:032e891204f123caf14d3d421fa9728efc3f31299c17e98859c219dccddd74fb"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.endLogin",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "InteractiveMode.endLogin",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(token int)"
-      },
-      "shapeHash": "sha256:30c7537a7d38bfe82d76dd6cf208e518fb1b883fd3c94ce19885a241d3478d5e"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.enqueueIfTurnActive",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.enqueueIfTurnActive",
@@ -102537,6 +102515,17 @@
         "type": "func(goos string, updates []string)"
       },
       "shapeHash": "sha256:8142021d39d91c1492b10bf36bc4fbc6e8566ea4c017404ad50c934b52185fad"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.finishProviderAuthentication",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "InteractiveMode.finishProviderAuthentication",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, actionLabel string, previousModel *github.com/MichaelKinsy/PiG/ai.Model, after func())"
+      },
+      "shapeHash": "sha256:c6b2bb10b05fb8e8d59a1bf94e8cf80d00fa1f2cf40c848709f747507a50e683"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.finishUserBash",
@@ -103430,17 +103419,6 @@
       "shapeHash": "sha256:37478fdf5e8948aa8a01a8ab0577b707b1b1512f6963742ab3ae9050136efefc"
     },
     {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.refreshCatalogAfterLogin",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "InteractiveMode.refreshCatalogAfterLogin",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(providerID string, actionLabel string)"
-      },
-      "shapeHash": "sha256:eb7defaddeb439dc6fd27d908a35ecbdaad134997b10ea1521fa272d13fceac7"
-    },
-    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.refreshFooterContextUsage",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "InteractiveMode.refreshFooterContextUsage",
@@ -103835,17 +103813,6 @@
         "type": "func(bridge *llamaUIBridge, factory func(requestRender func(), done func()) github.com/MichaelKinsy/PiG/internal/codingagent/llama.CustomComponent)"
       },
       "shapeHash": "sha256:adab5dac4071b9812167d02eff4a895f619945e32d9d8d6341bedce217a4598f"
-    },
-    {
-      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.runLoginGitHubCopilot",
-      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
-      "name": "InteractiveMode.runLoginGitHubCopilot",
-      "kind": "function",
-      "exported": false,
-      "shape": {
-        "type": "func(loginCtx context.Context) error"
-      },
-      "shapeHash": "sha256:34958c5d7ff03b920280bbc3f9ac85d70eb47667f7388a9640e747ada3de6bb0"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#InteractiveMode.runLoginGitHubCopilotDialog",
@@ -117136,6 +117103,17 @@
       "shapeHash": "sha256:a850009ecea9bdb6c51f1629d26dc56f16a1a4c544ed10743cfe89f53333f790"
     },
     {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#isUnknownModel",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "isUnknownModel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(model *github.com/MichaelKinsy/PiG/ai.Model) bool"
+      },
+      "shapeHash": "sha256:9696b15930fe4323f453a7a903e8d9c05a77cd6492ec37f56f3467588b8109df"
+    },
+    {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#isWaylandSession",
       "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
       "name": "isWaylandSession",
@@ -120071,6 +120049,17 @@
         "type": "func(runner cmdRunner) []string"
       },
       "shapeHash": "sha256:def31e3a32ac2c8684fc6bc8e335a969c0de794eafbdd8a933672e3f97140cc1"
+    },
+    {
+      "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#postLoginModel",
+      "package": "github.com/MichaelKinsy/PiG/internal/codingagent",
+      "name": "postLoginModel",
+      "kind": "function",
+      "exported": false,
+      "shape": {
+        "type": "func(providerID string, actionLabel string, models []github.com/MichaelKinsy/PiG/tui.ModelSelectorItem) (string, string)"
+      },
+      "shapeHash": "sha256:cc565b7d461ed1a695c7f6e64f4c5e05564c348a076912a0b297a643397d084e"
     },
     {
       "id": "go:github.com/MichaelKinsy/PiG/internal/codingagent#preferredThemeName",

@@ -213,15 +213,26 @@ func (m *InteractiveMode) probeOAuthCopilot() (string, error) {
 }
 
 func loginGitHubCopilotForParity(ctx context.Context, cb ai.CopilotLoginCallbacks) (ai.Credential, error) {
-	if os.Getenv("PIG_PARITY_LOGIN_DIALOG") != "1" {
+	mode := os.Getenv("PIG_PARITY_LOGIN_DIALOG")
+	if mode != "1" && mode != "complete" {
 		return ai.LoginGitHubCopilot(ctx, cb)
 	}
 	return withMockDefaultClient(func(req *http.Request) (*http.Response, error) {
 		switch {
 		case req.URL.Host == "github.com" && req.URL.Path == "/login/device/code":
+			if mode == "complete" {
+				return jsonResponse(200, `{"device_code":"dialog-device","user_code":"ABCD-EFGH","verification_uri":"https://github.com/login/device","interval":0,"expires_in":60}`), nil
+			}
 			return jsonResponse(200, `{"device_code":"dialog-device","user_code":"ABCD-EFGH","verification_uri":"https://github.com/login/device","interval":30,"expires_in":60}`), nil
 		case req.URL.Host == "github.com" && req.URL.Path == "/login/oauth/access_token":
+			if mode == "complete" {
+				return jsonResponse(200, `{"access_token":"ghu_parity"}`), nil
+			}
 			return jsonResponse(200, `{"error":"authorization_pending"}`), nil
+		case mode == "complete" && req.URL.Host == "api.github.com" && req.URL.Path == "/copilot_internal/v2/token":
+			return jsonResponse(200, `{"token":"tid=parity;proxy-ep=proxy.individual.githubcopilot.com","expires_at":4102444800}`), nil
+		case mode == "complete" && req.URL.Host == "api.individual.githubcopilot.com" && req.URL.Path == "/models":
+			return jsonResponse(200, `{"data":[{"id":"gpt-5.4","name":"GPT-5.4","model_picker_enabled":true,"policy":{"state":"enabled"},"capabilities":{"type":"chat","family":"gpt-5.4","supports":{"tool_calls":true},"limits":{"max_context_window_tokens":1000000,"max_output_tokens":32768}}}]}`), nil
 		default:
 			return nil, fmt.Errorf("unexpected login-dialog request: %s %s", req.Method, req.URL.String())
 		}

@@ -42,8 +42,8 @@ func TestDefaultModelPerProviderMatchesPinnedUpstream(t *testing.T) {
 		wantOrder = append(wantOrder, match[1])
 	}
 	var gotOrder []string
-	for _, entry := range defaultModelPerProviderOrder {
-		gotOrder = append(gotOrder, entry.provider)
+	for _, entry := range codingagent.DefaultModelPerProviderOrder {
+		gotOrder = append(gotOrder, entry.Provider)
 	}
 	if !slices.Equal(gotOrder, wantOrder) {
 		t.Fatalf("defaultModelPerProviderOrder providers = %v\nwant pinned Pi declaration order %v", gotOrder, wantOrder)
@@ -51,7 +51,7 @@ func TestDefaultModelPerProviderMatchesPinnedUpstream(t *testing.T) {
 	if len(want) == 0 {
 		t.Fatal("no defaultModelPerProvider entries parsed from pinned Pi model-resolver.ts")
 	}
-	if got := defaultModelPerProvider(); !maps.Equal(got, want) {
+	if got := codingagent.DefaultModelPerProvider(); !maps.Equal(got, want) {
 		t.Fatalf("defaultModelPerProvider() = %v\nwant pinned Pi table %v", got, want)
 	}
 }

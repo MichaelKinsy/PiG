@@ -40,7 +40,7 @@ func (m *InteractiveMode) availableModelItems() []tui.ModelSelectorItem {
 	return items
 }
 
-// persistDefaultModel adds an explicitly saved default to a nonempty model scope, as AgentSession._addPersistedDefaultToNonEmptyScope does.
+// persistDefaultModel saves the explicit default and adds it to a nonempty model scope.
 func (m *InteractiveMode) persistDefaultModel(model *ai.Model) error {
 	spec := modelSpec(model)
 	provider, _, _ := strings.Cut(spec, "/")
@@ -49,6 +49,11 @@ func (m *InteractiveMode) persistDefaultModel(model *ai.Model) error {
 			return err
 		}
 	}
+	return m.addPersistedDefaultToNonEmptyScope(model)
+}
+
+func (m *InteractiveMode) addPersistedDefaultToNonEmptyScope(model *ai.Model) error {
+	spec := modelSpec(model)
 	if len(m.scopedModelIDs) == 0 || slices.Contains(m.scopedModelIDs, spec) || slices.Contains(m.scopedModelIDs, model.ID) {
 		return nil
 	}

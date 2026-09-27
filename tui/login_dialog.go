@@ -92,6 +92,11 @@ func (d *LoginDialog) ShowInput(prompt, placeholder string) <-chan string {
 	d.inputCh = make(chan string, 1)
 	d.input = NewInput(InputOptions{})
 	d.input.OnSubmit = func(value string) {
+		d.lines = append(d.lines, "", " "+d.inputPrompt)
+		if d.inputPlaceholder != "" {
+			d.lines = append(d.lines, " e.g., "+d.inputPlaceholder)
+		}
+		d.lines = append(d.lines, "> "+value, " (escape/ctrl+c to cancel, enter to submit)")
 		if d.inputCh != nil {
 			d.inputCh <- value
 			close(d.inputCh)

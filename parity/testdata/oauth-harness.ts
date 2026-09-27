@@ -80,15 +80,22 @@ const withMockFetch = async <T>(handler: (url: URL, init?: RequestInit) => Promi
 };
 
 const installLoginDialogFetch = () => {
-  if (process.env.PI_PARITY_LOGIN_DIALOG !== "1") return;
+  const mode = process.env.PI_PARITY_LOGIN_DIALOG;
+  if (mode !== "1" && mode !== "complete") return;
   const oldFetch = globalThis.fetch;
   globalThis.fetch = async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = new URL(typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url);
     if (url.hostname === "github.com" && url.pathname === "/login/device/code") {
-      return jsonResponse(200, { device_code: "dialog-device", user_code: "ABCD-EFGH", verification_uri: "https://github.com/login/device", interval: 30, expires_in: 60 });
+      return jsonResponse(200, { device_code: "dialog-device", user_code: "ABCD-EFGH", verification_uri: "https://github.com/login/device", interval: mode === "complete" ? 0 : 30, expires_in: 60 });
     }
     if (url.hostname === "github.com" && url.pathname === "/login/oauth/access_token") {
-      return jsonResponse(200, { error: "authorization_pending" });
+      return jsonResponse(200, mode === "complete" ? { access_token: "ghu_parity" } : { error: "authorization_pending" });
+    }
+    if (mode === "complete" && url.hostname === "api.github.com" && url.pathname === "/copilot_internal/v2/token") {
+      return jsonResponse(200, { token: "tid=parity;proxy-ep=proxy.individual.githubcopilot.com", expires_at: 4102444800 });
+    }
+    if (mode === "complete" && url.hostname === "api.individual.githubcopilot.com" && url.pathname === "/models") {
+      return jsonResponse(200, { data: [{ id: "gpt-5.4", name: "GPT-5.4", model_picker_enabled: true, policy: { state: "enabled" }, capabilities: { type: "chat", family: "gpt-5.4", supports: { tool_calls: true }, limits: { max_context_window_tokens: 1000000, max_output_tokens: 32768 } } }] });
     }
     return oldFetch(input, init);
   };

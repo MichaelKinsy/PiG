@@ -61,7 +61,7 @@ func TestResolveModel_UnknownUnderProvider_FallsBackAndWarns(t *testing.T) {
 	if model.ID != "gpt-4o" || model.DisplayName != "gpt-4o" {
 		t.Errorf("model id/name = %q/%q, want gpt-4o/gpt-4o", model.ID, model.DisplayName)
 	}
-	copilotDefault, ok := ai.LookupModelExact("github-copilot/" + defaultModelPerProvider()["github-copilot"])
+	copilotDefault, ok := ai.LookupModelExact("github-copilot/" + codingagent.DefaultModelPerProvider()["github-copilot"])
 	if !ok {
 		t.Fatal("copilot default model missing from catalog")
 	}

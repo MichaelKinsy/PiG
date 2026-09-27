@@ -79,6 +79,41 @@ func TestLoginDialog_InputSubmit(t *testing.T) {
 	}
 }
 
+func TestLoginDialog_SubmittedInputRemainsVisible(t *testing.T) {
+	// Pi login-dialog.ts:59-61,77-81 replaces only the input with Text("> <value>").
+	dlg := NewLoginDialog("Test", nil)
+	ch := dlg.ShowInput("Paste URL:", "redirect URL")
+	dlg.HandleInput("https://example.test/callback?code=hello")
+	dlg.HandleInput("\r")
+	<-ch
+	dlg.ShowProgress("Exchanging code...")
+	got := strings.Join(dlg.Render(120), "\n")
+	for _, want := range []string{"Paste URL:", "e.g., redirect URL", "> https://example.test/callback?code=hello", "to submit)", "Exchanging code..."} {
+		if !strings.Contains(got, want) {
+			t.Errorf("missing %q after submit:\n%s", want, got)
+		}
+	}
+	if strings.Index(got, "> https:") > strings.Index(got, "Exchanging code...") {
+		t.Fatal("submitted text moved after progress")
+	}
+}
+
+func TestLoginDialog_BracketedPasteReachesInput(t *testing.T) {
+	dlg := NewLoginDialog("Test", nil)
+	ch := dlg.ShowInput("Paste URL:", "")
+	const value = "https://example.test/callback?code=pasted&state=ok"
+	dlg.HandleInput("\x1b[200~" + value + "\x1b[201~")
+	select {
+	case <-ch:
+		t.Fatal("paste submitted before Enter")
+	default:
+	}
+	dlg.HandleInput("\r")
+	if got := <-ch; got != value {
+		t.Fatalf("paste = %q, want %q", got, value)
+	}
+}
+
 func TestLoginDialog_CancelClosesPendingInputChannel(t *testing.T) {
 	dlg := NewLoginDialog("Test", nil)
 	ch := dlg.ShowInput("Paste URL:", "")

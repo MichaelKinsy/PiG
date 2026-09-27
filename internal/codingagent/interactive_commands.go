@@ -1134,13 +1134,9 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			}
 			return "oauth", true
 		},
-		Login: func(loginCtx context.Context, provider string) error {
-			if provider == "github-copilot" {
-				return m.runLoginGitHubCopilotDialog(loginCtx)
-			}
-			return m.runOAuthLogin(loginCtx, provider)
-		},
+		Login: m.runOAuthLogin,
 		SetAPIKey: func(provider, value string) error {
+			previousModel := m.opts.Model
 			auth, err := ai.NewAuthStorage(filepath.Join(m.opts.AgentDir, "auth.json"))
 			if err != nil {
 				return fmt.Errorf("auth storage: %w", err)
@@ -1151,9 +1147,7 @@ func (m *InteractiveMode) buildSlashContext(ctx context.Context) *SlashContext {
 			if m.opts.ModelRegistry != nil {
 				m.opts.ModelRegistry.Refresh()
 			}
-			m.updateProviderInfo()
-			m.showStatus(fmt.Sprintf("Configured API key for %s", buildAuthProviderName(provider)))
-			m.refreshCatalogAfterLogin(provider, "Saved API key for "+buildAuthProviderName(provider))
+			m.completeProviderAuthentication(provider, buildAuthProviderName(provider), ai.CredentialAPIKey, previousModel)
 			return nil
 		},
 		ShowTextInput: func(title, placeholder string) (string, bool) {
