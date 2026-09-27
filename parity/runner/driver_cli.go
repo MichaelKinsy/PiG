@@ -7,7 +7,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -22,18 +24,43 @@ type cliModeDriver struct{}
 // the driver looks PROGRAM up on PATH itself.
 const posixEnvLauncher = "/usr/bin/env"
 
-// envLauncherProgram finds the program /usr/bin/env would run on Windows. bash
-// and sh are Git for Windows' shells: bash.exe on PATH is usually the WSL
-// launcher, which runs the script in a Linux distribution without the host's
-// toolchains or files.
-func envLauncherProgram(t *testing.T, name string) (string, error) {
+// envLauncherProgram finds the program /usr/bin/env would run on Windows,
+// searching the child's effective PATH as env does. bash and sh are Git for
+// Windows' shells: bash.exe on PATH is usually the WSL launcher, which runs the
+// script in a Linux distribution without the host's toolchains or files.
+func envLauncherProgram(t *testing.T, name, pathList string) (string, error) {
 	switch name {
 	case "bash":
 		return testenv.Bash(t), nil
 	case "sh":
 		return testenv.Sh(t), nil
 	}
-	return exec.LookPath(name)
+	return lookPathIn(name, pathList)
+}
+
+// lookPathIn resolves name against pathList instead of the runner's own PATH.
+func lookPathIn(name, pathList string) (string, error) {
+	for _, dir := range filepath.SplitList(pathList) {
+		if dir == "" {
+			continue
+		}
+		if path, err := exec.LookPath(filepath.Join(dir, name)); err == nil {
+			return path, nil
+		}
+	}
+	return "", fmt.Errorf("%s: not found on the scenario PATH", name)
+}
+
+// effectivePath returns the PATH a child started with environ sees: the last
+// assignment wins, matched case-insensitively as on Windows.
+func effectivePath(environ []string) string {
+	value := ""
+	for _, kv := range environ {
+		if key, v, ok := strings.Cut(kv, "="); ok && strings.EqualFold(key, "PATH") {
+			value = v
+		}
+	}
+	return value
 }
 
 func (cliModeDriver) Name() string { return "cli-mode" }
@@ -96,7 +123,7 @@ func (cliModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 		if len(args) == 0 {
 			return Result{Err: fmt.Errorf("%s names no program to run", posixEnvLauncher)}
 		}
-		program, err := envLauncherProgram(t, args[0])
+		program, err := envLauncherProgram(t, args[0], effectivePath(append(hermeticEnviron(), env...)))
 		if err != nil {
 			return Result{Err: err}
 		}

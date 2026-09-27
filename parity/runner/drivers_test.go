@@ -44,7 +44,7 @@ func TestCLIModeDriverRunsEnvLauncherPrograms(t *testing.T) {
 // WSL launcher, which ran the scenario scripts inside a Linux distribution.
 func TestEnvLauncherShellsAreTheRepositoryShells(t *testing.T) {
 	for name, want := range map[string]string{"bash": testenv.Bash(t), "sh": testenv.Sh(t)} {
-		got, err := envLauncherProgram(t, name)
+		got, err := envLauncherProgram(t, name, os.Getenv("PATH"))
 		if err != nil || got != want {
 			t.Fatalf("envLauncherProgram(%s) = %q, %v; want %q", name, got, err, want)
 		}
