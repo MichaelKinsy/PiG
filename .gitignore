@@ -44,6 +44,8 @@ Thumbs.db
 /.netrc
 /.pypirc
 *.pem
+# The public key that verifies signed self-update manifests (docs/project/RELEASING.md).
+!automation/release/update-trust.pem
 *.key
 *.p12
 *.pfx

@@ -261,3 +261,61 @@ func TestInstallShRejectsAVersionThatIsNotSemVer(t *testing.T) {
 	f := newInstallFixture(t)
 	assertFailure(t, f.run(t, "PIG_VERSION=latest;rm"), "not a release version")
 }
+
+func TestInstallShRecordsAnOwnerOnlyReceiptForPigUpdate(t *testing.T) {
+	for name, env := range map[string][]string{
+		"default":         nil,
+		"PIG_HOME":        {"PIG_HOME=CUSTOM"},
+		"XDG_CONFIG_HOME": {"XDG_CONFIG_HOME=CUSTOM"},
+		"PIG_UPDATE_URL":  {"PIG_UPDATE_URL=https://updates.example/pig/update.json"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			f := newInstallFixture(t)
+			custom := filepath.Join(f.root, "custom-config")
+			var extra []string
+			for _, e := range env {
+				extra = append(extra, strings.Replace(e, "CUSTOM", custom, 1))
+			}
+			got := f.run(t, extra...)
+			if got.status != 0 {
+				t.Fatalf("status %d:\n%s", got.status, got.stderr)
+			}
+			receiptPath := filepath.Join(f.home, ".pig", "install-receipt")
+			switch name {
+			case "PIG_HOME":
+				receiptPath = filepath.Join(custom, "install-receipt")
+			case "XDG_CONFIG_HOME":
+				receiptPath = filepath.Join(custom, "pig", "install-receipt")
+			}
+			info, err := os.Stat(receiptPath)
+			if err != nil {
+				t.Fatalf("no install receipt: %v\n%s", err, got.stdout)
+			}
+			if info.Mode().Perm() != 0o600 {
+				t.Fatalf("receipt mode = %o, want 600", info.Mode().Perm())
+			}
+			exe, err := filepath.EvalSymlinks(filepath.Join(f.installDir, "pig"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			installed, err := os.ReadFile(exe)
+			if err != nil {
+				t.Fatal(err)
+			}
+			sum := sha256.Sum256(installed)
+			source := "https://github.com/MichaelKinsy/PiG/releases/latest/download/update.json"
+			if name == "PIG_UPDATE_URL" {
+				source = "https://updates.example/pig/update.json"
+			}
+			want := "kind=standalone\nexecutable=" + exe + "\npig-version=" + installVersion +
+				"\nsha256=" + hex.EncodeToString(sum[:]) + "\nupdate-source=" + source + "\n"
+			data, err := os.ReadFile(receiptPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(data) != want {
+				t.Fatalf("receipt =\n%s\nwant\n%s", data, want)
+			}
+		})
+	}
+}
