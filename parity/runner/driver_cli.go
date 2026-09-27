@@ -4,13 +4,37 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // cliModeDriver runs `<bin> [base args] [cli.args...]` and captures combined output + exit code through a regular file. Used for flag-only invocations like --list-models, --version, --diagnose, etc. that exit immediately.
 type cliModeDriver struct{}
+
+// posixEnvLauncher is the pig_bin or pi_bin that runs a PATH program such as
+// go or node: /usr/bin/env PROGRAM ARGS. Windows has no /usr/bin/env, so there
+// the driver looks PROGRAM up on PATH itself.
+const posixEnvLauncher = "/usr/bin/env"
+
+// envLauncherProgram finds the program /usr/bin/env would run on Windows. bash
+// and sh are Git for Windows' shells: bash.exe on PATH is usually the WSL
+// launcher, which runs the script in a Linux distribution without the host's
+// toolchains or files.
+func envLauncherProgram(t *testing.T, name string) (string, error) {
+	switch name {
+	case "bash":
+		return testenv.Bash(t), nil
+	case "sh":
+		return testenv.Sh(t), nil
+	}
+	return exec.LookPath(name)
+}
 
 func (cliModeDriver) Name() string { return "cli-mode" }
 
@@ -19,11 +43,16 @@ func (cliModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 
 	// Allocate per-binary tempdir for {{TEMP}} substitution.
 	tc := newTokenContext(t, "cli-"+sc.Name+"-"+bin.Label)
+	scenarioBin := ""
 	if bin.Label == "pig" && sc.Env.PigBin != "" {
-		bin.Path = resolveScenarioCWD(sc.SourcePath, tc.expand(sc.Env.PigBin))
+		scenarioBin = tc.expand(sc.Env.PigBin)
 	}
 	if bin.Label == "pi" && sc.Env.PiBin != "" {
-		bin.Path = resolveScenarioCWD(sc.SourcePath, tc.expand(sc.Env.PiBin))
+		scenarioBin = tc.expand(sc.Env.PiBin)
+	}
+	envLauncher := runtime.GOOS == "windows" && scenarioBin == posixEnvLauncher
+	if scenarioBin != "" && !envLauncher {
+		bin.Path = resolveScenarioCWD(sc.SourcePath, scenarioBin)
 	}
 
 	// Snapshot agent dirs so binary writes never mutate committed testdata.
@@ -62,6 +91,17 @@ func (cliModeDriver) Run(ctx context.Context, t *testing.T, bin BinaryRef, sc *S
 		cliArgs = sc.CLI.PiArgs
 	}
 	args = append(args, tc.expandSlice(cliArgs)...)
+	if envLauncher {
+		// Run the program named by the first argument from PATH, as env does.
+		if len(args) == 0 {
+			return Result{Err: fmt.Errorf("%s names no program to run", posixEnvLauncher)}
+		}
+		program, err := envLauncherProgram(t, args[0])
+		if err != nil {
+			return Result{Err: err}
+		}
+		bin.Path, args = program, args[1:]
+	}
 
 	timeout := time.Duration(sc.CLI.TimeoutSeconds) * time.Second
 	if timeout <= 0 {

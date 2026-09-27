@@ -11,7 +11,45 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
+
+// Scenarios run a PATH program through /usr/bin/env: pig_bin = "/usr/bin/env"
+// with args ["node", script]. Windows has no /usr/bin/env, so the driver runs
+// the program as env does instead of looking for usr\bin\env in the scenario.
+func TestCLIModeDriverRunsEnvLauncherPrograms(t *testing.T) {
+	if _, err := exec.LookPath("node"); err != nil {
+		t.Fatal(err)
+	}
+	for _, label := range []string{"pig", "pi"} {
+		t.Run(label, func(t *testing.T) {
+			cwd := t.TempDir()
+			args := []string{"node", "-e", `process.stdout.write("launched " + process.argv.length + "\n")`}
+			scenario := &Scenario{
+				Name: "env-launcher", SourcePath: filepath.Join(cwd, "scenario.toml"),
+				Env: EnvOverrides{OverrideBaseArgs: true, PigBin: "/usr/bin/env", PiBin: "/usr/bin/env", PigArgs: args, PiArgs: args},
+				CLI: CLIDriverConfig{CWD: cwd, TimeoutSeconds: 10},
+			}
+			result := (cliModeDriver{}).Run(t.Context(), t, BinaryRef{Label: label, Path: "unused"}, scenario)
+			if result.Err != nil || result.ExitCode != 0 || result.Output != "launched 1\n" {
+				t.Fatalf("output=%q exit code=%d err=%v, want node's output through the env launcher", result.Output, result.ExitCode, result.Err)
+			}
+		})
+	}
+}
+
+// A scenario's "/usr/bin/env bash script.sh" must run Git for Windows' bash on
+// Windows. exec.LookPath("bash") there usually finds System32\bash.exe, the
+// WSL launcher, which ran the scenario scripts inside a Linux distribution.
+func TestEnvLauncherShellsAreTheRepositoryShells(t *testing.T) {
+	for name, want := range map[string]string{"bash": testenv.Bash(t), "sh": testenv.Sh(t)} {
+		got, err := envLauncherProgram(t, name)
+		if err != nil || got != want {
+			t.Fatalf("envLauncherProgram(%s) = %q, %v; want %q", name, got, err, want)
+		}
+	}
+}
 
 // Pi's main.ts exits immediately after listModels logs its table. Node writes
 // asynchronously to pipes on POSIX, so the CLI comparator must not lose queued
