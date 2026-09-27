@@ -283,26 +283,27 @@ func TestInteractiveMode_SubmitAtFileRendersAndSendsLiteralToken(t *testing.T) {
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
 	m.statusLine = NewStatusLine(model, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	events := make(chan agent.AgentEvent, 256)
+	m.agent = agent.NewAgent(agent.AgentOptions{Model: model, EventCh: events})
 	m.abortCtx = context.Background()
 	m.abortFn = func() {}
 
 	input := "@attached.txt reply with exactly: ok"
 	m.handleSubmit(context.Background(), input)
 
+	var opts capturedStreamRequest
+	select {
+	case opts = <-seen:
+	case <-time.After(2 * time.Second):
+		t.Fatal("provider was not called")
+	}
+	handleUserMessageStart(t, m, events)
 	rendered := strings.Join(m.chatContainer.Render(100), "\n")
 	if !strings.Contains(rendered, input) {
 		t.Fatalf("rendered user message should keep @file token; got:\n%s", rendered)
 	}
 	if strings.Contains(rendered, "INLINE_FILE_PAYLOAD") || strings.Contains(rendered, "<file name=") {
 		t.Fatalf("rendered user message expanded @file content; got:\n%s", rendered)
-	}
-
-	var opts capturedStreamRequest
-	select {
-	case opts = <-seen:
-	case <-time.After(2 * time.Second):
-		t.Fatal("provider was not called")
 	}
 	got := lastUserMessageText(t, opts.Messages)
 	if got != input {
@@ -772,31 +773,6 @@ func TestInteractiveMode_RendersSteeredUserMessageFromAgentEvent(t *testing.T) {
 	}
 }
 
-func TestInteractiveMode_SkipsAlreadyRenderedPromptMessageEvent(t *testing.T) {
-	chat := tui.NewContainer()
-	m := &InteractiveMode{
-		chatContainer:            chat,
-		tuiInst:                  tui.NewWithOutput(io.Discard, 120, 40),
-		pendingMessagesContainer: tui.NewContainer(),
-		agent:                    agent.NewAgent(agent.AgentOptions{}),
-		skipNextUserMessageText:  "already shown",
-	}
-	chat.Add(tui.NewUserMessageBlock("already shown"))
-	msg := agent.AgentMessage{User: &agent.UserMessage{
-		Role:    agent.RoleUser,
-		Content: []ai.UserContentBlock{ai.TextContent{Text: "already shown"}},
-	}}
-
-	m.handleAgentEvent(agent.MessageStartEvent{Message: msg})
-
-	if got := chat.ChildCount(); got != 1 {
-		t.Fatalf("already-rendered prompt was duplicated; child count=%d", got)
-	}
-	if m.skipNextUserMessageText != "" {
-		t.Fatalf("skip marker was not consumed: %q", m.skipNextUserMessageText)
-	}
-}
-
 func TestInteractiveMode_RendersProviderErrorInAssistantBlock(t *testing.T) {
 	chat := tui.NewContainer()
 	m := &InteractiveMode{
@@ -1132,7 +1108,9 @@ func TestInteractiveMode_ManualCompactionCancellationPersistsInConversation(t *t
 // slashes forwarded to the LLM) is queued. Before the fix the gate queued every
 // non-bash input, so "/session" showed up as a "Steering:" message and stalled
 // until compaction finished.
-func TestInteractiveMode_RendersPromptBeforeBeforeAgentStartHook(t *testing.T) {
+// Upstream renders the prompt from the agent's message_start event, which
+// prompt() reaches only after every before_agent_start handler completes.
+func TestInteractiveMode_RendersPromptAfterBeforeAgentStartHook(t *testing.T) {
 	dir := t.TempDir()
 	seen := make(chan capturedStreamRequest, 1)
 	provider := captureStreamOptionsProvider{seen: seen}
@@ -1158,24 +1136,24 @@ func TestInteractiveMode_RendersPromptBeforeBeforeAgentStartHook(t *testing.T) {
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
 	m.editor = tui.NewEditor()
 	m.statusLine = NewStatusLine(model, "", nil)
-	m.agent = agent.NewAgent(agent.AgentOptions{Model: model})
+	events := make(chan agent.AgentEvent, 256)
+	m.agent = agent.NewAgent(agent.AgentOptions{Model: model, EventCh: events})
 	m.newRunner = fresh
 	m.runCtx = context.Background()
 	m.abortCtx = context.Background()
 	m.abortFn = func() {}
 
-	m.handleSubmit(context.Background(), "render before hook")
+	m.handleSubmit(context.Background(), "render after hook")
 
-	rendered := strings.Join(m.chatContainer.Render(100), "\n")
-	if !strings.Contains(rendered, "render before hook") {
-		close(unblock)
-		t.Fatalf("prompt did not render before before_agent_start blocked; got:\n%s", rendered)
-	}
 	select {
 	case <-started:
 	case <-time.After(2 * time.Second):
 		close(unblock)
 		t.Fatal("before_agent_start did not run")
+	}
+	if rendered := strings.Join(m.chatContainer.Render(100), "\n"); strings.Contains(rendered, "render after hook") {
+		close(unblock)
+		t.Fatalf("prompt rendered while before_agent_start was still running; got:\n%s", rendered)
 	}
 	select {
 	case <-seen:
@@ -1186,11 +1164,33 @@ func TestInteractiveMode_RendersPromptBeforeBeforeAgentStartHook(t *testing.T) {
 	close(unblock)
 	select {
 	case opts := <-seen:
-		if got := lastUserMessageText(t, opts.Messages); got != "render before hook" {
+		if got := lastUserMessageText(t, opts.Messages); got != "render after hook" {
 			t.Fatalf("provider prompt = %q", got)
 		}
 	case <-time.After(2 * time.Second):
 		t.Fatal("provider was not called after before_agent_start completed")
+	}
+	handleUserMessageStart(t, m, events)
+	if rendered := strings.Join(m.chatContainer.Render(100), "\n"); !strings.Contains(rendered, "render after hook") {
+		t.Fatalf("prompt did not render from message_start; got:\n%s", rendered)
+	}
+}
+
+// handleUserMessageStart feeds the agent's first user message_start event to
+// the mode, as the interactive event loop does.
+func handleUserMessageStart(t *testing.T, m *InteractiveMode, events <-chan agent.AgentEvent) {
+	t.Helper()
+	deadline := time.After(2 * time.Second)
+	for {
+		select {
+		case event := <-events:
+			if start, ok := event.(agent.MessageStartEvent); ok && start.Message.User != nil {
+				m.handleAgentEvent(start)
+				return
+			}
+		case <-deadline:
+			t.Fatal("agent emitted no user message_start")
+		}
 	}
 }
 
@@ -2259,17 +2259,5 @@ func TestDeliverUserMessageQueuesWhileATurnIsRunning(t *testing.T) {
 		t.Fatalf("started a concurrent turn while one was running: %q",
 			lastUserMessageText(t, opts.Messages))
 	case <-time.After(200 * time.Millisecond):
-	}
-}
-
-func TestCompactStartupResourceSectionListsNames(t *testing.T) {
-	var banner strings.Builder
-	appendCompactResourceSection(&banner, "Skills", []string{"zeta", "alpha"})
-	got := banner.String()
-	if got != "**[Skills]**  alpha, zeta\n" {
-		t.Fatalf("compact resource section = %q", got)
-	}
-	if strings.Contains(got, "2 loaded") {
-		t.Fatalf("compact resource section replaced names with a count: %q", got)
 	}
 }

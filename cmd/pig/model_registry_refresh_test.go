@@ -276,7 +276,7 @@ func TestSubprocessModelRegistryPublishesExtensionReplacementAndRestoration(t *t
 		t.Fatal(err)
 	}
 	services.Registry().RegisterProvider("openai", extension.ProviderConfig{BaseURL: "https://extension.invalid/v1", API: ai.APIOpenAIResponses, Models: []extension.ProviderModelConfig{{ID: "extension-only", Name: "Extension name", API: ai.APIOpenAIResponses, Reasoning: true, Input: []string{"text"}, ContextWindow: 1000, MaxTokens: 100, Cost: extension.ProviderModelCost{Input: 9}}}})
-	if err := command.Handler(ctx, `{"provider":"openai","present":{"extension-only":"Configured extension"},"absent":["gpt-5.4"],"fields":{"reasoning":false},"auth":{"headers":null}}`); err != nil {
+	if err := command.Handler(ctx, `{"provider":"openai","present":{"extension-only":"Configured extension"},"absent":["gpt-5.4"],"fields":{"reasoning":false},"auth":{}}`); err != nil {
 		t.Fatal(err)
 	}
 	services.Registry().UnregisterProvider("openai")

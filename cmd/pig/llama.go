@@ -10,10 +10,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent/llama"
 )
 
-// llamaExtensionPath is the source path upstream gives the built-in inline
-// llama.cpp extension (`<inline:${name}>`).
-const llamaExtensionPath = "<inline:llama.cpp>"
-
 // catalogRefreshTimeout mirrors the 15 s abort upstream attaches to its
 // background model catalog refreshes.
 // upstream: coding-agent/src/extensions/llama/index.ts:AbortSignal.timeout

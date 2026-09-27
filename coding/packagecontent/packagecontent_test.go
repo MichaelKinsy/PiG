@@ -421,6 +421,27 @@ func TestDiscoverUsesConventionalDirectories(t *testing.T) {
 	assertContains(t, resources.MCPFiles, filepath.Join(root, "mcp", "server.json"))
 }
 
+// Upstream collectPackageResources loads a Package with a "pi" manifest from
+// the entries it declares only: pi-mcp-adapter declares its extension and
+// ships skills/mcp-scripting, which only its resources_discover handler adds.
+func TestDiscoverPiManifestLoadsNoUndeclaredKind(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "package.json"), `{"name":"adapter","pi":{"extensions":["./index.ts"]}}`)
+	writeTestFile(t, filepath.Join(root, "index.ts"), "export default function extension(pi) {}\n")
+	writeTestFile(t, filepath.Join(root, "skills", "mcp-scripting", "SKILL.md"), "# scripting\n")
+	writeTestFile(t, filepath.Join(root, "prompts", "review.md"), "# prompt\n")
+	writeTestFile(t, filepath.Join(root, "themes", "dark.json"), `{}`)
+
+	resources, err := Discover(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	assertContains(t, resources.ExtensionEntries, filepath.Join(root, "index.ts"))
+	if len(resources.SkillDirs) != 0 || len(resources.PromptFiles) != 0 || len(resources.ThemeFiles) != 0 {
+		t.Fatalf("undeclared kinds loaded: skills %v prompts %v themes %v", resources.SkillDirs, resources.PromptFiles, resources.ThemeFiles)
+	}
+}
+
 func TestDiscoverDoesNotPromoteArbitraryPackageRootSource(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, "go.mod"), "module example.com/package\n\ngo 1.26\n")
@@ -671,8 +692,10 @@ func TestValidateConfiguredForStartupReportsEveryUnresolvableExtension(t *testin
 	prompt := filepath.Join(root, "prompts", "p.md")
 	writeTestFile(t, prompt, "prompt\n")
 
+	// An enabled member that matches nothing is skipped, as upstream skips it,
+	// and the rest of the Package still loads.
 	resources, missing, issues, err := ValidateConfiguredForStartup(root, map[Kind][]string{Extensions: nil, Prompts: nil})
-	if err != nil || len(issues) != 0 || len(resources.ExtensionEntries) != 0 {
+	if err != nil || !slices.Equal(resources.ExtensionEntries, []string{good}) || len(issues) != 2 {
 		t.Fatalf("enabled missing member: resources = %#v, issues = %#v, err = %v", resources, issues, err)
 	}
 	if len(missing) != 1 || missing[0].Pattern != "extensions/missing" || !missing[0].Enabled {
@@ -777,5 +800,132 @@ func TestValidateConfiguredForStartupResolvesEachEnabledExtensionOnce(t *testing
 	}
 	if got := count(); got != 0 {
 		t.Fatalf("extensions disabled: resolved %d times, want 0", got)
+	}
+}
+
+// Upstream collects a declared Pi resource path as it exists and skips one
+// that does not (collectFilesFromPaths in core/package-manager.ts). A skills
+// directory holding several skills, as pi-lens, @upstash/context7-pi and
+// @dietrichgebert/ponytail publish, is a present member, and a missing entry of
+// any Pi kind never stops the Package from loading at startup.
+func TestStartupAcceptsPiPackageResourceShapes(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "package.json"), `{"name":"pkg","pi":{`+
+		`"extensions":["./dist/index.js","./gone.js"],`+
+		`"skills":["./skills","./no-skills"],`+
+		`"prompts":["./prompts","./no-prompts"],`+
+		`"themes":["./themes","./no-themes"]}}`)
+	writeTestFile(t, filepath.Join(root, "dist", "index.js"), "export default function (pi) {}\n")
+	for _, skill := range []string{"ast-grep", "lsp-navigation"} {
+		writeTestFile(t, filepath.Join(root, "skills", skill, "SKILL.md"), "---\nname: "+skill+"\ndescription: d\n---\n")
+	}
+	writeTestFile(t, filepath.Join(root, "prompts", "p.md"), "prompt\n")
+	writeTestFile(t, filepath.Join(root, "themes", "t.json"), "{}\n")
+
+	_, missing, err := InspectConfigured(root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var patterns []string
+	for _, member := range missing {
+		patterns = append(patterns, member.Pattern)
+	}
+	slices.Sort(patterns)
+	if want := []string{"./gone.js", "./no-prompts", "./no-themes", "no-skills/SKILL.md"}; !slices.Equal(patterns, want) {
+		t.Fatalf("missing = %v, want %v (the populated skills directory is present)", patterns, want)
+	}
+
+	resources, _, issues, err := ValidateConfiguredForStartupWithResolver(root, nil, func(string) (extsource.Definition, error) {
+		return extsource.Definition{Language: "node", Form: extsource.Factory}, nil
+	})
+	if err != nil || len(issues) != 0 {
+		t.Fatalf("startup refused a Package upstream accepts: issues = %#v, err = %v", issues, err)
+	}
+	if len(resources.ExtensionEntries) != 1 || len(resources.SkillDirs) != 2 || len(resources.PromptFiles) != 1 || len(resources.ThemeFiles) != 1 {
+		t.Fatalf("resources = %#v, want 1 extension, 2 skills, 1 prompt, 1 theme", resources)
+	}
+}
+
+// A package with a "pi" manifest loads from what it declares, as upstream does.
+// @dietrichgebert/ponytail ships Claude Code, Codex and Cursor hook configs in
+// hooks/ beside a pi manifest; PiG must neither read them as its own Hooks
+// nor refuse the Package over events it does not support. Without a pi
+// manifest, PiG's conventional directories still apply.
+func TestPiManifestPackageSkipsPigConventionDirectories(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, "package.json"), `{"name":"pkg","pi":{"extensions":["./pi-extension/index.js"],"skills":["./skills"]}}`)
+	writeTestFile(t, filepath.Join(root, "pi-extension", "index.js"), "export default function (pi) {}\n")
+	writeTestFile(t, filepath.Join(root, "skills", "one", "SKILL.md"), "---\nname: one\ndescription: d\n---\n")
+	writeTestFile(t, filepath.Join(root, "hooks", "claude-codex-hooks.json"), `{"hooks":{"SubagentStart":[{"hooks":[{"type":"command","command":"node hooks/x.js"}]}]}}`)
+	writeTestFile(t, filepath.Join(root, "mcp", "servers.json"), `{"mcpServers":{}}`)
+
+	resources, _, issues, err := ValidateConfiguredForStartupWithResolver(root, nil, func(string) (extsource.Definition, error) {
+		return extsource.Definition{Language: "node", Form: extsource.Factory}, nil
+	})
+	if err != nil || len(issues) != 0 {
+		t.Fatalf("startup refused a Package upstream loads: issues = %#v, err = %v", issues, err)
+	}
+	if len(resources.HookFiles) != 0 || len(resources.MCPFiles) != 0 || len(resources.ExtensionEntries) != 1 || len(resources.SkillDirs) != 1 {
+		t.Fatalf("resources = %#v, want the declared extension and skill only", resources)
+	}
+
+	conventional := t.TempDir()
+	writeTestFile(t, filepath.Join(conventional, "package.json"), `{"name":"pkg"}`)
+	writeTestFile(t, filepath.Join(conventional, "hooks", "h.json"), `{}`)
+	if found, err := Discover(conventional); err != nil || len(found.HookFiles) != 1 {
+		t.Fatalf("conventional hooks without a pi manifest = %#v, err = %v", found.HookFiles, err)
+	}
+}
+
+// Upstream resolveExtensionEntries loads each existing entry an extension
+// directory's Pi manifest declares as its own extension, falls back to the
+// index when none exists, and loads nothing when neither exists. PiG used to
+// return the directory itself, which then failed to resolve to one entry.
+func TestDiscoverAutomaticLoadsEachDeclaredEntryOfAnExtensionDirectory(t *testing.T) {
+	dir := t.TempDir()
+	extension := "export default function extension(pi) {}\n"
+	two := filepath.Join(dir, "two")
+	writeTestFile(t, filepath.Join(two, "package.json"), `{"pi":{"extensions":["./a.ts","./b.js","./gone.ts"]}}`)
+	writeTestFile(t, filepath.Join(two, "a.ts"), extension)
+	writeTestFile(t, filepath.Join(two, "b.js"), extension)
+	fallback := filepath.Join(dir, "fallback")
+	writeTestFile(t, filepath.Join(fallback, "package.json"), `{"pi":{"extensions":["./gone.ts"]}}`)
+	writeTestFile(t, filepath.Join(fallback, "index.ts"), extension)
+	missing := filepath.Join(dir, "missing")
+	writeTestFile(t, filepath.Join(missing, "package.json"), `{"pi":{"extensions":["./gone.ts"]}}`)
+	writeTestFile(t, filepath.Join(missing, "main.ts"), extension)
+
+	got := DiscoverAutomatic(dir, Extensions)
+	want := []string{filepath.Join(fallback, "index.ts"), filepath.Join(two, "a.ts"), filepath.Join(two, "b.js")}
+	if !slices.Equal(got, want) {
+		t.Fatalf("DiscoverAutomatic = %v, want %v", got, want)
+	}
+}
+
+// A Package's pi.extensions directory entry expands the way upstream
+// collectAutoExtensionEntries does: every .ts/.js file and every subdirectory
+// entry is its own extension, and a directory without entries yields none.
+func TestDiscoverExpandsPiManifestDirectoryEntries(t *testing.T) {
+	root := t.TempDir()
+	extension := "export default function extension(pi) {}\n"
+	writeTestFile(t, filepath.Join(root, "package.json"), `{"pi":{"extensions":["./extensions","./empty"]}}`)
+	writeTestFile(t, filepath.Join(root, "extensions", "alpha.ts"), extension)
+	writeTestFile(t, filepath.Join(root, "extensions", "beta.js"), extension)
+	writeTestFile(t, filepath.Join(root, "extensions", "gamma", "index.ts"), extension)
+	writeTestFile(t, filepath.Join(root, "extensions", ".hidden.ts"), extension)
+	writeTestFile(t, filepath.Join(root, "extensions", "notes.md"), "notes\n")
+	writeTestFile(t, filepath.Join(root, "empty", "README.md"), "nothing here\n")
+
+	resources, err := Discover(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{
+		filepath.Join(root, "extensions", "alpha.ts"),
+		filepath.Join(root, "extensions", "beta.js"),
+		filepath.Join(root, "extensions", "gamma", "index.ts"),
+	}
+	if !slices.Equal(resources.ExtensionEntries, want) {
+		t.Fatalf("ExtensionEntries = %v, want %v", resources.ExtensionEntries, want)
 	}
 }

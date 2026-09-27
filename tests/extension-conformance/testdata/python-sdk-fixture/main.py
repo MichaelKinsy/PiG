@@ -134,6 +134,19 @@ def new_extension() -> pig_sdk.Extension:
         return {"content": "soft tool error", "is_error": True}
 
     ext.tool("echo", "Echo input text", {"type": "object"}, echo)
+    ext.tool("render_probe", "Render its own tool card", {"type": "object", "properties": {}}, lambda _ctx, _params: "render ok")
+
+    def render_probe_call(_ctx, args, render, width):
+        render.state["calls"] = render.state.get("calls", 0) + 1
+        return ["toolrender:call:%s:partial=%s:calls=%d:width=%d" % (args.get("topic"), str(render.is_partial).lower(), render.state["calls"], width)]
+
+    def render_probe_result(_ctx, result, options, render, width):
+        return [
+            "toolrender:result:%s:%s:expanded=%s:calls=%s:width=%d"
+            % (result["content"][0]["text"], result["details"]["k"], str(bool(options.get("expanded"))).lower(), render.state.get("calls"), width)
+        ]
+
+    ext.tool_renderers("render_probe", render_call=render_probe_call, render_result=render_probe_result, render_shell="self")
     abort_observed = [False]
 
     def update_tool(ctx, _params):
@@ -194,6 +207,12 @@ def new_extension() -> pig_sdk.Extension:
         constrained_sampling={"type": "grammar", "variants": {"openai_lark": "start: NUMBER"}},
     )
 
+    def complete_probe(prefix: str) -> list[dict[str, str]] | None:
+        items = [{"value": "alpha", "label": "alpha — first"}, {"value": "apple", "description": "fruit"}, {"value": "beta"}]
+        matched = [item for item in items if item["value"].startswith(prefix.strip())]
+        return matched or None
+
+    ext.command("complete_probe", "Complete its arguments", lambda ctx, args: None, get_argument_completions=complete_probe)
     ext.command("ping", "Respond with pong", lambda ctx, args: ctx.notify("pong", "info"))
 
     def model_stream_probe(ctx: pig_sdk.Context, _args: str) -> None:

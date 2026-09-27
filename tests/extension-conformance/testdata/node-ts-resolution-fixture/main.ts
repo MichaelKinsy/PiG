@@ -8,7 +8,7 @@
 // HelperShape is a type imported without the `type` keyword; the runtime must
 // elide it after stripping, exactly as jiti's babel transform does.
 import { helperLabel, HelperShape } from "./helper.js";
-import { HStack, SettingsList, Text } from "@earendil-works/pi-tui";
+import { HStack, SettingsList, Text, visibleWidth } from "@earendil-works/pi-tui";
 import { CONFIG_DIR_NAME, estimateTokens, getAgentDir, getSettingsListTheme } from "@earendil-works/pi-coding-agent";
 
 // Extensions are loaded as ES modules, where `require` is not defined; upstream
@@ -41,7 +41,7 @@ export default function (pi: any) {
           `requireWorks=${typeof EOL === "string"}`,
           `configDir=${CONFIG_DIR_NAME}`,
           `agentDirUnderConfigRoot=${getAgentDir().endsWith("agent")}`,
-          `stackWidth=${stack.render(30)[0]?.length ?? 0}`,
+          `stackWidth=${visibleWidth(stack.render(30)[0] ?? "")}`,
           `settingsLines=${settings.render(40).length > 0}`,
           `tokens=${tokens}`,
         ].join(" "),

@@ -20,7 +20,7 @@ Every active divergence must have:
 - D47 — Width stripping consumes DEC private-mode set/reset sequences. Retired by the width-parity change. `tui/widthx.ExtractAnsi` now delegates to the upstream-compatible `ExtractAnsiCode`; the ID remains reserved. `TestExtractAnsi_PrivateModeMatchesUpstream` and `TestPiWidthDifferential` verify the shared ANSI parsing behavior. No active divergence or source marker remains.
 - D71 — Nonfatal main-screen overflow recovery. Withdrawn on 2026-09-25 by owner decision; the ID remains reserved. PiG now matches upstream `tui-main-screen.ts`: an over-wide non-image row that reaches the differential-render loop writes the TUI crash log (`pig-tui-crash.log` in the agent directory), stops the TUI, and ends the process through the uncaught-exception path with status 1. Initial, full, and resize renders emit the row unchanged. Tests: `tui/render_overflow_test.go` and parity scenario `extensions-runtime/20-differential-render-overflow-terminates.toml`. No active divergence or source marker remains.
 
-## Active divergences (29)
+## Active divergences (31)
 
 ## D2 PiG uses a separate command and configuration identity
 
@@ -924,6 +924,8 @@ Call-site markers:
 - `internal/codingagent/interactive_helpers.go`: lifecycle-owned shortcut diagnostics.
 - `coding/extension/host/subprocess/render_proxy.go`: generation-scoped
   renderer inactivity and last-frame retention.
+- `coding/extension/host/subprocess/tool_render_proxy.go`: the same renderer
+  boundary for tool `renderCall` and `renderResult`.
 
 Locked by: `coding/extension/host/subprocess/liveness_test.go`,
 `coding/extension/host/subprocess/node_liveness_test.go`, Go/Rust/Python SDK
@@ -1055,8 +1057,11 @@ Its collapsed header uses the current terminal-cell width for a compact preview
 and marks hidden input with `… (ctrl+o to expand)`. The expanded card shows the
 complete pretty-printed arguments and complete available result output. A
 resize recomputes both the preview budget and expanded wrapping from the
-retained value. Built-in tool renderers and extension tools with a custom call
-renderer keep their existing presentation.
+retained value. A generic card is an extension tool that does not override a
+built-in tool name and whose definition has no `renderCall`, `renderResult` or
+`renderShell` "self". Built-in tools keep their renderers, an override of a
+built-in tool draws the built-in renderers it does not define, and an extension
+tool with renderers draws them as upstream does.
 
 Upstream state: `ToolExecutionComponent.expanded` starts false and is passed to
 custom call/result renderers, but the registered-tool fallback does not consume
@@ -1245,7 +1250,7 @@ SCRUTINIZED:approved
 
 ## D66 Narrow TUI rows stay within the requested width
 
-What: PiG keeps two narrow-width component paths within their requested terminal-cell width. `TruncatedText.Render` reduces horizontal padding when the full padding plus one content cell would exceed the width. At width 1 with one column of horizontal padding, PiG renders `"A"`; upstream renders `" A "`, which is three cells wide. `UserMessageSelector.Render` also clips each list, metadata, empty-state, and scroll-indicator row after adding the cursor or indentation. Upstream's `UserMessageList` truncates only the message body and then adds its two-cell cursor, while metadata and other rows are unbounded.
+What: PiG keeps two narrow-width component paths within their requested terminal-cell width. `TruncatedText.Render` reduces horizontal padding when the full padding plus one content cell would exceed the width. At width 1 with one column of horizontal padding, PiG renders `"A"`; upstream renders `" A "`, which is three cells wide. `UserMessageSelector.Render` also clips each list, metadata, empty-state, and scroll-indicator row after adding the cursor or indentation. Upstream's `UserMessageList` truncates only the message body and then adds its two-cell cursor, while metadata and other rows are unbounded. `Editor.Render` at width 1 without padding highlights the final grapheme of a line when the cursor is at its end, rendering `"g"` as one inverse `g`; upstream appends a highlighted space, two cells wide. At every wider width, and with padding, PiG appends the space as upstream does.
 
 Why: both upstream paths can emit a row wider than the terminal. Upstream's main screen treats that as fatal only in its differential-render loop and stops with `Rendered line exceeds terminal width`; initial, full, and resize renders emit the over-wide row unchanged. PiG preserves the complete padding and rows at ordinary widths, but prioritizes keeping an unusually narrow pane usable instead of emitting an over-wide row.
 
@@ -1254,14 +1259,15 @@ Observable effect: at widths where fixed padding, cursor text, or metadata canno
 Call-site markers:
 - `tui/truncated_text.go`: the horizontal-padding clamp in `TruncatedText.Render`.
 - `tui/user_message_selector.go`: the final row-width bound in `UserMessageSelector.Render`.
+- `tui/editor.go`: the final-grapheme cursor in `Editor.buildVisualLines`.
 
-Locked by: `tui/component_width_table_test.go` `TestSelectorDialogListComponentsNeverExceedRenderWidth`, whose `TruncatedText`, `UserMessageSelector`, `UserMessageSelectorScrolled`, and `UserMessageSelectorEmpty` cases render every width from 1 through 120 and reject any over-wide row. Restoring upstream's full padding or removing the selector's final clip fails the matching width-1 case.
+Locked by: `tui/component_width_table_test.go` `TestSelectorDialogListComponentsNeverExceedRenderWidth`, whose `TruncatedText`, `UserMessageSelector`, `UserMessageSelectorScrolled`, `UserMessageSelectorEmpty`, and `EditorSlashAutocomplete` cases render every width from 1 through 120 and reject any over-wide row, and `tui/editor_overlay_cursor_test.go` `TestEditorCursorAtWidthOneStaysInBounds` pins the editor's width-1 row. Restoring upstream's full padding or removing the selector's final clip fails the matching width-1 case.
 
 Parity allowance: paired interactive scenarios use a viable terminal width. The intentional difference exists only when these rows cannot fit; the width matrix directly locks the allowed behavior and its boundary.
 
-PORT_MAP paths: `packages/tui/src/components/truncated-text.ts` and `packages/coding-agent/src/modes/interactive/components/user-message-selector.ts`.
+PORT_MAP paths: `packages/tui/src/components/truncated-text.ts`, `packages/coding-agent/src/modes/interactive/components/user-message-selector.ts`, and `packages/tui/src/components/editor.ts`.
 
-Remove when: upstream clamps `TruncatedText` padding and bounds every user-message selector row, or its main screen safely handles over-wide rows without terminating.
+Remove when: upstream clamps `TruncatedText` padding, bounds every user-message selector row, and fits the editor's end-of-line cursor at width 1, or its main screen safely handles over-wide rows without terminating.
 
 SCRUTINIZED:approved
 
@@ -1340,5 +1346,68 @@ Locked by: `coding/extension/host/subprocess/host_test.go` `TestHost_Reload_Unch
 Parity allowance: no paired scenario asserts module-scope state across `/reload`, because Pi's result depends on the extension's file type and Pig's is the same for all of them. Scenario 15 keeps its state in the factory, the per-reload contract both share.
 
 Remove when: Pig re-invokes TS/JS extension factories inside a retained Node runtime on reload, using Pi's loader semantics (jiti re-evaluation for `.ts`, the native module cache for `.mjs`), or when upstream reload re-evaluates every extension module.
+
+SCRUTINIZED:approved
+
+## D73 Host-bound Pi exports are importable stand-ins inside extensions
+
+What: inside an extension process, `@earendil-works/pi-coding-agent`, `@earendil-works/pi-tui`, and `@earendil-works/pi-ai` export every runtime value their Pi 0.87.1 packages export. Each value is one of four kinds.
+
+Pi's own code, copied verbatim from the pinned release into `shims/pi-dist` with the third-party releases Pi depends on (`yaml`, `marked`, `get-east-asian-width`, `partial-json`, `highlight.js`, TypeBox):
+- pi-coding-agent: `convertToLlm`; session entry parsing, migration and context projection including `buildSessionContext`; `parseFrontmatter` and `stripFrontmatter`; the syntax highlighter behind `highlightCode`.
+- pi-tui: the key parser, width utilities, `KeybindingsManager`, `getKeybindings`/`setKeybindings`, fuzzy matching, `CombinedAutocompleteProvider`, `StdinBuffer`, `renderLatex`, the terminal-colour parsers, the pure image encoders and dimension readers, `Marked`, and the components `Container`, `Box`, `Text`, `Spacer`, `Markdown`, `TruncatedText`, `Loader`, `CancellableLoader`, `SelectList`, `SettingsList`, `Input`, `Editor`, `MouseRegion`, `HStack` and `VStack`.
+- pi-ai: its compat entry point, which Pi serves for the pi-ai root and `/compat`, and `providers/all`, with only its builtin API implementations running in PiG's host (D74).
+
+Ported line for line: for example `isToolCallEventType`, the `is*ToolResult` guards, `getLanguageFromPath`, `createEventBus`, `formatSkillsForPrompt`, `parseSkillBlock`, `serializeConversation`, `estimateTokens`, the compaction threshold helpers, `truncateToVisualLines`, `DynamicBorder`, the theme helpers `getMarkdownTheme`, `getSelectListTheme`, `getSettingsListTheme`, `highlightCode`, `keyText`, `keyHint` and `rawKeyHint`, and `ctx.ui.theme`'s `Theme` methods (`fg`, `bg`, the chalk styles, `getFgAnsi`, `getBgAnsi`, `getColorMode`, `getThinkingBorderColor`, `getBashModeBorderColor`). The theme helpers and `ctx.ui.theme` color with the host's active theme, which travels with every state snapshot together with whether Pi's chalk styles (bold, italic, underline, inverse, strikethrough) would draw for the host's stdout. The host terminal's resolved capabilities travel the same way and seed pi-tui's capability cache, which `Markdown` reads to decide whether links render as OSC 8 hyperlinks. In interactive mode the runtime loads every highlight.js language, as Pi's interactive mode does at startup.
+
+Partial, with the reason:
+- Keybindings: pi-tui's manager in the extension process holds Pi's default `tui.*` bindings. The user's `keybindings.json` overrides and the `app.*` actions stay in PiG's host, so `keybindings.matches()` answers for Pi's default keys and `keyText`/`keyHint` of an `app.*` action is empty. `ctx.ui.custom` factories receive this manager.
+- `Theme` is an empty class and `initTheme` does nothing: the host owns the theme, so an extension cannot construct a Pi theme or switch the process theme; `ctx.ui.theme` and the theme helpers use the host's.
+- `CustomEditor` captures the decoration surface (`borderColor`, `lockBorderColor`, `modeLabelProvider`, `modeLabelColor`, `addToHistory`, `requestRenderNow`) and forwards it to PiG's editor: the host owns the editor and its keystroke handling.
+- `BorderedLoader` renders its message without Pi's border, spinner and cancel hint, and `ModelSelectorComponent`, `ExtensionAPI`, `ExtensionContext`, `SessionManager`, `AgentSession`, `ModelRegistry`, `ResourceLoader`, `SettingsManager` and the event classes are empty classes, present for `instanceof` checks and types: their working counterparts belong to Pi's process.
+- `copyToClipboard` runs `pbcopy` only, where Pi also uses the native clipboard, OSC 52 over SSH and the platform clipboard commands.
+- `CONFIG_DIR_NAME` and `getAgentDir` name PiG's configuration tree (D2).
+
+Stand-ins that throw `<name> is not available to extensions running in PiG ...` when called or constructed:
+- pi-coding-agent, because they belong to Pi's own process: the interactive UI components and selectors (`InteractiveMode`, `ToolExecutionComponent`, `FooterComponent`, the message components, the selector and dialog components, `ArminComponent`); session and runtime construction (`createAgentSessionRuntime`, `createAgentSessionServices`, `createAgentSessionFromServices`, `AgentSessionRuntime`, `ModelRuntime`, `ExtensionRunner`, `discoverAndLoadExtensions`, `resolveCliModel`, `resolveModelScopeWithDiagnostics`); package, resource, skill and context loading (`DefaultPackageManager`, `DefaultResourceLoader`, `loadSkills`, `loadSkillsFromDir`, `loadProjectContextFiles`, `hasTrustRequiringProjectResources`, `ProjectTrustStore`, `readStoredCredential`, `getPackageDir`, `getReadmePath`, `getDocsPath`, `getExamplesPath`); the CLI and modes (`main`, `parseArgs`, `runPrintMode`, `runRpcMode`, `RpcClient`); tool definitions and shell configuration bound to Pi's runner (`create*ToolDefinition`, `createPowerShellTool`, `createLocalPowerShellOperations`, `wrapRegisteredTool`, `wrapRegisteredTools`, `getShellConfig`, `getPowerShellConfig`); and summaries that call the model through Pi's session (`generateSummary`, `generateSummaryWithUsage`, `generateBranchSummary`).
+- pi-coding-agent, not yet ported: the compaction and branch-summary entry helpers (`findCutPoint`, `findTurnStartIndex`, `prepareBranchEntries`, `collectEntriesForBranchSummary`), the diff helpers (`generateDiffString`, `generateUnifiedPatch`, `renderDiff`, which use the `diff` package PiG does not vendor), and the image helpers (`convertToPng`, `resizeImage`, `formatDimensionNote`, `detectSupportedImageMimeTypeFromFile`, which use Pi's image pipeline).
+- pi-tui, because the host owns the terminal: the terminal and renderers (`ProcessTerminal`, `TuiMainScreen`, `TuiAltScreen`, `ScrollView`), capability and cell-geometry state (`detectCapabilities`, `getCapabilities`, `setCapabilities`, `setCapabilityOverrides`, `resetCapabilitiesCache`, `getCellDimensions`, `setCellDimensions`), the images that depend on it (`Image`, `renderImage`), and `getNativeClipboard`, a native addon.
+- pi-ai: `registerSessionResourceCleanup` and `cleanupSessionResources`, whose cleanups Pi's agent session runs when it ends.
+
+Why: PiG runs extensions in a Node process beside its Go host, not inside Pi's process, so these values have no working implementation there. An ESM import of a name a module does not export fails the whole extension at link time, before any of its code runs: pi-rtk-optimizer failed to load on PiG 0.2.0 because the shim lacked `isToolCallEventType`. Exporting every upstream name keeps an extension loadable whenever the names it imports are the ones it can use, and a stand-in reports the exact name if the extension does call one. Owner-directed launch P0 fix (Reddit report on 2026-09-26, faithful extension compatibility).
+
+Observable effect: an extension that imports a host-bound name loads on PiG and fails only if it calls that name, with an error naming it. Under Pi the same call works. A keybinding the user remapped in `keybindings.json` is not seen by an extension's `keybindings.matches()`, which answers for Pi's default keys, and an `app.*` key hint is empty. An extension cannot construct or switch themes.
+
+Call-site markers:
+- `coding/extension/host/subprocess/runtime-node/shims/pi-coding-agent.mjs`: the host-only stand-ins.
+- `coding/extension/host/subprocess/runtime-node/shims/pi-tui.mjs`: the host-only stand-ins.
+- `coding/extension/host/subprocess/runtime-node/runtime.mjs`: the keybindings manager handed to `ctx.ui.custom` factories, and the host capabilities seeded into pi-tui's cache.
+- `coding/extension/host/subprocess/runtime-node/shims/pi-coding-agent.mjs` `initTheme`: the host owns the theme.
+- `coding/extension/host/subprocess/runtime-node/shims/pi-ai.mjs`: the session-resource stand-ins.
+
+Locked by: `coding/extension/host/subprocess` `TestNodeRuntimeShimsExportEveryPinnedPiValue`, which collects every runtime export of the upstream module Pi serves for each specifier (pi-coding-agent and pi-tui `src/index.ts`, pi-ai `src/compat.ts` and `src/providers/all.ts`, following `export *`) and fails if the loader's module lacks any of them; `TestVendoredPiDistMatchesThePinnedPackage` (the copied Pi code and third-party packages equal the pinned release); `TestPiTuiComponentsMatchThePinnedPackage` and `TestPiAiUtilitiesMatchThePinnedPackage` (the runtime's modules render, handle input and compute byte-identically to the pinned packages); `TestNodeCustomFactoryGetsKeybindingsAndFocus`; `TestNodeStateSeedsTerminalCapabilitiesForMarkdown`; `TestPiThemeHelpersMatchThePinnedPackage` (the theme helpers against Pi's own theme and keybinding-hints modules for the dark theme); and `TestNodeRuntimeParseFrontmatterMatchesPi`.
+
+Parity allowance: no paired scenario calls a host-bound value from an extension; the coverage test locks the export surface.
+
+Remove when: a stand-in's value gains a working implementation in the extension runtime (port it and drop it from the stand-in list), or upstream stops exporting it.
+
+SCRUTINIZED:approved
+
+## D74 Pi-ai's builtin API implementations run in PiG's host
+
+What: inside an extension process, pi-ai's compat layer, API registry, lazy API wrappers, model catalog and env-key lookup are Pi's own code (D73). The ten builtin API implementations they load (`anthropic-messages`, `openai-completions`, `openai-responses`, `azure-openai-responses`, `openai-codex-responses`, `google-generative-ai`, `google-vertex`, `mistral-conversations`, `bedrock-converse-stream`, `pi-messages`) are replaced by a bridge. For each request the bridge applies that API's upstream credential check (`options.apiKey`, the headers that stand in for one, or ambient credentials for Vertex and Bedrock) and upstream's `Request aborted` for a signal that already fired, then streams the request through PiG's Go port of the same provider: `options.apiKey` owns the request ahead of every configured credential, `options.reasoning` sets the thinking level (a `stream()` call and a `streamSimple()` call without one run without reasoning, not at the session's level), headers and env pass through, and an aborted `options.signal` cancels the host request. `openrouter-images` `generateImages` returns an error result, because PiG has no image-generation provider.
+
+Why: the upstream implementations import the vendor SDKs (`@anthropic-ai/sdk`, `openai`, `@google/genai`, `@aws-sdk/client-bedrock-runtime`), which PiG does not ship to extensions, and PiG already carries parity-tested Go ports of these providers, which its own agent uses. Running every builtin API through one bridge keeps credential resolution and request behavior uniform. Owner-directed launch P0 fix (Reddit report on 2026-09-26: pi-hermes-memory calls `completeSimple` from `@earendil-works/pi-ai/compat`).
+
+Observable effect: an extension's `stream`/`complete`/`streamSimple`/`completeSimple` sends the same request (credential, model, messages) and receives the same event and result shapes as under Pi, from PiG's provider; a request aborted in flight carries the Go provider's abort message rather than the vendor SDK's. Provider-specific `stream()` options beyond the common ones (for example Anthropic `thinkingEnabled`) are not forwarded, results lack `responseId` and `rawStopReason`, and `generateImages` for OpenRouter returns an error result where Pi generates images.
+
+Call-site markers:
+- `coding/extension/host/subprocess/runtime-node/shims/pi-ai-bridge.mjs`: the bridge the vendored `api/<api>.js` stubs load.
+
+Locked by: `coding/extension/host/subprocess` `TestVendoredPiDistMatchesThePinnedPackage` (every vendored pi-ai file is verbatim except the listed bridge stubs), `TestNodeRuntimeShimsExportEveryPinnedPiValue` (the compat surface), and `TestNodeCompatCompletionAbortCancelsHostRequest` (the extension's `apiKey` reaches the host, no session thinking level is applied, and an aborted signal cancels the host request).
+
+Parity allowance: no paired scenario runs an extension's direct provider call; the Pi-extension end-to-end run compares pi-hermes-memory's consolidation request and result against Pi 0.87.1 over a scripted OpenAI-compatible server.
+
+Remove when: PiG ships the vendor SDKs to extensions and runs upstream's API implementations, or upstream removes the compat entry point's global dispatch.
 
 SCRUTINIZED:approved

@@ -18,6 +18,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -74,16 +75,22 @@ type rpcModeResources struct {
 	ResumePath                   string
 }
 
-type rpcCommandRunner interface {
+type headlessCommandRunner interface {
 	Commands() []extension.ResolvedCommand
 	Command(string) (extension.ResolvedCommand, bool)
 	ExecuteCommand(context.Context, string, string) bool
 }
 
-type rpcCommandCatalog struct {
-	runner rpcCommandRunner
+// headlessCommandCatalog routes the prompts of print, JSON and RPC mode as
+// upstream AgentSession.prompt does: an extension command runs instead of
+// prompting, and other text has skill commands and prompt templates expanded.
+// It also lists the commands upstream getCommands and get_commands report.
+type headlessCommandCatalog struct {
+	runner headlessCommandRunner
+	// mode is the command context's mode: "print", "json" or "rpc".
+	mode string
 	// llama is the built-in llama.cpp extension's /llama command; notify
-	// carries its ctx.ui.notify calls to the RPC client.
+	// carries its ctx.ui.notify calls to the client.
 	llama           *llama.Host
 	notify          func(message, kind string)
 	promptTemplates []codingagent.PromptTemplate
@@ -93,39 +100,27 @@ type rpcCommandCatalog struct {
 	sourceInfo      map[string]codingagent.ResourceSourceInfo
 }
 
-func (c rpcCommandCatalog) commands() []RPCSlashCommand {
-	commands := make([]RPCSlashCommand, 0)
-	if c.llama != nil {
-		// Built-in extensions load before discovered ones, so their commands lead.
-		commands = append(commands, RPCSlashCommand{
-			Name: llama.CommandName, Description: llama.CommandDescription, Source: "extension",
-			SourceInfo: RPCSourceInfo{Path: llamaExtensionPath, Source: "inline", Scope: "temporary", Origin: "top-level"},
-		})
-	}
-	if c.runner != nil {
-		for _, command := range c.runner.Commands() {
-			commands = append(commands, RPCSlashCommand{
-				Name: strings.TrimPrefix(command.InvocationName, "/"), Description: command.Description,
-				Source: "extension", SourceInfo: rpcSourceInfoValue(command.SourceInfo),
-			})
-		}
-	}
-	for _, template := range c.promptTemplates {
-		commands = append(commands, RPCSlashCommand{
-			Name: template.Name, Description: template.Description, Source: "prompt",
-			SourceInfo: c.sourceInfoForPath(template.FilePath, "prompts"),
-		})
-	}
-	for _, skill := range c.skills {
-		commands = append(commands, RPCSlashCommand{
-			Name: "skill:" + skill.Name, Description: skill.Description, Source: "skill",
-			SourceInfo: c.sourceInfoForPath(skill.Path, "skills"),
-		})
-	}
-	return commands
+// commands lists the catalog as upstream get_commands does.
+func (c headlessCommandCatalog) commands() []RPCSlashCommand {
+	return c.slashCatalog().Commands()
 }
 
-func (c rpcCommandCatalog) extensionCommand(message string) (string, string, bool) {
+// slashCatalog is the shared getCommands catalog over this command set.
+func (c headlessCommandCatalog) slashCatalog() codingagent.SlashCommandCatalog {
+	catalog := codingagent.SlashCommandCatalog{
+		PromptTemplates: c.promptTemplates, Skills: c.skills,
+		CWD: c.cwd, AgentDir: c.agentDir, SourceInfo: c.sourceInfo,
+	}
+	if c.runner != nil {
+		catalog.Runner = c.runner
+	}
+	if c.llama != nil {
+		catalog.Inline = []codingagent.PiSlashCommand{codingagent.LlamaSlashCommand()}
+	}
+	return catalog
+}
+
+func (c headlessCommandCatalog) extensionCommand(message string) (string, string, bool) {
 	if !strings.HasPrefix(message, "/") {
 		return "", "", false
 	}
@@ -148,7 +143,7 @@ func (c rpcCommandCatalog) extensionCommand(message string) (string, string, boo
 	return "", "", false
 }
 
-func (c rpcCommandCatalog) expandPrompt(message string) string {
+func (c headlessCommandCatalog) expandPrompt(message string) string {
 	if expanded, ok := codingagent.ExpandSkillCommand(message, c.skills); ok {
 		message = expanded
 	}
@@ -158,7 +153,7 @@ func (c rpcCommandCatalog) expandPrompt(message string) string {
 	return message
 }
 
-func (c rpcCommandCatalog) routePrompt(ctx context.Context, message string) (string, bool) {
+func (c headlessCommandCatalog) routePrompt(ctx context.Context, message string) (string, bool) {
 	if name, args, ok := c.extensionCommand(message); ok {
 		return "", c.executeCommand(ctx, name, args)
 	}
@@ -166,78 +161,31 @@ func (c rpcCommandCatalog) routePrompt(ctx context.Context, message string) (str
 }
 
 // executeCommand runs a command extensionCommand resolved; /llama runs the
-// built-in llama.cpp command with RPC's command context.
-func (c rpcCommandCatalog) executeCommand(ctx context.Context, name, args string) bool {
+// built-in llama.cpp command with this mode's command context.
+func (c headlessCommandCatalog) executeCommand(ctx context.Context, name, args string) bool {
 	if c.llama != nil && name == llama.CommandName {
-		_ = c.llama.HandleCommand(llama.CommandContext{Ctx: ctx, Mode: "rpc", Notify: c.notify})
+		_ = c.llama.HandleCommand(llama.CommandContext{Ctx: ctx, Mode: c.mode, Notify: c.notify})
 		return true
 	}
 	return c.runner.ExecuteCommand(ctx, name, args)
 }
 
-func (c rpcCommandCatalog) sourceInfoForPath(path, kind string) RPCSourceInfo {
-	for _, candidate := range []string{path, filepath.Dir(path)} {
-		if info, ok := c.sourceInfo[candidate]; ok {
-			scope := info.Scope
-			if scope == "" {
-				scope = "temporary"
-			}
-			origin := info.Origin
-			if origin == "" {
-				origin = "top-level"
-			}
-			source := info.Source
-			if source == "" {
-				source = "local"
-			}
-			baseDir := info.BaseDir
-			if baseDir == "" && path != "" {
-				baseDir = filepath.Dir(path)
-			}
-			return RPCSourceInfo{Path: path, Source: source, Scope: scope, Origin: origin, BaseDir: baseDir}
-		}
-	}
-	info := RPCSourceInfo{Path: path, Source: "local", Scope: "temporary", Origin: "top-level"}
-	if path == "builtin:piglet" {
-		info.Source = "piglet"
-		return info
-	}
-	if path != "" {
-		info.BaseDir = filepath.Dir(path)
-	}
-	userRoot := filepath.Join(c.agentDir, kind)
-	projectRoot := filepath.Join(c.cwd, codingagent.CONFIG_DIR_NAME, kind)
-	switch {
-	case isWithin(path, userRoot):
-		info.Scope, info.BaseDir = "user", userRoot
-	case isWithin(path, projectRoot):
-		info.Scope, info.BaseDir = "project", projectRoot
-	}
-	return info
+func (c headlessCommandCatalog) sourceInfoForPath(path, kind string) RPCSourceInfo {
+	return c.slashCatalog().SourceInfoForPath(path, kind)
 }
 
-func rpcSourceInfoValue(value extension.SourceInfo) RPCSourceInfo {
-	if sourceInfo, ok := value.(RPCSourceInfo); ok {
-		return sourceInfo
-	}
-	encoded, err := json.Marshal(value)
-	if err == nil {
-		var sourceInfo RPCSourceInfo
-		if json.Unmarshal(encoded, &sourceInfo) == nil && sourceInfo.Path != "" {
-			return sourceInfo
-		}
-	}
-	return RPCSourceInfo{Source: "local", Scope: "temporary", Origin: "top-level"}
-}
-
-func rpcGetCommandsResponse(id string, catalog rpcCommandCatalog) RPCResponse {
+func rpcGetCommandsResponse(id string, catalog headlessCommandCatalog) RPCResponse {
 	return rpcSuccess(id, "get_commands", RPCGetCommandsData{Commands: catalog.commands()})
 }
 
 func rpcExtensionConfigs(configs []subprocess.ExtConfig, cwd, agentDir string, sourceInfo map[string]codingagent.ResourceSourceInfo) []subprocess.ExtConfig {
 	out := append([]subprocess.ExtConfig(nil), configs...)
-	catalog := rpcCommandCatalog{cwd: cwd, agentDir: agentDir, sourceInfo: sourceInfo}
+	catalog := headlessCommandCatalog{cwd: cwd, agentDir: agentDir, sourceInfo: sourceInfo}
 	for i := range out {
+		if out[i].SourceInfo != nil {
+			// Already stamped where it was collected (a -e extension).
+			continue
+		}
 		path := out[i].Source
 		if path == "" {
 			path = out[i].Path
@@ -499,10 +447,7 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 		}
 	}
 
-	promptSkills := make([]prompts.Skill, 0, len(resources.Skills))
-	for _, skill := range resources.Skills {
-		promptSkills = append(promptSkills, prompts.Skill{Name: skill.Name, Description: skill.Description, Path: skill.Path, DisableModelInvocation: skill.DisableModelInvocation})
-	}
+	promptSkills := promptSkillsFor(resources.Skills)
 	contextFiles := loadContextFiles(cwd, agentDir, flags.NoContextFiles)
 	resolvedPrompts := resolvePromptInputs(cwd, agentDir, flags, resources.ProjectTrusted)
 	promptOptions := prompts.Options{
@@ -552,6 +497,15 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 			subprocBridge.SetUIPromptScope(runner)
 		}
 	}
+	commandCatalog := headlessCommandCatalog{
+		runner: runner, mode: "rpc", promptTemplates: resources.PromptTemplates, skills: resources.Skills,
+		cwd: cwd, agentDir: agentDir, sourceInfo: resources.SourceInfo,
+		llama: llamaHost, notify: rpcUI.Notify,
+	}
+	// Extension host calls read the published copy of the catalog; this
+	// goroutine alone changes commandCatalog.
+	var publishedCatalog atomic.Pointer[headlessCommandCatalog]
+	publishedCatalog.Store(new(commandCatalog))
 	// Session-backed actions (sendUserMessage, isIdle, abort,
 	// hasPendingMessages, waitForIdle) for in-process and subprocess
 	// extensions, as upstream rpc-mode binds the session in bindExtensions.
@@ -681,21 +635,12 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 	if subprocBridge != nil {
 		detachModelRegistry := wireSubprocessModelRegistry(subprocBridge, sess, services)
 		defer detachModelRegistry()
-		subprocBridge.SetHostAction("getAllTools", func() []map[string]string {
-			agentTools := sess.Agent().Tools()
-			result := make([]map[string]string, len(agentTools))
-			for i, t := range agentTools {
-				src := toolSource[t.Name()]
-				if src == "" {
-					src = "builtin"
-				}
-				result[i] = map[string]string{
-					"name":        t.Name(),
-					"description": t.Schema().Description,
-					"source":      src,
-				}
-			}
-			return result
+		registryAllowed, registryExcluded := toolRegistryFilters(flags)
+		subprocBridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
+			return codingagent.ExtensionToolInfos(runner, registryAllowed, registryExcluded)
+		})
+		subprocBridge.SetHostAction("getCommands", func() []subprocess.CommandInfo {
+			return publishedCatalog.Load().slashCatalog().SubprocessCommands()
 		})
 		subprocBridge.SetHostAction("getSessionName", func() string { return sess.SessionName() })
 		subprocBridge.SetHostAction("getSessionID", func() string { return sess.ID() })
@@ -732,30 +677,8 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 			}
 			return page, next, next < len(entries), leafID
 		})
-		subprocBridge.SetHostAction("getActiveTools", func() []string {
-			agentTools := sess.Agent().Tools()
-			names := make([]string, len(agentTools))
-			for i, t := range agentTools {
-				names[i] = t.Name()
-			}
-			return names
-		})
-		subprocBridge.SetHostAction("setActiveTools", func(names []string) {
-			allowed := make(map[string]struct{}, len(names))
-			for _, n := range names {
-				allowed[n] = struct{}{}
-			}
-			// Filter the full tool set to only those in the allowed list.
-			allTools := sess.Tools() // session's unfiltered tool set
-			var filtered []agent.AgentTool
-			for _, t := range allTools {
-				if _, ok := allowed[t.Name()]; ok {
-					filtered = append(filtered, t)
-				}
-			}
-			fmt.Fprintf(os.Stderr, "pig --rpc: setActiveTools: %d/%d tools active\n", len(filtered), len(allTools))
-			sess.Agent().SetTools(filtered)
-		})
+		// getActiveTools and setActiveTools come from bindSessionExtensionActions
+		// (upstream getActiveToolNames and setActiveToolsByName).
 		subprocBridge.SetHostAction("refreshTools", func() {
 			// No-op in RPC mode: tools don't change dynamically.
 		})
@@ -826,12 +749,11 @@ func runRPCMode(ctx context.Context, flags CLIFlags, activePiglet *piglet.Piglet
 	defer sess.EmitSessionShutdown("quit")
 	setTerminationShutdownHook(func() { sess.EmitSessionShutdown("quit") })
 	defer setTerminationShutdownHook(nil)
-
-	commandCatalog := rpcCommandCatalog{
-		runner: runner, promptTemplates: resources.PromptTemplates, skills: resources.Skills,
-		cwd: cwd, agentDir: agentDir, sourceInfo: resources.SourceInfo,
-		llama: llamaHost, notify: rpcUI.Notify,
+	if commandCatalog.extendFromExtensions(ctx, runner, "startup") {
+		promptOptions.Skills = promptSkillsFor(commandCatalog.skills)
+		sess.SetSystemPromptSections(prompts.BuildSystemPromptSections(promptOptions))
 	}
+	publishedCatalog.Store(new(commandCatalog))
 
 	// ── Event forwarder ────────────────────────────────────────────────────
 	// Forward upstream-compatible AgentSessionEvent JSON objects. Upstream pi
@@ -1351,7 +1273,11 @@ commandLoop:
 				writeRPC(rpcError(env.ID, "export_html", "Cannot export an in-memory session"))
 				continue
 			}
-			outputPath, err := codingexport.ExportFromFile(sess.Path(), cmd.OutputPath)
+			var registered []extension.RegisteredTool
+			if runner != nil {
+				registered = runner.Tools()
+			}
+			outputPath, err := codingexport.ExportFromFileWithTools(sess.Path(), cmd.OutputPath, registered, cwd)
 			if err != nil {
 				writeRPC(rpcError(env.ID, "export_html", err.Error()))
 				continue

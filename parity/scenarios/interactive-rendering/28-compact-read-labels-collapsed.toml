@@ -1,0 +1,48 @@
+# Behavior family: interactive-rendering
+# Surface: the collapsed read card's compact labels.
+#
+# Upstream evidence (Pi 0.87.1, core/tools/renderers/read.ts renderCall):
+# while the tool output is collapsed, getCompactReadClassification labels a
+# SKILL.md read as "[skill] <skill directory>" and a context file (AGENTS.md,
+# CLAUDE.md, AGENTS.override.md) as "read resource <path>", each with its
+# line range and "(ctrl+o to expand)". Other files keep "read <path>". Ctrl+O
+# expands the cards and shows the full headers (27-compact-read-labels).
+# PiG always drew "read <path>".
+
+name = "28-compact-read-labels-collapsed"
+description = "Collapsed read cards label skill and context files compactly"
+covers = [
+  "packages/coding-agent/src/core/tools/renderers/read.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 50
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/compact-read-cwd"
+capture_start = "Run: compact reads"
+capture_end = "compact-reads-done"
+
+[[tmux.steps]]
+keys = ["Run: compact reads", "Enter"]
+wait_contains = ["compact-reads-done", "[skill] demo-skill"]
+wait_timeout_seconds = 20
+
+[assert]
+both_reach_ready = true
+both_contain = ["[skill] demo-skill", "read resource AGENTS.md:2-2", "read notes.txt", "to expand)"]
+both_not_contain = ["panic:", "goroutine ", "test-faux:"]
+escaped_output_equal = true
+runs = 3

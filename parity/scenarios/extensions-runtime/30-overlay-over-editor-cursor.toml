@@ -1,0 +1,56 @@
+# Behavior family: extensions-runtime
+# Surface: an extension overlay composited over the editor row.
+#
+# overlay-editor-cursor.mjs opens a centered 20-column, 31-row ui.custom
+# overlay (like pi-rtk-optimizer's /rtk panel), so it covers the editor row.
+# Pi's Editor pads every content row to the content width, so the cursor's
+# closing SGR reset survives compositeTuiLine and exactly one cell stays
+# inverse. The escaped capture compares the cell styles left of the overlay.
+#
+# Upstream evidence (pi 0.87.1, tmux 100x35): the editor row reads
+#   "\x1b[7m \x1b[0m" then 39 plain cells before the overlay's left border;
+# PiG before the fix painted all 40 cells inverse.
+
+name = "30-overlay-over-editor-cursor"
+description = "An overlay covering the editor row leaves the editor cursor one inverse cell wide"
+covers = [
+  "packages/tui/src/components/editor.ts",
+  "packages/tui/src/tui.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/overlay-editor-cursor.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/overlay-editor-cursor.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+# The crop is the editor frame: the startup header above names each binary
+# and the overlay cuts the footer's masked cwd below.
+capture_start = "COVER 14"
+capture_end = "COVER 16"
+
+[[tmux.steps]]
+# Re-dispatch until the overlay opens: /cover is dropped if it beats the pig
+# extension subprocess's register/connect handshake (see 04-slash-command).
+keys = ["/cover", "Enter"]
+wait_contains = ["COVER 31"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["COVER 15"]
+both_not_contain = ["panic:", "goroutine ", "unknown command"]
+escaped_output_equal = true
+runs = 3

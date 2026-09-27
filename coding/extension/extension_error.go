@@ -1,5 +1,15 @@
 package extension
 
+import "errors"
+
+// ErrHandlerStopped marks a handler call the host itself cut short: it
+// stopped the extension (shutdown, a termination signal, /reload) or
+// cancelled the dispatch. The handler did not fail, so runners do not report
+// it as an ExtensionError. Upstream never interrupts a running handler; its
+// signal path disposes the runtime and exits without reporting the
+// interrupted work.
+var ErrHandlerStopped = errors.New("extension handler stopped by the host")
+
 // ExtensionError is the structured error surfaced when a registered
 // handler throws (TS) / returns a non-nil error (Go) during event
 // dispatch. Hosts collect these without aborting the dispatch chain
@@ -29,11 +39,28 @@ type ExtensionError struct {
 	// upstream is `err.message`. Mirrors upstream `error`.
 	Error string `json:"error"`
 
-	// Stack is the optional stack trace. In Go this is captured via
-	// `debug.Stack()` at the dispatch site when a handler returns a
-	// non-nil error. Empty when the runner was unable to capture one
-	// (rare). Upstream uses `err.stack` which is also optional.
+	// Stack is the optional stack of the failure itself, as upstream's
+	// `err.stack`: the thrown error's stack for a subprocess extension, or
+	// the panicking goroutine's stack for an in-process handler. It is empty
+	// for a plain returned error, which carries no stack. See [ErrorStack].
 	Stack string `json:"stack,omitempty"`
+}
+
+// StackError is an error that carries the stack of the failure it reports,
+// such as a JavaScript error's `stack` or a recovered Go panic's stack.
+type StackError interface {
+	error
+	ErrorStack() string
+}
+
+// ErrorStack returns the stack carried by err or an error it wraps, or "".
+// Runners use it for [ExtensionError.Stack]: upstream reports the handler's
+// `err.stack`, never the host's own dispatch stack.
+func ErrorStack(err error) string {
+	if carrier, ok := errors.AsType[StackError](err); ok {
+		return carrier.ErrorStack()
+	}
+	return ""
 }
 
 // ErrorListener is the callback signature registered via

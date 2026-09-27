@@ -50,6 +50,16 @@ func (s *Session) rebuildSystemPrompt(toolNames []string) {
 	s.baseSystemPrompt = ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Sections: s.baseSystemSections}})
 }
 
+// SetSystemPromptSections replaces the caller-built system prompt, as
+// upstream _rebuildSystemPrompt does after extensions add resources. The next
+// request records the change in the transcript.
+func (s *Session) SetSystemPromptSections(sections ai.OrderedSections) {
+	s.structuredSystemPrompt = true
+	s.defaultSystemPrompt = false
+	s.baseSystemSections = cloneSystemSections(sections)
+	s.baseSystemPrompt = ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Sections: s.baseSystemSections}})
+}
+
 // restoreToolsFromTranscript activates the tools the current branch's
 // transcript declares, keeping only tools the Session has (upstream
 // _restoreToolsFromTranscript). A branch without a system message keeps the

@@ -555,3 +555,27 @@ def test_set_label_raises_host_error() -> None:
         conn.close()
         listener.close()
         t.join(timeout=2)
+
+
+def test_get_all_tools_and_commands_return_upstream_info() -> None:
+    """getAllTools and getCommands answer with upstream's ToolInfo and SlashCommandInfo."""
+    tool = {
+        "name": "grep",
+        "description": "Search file contents for a pattern.",
+        "parameters": {"type": "object", "required": ["pattern"], "properties": {"pattern": {"type": "string"}}},
+        "sourceInfo": {"path": "<builtin:grep>", "source": "builtin", "scope": "temporary", "origin": "top-level"},
+    }
+    command = {
+        "name": "probe",
+        "description": "Probe command",
+        "source": "extension",
+        "sourceInfo": {"path": "/x/probe.py", "source": "cli", "scope": "temporary", "origin": "top-level"},
+    }
+    ext = pig_sdk.Extension("py-info")
+    calls = []
+    results = {"getAllTools": {"tools": [tool]}, "getCommands": {"commands": [command]}}
+    ext._call = lambda method, args=None, request_id="": calls.append(method) or {"result": results[method]}  # type: ignore[method-assign]
+    ctx = pig_sdk.Context(extension=ext)
+    assert ctx.get_all_tools() == [tool]
+    assert ctx.get_commands() == [command]
+    assert calls == ["getAllTools", "getCommands"]

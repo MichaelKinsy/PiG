@@ -10,9 +10,13 @@ import (
 func TestUIBridge_Snapshot_ReadsCallbacks(t *testing.T) {
 	b := NewUIBridge(func() {})
 	b.SetActions(&HostCallbacks{
-		GetActiveTools:     func() []string { return []string{"read", "write"} },
-		GetAllTools:        func() []ToolInfo { return []ToolInfo{{Name: "read"}, {Name: "bash"}} },
-		GetCommands:        func() []CommandInfo { return []CommandInfo{{Name: "help"}} },
+		GetActiveTools: func() []string { return []string{"read", "write"} },
+		GetAllTools: func() []ToolInfo {
+			return []ToolInfo{{Name: "read"}, {Name: "bash", Description: "Run bash", Parameters: json.RawMessage(`{"type":"object"}`), PromptGuidelines: []string{"g"}, SourceInfo: map[string]any{"path": "<builtin:bash>"}}}
+		},
+		GetCommands: func() []CommandInfo {
+			return []CommandInfo{{Name: "help", Description: "Help", Source: "extension", SourceInfo: map[string]any{"path": "/ext.ts"}}}
+		},
 		GetThinkingLevel:   func() string { return "high" },
 		IsIdle:             func() bool { return false },
 		HasPendingMessages: func() bool { return true },
@@ -34,11 +38,13 @@ func TestUIBridge_Snapshot_ReadsCallbacks(t *testing.T) {
 	if len(state.ActiveTools) != 2 || state.ActiveTools[0] != "read" {
 		t.Errorf("ActiveTools = %v", state.ActiveTools)
 	}
-	if len(state.AllTools) != 2 || state.AllTools[1] != "bash" {
-		t.Errorf("AllTools = %v", state.AllTools)
+	// The Node runtime answers pi.getAllTools() and pi.getCommands() from
+	// this replica, so it carries the whole ToolInfo and SlashCommandInfo.
+	if raw, _ := json.Marshal(state.AllTools); string(raw) != `[{"name":"read","description":"","parameters":null,"sourceInfo":null},{"name":"bash","description":"Run bash","parameters":{"type":"object"},"promptGuidelines":["g"],"sourceInfo":{"path":"\u003cbuiltin:bash\u003e"}}]` {
+		t.Errorf("AllTools = %s", raw)
 	}
-	if len(state.Commands) != 1 || state.Commands[0] != "help" {
-		t.Errorf("Commands = %v", state.Commands)
+	if raw, _ := json.Marshal(state.Commands); string(raw) != `[{"name":"help","description":"Help","source":"extension","sourceInfo":{"path":"/ext.ts"}}]` {
+		t.Errorf("Commands = %s", raw)
 	}
 	if state.ThinkingLevel != "high" {
 		t.Errorf("ThinkingLevel = %q", state.ThinkingLevel)
@@ -94,5 +100,27 @@ func TestStatePayload_RoundTrip(t *testing.T) {
 	}
 	if got.ThinkingLevel != "medium" || got.ContextUsage == nil || got.ContextUsage.Tokens != 1 {
 		t.Errorf("roundtrip mismatch: %+v", got)
+	}
+}
+
+// Node extensions read ToolInfo from the state replica, which is exactly
+// upstream's shape. The getAllTools host call the Go, Rust and Python SDKs
+// use also carries PiG's per-tool source, which their ToolInfo exposed
+// before sourceInfo existed.
+func TestGetAllToolsHostCallKeepsTheSDKSourceField(t *testing.T) {
+	b := NewUIBridge(func() {})
+	b.SetActions(&HostCallbacks{GetAllTools: func() []ToolInfo {
+		return []ToolInfo{{Name: "lookup", Description: "Look up", Parameters: json.RawMessage(`{"type":"object"}`), SourceInfo: map[string]any{"path": "/ext.ts"}, Source: "mcp:docs"}}
+	}})
+	result, err := b.HandleCall("ext", &CallPayload{Method: "getAllTools"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := `{"tools":[{"name":"lookup","description":"Look up","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts"},"source":"mcp:docs"}]}`; string(result.Result) != want {
+		t.Errorf("getAllTools result = %s, want %s", result.Result, want)
+	}
+	state, _ := json.Marshal(b.Snapshot(nil, 0, false).AllTools)
+	if want := `[{"name":"lookup","description":"Look up","parameters":{"type":"object"},"sourceInfo":{"path":"/ext.ts"}}]`; string(state) != want {
+		t.Errorf("replicated allTools = %s, want %s", state, want)
 	}
 }

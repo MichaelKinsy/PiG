@@ -181,6 +181,21 @@ func Extension() *sdk.Extension {
 	ext.EntryRenderer("conformance-entry", func(_ sdk.Context, entry map[string]any, options sdk.EntryRenderOptions, width int) ([]string, error) {
 		return []string{fmt.Sprintf("entryrenderer:%v:expanded=%t:width=%d", entry["data"], options.Expanded, width)}, nil
 	})
+	ext.Tool("render_probe", "Render its own tool card", sdk.Schema{"type": "object", "properties": map[string]any{}}, func(sdk.Context, map[string]any) (any, error) {
+		return "render ok", nil
+	})
+	ext.SetToolRenderers("render_probe", sdk.ToolRenderers{
+		Shell: sdk.ToolRenderShellSelf,
+		Call: func(_ sdk.Context, args map[string]any, render sdk.ToolRenderContext, width int) ([]string, error) {
+			calls, _ := render.State["calls"].(int)
+			render.State["calls"] = calls + 1
+			return []string{fmt.Sprintf("toolrender:call:%v:partial=%t:calls=%d:width=%d", args["topic"], render.IsPartial, calls+1, width)}, nil
+		},
+		Result: func(_ sdk.Context, result sdk.ToolRenderResult, options sdk.ToolRenderResultOptions, render sdk.ToolRenderContext, width int) ([]string, error) {
+			details, _ := result.Details.(map[string]any)
+			return []string{fmt.Sprintf("toolrender:result:%v:%v:expanded=%t:calls=%v:width=%d", result.Content[0]["text"], details["k"], options.Expanded, render.State["calls"], width)}, nil
+		},
+	})
 
 	ext.Tool("echo", "Echo back the input", sdk.Schema{
 		"type":     "object",
@@ -267,6 +282,19 @@ func Extension() *sdk.Extension {
 			return map[string]string{"content": "grammar"}, nil
 		})
 
+	ext.RegisterCommand("complete_probe", sdk.CommandOptions{
+		Description: "Complete its arguments",
+		GetArgumentCompletions: func(prefix string) ([]sdk.AutocompleteItem, error) {
+			var items []sdk.AutocompleteItem
+			for _, item := range []sdk.AutocompleteItem{{Value: "alpha", Label: "alpha — first"}, {Value: "apple", Description: "fruit"}, {Value: "beta"}} {
+				if strings.HasPrefix(item.Value, strings.TrimSpace(prefix)) {
+					items = append(items, item)
+				}
+			}
+			return items, nil
+		},
+		Handler: func(sdk.Context, string) error { return nil },
+	})
 	ext.Command("ping", "Respond with pong", func(ctx sdk.Context, args string) error {
 		ctx.Notify("pong", "info")
 		return nil

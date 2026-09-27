@@ -691,7 +691,10 @@ func (e *Editor) layoutText(contentWidth int) []layoutLine {
 	return layoutLines
 }
 
-func (e *Editor) buildVisualLines(width int) []string {
+// buildVisualLines lays out the text at width and decorates the cursor.
+// rowWidth is the most cells a row may take: the content width plus the one
+// right-padding cell upstream's cursorInPadding lets the cursor use.
+func (e *Editor) buildVisualLines(width, rowWidth int) []string {
 	var out []string
 	emitCursorMarker := e.Focused && len(e.autocompleteItems) == 0
 	for _, line := range e.layoutText(width) {
@@ -699,7 +702,11 @@ func (e *Editor) buildVisualLines(width int) []string {
 			out = append(out, line.text)
 			continue
 		}
-		if line.cursorPos == len(line.text) && widthx.VisibleWidth(line.text) >= width && len(line.text) > 0 {
+		// pig divergence (D66): Upstream appends the end-of-line cursor as a
+		// highlighted space even when the row has no cell left for it, which
+		// happens only at width 1 without padding. PiG highlights the final
+		// grapheme there instead of emitting a row wider than the terminal.
+		if line.cursorPos == len(line.text) && widthx.VisibleWidth(line.text) >= rowWidth && len(line.text) > 0 {
 			segments := graphemeSegments(line.text)
 			last := segments[len(segments)-1]
 			marker := ""
@@ -895,7 +902,7 @@ func (e *Editor) Render(width int) []string {
 		layoutWidth = max(1, contentWidth-1)
 	}
 	e.renderWidth = layoutWidth
-	visual := e.buildVisualLines(layoutWidth)
+	visual := e.buildVisualLines(layoutWidth, contentWidth+min(paddingX, 1))
 	cursorVisualIdx := e.findCursorVisualLine(visual)
 
 	maxVis := e.maxVisibleLines
@@ -920,12 +927,21 @@ func (e *Editor) Render(width int) []string {
 	end := min(e.scrollOffset+maxVis, len(visual))
 	visible := visual[e.scrollOffset:end]
 	e.renderedVisibleLineCount = len(visible)
-	if paddingX > 0 {
-		padding := strings.Repeat(" ", paddingX)
-		for i, line := range visible {
-			right := strings.Repeat(" ", max(0, contentWidth-widthx.VisibleWidth(line)))
-			visible[i] = padding + line + right + padding
+	// Mirrors upstream editor.ts render: every content row is padded to the
+	// content width, padding or not. The trailing cells matter beyond looks:
+	// compositeTuiLine keeps SGR codes only when a later cell follows them, so
+	// an unpadded row ending in the cursor's "\x1b[7m \x1b[0m" loses its reset
+	// under an overlay and paints the gap before the overlay inverse. A cursor
+	// appended past the content width sits in the right padding, which then
+	// gives up one cell.
+	padding := strings.Repeat(" ", paddingX)
+	for i, line := range visible {
+		lineWidth := widthx.VisibleWidth(line)
+		right := padding
+		if paddingX > 0 && lineWidth > contentWidth {
+			right = padding[1:]
 		}
+		visible[i] = padding + line + strings.Repeat(" ", max(0, contentWidth-lineWidth)) + right
 	}
 
 	// Render top border (with "↑ N more" indicator if scrolled down).
@@ -954,12 +970,8 @@ func (e *Editor) Render(width int) []string {
 	if len(e.autocompleteItems) > 0 {
 		autocomplete := e.renderAutocomplete(contentWidth)
 		e.renderedAutocompleteHeight = len(autocomplete)
-		if paddingX > 0 {
-			padding := strings.Repeat(" ", paddingX)
-			for i, line := range autocomplete {
-				right := strings.Repeat(" ", max(0, contentWidth-widthx.VisibleWidth(line)))
-				autocomplete[i] = padding + line + right + padding
-			}
+		for i, line := range autocomplete {
+			autocomplete[i] = padding + line + strings.Repeat(" ", max(0, contentWidth-widthx.VisibleWidth(line))) + padding
 		}
 		out = append(out, autocomplete...)
 	}
@@ -1301,6 +1313,15 @@ func (e *Editor) SetAutocomplete(p AutocompleteProvider) {
 	e.refreshAutocomplete()
 }
 
+// RefreshAutocomplete queries the provider again for the current buffer,
+// for a provider whose answer arrived after the keystroke that asked for it.
+func (e *Editor) RefreshAutocomplete() {
+	if e.autocomplete == nil {
+		return
+	}
+	e.refreshAutocomplete()
+}
+
 // AutocompleteOpen reports whether the popup is currently visible.
 // Used by the host (interactive.go) to gate Esc/Enter handling.
 func (e *Editor) AutocompleteOpen() bool { return len(e.autocompleteItems) > 0 }
@@ -1391,8 +1412,10 @@ func (e *Editor) AutocompleteAccept() (submit bool) {
 	e.lines = newLines
 	e.cursor = [2]int{nl, nc}
 	e.saveHistory()
-	// Slash-name prefix → submit. Anything else (arg completion) → no submit.
-	isSlashName := strings.HasPrefix(prefix, "/") && !strings.ContainsAny(prefix, " \t")
+	// A prefix that starts with "/" falls through to submit; anything else
+	// (an argument completion) does not (upstream editor.ts
+	// tui.select.confirm).
+	isSlashName := strings.HasPrefix(prefix, "/")
 	e.autocompleteItems = nil
 	e.autocompleteCursor = 0
 	e.autocompletePrefix = ""

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -115,8 +116,11 @@ func TestReadPipedStdinTrimsContent(t *testing.T) {
 		}
 		oldStdin := os.Stdin
 		os.Stdin = file
-		got := readPipedStdin()
+		got, err := readPipedStdin(context.Background())
 		os.Stdin = oldStdin
+		if err != nil {
+			t.Fatal(err)
+		}
 		_ = file.Close()
 		if got != tc.want {
 			t.Errorf("readPipedStdin(%q) = %q, want %q", tc.input, got, tc.want)

@@ -7,12 +7,15 @@ import (
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
+// When a row has no cell left for the end-of-line cursor (D66), the cursor
+// highlights the final grapheme; these lock that path's grapheme slicing.
 func TestEditorFullWidthInvalidUTF8DoesNotPanic(t *testing.T) {
 	invalid := strings.Repeat("a", 208) + string([]byte{0xe2}) + "x"
 	e := NewEditor()
 	e.SetText(invalid)
 
-	rows := e.buildVisualLines(widthx.VisibleWidth(invalid))
+	width := widthx.VisibleWidth(invalid)
+	rows := e.buildVisualLines(width, width)
 	if len(rows) == 0 {
 		t.Fatal("render returned no rows")
 	}
@@ -26,7 +29,8 @@ func TestEditorFullWidthCursorHighlightsFinalGrapheme(t *testing.T) {
 	e := NewEditor()
 	e.SetText(text)
 
-	rows := e.buildVisualLines(widthx.VisibleWidth(text))
+	width := widthx.VisibleWidth(text)
+	rows := e.buildVisualLines(width, width)
 	if !strings.Contains(rows[0], "\033[7me\u0301\033[0m") {
 		t.Fatalf("cursor did not highlight the final grapheme: %q", rows[0])
 	}

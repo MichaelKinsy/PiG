@@ -2796,9 +2796,13 @@
         "internal/codingagent/interactive_test.go#TestShowStatus_Coalesces",
         "internal/codingagent/ext_ui_context_test.go#TestExtUIContextSetToolsExpandedUpdatesVisibleToolCards",
         "internal/codingagent/ext_theme_test.go#TestExtensionThemeAPIsAreWired",
-        "internal/codingagent/interactive_test.go#TestCompactStartupResourceSectionListsNames"
+        "internal/codingagent/loaded_resources_test.go#TestShowLoadedResourcesListsEachSectionUnderItsHeading",
+        "internal/codingagent/loaded_resources_test.go#TestLoadedResourcesExtensionLabelsMatchUpstream",
+        "internal/codingagent/loaded_resources_test.go#TestLoadedResourcesExpandedExtensionsMatchUpstream",
+        "internal/codingagent/loaded_resources_test.go#TestLoadedResourcesContextMatchesUpstream",
+        "internal/codingagent/loaded_resources_test.go#TestLoadedResourcesQuietAndVerboseStartup"
       ],
-      "rationale": "only ~5 of 33 cases have plausible coverage: showStatus coalescing (1 of 2 -- 'appends a new status line if something else was added in between' is untested), setToolsExpanded (1), setTheme persist/reject-invalid (2), and one generic startup-resource-listing test that does not reach the ~24 showLoadedResources sub-cases (index.ts/index.js stripping, grandparent disambiguation, npm/Windows sibling labeling, verbose vs quiet, compact vs expanded, context-path handling -- no hits for 'index.ts'/'grandparent'/'disambiguat' in internal/codingagent or tui). showManagedToolStatus, showExtensionCustom, addAutocompleteProvider/setupAutocompleteProvider/createBaseAutocompleteProvider have no test evidence at all."
+      "rationale": "partial: showStatus coalescing (1 of 2 -- 'appends a new status line if something else was added in between' is untested), setToolsExpanded (1), setTheme persist/reject-invalid (2), and the showLoadedResources cases (compact and expanded listings, verbose versus quiet startup, index.ts/index.js stripping, parent and grandparent disambiguation, package and npm/Windows sibling labels, mixed layouts in compact and expanded output, context paths and system prompt order) are ported in loaded_resources_test.go. The reload quiet-startup and quiet-diagnostics cases, showManagedToolStatus, showExtensionCustom, and addAutocompleteProvider/setupAutocompleteProvider/createBaseAutocompleteProvider have no test evidence."
     },
     {
       "path": "packages/coding-agent/test/interactive-mode-suspend.test.ts",

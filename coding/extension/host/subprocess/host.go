@@ -244,6 +244,10 @@ type Host struct {
 	// extension list, so Extensions reports them in load order as upstream
 	// does.
 	loadOrder map[string]int
+	// configSourceInfo is each configured extension's SourceInfo by name.
+	// Packed cells start their members from cell descriptors, not the
+	// configs, so buildExtension reads the provenance back from here.
+	configSourceInfo map[string]extension.SourceInfo
 	// embeddedCells is the immutable source-free cell set supplied by a Piglet
 	// Binary. Reload reconstructs these cells alongside source extensions.
 	embeddedCells []EmbeddedCell
@@ -490,6 +494,10 @@ type managedExt struct {
 	releaseLiveness       func()               // Releases heartbeat ownership for live provider state.
 	livenessOwnerMu       sync.Mutex
 	cacheLease            *runtimecell.UsageLease
+
+	// toolRenders routes this extension's renderer invalidations to the
+	// tool cards whose renderers it runs.
+	toolRenders toolRenderSessions
 }
 
 func (me *managedExt) releaseLivenessOwner() {
@@ -1012,11 +1020,27 @@ func (h *Host) recordLoadOrder(configs []ExtConfig, replace bool) {
 	if replace || h.loadOrder == nil {
 		h.loadOrder = make(map[string]int, len(configs))
 	}
+	if replace || h.configSourceInfo == nil {
+		h.configSourceInfo = make(map[string]extension.SourceInfo, len(configs))
+	}
 	for _, config := range configs {
 		if _, ranked := h.loadOrder[config.Name]; !ranked {
 			h.loadOrder[config.Name] = len(h.loadOrder)
 		}
+		if config.SourceInfo != nil {
+			h.configSourceInfo[config.Name] = config.SourceInfo
+		}
 	}
+}
+
+// extensionSourceInfo returns the SourceInfo configured for me's extension.
+func (h *Host) extensionSourceInfo(me *managedExt) extension.SourceInfo {
+	if me.config.SourceInfo != nil {
+		return me.config.SourceInfo
+	}
+	h.mu.Lock()
+	defer h.mu.Unlock()
+	return h.configSourceInfo[me.config.Name]
 }
 
 // ExtensionCount returns the number of loaded subprocess extensions.
@@ -2063,7 +2087,7 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 		Name:             me.config.Name,
 		Path:             path,
 		ResolvedPath:     resolvedPath,
-		SourceInfo:       me.config.SourceInfo,
+		SourceInfo:       h.extensionSourceInfo(me),
 		Tools:            make(map[string]extension.RegisteredTool, len(reg.Tools)),
 		Commands:         make(map[string]extension.RegisteredCommand, len(reg.Commands)),
 		MessageRenderers: make(map[string]extension.MessageRenderer, len(reg.MessageRenderers)),
@@ -2081,30 +2105,40 @@ func (h *Host) buildExtension(me *managedExt, reg *RegisterPayload) *extension.E
 		if source == "" {
 			source = me.config.Name // default: extension name (matches upstream sourceInfo stamping)
 		}
-		ext.Tools[td.Name] = extension.RegisteredTool{
-			Definition: extension.ToolDefinition{
-				Name:                tool.Name,
-				Label:               tool.Label,
-				Description:         tool.Description,
-				Parameters:          tool.Parameters,
-				ConstrainedSampling: tool.ConstrainedSampling,
-				PromptGuidelines:    tool.PromptGuidelines,
-				ExecutionMode:       extension.ToolExecutionMode(tool.ExecutionMode),
-				Execute:             h.makeToolExecuteFunc(me, tool.Name),
-			},
-			SourceInfo: source,
+		definition := extension.ToolDefinition{
+			Name:                tool.Name,
+			Label:               tool.Label,
+			Description:         tool.Description,
+			Parameters:          tool.Parameters,
+			ConstrainedSampling: tool.ConstrainedSampling,
+			PromptGuidelines:    tool.PromptGuidelines,
+			ExecutionMode:       extension.ToolExecutionMode(tool.ExecutionMode),
+			RenderShell:         extension.ToolRenderShell(tool.RenderShell),
+			Execute:             h.makeToolExecuteFunc(me, tool.Name),
 		}
+		if tool.RendersCall {
+			definition.RenderCall = h.makeToolRenderCall(me, tool.Name)
+		}
+		if tool.RendersResult {
+			definition.RenderResult = h.makeToolRenderResult(me, tool.Name)
+		}
+		ext.Tools[td.Name] = extension.RegisteredTool{Definition: definition, SourceInfo: source}
+		ext.ToolOrder = append(ext.ToolOrder, td.Name)
 	}
 
 	// Build commands.
 	for _, cd := range reg.Commands {
 		cmd := cd // capture
-		ext.Commands[cd.Name] = extension.RegisteredCommand{
+		registered := extension.RegisteredCommand{
 			Name:        cmd.Name,
 			Description: cmd.Description,
 			SourceInfo:  ext.SourceInfo,
 			Handler:     h.makeCommandHandler(me, cmd.Name),
 		}
+		if cmd.ArgumentCompletions {
+			registered.GetArgumentCompletions = makeCommandArgumentCompletions(me, cmd.Name)
+		}
+		ext.Commands[cd.Name] = registered
 		ext.CommandOrder = append(ext.CommandOrder, cd.Name)
 	}
 
@@ -2340,7 +2374,7 @@ func (h *Host) makeCommandHandler(me *managedExt, cmdName string) extension.Comm
 		}
 
 		if err := h.pushStateTo(ctx, me); err != nil {
-			return fmt.Errorf("sync extension state for command %s: %w", cmdName, h.invocationError(err))
+			return me.dispatchError(fmt.Errorf("sync extension state for command %s: %w", cmdName, h.invocationError(err)))
 		}
 
 		resp, err := me.conn.Request(ctx, &Envelope{
@@ -2352,7 +2386,7 @@ func (h *Host) makeCommandHandler(me *managedExt, cmdName string) extension.Comm
 			},
 		})
 		if err != nil {
-			return fmt.Errorf("command %s: %w", cmdName, h.invocationError(err))
+			return me.dispatchError(fmt.Errorf("command %s: %w", cmdName, h.invocationError(err)))
 		}
 
 		if resp.Response != nil && resp.Response.Error != nil {
@@ -2360,6 +2394,41 @@ func (h *Host) makeCommandHandler(me *managedExt, cmdName string) extension.Comm
 		}
 
 		return nil
+	}
+}
+
+// makeCommandArgumentCompletions asks the extension for a command's
+// getArgumentCompletions. The caller runs it off the TUI loop, as upstream
+// awaits it.
+func makeCommandArgumentCompletions(me *managedExt, cmdName string) extension.ArgumentCompletionsFunc {
+	return func(prefix string) ([]extension.AutocompleteItem, error) {
+		if me.conn == nil {
+			return nil, errors.New("extension not connected")
+		}
+		args, err := json.Marshal(prefix)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := me.conn.Request(context.Background(), &Envelope{
+			Type:    MsgRequest,
+			Request: &RequestPayload{Method: RequestCommandArgumentCompletions, Tool: cmdName, Args: args},
+		})
+		if err != nil {
+			return nil, fmt.Errorf("command %s argument completions: %w", cmdName, err)
+		}
+		if resp.Response == nil {
+			return nil, nil
+		}
+		if resp.Response.Error != nil {
+			return nil, resp.Response.Error.ToError()
+		}
+		var items []extension.AutocompleteItem
+		if len(resp.Response.Result) > 0 {
+			if err := json.Unmarshal(resp.Response.Result, &items); err != nil {
+				return nil, fmt.Errorf("command %s argument completions: %w", cmdName, err)
+			}
+		}
+		return items, nil
 	}
 }
 
@@ -2371,7 +2440,7 @@ func (h *Host) makeShortcutHandler(me *managedExt, key string) extension.Shortcu
 			return errors.New("extension not connected")
 		}
 		if err := h.pushStateTo(ctx, me); err != nil {
-			return fmt.Errorf("sync extension state for shortcut %s: %w", key, h.invocationError(err))
+			return me.dispatchError(fmt.Errorf("sync extension state for shortcut %s: %w", key, h.invocationError(err)))
 		}
 
 		resp, err := me.conn.Request(ctx, &Envelope{
@@ -2382,7 +2451,7 @@ func (h *Host) makeShortcutHandler(me *managedExt, key string) extension.Shortcu
 			},
 		})
 		if err != nil {
-			return fmt.Errorf("shortcut %s: %w", key, h.invocationError(err))
+			return me.dispatchError(fmt.Errorf("shortcut %s: %w", key, h.invocationError(err)))
 		}
 
 		if resp.Response != nil && resp.Response.Error != nil {
@@ -2441,7 +2510,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			}
 		}
 		if err := me.host.pushStateTo(parent, me); err != nil {
-			return nil, fmt.Errorf("sync extension state for event %s: %w", event, me.host.invocationError(err))
+			return nil, me.dispatchError(fmt.Errorf("sync extension state for event %s: %w", event, me.host.invocationError(err)))
 		}
 
 		resp, err := me.conn.Request(parent, &Envelope{
@@ -2454,7 +2523,7 @@ func (me *managedExt) makeEventHandler(event string, handlerID int) extension.Ha
 			},
 		})
 		if err != nil {
-			return nil, fmt.Errorf("event %s: %w", event, me.host.invocationError(err))
+			return nil, me.dispatchError(fmt.Errorf("event %s: %w", event, me.host.invocationError(err)))
 		}
 
 		if resp.Response != nil {
@@ -2538,7 +2607,17 @@ func (h *Host) handleIncoming(me *managedExt) {
 			// host-side overlay surfaces (e.g. ui.custom). Errors
 			// are intentionally swallowed because the producer does
 			// not expect a response.
-			if env.Notify == nil || h.uiBridge == nil {
+			if env.Notify == nil {
+				continue
+			}
+			if env.Notify.Method == NotifyToolRenderInvalidate {
+				var card ToolRenderCardPayload
+				if json.Unmarshal(env.Notify.Args, &card) == nil {
+					me.toolRenders.invalidate(me.conn, card.Card)
+				}
+				continue
+			}
+			if h.uiBridge == nil {
 				continue
 			}
 			h.uiBridge.HandleNotifyFrom(me.config.Name, me.conn, env.Notify)
@@ -2823,4 +2902,24 @@ func buildExtCommandForGOOS(
 		return exec.CommandContext(ctx, node, binPath)
 	}
 	return exec.CommandContext(ctx, binPath)
+}
+
+// stoppedByOwner reports whether the host stopped this extension: a graceful
+// shutdown of it or of the host, its owner's context ending, or its packed
+// process being stopped.
+func (me *managedExt) stoppedByOwner() bool {
+	return me.shuttingDown.Load() ||
+		(me.host != nil && me.host.shuttingDown.Load()) ||
+		(me.parentCtx != nil && me.parentCtx.Err() != nil) ||
+		(me.packedProcess != nil && me.packedProcess.stopping.Load())
+}
+
+// dispatchError marks a failed handler call as cut short by the host when
+// the host stopped the extension, so runners do not report it as the
+// handler's failure (extension.ErrHandlerStopped).
+func (me *managedExt) dispatchError(err error) error {
+	if err != nil && me.stoppedByOwner() {
+		return fmt.Errorf("%w: %w", extension.ErrHandlerStopped, err)
+	}
+	return err
 }

@@ -195,3 +195,6 @@ func tryNFDVariant(filePath string) string {
 func tryCurlyQuoteVariant(filePath string) string {
 	return strings.ReplaceAll(filePath, "'", "\u2019")
 }
+
+// ResolveToCwd is upstream path-utils.ts resolveToCwd for other packages.
+func ResolveToCwd(filePath, cwd string) string { return resolveToCwd(filePath, cwd) }

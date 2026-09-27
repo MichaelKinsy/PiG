@@ -24,6 +24,7 @@ import (
 	"golang.org/x/text/unicode/norm"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // upstream: coding-agent/src/core/tools/truncate.ts:DEFAULT_MAX_BYTES
@@ -194,16 +195,36 @@ func CreateAllTools(cwd string, settings BashSettingsView, agentBinDir string) [
 	return append(all, coding[2:]...)
 }
 
+// BuiltinToolSchemas returns the schema of every built-in tool, in registry
+// order (upstream createAllToolDefinitions), without creating runnable
+// tools. The schemas are the definitions upstream getAllTools reports.
+func BuiltinToolSchemas() []ai.ToolSchema {
+	byName := make(map[string]ai.ToolSchema, len(builtinToolNames))
+	for _, t := range builtinSchemaTools() {
+		s := t.Schema()
+		byName[s.Name] = s
+	}
+	out := make([]ai.ToolSchema, 0, len(builtinToolNames))
+	for _, name := range builtinToolNames {
+		out = append(out, byName[name])
+	}
+	return out
+}
+
+func builtinSchemaTools() []agent.AgentTool {
+	return []agent.AgentTool{
+		&BashTool{}, &PowerShellTool{}, &ReadTool{}, &WriteTool{}, &EditTool{},
+		&GrepTool{}, &FindTool{}, &LsTool{},
+	}
+}
+
 // DefaultToolGuidelines returns the prompt guidelines from each built-in
 // tool's Schema(). Used by prompt builders that don't have access to the
 // full tool instances (e.g. interactive mode where tools are constructed
 // later). Mirrors upstream agent-session.ts:2273-2276.
 func DefaultToolGuidelines() map[string][]string {
 	m := make(map[string][]string)
-	for _, t := range []agent.AgentTool{
-		&BashTool{}, &PowerShellTool{}, &ReadTool{}, &WriteTool{}, &EditTool{},
-		&GrepTool{}, &FindTool{}, &LsTool{},
-	} {
+	for _, t := range builtinSchemaTools() {
 		s := t.Schema()
 		if len(s.PromptGuidelines) > 0 {
 			m[s.Name] = s.PromptGuidelines

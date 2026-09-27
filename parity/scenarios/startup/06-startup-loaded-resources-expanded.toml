@@ -1,0 +1,58 @@
+# Behavior family: startup
+# Upstream evidence: Ctrl+O calls setToolsExpanded, which expands every
+# loaded-resources section to formatScopeGroups: scope groups (project, user,
+# path) in accent, plain paths in dim under each, and each Package source in
+# mdLink with its resources relative to the Package root. Extension paths drop
+# a trailing /index.ts. Probed on Pi 0.87.1 at 220x60 with the fixture of
+# 05-startup-loaded-resources:
+#   [Extensions]
+#     user
+#       <agent>/extensions/auto-dir
+#       <agent>/extensions/auto-one.ts
+#       git:github.com/pig-parity/listing-fixture
+#         extensions/alpha.ts
+#         extensions/beta
+# PiG had no expanded listing.
+name = "06-startup-loaded-resources-expanded"
+description = "Ctrl+O expands the startup listing into Pi's scope groups with package-relative paths."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_OFFLINE=1", "PIG_CODING_AGENT_DIR=testdata/listing/pig-agent"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/listing/pi-agent"]
+# The base arguments pass --no-extensions, which also drops Packages and
+# auto-discovered extensions from the listing under test.
+override_base_args = true
+
+[tmux]
+# Wide enough that no listed absolute snapshot path wraps: the two binaries'
+# snapshot directory names differ in length by one character.
+width = 220
+height = 60
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "[Skills]"
+capture_end = "fixture-theme.json"
+
+[[tmux.steps]]
+wait_contains = ["fixture-theme"]
+
+[[tmux.steps]]
+keys = ["C-o"]
+wait_contains = ["drop files to attach"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["git:github.com/pig-parity/listing-fixture", "extensions/alpha.ts", "extensions/beta", "skills/fixture-skill/SKILL.md", "/fixture-prompt"]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: the runner snapshots each binary's agent directory to
+# parity-snap-PIG_CODING_AGENT_DIR-<n> or parity-snap-PI_CODING_AGENT_DIR-<n>;
+# only that directory name differs in the listed user paths.
+[[assert.normalize_replace]]
+pattern = 'parity-snap-PIG?_CODING_AGENT_DIR-[0-9]+'
+with = "<agent-dir>"
