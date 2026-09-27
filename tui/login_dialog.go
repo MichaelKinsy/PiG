@@ -26,7 +26,7 @@ type LoginDialog struct {
 	lines            []string // content lines (plain text, may contain ANSI)
 	inputPrompt      string   // set when input is requested
 	inputPlaceholder string
-	inputBuf         string
+	input            *TextInput
 	inputActive      bool
 	inputCh          chan string // receives user input on Enter
 	done             bool
@@ -89,8 +89,16 @@ func (d *LoginDialog) ShowInput(prompt, placeholder string) <-chan string {
 	d.inputPrompt = prompt
 	d.inputPlaceholder = placeholder
 	d.inputActive = true
-	d.inputBuf = ""
 	d.inputCh = make(chan string, 1)
+	d.input = NewInput(InputOptions{})
+	d.input.OnSubmit = func(value string) {
+		if d.inputCh != nil {
+			d.inputCh <- value
+			close(d.inputCh)
+			d.inputCh = nil
+		}
+		d.inputActive = false
+	}
 	d.Invalidate()
 	return d.inputCh
 }
@@ -118,26 +126,8 @@ func (d *LoginDialog) HandleInput(data string) {
 	if !d.inputActive {
 		return
 	}
-	switch data {
-	case "\n", "\r":
-		if d.inputCh != nil {
-			d.inputCh <- d.inputBuf
-			close(d.inputCh)
-			d.inputCh = nil
-		}
-		d.inputActive = false
-		d.Invalidate()
-	case "\x7f", "\b":
-		if len(d.inputBuf) > 0 {
-			d.inputBuf = d.inputBuf[:len(d.inputBuf)-1]
-			d.Invalidate()
-		}
-	default:
-		if len(data) > 0 && data[0] >= 0x20 {
-			d.inputBuf += data
-			d.Invalidate()
-		}
-	}
+	d.input.HandleInput(data)
+	d.Invalidate()
 }
 
 // Render returns bordered ANSI lines.
@@ -163,7 +153,7 @@ func (d *LoginDialog) Render(width int) []string {
 		if d.inputPlaceholder != "" {
 			out = append(out, wrapWithIndent(" e.g., "+d.inputPlaceholder, width)...)
 		}
-		out = append(out, wrapWithIndent("> "+d.inputBuf, width)...)
+		out = append(out, d.input.Render(width)...)
 		out = append(out, wrapWithIndent(" (escape/ctrl+c to cancel, enter to submit)", width)...)
 	}
 
