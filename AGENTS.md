@@ -290,7 +290,7 @@ Weak scenarios not counted as behavioral verification: 5 boot-only, 3 registrati
 | `oauth` | 8 | 8 | 0 | 0 | 0 | 12 | not run |
 | `print` | 1 | 1 | 0 | 0 | 0 | 3 | not run |
 | `project-trust` | 8 | 8 | 0 | 0 | 0 | 13 | not run |
-| `providers-faux-streaming` | 10 | 9 | 0 | 1 | 0 | 14 | not run |
+| `providers-faux-streaming` | 11 | 10 | 0 | 1 | 0 | 15 | not run |
 | `providers-registry` | 6 | 3 | 0 | 3 | 0 | 26 | not run |
 | `rpc` | 26 | 26 | 0 | 0 | 0 | 10 | not run |
 | `selectors` | 10 | 10 | 0 | 0 | 1 | 14 | not run |
