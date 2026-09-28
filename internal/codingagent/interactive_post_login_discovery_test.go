@@ -66,6 +66,7 @@ func TestPostLoginModelDiscovery(t *testing.T) {
 				if name == "external path" {
 					authPath = filepath.Join(m.opts.AgentDir, "external-store.json")
 				}
+				refreshStarted := time.Now()
 				m.completeProviderAuthentication("radius", "Radius", ai.CredentialOAuth, nil, authPath, nil)
 				refreshCtx := <-blocked.started
 				synctest.Wait()
@@ -81,7 +82,11 @@ func TestPostLoginModelDiscovery(t *testing.T) {
 				case "preserve session":
 					m.opts.SessionHandle = &recordingCompactHandle{}
 				case "timeout":
-					time.Sleep(15 * time.Second)
+					// Pi awaits advanceTimersByTimeAsync(15_000); observe cancellation before releasing the store, rather than racing another timer at the same instant.
+					<-refreshCtx.Done()
+					if elapsed := time.Since(refreshStarted); elapsed != 15*time.Second || !errors.Is(refreshCtx.Err(), context.DeadlineExceeded) {
+						t.Fatalf("refresh cancellation after %s: %v; want DeadlineExceeded at 15s", elapsed, refreshCtx.Err())
+					}
 				case "refresh error":
 					blocked.readError = errors.New("store failed")
 				case "shutdown":
@@ -164,7 +169,7 @@ func TestPostLoginCompletesBeforeBackgroundRefresh(t *testing.T) {
 		registry.SetModelsStore(blocked)
 		before := time.Now()
 		m.completeProviderAuthentication("radius", "Radius", ai.CredentialAPIKey, previous, "", nil)
-		<-blocked.started
+		refreshCtx := <-blocked.started
 		synctest.Wait()
 		if time.Since(before) != 0 {
 			t.Fatal("login awaited the catalog deadline")
@@ -173,7 +178,10 @@ func TestPostLoginCompletesBeforeBackgroundRefresh(t *testing.T) {
 		if !strings.Contains(got, "Saved API key for Radius. Credentials saved to") || strings.Contains(got, "Warning:") {
 			t.Fatalf("initial status = %s", got)
 		}
-		time.Sleep(15 * time.Second)
+		<-refreshCtx.Done()
+		if elapsed := time.Since(before); elapsed != 15*time.Second || !errors.Is(refreshCtx.Err(), context.DeadlineExceeded) {
+			t.Fatalf("refresh cancellation after %s: %v; want DeadlineExceeded at 15s", elapsed, refreshCtx.Err())
+		}
 		drainPostLoginTasks(m)
 		close(blocked.release)
 		got = plainRender(m.chatContainer)

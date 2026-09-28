@@ -20,7 +20,7 @@ Every active divergence must have:
 - D47 — Width stripping consumes DEC private-mode set/reset sequences. Retired by the width-parity change. `tui/widthx.ExtractAnsi` now delegates to the upstream-compatible `ExtractAnsiCode`; the ID remains reserved. `TestExtractAnsi_PrivateModeMatchesUpstream` and `TestPiWidthDifferential` verify the shared ANSI parsing behavior. No active divergence or source marker remains.
 - D71 — Nonfatal main-screen overflow recovery. Withdrawn on 2026-09-25 by owner decision; the ID remains reserved. PiG now matches upstream `tui-main-screen.ts`: an over-wide non-image row that reaches the differential-render loop writes the TUI crash log (`pig-tui-crash.log` in the agent directory), stops the TUI, and ends the process through the uncaught-exception path with status 1. Initial, full, and resize renders emit the row unchanged. Tests: `tui/render_overflow_test.go` and parity scenario `extensions-runtime/20-differential-render-overflow-terminates.toml`. No active divergence or source marker remains.
 
-## Active divergences (31)
+## Active divergences (32)
 
 ## D2 PiG uses a separate command and configuration identity
 
