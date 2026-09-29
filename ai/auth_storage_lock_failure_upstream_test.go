@@ -47,7 +47,7 @@ func TestAuthStorageLockAcquisitionFailureDoesNotWriteAndRecoversUpstream(t *tes
 	authPortDisk(t, path, `{"anthropic":{"type":"api_key","key":"stored"},"openai":{"type":"api_key","key":"new"}}`)
 }
 
-// packages/coding-agent/test/auth-storage.test.ts:245 "retries a briefly contended file lock": a lock held briefly delays, but does not fail, the operation; the update runs once and the lock is released once. Go's ELOCKED retry loop lives inside pilock.Acquire, so the retry count is not observable at the acquire seam; the test releases the held lock only after the operation has entered acquisition.
+// packages/coding-agent/test/auth-storage.test.ts:245 "retries a briefly contended file lock": a lock held briefly delays, but does not fail, the operation; the update runs once and the lock is released once. Go's ELOCKED retry loop lives inside pilock.Acquire, so the retry count is not observable at the acquire seam; internal/pilock TestAcquireRetriesEEXISTUntilHolderReleases proves the retry itself. Here the holder is released only after a non-blocking probe has observed the contention and finished, so no directory removal overlaps an in-flight mkdir: on Windows that overlap returns ERROR_ACCESS_DENIED (Node EPERM), which Pi does not retry either.
 func TestAuthStorageRetriesBrieflyContendedFileLockUpstream(t *testing.T) {
 	storage, path := authPortFile(t, `{"anthropic":{"type":"api_key","key":"stored"}}`)
 	held, err := pilock.Acquire(t.Context(), path)
@@ -56,10 +56,19 @@ func TestAuthStorageRetriesBrieflyContendedFileLockUpstream(t *testing.T) {
 	}
 	var attempts, releases atomic.Int32
 	entered := make(chan struct{})
+	holderReleased := make(chan struct{})
 	real := acquireAuthFileLock
 	stubAuthFileLockAcquire(t, func(ctx context.Context, path string) (*pilock.Lock, error) {
 		attempts.Add(1)
+		// Wait 0 makes exactly one attempt, which must report the held lock.
+		if probe, err := pilock.AcquireWithOptions(ctx, path, pilock.AcquireOptions{Stale: pilock.SyncStale, Update: pilock.SyncStale / 2, Retry: time.Millisecond}); err == nil {
+			_ = probe.Release()
+			t.Error("probe acquired a lock that is held")
+		} else if !errors.Is(err, pilock.ErrLocked) {
+			t.Errorf("probe error = %v, want ErrLocked", err)
+		}
 		close(entered)
+		<-holderReleased
 		return real(ctx, path)
 	})
 	previousRelease := releaseAuthFileLock
@@ -85,6 +94,7 @@ func TestAuthStorageRetriesBrieflyContendedFileLockUpstream(t *testing.T) {
 	if err := held.Release(); err != nil {
 		t.Fatal(err)
 	}
+	close(holderReleased)
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
