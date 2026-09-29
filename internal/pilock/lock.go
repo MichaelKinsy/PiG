@@ -168,7 +168,7 @@ func mkdir(path string, stale time.Duration) error {
 	if stale <= 0 {
 		return ErrLocked
 	}
-	info, err := os.Lstat(path)
+	info, err := lstatLock(path)
 	if errors.Is(err, fs.ErrNotExist) {
 		return mkdir(path, 0)
 	}
