@@ -159,10 +159,10 @@ func tryAcquireWithUpdate(ctx context.Context, path string, stale, update time.D
 // osMkdir creates the lock directory; tests replace it to inject platform errors.
 var osMkdir = os.Mkdir
 
-// mkdir mirrors proper-lockfile 4.1.2 lib/lockfile.js acquireLock (lines 22-48): only EEXIST means the directory is held. Every other mkdir error, including the ERROR_ACCESS_DENIED Windows returns while a just-removed lock directory is pending deletion, is returned unretried. libuv's uv_translate_sys_error (src/win/error.c) surfaces ERROR_ACCESS_DENIED as EPERM, ERROR_SHARING_VIOLATION as EBUSY and ERROR_DIR_NOT_EMPTY as ENOTEMPTY, none of which are ELOCKED, so Pi's auth-storage.ts acquireLockSyncWithRetry (`code !== "ELOCKED"`) and acquireLockAsync throw them. Do not widen this to retry them.
+// mkdir mirrors proper-lockfile 4.1.2 lib/lockfile.js acquireLock (lines 22-48): only EEXIST means the directory is held. isEEXIST matches Node's EEXIST exactly; fs.ErrExist is wider because it also matches ENOTEMPTY and Windows ERROR_DIR_NOT_EMPTY. Every other mkdir error, including the ERROR_ACCESS_DENIED Windows returns while a just-removed lock directory is pending deletion, is returned unretried. libuv's uv_translate_sys_error (src/win/error.c) surfaces ERROR_ACCESS_DENIED as EPERM, ERROR_SHARING_VIOLATION as EBUSY and ERROR_DIR_NOT_EMPTY as ENOTEMPTY, none of which are ELOCKED, so Pi's auth-storage.ts acquireLockSyncWithRetry (`code !== "ELOCKED"`) and acquireLockAsync throw them. Do not widen this to retry them.
 func mkdir(path string, stale time.Duration) error {
 	err := osMkdir(path, 0o777)
-	if err == nil || !errors.Is(err, fs.ErrExist) {
+	if err == nil || !isEEXIST(err) {
 		return err
 	}
 	if stale <= 0 {

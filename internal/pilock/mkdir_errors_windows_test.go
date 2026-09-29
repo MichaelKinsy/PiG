@@ -8,3 +8,9 @@ var nonEEXISTMkdirErrors = map[string]error{
 	"ERROR_SHARING_VIOLATION": syscall.Errno(32),
 	"ERROR_DIR_NOT_EMPTY":     syscall.Errno(145),
 }
+
+// libuv src/win/error.c maps both to UV_EEXIST.
+var eexistMkdirErrors = map[string]error{
+	"ERROR_ALREADY_EXISTS": syscall.ERROR_ALREADY_EXISTS,
+	"ERROR_FILE_EXISTS":    syscall.ERROR_FILE_EXISTS,
+}

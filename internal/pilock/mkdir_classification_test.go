@@ -106,3 +106,39 @@ func TestAcquireSurfacesNonEEXISTMkdirErrorsUnretried(t *testing.T) {
 		}
 	}
 }
+
+// Every platform error Node reports as EEXIST is contention: proper-lockfile checks the held directory and raises ELOCKED, which Pi's retry loops retry until the holder releases.
+func TestAcquireRetriesEveryEEXISTMkdirError(t *testing.T) {
+	for name, injected := range eexistMkdirErrors {
+		for _, a := range acquirers {
+			t.Run(name+"/"+a.name, func(t *testing.T) {
+				path := filepath.Join(t.TempDir(), "auth.json")
+				held, err := AcquireSync(path)
+				if err != nil {
+					t.Fatal(err)
+				}
+				calls := stubMkdir(t, func(call int, real func() error) error {
+					if call == 1 {
+						return &fs.PathError{Op: "mkdir", Path: path + ".lock", Err: injected}
+					}
+					if call == 2 {
+						if err := held.Release(); err != nil {
+							t.Error(err)
+						}
+					}
+					return real()
+				})
+				lock, err := a.run(path)
+				if err != nil {
+					t.Fatalf("err = %v, want %s retried as contention", err, name)
+				}
+				if got := calls.Load(); got != 2 {
+					t.Fatalf("mkdir calls = %d, want 2", got)
+				}
+				if err := lock.Release(); err != nil {
+					t.Fatal(err)
+				}
+			})
+		}
+	}
+}
