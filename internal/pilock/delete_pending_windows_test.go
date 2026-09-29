@@ -11,6 +11,8 @@ import (
 	"time"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 // markBeingRemoved puts dir in the state another process's RemoveDirectoryW holds it in between marking it for deletion and closing its handle: the name is delete-pending, and opening or creating it fails with ERROR_ACCESS_DENIED (STATUS_DELETE_PENDING). The returned func closes the handle, which completes the removal.
@@ -116,7 +118,72 @@ func TestAcquireSurfacesLockBeingRemovedAtMkdir(t *testing.T) {
 	}
 }
 
-// The oracle for both tests above: Pi's pinned proper-lockfile on this Windows file system, with the holder's removal in flight at mkdir or at the stat that follows EEXIST.
+// makeHeldLockPath creates a held lock path: a fresh directory, a directory older than every stale threshold, or a directory link to a fresh directory.
+func makeHeldLockPath(t *testing.T, lockPath, kind string) {
+	t.Helper()
+	switch kind {
+	case "link":
+		target := lockPath + ".target"
+		if err := os.Mkdir(target, 0o777); err != nil {
+			t.Fatal(err)
+		}
+		testenv.RequireDirectoryLink(t, target, lockPath)
+		return
+	case "stale", "fresh":
+	default:
+		t.Fatalf("unknown lock path kind %q", kind)
+	}
+	if err := os.Mkdir(lockPath, 0o777); err != nil {
+		t.Fatal(err)
+	}
+	if kind == "stale" {
+		old := time.Now().Add(-time.Hour)
+		if err := os.Chtimes(lockPath, old, old); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+// Two entries read from the parent directory still fail the attempt, as in Pi (see TestProperLockfileOnLockBeingRemovedUpstream):
+//   - A stale directory: proper-lockfile removes it (lib/lockfile.js:71-79) and its rmdir fails with EPERM because the name is delete-pending. PiG's syscall.Rmdir fails with ERROR_ACCESS_DENIED.
+//   - A directory link: fs.stat follows links, and libuv's fs__stat_directory keeps the original ERROR_ACCESS_DENIED (EPERM) for a reparse point when it does not lstat (src/win/fs.c).
+//
+// Neither is contention, so neither attempt is retried.
+func TestAcquireSurfacesLockBeingRemovedAtStatThatIsStaleOrALink(t *testing.T) {
+	for _, kind := range []string{"stale", "link"} {
+		for _, a := range acquirers {
+			t.Run(kind+"/"+a.name, func(t *testing.T) {
+				path := filepath.Join(t.TempDir(), "auth.json")
+				makeHeldLockPath(t, path+".lock", kind)
+				calls := stubMkdir(t, func(call int, real func() error) error {
+					if call > 1 {
+						t.Errorf("mkdir call %d: the lock being removed was retried as held", call)
+						return real()
+					}
+					err := real()
+					if !isEEXIST(err) {
+						t.Errorf("mkdir of the held lock path = %v, want EEXIST", err)
+					}
+					markBeingRemoved(t, path+".lock")
+					return err
+				})
+				lock, err := a.run(path)
+				if err == nil {
+					_ = lock.Release()
+					t.Fatal("acquired a lock path that is being removed")
+				}
+				if errors.Is(err, ErrLocked) || !errors.Is(err, windows.ERROR_ACCESS_DENIED) {
+					t.Fatalf("err = %v, want ERROR_ACCESS_DENIED and not ErrLocked", err)
+				}
+				if got := calls.Load(); got != 1 {
+					t.Fatalf("mkdir calls = %d, want 1", got)
+				}
+			})
+		}
+	}
+}
+
+// The oracle for the tests above: Pi's pinned proper-lockfile on this Windows file system, with the holder's removal in flight at mkdir or at the stat that follows EEXIST.
 func TestProperLockfileOnLockBeingRemovedUpstream(t *testing.T) {
 	module, err := filepath.Abs(filepath.Join("..", "..", "extensions", "sdk-ts", "node_modules", "@earendil-works", "pi-coding-agent", "node_modules", "proper-lockfile"))
 	if err != nil {
@@ -146,19 +213,19 @@ if (api === 'sync') {
 }
 `
 	for _, test := range []struct {
-		step string
-		want string
+		step, kind string
+		want       string
 	}{
-		{"mkdir", "code=EPERM"},
-		{"stat", "code=ELOCKED"},
+		{"mkdir", "fresh", "code=EPERM"},
+		{"stat", "fresh", "code=ELOCKED"},
+		{"stat", "stale", "code=EPERM"},
+		{"stat", "link", "code=EPERM"},
 	} {
 		for _, api := range []string{"sync", "async"} {
-			t.Run(test.step+"/"+api, func(t *testing.T) {
+			t.Run(test.step+"/"+test.kind+"/"+api, func(t *testing.T) {
 				root := t.TempDir()
 				path := filepath.Join(root, "auth.json")
-				if err := os.Mkdir(path+".lock", 0o777); err != nil {
-					t.Fatal(err)
-				}
+				makeHeldLockPath(t, path+".lock", test.kind)
 				markers := ""
 				if test.step == "mkdir" {
 					markBeingRemoved(t, path+".lock")
@@ -194,7 +261,7 @@ if (api === 'sync') {
 					t.Fatalf("node: %v\n%s", err, out.String())
 				}
 				if got := strings.TrimSpace(out.String()); got != test.want {
-					t.Fatalf("proper-lockfile %s with the removal in flight at %s: %q, want %q", api, test.step, got, test.want)
+					t.Fatalf("proper-lockfile %s with the removal of a %s lock path in flight at %s: %q, want %q", api, test.kind, test.step, got, test.want)
 				}
 			})
 		}

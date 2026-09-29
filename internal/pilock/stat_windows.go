@@ -18,7 +18,7 @@ func lstatLock(path string) (fs.FileInfo, error) {
 		return info, err
 	}
 	name := filepath.Base(path)
-	// fs__stat_directory rejects wildcard characters, which FindFirstFile would expand.
+	// FindFirstFile would expand wildcard characters. mkdir never reaches this branch, because CreateDirectory rejects such names first; libuv's fs__stat_directory rejects them with ERROR_INVALID_NAME.
 	if strings.ContainsAny(name, `*?<>"`) {
 		return nil, err
 	}
