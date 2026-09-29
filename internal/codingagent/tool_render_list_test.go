@@ -1,14 +1,47 @@
 package codingagent
 
 import (
+	"encoding/json"
 	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/tui"
 )
+
+func TestListLimitNumberRendering(t *testing.T) {
+	var observations []string
+	// Pi's renderer template literals use JavaScript number formatting (grep.ts:63, find.ts:58, ls.ts:53), including exponent notation at these boundaries.
+	for _, tool := range []struct{ name, field, unit string }{
+		{"grep", "matchLimitReached", "matches"},
+		{"find", "resultLimitReached", "results"},
+		{"ls", "entryLimitReached", "entries"},
+	} {
+		for _, number := range []struct {
+			value float64
+			text  string
+		}{{1e-7, "1e-7"}, {1e21, "1e+21"}} {
+			details := map[string]any{tool.field: number.value}
+			want := number.text + " " + tool.unit + " limit"
+			warnings := listToolWarnings(tool.name, listDetailsFrom(details))
+			if len(warnings) != 1 || warnings[0] != want {
+				t.Fatalf("%s(%g) warnings = %q, want %q", tool.name, number.value, warnings, want)
+			}
+			th := tui.ActiveTheme()
+			body := toolBodyRenderer(tool.name, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "hit"}}, Details: details}, nil)
+			assertRows(t, body(80, false), shellRows(80, th.ToolOutput+"hit"+tui.SGRFgReset, th.Warning+"[Truncated: "+want+"]"+tui.SGRFgReset))
+			observations = append(observations, warnings[0])
+		}
+	}
+	data, err := json.Marshal(observations)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("list-limit:%s\n", data)
+}
 
 // Mirrors upstream formatGrepResult: the first 15 lines while collapsed with
 // a "more lines" hint, every line when expanded, then the warning row built
@@ -26,7 +59,7 @@ func TestGrepBodyRenderer(t *testing.T) {
 	details := &tools.GrepDetails{MatchLimitReached: 100, LinesTruncated: true,
 		Truncation: &tools.TruncationResult{Truncated: true}}
 	warning := th.Warning + "[Truncated: 100 matches limit, 50.0KB limit, some lines truncated]" + tui.SGRFgReset
-	r := toolBodyRenderer("grep", agent.AgentToolResult{Content: content.String(), Details: details}, nil)
+	r := toolBodyRenderer("grep", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: content.String()}}, Details: details}, nil)
 
 	// Upstream opens the muted hint before its newline, so the color code
 	// trails the last preview line (wrapTextWithAnsi keeps it on that row).
@@ -57,19 +90,19 @@ func TestFindAndLsBodyRenderers(t *testing.T) {
 	}
 	hint := muted("... (1 more lines,") + " " + th.Dim + "ctrl+o" + tui.SGRFgReset + muted(" to expand") + muted(")")
 
-	find := toolBodyRenderer("find", agent.AgentToolResult{Content: content.String(), Details: &tools.FindDetails{ResultLimitReached: 1000}}, nil)
+	find := toolBodyRenderer("find", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: content.String()}}, Details: &tools.FindDetails{ResultLimitReached: new(1000.0)}}, nil)
 	preview := append([]string(nil), lines[:20]...)
 	preview[19] += th.Muted
 	assertRows(t, find(60, false), append(shellRows(60, preview...),
 		shellRows(60, hint, th.Warning+"[Truncated: 1000 results limit]"+tui.SGRFgReset)...))
 
 	persisted := map[string]any{"entryLimitReached": float64(500), "truncation": map[string]any{"truncated": true, "maxBytes": float64(1024)}}
-	ls := toolBodyRenderer("ls", agent.AgentToolResult{Content: content.String(), Details: persisted}, nil)
+	ls := toolBodyRenderer("ls", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: content.String()}}, Details: persisted}, nil)
 	assertRows(t, ls(60, true), append(shellRows(60, lines...),
 		shellRows(60, th.Warning+"[Truncated: 500 entries limit, 1.0KB limit]"+tui.SGRFgReset)...))
 
 	// No output and no warnings renders no body at all.
-	if got := toolBodyRenderer("ls", agent.AgentToolResult{Content: "  \n"}, nil)(60, false); len(got) != 0 {
+	if got := toolBodyRenderer("ls", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "  \n"}}}, nil)(60, false); len(got) != 0 {
 		t.Fatalf("empty ls body = %q", got)
 	}
 }

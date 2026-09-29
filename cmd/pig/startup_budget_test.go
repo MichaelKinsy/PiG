@@ -12,9 +12,63 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/ignorerules"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
+
+// TestStartupSkillsIgnoreWorkBudget drives startup's skill loader with rules
+// that do not exclude any skills. Pi retains its matcher across the walk
+// (skills.ts:187-188, 257-265), rather than compiling it for each candidate.
+func TestStartupSkillsIgnoreWorkBudget(t *testing.T) {
+	root := t.TempDir()
+	const skillCount = 32
+	for i := range skillCount {
+		dir := filepath.Join(root, fmt.Sprintf("skill-%02d", i))
+		if err := os.MkdirAll(dir, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		body := fmt.Sprintf("---\nname: skill-%02d\ndescription: ordinary skill\n---\nbody\n", i)
+		if err := os.WriteFile(filepath.Join(dir, "SKILL.md"), []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	load := func() {
+		loaded := codingagent.LoadSkillsFromDir(codingagent.LoadSkillsFromDirOptions{Dir: root, Source: "user"})
+		if len(loaded.Skills) != skillCount || len(loaded.Diagnostics) != 0 {
+			t.Fatalf("loaded %d skills, diagnostics %v", len(loaded.Skills), loaded.Diagnostics)
+		}
+		for i, skill := range loaded.Skills {
+			if skill.Name != fmt.Sprintf("skill-%02d", i) || skill.Description != "ordinary skill" {
+				t.Fatalf("skill %d = %+v", i, skill)
+			}
+		}
+	}
+	baseline := testing.AllocsPerRun(1, load)
+	patterns := make([]string, 32)
+	for i := range patterns {
+		patterns[i] = fmt.Sprintf("generated-%d/**", i)
+	}
+	compile := testing.AllocsPerRun(1, func() { ignorerules.AppendPatterns(nil, patterns) })
+	ignorePath := filepath.Join(root, ".gitignore")
+	if err := os.WriteFile(ignorePath, []byte(strings.Join(patterns, "\n")), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	withRules := testing.AllocsPerRun(1, load)
+	// Allow one matcher construction plus another construction's worth for
+	// reading and splitting the ignore file. No allowance scales with paths.
+	if withRules-baseline > 2*compile {
+		t.Fatalf("ignore overhead = %.0f allocations, two constructions = %.0f; rules must be reused across the walk", withRules-baseline, 2*compile)
+	}
+	if err := os.WriteFile(ignorePath, []byte("skill-00/\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	reloaded := codingagent.LoadSkillsFromDir(codingagent.LoadSkillsFromDirOptions{Dir: root, Source: "user"})
+	if len(reloaded.Skills) != skillCount-1 || reloaded.Skills[0].Name != "skill-01" {
+		t.Fatal("a new discovery walk reused stale ignore rules")
+	}
+}
 
 const (
 	commandShimRealEnv = "PIG_TEST_COMMAND_SHIM_REAL"

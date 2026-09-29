@@ -38,7 +38,7 @@ func TestPostLoginModelSelectionRules(t *testing.T) {
 			for _, id := range tc.ids {
 				models = append(models, tui.ModelSelectorItem{Provider: tc.provider, ID: id})
 			}
-			selected, problem := postLoginModel(tc.provider, action, models)
+			selected, problem := postLoginModel(tc.provider, action, DefaultModelPerProvider()[tc.provider], models)
 			wantProblem := tc.problem
 			if wantProblem != "" {
 				wantProblem = action + wantProblem
@@ -82,7 +82,7 @@ func TestPostLoginModelDiscovery(t *testing.T) {
 				case "preserve session":
 					m.opts.SessionHandle = &recordingCompactHandle{}
 				case "timeout":
-					// Pi awaits advanceTimersByTimeAsync(15_000); observe cancellation before releasing the store, rather than racing another timer at the same instant.
+					// Pi awaits advanceTimersByTimeAsync(15_000), including the cancellation callback, before releasing the blocked store.
 					<-refreshCtx.Done()
 					if elapsed := time.Since(refreshStarted); elapsed != 15*time.Second || !errors.Is(refreshCtx.Err(), context.DeadlineExceeded) {
 						t.Fatalf("refresh cancellation after %s: %v; want DeadlineExceeded at 15s", elapsed, refreshCtx.Err())
@@ -209,7 +209,7 @@ func TestPostLoginPreservesKnownModelAndReportsSelectionFailure(t *testing.T) {
 			if name == "persistence failure" {
 				m.opts.SessionHandle = &postLoginFailingHandle{}
 			}
-			if err := m.buildSlashContext(t.Context()).SetAPIKey("openai", "test-key"); err != nil {
+			if err := setPostLoginAPIKey(m, "openai", "test-key"); err != nil {
 				t.Fatal(err)
 			}
 			switch name {
@@ -243,7 +243,7 @@ func BenchmarkPostLoginModelSelection(b *testing.B) {
 	}
 	b.ReportAllocs()
 	for b.Loop() {
-		selected, problem := postLoginModel("openai", "Saved API key for OpenAI", models)
+		selected, problem := postLoginModel("openai", "Saved API key for OpenAI", DefaultModelPerProvider()["openai"], models)
 		if selected != "gpt-5.5" || problem != "" {
 			b.Fatalf("selection = %s, %s", selected, problem)
 		}
@@ -256,7 +256,7 @@ func TestPostLoginPersistsDefaultIntoNonEmptyScope(t *testing.T) {
 	if err := m.opts.SettingsManager.UpdateGlobal(func(s *Settings) { s.EnabledModels = []string{"openai/other"} }); err != nil {
 		t.Fatal(err)
 	}
-	if err := m.buildSlashContext(t.Context()).SetAPIKey("openai", "test-key"); err != nil {
+	if err := setPostLoginAPIKey(m, "openai", "test-key"); err != nil {
 		t.Fatal(err)
 	}
 	waitPostLoginStatus(t, m, "Selected gpt-5.5.")

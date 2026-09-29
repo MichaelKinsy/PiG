@@ -25,7 +25,7 @@ func widthTableSessionSelector(t *testing.T) *sessionSelector {
 	}
 	load := func() ([]SessionInfo, error) { return sessions, nil }
 	rename := func(string, string) error { return nil }
-	sel := newSessionSelector(load, load, rename, nil, "/tmp/current.jsonl", DefaultKeybindingsManager())
+	sel := newLoadedSessionSelector(load, load, rename, nil, "/tmp/current.jsonl", DefaultKeybindingsManager())
 	sel.showPath = true
 	return sel
 }
@@ -45,13 +45,13 @@ func TestInteractiveComponentsNeverExceedRenderWidth(t *testing.T) {
 	}{
 		{"SessionSelector", func(t *testing.T) widthTableRenderer {
 			sel := widthTableSessionSelector(t)
-			sel.status = widthTableText
+			sel.setStatusMessage(widthTableText, false, 0)
 			sel.confirmDelete = "/tmp/a.jsonl"
 			return sel
 		}},
 		{"SessionSelectorEmpty", func(t *testing.T) widthTableRenderer {
 			none := func() ([]SessionInfo, error) { return nil, nil }
-			return newSessionSelector(none, none, nil, nil, "", DefaultKeybindingsManager())
+			return newLoadedSessionSelector(none, none, nil, nil, "", DefaultKeybindingsManager())
 		}},
 		{"SessionSelectorRename", func(t *testing.T) widthTableRenderer {
 			sel := widthTableSessionSelector(t)

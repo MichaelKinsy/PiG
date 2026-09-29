@@ -1,0 +1,27 @@
+# Pi 0.87.1 openai-responses-shared.ts:253-324 preserves native tool IDs and
+# namespaces only for the same provider/API/model. Probed with the pinned
+# stream adapter's onPayload callback. This compares the replayed namespace on
+# both native and switched targets, and native IDs for function/grammar tools.
+# Foreign ID normalization is not this scenario's assertion surface.
+name = "12-responses-namespace-replay"
+description = "Native Responses tool namespaces and custom IDs survive replay; model/provider switches drop namespaces."
+covers = ["packages/ai/src/api/openai-responses-shared.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/responses-namespace-pig"]
+pi_args = ["node", "./test/parity/testdata/responses-namespace-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['same query ctc_test "dynamic_tools"', 'model-switch lookup  ""', 'provider-switch query  ""']
+runs = 3

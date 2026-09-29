@@ -1,0 +1,48 @@
+# Upstream evidence: W3 C8/C11/C12: Pi interactive-mode.ts:2096-2113,3462,3597-3601,4463-4466.
+# Full diagnostic crop includes compaction error, assistant error, hint, and the following user barrier.
+# normalize-rationale: Only APP_NAME in the hint changes; no whitespace, error text, or other output is masked.
+name = "41-error-notices"
+description = "Interactive errors are padded once, without a duplicate provider status, and suggest /bug once."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[tmux]
+width = 160
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+capture_start = " Error: Compaction failed:"
+capture_end = "completed-error-probe"
+
+[[tmux.steps]]
+keys = ["/compact", "Enter"]
+wait_visible_contains = ["Error: Compaction failed:"]
+
+[[tmux.steps]]
+keys = ["unhandled-error-probe", "Enter"]
+wait_visible_contains = ["/bug sends a report to the developers."]
+
+# The crop ends at the first "completed-error-probe", the echoed user message. That word is also visible while it is typed in the editor, and Pi
+# echoes the message asynchronously (the editor clears before message_start), so waiting for the word alone let the capture land between the two:
+# Pi showed the empty editor and footer where the echo belongs. Wait for the echo followed by the assistant reply (two blank lines apart in both
+# binaries), which is visible only after the message was echoed and the turn produced its reply.
+[[tmux.steps]]
+keys = ["reply with exactly: completed-error-probe", "Enter"]
+wait_visible_contains = ["reply with exactly: completed-error-probe\n\n\n completed-error-probe"]
+
+[assert]
+runs = 3
+both_contain = [" Error: Compaction failed:", " Error: test-faux: unhandled request", "/bug sends a report to the developers."]
+both_not_contain = ["Provider request failed"]
+output_equal = true
+
+[[assert.normalize_replace]]
+pattern = "If this looks like a pig bug"
+with = "If this looks like a pi bug"
+reason = "The hint uses upstream APP_NAME; pig and pi are the documented executable names."

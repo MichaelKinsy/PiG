@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"testing"
@@ -62,6 +63,11 @@ func TestSend_ToolExecuteError_BecomesLinkedErrorResult(t *testing.T) {
 		t.Fatalf("Send returned an error instead of an error tool-result: %v", err)
 	}
 	res := findToolResult(t, msgs, "tc-err")
+	// Pi 0.87.1 agent-loop.ts:863-894 retains the empty details object in history.
+	details, marshalErr := json.Marshal(res.Details)
+	if marshalErr != nil || string(details) != "{}" {
+		t.Fatalf("error details = %s, err = %v; want {}", details, marshalErr)
+	}
 	if !res.IsError {
 		t.Fatalf("tool result IsError = false, want true for a thrown tool: %+v", res)
 	}

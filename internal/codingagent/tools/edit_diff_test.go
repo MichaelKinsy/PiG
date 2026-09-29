@@ -31,7 +31,7 @@ func TestEditMultipleReplacementsPositionBased(t *testing.T) {
 	})
 	res, err := et.Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("multi-file edit failed: err=%v res=%s", err, res.Content)
+		t.Fatalf("multi-file edit failed: err=%v res=%s", err, res.Text())
 	}
 	got, _ := os.ReadFile(path)
 	want := "header\nXXX middle YYY\nfooter\n"
@@ -56,8 +56,8 @@ func TestEditOverlapDetected(t *testing.T) {
 		},
 	})
 	res, _ := et.Execute(context.Background(), "", args, nil)
-	if !res.IsError || !strings.Contains(res.Content, "overlap") {
-		t.Errorf("expected overlap error, got: IsError=%v %q", res.IsError, res.Content)
+	if !res.IsError || !strings.Contains(res.Text(), "overlap") {
+		t.Errorf("expected overlap error, got: IsError=%v %q", res.IsError, res.Text())
 	}
 }
 
@@ -77,7 +77,7 @@ func TestEditCRLFPreserved(t *testing.T) {
 	})
 	res, err := et.Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("edit failed: err=%v res=%s", err, res.Content)
+		t.Fatalf("edit failed: err=%v res=%s", err, res.Text())
 	}
 	got, _ := os.ReadFile(path)
 	want := "alpha\r\nBETA\r\ngamma\r\n"
@@ -101,7 +101,7 @@ func TestEditBOMPreserved(t *testing.T) {
 	})
 	res, err := et.Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("edit failed: err=%v res=%s", err, res.Content)
+		t.Fatalf("edit failed: err=%v res=%s", err, res.Text())
 	}
 	got, _ := os.ReadFile(path)
 	want := "\uFEFFhello pig\n"
@@ -124,8 +124,8 @@ func TestEditNoChangeError(t *testing.T) {
 		Edits: []editEntry{{OldText: "hello", NewText: "hello"}},
 	})
 	res, _ := et.Execute(context.Background(), "", args, nil)
-	if !res.IsError || !strings.Contains(res.Content, "No changes made") {
-		t.Errorf("expected no-change error, got IsError=%v %q", res.IsError, res.Content)
+	if !res.IsError || !strings.Contains(res.Text(), "No changes made") {
+		t.Errorf("expected no-change error, got IsError=%v %q", res.IsError, res.Text())
 	}
 }
 
@@ -142,7 +142,7 @@ func TestEditPrepareArgumentsLegacy(t *testing.T) {
 	args := json.RawMessage(`{"path":"x.txt","oldText":"world","newText":"pig"}`)
 	res, err := et.Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("legacy edit failed: err=%v res=%s", err, res.Content)
+		t.Fatalf("legacy edit failed: err=%v res=%s", err, res.Text())
 	}
 	got, _ := os.ReadFile(path)
 	if string(got) != "hello pig\n" {
@@ -162,7 +162,7 @@ func TestEditPrepareArgumentsEditsAsJSONString(t *testing.T) {
 	args := json.RawMessage(`{"path":"x.txt","edits":"[{\"oldText\":\"world\",\"newText\":\"pig\"}]"}`)
 	res, err := et.Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("string-edits failed: err=%v res=%s", err, res.Content)
+		t.Fatalf("string-edits failed: err=%v res=%s", err, res.Text())
 	}
 	got, _ := os.ReadFile(path)
 	if string(got) != "hello pig\n" {
@@ -170,47 +170,71 @@ func TestEditPrepareArgumentsEditsAsJSONString(t *testing.T) {
 	}
 }
 
-// Ported from upstream test/edit-tool-legacy-input.test.ts, plus the
-// single-object branches of prepareEditArguments (TOOL-16).
+// Cases from .upstream/v0.87.1/packages/coding-agent/test/edit-tool-legacy-input.test.ts.
 func TestEditPrepareArgumentsUpstreamCases(t *testing.T) {
 	et := &EditTool{}
-	prepare := func(in string) string {
-		t.Helper()
-		out, err := et.PrepareArguments(json.RawMessage(in))
+	t.Run("keeps legacy fields out of the public schema", func(t *testing.T) { // .upstream/v0.87.1/packages/coding-agent/test/edit-tool-legacy-input.test.ts:21
+		props := et.Schema().Parameters["properties"].(map[string]any)
+		for _, name := range []string{"oldText", "newText"} {
+			if _, ok := props[name]; ok {
+				t.Errorf("legacy %s leaked into the public schema", name)
+			}
+		}
+	})
+	for _, tc := range []struct{ name, input, want string }{
+		{"folds top-level oldText/newText into edits", `{"path":"file.txt","oldText":"before","newText":"after"}`, `{"path":"file.txt","edits":[{"oldText":"before","newText":"after"}]}`},                                                       // .upstream/v0.87.1/packages/coding-agent/test/edit-tool-legacy-input.test.ts:27
+		{"appends legacy replacement to existing edits", `{"path":"file.txt","edits":[{"oldText":"a","newText":"b"}],"oldText":"c","newText":"d"}`, `{"path":"file.txt","edits":[{"oldText":"a","newText":"b"},{"oldText":"c","newText":"d"}]}`}, // .upstream/v0.87.1/packages/coding-agent/test/edit-tool-legacy-input.test.ts:40
+		{"parses edits from a JSON string", `{"path":"file.txt","edits":"[{\"oldText\":\"a\",\"newText\":\"b\"}]"}`, `{"path":"file.txt","edits":[{"oldText":"a","newText":"b"}]}`},                                                              // .upstream/v0.87.1/packages/coding-agent/test/edit-tool-legacy-input.test.ts:93
+		{"leaves edits alone when the string is not valid JSON", `{"path":"file.txt","edits":"not json"}`, `{"path":"file.txt","edits":"not json"}`},                                                                                             // .upstream/v0.87.1/packages/coding-agent/test/edit-tool-legacy-input.test.ts:105
+		{"single object", `{"path":"file.txt","edits":{"oldText":"a","newText":"b"}}`, `{"path":"file.txt","edits":[{"oldText":"a","newText":"b"}]}`},
+		{"stringified single object", `{"path":"file.txt","edits":"{\"oldText\":\"a\",\"newText\":\"b\"}"}`, `{"path":"file.txt","edits":[{"oldText":"a","newText":"b"}]}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := et.PrepareArguments(json.RawMessage(tc.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			var actual, want any
+			if json.Unmarshal(got, &actual) != nil || json.Unmarshal([]byte(tc.want), &want) != nil || !reflect.DeepEqual(actual, want) {
+				t.Fatalf("prepare(%s) = %s, want %s", tc.input, got, tc.want)
+			}
+		})
+	}
+	t.Run("passes through valid input unchanged", func(t *testing.T) { // .upstream/v0.87.1/packages/coding-agent/test/edit-tool-legacy-input.test.ts:57
+		input := json.RawMessage(`{"path":"file.txt","edits":[{"oldText":"a","newText":"b"}]}`)
+		got, err := et.PrepareArguments(input)
+		if err != nil || len(got) != len(input) || &got[0] != &input[0] {
+			t.Fatalf("valid input identity changed: %s, %v", got, err)
+		}
+	})
+	t.Run("passes through non-object input unchanged", func(t *testing.T) { // .upstream/v0.87.1/packages/coding-agent/test/edit-tool-legacy-input.test.ts:67
+		// nil RawMessage is the Go argument boundary's omitted/undefined value.
+		for _, input := range []json.RawMessage{nil, json.RawMessage(`null`), json.RawMessage(`"garbage"`)} {
+			got, err := et.PrepareArguments(input)
+			if err != nil || !reflect.DeepEqual(got, input) || (len(input) > 0 && &got[0] != &input[0]) {
+				t.Fatalf("non-object %s changed to %s, %v", input, got, err)
+			}
+		}
+	})
+	t.Run("prepared args execute correctly", func(t *testing.T) { // .upstream/v0.87.1/packages/coding-agent/test/edit-tool-legacy-input.test.ts:74
+		dir := t.TempDir()
+		path := filepath.Join(dir, "legacy.txt")
+		if err := os.WriteFile(path, []byte("before\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		tool := &EditTool{CWD: dir, Queue: NewFileMutationQueue()}
+		prepared, err := tool.PrepareArguments(json.RawMessage(`{"path":"legacy.txt","oldText":"before","newText":"after"}`))
 		if err != nil {
 			t.Fatal(err)
 		}
-		return string(out)
-	}
-	sameJSON := func(got, want string) bool {
-		var a, b any
-		return json.Unmarshal([]byte(got), &a) == nil && json.Unmarshal([]byte(want), &b) == nil && reflect.DeepEqual(a, b)
-	}
-	for in, want := range map[string]string{
-		`{"path":"file.txt","oldText":"before","newText":"after"}`:                                `{"path":"file.txt","edits":[{"oldText":"before","newText":"after"}]}`,
-		`{"path":"file.txt","edits":[{"oldText":"a","newText":"b"}],"oldText":"c","newText":"d"}`: `{"path":"file.txt","edits":[{"oldText":"a","newText":"b"},{"oldText":"c","newText":"d"}]}`,
-		`{"path":"file.txt","edits":"[{\"oldText\":\"a\",\"newText\":\"b\"}]"}`:                   `{"path":"file.txt","edits":[{"oldText":"a","newText":"b"}]}`,
-		`{"path":"file.txt","edits":"not json"}`:                                                  `{"path":"file.txt","edits":"not json"}`,
-		`{"path":"file.txt","edits":{"oldText":"a","newText":"b"}}`:                               `{"path":"file.txt","edits":[{"oldText":"a","newText":"b"}]}`,
-		`{"path":"file.txt","edits":"{\"oldText\":\"a\",\"newText\":\"b\"}"}`:                     `{"path":"file.txt","edits":[{"oldText":"a","newText":"b"}]}`,
-	} {
-		if got := prepare(in); !sameJSON(got, want) {
-			t.Errorf("prepare(%s) = %s, want %s", in, got, want)
+		result, err := tool.Execute(t.Context(), "tool-1", prepared, nil)
+		if err != nil || result.IsError || result.Text() != "Successfully replaced 1 block(s) in legacy.txt." {
+			t.Fatalf("execute = %+v, %v", result, err)
 		}
-	}
-	valid := `{"path":"file.txt","edits":[{"oldText":"a","newText":"b"}]}`
-	if got := prepare(valid); got != valid {
-		t.Errorf("valid input changed: %s", got)
-	}
-	for _, in := range []string{`null`, `"garbage"`} {
-		if got := prepare(in); got != in {
-			t.Errorf("non-object %s changed to %s", in, got)
+		if got, err := os.ReadFile(path); err != nil || string(got) != "after\n" {
+			t.Fatalf("file = %q, %v", got, err)
 		}
-	}
-	props := et.Schema().Parameters["properties"].(map[string]any)
-	if _, ok := props["oldText"]; ok {
-		t.Error("legacy oldText leaked into the public schema")
-	}
+	})
 }
 
 func TestEditSingleObjectEditsExecutes(t *testing.T) {

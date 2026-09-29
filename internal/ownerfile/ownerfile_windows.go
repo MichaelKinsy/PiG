@@ -19,14 +19,17 @@ import (
 // no one else anything: the Windows form of mode 0600. The DACL is part of the
 // creation, so no other principal can open the file before it is protected; a
 // DACL applied after creation cannot revoke a handle already opened through
-// the directory's inherited entries.
+// the directory's inherited entries. The current user also owns the file, as
+// OwnerOnly requires: an elevated administrator's token otherwise makes
+// BUILTIN\Administrators the owner of the files it creates.
 func CreateNew(path string) (*os.File, error) {
 	// pig divergence (D68): Windows owner-only files use a DACL, not mode bits.
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil {
 		return nil, err
 	}
-	descriptor, err := windows.SecurityDescriptorFromString("D:P(A;;FA;;;" + user.User.Sid.String() + ")")
+	sid := user.User.Sid.String()
+	descriptor, err := windows.SecurityDescriptorFromString("O:" + sid + "D:P(A;;FA;;;" + sid + ")")
 	if err != nil {
 		return nil, err
 	}

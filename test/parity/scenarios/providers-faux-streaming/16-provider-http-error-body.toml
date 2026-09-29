@@ -1,0 +1,25 @@
+# Probe Pi 0.87.1's real HTTP catch paths and shared error-body formatter, not only synthetic SDK fields.
+# Cases include parsed string/object errors, bodyless status, and OpenRouter metadata.raw exactly once.
+# Upstream source: openai-completions.ts:713-721, openai-responses.ts:207-210, utils/error-body.ts:37-137.
+name = "16-provider-http-error-body"
+description = "OpenAI-compatible provider failures retain status and body with Pi's exact message composition."
+covers = ["packages/ai/src/utils/error-body.ts", "packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/openai-responses.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/provider-error-body/pig"]
+pi_args = ["node", "./test/parity/testdata/provider-error-body/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["OpenAI API error (403)", "400 status code (no body)", "upstream WAF blocked policy XYZ"]
+runs = 3

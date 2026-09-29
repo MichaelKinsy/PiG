@@ -17,6 +17,13 @@ import (
 )
 
 func TestMain(m *testing.M) {
+	if handled, err := runExperimentalTestEntry(context.Background(), os.Args[1:]); handled {
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		os.Exit(0)
+	}
 	if os.Getenv("PIG_TEST_COORDINATOR") == "paused" {
 		if err := os.WriteFile(os.Getenv("PIG_TEST_CHILD_READY"), []byte(fmt.Sprint(os.Getpid())), 0o600); err != nil {
 			fmt.Fprintln(os.Stderr, err)

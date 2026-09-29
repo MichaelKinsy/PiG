@@ -1,0 +1,8 @@
+[
+ {"name":"http-validation","status":400,"code":"ValidationException","message":"The provided model identifier is invalid."},
+ {"name":"modeled-stream","kind":"exception","code":"throttlingException","message":"Too many requests, please wait."},
+ {"name":"unmodeled-stream","kind":"error","code":"ModelStreamErrorException","message":"Model stream terminated unexpectedly."},
+ {"name":"transport-name","kind":"error","code":"TimeoutError","message":"Connection timed out after 1000 ms"},
+ {"name":"http-unknown","status":403,"code":"Unknown","message":"The provided model identifier is invalid."},
+ {"name":"aborted","status":400,"code":"ValidationException","message":"The provided model identifier is invalid.","abort":true}
+]

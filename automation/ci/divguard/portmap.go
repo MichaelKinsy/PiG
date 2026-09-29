@@ -15,12 +15,12 @@ var (
 	portMapGoRe  = regexp.MustCompile(`[\w./-]*(?:\{[\w,]+\})?\.go\b`)
 )
 
-// loadPortMap maps each Go file named in PORT_MAP.md to the upstream files
+// loadPortMap maps each Go file named in docs/parity/PORT_MAP.md to the upstream files
 // (relative to the mirror root) it ports. A bare file name inherits the
 // directory of the path before it in the same cell, and `dir/{a,b}.go`
 // expands to both files.
 func loadPortMap(root string) (map[string][]string, error) {
-	data, err := os.ReadFile(path.Join(root, "PORT_MAP.md"))
+	data, err := os.ReadFile(path.Join(root, "docs/parity/PORT_MAP.md"))
 	if err != nil {
 		if os.IsNotExist(err) {
 			return map[string][]string{}, nil

@@ -1,0 +1,77 @@
+[
+  {
+    "name": "@juicesharp/rpiv-todo",
+    "version": "2.11.0",
+    "integrity": "sha512-MNWG3xRMKrA4qgL3O1F4WiuY9+3NAWem+5Ac0NDHqYTGjikGRf6b4SdL9bw+RdEOEj2BUaKFSeTbP8vLZw5CDQ==",
+    "lock": "juicesharp__rpiv-todo"
+  },
+  {
+    "name": "@ff-labs/pi-fff",
+    "version": "0.11.0",
+    "integrity": "sha512-RNYBSnmRaGxYF9/R5KO4Uq0q1Prtbe6CmltK7i3efD0+JEwR2h69sL+p6UIXNDrVANSXEWM8ehagQefbskoGwg==",
+    "lock": "ff-labs__pi-fff"
+  },
+  {
+    "name": "@benvargas/pi-claude-code-use",
+    "version": "2.2.1",
+    "integrity": "sha512-6hkZ2FUq4Vq4zQezhKvuLU1IBqX101Tt2hY1nY0v218R754l6Vg9Q3jjLBLg1CelBwDhSPEkI1ez+zeO++Wo5A==",
+    "lock": "benvargas__pi-claude-code-use"
+  },
+  {
+    "name": "pi-secret-guard",
+    "version": "1.2.15",
+    "integrity": "sha512-zTdRvfrK8DCDpW5f2ajr9OtgEwV7cS01Ic1JVXRhKNep2Io2I7T91GRZoOD9vxURlynnNTRGshMNhI4kGRQvQA==",
+    "lock": "pi-secret-guard"
+  },
+  {
+    "name": "pi-session-switch",
+    "version": "0.4.0",
+    "integrity": "sha512-qL09I8r7QK6Avz741dluCS4i2CVjGgt5U0XdPm0V2O+Dm4d0c/g3/IfQ4oBLGVM5ce/2jN/aww7so4Lz4q7+3w==",
+    "lock": "pi-session-switch"
+  },
+  {
+    "name": "pi-observational-memory",
+    "version": "3.1.4",
+    "integrity": "sha512-jgQbFyLMs4wWhkf6F0voOgzMwtIXsb8+ks0MsPKpPxkdpyMX5E/el6Mk/vJ40m8GlKwBIsCKjL1r7Z2U8dCtmA==",
+    "lock": "pi-observational-memory"
+  },
+  {
+    "name": "@tmustier/pi-usage-extension",
+    "version": "0.9.5",
+    "integrity": "sha512-mCTAJID22B4ZEfaRW43FKtD7acHlRuQhYr0iHOZQticoBR68FKE2D82CXBWMGqqaGVlVqQeLQHMOQC0FCTbLeA==",
+    "lock": "tmustier__pi-usage-extension"
+  },
+  {
+    "name": "@observal/pi-insights",
+    "version": "1.2.3",
+    "integrity": "sha512-g4nRfPzuyS6Sq8OzgDeCMY8hyIU44KKHeJzcfA+1/dkQJOj0wA6Cr8MmN5gCrcxF3oYuFGYJK485OkRoUDmkPg==",
+    "lock": "observal__pi-insights"
+  },
+  {
+    "name": "@specode/pi-subscription-usage",
+    "version": "1.1.1",
+    "integrity": "sha512-pFmAIHrEzDjI/8KtLA+Il5pGXfWut70A3+FLgn7ke20zmUJ3TUVL28psfk56MaJDYp4924+U364wsntjoMdbPQ==",
+    "lock": "specode__pi-subscription-usage"
+  },
+  {
+    "name": "pi-open-agents",
+    "version": "0.1.22",
+    "integrity": "sha512-S1UtwnsnitpJx8E7pGOYMwTg6NmkJNGSz6NaXl2q7jKMbvhiD3awZpFV2d42SMN6qGpS4D3PLytZ1kLm3JDvgA==",
+    "lock": "pi-open-agents"
+  },
+  {
+    "name": "pi-lens",
+    "version": "4.3.0",
+    "integrity": "sha512-6PTzboAc9z2WSEA6aNXCWGsd5ES5MKNJBMIxazbEk2fzcXZFerhJ1k07UDrGjE+hkkd6TnPhsHAxMQ28ZT0WGQ==",
+    "lock": "pi-lens"
+  },
+  {
+    "name": "pi-warden",
+    "version": "0.73.0",
+    "integrity": "sha512-V4Yg/X1hlQ67upeZLGX8ZfBjDKZD9TBKRlIWhsV+R9cSic92JlbwZMNWNUGXInS/PeoWuz3XTfHQkJYPxEI/5g==",
+    "lock": "pi-warden",
+    "prompt": "/warden loops",
+    "stdout": "",
+    "reason": "Pi-warden injects a consent notice outside the faux model script. Use its read-only command for load/inventory parity; session-id/replay.py separately verifies real loop writes."
+  }
+]

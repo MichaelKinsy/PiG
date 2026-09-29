@@ -45,7 +45,7 @@ if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
 fi
 commit="$(git rev-parse HEAD)"
 short_commit="$(git rev-parse --short HEAD)"
-version="$(awk -F'"' '/^const UpstreamVersion = "/ { print $2; exit }' "$PIG_ROOT/coding/pigversion/pigversion.go")"
+version="$(awk -F'"' '/^const UpstreamVersion = "/ { print $2; exit }' "$PIG_ROOT/internal/coding/pigversion/pigversion.go")"
 [ -n "$version" ] || { echo "pig-porter campaign: cannot resolve coding.UpstreamVersion" >&2; exit 1; }
 upstream="$PIG_ROOT/.upstream/v$version"
 [ -d "$upstream" ] || { echo "pig-porter campaign: exact upstream mirror is missing: $upstream" >&2; exit 1; }
@@ -55,7 +55,7 @@ declare -A seen=()
 for family in "$@"; do
   [ -z "${seen[$family]:-}" ] || { echo "pig-porter campaign: duplicate family $family" >&2; exit 2; }
   seen[$family]=1
-  (cd "$PIG_ROOT" && go run ./parity/cmd/familygaps -family "$family" >/dev/null)
+  (cd "$PIG_ROOT" && go run ./test/parity/cmd/familygaps -family "$family" >/dev/null)
   families+=("$family")
 done
 

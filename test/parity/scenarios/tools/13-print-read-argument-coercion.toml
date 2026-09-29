@@ -1,0 +1,28 @@
+# Pi 0.87.1 packages/ai/src/utils/validation.ts:312-349 removes optional nulls,
+# converts offset="2", and preserves extra properties before executing read.
+# The scripted provider echoes the actual tool result, or surfaces its error.
+# Probe: pi -e test/parity/testdata/test-faux-provider.ts --model test-faux/faux-1
+# --print "Run: noncanonical read" from a copy of testdata: line two / line three.
+name = "13-print-read-argument-coercion"
+description = "Stock read accepts a numeric string offset, optional null limit, and extra fields"
+covers = ["packages/ai/src/utils/validation.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: noncanonical read"
+timeout_seconds = 30
+cwd = "testdata"
+
+[assert]
+exit_code = 0
+both_contain = ["line two\nline three"]
+both_not_contain = ["hello from parity", "Validation failed"]
+output_equal = true
+runs = 3

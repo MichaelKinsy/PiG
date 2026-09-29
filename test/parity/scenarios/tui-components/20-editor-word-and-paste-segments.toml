@@ -1,0 +1,30 @@
+# Behavior family: tui-components
+# Pi 0.87.1 Editor uses one marker-aware segmenter for word navigation,
+# grapheme navigation/deletion, cursor paint and layout. The fixtures capture
+# each input transition, UTF-16 cursor, expanded value and every content row.
+# Borders are outside this segmentation contract. Content rows retain all ANSI
+# and spaces; hex exposes exact bytes without JSON escaping differences.
+# Node 26.7.0 / ICU 78.3 probes include Thai, Lao, Khmer and Burmese word
+# movement/deletion in both directions and beside an atomic paste marker.
+name = "20-editor-word-and-paste-segments"
+description = "Editor preserves dictionary word stops, atomic paste markers and word-action state through input and rendering"
+covers = ["packages/tui/src/components/editor.ts", "packages/tui/src/word-navigation.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/editor-segments-pig"]
+pi_args = ["node", "./test/parity/testdata/editor-segments-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_contain = ["mixed CJK", "SEA Thai", "SEA Lao", "SEA Khmer", "SEA Burmese", "SEA mixed marker", "marker word movement", "unregistered marker", "sticky reset"]

@@ -82,7 +82,8 @@ func TestOverflowFullRenderPathsEmitRowUnchanged(t *testing.T) {
 			if value := renderRecover(ui); value != nil {
 				t.Fatalf("full render terminated: %v", value)
 			}
-			want := tc.prefix + "\x1b[2Kfits" + widthx.SegmentReset + "\r\n\x1b[2K" + overflowRow + widthx.SegmentReset + "\x1b[?2026l\x1b[?25l"
+			// Pi 0.87.1 fullRender appends rows without a redundant erase-line prefix.
+			want := tc.prefix + "fits" + widthx.SegmentReset + "\r\n" + overflowRow + widthx.SegmentReset + "\x1b[?2026l\x1b[?25l"
 			if got := out.String(); got != want {
 				t.Fatalf("bytes = %q, want %q", got, want)
 			}
@@ -128,7 +129,7 @@ func TestOverflowDifferentialTerminatesWithCrashLog(t *testing.T) {
 	if !ok {
 		t.Fatalf("recovered %v, want *RenderOverflowError", value)
 	}
-	logPath := filepath.Join(dir, "pig-tui-crash.log")
+	logPath := filepath.Join(dir, "pi-tui-crash.log")
 	wantMessage := "Rendered line 1 exceeds terminal width (43 > 20).\n\n" +
 		"This is likely caused by a custom TUI component not truncating its output.\n" +
 		"Use visibleWidth() to measure and truncateToWidth() to truncate lines.\n\n" +
@@ -180,7 +181,7 @@ func TestOverflowCrashLogFallsBackToTempDir(t *testing.T) {
 	ui.Render()
 	lines = []string{overflowRow}
 	overflow, ok := renderRecover(ui).(*RenderOverflowError)
-	if !ok || overflow.LogPath != filepath.Join(tmp, "pig-tui-crash.log") {
+	if !ok || overflow.LogPath != filepath.Join(tmp, "pi-tui-crash.log") {
 		t.Fatalf("overflow = %#v, want log under %s", overflow, tmp)
 	}
 	if _, err := os.Stat(overflow.LogPath); err != nil {

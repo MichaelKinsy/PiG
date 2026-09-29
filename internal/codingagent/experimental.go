@@ -17,3 +17,6 @@ func experimentalFeaturesEnabled() bool {
 	value := strings.ToLower(strings.TrimSpace(os.Getenv("PIG_EXPERIMENTAL")))
 	return value == "1" || value == "true" || value == "yes"
 }
+
+// AreExperimentalFeaturesEnabled reports whether experimental features are on.
+func AreExperimentalFeaturesEnabled() bool { return experimentalFeaturesEnabled() }

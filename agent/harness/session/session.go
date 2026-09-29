@@ -88,6 +88,8 @@ type Session interface {
 	// Session writer called from the callback queues behind it, so waiting for
 	// it deadlocks; use the supplied mutator for the callback's sole commit.
 	Mutate(ctx context.Context, mutation SessionMutationCallback) (any, error)
+	// EnqueueMutation admits a mutation synchronously and returns its owned completion without waiting for the barrier.
+	EnqueueMutation(ctx context.Context, mutation SessionMutationCallback) (*LineJob, error)
 	SetValue(ctx context.Context, address StoredAddressBase, next any) error
 	DeleteValue(ctx context.Context, address StoredAddressBase) error
 	AppendList(ctx context.Context, address StoredAddressBase, element any) error
@@ -393,7 +395,16 @@ func (session *StorageBackedSession) assertOpen() error {
 }
 
 // BeginMutation waits for the Session barrier and returns its capability.
-func (session *StorageBackedSession) BeginMutation(context.Context) (SessionMutation, error) {
+func (session *StorageBackedSession) BeginMutation(ctx context.Context) (SessionMutation, error) {
+	wait, err := session.enqueueMutation()
+	if err != nil {
+		return nil, err
+	}
+	return wait(ctx)
+}
+
+// enqueueMutation performs the synchronous admission prefix of beginMutation's Promise.
+func (session *StorageBackedSession) enqueueMutation() (func(context.Context) (SessionMutation, error), error) {
 	if err := session.assertOpen(); err != nil {
 		return nil, err
 	}
@@ -404,21 +415,38 @@ func (session *StorageBackedSession) BeginMutation(context.Context) (SessionMuta
 		<-finished
 		return nil, nil
 	})
-	select {
-	case mutation := <-granted:
-		return mutation, nil
-	case <-job.Done():
+	return func(context.Context) (SessionMutation, error) {
 		select {
 		case mutation := <-granted:
 			return mutation, nil
-		default:
+		case <-job.Done():
+			select {
+			case mutation := <-granted:
+				return mutation, nil
+			default:
+			}
+			_, err := job.Wait()
+			return nil, err
 		}
-		_, err := job.Wait()
-		return nil, err
-	}
+	}, nil
 }
 
-// Mutate runs mutation under the barrier and always ends it.
+// EnqueueMutation admits mutation on the same FIFO line as BeginMutation and returns its completion. The job owns the mutation capability through callback completion and commit draining.
+// Ports packages/agent/src/harness/session/session.ts:243-270 (the synchronous admission prefix of mutate's Promise).
+func (session *StorageBackedSession) EnqueueMutation(ctx context.Context, mutation SessionMutationCallback) (*LineJob, error) {
+	wait, err := session.enqueueMutation()
+	if err != nil {
+		return nil, err
+	}
+	job := &LineJob{done: make(chan struct{})}
+	go func() {
+		defer close(job.done)
+		job.value, job.err = mutateWith(ctx, wait, mutation)
+	}()
+	return job, nil
+}
+
+// Mutate runs mutation on the calling goroutine under the barrier and always ends it.
 func (session *StorageBackedSession) Mutate(ctx context.Context, mutation SessionMutationCallback) (any, error) {
 	return mutateWith(ctx, session.BeginMutation, mutation)
 }

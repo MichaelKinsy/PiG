@@ -1,0 +1,32 @@
+# Pi 0.87.1 auth-storage.ts:69-93, settings-manager.ts:241-265 and
+# trust-manager.ts:137-176 use proper-lockfile directories. Probe: real CLI
+# --print with project resources requiring a stored trust decision. The PiG
+# fixture includes its own v0.2.0 empty sidecars; Pi never created those files.
+# After reclamation, both first and subsequent runs must print the exact same
+# response with no lock/settings warnings and no persistent sidecars.
+name = "11-legacy-lock-upgrade"
+description = "An upgraded v0.2.0 agent directory uses the same settings, trust and auth directory protocol as an ordinary Pi store."
+covers = [
+  "packages/coding-agent/src/core/auth-storage.ts",
+  "packages/coding-agent/src/core/settings-manager.ts",
+  "packages/coding-agent/src/core/trust-manager.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/lock-upgrade.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/lock-upgrade.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_match_regex = ['^UPGRADED\nUPGRADED\n$']

@@ -99,6 +99,7 @@ func TestSharedSubprocessModelOperationsAcrossModes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			t.Cleanup(services.Close)
 			model, err := coding.BuildModel("test-faux/faux-1", services)
 			if err != nil {
 				t.Fatal(err)
@@ -155,6 +156,7 @@ func TestSubprocessModelRegistryRefreshesConnectedNode(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	bridge := subprocess.NewUIBridge(func() {})
 	host := subprocess.NewHost(t.TempDir())
 	host.SetUIBridge(bridge)
@@ -215,6 +217,7 @@ func TestSubprocessModelRegistryPublishesProviderOnlyOverlayRefresh(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	bridge := subprocess.NewUIBridge(func() {})
 	host := subprocess.NewHost(t.TempDir())
 	host.SetUIBridge(bridge)
@@ -255,6 +258,7 @@ func TestSubprocessModelRegistryPublishesExtensionReplacementAndRestoration(t *t
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	bridge := subprocess.NewUIBridge(func() {})
 	host := subprocess.NewHost(t.TempDir())
 	host.SetUIBridge(bridge)
@@ -275,7 +279,9 @@ func TestSubprocessModelRegistryPublishesExtensionReplacementAndRestoration(t *t
 	if err := command.Handler(ctx, `{"provider":"openai","present":{"gpt-5.4":"GPT-5.4"},"absent":["extension-only"]}`); err != nil {
 		t.Fatal(err)
 	}
-	services.Registry().RegisterProvider("openai", extension.ProviderConfig{BaseURL: "https://extension.invalid/v1", API: ai.APIOpenAIResponses, Models: []extension.ProviderModelConfig{{ID: "extension-only", Name: "Extension name", API: ai.APIOpenAIResponses, Reasoning: true, Input: []string{"text"}, ContextWindow: 1000, MaxTokens: 100, Cost: extension.ProviderModelCost{Input: 9}}}})
+	if err := services.Registry().RegisterProvider("openai", extension.ProviderConfig{BaseURL: "https://extension.invalid/v1", API: ai.APIOpenAIResponses, Models: []extension.ProviderModelConfig{{ID: "extension-only", Name: "Extension name", API: ai.APIOpenAIResponses, Reasoning: true, Input: []string{"text"}, ContextWindow: 1000, MaxTokens: 100, Cost: extension.ProviderModelCost{Input: 9}}}}); err != nil {
+		t.Error(err)
+	}
 	if err := command.Handler(ctx, `{"provider":"openai","present":{"extension-only":"Configured extension"},"absent":["gpt-5.4"],"fields":{"reasoning":false},"auth":{}}`); err != nil {
 		t.Fatal(err)
 	}
@@ -290,6 +296,7 @@ func TestSubprocessModelRegistryPublishesProviderRegistrationAndRemoval(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	bridge := subprocess.NewUIBridge(func() {})
 	host := subprocess.NewHost(t.TempDir())
 	host.SetUIBridge(bridge)
@@ -314,7 +321,7 @@ func TestSubprocessModelRegistryPublishesProviderRegistrationAndRemoval(t *testi
 	if err := command.Handler(ctx, `{"present":{},"absent":["dynamic","org/model/name"]}`); err != nil {
 		t.Fatal(err)
 	}
-	services.Registry().RegisterProvider("registry-refresh", extension.ProviderConfig{
+	if err := services.Registry().RegisterProvider("registry-refresh", extension.ProviderConfig{
 		BaseURL:    "https://models.invalid/v1",
 		API:        "openai-completions",
 		AuthHeader: false,
@@ -322,7 +329,9 @@ func TestSubprocessModelRegistryPublishesProviderRegistrationAndRemoval(t *testi
 			{ID: "dynamic", Name: "Dynamic"},
 			{ID: "org/model/name", Name: "Slash model"},
 		},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 	if err := command.Handler(ctx, `{"present":{"dynamic":"Dynamic","org/model/name":"Slash model"},"absent":[]}`); err != nil {
 		t.Fatal(err)
 	}

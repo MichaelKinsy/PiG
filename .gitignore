@@ -4,7 +4,8 @@ bin/
 /dist/
 /coverage/
 /evidence/
-node_modules/
+# No trailing slash: a worktree's node_modules is often a symlink, which a directory-only pattern does not match.
+node_modules
 **/target/
 **/__pycache__/
 **/*.py[cod]
@@ -55,7 +56,7 @@ secrets.json
 
 # Tmux captures and other ad-hoc test artefacts.
 tmp/
-parity/artifacts/
+test/parity/artifacts/
 .pig-faux-tool-started
 
 # Live-integration test bookkeeping (in case anyone overrides PIG_HOME
@@ -66,45 +67,45 @@ auth.json
 # 02-list-models-oauth-builtins parity scenario. It stages a placeholder
 # openai-codex OAuth credential (refresh-token presence gates registration;
 # the access token is never validated for listing) and carries no real secret.
-!parity/scenarios/providers-registry/testdata/oauth-agent/auth.json
+!test/parity/scenarios/providers-registry/testdata/oauth-agent/auth.json
 # Exception: the print-extension-tool-bridge parity scenario's echo_bridge
 # extension lives under a .pig/ dir otherwise caught by the broad .pig/ rule.
-!parity/scenarios/tools/testdata/.pig/
-!parity/scenarios/tools/testdata/.pig/extensions/
-!parity/scenarios/tools/testdata/.pig/extensions/parity-echo.mjs
-!parity/scenarios/footer/testdata/multi-pig-agent/auth.json
-!parity/scenarios/footer/testdata/multi-pi-agent/auth.json
+!test/parity/scenarios/tools/testdata/.pig/
+!test/parity/scenarios/tools/testdata/.pig/extensions/
+!test/parity/scenarios/tools/testdata/.pig/extensions/parity-echo.mjs
+!test/parity/scenarios/footer/testdata/multi-pig-agent/auth.json
+!test/parity/scenarios/footer/testdata/multi-pi-agent/auth.json
 # Exception: 05-footer-experimental-indicator needs a configured provider in
 # both agent dirs, and without these two the scenario fails on a clean
 # checkout. Placeholder OAuth values only: presence gates provider
 # registration and the tokens are never validated offline.
-!parity/scenarios/footer/testdata/pi-agent/auth.json
-!parity/scenarios/footer/testdata/pig-agent/auth.json
+!test/parity/scenarios/footer/testdata/pi-agent/auth.json
+!test/parity/scenarios/footer/testdata/pig-agent/auth.json
 # Exception: model-expiry and login-selector scenarios use placeholder OAuth
 # values to exercise stored and expired credential state without network access.
-!parity/scenarios/model-resolver-selector/testdata/pi-agent-expired/auth.json
-!parity/scenarios/model-resolver-selector/testdata/pig-agent-expired/auth.json
-!parity/scenarios/selectors/testdata/pi-agent/auth.json
-!parity/scenarios/selectors/testdata/pig-home/agent/auth.json
+!test/parity/scenarios/model-resolver-selector/testdata/pi-agent-expired/auth.json
+!test/parity/scenarios/model-resolver-selector/testdata/pig-agent-expired/auth.json
+!test/parity/scenarios/selectors/testdata/pi-agent/auth.json
+!test/parity/scenarios/selectors/testdata/pig-home/agent/auth.json
 # Exception: the project-trust scenarios need an auto-discovered project
 # extension in the fixture project itself, which the broad .pig/ rule (and the
 # repo-root .pi/ rule) would otherwise swallow. These register a probe provider
 # that must not execute before trust is granted; they hold no credentials.
 # Without the exception the fixtures stay local to whoever wrote them and the
 # scenarios fail on a clean checkout.
-!parity/scenarios/project-trust/testdata/project-*/.pig/
-!parity/scenarios/project-trust/testdata/project-*/.pig/**
-!parity/scenarios/project-trust/testdata/project-*/.pi/
-!parity/scenarios/project-trust/testdata/project-*/.pi/**
+!test/parity/scenarios/project-trust/testdata/project-*/.pig/
+!test/parity/scenarios/project-trust/testdata/project-*/.pig/**
+!test/parity/scenarios/project-trust/testdata/project-*/.pi/
+!test/parity/scenarios/project-trust/testdata/project-*/.pi/**
 # Exception: the extension load-order scenario's fixture project holds project
 # settings and an auto-discovered extension under .pig/; they hold no
 # credentials.
-!parity/scenarios/extensions-runtime/testdata/load-order/project/.pig/
-!parity/scenarios/extensions-runtime/testdata/load-order/project/.pig/**
+!test/parity/scenarios/extensions-runtime/testdata/load-order/project/.pig/
+!test/parity/scenarios/extensions-runtime/testdata/load-order/project/.pig/**
 # Exception: this named fixture directory represents the Session target cwd. It
 # is source data, not Rust build output.
-!parity/scenarios/project-trust/testdata/session-target-cwd/target/
-!parity/scenarios/project-trust/testdata/session-target-cwd/target/README.txt
+!test/parity/scenarios/project-trust/testdata/session-target-cwd/target/
+!test/parity/scenarios/project-trust/testdata/session-target-cwd/target/README.txt
 
 # Side-by-side mirror of upstream pi sources, materialised by
 # automation/gen/mirror-upstream.sh. Read-only reference material, not vendored.
@@ -116,12 +117,12 @@ auth.json
 # Runtime session traces written into testdata dirs during parity runs.
 # Parity runner snapshots testdata to ephemeral temp dirs before launch,
 # so these are leftover from older runs and never affect correctness.
-parity/scenarios/*/testdata/pig-home/agent/sessions/--Users-*/
-parity/scenarios/*/testdata/pig-home/agent/sessions/--tmp-*/
+test/parity/scenarios/*/testdata/pig-home/agent/sessions/--Users-*/
+test/parity/scenarios/*/testdata/pig-home/agent/sessions/--tmp-*/
 
 # Conformance fixture build/cache output.
-tests/extension-conformance/testdata/python-sdk-fixture/**/__pycache__/
-tests/extension-conformance/testdata/python-sdk-fixture/**/*.py[cod]
+test/extension-conformance/testdata/python-sdk-fixture/**/__pycache__/
+test/extension-conformance/testdata/python-sdk-fixture/**/*.py[cod]
 
 # Example extension build artifacts.
 examples/extensions/rust-factory/Cargo.lock
@@ -158,3 +159,9 @@ coding/extension/host/runtimecell/**/*.py[cod]
 
 # npm launcher source (automation/release/npm), not a build output.
 !automation/release/npm/launcher/bin/
+# Exception: 31-extension-module-loading resolves a CommonJS dependency and a
+# dual package from the fixture extension's own node_modules.
+!test/parity/scenarios/extensions-runtime/testdata/module-loading/node_modules/
+
+# node_modules symlinks to a shared checkout are not directories, so node_modules/ does not match them.
+node_modules

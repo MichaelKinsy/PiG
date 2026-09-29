@@ -3,7 +3,6 @@ package codingagent
 import (
 	"context"
 	"os"
-	"strings"
 	"sync"
 	"time"
 
@@ -38,53 +37,6 @@ func themedScrollbarThumbStyle(text string) string {
 	return tui.ActiveTheme().FgText("scrollbarThumb", text)
 }
 
-// themeBgText wraps text in a theme background token. Mirrors upstream
-// theme.bg(token, text).
-func themeBgText(token, text string) string {
-	bg := tui.ActiveTheme().Bg(token)
-	if bg == "" {
-		return text
-	}
-	return bg + text + tui.SGRBgReset
-}
-
-// styleSearchMatch paints a transcript search match with the live theme's
-// search-match colors.
-func styleSearchMatch(text string) string {
-	return themeBgText("searchMatchBg", tui.ActiveTheme().FgText("searchMatchText", text))
-}
-
-// scrollToEndIndicatorLabel renders the fullscreen jump-to-latest label with
-// the current tui.altScreen.bottom keys.
-func scrollToEndIndicatorLabel() string {
-	label := " ↓ Jump to latest message"
-	if keys := tui.GetKeybindings().GetKeys(tui.KBAltScreenBottom); len(keys) > 0 {
-		label += " · " + tui.FormatKeyText(strings.Join(keys, "/"), true)
-	}
-	return themeBgText("selectedBg", tui.ActiveTheme().FgText("text", label+" "))
-}
-
-// fullscreenTuiOptions returns the themed presentation options of the
-// fullscreen renderer. Mirrors the styling half of upstream
-// createInteractiveTui (tui-renderer.ts).
-func fullscreenTuiOptions() tui.TuiAltScreenOptions {
-	return tui.TuiAltScreenOptions{
-		SearchMatchStyle: func(text string) string {
-			return "\x1b[4m" + styleSearchMatch(text) + tui.SGRUnderlineReset
-		},
-		SearchCurrentMatchStyle: func(text string) string {
-			return "\x1b[1m" + tui.ActiveTheme().Inverse(styleSearchMatch(text)) + tui.SGRBoldDimReset
-		},
-		SearchNavigationButtonStyle: func(text string, hovered bool) string {
-			if hovered {
-				return "\x1b[4m" + text + tui.SGRUnderlineReset
-			}
-			return text
-		},
-		ScrollToEndIndicator: scrollToEndIndicatorLabel,
-	}
-}
-
 // buildChatViewport constructs the fullscreen transcript over the input dock.
 // Run() builds it at startup; live tui-mode switching (switchTuiMode) rebuilds
 // it as the second caller, which is why the construction lives here rather
@@ -92,7 +44,7 @@ func fullscreenTuiOptions() tui.TuiAltScreenOptions {
 func (m *InteractiveMode) buildChatViewport() ChatViewport {
 	m.ensureLoadedResourcesContainer()
 	return CreateChatViewport(ChatViewportOptions{
-		Document:            tui.NewContainer(m.extHeader, m.loadedResourcesContainer, m.chatContainer),
+		Document:            tui.NewContainer(m.headerContainer(), m.loadedResourcesContainer, m.chatContainer),
 		PendingMessages:     m.pendingMessagesContainer,
 		Status:              m.statusContainer,
 		WidgetsAbove:        m.widgetContainer,
@@ -116,7 +68,7 @@ func (m *InteractiveMode) ensureLoadedResourcesContainer() {
 func (m *InteractiveMode) mountInteractiveTui() {
 	m.ensureLoadedResourcesContainer()
 	layoutChildren := []tui.Component{
-		m.extHeader,
+		m.headerContainer(),
 		m.loadedResourcesContainer,
 		m.chatContainer,
 		m.pendingMessagesContainer,
@@ -143,19 +95,8 @@ func (m *InteractiveMode) mountInteractiveTui() {
 	m.altScreen.Start()
 }
 
-// switchTuiMode swaps the interactive renderer between "regular" and "fullscreen"
-// live, mirroring upstream switchTuiMode (interactive-mode.ts:772) adapted to
-// pig's driver model. pig's renderer is a pure paint surface, so focus, terminal,
-// children, onDebug, and extension input listeners are driver-owned and need no
-// transfer (see the phase-a switchTuiMode disposition map, which records each
-// upstream step's pig disposition against code evidence). The five renderer
-// references captured at construction were made dynamic (they read m.tuiInst at
-// call time), so they auto-follow the swap with no explicit rebind. The
-// structural differences are TS→Go mechanics producing equivalent observable
-// behavior, not a numbered divergence. Returns false without switching only when
-// an overlay is active (matching upstream's hasOverlayEntries guard); a request
-// for the mode already in effect returns true without changing anything. Runs on
-// the owner loop.
+// switchTuiMode swaps the renderer on the owner loop while preserving the component tree and main-screen render state. The current mode is a no-op; an active overlay refuses a change. Renderer references resolve dynamically under rendererMu, and only a successful swap changes the run's mode.
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:switchTuiMode
 func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress bool) bool {
 	current := "regular"
 	if m.altScreen != nil {
@@ -198,14 +139,14 @@ func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress bool) bool 
 		m.transcriptScrollView.Dispose()
 		m.transcriptScrollView = nil
 	}
+	if m.themeState.autoSyncEnabled.Load() {
+		m.writeThemeNotifications(false)
+	}
 	m.tuiInst.StopWithOptions(tui.StopOptions{PreserveScreen: true})
 	m.altScreen = nil
 
-	// Build the incoming renderer for the target mode. createInteractiveTui reads
-	// m.opts.Settings.TuiMode, installs the fullscreen tick seam + OSC 8 opener,
-	// and records the new cleanup on m (so Run's deferred teardown tears down the
-	// replacement, not the initial renderer).
-	m.opts.Settings.TuiMode = mode
+	// Build the incoming renderer from the run's mode, independently of the settings snapshot that reload and unrelated settings changes replace.
+	m.opts.TuiMode = mode
 	m.createInteractiveTui(m.runCtx)
 
 	// Restore persisted main-screen render state when entering regular.
@@ -234,6 +175,9 @@ func (m *InteractiveMode) switchTuiMode(mode string, restoreProgress bool) bool 
 	// Remount the complete shared component tree into the new renderer, mirroring
 	// upstream remounting every previous child.
 	m.mountInteractiveTui()
+	if m.themeState.autoSyncEnabled.Load() {
+		m.writeThemeNotifications(true)
+	}
 	m.tuiInst.Invalidate()
 
 	// Restore terminal progress if a turn is in flight and progress is enabled
@@ -324,33 +268,19 @@ func (m *InteractiveMode) createInteractiveTui(ctx context.Context) interactiveT
 	uiCtx, cancelUI := context.WithCancel(ctx)
 	reads := &sync.WaitGroup{}
 	m.clipboardCtx, m.clipboardReads = uiCtx, reads
-	if m.opts.Settings.TuiMode != "fullscreen" {
-		if m.rendererOut != nil {
-			m.tuiInst = tui.NewWithOutput(m.rendererOut, 80, 24)
-		} else {
-			m.tuiInst = tui.New()
-		}
-		if mainScreen, ok := m.tuiInst.(*tui.TUI); ok {
-			mainScreen.SetLogDirectory(m.opts.AgentDir)
-		}
+	if m.opts.TuiMode != "fullscreen" {
+		m.tuiInst = CreateInteractiveTui(InteractiveTuiOptions{TuiMode: "regular", Output: m.rendererOut, LogDirectory: m.opts.AgentDir})
 		m.altScreen = nil
 		m.currentTuiCleanup = func() { cancelUI(); reads.Wait() }
 		return interactiveTuiHandle{cleanup: m.currentTuiCleanup}
 	}
 	copyOnSelect := (&SettingsManager{merged: m.opts.Settings}).GetFullscreenCopyOnSelect()
-	opts := fullscreenTuiOptions()
-	opts.CopyOnSelect = &copyOnSelect
-	opts.CopySelection = m.effectiveCopyClipboard()
-	// Mirror upstream `openUrl: openBrowser`: primary-button clicks on OSC 8
-	// hyperlinks open the default browser.
-	opts.OpenURL = func(url string) { _ = m.effectiveOpenURL()(url) }
-	opts.OnRightClickPaste = m.handleRightClickPaste
-	if m.rendererOut != nil {
-		m.altScreen = tui.NewTuiAltScreenWithOutput(m.rendererOut, 80, 24, opts)
-	} else {
-		m.altScreen = tui.NewTuiAltScreen(opts)
-	}
-	m.tuiInst = m.altScreen
+	m.tuiInst = CreateInteractiveTui(InteractiveTuiOptions{
+		TuiMode: "fullscreen", Output: m.rendererOut, LogDirectory: m.opts.AgentDir,
+		FullscreenCopyOnSelect: &copyOnSelect, CopySelection: m.effectiveCopyClipboard(),
+		OpenURL: func(url string) error { return m.effectiveOpenURL()(url) }, OnRightClickPaste: m.handleRightClickPaste,
+	})
+	m.altScreen = m.tuiInst.(*tui.TuiAltScreen)
 	dispatch := m.autoScrollTickDispatcher(uiCtx)
 	m.altScreen.SetTickDispatcher(dispatch)
 	m.currentTuiCleanup = func() { cancelUI(); reads.Wait() }
@@ -385,12 +315,24 @@ func (m *InteractiveMode) requestShutdown() {
 	m.postUITask(func() {})
 }
 
-// stopInteractiveTui stops the active renderer, restores cooked mode, and disposes the fullscreen transcript view exactly once. The input loop calls it before extension shutdown and the resume hint; Run also defers it for cancellation and input errors. SIGHUP exits without terminal writes.
+// stopInteractiveTui drains input, stops the renderer while output is raw, then restores cooked mode and disposes the transcript view exactly once. Signal cleanup precedes it; dead-terminal emergencies skip these writes.
 func (m *InteractiveMode) stopInteractiveTui() {
 	if m.tuiTornDown {
 		return
 	}
 	m.tuiTornDown = true
+	m.tuiStopped.Store(true)
+	m.disposeTheme()
+	if m.inputReader != nil {
+		m.inputReader.pause()
+	}
+	if m.rawDrain != nil {
+		m.rawDrain()
+		m.rawDrain = nil
+	} else if m.rawRestore != nil && m.inputReader != nil {
+		// upstream: packages/tui/src/terminal.ts:drainInput
+		_ = m.inputReader.terminal.DrainInput(time.Second, 50*time.Millisecond)
+	}
 	if m.altScreen != nil {
 		if (&SettingsManager{merged: m.opts.Settings}).GetFullscreenExitOutput() == "resume-hint" {
 			m.altScreen.StopWithOptions(tui.StopOptions{PreserveScreen: true})
@@ -417,8 +359,7 @@ func (m *InteractiveMode) stopInteractiveTui() {
 	}
 }
 
-// ShutdownFromSignal emits session_shutdown so extensions can run cleanup
-// before the process tears down, and is safe to call more than once.
+// ShutdownFromSignal emits session_shutdown before requesting owner-loop teardown. Concurrent callers join ongoing cleanup, and repeated calls do not emit again.
 //
 // Upstream's signal-triggered shutdown emits extension cleanup BEFORE touching
 // the terminal, because teardown such as removing sockets does not write to the
@@ -431,23 +372,26 @@ func (m *InteractiveMode) stopInteractiveTui() {
 // processes that no longer exist and extensions would silently never clean up.
 // The caller therefore invokes this before cancelling.
 func (m *InteractiveMode) ShutdownFromSignal() {
-	if m == nil || !m.signalShutdownDone.CompareAndSwap(false, true) {
+	if m == nil {
 		return
 	}
-	emitSessionShutdown(m.newRunner, "quit")
+	m.shutdownMu.Lock()
+	defer m.shutdownMu.Unlock()
+	if !m.signalShutdownDone.CompareAndSwap(false, true) {
+		return
+	}
+	m.emitQuitShutdown()
+	m.requestShutdown()
 }
 
 // handleInterruptSignal terminates the session on SIGINT, matching upstream,
 // after giving extensions their shutdown event and returning the terminal to
 // cooked mode.
 //
-// Suspended sessions ignore the signal, mirroring upstream's ignoreSigint
-// listener: SIGINT delivered while parked would otherwise land on resume and
-// kill a session the user only backgrounded.
+// The temporary suspend listener is checked at dispatch time. A SIGINT queued while stopped can terminate the process if SIGCONT removes that listener before SIGINT is dispatched, matching Pi's listener lifecycle.
 //
 // Exits rather than unwinding Run because the input loop may be blocked in a
-// read. Only the termios restore runs here; the rest of the teardown writes
-// escape sequences and drains stdin, which the render loop owns.
+// read. Only signal-safe protocol disable and termios restoration run here; normal teardown also drains stdin, which the render loop owns.
 func (m *InteractiveMode) handleInterruptSignal() {
 	if m.suspended.Load() {
 		return

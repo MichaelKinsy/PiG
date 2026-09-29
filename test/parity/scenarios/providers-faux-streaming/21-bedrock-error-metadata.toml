@@ -1,0 +1,29 @@
+# Pi 0.87.1 bedrock-error-metadata.test.ts:103-209.
+# Both real AWS SDKs receive non-2xx responses and modeled/unmodeled event-stream failures.
+# Compare exact error messages and diagnostic details; timestamps are not part of the projection.
+# Bare thrown-object coverage remains in the unit port; named wire exceptions retain their available code.
+name = "21-bedrock-error-metadata"
+description = "Bedrock failures preserve status, available error code, request identity and abort classification."
+covers = ["packages/ai/src/api/bedrock-converse-stream.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+# An empty bearer variable still selects a bearer scheme in the Node SDK, so remove it instead.
+pig_args = ["-u", "AWS_BEARER_TOKEN_BEDROCK", "go", "run", "./test/parity/testdata/bedrock-errors-pig"]
+pi_args = ["-u", "AWS_BEARER_TOKEN_BEDROCK", "node", "./test/parity/testdata/bedrock-errors-pi.mjs"]
+pig = ["AWS_PROFILE=", "AWS_DEFAULT_PROFILE=", "AWS_CONFIG_FILE={{TEMP}}/config", "AWS_SHARED_CREDENTIALS_FILE={{TEMP}}/credentials", "AWS_EC2_METADATA_DISABLED=true"]
+pi = ["AWS_PROFILE=", "AWS_DEFAULT_PROFILE=", "AWS_CONFIG_FILE={{TEMP}}/config", "AWS_SHARED_CREDENTIALS_FILE={{TEMP}}/credentials", "AWS_EC2_METADATA_DISABLED=true"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"errorCode":"ValidationException"', '"errorCode":"ThrottlingException"', '"errorCode":"ModelStreamErrorException"', '["aborted","aborted","Request aborted",null]']
+runs = 3

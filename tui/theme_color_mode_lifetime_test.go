@@ -26,6 +26,28 @@ func TestThemeWithColorModeReleasesSourceTheme(t *testing.T) {
 	runtime.KeepAlive(converted)
 }
 
+// A registered theme activated by name stays that theme in either color mode, as Pi's setTheme returns the registered instance for the name.
+func TestSetThemeByNameKeepsRegisteredNameInEachColorMode(t *testing.T) {
+	preserveCapabilityState(t)
+	previousRegistry, previous := ActiveThemeRegistry(), ActiveTheme()
+	t.Cleanup(func() { SetThemeRegistry(previousRegistry); activeTheme.Store(previous) })
+	other, err := LoadBuiltinTheme("dark")
+	if err != nil {
+		t.Fatal(err)
+	}
+	other.Name = "other"
+	registry := NewThemeRegistry()
+	registry.Add(other)
+	SetThemeRegistry(registry)
+	for _, trueColor := range []bool{true, false} {
+		SetCapabilities(TerminalCapabilities{TrueColor: trueColor})
+		SetThemeByName("other")
+		if got := ActiveTheme().Name; got != "other" {
+			t.Fatalf("trueColor=%v: active theme = %q, want other", trueColor, got)
+		}
+	}
+}
+
 // /reload applies capabilities and refreshes the active theme. Like Pi's createTheme/setGlobalTheme path, a refresh must not retain obsolete themes.
 func TestRefreshActiveThemeColorModeReleasesObsoleteThemes(t *testing.T) {
 	preserveCapabilityState(t)

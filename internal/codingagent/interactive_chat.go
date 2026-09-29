@@ -1,8 +1,11 @@
 package codingagent
 
 import (
+	"context"
 	"fmt"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
@@ -18,7 +21,19 @@ func (m *InteractiveMode) appendToChat(comp tui.Component) {
 func (m *InteractiveMode) newUserMessageBlock(text string) *tui.UserMessageBlock {
 	block := tui.NewUserMessageBlock(text)
 	block.SetOutputPad(m.outputPad)
+	block.SetMarkdownTransform(func(markdown string, width int) string {
+		return createMarkdownTransform(extension.MarkdownMessageUser, false, m.markdownTransformers())(markdown, width)
+	})
+	block.SetMarkdownTransformState(func() string {
+		state := m.mermaidRenderingMode()
+		if theme := tui.ActiveTheme(); theme != nil {
+			state += " " + theme.Name
+		}
+		return state
+	})
+	block.SetAsyncMarkdownTransform(m.asyncMarkdownTransform(nil, extension.MarkdownMessageUser, nil))
 	m.userBlocks = append(m.userBlocks, block)
+	m.markdownBlocks = append(m.markdownBlocks, block)
 	return block
 }
 
@@ -28,11 +43,53 @@ func (m *InteractiveMode) newAssistantMessageBlock() *tui.AssistantMessageBlock 
 	block.SetMarkdownTransform(m.assistantMarkdownTransform(block, extension.MarkdownMessageAssistant))
 	block.SetThinkingMarkdownTransform(m.assistantMarkdownTransform(block, extension.MarkdownMessageAssistantThinking))
 	block.SetMarkdownTransformState(m.assistantMarkdownTransformState(block))
+	block.SetAsyncMarkdownTransforms(m.asyncMarkdownTransform(block, extension.MarkdownMessageAssistant, block.Invalidate), m.asyncMarkdownTransform(block, extension.MarkdownMessageAssistantThinking, block.Invalidate))
+	m.markdownBlocks = append(m.markdownBlocks, block)
 	return block
+}
+
+func (m *InteractiveMode) disposeMarkdownBlocks() {
+	for _, block := range m.markdownBlocks {
+		block.Dispose()
+	}
+	m.markdownBlocks = nil
+}
+
+// Ports packages/coding-agent/src/modes/interactive/components/markdown-transform.ts.
+// asyncMarkdownTransform snapshots UI-owned inputs before starting the complete chain off-loop. New content remains unpublished until every transformer has answered.
+func (m *InteractiveMode) asyncMarkdownTransform(block *tui.AssistantMessageBlock, messageType extension.MarkdownMessageType, invalidate func()) *tui.AsyncMarkdownTransform {
+	if m.backgroundCtx == nil || m.newRunner == nil || len(m.newRunner.GetMarkdownTransformers()) == 0 {
+		return nil
+	}
+	return &tui.AsyncMarkdownTransform{
+		Context: m.backgroundCtx,
+		Start:   m.backgroundTasks.Go,
+		Queue:   &m.markdownQueue,
+		Invalidate: func() {
+			if invalidate != nil {
+				invalidate()
+			}
+			m.requestRender()
+		},
+		Prepare: func(markdown string, width int) func(context.Context) string {
+			mode, theme := m.mermaidRenderingMode(), tui.ActiveTheme()
+			transformers := []extension.MarkdownTransformer{createMermaidMarkdownTransformer(func() string { return mode }, theme)}
+			transformers = append(transformers, m.newRunner.GetMarkdownTransformers()...)
+			streaming := block != nil && m.evCurrentBlock == block && m.hasActiveAgentTurn()
+			// Logical replacement revokes publication, not admitted chain execution. The captured Mode context owns invocation cancellation; subprocess inactivity and disconnect remain independent exit conditions.
+			lifetime := m.backgroundCtx
+			return func(context.Context) string {
+				return applyMarkdownTransformers(markdown, extension.MarkdownTransformContext{
+					Context: lifetime, MessageType: messageType, IsStreaming: streaming, AvailableWidth: width,
+				}, transformers)
+			}
+		},
+	}
 }
 
 // updateAssistantMessageBlock applies the authoritative content snapshot and terminal state on both live events and session redraws. Tool calls are invisible boundaries between thinking runs.
 func updateAssistantMessageBlock(block *tui.AssistantMessageBlock, message *agent.AssistantMessage) {
+	message = message.Observe()
 	segments := make([]tui.AssistantSegment, 0, len(message.Content))
 	hasToolCalls := false
 	for _, content := range message.Content {
@@ -64,17 +121,25 @@ func updateAssistantMessageBlock(block *tui.AssistantMessageBlock, message *agen
 // mermaidRendering "final" a diagram is skipped while streaming and then never
 // drawn, because the turn ending changes neither the text nor the width.
 //
-// Extension-registered Markdown transformers are not appended here: the
-// subprocess RegisterMarkdownTransformer path (protocol + SDKs) is unported, so
-// only the built-in transformer runs, exactly as upstream prepends it.
+// The built-in Mermaid transformer runs first, then the transformers
+// extensions registered, in load order (upstream getMarkdownTransformers).
 func (m *InteractiveMode) assistantMarkdownTransform(block *tui.AssistantMessageBlock, messageType extension.MarkdownMessageType) func(string, int) string {
 	return func(markdown string, width int) string {
 		streaming := m.evCurrentBlock == block && m.hasActiveAgentTurn()
-		transformers := []extension.MarkdownTransformer{
-			createMermaidMarkdownTransformer(m.mermaidRenderingMode, tui.ActiveTheme()),
-		}
-		return createMarkdownTransform(messageType, streaming, transformers)(markdown, width)
+		return createMarkdownTransform(messageType, streaming, m.markdownTransformers())(markdown, width)
 	}
+}
+
+// markdownTransformers is upstream InteractiveMode.getMarkdownTransformers:
+// the Mermaid transformer, then each extension's.
+func (m *InteractiveMode) markdownTransformers() []extension.MarkdownTransformer {
+	transformers := []extension.MarkdownTransformer{
+		createMermaidMarkdownTransformer(m.mermaidRenderingMode, tui.ActiveTheme()),
+	}
+	if m.newRunner != nil {
+		transformers = append(transformers, m.newRunner.GetMarkdownTransformers()...)
+	}
+	return transformers
 }
 
 // assistantMarkdownTransformState fingerprints the live state
@@ -199,6 +264,18 @@ func (m *InteractiveMode) handleCopyCommand(flashConfirmation, preferSelection b
 	m.confirmMessageCopied(flashConfirmation)
 }
 
+var cancelledAssistantError = lazyregexp.New(`(?i)\b(?:abort(?:ed)?|cancel(?:l?ed)?)\b`)
+
+// maybeSuggestBugReport emits one hint per interactive lifetime, excluding retryable and cancellation errors.
+func (m *InteractiveMode) maybeSuggestBugReport(message *agent.AssistantMessage) {
+	if m.bugReportHintShown || message.StopReason != ai.StopReasonError || ai.IsRetryableAssistantError(message.LLMMessage()) || cancelledAssistantError.MatchString(message.ErrorMessage) {
+		return
+	}
+	m.bugReportHintShown = true
+	m.chatContainer.Add(tui.NewPaddedText(tui.ActiveTheme().FgText("muted", "If this looks like a pig bug, /bug sends a report to the developers."), m.outputPad, 0, nil))
+	m.tuiInst.RequestRender()
+}
+
 // showError appends an error line to the chat. Mirrors upstream showError:
 // "Error: <message>" in the theme's error color.
 func (m *InteractiveMode) showError(msg string) {
@@ -207,7 +284,7 @@ func (m *InteractiveMode) showError(msg string) {
 	}
 	m.appendChatBlock(tui.NewPaddedText(tui.ActiveTheme().FgText("error", "Error: "+msg), m.outputPad, 0, nil))
 	if m.tuiInst != nil {
-		m.tuiInst.Render()
+		m.tuiInst.RequestRender()
 	}
 }
 

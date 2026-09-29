@@ -41,9 +41,9 @@ func TestEditor_ScrollOffset_TallContentClampsAndShowsIndicators(t *testing.T) {
 	if strings.Contains(joined, "↑") {
 		t.Fatalf("did not expect ↑ indicator when at top, got %q", joined)
 	}
-	// Visible content rows: maxVisible(3) + top border + bottom border + leading blank
-	if len(out) != 1+1+3+1 {
-		t.Fatalf("expected %d rows, got %d (%q)", 1+1+3+1, len(out), out)
+	// Visible content rows: maxVisible(3) + top border + bottom border.
+	if len(out) != 1+3+1 {
+		t.Fatalf("expected %d rows, got %d (%q)", 1+3+1, len(out), out)
 	}
 }
 

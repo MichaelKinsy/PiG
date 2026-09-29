@@ -1,0 +1,51 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:5207-5210 restores the editor on cancellation
+# without appending a status message. Name commands bracket the transcript
+# so any extra cancellation line fails the exact comparison.
+name = "20-model-picker-cancel-silent"
+description = "Cancelling the model picker leaves the transcript unchanged"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 20
+capture_start = "Session name set: before-picker"
+capture_end = "Session name set: after-picker"
+
+[[tmux.steps]]
+keys = ["/name before-picker", "Enter"]
+wait_contains = ["Session name set: before-picker"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["/model", "Enter"]
+wait_contains = ["Model catalogs refreshed."]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_not_contains = ["Only showing models"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["/name after-picker", "Enter"]
+wait_contains = ["Session name set: after-picker"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/model-picker-defaults"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-picker-defaults"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["cancelled"]
+output_equal = true
+escaped_output_equal = true
+runs = 3

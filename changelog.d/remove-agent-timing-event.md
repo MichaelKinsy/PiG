@@ -1,0 +1,1 @@
+- `Session.Subscribe` no longer emits timing events, matching Pi. The Go `agent.TimingEvent` type remains as a deprecated alias for source compatibility; read `agent.Timings()` or observe turn/tool completion events instead.

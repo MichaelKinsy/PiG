@@ -1,0 +1,26 @@
+# Pi 0.87.1 session-manager.ts:390-431 follows the selected leaf and derives
+# model/thinking settings from that full path. An assistant overrides an earlier
+# model_change; off-branch changes do not leak. Go also drives the production
+# runtime restoration consumer and verifies its fallback for untagged history.
+name = "13-session-context-settings"
+description = "Session context selects branch-local model and thinking state"
+covers = ["packages/coding-agent/src/core/session-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-context-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/session-context-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SESSION_CONTEXT model=gpt-4o thinking=off"]
+runs = 3

@@ -1,0 +1,24 @@
+# config.test.ts184-442 command/ownership cases: exact npm prefix/exact-version/rename/empty/quoted command shapes, bun/pnpm/yarn plans, store-linked pnpm ownership and read-only refusal.
+# D39 supplies native executable ownership on the Go side instead of Node module/argv identity. Both adapters assert concrete paths before replacing only each fixture's prefix with PREFIX or PREFIX SPACE; complete command/args/display/steps shapes remain compared.
+name = "16-native-self-update-command-ownership"
+description = "Proven native package ownership preserves Pi self-update prefix, rename and readonly command contracts"
+covers = ["packages/coding-agent/src/config.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/config-ownership-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/config-ownership-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["CONFIG_COMMAND", "CONFIG_PNPM_STORE resolved", "CONFIG_READONLY"]
+runs = 3

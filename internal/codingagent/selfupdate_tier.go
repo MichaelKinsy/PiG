@@ -11,6 +11,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/crossspawn"
 )
 
 // pig divergence (D39): SelfUpdateTier selects one owner before mutation.
@@ -66,6 +68,10 @@ type SelfUpdateProvenance struct {
 	PackageOwner PackageManagerOwner
 	// PackageName is the owning package spec when Tier == tierPackageManager.
 	PackageName string
+	// PackageDir is the owning package directory, not copied metadata below dist or a launcher directory.
+	PackageDir string
+	// NpmPrefix is retained only from a proven lib/node_modules root.
+	NpmPrefix string
 }
 
 // TierError reports that tier resolution could not select exactly one owner,
@@ -93,11 +99,12 @@ type cmdRunner interface {
 	Output(name string, args ...string) (string, error)
 }
 
-// osCmdRunner runs commands through os/exec, applying the configured npm
-// command when probing npm's global root just like upstream.
+// osCmdRunner preserves configured npm executables and leading arguments. Probe output uses JavaScript whitespace trimming.
 type osCmdRunner struct {
-	npmCommand []string
-	ctx        context.Context
+	npmCommand       []string
+	ctx              context.Context
+	preparedNpmRoot  *string
+	preparedNpmError error
 }
 
 const packageManagerProbeTimeout = 5 * time.Second
@@ -109,20 +116,73 @@ func (r osCmdRunner) Output(name string, args ...string) (string, error) {
 }
 
 func (r osCmdRunner) output(name string, args ...string) (string, error) {
-	if name == "npm" && len(r.npmCommand) > 0 && r.npmCommand[0] == "npm" {
+	if r.preparedNpmRoot != nil && name == "npm" && len(args) == 2 && args[0] == "root" && args[1] == "-g" {
+		return *r.preparedNpmRoot, r.preparedNpmError
+	}
+	if name == "npm" && len(r.npmCommand) > 0 {
 		name, args = r.npmCommand[0], append(append([]string{}, r.npmCommand[1:]...), args...)
 	}
 	ctx := r.ctx
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	out, err := exec.CommandContext(ctx, name, args...).Output()
-	return strings.TrimSpace(string(out)), err
+	out, err := crossspawn.Command(ctx, "", name, args...).Output()
+	return jsTrim(string(out)), err
 }
+
+// preparePackageManagerProbes records an explicit npm root query once per resolution. Its error cannot veto another proven installation owner.
+// upstream: packages/coding-agent/src/config.ts:readCommandOutput
+func preparePackageManagerProbes(runner cmdRunner) (cmdRunner, error) {
+	var r osCmdRunner
+	switch value := runner.(type) {
+	case osCmdRunner:
+		r = value
+	case *osCmdRunner:
+		r = *value
+	default:
+		return runner, nil
+	}
+	if len(r.npmCommand) == 0 {
+		return runner, nil
+	}
+	root, err := r.Output("npm", "root", "-g")
+	if err != nil {
+		if r.ctx != nil && r.ctx.Err() != nil {
+			err = r.ctx.Err()
+		}
+		command := strings.Join(append(slices.Clone(r.npmCommand), "root", "-g"), " ")
+		err = &configuredNpmProbeError{command: command, cause: err}
+	}
+	r.preparedNpmRoot = &root
+	r.preparedNpmError = err
+	return r, err
+}
+
+type configuredNpmProbeError struct {
+	command string
+	cause   error
+}
+
+func (e *configuredNpmProbeError) Error() string {
+	reason := e.cause.Error()
+	if exit, ok := errors.AsType[*exec.ExitError](e.cause); ok {
+		reason = jsTrim(string(exit.Stderr))
+		if reason == "" {
+			code := "unknown"
+			if exit.ExitCode() >= 0 {
+				code = fmt.Sprint(exit.ExitCode())
+			}
+			reason = "exit code " + code
+		}
+	}
+	return "Failed to run " + e.command + ": " + reason
+}
+
+func (e *configuredNpmProbeError) Unwrap() error { return e.cause }
 
 // ResolveSelfUpdateTier proves exactly one installation owner for the running
 // executable before any mutation. It never mutates state. Ambiguous ownership
-// returns a *TierError and the caller must refuse to update.
+// returns a *TierError and the caller must refuse to update. Explicit npm probe failures surface unless another proven owner selects the route.
 //
 // Resolution order follows the tier ladder: explicit product override
 // (Piglet Binary baked version, or PIG_INSTALL_TIER for deployments), then
@@ -137,10 +197,14 @@ func ResolveSelfUpdateTier() (*SelfUpdateProvenance, error) {
 	settings := NewSettingsManager(cwd, AgentDir())
 	ctx, cancel := context.WithTimeout(context.Background(), packageManagerProbeTimeout)
 	defer cancel()
-	return resolveSelfUpdateTierForExe(exe, osCmdRunner{
+	entrypoint := os.Args[0]
+	if resolved, err := exec.LookPath(entrypoint); err == nil {
+		entrypoint = resolved
+	}
+	return resolveSelfUpdateTierOn(runtime.GOOS, exe, osCmdRunner{
 		npmCommand: settings.GetGlobalSettings().NpmCommand,
 		ctx:        ctx,
-	})
+	}, entrypoint)
 }
 
 // resolveSelfUpdateTierForExe classifies a given executable path with an
@@ -151,7 +215,8 @@ func resolveSelfUpdateTierForExe(exe string, runner cmdRunner) (*SelfUpdateProve
 }
 
 // resolveSelfUpdateTierOn classifies exe as an installation on goos.
-func resolveSelfUpdateTierOn(goos, exe string, runner cmdRunner) (*SelfUpdateProvenance, error) {
+func resolveSelfUpdateTierOn(goos, exe string, runner cmdRunner, entrypoints ...string) (*SelfUpdateProvenance, error) {
+	entrypoints = append([]string{exe}, entrypoints...)
 	// Follow symlinks to the real target so ownership and writability are
 	// evaluated against the binary pig would actually replace. Mirrors
 	// upstream realpathSync in isManagedByGlobalPackageManager.
@@ -173,13 +238,14 @@ func resolveSelfUpdateTierOn(goos, exe string, runner cmdRunner) (*SelfUpdatePro
 	// container provenance is accepted this way: a deployment cannot claim
 	// standalone or package-manager ownership without filesystem proof, and
 	// must not anonymously re-enter a mutating tier.
+	var npmProbeErr error
 	switch strings.ToLower(strings.TrimSpace(os.Getenv("PIG_INSTALL_TIER"))) {
 	case "container", "image":
 		return &SelfUpdateProvenance{Tier: tierContainer, ExePath: exe}, nil
 	case "immutable-binary", "piglet-binary":
 		return &SelfUpdateProvenance{Tier: tierImmutableBinary, ExePath: exe}, nil
 	case "":
-		// fall through to filesystem detection
+		runner, npmProbeErr = preparePackageManagerProbes(runner)
 	default:
 		return nil, &TierError{
 			Tier:        tierUnsupported,
@@ -188,32 +254,37 @@ func resolveSelfUpdateTierOn(goos, exe string, runner cmdRunner) (*SelfUpdatePro
 		}
 	}
 
-	if owner, pkg, ok, ambiguous := detectPackageManagerOwnership(exe, runner); ambiguous {
+	verified := make([]string, 0, len(entrypoints))
+	for _, entrypoint := range entrypoints {
+		resolved, err := filepath.EvalSymlinks(entrypoint)
+		if err == nil && ownershipPath(goos, resolved) == ownershipPath(goos, exe) {
+			verified = append(verified, entrypoint)
+		}
+	}
+	if owned, ambiguous := detectPackageManagerOwnership(goos, exe, runner, verified...); ambiguous {
 		return nil, &TierError{
 			Tier:        tierPackageManager,
 			ExePath:     exe,
 			Remediation: fmt.Sprintf("pig executable %s is managed by more than one package manager; update it with the single manager that owns it", exe),
 		}
-	} else if ok {
-		if goos == "windows" && owner != ownerNPM && owner != ownerPNPM {
+	} else if owned != nil {
+		if goos == "windows" && owned.PackageOwner != ownerNPM && owned.PackageOwner != ownerPNPM {
 			return nil, &TierError{
 				Tier:        tierUnsupported,
 				ExePath:     exe,
-				Remediation: fmt.Sprintf("%s self-update on Windows is only supported for npm and pnpm installs.\nDetected install method: %s. Update %s manually.", AppName, owner, AppName),
+				Remediation: fmt.Sprintf("%s self-update on Windows is only supported for npm and pnpm installs.\nDetected install method: %s. Update %s manually.", AppName, owned.PackageOwner, AppName),
 			}
 		}
-		if !isWritablePackageManagerPath(exe) {
-			return &SelfUpdateProvenance{Tier: tierUnsupported, ExePath: exe}, nil
+		if !isWritablePackageManagerPath(exe) || !directoryWritable(owned.PackageDir) || !directoryWritable(filepath.Dir(owned.PackageDir)) {
+			owned.Tier = tierUnsupported
 		}
-		return &SelfUpdateProvenance{
-			Tier:         tierPackageManager,
-			ExePath:      exe,
-			PackageOwner: owner,
-			PackageName:  pkg,
-		}, nil
+		return owned, nil
 	}
 
 	if goos == "windows" {
+		if npmProbeErr != nil {
+			return nil, npmProbeErr
+		}
 		// pig divergence (D39): a standalone pig.exe is not replaced in place.
 		return &SelfUpdateProvenance{Tier: tierUnsupported, ExePath: exe}, nil
 	}
@@ -225,91 +296,85 @@ func resolveSelfUpdateTierOn(goos, exe string, runner cmdRunner) (*SelfUpdatePro
 		return &SelfUpdateProvenance{Tier: tierStandalone, ExePath: exe}, nil
 	}
 
+	if npmProbeErr != nil {
+		return nil, npmProbeErr
+	}
+
 	return &SelfUpdateProvenance{Tier: tierUnsupported, ExePath: exe}, nil
 }
 
-// detectPackageManagerOwnership reports whether exe lives inside a global
-// package-manager root, returning the owning manager and package name. The
-// boolean ambiguous is true when two or more managers claim the path.
-//
-// A package-manager install is only "owned" when the executable resolves under
-// one of the manager's global roots. This mirrors upstream
-// isManagedByGlobalPackageManager without assuming a Node entrypoint.
-func detectPackageManagerOwnership(exe string, runner cmdRunner) (owner PackageManagerOwner, pkg string, ok, ambiguous bool) {
-	// Canonicalize both sides through EvalSymlinks so a temp-dir under a
-	// symlinked prefix (macOS /var → /private/var) compares equal to a
-	// package-manager root reported with the un-resolved prefix. Mirrors
-	// upstream getPathComparisonCandidates realpathSync.
-	exeNorm := canonicalPath(exe)
-	// Track the set of distinct managers that claim the path. Multiple roots
-	// from the same manager (e.g. npm root -g plus its parent) are one owner,
-	// not ambiguity; only two or more distinct managers is ambiguous.
-	var owners map[PackageManagerOwner]struct{}
-	for _, m := range []struct {
+// detectPackageManagerOwnership accepts only manager roots. The caller verifies additional entrypoints resolve to exe. Windows comparisons ignore case and separator spelling.
+func detectPackageManagerOwnership(goos, exe string, runner cmdRunner, entrypoints ...string) (*SelfUpdateProvenance, bool) {
+	candidates := append([]string{exe}, entrypoints...)
+	owners := map[PackageManagerOwner]bool{}
+	var result *SelfUpdateProvenance
+	for _, manager := range []struct {
 		owner    PackageManagerOwner
 		rootsFor func(cmdRunner) []string
-	}{
-		{ownerNPM, npmGlobalRoots},
-		{ownerPNPM, pnpmGlobalRoots},
-		{ownerYarn, yarnGlobalRoots},
-		{ownerBun, bunGlobalRoots},
-	} {
-		for _, root := range m.rootsFor(runner) {
+	}{{ownerNPM, npmGlobalRoots}, {ownerPNPM, pnpmGlobalRoots}, {ownerYarn, yarnGlobalRoots}, {ownerBun, bunGlobalRoots}} {
+		for _, root := range manager.rootsFor(runner) {
 			if root == "" {
 				continue
 			}
-			rootNorm := canonicalPath(root)
-			if exeNorm == rootNorm || strings.HasPrefix(exeNorm, rootNorm+string(filepath.Separator)) {
-				if owners == nil {
-					owners = map[PackageManagerOwner]struct{}{}
-				}
-				if _, seen := owners[m.owner]; !seen {
-					owners[m.owner] = struct{}{}
-					if len(owners) == 1 {
-						owner = m.owner
-						pkg = inferOwningPackage(exe, rootNorm)
+			matched := false
+			for _, candidate := range candidates {
+				for _, candidatePath := range []string{candidate, canonicalPath(candidate)} {
+					for _, rootPath := range []string{root, canonicalPath(root)} {
+						exeNorm, rootNorm := ownershipPathLiteral(goos, candidatePath), ownershipPathLiteral(goos, rootPath)
+						if exeNorm == rootNorm || strings.HasPrefix(exeNorm, strings.TrimSuffix(rootNorm, "/")+"/") {
+							matched = true
+						}
 					}
 				}
-				break // one match per manager is enough
 			}
+			if !matched {
+				continue
+			}
+			owners[manager.owner] = true
+			if result == nil {
+				pkg, directory := owningPackageFromExecutable(goos, exe)
+				prefix := ""
+				if manager.owner == ownerNPM && filepath.Base(filepath.Clean(root)) == "node_modules" && filepath.Base(filepath.Dir(root)) == "lib" {
+					prefix = filepath.Dir(filepath.Dir(root))
+				}
+				result = &SelfUpdateProvenance{Tier: tierPackageManager, ExePath: exe, PackageOwner: manager.owner, PackageName: pkg, PackageDir: directory, NpmPrefix: prefix}
+			}
+			break
 		}
 	}
-	if len(owners) >= 2 {
-		return owner, pkg, true, true
-	}
-	return owner, pkg, len(owners) == 1, false
+	return result, len(owners) > 1
 }
 
-// inferOwningPackage extracts the package name from an executable path inside a
-// global node_modules root. For a scoped package the name is "@scope/name".
-func inferOwningPackage(exe, root string) string {
-	rel, err := filepath.Rel(root, exe)
-	if err != nil {
-		return PackageName
+func ownershipPath(goos, value string) string {
+	return ownershipPathLiteral(goos, canonicalPath(value))
+}
+
+func ownershipPathLiteral(goos, value string) string {
+	value = filepath.ToSlash(value)
+	if goos == "windows" {
+		value = strings.ToLower(strings.ReplaceAll(value, "\\", "/"))
 	}
-	rel = filepath.ToSlash(rel)
-	parts := strings.Split(rel, "/")
-	// pnpm's executable resolves through
-	// node_modules/.pnpm/<store-entry>/node_modules/<package>/... . The package
-	// after the last node_modules segment is the owner; the store directory is
-	// not a package identity.
+	return strings.TrimSuffix(value, "/")
+}
+
+func owningPackageFromExecutable(goos, exe string) (string, string) {
+	path := filepath.ToSlash(exe)
+	if goos == "windows" {
+		path = strings.ReplaceAll(path, "\\", "/")
+	}
+	parts := strings.Split(path, "/")
 	for i, part := range slices.Backward(parts) {
-		if part != "node_modules" || i+1 >= len(parts) {
+		isModules := part == "node_modules" || goos == "windows" && strings.EqualFold(part, "node_modules")
+		if !isModules || i+1 >= len(parts) {
 			continue
 		}
-		name := parts[i+1]
-		if strings.HasPrefix(name, "@") && i+2 < len(parts) {
-			return name + "/" + parts[i+2]
+		end := i + 2
+		if strings.HasPrefix(parts[i+1], "@") && i+2 < len(parts) {
+			end++
 		}
-		return name
+		return strings.Join(parts[i+1:end], "/"), filepath.FromSlash(strings.Join(parts[:end], "/"))
 	}
-	if filepath.Base(filepath.Clean(root)) == "node_modules" && len(parts) > 0 {
-		if strings.HasPrefix(parts[0], "@") && len(parts) > 1 {
-			return parts[0] + "/" + parts[1]
-		}
-		return parts[0]
-	}
-	return PackageName
+	return PackageName, filepath.Dir(exe)
 }
 
 func npmGlobalRoots(runner cmdRunner) []string {
@@ -372,9 +437,7 @@ func isWritableReplacement(path string) bool {
 // (e.g. a configured registry) for the npm owner only. Returns nil for an
 // unknown owner.
 func PackageManagerUpdateCommand(owner PackageManagerOwner, installedPackage string, npmCommand []string, target SelfUpdatePackageTarget) *SelfUpdateCommand {
-	// packageManagerSelfUpdateCommand switches on the first element of
-	// npmCommand; feed it the owner's command name so a proven pnpm/yarn/bun
-	// owner produces the right command regardless of configured npm args.
+	// The proven owner selects argument semantics independently of a configured executable or wrapper.
 	ownerCmd := []string{string(owner)}
 	if owner == ownerNPM {
 		ownerCmd = npmCommand
@@ -382,7 +445,7 @@ func PackageManagerUpdateCommand(owner PackageManagerOwner, installedPackage str
 			ownerCmd = []string{"npm"}
 		}
 	}
-	base := packageManagerSelfUpdateCommand(installedPackage, ownerCmd, target)
+	base := packageManagerSelfUpdateCommand(owner, installedPackage, ownerCmd, target)
 	switch owner {
 	case ownerNPM, ownerPNPM, ownerYarn, ownerBun:
 		return base
@@ -399,7 +462,7 @@ var packageManagerRunner = func(cmd *SelfUpdateCommand) error {
 	ctx, cancel := context.WithTimeout(context.Background(), packageManagerUpdateTimeout)
 	defer cancel()
 	return runPackageManagerSteps(cmd, func(name string, args ...string) spawner {
-		c := exec.CommandContext(ctx, name, args...)
+		c := crossspawn.Command(ctx, "", name, args...)
 		c.Stdout = os.Stdout
 		c.Stderr = os.Stderr
 		c.Stdin = os.Stdin
@@ -564,6 +627,6 @@ func applyProvenance(
 	case tierContainer:
 		return SelfUpdateActionResult{Action: "refused", Message: ContainerRemediation(prov.ExePath)}
 	default:
-		return SelfUpdateActionResult{Action: "refused", Message: UnsupportedRemediation(prov.ExePath)}
+		return SelfUpdateActionResult{Action: "refused", Message: prov.GetSelfUpdateUnavailableInstruction()}
 	}
 }

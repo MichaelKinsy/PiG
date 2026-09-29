@@ -98,7 +98,7 @@ func stopAfterNegotiationOnlyInput(t *testing.T, reply string, in interactiveTes
 	default:
 	}
 	in.send(t, "x")
-	data, err := ReadInput(in.file)
+	data, err := readTestInput(in.file)
 	if err != nil || string(data) != "x" {
 		t.Fatalf("next terminal owner read %q, %v; want x", data, err)
 	}
@@ -108,7 +108,7 @@ func TestReadInputWaitsPastNegotiationOnlyRead(t *testing.T) {
 	preserveKeyboardProtocolState(t)
 	terminal := NewProcessTerminalWithOutput(nil, nil, &negotiationWriter{seen: make(chan struct{})})
 	r := &separateInputReads{chunks: []string{"\x1b[?0u", "\x1b[?62;22c", "x"}}
-	got, err := terminal.readInput(r)
+	got, err := readTestTerminalInput(terminal, r)
 	if err != nil || string(got) != "x" || len(r.chunks) != 0 {
 		t.Fatalf("blocking ReadInput = %q, %v; %d unread chunks", got, err, len(r.chunks))
 	}

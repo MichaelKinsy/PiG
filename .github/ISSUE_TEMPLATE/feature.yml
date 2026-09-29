@@ -51,7 +51,7 @@ body:
     id: divergence
     attributes:
       label: Divergence impact
-      description: Identify an existing DIVERGENCES.md entry, propose why a new reviewed divergence is necessary, or state “None.”
+      description: Identify an existing docs/parity/DIVERGENCES.md entry, propose why a new reviewed divergence is necessary, or state “None.”
     validations:
       required: true
   - type: textarea

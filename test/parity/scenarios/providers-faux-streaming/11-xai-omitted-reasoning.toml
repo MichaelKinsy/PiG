@@ -1,0 +1,26 @@
+# Pi 0.87.1 xai-responses.test.ts:202 and api/openai-responses.ts:344-359:
+# absent effort does not clamp into a supported effort. xAI still requests encrypted reasoning.
+# The Pi fixture invokes compat.stream with an injected fetch. The Go fixture drives Services.ModelRuntime.Stream and captures the real HTTP request.
+# Explicit medium and Grok 4.3's off mapping guard the neighboring branches.
+# Mutation: restore unconditional empty-effort clamping; the compiling Go fixture emits low/summary:auto for Grok 4.5 and 4.7 instead of omitting reasoning.
+name = "11-xai-omitted-reasoning"
+description = "The Model Runtime preserves omitted xAI effort and requests encrypted reasoning."
+covers = ["packages/ai/src/api/openai-responses.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/xai-reasoning-pig"]
+pi_args = ["node", "./test/parity/testdata/xai-reasoning-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

@@ -6,9 +6,9 @@ The dispatcher is exhaustive - every command here is a parity-mirrored upstream 
 
 | Command | Description |
 |---|---|
-| `/settings` | Open the settings menu. |
+| `/settings` | Open the settings menu. Changes apply in place; `Escape` closes it. |
 | `/model` | Open the model selector. |
-| `/thinking [level]` | Set the thinking level, or open the selector without a level. |
+| `/thinking [level]` | Complete and set an available thinking level, or open the selector without a level. |
 | `/scoped-models` | Enable/disable models for Ctrl+P cycling. |
 | `/login` | Configure provider authentication. |
 | `/logout` | Remove stored provider authentication. |
@@ -21,13 +21,14 @@ The dispatcher is exhaustive - every command here is a parity-mirrored upstream 
 | `/reload` | Reload keybindings, extensions, skills, prompts, themes, and context files. |
 | `/reload --explain` | Same plus a placement/cell report. [pig] |
 | `/export [path]` | Export session (default HTML; specify `.jsonl`). |
-| `/import <path>` | Import and resume a JSONL session. |
+| `/import <path>` | Confirm, import without replacing an existing file, and resume a JSONL session. |
 | `/share` | Upload an unlisted Session share that expires after 30 days. |
 | `/bug [description]` | Write a bug report archive to the current directory and print a prefilled PiG issue link to attach it to. Nothing is uploaded (D62). |
 | `/copy` | Copy the last agent message to clipboard. |
 | `/name <text>` | Set the session display name. |
 | `/session` | Show session info and stats. |
 | `/changelog` | Show changelog entries. |
+| `/debug` | Write a debug log and show its path as literal text. |
 | `/hotkeys` | List keyboard shortcuts. |
 | `/quit` | Exit PiG. |
 | `/trust` | Set the trust decision for the current project. |
@@ -49,4 +50,4 @@ other product commands.
 
 ## Parity harness (only when `PIG_PARITY_HARNESS=1`)
 
-`/probe-*` family - internal scenarios used by `parity/scenarios/`. Not user-facing.
+`/probe-*` family - internal scenarios used by `test/parity/scenarios/`. Not user-facing.

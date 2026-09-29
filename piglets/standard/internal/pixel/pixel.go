@@ -7,9 +7,7 @@ package pixel
 
 import (
 	"image/color"
-	"os"
 	"strconv"
-	"strings"
 )
 
 // Canvas is a reusable RGBA pixel buffer. Pixels outside the canvas are
@@ -131,13 +129,11 @@ func Scale(c color.RGBA, f float64) color.RGBA {
 }
 
 // SupportsTrueColor reports whether the terminal advertises 24-bit color. It
-// matches the host TUI's detection.
+// matches the host TUI's detection. It reads the environment on every call, so
+// a view sees a change made while it is open, and it never allocates: a frame
+// that calls it re-encodes nothing when the scene is unchanged.
 func SupportsTrueColor() bool {
-	switch strings.ToLower(os.Getenv("COLORTERM")) {
-	case "truecolor", "24bit":
-		return true
-	}
-	return os.Getenv("WT_SESSION") != ""
+	return colorTermIsTrueColor() || inWindowsTerminal()
 }
 
 const reset = "\x1b[0m"

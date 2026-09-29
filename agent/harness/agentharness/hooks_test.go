@@ -10,20 +10,20 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/agent/harness"
+	"github.com/MichaelKinsy/PiG/agent/harness/compaction"
 	"github.com/MichaelKinsy/PiG/agent/harness/execution"
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 )
 
 func userMessage(text string, timestamp int64) agent.AgentMessage {
-	return agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: text}}, Timestamp: timestamp}}
+	return agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: text}}, Timestamp: timestamp}}
 }
 
 func messageText(message agent.AgentMessage) string {
-	if message.User == nil || len(message.User.Content) == 0 {
+	if message.User == nil || len(message.User.Content.(ai.UserContentBlocks)) == 0 {
 		return ""
 	}
-	text, _ := message.User.Content[0].(ai.TextContent)
+	text, _ := message.User.Content.(ai.UserContentBlocks)[0].(ai.TextContent)
 	return text.Text
 }
 

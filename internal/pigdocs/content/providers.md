@@ -73,9 +73,19 @@ Each provider in the table above reads the variable in its credential column. Us
 
 `PI_CACHE_RETENTION` sets the prompt cache retention that PiG passes to the provider.
 
+Mistral requests include `prompt_cache_key` and an automatic `x-affinity` header when the request has a session ID and cache retention is not `none`. Explicit affinity headers remain unchanged, including an empty header. Replayed assistant messages use `prefix: false`; they are completed turns, not completion prefixes.
+
+Google Gemini and Vertex requests encode the system instruction as user-role content, matching Pi's Google SDK. They omit the tool-calling mode when no explicit choice or strict tool schema requires it. Explicit `none` and `any` choices take precedence over strict `VALIDATED` mode.
+
 ## Authentication
 
-PiG stores credentials in `~/.pig/agent/auth.json`. The file is created on demand by `pig login` and is never read at module init. Environment variables (`OPENAI_API_KEY`, etc.) always take precedence over stored credentials at request time, matching upstream behavior - this lets per-shell or per-project keys override the global file.
+Run `/login <provider>` with a provider ID or display name to configure that provider. Argument completion shows its supported methods. A provider with one method opens its flow directly. An unmatched argument opens a searchable provider list. Without an argument, `/login` starts at the method selector. Escape in its provider list goes back to that selector.
+
+Bedrock prompts for a bearer token, an AWS profile, or the existing credential chain. Vertex prompts for an API key or cloud credentials, including project and location. Cloudflare asks for an account ID and, for AI Gateway, a gateway ID after the key. These replies stay in the dialog. Provider settings are saved in the credential's `env` object. API keys are saved exactly as typed, including surrounding spaces. Empty stored Cloudflare and Vertex keys do not borrow an environment API key. Vertex can still use its cloud credentials. Remove the stored credential with `/logout` to return to environment-only authentication.
+
+Escape in a key or text prompt aborts login without replacing an existing credential. As in Pi, the error reads `Failed to save API key for <Name>: This operation was aborted`. `/logout` lists only stored credentials and does not change environment variables or `models.json`. With nothing stored, it reports that there are no credentials to remove. Matching login options retain their credential-source labels, such as `stored`; logout uses `configured` for the stored credentials it lists.
+
+PiG stores credentials in `~/.pig/agent/auth.json`. Agent startup creates a missing file containing `{}` with owner-only permissions (mode `0600` on POSIX; an owner-only DACL on Windows, D68). Startup leaves existing contents and permissions unchanged. Stored credentials take precedence over environment fallback; a runtime API key can override them for the current process.
 
 `auth.json` can contain API keys and OAuth tokens. Keep it private and do not commit it.
 
@@ -113,6 +123,10 @@ A stored API-key credential can include an `env` object. Its values take precede
 ```
 
 ### OAuth providers
+
+On Windows, PiG passes browser login URLs directly to the Windows URL handler without a command shell. URL parameters and shell metacharacters remain part of the URL.
+
+Device-code login shows the verification URL, user code, and waiting status without opening a browser. Open the displayed link yourself. Browser authorization URL events still open the default browser.
 
 Built-in OAuth targets are `anthropic`, `github-copilot`, `kimi-coding`, `meta`, `openai-codex`, `openrouter`, `radius`, and `xai`. Each provider owns its flow. For example, GitHub Copilot uses device authorization, while callback-based providers can open a localhost callback server. Tokens are persisted to `auth.json` unless the provider owns another store, and supported providers refresh them when required.
 

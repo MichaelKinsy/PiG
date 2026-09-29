@@ -1,0 +1,31 @@
+# Pi 0.87.1 package-manager-cli.ts:750-788,928-944; package-manager.ts:1822-1836.
+# Probe: remove npm:fake-package with an undecided project and distinct npmCommand recorders.
+# Artifact equality compares command ownership, the verb and the saved package record at invocation, not package-progress presentation.
+# package-manager.ts:1054-1056 removes artifacts before changing settings.
+name = "17-remove-ignores-untrusted-npm-command"
+description = "A user package removal ignores an undecided project's npmCommand."
+covers = ["packages/coding-agent/src/package-manager-cli.ts", "packages/coding-agent/src/core/package-manager.ts", "packages/coding-agent/src/core/settings-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/npm-command/agent", "NPM_TRUST_RECORD={{TEMP}}"]
+pi = ["PI_CODING_AGENT_DIR=testdata/npm-command/agent", "NPM_TRUST_RECORD={{TEMP}}", "PI_SKIP_VERSION_CHECK=1"]
+# The subcommand must precede startup flags.
+override_base_args = true
+
+[cli]
+args = ["remove", "npm:fake-package"]
+cwd = "testdata/npm-command/project"
+snapshot_cwd = true
+artifact_path = "{{TEMP}}/npm-calls.txt"
+timeout_seconds = 20
+
+[assert]
+exit_code = 0
+both_contain = ["Removed npm:fake-package"]
+# The recorder writes the same complete LF-delimited artifact in both hosts; compare it without normalization.
+artifact_equal = true
+artifact_both_contain = ["global uninstall", "recorded=true"]
+artifact_both_not_contain = ["project"]
+runs = 3

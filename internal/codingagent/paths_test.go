@@ -66,6 +66,7 @@ func TestStateDirsRejectPathNamespaces(t *testing.T) {
 func TestPackageManagerSelfUpdateCommand_UsesIgnoreScripts(t *testing.T) {
 	tests := []struct {
 		name       string
+		owner      PackageManagerOwner
 		npmCommand []string
 		wantCmd    string
 		wantArgs   []string
@@ -73,29 +74,34 @@ func TestPackageManagerSelfUpdateCommand_UsesIgnoreScripts(t *testing.T) {
 	}{
 		{
 			name:     "default npm",
+			owner:    ownerNPM,
 			wantCmd:  "npm",
 			wantArgs: []string{"install", "-g", "--ignore-scripts", "--min-release-age=0", "pig"},
 		},
 		{
 			name:       "configured npm args",
+			owner:      ownerNPM,
 			npmCommand: []string{"npm", "--userconfig", "/tmp/npmrc"},
 			wantCmd:    "npm",
 			wantArgs:   []string{"--userconfig", "/tmp/npmrc", "install", "-g", "--ignore-scripts", "--min-release-age=0", "pig"},
 		},
 		{
 			name:       "pnpm",
+			owner:      ownerPNPM,
 			npmCommand: []string{"pnpm"},
 			wantCmd:    "pnpm",
 			wantArgs:   []string{"install", "-g", "--ignore-scripts", "--config.minimumReleaseAge=0", "pig"},
 		},
 		{
 			name:       "yarn",
+			owner:      ownerYarn,
 			npmCommand: []string{"yarn"},
 			wantCmd:    "yarn",
 			wantArgs:   []string{"global", "add", "--ignore-scripts", "pig"},
 		},
 		{
 			name:       "bun",
+			owner:      ownerBun,
 			npmCommand: []string{"bun"},
 			wantCmd:    "bun",
 			wantArgs:   []string{"install", "-g", "--ignore-scripts", "--minimum-release-age=0", "pig"},
@@ -104,7 +110,7 @@ func TestPackageManagerSelfUpdateCommand_UsesIgnoreScripts(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := packageManagerSelfUpdateCommand("pig", tt.npmCommand, SelfUpdatePackageTarget{})
+			got := packageManagerSelfUpdateCommand(tt.owner, "pig", tt.npmCommand, SelfUpdatePackageTarget{})
 			if got == nil {
 				t.Fatal("packageManagerSelfUpdateCommand returned nil")
 			}
@@ -122,7 +128,7 @@ func TestPackageManagerSelfUpdateCommand_UsesIgnoreScripts(t *testing.T) {
 }
 
 func TestPackageManagerSelfUpdateCommand_RenameIncludesUninstallStep(t *testing.T) {
-	got := packageManagerSelfUpdateCommand("old-pig", []string{"pnpm"}, SelfUpdatePackageTarget{PackageName: "pig"})
+	got := packageManagerSelfUpdateCommand(ownerPNPM, "old-pig", []string{"pnpm"}, SelfUpdatePackageTarget{PackageName: "pig"})
 	if got == nil {
 		t.Fatal("packageManagerSelfUpdateCommand returned nil")
 	}

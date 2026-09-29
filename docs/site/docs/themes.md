@@ -20,6 +20,18 @@ You can also set the name directly in `~/.pig/agent/settings.json`:
 }
 ```
 
+## Automatic switching
+
+Choose **Automatic** in the theme submenu to select separate themes for light and dark terminal appearance. You can also set the pair directly:
+
+```json
+{
+  "theme": "light/dark"
+}
+```
+
+The first name is the light theme. The second name is the dark theme. Live switching requires terminal support for color-scheme notifications (DEC mode 2031). PiG preserves the pair when the terminal appearance changes. Selecting a single theme, including through an extension, disables automatic switching.
+
 ## Theme sources
 
 PiG can load theme Resources from:
@@ -41,6 +53,10 @@ A Piglet can select Resources for one agent application and control ambient disc
 A Package never activates a Piglet.
 
 ## Reload
+
+In an interactive session, PiG watches the selected custom theme's file under `~/.pig/agent/themes/`. File notifications debounce for 100 ms before reload. A missing or invalid file leaves the last valid theme active. An operating-system watcher error stops notifications without terminating the session. Select the theme again to restart its watcher.
+
+Theme previews do not replace the active watch registration. Themes from other Resource directories and Resource configuration changes still require `/reload`.
 
 Use `/reload` after you change a theme file or Resource configuration:
 

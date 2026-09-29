@@ -17,14 +17,14 @@ func TestRPCAssistantMessagePassesMissingStopReasonThrough(t *testing.T) {
 		has    bool
 	}{
 		{"", nil, false},
-		{ai.StopReasonStop, ai.StopReasonStop, true},
-		{ai.StopReasonToolUse, ai.StopReasonToolUse, true},
+		{ai.StopReasonStop, string(ai.StopReasonStop), true},
+		{ai.StopReasonToolUse, string(ai.StopReasonToolUse), true},
 	} {
 		wire, err := rpcAgentMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, StopReason: tc.reason}})
 		if err != nil {
 			t.Fatal(err)
 		}
-		got, has := wire.(map[string]any)["stopReason"]
+		got, has := decodeRPCEvent(t, wire)["stopReason"]
 		if has != tc.has || (has && got != tc.want) {
 			t.Errorf("stop reason %q: stopReason = %v (present %v), want %v (present %v)", tc.reason, got, has, tc.want, tc.has)
 		}

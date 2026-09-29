@@ -211,7 +211,7 @@ func TestLlamaLoginNeverRendersSubmittedSecret(t *testing.T) {
 	}
 }
 
-func TestLlamaLoginCancelShowsNoError(t *testing.T) {
+func TestLlamaLoginCancelReportsAbort(t *testing.T) {
 	m, auth, _, _ := newLlamaTestMode(t)
 	handled := make(chan bool, 1)
 	go func() { handled <- m.loginAPIKeyProvider(llama.LlamaProviderID) }()
@@ -223,8 +223,8 @@ func TestLlamaLoginCancelShowsNoError(t *testing.T) {
 	if _, stored, _ := auth.Get(llama.LlamaProviderID); stored {
 		t.Fatal("cancelled login stored a credential")
 	}
-	if chat := plainRender(m.chatContainer); strings.Contains(chat, "Failed") {
-		t.Fatalf("cancelled login reported an error:\n%s", chat)
+	if chat := plainRender(m.chatContainer); !strings.Contains(chat, "Failed to save API key for llama.cpp: This operation was aborted") {
+		t.Fatalf("cancelled login did not report Pi's aborted interaction:\n%s", chat)
 	}
 	if m.loginAPIKeyProvider("openai") {
 		t.Fatal("plain api-key providers must keep the key prompt")
@@ -258,15 +258,13 @@ func TestLlamaSlashHandlerAndLoginRouting(t *testing.T) {
 	}
 
 	var routed string
-	textInput := false
+	provider := tui.OAuthProvider{ID: llama.LlamaProviderID, Name: "llama.cpp", AuthType: "api_key"}
 	login := &SlashContext{
-		ShowLoginAuthType:   func() (string, bool) { return "api_key", true },
-		ShowOAuthSelector:   func(string) (string, bool) { return llama.LlamaProviderID, true },
-		SetAPIKey:           func(string, string) error { return nil },
-		ShowAPIKeyInput:     func(string) (string, bool) { textInput = true; return "", false },
-		LoginAPIKeyProvider: func(provider string) bool { routed = provider; return true },
+		Args:               provider.ID,
+		LoginProviders:     func() []tui.OAuthProvider { return []tui.OAuthProvider{provider} },
+		StartProviderLogin: func(p tui.OAuthProvider) error { routed = p.ID; return nil },
 	}
-	if err := loginHandler(login); err != nil || routed != llama.LlamaProviderID || textInput {
-		t.Fatalf("loginHandler routed %q, text input %v, err %v", routed, textInput, err)
+	if err := loginHandler(login); err != nil || routed != llama.LlamaProviderID {
+		t.Fatalf("loginHandler routed %q, err %v", routed, err)
 	}
 }

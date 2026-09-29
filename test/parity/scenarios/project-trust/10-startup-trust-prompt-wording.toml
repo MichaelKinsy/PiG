@@ -1,0 +1,44 @@
+# Behavior family: project-trust
+# Upstream evidence: Pi 0.87.1 core/project-trust.ts:24-37 and cli/project-trust.ts:18-29:
+# an undecided project prompts before loading local settings, even with -ne.
+# Probed with the same empty settings fixture as scenario 09, at 180x35.
+# The complete prompt and ordered choices are compared, not just its title.
+name = "10-startup-trust-prompt-wording"
+description = "Startup trust describes exactly which project settings, resources, packages and code approval enables."
+covers = ["packages/coding-agent/src/core/project-trust.ts", "packages/coding-agent/src/cli/project-trust.ts", "packages/coding-agent/src/modes/interactive/components/extension-selector.ts"]
+tags = ["hermetic", "fast", "security", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/warning-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/warning-agent"]
+override_base_args = true
+pi_args = ["--offline", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-session"]
+pig_args = ["--offline", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-session"]
+
+[tmux]
+width = 180
+height = 35
+cwd = "testdata/warning-project"
+ready_pattern_pig = "Trust project folder?"
+ready_pattern_pi = "Trust project folder?"
+ready_timeout_seconds = 30
+capture_start = "Trust project folder?"
+capture_end = "escape/ctrl+c cancel"
+
+[assert]
+both_reach_ready = true
+both_contain = ["settings and resources, install missing project packages, and execute project extensions.", "Trust (this session only)", "Do not trust (this session only)"]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: D2 substitutes only the command and config identity.
+[[assert.normalize_replace]]
+pattern = 'allows pig '
+with = "allows pi "
+reason = "D2: the trust prompt names the host executable; all permissions and choices remain compared."
+
+[[assert.normalize_replace]]
+pattern = '\.pig'
+with = ".pi"
+reason = "D2: the complete trust prompt contains the product-owned configuration name, not user content."

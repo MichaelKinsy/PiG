@@ -76,8 +76,8 @@ func TestOpenAICodexResponses_AutoReusesWebSocketWithInputDelta(t *testing.T) {
 	options := StreamOptions{
 		Transport:                 TransportAuto,
 		SessionID:                 "session-ws",
-		WebSocketConnectTimeoutMs: 1000,
-		TimeoutMs:                 1000,
+		WebSocketConnectTimeoutMs: new(1000),
+		TimeoutMs:                 new(1000),
 	}
 	firstContext := NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("one")}}})
 	firstStream, err := provider.Stream(context.Background(), firstContext, options)
@@ -193,7 +193,7 @@ func TestOpenAICodexResponses_AutoFallsBackToSSEBeforeOutput(t *testing.T) {
 	}), StreamOptions{
 		Transport:                 TransportAuto,
 		SessionID:                 "session-fallback",
-		WebSocketConnectTimeoutMs: 10,
+		WebSocketConnectTimeoutMs: new(10),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -259,7 +259,7 @@ func TestOpenAICodexResponses_AutoFallsBackBeforeHTTPHandler(t *testing.T) {
 	})}
 	stream, err := provider.Stream(t.Context(), NormalizeContext(Context{
 		Messages: []Message{UserMessage{Content: UserText("hello")}},
-	}), StreamOptions{Transport: TransportAuto, SessionID: sessionID, WebSocketConnectTimeoutMs: 10})
+	}), StreamOptions{Transport: TransportAuto, SessionID: sessionID, WebSocketConnectTimeoutMs: new(10)})
 	if err != nil {
 		t.Fatal(err)
 	}

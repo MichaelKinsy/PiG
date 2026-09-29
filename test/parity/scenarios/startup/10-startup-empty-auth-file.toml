@@ -1,0 +1,29 @@
+# Pi 0.87.1 probe: python3 test/parity/testdata/startup-empty-auth.py pi starts the real CLI offline with empty print input.
+# core/auth-storage.ts:62-66,96-98,338-351,377-395: the constructor reload ensures {} (0600), then reads under the shared directory lock.
+# The wrapper asserts exact persisted bytes, mode and released lock, then restarts with an existing file and asserts unchanged bytes/identity/mtime/mode.
+# No provider request occurs. A runtime API key selects a model without persisting credentials. POSIX mode checks supplement the cross-platform ownerfile unit tests.
+name = "10-startup-empty-auth-file"
+description = "Print startup creates missing auth.json and preserves an existing file on restart."
+covers = ["packages/coding-agent/src/core/auth-storage.ts"]
+tags = ["hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["python3", "./test/parity/testdata/startup-empty-auth.py", "pig"]
+pi_args = ["python3", "./test/parity/testdata/startup-empty-auth.py", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = [
+  "startup: auth.json={} mode=0600 lock=released",
+  "restart: existing bytes, identity, mtime and mode=0660 preserved",
+]
+runs = 3

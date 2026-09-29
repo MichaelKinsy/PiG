@@ -1,0 +1,21 @@
+# Upstream evidence: Pi 0.87.1 trust-selector.test.ts:17,38,53,67 renders saved/current trust and chooses explicit or inherited decisions.
+# Compare complete ANSI rows and selection/update data. The Node adapter spells the selection keys with Go's struct casing; values and nil-clear semantics are unchanged.
+name = "09-trust-selector-state"
+description = "Trust selector saved markers, inherited paths and parent decisions match Pi."
+covers = ["packages/coding-agent/src/modes/interactive/components/trust-selector.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/trust-selector-pig"]
+pi_args = ["node", "./test/parity/testdata/trust-selector-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["Saved decision:", "Current session:", "inherited from /parent", '"Decision":null']
+runs = 3

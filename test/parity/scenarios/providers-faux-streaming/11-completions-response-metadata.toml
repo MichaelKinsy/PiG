@@ -1,0 +1,27 @@
+# Pi 0.87.1 packages/ai/src/api/openai-completions.ts:553-576 retains the first
+# response ID and distinct nonempty string response model, and the raw finish
+# reason. Probed with node test/parity/testdata/completions-metadata-pi.mjs before
+# fixing PiG: PiG discarded all three fields. Both probes send identical SSE
+# chunks over HTTP and serialize only the metadata under test, without masking.
+name = "11-completions-response-metadata"
+description = "Completions preserves routed model, response ID and raw stop reason on success and error."
+covers = ["packages/ai/src/api/openai-completions.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/completions-metadata-pig"]
+pi_args = ["node", "./test/parity/testdata/completions-metadata-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"responseModel":"anthropic/claude-opus-4.8"', '"rawStopReason":"content_filter"', '"responseModel":"routed-first","responseId":"first"']
+runs = 3

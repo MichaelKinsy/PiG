@@ -1,0 +1,20 @@
+# Pi 0.87.1 agent-session.ts:3006-3017 and api/lazy.ts:31-38: metadata refresh does not prepare auth; lazy streams await and forward an end-only result.
+# Both sides construct real Sessions with a command-backed key and independently report whether the command ran. Native requests separately prove that deferred auth and both provider callbacks still run.
+name = "23-metadata-refresh-and-native-result"
+description = "Session metadata changes avoid key commands and native result-only streams retain request auth."
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/model-runtime.ts", "packages/ai/src/api/lazy.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/metadata-refresh-pig"]
+pi_args = ["node", "./test/parity/testdata/metadata-refresh-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 40
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

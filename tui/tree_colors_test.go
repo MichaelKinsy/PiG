@@ -105,6 +105,7 @@ func TestTreeRenderSelectedRowStyling(t *testing.T) {
 		&fakeNode{id: "a", label: "assistant: yo"},
 	}}
 	ts := NewTreeSelect("", root)
+	ts.SetInitialCursor("a", "")
 	lines := ts.Render(80)
 	joined := strings.Join(lines, "\n")
 

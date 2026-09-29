@@ -3,11 +3,11 @@
 // SPDX-FileCopyrightText: Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)
 // SPDX-License-Identifier: MIT
 
+// Ports packages/coding-agent/src/core/export-html/ansi-to-html.ts
 package export
 
 import (
 	"fmt"
-	"html"
 	"strconv"
 	"strings"
 )
@@ -60,7 +60,7 @@ func color256ToHex(index int) string {
 		}
 		return fmt.Sprintf("#%02x%02x%02x", toComponent(r), toComponent(g), toComponent(b))
 	}
-	gray := min(max(8+(index-232)*10, 0), 255)
+	gray := 8 + (index-232)*10
 	return fmt.Sprintf("#%02x%02x%02x", gray, gray, gray)
 }
 
@@ -160,6 +160,8 @@ func parseSGRParams(s string) []int {
 	return out
 }
 
+var htmlEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;", "'", "&#039;")
+
 func ansiToHTML(text string) string {
 	style := textStyle{}
 	var out strings.Builder
@@ -174,7 +176,7 @@ func ansiToHTML(text string) string {
 			}
 			if j < len(text) && text[j] == 'm' {
 				if i > last {
-					out.WriteString(html.EscapeString(text[last:i]))
+					out.WriteString(htmlEscaper.Replace(text[last:i]))
 				}
 				if inSpan {
 					out.WriteString("</span>")
@@ -193,7 +195,7 @@ func ansiToHTML(text string) string {
 		i++
 	}
 	if last < len(text) {
-		out.WriteString(html.EscapeString(text[last:]))
+		out.WriteString(htmlEscaper.Replace(text[last:]))
 	}
 	if inSpan {
 		out.WriteString("</span>")

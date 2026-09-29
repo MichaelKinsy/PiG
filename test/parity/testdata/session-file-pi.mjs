@@ -1,0 +1,36 @@
+import assert from "node:assert/strict";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join, resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+const core = resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/dist/core");
+const { SessionManager, loadEntriesFromFile } = await import(pathToFileURL(join(core,"session-manager.js")));
+const { createAgentSessionRuntime } = await import(pathToFileURL(join(core,"agent-session-runtime.js")));
+const { MissingSessionCwdError } = await import(pathToFileURL(join(core,"session-cwd.js")));
+const dir = mkdtempSync(join(tmpdir(), "pi-session-file-"));
+try {
+  const file = join(dir,"unterminated.jsonl");
+  const header = {type:"session",version:3,id:"existing",timestamp:"2025-01-01T00:00:00Z",cwd:"/project"};
+  const user = {type:"message",id:"1",parentId:null,timestamp:"2025-01-01T00:00:01Z",message:{role:"user",content:"hi",timestamp:1}};
+  writeFileSync(file,JSON.stringify(header)+"\n"+JSON.stringify(user));
+  const entries=loadEntriesFromFile(file);
+  const repaired=entries.length===2 && readFileSync(file,"utf8").endsWith("\n");
+  assert(repaired);
+  const session=SessionManager.open(file,dir,dir);
+  const overridden=session.getCwd()===dir && session.getHeader().cwd==="/project";
+  assert(overridden);
+  const empty=join(dir,"empty.jsonl");writeFileSync(empty,"");
+  const initialized=SessionManager.open(empty,dir);
+  const headerOnly=readFileSync(empty,"utf8").trim().split("\n").length===1 && initialized.getHeader().type==="session" && initialized.getSessionId()!=="";
+  assert(headerOnly);
+  const invalid=join(dir,"not-a-session.log"), original='{"type":"event","data":"not a session"}\n';
+  writeFileSync(invalid,original);
+  assert.throws(()=>SessionManager.open(invalid,dir),{message:`Session file is not a valid pi session: ${invalid}`});
+  assert.equal(readFileSync(invalid,"utf8"),original);
+  console.log(`SESSION_FILE repaired=${repaired} override=${overridden} initialized=${headerOnly} preserved=true`);
+  const missing=join(dir,"missing.jsonl");writeFileSync(missing,JSON.stringify({...header,cwd:join(dir,"does-not-exist")})+"\n");
+  let called=false;
+  await assert.rejects(createAgentSessionRuntime(async()=>{called=true;throw new Error("should not be called");},{cwd:dir,agentDir:dir,sessionManager:SessionManager.open(missing)}),MissingSessionCwdError);
+  assert.equal(called,false);
+  console.log(`SESSION_CWD blocked=true factory=${called}`);
+} finally { rmSync(dir,{recursive:true,force:true}); }

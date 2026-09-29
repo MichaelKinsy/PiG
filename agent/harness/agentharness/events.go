@@ -85,10 +85,16 @@ func (bus *HarnessEventBus) Emit(ctx harness.Context, event HarnessEvent) {
 // own deep copy of the event. It returns once the batch is delivered. A closed
 // bus or an empty batch delivers nothing.
 func (bus *HarnessEventBus) EmitBatch(ctx harness.Context, events []HarnessEvent) {
+	bus.PrepareBatch(ctx, events)()
+}
+
+// PrepareBatch binds recipients and reserves delivery order without running listeners. The caller must invoke the returned delivery after releasing its Session mutation capability; delivery waits for all earlier batches and is idempotent. An uncloneable payload panics before any part of the batch is bound.
+// Ports packages/agent/src/harness/events.ts (HarnessEventBus.emitBatch).
+func (bus *HarnessEventBus) PrepareBatch(ctx harness.Context, events []HarnessEvent) func() {
 	bus.mu.Lock()
+	defer bus.mu.Unlock()
 	if bus.closedError != nil || len(events) == 0 {
-		bus.mu.Unlock()
-		return
+		return func() {}
 	}
 	type boundEvent struct {
 		payload    HarnessEvent
@@ -101,12 +107,16 @@ func (bus *HarnessEventBus) EmitBatch(ctx harness.Context, events []HarnessEvent
 	}
 	previous, done := bus.tail, make(chan struct{})
 	bus.tail = done
-	bus.mu.Unlock()
 
-	defer close(done)
-	<-previous
-	for _, item := range bound {
-		bus.deliver(ctx, item.payload, item.recipients, true)
+	var once sync.Once
+	return func() {
+		once.Do(func() {
+			defer close(done)
+			<-previous
+			for _, item := range bound {
+				bus.deliver(ctx, item.payload, item.recipients, true)
+			}
+		})
 	}
 }
 

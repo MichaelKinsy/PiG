@@ -1,0 +1,46 @@
+# Upstream evidence: Pi 0.87.1 editor.ts:2357-2388 rejects its awaited query;
+# interactive-mode.ts:4205-4237,4266-4268 routes the uncaught exception to exit 1.
+# A direct Pi probe prints this error and exits rather than retaining an editable prompt.
+# Compare the complete error headline and exit status. The excluded stack frames
+# describe different host languages and bridge call sites; the source-stack retention
+# guard is TestAutocompleteFailureReachesUncaughtCrash.
+name = "12-extension-wrapper-error"
+description = "A rejected autocomplete provider reaches the crash owner rather than becoming an empty suggestion list."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/tui/src/components/editor.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+# The footer is drawn when the TUI mounts, before session_start installs the
+# wrapper provider (interactive-mode.ts:951-1036, 1911-1980); PiG keeps that
+# order, and the Node extension host makes its session_start the slower of the two.
+# Typing "/boom" before the provider exists reaches only the built-in provider, so
+# no error is raised. The no-model warning follows init in both binaries
+# (interactive-mode.ts:1149-1150), so typing starts only once the provider is in place.
+ready_pattern_pig = "No models available"
+ready_pattern_pi = "No models available"
+ready_timeout_seconds = 30
+capture_start = "Error: BR25_AUTOCOMPLETE_ERROR"
+capture_end = "Error: BR25_AUTOCOMPLETE_ERROR"
+
+[[tmux.steps]]
+keys = ["/boom"]
+wait_contains = ["BR25_AUTOCOMPLETE_ERROR"]
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../selectors/testdata/dialogs-default"]
+pi = ["PI_CODING_AGENT_DIR=../selectors/testdata/dialogs-default"]
+pig_extensions = ["testdata/wrapper-error.ts"]
+pi_extensions = ["testdata/wrapper-error.ts"]
+pig_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Error: BR25_AUTOCOMPLETE_ERROR"]
+exit_code = 1
+escaped_output_equal = true
+runs = 3

@@ -1,0 +1,17 @@
+{
+  "name": "module-loading-probe",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#src/*": "./src/*",
+    "#data": "./src/data.json"
+  },
+  "exports": {
+    ".": "./index.ts",
+    "./feature": {
+      "import": "./src/feature-esm.ts",
+      "require": "./src/feature-cjs.cts",
+      "default": "./src/feature-esm.ts"
+    }
+  }
+}

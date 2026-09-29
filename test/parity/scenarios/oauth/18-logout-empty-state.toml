@@ -1,0 +1,29 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:5832-5839 reports the empty logout state without opening a selector.
+name = "18-logout-empty-state"
+description = "Logout with no stored credentials reports what logout can remove"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+[tmux]
+width = 120
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "No stored credentials to remove."
+capture_end = "unchanged."
+settle_seconds = 1
+cwd = "../selectors/testdata/login-empty-project"
+[[tmux.steps]]
+keys = ["/logout", "Enter"]
+wait_contains = ["No stored credentials to remove."]
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/privacy-pi-compatible", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["PI_CODING_AGENT_DIR=testdata/privacy-pi-compatible", "PIG_CODING_AGENT_DIR=", "PIG_HOME=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+[assert]
+both_reach_ready = true
+both_contain = ["No stored credentials to remove.", "models.json config are unchanged."]
+escaped_output_equal = true
+runs = 3

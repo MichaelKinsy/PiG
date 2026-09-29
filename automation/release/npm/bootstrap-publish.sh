@@ -20,7 +20,7 @@ set -euo pipefail
 
 repo_root=$(cd "$(dirname "$0")/../../.." && pwd)
 gh_repo=${PIG_REPO:-MichaelKinsy/PiG}
-default_version=$(sed -nE 's/^const PigVersion = "([^"]+)"$/\1/p' "$repo_root/coding/pigversion/pigversion.go")
+default_version=$(sed -nE 's/^const PigVersion = "([^"]+)"$/\1/p' "$repo_root/internal/coding/pigversion/pigversion.go")
 tag=${1:-v$default_version}
 [[ "$tag" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]] || { echo "bootstrap: bad tag $tag" >&2; exit 1; }
 version=${tag#v}

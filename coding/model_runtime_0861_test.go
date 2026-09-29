@@ -74,6 +74,7 @@ func newRuntimeTestServices(t *testing.T) *Services {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	return services
 }
 
@@ -150,10 +151,11 @@ func TestModelRuntimeMissingAuthIsLazyTerminalError(t *testing.T) {
 	t.Setenv("OPENAI_API_KEY", "")
 	services := newRuntimeTestServices(t)
 	provider := &runtimeTestProvider{id: "openai", stream: func(context.Context, ai.TranscriptContext, ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-		t.Fatal("provider called without auth")
-		return nil, nil
+		return nil, errors.New("provider called without auth")
 	}}
-	model := &ai.Model{ID: "gpt", Provider: provider, ProviderMeta: ai.ProviderMetadata{ProviderID: "openai", API: ai.APIOpenAIResponses}}
+	// This guard represents a registry-built backend. A caller-supplied callback owns its own auth even if its model carries the same metadata.
+	backend := newProviderAttributionProvider(provider, "openai", "", nil, nil)
+	model := &ai.Model{ID: "gpt", Provider: backend, ProviderMeta: ai.ProviderMetadata{ProviderID: "openai", API: ai.APIOpenAIResponses}}
 	stream := services.ModelRuntime().Stream(context.Background(), model, ai.Context{}, ai.StreamOptions{})
 	result := stream.Result()
 	if result.StopReason != ai.StopReasonError || !strings.Contains(result.ErrorMessage, "openai") || provider.calls.Load() != 0 {
@@ -278,6 +280,7 @@ func TestModelRuntimePreparesRealProviderWireRequests(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			t.Cleanup(services.Close)
 			model, err := BuildModel("wire/model", services)
 			if err != nil {
 				t.Fatal(err)
@@ -337,6 +340,7 @@ func TestModelRuntimePreparesZaiThinkingWirePayload(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	model, err := BuildModel("zaiwire/model", services)
 	if err != nil {
 		t.Fatal(err)
@@ -379,6 +383,7 @@ func TestModelRuntimeRequestModelRefreshDoesNotMutateOriginal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	model, err := BuildModel("custom/model", services)
 	if err != nil {
 		t.Fatal(err)
@@ -462,6 +467,7 @@ func TestSessionModelRuntimeLooksUpCurrentRegisteredAndUnknownModels(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	current, err := BuildModel("registry-test/current", services)
 	if err != nil {
 		t.Fatal(err)
@@ -504,6 +510,7 @@ func TestSessionModelRuntimeAppliesOnlyKnownGeneratedModelOverrides(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	model := services.ModelRuntime().GetModel("openrouter", "anthropic/claude-sonnet-4")
 	if model == nil || model.DisplayName != "Configured Sonnet" {
 		t.Fatalf("known generated override = %#v", model)
@@ -566,6 +573,7 @@ func TestGeneratedOverridePreservesPresenceAndPartialFields(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	model := services.ModelRuntime().GetModel("cloudflare-ai-gateway", "gpt-5.6-luna")
 	if model == nil {
 		t.Fatal("known generated model is absent")
@@ -628,6 +636,7 @@ func TestGeneratedOverrideCanClearCostTiers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	model := services.ModelRuntime().GetModel("cloudflare-ai-gateway", "gpt-5.6-luna")
 	if model == nil {
 		t.Fatal("known generated model is absent")
@@ -647,6 +656,7 @@ func TestGeneratedOverrideMergesPromptCache(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	model := services.ModelRuntime().GetModel("anthropic", "claude-fable-5")
 	if model == nil {
 		t.Fatal("known generated model is absent")
@@ -669,6 +679,7 @@ func TestExplicitModelOverrideMergesPartialCost(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	model := services.ModelRuntime().GetModel("custom", "model")
 	if model == nil {
 		t.Fatal("explicit model is absent")
@@ -687,10 +698,13 @@ func TestModelRegistryChangeListenerCoversRegistrationAndRemoval(t *testing.T) {
 		notifications.Add(1)
 	})
 	defer detach()
-	registry.RegisterProvider("dynamic", extension.ProviderConfig{
+	if err := registry.RegisterProvider("dynamic", extension.ProviderConfig{
+		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://models.invalid/v1",
 		Models:  []extension.ProviderModelConfig{{ID: "model", Name: "Model"}},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 	if got := notifications.Load(); got != 1 {
 		t.Fatalf("notifications after registration = %d, want 1", got)
 	}
@@ -708,7 +722,9 @@ func TestModelRegistryChangeListenerDetachCannotClearReplacement(t *testing.T) {
 	detachOld := registry.SetChangeListener(func() { oldNotifications.Add(1) })
 	detachCurrent := registry.SetChangeListener(func() { currentNotifications.Add(1) })
 	detachOld()
-	registry.RegisterProvider("dynamic", extension.ProviderConfig{BaseURL: "https://models.invalid/v1"})
+	if err := registry.RegisterProvider("dynamic", extension.ProviderConfig{BaseURL: "https://models.invalid/v1"}); err != nil {
+		t.Error(err)
+	}
 	if got := oldNotifications.Load(); got != 0 {
 		t.Fatalf("replaced listener notifications = %d, want 0", got)
 	}
@@ -733,7 +749,9 @@ func TestModelRegistryChangeListenerDetachDrainsActivePublication(t *testing.T) 
 	})
 	changed := make(chan struct{})
 	go func() {
-		registry.RegisterProvider("dynamic", extension.ProviderConfig{BaseURL: "https://models.invalid/v1"})
+		if err := registry.RegisterProvider("dynamic", extension.ProviderConfig{BaseURL: "https://models.invalid/v1"}); err != nil {
+			t.Error(err)
+		}
 		close(changed)
 	}()
 	<-entered
@@ -770,6 +788,7 @@ func TestGeneratedProviderOverlayAppearsInFullCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	direct := services.ModelRuntime().GetModel("cloudflare-ai-gateway", "gpt-5.6-luna")
 	if direct == nil {
 		t.Fatal("direct lookup returned nil")
@@ -808,6 +827,7 @@ func TestProjectionPreservesCompleteUpstreamCompat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	model := services.ModelRuntime().GetModel("openai", "gpt-5.4")
 	if model == nil {
 		t.Fatal("configured generated model is absent")
@@ -859,6 +879,7 @@ func TestRegistryFindDoesNotPublishResolvedRequestHeaders(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	model := services.ModelRuntime().GetModel("openai", "gpt-5.4")
 	if model == nil {
 		t.Fatal("configured generated model is absent")
@@ -896,7 +917,8 @@ func TestSameLayerHeaderCollisionsUsePiInsertionOrder(t *testing.T) {
 	defer server.Close()
 
 	agentDir := t.TempDir()
-	config := fmt.Sprintf(`{"providers":{"openai":{"baseUrl":%q,"headers":{"X-Provider-Dupe":"first","x-provider-dupe":"second","X-Delete-Dupe":"value","x-delete-dupe":null},"models":[{"id":"gpt-5.4","headers":{"X-Model-Dupe":"definition-first","x-model-dupe":"definition-second"}}],"modelOverrides":{"gpt-5.4":{"headers":{"X-Model-Dupe":"override-first","x-model-dupe":"override-second","X-Override-Dupe":"first","x-override-dupe":"second"}}}}}}`, server.URL)
+	// Pi rejects null authored headers; deletion is supplied through the supported request override below.
+	config := fmt.Sprintf(`{"providers":{"openai":{"baseUrl":%q,"headers":{"X-Provider-Dupe":"first","x-provider-dupe":"second","X-Delete-Dupe":"value"},"models":[{"id":"gpt-5.4","headers":{"X-Model-Dupe":"definition-first","x-model-dupe":"definition-second"}}],"modelOverrides":{"gpt-5.4":{"headers":{"X-Model-Dupe":"override-first","x-model-dupe":"override-second","X-Override-Dupe":"first","x-override-dupe":"second"}}}}}}`, server.URL)
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -904,30 +926,34 @@ func TestSameLayerHeaderCollisionsUsePiInsertionOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 
 	for iteration := range 512 {
 		entry := services.Registry().ResolveGeneratedModel("openai", "gpt-5.4", mustGeneratedModel(t, "openai/gpt-5.4"))
 		assertOneHeader(t, iteration, entry.Headers, "x-provider-dupe", "second")
 		assertOneHeader(t, iteration, entry.Headers, "x-model-dupe", "definition-second")
 		assertOneHeader(t, iteration, entry.Headers, "x-override-dupe", "second")
-		assertNoHeader(t, iteration, entry.Headers, "x-delete-dupe")
+		assertOneHeader(t, iteration, entry.Headers, "X-Delete-Dupe", "value")
 	}
 
 	probe := &modelOperationBridgeProbe{actions: make(map[string]any)}
 	detach := icodingagent.WireModelOperations(probe, icodingagent.ModelOperationBindings{Registry: services.Registry().ModelRegistry})
 	defer detach()
-	result := probe.actions["getModelAuth"].(func(context.Context, string, string) map[string]any)(t.Context(), "openai", "gpt-5.4")
-	headers := result["headers"].(map[string]string)
-	assertOneHeader(t, 0, headers, "x-provider-dupe", "second")
-	assertOneHeader(t, 0, headers, "x-model-dupe", "definition-second")
-	assertOneHeader(t, 0, headers, "x-override-dupe", "second")
-	assertNoHeader(t, 0, headers, "x-delete-dupe")
+	// Pi retains base header spellings and applies model overrides in Object.entries order.
+	wantAuthHeaders := ai.ProviderHeaders{"X-Provider-Dupe": new("first"), "x-provider-dupe": new("second"), "X-Delete-Dupe": new("value"), "x-model-dupe": new("definition-second"), "x-override-dupe": new("second")}
+	for iteration := range 512 {
+		result := probe.actions["getModelAuth"].(func(context.Context, string, string) map[string]any)(t.Context(), "openai", "gpt-5.4")
+		headers := result["headers"].(ai.ProviderHeaders)
+		if result["ok"] != true || result["apiKey"] != "test-key" || !reflect.DeepEqual(headers, wantAuthHeaders) {
+			t.Fatalf("iteration %d compatibility auth = %#v, want headers %#v", iteration, result, wantAuthHeaders)
+		}
+	}
 
 	model := services.ModelRuntime().GetModel("openai", "gpt-5.4")
 	if model == nil {
 		t.Fatal("generated model is absent")
 	}
-	terminal := services.ModelRuntime().Complete(context.Background(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}, ai.StreamOptions{})
+	terminal := services.ModelRuntime().Complete(context.Background(), model, ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("hello")}}}, ai.StreamOptions{Headers: ai.ProviderHeaders{"x-delete-dupe": nil}})
 	if terminal.StopReason != ai.StopReasonStop {
 		t.Fatalf("terminal = %#v", terminal)
 	}
@@ -967,16 +993,8 @@ func assertOneHeader(t *testing.T, iteration int, headers map[string]string, wan
 	}
 }
 
-func assertNoHeader(t *testing.T, iteration int, headers map[string]string, absentName string) {
-	t.Helper()
-	for name := range headers {
-		if strings.EqualFold(name, absentName) {
-			t.Fatalf("iteration %d deleted header remained as %q", iteration, name)
-		}
-	}
-}
-
 func TestGetApiKeyAndHeadersUsesPiHeaderOrder(t *testing.T) {
+	t.Setenv("OPENAI_API_KEY", "")
 	agentDir := t.TempDir()
 	config := `{"providers":{"openai":{"headers":{"X-Layer":"models-json-provider"},"models":[{"id":"extension-only","headers":{"X-Model":"models-json-definition"}}],"modelOverrides":{"extension-only":{"headers":{"X-Model":"models-json-override"}}}}}}`
 	if err := os.WriteFile(filepath.Join(agentDir, "models.json"), []byte(config), 0o644); err != nil {
@@ -986,7 +1004,8 @@ func TestGetApiKeyAndHeadersUsesPiHeaderOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	services.Registry().RegisterProvider("openai", extension.ProviderConfig{
+	t.Cleanup(services.Close)
+	if err := services.Registry().RegisterProvider("openai", extension.ProviderConfig{
 		BaseURL: "https://extension.invalid/v1",
 		Headers: map[string]string{"x-layer": "extension-provider"},
 		Models: []extension.ProviderModelConfig{{
@@ -994,7 +1013,9 @@ func TestGetApiKeyAndHeadersUsesPiHeaderOrder(t *testing.T) {
 			ContextWindow: 1000, MaxTokens: 100,
 			Headers: map[string]string{"x-model": "extension-model"},
 		}},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 	probe := &modelOperationBridgeProbe{actions: make(map[string]any)}
 	detach := icodingagent.WireModelOperations(probe, icodingagent.ModelOperationBindings{Registry: services.Registry().ModelRegistry})
 	defer detach()
@@ -1004,11 +1025,11 @@ func TestGetApiKeyAndHeadersUsesPiHeaderOrder(t *testing.T) {
 	if ok, _ := result["ok"].(bool); !ok {
 		t.Fatalf("getApiKeyAndHeaders result = %#v", result)
 	}
-	headers, ok := result["headers"].(map[string]string)
+	headers, ok := result["headers"].(ai.ProviderHeaders)
 	if !ok {
 		t.Fatalf("getApiKeyAndHeaders headers = %#v", result["headers"])
 	}
-	if headers["x-layer"] != "extension-provider" || headers["x-model"] != "extension-model" || len(headers) != 2 {
+	if !reflect.DeepEqual(headers, ai.ProviderHeaders{"x-layer": new("extension-provider"), "x-model": new("extension-model")}) {
 		t.Fatalf("getApiKeyAndHeaders headers = %#v", headers)
 	}
 }
@@ -1018,16 +1039,21 @@ func TestExtensionModelListPresenceControlsCatalogReplacement(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	registry := services.Registry()
 
-	registry.RegisterProvider("openai", extension.ProviderConfig{BaseURL: "https://extension.invalid/v1"})
+	if err := registry.RegisterProvider("openai", extension.ProviderConfig{BaseURL: "https://extension.invalid/v1"}); err != nil {
+		t.Error(err)
+	}
 	if got := services.ModelRuntime().GetModel("openai", "gpt-5.4"); got == nil {
 		t.Fatal("omitted extension models removed generated membership")
 	}
 
-	registry.RegisterProvider("openai", extension.ProviderConfig{
+	if err := registry.RegisterProvider("openai", extension.ProviderConfig{
 		Models: []extension.ProviderModelConfig{},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 	if got := services.ModelRuntime().GetModel("openai", "gpt-5.4"); got != nil {
 		t.Errorf("explicit empty extension models retained generated membership: %#v", got)
 	}
@@ -1037,13 +1063,15 @@ func TestExtensionModelListPresenceControlsCatalogReplacement(t *testing.T) {
 		}
 	}
 
-	registry.RegisterProvider("openai", extension.ProviderConfig{
+	if err := registry.RegisterProvider("openai", extension.ProviderConfig{
 		API: ai.APIOpenAIResponses,
 		Models: []extension.ProviderModelConfig{{
 			ID: "extension-only", Name: "Extension only", API: ai.APIOpenAIResponses,
 			Input: []string{"text"}, ContextWindow: 1000, MaxTokens: 100,
 		}},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 	if got := services.ModelRuntime().GetModel("openai", "extension-only"); got == nil {
 		t.Fatal("non-empty extension models did not publish replacement membership")
 	}
@@ -1076,7 +1104,8 @@ func TestExtensionRequestHeaderCompositionMatchesPiOrder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	services.Registry().RegisterProvider("openai", extension.ProviderConfig{
+	t.Cleanup(services.Close)
+	if err := services.Registry().RegisterProvider("openai", extension.ProviderConfig{
 		BaseURL: server.URL,
 		API:     ai.APIOpenAIResponses,
 		Headers: map[string]string{"x-provider": "extension-provider", "X-Extension-Only": "extension-only", "x-delete": "extension"},
@@ -1085,7 +1114,9 @@ func TestExtensionRequestHeaderCompositionMatchesPiOrder(t *testing.T) {
 			Input: []string{"text"}, ContextWindow: 1000, MaxTokens: 100,
 			Headers: map[string]string{"X-MODEL": "extension-model", "X-Extension-Model-Only": "extension-model-only"},
 		}},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 
 	entry, ok := services.Registry().Resolve("openai", "extension-only")
 	if !ok {
@@ -1160,14 +1191,17 @@ func TestExtensionModelsReplaceBuiltinProviderCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	services.Registry().RegisterProvider("openai", extension.ProviderConfig{
+	t.Cleanup(services.Close)
+	if err := services.Registry().RegisterProvider("openai", extension.ProviderConfig{
 		BaseURL: "https://extension.invalid/v1",
 		API:     ai.APIOpenAIResponses,
 		Models: []extension.ProviderModelConfig{{
 			ID: "extension-only", Name: "Extension only", API: ai.APIOpenAIResponses,
 			Input: []string{"text"}, ContextWindow: 1000, MaxTokens: 100,
 		}},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 	if got := services.ModelRuntime().GetModel("openai", "gpt-5.4"); got != nil {
 		t.Errorf("replaced built-in model remains findable: %#v", got)
 	}
@@ -1192,7 +1226,8 @@ func TestModelsJSONOverrideRemainsAboveExtensionModels(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	services.Registry().RegisterProvider("openai", extension.ProviderConfig{
+	t.Cleanup(services.Close)
+	if err := services.Registry().RegisterProvider("openai", extension.ProviderConfig{
 		BaseURL: "https://extension.invalid/v1",
 		API:     ai.APIOpenAIResponses,
 		Models: []extension.ProviderModelConfig{{
@@ -1200,7 +1235,9 @@ func TestModelsJSONOverrideRemainsAboveExtensionModels(t *testing.T) {
 			Reasoning: true, Input: []string{"text"}, ContextWindow: 1000, MaxTokens: 100,
 			Cost: extension.ProviderModelCost{Input: 9},
 		}},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 	model := services.ModelRuntime().GetModel("openai", "extension-only")
 	if model == nil {
 		t.Fatal("extension model is absent")
@@ -1226,6 +1263,7 @@ func TestProviderValidationAcceptsRequestAuthOnlyConfiguration(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			t.Cleanup(services.Close)
 			if loadError := services.Registry().LoadError(); loadError != "" {
 				t.Fatalf("load error = %q", loadError)
 			}
@@ -1247,6 +1285,7 @@ func TestOAuthWithoutBaseURLKeepsBuiltinProviderAndReportsError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	if want := `Provider "openai": Provider openai: "baseUrl" is required when "oauth" is set.`; services.Registry().LoadError() != want {
 		t.Fatalf("load error = %q, want %q", services.Registry().LoadError(), want)
 	}
@@ -1265,6 +1304,7 @@ func TestHeadersOnlyProviderOverlayIsValid(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	model := services.ModelRuntime().GetModel("openai", "gpt-5.4")
 	if model == nil {
 		t.Fatal("generated model is absent")

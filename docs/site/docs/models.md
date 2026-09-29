@@ -37,6 +37,8 @@ off → minimal → low → medium → high → xhigh → max
 
 A model exposes only the levels it supports. Cycling follows that supported set.
 
+The Session selects and clamps the startup level before interactive mode opens. An explicit `--thinking` value takes precedence. A thinking suffix in `--model provider/model:level` also reaches the Session before interactive startup. Otherwise, a resumed Session keeps its saved level; a new Session uses the model preference, the global default, or `medium`. Unsupported levels round up to a supported level, or use the highest supported level if none is higher. The footer and editor show the Session's effective level, and provider requests use that same level through the model's thinking-level mapping. Opening interactive mode does not reset it from settings.
+
 - `Shift+Tab` cycles thinking on models that advertise reasoning support.
 - `getThinkingLevel()` and `setThinkingLevel(level)` are exposed to extensions.
 - The current label is rendered in the status line; extensions can override the hidden label with `ui.setHiddenThinkingLabel`.
@@ -62,7 +64,13 @@ Extensions can read this via `getModelInfo()` (returns `*ModelInfo`) inside any 
 
 New built-in models are generated into `ai/models_generated.go` and committed in source. Extensions cannot add new built-in models, but they can register an independent provider and model catalog. See [Providers](/docs/latest/providers) and [Extensions](/docs/latest/extensions).
 
+## Provider cost tiers
+
+An extension's registered model can include `cost.tiers`. Each tier supplies `inputTokensAbove` and the `input`, `output`, `cacheRead`, and `cacheWrite` rates per million tokens. PiG retains these thresholds and rates through Provider registration and model lookup. The existing cost calculation selects the applicable tier from total input usage.
+
 ## Common errors
+
+Model configuration read, JSON parse, and schema errors include a `File:` line that identifies the selected `models.json` path. Check that file's contents and permissions. A missing file is allowed. PiG leaves invalid files unchanged.
 
 | Symptom | Cause | Fix |
 |---|---|---|

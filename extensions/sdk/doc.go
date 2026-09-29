@@ -33,6 +33,10 @@
 //	    ext.Run() // Blocks until shutdown
 //	}
 //
+// # JavaScript strings
+//
+// Terminal and editor strings preserve UTF-16 code units. Lone surrogates use WTF-8 in Go strings and standard Unicode escapes in JSON. The SDK owns that conversion; use extensions/sdk/json rather than encoding/json when serializing such callback text yourself.
+//
 // # Architecture
 //
 // The SDK connects to pig's extension host via a Unix domain socket whose

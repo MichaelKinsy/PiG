@@ -45,4 +45,4 @@ make setup SETUP_ARGS=--harnesses=all   # installs the pinned versions above
 make evals
 ```
 
-Results depend on the machine. Compare numbers from one run only. The harness registry, including every command line, is `evals/harnesses.toml`; the method is in `evals/README.md`.
+Results depend on the machine. Compare numbers from one run only. The harness registry, including every command line, is `test/evals/harnesses.toml`; the method is in `test/evals/README.md`.

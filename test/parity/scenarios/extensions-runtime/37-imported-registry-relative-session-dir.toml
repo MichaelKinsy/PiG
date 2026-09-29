@@ -1,0 +1,29 @@
+# Pi preserves the relative --session-dir string in SessionManager.getSessionDir
+# (utils/paths.ts:normalizePath). Use an ephemeral snapshotted cwd so both
+# binaries may create ./sessions without writing to the fixture directory.
+# The imported classes run independent of the main Session, as pi-btw requires.
+name = "37-imported-registry-relative-session-dir"
+description = "Imported registry/session classes and relative session directory match Pi"
+covers = [
+  "packages/coding-agent/src/core/model-registry.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+  "packages/coding-agent/src/utils/paths.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--session-dir", "./sessions", "-p", "/imported-registry-session {{TEMP}}/imported.json"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/imported.json"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["../testdata/extension-imported-registry-session.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../testdata/extension-imported-registry-session.mjs"]
+
+[assert]
+exit_code = 0
+runs = 3
+artifact_normalized_equal = true
+artifact_both_contain = ['"dir": "./sessions"', '"content": "edited"', '"sameModel": true', '"persisted": false']

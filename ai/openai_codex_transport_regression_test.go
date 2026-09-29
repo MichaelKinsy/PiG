@@ -77,7 +77,7 @@ func TestCodexConnectionLimitTwiceFallsBackToSSE(t *testing.T) {
 	defer server.Close()
 	defer CloseOpenAICodexWebSocketSessions()
 
-	stream, err := reviewCodexProvider(t, server.URL, "acct_limit").Stream(context.Background(), reviewCodexCtx("hi"), StreamOptions{Transport: TransportAuto, SessionID: "review-limit", TimeoutMs: 1000})
+	stream, err := reviewCodexProvider(t, server.URL, "acct_limit").Stream(context.Background(), reviewCodexCtx("hi"), StreamOptions{Transport: TransportAuto, SessionID: "review-limit", TimeoutMs: new(1000)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestCodexMidStreamWebSocketFailureMakesSessionFallBackToSSE(t *testing.T) {
 	ResetOpenAICodexWebSocketDebugStats()
 
 	provider := reviewCodexProvider(t, server.URL, "acct_mid")
-	options := StreamOptions{Transport: TransportAuto, SessionID: "review-mid", TimeoutMs: 1000}
+	options := StreamOptions{Transport: TransportAuto, SessionID: "review-mid", TimeoutMs: new(1000)}
 	first, err := provider.Stream(context.Background(), reviewCodexCtx("one"), options)
 	if err != nil {
 		t.Fatal(err)
@@ -175,7 +175,7 @@ func TestCodexIdleServerClosedCachedSocketReconnectsWebSocket(t *testing.T) {
 	ResetOpenAICodexWebSocketDebugStats()
 
 	provider := reviewCodexProvider(t, server.URL, "acct_idle")
-	options := StreamOptions{Transport: TransportAuto, SessionID: "review-idle", TimeoutMs: 1000}
+	options := StreamOptions{Transport: TransportAuto, SessionID: "review-idle", TimeoutMs: new(1000)}
 	first, err := provider.Stream(context.Background(), reviewCodexCtx("one"), options)
 	if err != nil {
 		t.Fatal(err)
@@ -296,7 +296,7 @@ func TestCodexWebSocketInvalidJSONIsProtocolError(t *testing.T) {
 	defer CloseOpenAICodexWebSocketSessions()
 	ResetOpenAICodexWebSocketDebugStats()
 	stream, err := reviewCodexProvider(t, server.URL, "acct_ws_json").Stream(context.Background(), reviewCodexCtx("hi"), StreamOptions{
-		Transport: TransportAuto, SessionID: "ws-json", TimeoutMs: 1000,
+		Transport: TransportAuto, SessionID: "ws-json", TimeoutMs: new(1000),
 	})
 	if err != nil {
 		t.Fatal(err)

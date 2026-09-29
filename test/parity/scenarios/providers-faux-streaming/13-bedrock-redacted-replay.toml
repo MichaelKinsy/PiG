@@ -1,0 +1,29 @@
+# Pi 0.87.1 bedrock-redacted-reasoning.test.ts:164,185,203 and bedrock-raw-stop-reason.test.ts:71.
+# Both providers use their real AWS SDK against local AWS event-stream responses.
+# The first response splits encrypted bytes at a non-base64 boundary and omits contentBlockStop.
+# The second request must replay the complete encrypted bytes; its guardrail stop must preserve the raw reason and exact diagnostic.
+name = "13-bedrock-redacted-replay"
+description = "Bedrock retains chunked encrypted reasoning, replays it, and preserves provider error stops."
+covers = ["packages/ai/src/api/bedrock-converse-stream.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+# Unset bearer-token discovery: AWS's Node SDK treats a defined empty token as a selected bearer scheme.
+pig_args = ["-u", "AWS_BEARER_TOKEN_BEDROCK", "go", "run", "./test/parity/testdata/bedrock-reasoning-pig"]
+pi_args = ["-u", "AWS_BEARER_TOKEN_BEDROCK", "node", "./test/parity/testdata/bedrock-reasoning-pi.mjs"]
+pig = ["AWS_PROFILE=", "AWS_DEFAULT_PROFILE=", "AWS_CONFIG_FILE={{TEMP}}/config", "AWS_SHARED_CREDENTIALS_FILE={{TEMP}}/credentials", "AWS_EC2_METADATA_DISABLED=true"]
+pi = ["AWS_PROFILE=", "AWS_DEFAULT_PROFILE=", "AWS_CONFIG_FILE={{TEMP}}/config", "AWS_SHARED_CREDENTIALS_FILE={{TEMP}}/credentials", "AWS_EC2_METADATA_DISABLED=true"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["replay=cnNuXzVaVnJpZjRKMGJYSXFtV2RsZWRqN1FJRmVOaWtSUWJF", "second=error raw=guardrail_intervened error=Provider stopped with: guardrail_intervened"]
+runs = 3

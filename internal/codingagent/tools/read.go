@@ -32,23 +32,18 @@ func (t *ReadTool) Name() string  { return "read" }
 func (t *ReadTool) Label() string { return "" }
 
 func (t *ReadTool) Schema() ai.ToolSchema {
-	return ai.ToolSchema{
-		Name:        "read",
-		Description: "Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.",
-		Parameters: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"path":   map[string]any{"type": "string", "description": "Path to the file to read (relative or absolute)"},
-				"offset": map[string]any{"type": "number", "description": "Line number to start reading from (1-indexed)"},
-				"limit":  map[string]any{"type": "number", "description": "Maximum number of lines to read"},
-			},
-			"required": []string{"path"},
-		},
+	return toolSchemaWithParameters(ai.ToolSchema{
+		Name:                "read",
+		Description:         "Read the contents of a file. Supports text files and images (jpg, png, gif, webp, bmp). Images are sent as attachments. For text files, output is truncated to 2000 lines or 50KB (whichever is hit first). Use offset/limit for large files. When you need the full file, continue with offset until complete.",
 		ConstrainedSampling: strictToolSampling(),
 		PromptGuidelines: []string{
 			"Use read to examine files instead of cat or sed.",
 		},
-	}
+	}, `{"type":"object","required":["path"],"properties":{
+		"path":{"type":"string","description":"Path to the file to read (relative or absolute)"},
+		"offset":{"type":"number","description":"Line number to start reading from (1-indexed)"},
+		"limit":{"type":"number","description":"Maximum number of lines to read"}
+	}}`)
 }
 
 func (t *ReadTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolModeParallel }
@@ -63,19 +58,26 @@ func (t *ReadTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 		return agent.AgentToolResult{}, fmt.Errorf("read: invalid params: %w", err)
 	}
 	if ctx.Err() != nil {
-		return agent.AgentToolResult{Content: "Operation aborted", IsError: true}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Operation aborted"}}, Details: map[string]any{}, IsError: true}, nil
 	}
 
-	path := resolveReadPath(p.Path, t.CWD)
+	cwd, err := toolCWD(ctx, t.CWD)
+	if err != nil {
+		return agent.AgentToolResult{}, err
+	}
+	path, err := resolveReadPath(p.Path, cwd)
+	if err != nil {
+		return agent.AgentToolResult{}, err
+	}
 	if err := checkReadable(path); err != nil {
-		return agent.AgentToolResult{Content: nodeFSError(err, "access", path), IsError: true}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: NodeFSError(err, "access", path)}}, Details: map[string]any{}, IsError: true}, nil
 	}
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return agent.AgentToolResult{Content: nodeFSError(err, "read", ""), IsError: true}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: NodeFSError(err, "read", "")}}, Details: map[string]any{}, IsError: true}, nil
 	}
 	if ctx.Err() != nil {
-		return agent.AgentToolResult{Content: "Operation aborted", IsError: true}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Operation aborted"}}, Details: map[string]any{}, IsError: true}, nil
 	}
 	if mime := SupportedImageMime(data); mime != "" {
 		return t.readImage(ctx, data, mime), nil
@@ -83,7 +85,7 @@ func (t *ReadTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	var decoder utf8StreamDecoder
 	result, err := readTextResult(p, decoder.decode(data, false))
 	if err != nil {
-		return agent.AgentToolResult{Content: err.Error(), IsError: true}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: err.Error()}}, Details: map[string]any{}, IsError: true}, nil
 	}
 	return result, nil
 }
@@ -155,12 +157,14 @@ func readTextResult(p readParams, textContent string) (agent.AgentToolResult, er
 	default:
 		output = tr.Content
 	}
-	result := agent.AgentToolResult{Content: output}
+	result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: output}}}
 	if truncation != nil {
 		result.Details = &ReadDetails{Truncation: truncation}
 	}
 	return result, nil
 }
+
+var processReadImage = imageprocessing.ProcessImage
 
 // readImage uses the execution model profile before the standalone fallback,
 // matching createReadToolDefinition's ctx.model.inputLimits precedence.
@@ -171,19 +175,22 @@ func (t *ReadTool) readImage(ctx context.Context, data []byte, mime string) agen
 		options = env.InputLimits.Images.Resize
 	}
 	autoResize := t.AutoResizeImages == nil || *t.AutoResizeImages
-	processed, processedMIME, hints, err := imageprocessing.ProcessImage(data, mime, autoResize, options)
-	result := agent.AgentToolResult{}
+	processed, processedMIME, hints, err := processReadImage(data, mime, autoResize, options)
+	var text string
 	if err != nil {
-		result.Content = fmt.Sprintf("Read image file [%s]\n%s", mime, err)
+		text = fmt.Sprintf("Read image file [%s]\n%s", mime, err)
 	} else {
-		result.Content = fmt.Sprintf("Read image file [%s]", processedMIME)
+		text = fmt.Sprintf("Read image file [%s]", processedMIME)
 		if hints != "" {
-			result.Content += "\n" + hints
+			text += "\n" + hints
 		}
-		result.Images = []ai.ImageContent{{MimeType: processedMIME, Data: base64Encode(processed)}}
 	}
 	if env.SupportsImages != nil && !*env.SupportsImages {
-		result.Content += "\n[Current model does not support images. The image will be omitted from this request.]"
+		text += "\n[Current model does not support images. The image will be omitted from this request.]"
+	}
+	result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}}
+	if err == nil {
+		result.Content = append(result.Content, ai.ImageContent{MimeType: processedMIME, Data: base64Encode(processed)})
 	}
 	return result
 }

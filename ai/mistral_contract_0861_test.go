@@ -2,11 +2,45 @@ package ai
 
 import (
 	"context"
+	"fmt"
 	"io"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
 	"strings"
 	"testing"
 )
+
+// Ports packages/ai/test/mistral-raw-stop-reason.test.ts:39,51,63 through HTTP dispatch and SSE consumption.
+func TestMistralRawStopReasonsUpstream(t *testing.T) {
+	for _, tc := range []struct {
+		raw     string
+		stop    StopReason
+		message string
+	}{
+		{"stop", StopReasonStop, ""},
+		{"error", StopReasonError, "Provider stopped with: error"},
+		{"unmapped_error", StopReasonError, "Provider stopped with: unmapped_error"},
+	} {
+		t.Run(tc.raw, func(t *testing.T) {
+			model := mustGeneratedModel(t, "mistral", "devstral-medium-latest")
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = fmt.Fprintf(w, "data: {\"id\":\"mistral-response-id\",\"model\":%q,\"choices\":[{\"index\":0,\"finish_reason\":%q,\"delta\":{}}],\"usage\":{\"prompt_tokens\":1,\"completion_tokens\":0,\"total_tokens\":1}}\n\ndata: [DONE]\n\n", model.ID, tc.raw)
+			}))
+			t.Cleanup(server.Close)
+			provider := NewMistralProvider(MistralConfig{APIKey: "test", Model: model.ID, BaseURL: server.URL})
+			stream, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hello")}}}), StreamOptions{})
+			if err != nil {
+				t.Fatal(err)
+			}
+			message := stream.Result()
+			if message.StopReason != tc.stop || message.RawStopReason != tc.raw || message.ErrorMessage != tc.message {
+				t.Fatalf("message = %#v", message)
+			}
+		})
+	}
+}
 
 func TestMistralStreamPreservesResponseAndCachedUsageMetadata(t *testing.T) {
 	stream := NewAssistantMessageEventStream()

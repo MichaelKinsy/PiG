@@ -204,7 +204,7 @@ func TestLoadProjectContextFiles_DeduplicatesByLoadedPath(t *testing.T) {
 	writeContextFile(t, filepath.Join(realDir, "AGENTS.md"), "same")
 	aliasParent := t.TempDir()
 	alias := filepath.Join(aliasParent, "alias")
-	testenv.Symlink(t, realDir, alias)
+	testenv.RequireDirectoryLink(t, realDir, alias)
 	files := LoadProjectContextFiles(realDir, alias)
 	if len(files) != 2 || files[0].Path != filepath.Join(alias, "AGENTS.md") || files[1].Path != filepath.Join(realDir, "AGENTS.md") {
 		t.Fatalf("context files = %#v", files)

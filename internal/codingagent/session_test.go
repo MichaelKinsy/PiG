@@ -25,7 +25,7 @@ func mkUserMsg(text string) agent.AgentMessage {
 	return agent.AgentMessage{
 		User: &agent.UserMessage{
 			Role:      "user",
-			Content:   []ai.UserContentBlock{ai.TextContent{Text: text}},
+			Content:   ai.UserContentBlocks{ai.TextContent{Text: text}},
 			Timestamp: time.Now().UnixMilli(),
 		},
 	}
@@ -495,7 +495,7 @@ func extractUserText(m agent.AgentMessage) string {
 	if m.User == nil {
 		return ""
 	}
-	for _, c := range m.User.Content {
+	for _, c := range m.ContentBlocks() {
 		raw, _ := json.Marshal(c)
 		var probe struct {
 			Text string `json:"text"`
@@ -664,7 +664,7 @@ func TestGetSessionNameLatestWins(t *testing.T) {
 	}
 }
 
-// ─── bash_execution entry persistence ─────────────────────────────
+// ─── bashExecution message persistence ─────────────────────────────
 
 func TestAppendBashExecution_RoundTrip(t *testing.T) {
 	sm := tempSessionMgr(t)
@@ -674,7 +674,7 @@ func TestAppendBashExecution_RoundTrip(t *testing.T) {
 	}
 	flushSession(t, sess)
 	zero := 0
-	id, err := sess.AppendBashExecution("ls -la", "total 0\n", &zero, false, false, "", false)
+	id, err := sess.AppendBashExecution(BashExecutionMessage{Command: "ls -la", Output: "total 0\n", ExitCode: &zero, Timestamp: time.Now().UnixMilli()})
 	if err != nil {
 		t.Fatalf("AppendBashExecution: %v", err)
 	}
@@ -690,12 +690,12 @@ func TestAppendBashExecution_RoundTrip(t *testing.T) {
 	entries := loaded.Entries()
 	var bashEntry *SessionEntry
 	for i := range entries {
-		if entries[i].Base.Type == "bash_execution" {
+		if message, ok := entries[i].AsMessage(); ok && message.Message.Role() == agent.RoleBashExecution {
 			bashEntry = &entries[i]
 		}
 	}
 	if bashEntry == nil {
-		t.Fatalf("bash_execution entry not found among %d entries", len(entries))
+		t.Fatalf("bashExecution message entry not found among %d entries", len(entries))
 	}
 	// Decode and verify shape.
 	var bx BashExecutionEntry
@@ -727,7 +727,7 @@ func TestAppendBashExecution_UpstreamWireShape(t *testing.T) {
 		t.Fatal(err)
 	}
 	zero := 0
-	if _, err := sess.AppendBashExecution("ls", "out\n", &zero, false, false, "", false); err != nil {
+	if _, err := sess.AppendBashExecution(BashExecutionMessage{Command: "ls", Output: "out\n", ExitCode: &zero, Timestamp: time.Now().UnixMilli()}); err != nil {
 		t.Fatalf("AppendBashExecution: %v", err)
 	}
 	entries := sess.Entries()
@@ -799,10 +799,10 @@ func TestAppendBashExecution_ProjectsBashExecutionMessages(t *testing.T) {
 		t.Fatal(err)
 	}
 	zero := 0
-	if _, err := sess.AppendBashExecution("echo public", "public\n", &zero, false, false, "", false); err != nil {
+	if _, err := sess.AppendBashExecution(BashExecutionMessage{Command: "echo public", Output: "public\n", ExitCode: &zero, Timestamp: time.Now().UnixMilli()}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := sess.AppendBashExecution("echo secret", "secret\n", &zero, false, false, "", true); err != nil {
+	if _, err := sess.AppendBashExecution(BashExecutionMessage{Command: "echo secret", Output: "secret\n", ExitCode: &zero, ExcludeFromContext: true, Timestamp: time.Now().UnixMilli()}); err != nil {
 		t.Fatal(err)
 	}
 	ctx := sess.BuildContext(nil)
@@ -1166,27 +1166,27 @@ func TestBuildContextCompactionOrder(t *testing.T) {
 	if msgs[1].User == nil {
 		t.Fatal("msg[1]: expected user message for B")
 	}
-	txt1, ok := msgs[1].User.Content[0].(ai.TextContent)
+	txt1, ok := msgs[1].User.Content.(ai.UserContentBlocks)[0].(ai.TextContent)
 	if !ok {
-		t.Fatalf("msg[1]: expected TextContent, got %T", msgs[1].User.Content[0])
+		t.Fatalf("msg[1]: expected TextContent, got %T", msgs[1].User.Content.(ai.UserContentBlocks)[0])
 	}
 	if txt1.Text != "B" {
 		t.Errorf("msg[1]: got %q want %q", txt1.Text, "B")
 	}
 
 	// Message 2: D (after compaction).
-	txt2, ok := msgs[2].User.Content[0].(ai.TextContent)
+	txt2, ok := msgs[2].User.Content.(ai.UserContentBlocks)[0].(ai.TextContent)
 	if !ok {
-		t.Fatalf("msg[2]: expected TextContent, got %T", msgs[2].User.Content[0])
+		t.Fatalf("msg[2]: expected TextContent, got %T", msgs[2].User.Content.(ai.UserContentBlocks)[0])
 	}
 	if txt2.Text != "D" {
 		t.Errorf("msg[2]: got %q want %q", txt2.Text, "D")
 	}
 
 	// Message 3: E.
-	txt3, ok := msgs[3].User.Content[0].(ai.TextContent)
+	txt3, ok := msgs[3].User.Content.(ai.UserContentBlocks)[0].(ai.TextContent)
 	if !ok {
-		t.Fatalf("msg[3]: expected TextContent, got %T", msgs[3].User.Content[0])
+		t.Fatalf("msg[3]: expected TextContent, got %T", msgs[3].User.Content.(ai.UserContentBlocks)[0])
 	}
 	if txt3.Text != "E" {
 		t.Errorf("msg[3]: got %q want %q", txt3.Text, "E")

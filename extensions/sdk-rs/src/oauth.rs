@@ -16,19 +16,159 @@ use crate::protocol::Connection;
 /// host prompt.
 pub const OAUTH_CANCELLED: &str = "oauth prompt cancelled";
 
-/// A set of OAuth credentials. Field names are the wire shape shared with the
-/// host and core.
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
+/// Pi's OAuth token object (`packages/ai/src/auth/types.ts` `OAuthCredentials`). Field names are the wire
+/// shape shared with the host and core.
+///
+/// `extra` retains every other provider-owned key, including a present empty or `null` value of a named
+/// optional field. When the integer `expires` cannot represent Pi's value exactly (a fraction, an
+/// out-of-range number or a non-number), `extra["expires"]` holds the exact value while `expires` equals
+/// its truncated projection; assigning a different `expires` replaces it. `expires_absent` records a
+/// credential without an `expires` property. Use [`OAuthCredentials::expires_millis`],
+/// [`OAuthCredentials::set_expires_millis`] and [`OAuthCredentials::clear_expires`] instead of editing
+/// these directly.
+#[derive(Clone, Debug, Default, PartialEq)]
 pub struct OAuthCredentials {
-    #[serde(default)]
     pub refresh: String,
-    #[serde(default)]
     pub access: String,
-    #[serde(default)]
     pub expires: i64,
-    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub project_id: String,
+    pub account_id: String,
+    pub scope: String,
+    pub extra: serde_json::Map<String, serde_json::Value>,
+    pub expires_absent: bool,
+}
+
+/// Only a safe integer is its own `JSON.stringify`: a larger integer is written with `Number::toString` digits (2**60 is 1152921504606847000), which the `i64` encoding would not reproduce.
+const MAX_SAFE_INTEGER: f64 = 9_007_199_254_740_992.0;
+
+fn exact_i64(value: f64) -> Option<i64> {
+    (value.trunc() == value && value.abs() <= MAX_SAFE_INTEGER).then_some(value as i64)
+}
+
+fn expires_projection(value: f64) -> i64 {
+    if value.is_finite() && value >= -9_223_372_036_854_775_808.0 && value < 9_223_372_036_854_775_808.0 { value.trunc() as i64 } else { 0 }
+}
+
+fn exact_value_projection(value: &serde_json::Value) -> i64 {
+    value.as_f64().map(expires_projection).unwrap_or(0)
+}
+
+/// JSON.stringify of a JavaScript number: non-finite values become `null`, `-0` becomes `0`.
+fn js_number_value(value: f64) -> serde_json::Value {
+    if !value.is_finite() {
+        return serde_json::Value::Null;
+    }
+    if value == 0.0 {
+        return json!(0);
+    }
+    serde_json::Number::from_f64(value).map(serde_json::Value::Number).unwrap_or(serde_json::Value::Null)
+}
+
+impl OAuthCredentials {
+    fn exact_expires(&self) -> Option<&serde_json::Value> {
+        self.extra.get("expires").filter(|value| exact_value_projection(value) == self.expires)
+    }
+
+    /// The exact `expires` number, or `None` when the property is absent or holds a value that Pi's
+    /// declared number type excludes. Such a value still round-trips unchanged.
+    pub fn expires_millis(&self) -> Option<f64> {
+        if self.expires_absent && self.expires == 0 {
+            return None;
+        }
+        match self.exact_expires() {
+            Some(value) => value.as_f64(),
+            None => Some(self.expires as f64),
+        }
+    }
+
+    /// Whether the credential carries an `expires` property.
+    pub fn has_expires(&self) -> bool {
+        !(self.expires_absent && self.expires == 0)
+    }
+
+    /// Stores a JavaScript number, including a fraction; `expires` receives its truncated projection.
+    pub fn set_expires_millis(&mut self, value: f64) {
+        self.expires_absent = false;
+        self.extra.remove("expires");
+        match exact_i64(value) {
+            Some(integer) => self.expires = integer,
+            None => {
+                self.expires = expires_projection(value);
+                self.extra.insert("expires".into(), js_number_value(value));
+            }
+        }
+    }
+
+    /// Removes the `expires` property.
+    pub fn clear_expires(&mut self) {
+        self.expires = 0;
+        self.expires_absent = true;
+        self.extra.remove("expires");
+    }
+}
+
+impl<'de> Deserialize<'de> for OAuthCredentials {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        let mut object = serde_json::Map::<String, serde_json::Value>::deserialize(deserializer)?;
+        let mut take_string = |key: &str, optional: bool| -> Result<String, D::Error> {
+            match object.get(key) {
+                Some(serde_json::Value::String(text)) if !optional || !text.is_empty() => {
+                    let text = text.clone();
+                    object.remove(key);
+                    Ok(text)
+                }
+                Some(other) if !optional => Err(serde::de::Error::custom(format!("{key}: expected string, got {other}"))),
+                _ => Ok(String::new()),
+            }
+        };
+        let refresh = take_string("refresh", false)?;
+        let access = take_string("access", false)?;
+        let project_id = take_string("projectId", true)?;
+        let account_id = take_string("accountId", true)?;
+        let scope = take_string("scope", true)?;
+        let mut credentials = OAuthCredentials { refresh, access, project_id, account_id, scope, ..Default::default() };
+        match object.remove("expires") {
+            None => credentials.expires_absent = true,
+            Some(serde_json::Value::Number(number)) => {
+                let value = number.as_f64().unwrap_or(f64::NAN);
+                match exact_i64(value) {
+                    Some(integer) => credentials.expires = integer,
+                    None => {
+                        credentials.expires = expires_projection(value);
+                        object.insert("expires".into(), js_number_value(value));
+                    }
+                }
+            }
+            Some(other) => {
+                object.insert("expires".into(), other);
+            }
+        }
+        credentials.extra = object;
+        Ok(credentials)
+    }
+}
+
+impl Serialize for OAuthCredentials {
+    fn serialize<S: serde::Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        let mut value = self.extra.clone();
+        value.insert("refresh".into(), json!(self.refresh));
+        value.insert("access".into(), json!(self.access));
+        match self.exact_expires() {
+            Some(_) => {}
+            None if self.expires_absent && self.expires == 0 => {
+                value.remove("expires");
+            }
+            None => {
+                value.insert("expires".into(), json!(self.expires));
+            }
+        }
+        for (key, text) in [("projectId", &self.project_id), ("accountId", &self.account_id), ("scope", &self.scope)] {
+            if !text.is_empty() {
+                value.insert(key.into(), json!(text));
+            }
+        }
+        value.serialize(serializer)
+    }
 }
 
 /// An authorization URL to present during login.
@@ -240,5 +380,80 @@ impl OAuthLoginCallbacks {
             return Err(OAUTH_CANCELLED.to_string());
         }
         Ok(input.value)
+    }
+}
+
+#[cfg(test)]
+mod credential_tests {
+    use super::OAuthCredentials;
+    use serde_json::{Value, json};
+
+    fn round_trip(input: Value) -> Value {
+        let credentials: OAuthCredentials = serde_json::from_value(input).unwrap();
+        serde_json::to_value(credentials).unwrap()
+    }
+
+    // Pi's OAuthCredentials is `{ refresh, access, expires: number, [key]: unknown }` (packages/ai/src/auth/types.ts:23-28).
+    #[test]
+    fn credentials_retain_exact_expiry_and_provider_keys() {
+        let meta = json!({"k": [1, null, ""]});
+        for (input, expires, millis) in [
+            (json!({"refresh":"r","access":"a","expires":1_700_000_000_000.5_f64,"meta":meta,"projectId":""}), 1_700_000_000_000_i64, Some(1_700_000_000_000.5)),
+            (json!({"refresh":"r","access":"a","expires":1e21,"meta":meta}), 0, Some(1e21)),
+            (json!({"refresh":"r","access":"a","expires":"soon"}), 0, None),
+            (json!({"refresh":"r","access":"a","expires":null}), 0, None),
+            (json!({"refresh":"r","access":"a","expires":42}), 42, Some(42.0)),
+        ] {
+            let credentials: OAuthCredentials = serde_json::from_value(input.clone()).unwrap();
+            assert_eq!(credentials.expires, expires, "{input}");
+            assert_eq!(credentials.expires_millis(), millis, "{input}");
+            assert!(credentials.has_expires());
+            assert_eq!(round_trip(input.clone()), input);
+        }
+    }
+
+    // JSON.parse reads 1152921504606847000 as the double 2**60 (packages/ai/src/auth/types.ts:24-27 declares expires a number); the Go SDK projects the same double, so the exact integer i64 must not survive.
+    #[test]
+    fn integer_expiry_beyond_two_to_the_53_is_a_javascript_number() {
+        let two_60 = 1_152_921_504_606_846_976_i64;
+        for text in ["1152921504606847000", "1152921504606846976", "1.152921504606847e18"] {
+            let credentials: OAuthCredentials = serde_json::from_str(&format!(r#"{{"refresh":"r","access":"a","expires":{text}}}"#)).unwrap();
+            assert_eq!(credentials.expires_millis(), Some(two_60 as f64), "{text}");
+            assert_eq!(credentials.expires, two_60, "{text}");
+            assert_eq!(serde_json::to_value(&credentials).unwrap()["expires"].as_f64(), Some(two_60 as f64), "{text}");
+        }
+        let safe: OAuthCredentials = serde_json::from_str(r#"{"refresh":"r","access":"a","expires":9007199254740992}"#).unwrap();
+        assert_eq!(safe.expires_millis(), Some(9_007_199_254_740_992.0));
+        assert!(safe.extra.get("expires").is_none());
+        let mut assigned = OAuthCredentials::default();
+        assigned.set_expires_millis(two_60 as f64);
+        assert!(assigned.extra.get("expires").is_some());
+        assert_eq!(assigned.expires_millis(), Some(two_60 as f64));
+    }
+
+    #[test]
+    fn absent_expiry_stays_absent() {
+        let input = json!({"refresh":"r","access":"a","type":"oauth"});
+        let credentials: OAuthCredentials = serde_json::from_value(input.clone()).unwrap();
+        assert!(!credentials.has_expires());
+        assert_eq!(credentials.expires_millis(), None);
+        assert_eq!(round_trip(input.clone()), input);
+    }
+
+    #[test]
+    fn assigning_expires_replaces_the_retained_exact_value() {
+        let mut credentials: OAuthCredentials = serde_json::from_value(json!({"refresh":"r","access":"a","expires":10.5})).unwrap();
+        assert_eq!(credentials.expires_millis(), Some(10.5));
+        credentials.expires = 99;
+        assert_eq!(credentials.expires_millis(), Some(99.0));
+        assert_eq!(serde_json::to_value(&credentials).unwrap()["expires"], json!(99));
+        credentials.set_expires_millis(-0.0);
+        assert_eq!(serde_json::to_value(&credentials).unwrap()["expires"], json!(0));
+        credentials.set_expires_millis(2.25);
+        assert_eq!((credentials.expires, credentials.expires_millis()), (2, Some(2.25)));
+        credentials.clear_expires();
+        assert!(serde_json::to_value(&credentials).unwrap().get("expires").is_none());
+        let literal = OAuthCredentials { access: "x".into(), expires: 7, ..Default::default() };
+        assert_eq!(serde_json::to_value(&literal).unwrap()["expires"], json!(7));
     }
 }

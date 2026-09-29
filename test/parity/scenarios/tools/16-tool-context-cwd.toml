@@ -1,0 +1,36 @@
+# Pi 0.87.1 tools.test.ts:966-1060 calls seven definitions with a context cwd
+# different from their construction cwd. Probed the exact published definitions.
+# Both probes use an empty temporary fallback rather than '/' to avoid a broken
+# find/grep scanning the host. Only the generated cwd in bash's actual output is
+# replaced by __CWD__; filenames, notices, output whitespace and file effects
+# remain asserted. This exercises Go tool execution, not Node bridge transport.
+name = "16-tool-context-cwd"
+description = "Builtin tool definitions prefer invocation context cwd over construction cwd"
+covers = [
+ "packages/coding-agent/src/core/tools/read.ts",
+ "packages/coding-agent/src/core/tools/write.ts",
+ "packages/coding-agent/src/core/tools/edit.ts",
+ "packages/coding-agent/src/core/tools/grep.ts",
+ "packages/coding-agent/src/core/tools/find.ts",
+ "packages/coding-agent/src/core/tools/ls.ts",
+ "packages/coding-agent/src/core/tools/bash.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/tools-cwd-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/tools-cwd-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['TOOL_CWD ["read","hello from ctx.cwd"]', 'TOOL_CWD ["bash","__CWD__\n"]']
+runs = 3

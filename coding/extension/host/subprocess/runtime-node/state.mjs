@@ -20,13 +20,16 @@ export function setRuntime(next) {
   singleton = next;
 }
 
+export function currentRuntime() {
+  return perExtension.getStore() ?? singleton;
+}
+
 export function getRuntime() {
-  const scoped = perExtension.getStore();
-  if (scoped) return scoped;
-  if (!singleton) {
+  const runtime = currentRuntime();
+  if (!runtime) {
     throw new Error("pig TS runtime not initialized");
   }
-  return singleton;
+  return runtime;
 }
 
 export function runWithRuntime(runtime, fn) {

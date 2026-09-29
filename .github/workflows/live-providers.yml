@@ -1,0 +1,131 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+
+name: Live providers
+
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: Space-separated local Go package patterns
+        required: false
+        default: './ai ./coding'
+        type: string
+      run:
+        description: Optional go test -run regular expression
+        required: false
+        default: ''
+        type: string
+  schedule:
+    - cron: '23 4 * * *'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-providers-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  live:
+    name: Live provider acceptance
+    # Schedules execute on main only. The environment restricts manual runs to protected branches.
+    if: github.repository == 'MichaelKinsy/PiG' && (github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main')
+    environment: live-providers
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: extensions/sdk-ts/package-lock.json
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Prepare toolchains and pinned Pi oracle
+        shell: bash
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install --yes tmux fd-find ripgrep
+          rustup toolchain install 1.97.1 --profile minimal
+          rustup default 1.97.1
+          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
+          test "$(npm --version)" = 12.1.0
+          test "$(go env GOVERSION)" = go1.27.1
+          make upstream-mirror
+      - name: Test summary aggregation
+        run: python3 -m unittest discover -s automation/ci -p test_summarize_live_tests.py
+      - name: Run live-tagged tests
+        shell: bash
+        # Secrets are available only to test execution, not dependency installation.
+        env:
+          PACKAGES: ${{ inputs.packages || './ai ./coding' }}
+          RUN_FILTER: ${{ inputs.run }}
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          ANTHROPIC_OAUTH_TOKEN: ${{ secrets.ANTHROPIC_OAUTH_TOKEN }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          AZURE_OPENAI_API_KEY: ${{ secrets.AZURE_OPENAI_API_KEY }}
+          AZURE_OPENAI_BASE_URL: ${{ secrets.AZURE_OPENAI_BASE_URL }}
+          AZURE_OPENAI_RESOURCE_NAME: ${{ secrets.AZURE_OPENAI_RESOURCE_NAME }}
+          AZURE_OPENAI_DEPLOYMENT_NAME_MAP: ${{ secrets.AZURE_OPENAI_DEPLOYMENT_NAME_MAP }}
+          AZURE_OPENAI_API_VERSION: ${{ secrets.AZURE_OPENAI_API_VERSION }}
+          COPILOT_GITHUB_TOKEN: ${{ secrets.COPILOT_GITHUB_TOKEN }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GOOGLE_CLOUD_API_KEY: ${{ secrets.GOOGLE_CLOUD_API_KEY }}
+          GOOGLE_APPLICATION_CREDENTIALS: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS }}
+          GOOGLE_CLOUD_PROJECT: ${{ secrets.GOOGLE_CLOUD_PROJECT }}
+          GCLOUD_PROJECT: ${{ secrets.GCLOUD_PROJECT }}
+          GOOGLE_CLOUD_LOCATION: ${{ secrets.GOOGLE_CLOUD_LOCATION }}
+          OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+          OPENCODE_API_KEY: ${{ secrets.OPENCODE_API_KEY }}
+          XIAOMI_TOKEN_PLAN_AMS_API_KEY: ${{ secrets.XIAOMI_TOKEN_PLAN_AMS_API_KEY }}
+          CLOUDFLARE_API_KEY: ${{ secrets.CLOUDFLARE_API_KEY }}
+          FIREWORKS_API_KEY: ${{ secrets.FIREWORKS_API_KEY }}
+          KIMI_API_KEY: ${{ secrets.KIMI_API_KEY }}
+          MINIMAX_API_KEY: ${{ secrets.MINIMAX_API_KEY }}
+          MINIMAX_CN_API_KEY: ${{ secrets.MINIMAX_CN_API_KEY }}
+          AI_GATEWAY_API_KEY: ${{ secrets.AI_GATEWAY_API_KEY }}
+          PIG_LIVE_CODEX_TOKEN: ${{ secrets.PIG_LIVE_CODEX_TOKEN }}
+          AWS_PROFILE: ${{ secrets.AWS_PROFILE }}
+          AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          AWS_SESSION_TOKEN: ${{ secrets.AWS_SESSION_TOKEN }}
+          AWS_BEARER_TOKEN_BEDROCK: ${{ secrets.AWS_BEARER_TOKEN_BEDROCK }}
+          AWS_CONTAINER_CREDENTIALS_RELATIVE_URI: ${{ secrets.AWS_CONTAINER_CREDENTIALS_RELATIVE_URI }}
+          AWS_CONTAINER_CREDENTIALS_FULL_URI: ${{ secrets.AWS_CONTAINER_CREDENTIALS_FULL_URI }}
+          AWS_WEB_IDENTITY_TOKEN_FILE: ${{ secrets.AWS_WEB_IDENTITY_TOKEN_FILE }}
+          AWS_REGION: ${{ secrets.AWS_REGION }}
+          AWS_DEFAULT_REGION: ${{ secrets.AWS_DEFAULT_REGION }}
+          BEDROCK_EXTENSIVE_MODEL_TEST: ${{ secrets.BEDROCK_EXTENSIVE_MODEL_TEST }}
+        run: |
+          set -euo pipefail
+          [[ "$PACKAGES" != *$'\n'* && "$PACKAGES" != *$'\r'* ]]
+          read -r -a packages <<< "$PACKAGES"
+          for package in "${packages[@]}"; do
+            case "$package" in
+              .|./*) ;;
+              *) echo 'Packages must be local paths beginning with ./'; exit 2 ;;
+            esac
+          done
+          test "${#packages[@]}" -gt 0
+          automation/ci/with-isolated-pig-home.sh go test -json -count=1 -tags 'integration live' -run "$RUN_FILTER" "${packages[@]}" | tee "$RUNNER_TEMP/live-providers.jsonl"
+      - name: Summarize providers that ran or skipped
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -f "$RUNNER_TEMP/live-providers.jsonl" ]; then
+            python3 automation/ci/summarize_live_tests.py "$RUNNER_TEMP/live-providers.jsonl" | tee -a "$GITHUB_STEP_SUMMARY"
+          else
+            echo 'Live provider tests did not start. See the setup or input-validation failure.' | tee -a "$GITHUB_STEP_SUMMARY"
+          fi

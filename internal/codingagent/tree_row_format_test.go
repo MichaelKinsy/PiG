@@ -114,7 +114,7 @@ func TestFormatTreeRow_AllEntryTypes(t *testing.T) {
 			want: fg(th.Muted, "[tool]"),
 		},
 		{
-			name: "message_unknown_role_renders_as_bracketed_role",
+			name: "message_bash_without_command",
 			entry: mustEntry(t, map[string]any{
 				"type": "message", "id": "be1", "parentId": nil, "timestamp": "",
 				"message": map[string]any{
@@ -122,8 +122,8 @@ func TestFormatTreeRow_AllEntryTypes(t *testing.T) {
 					"content": []any{},
 				},
 			}),
-			// will replace this with `[bash]: <command>`.
-			want: fg(th.Dim, "[bashExecution]"),
+			// tree-selector.ts:808-810 uses an empty command when it is absent.
+			want: fg(th.Dim, "[bash]: "),
 		},
 		{
 			name: "model_change",

@@ -1,0 +1,20 @@
+# Upstream evidence: Pi 0.87.1 models.ts:703-708 forwards simple options to a custom provider without stock API lowering.
+# A 128-token context and 16-token output cap distinguish forwarded 0/98765 values from any inferred/clamped budget.
+name = "28-caller-source-simple-options"
+description = "Caller-owned provider callbacks retain explicit and omitted simple options through Model Runtime."
+covers = ["packages/ai/src/models.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/caller-simple-options-pig"]
+pi_args = ["node", "./test/parity/testdata/caller-simple-options-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 40
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

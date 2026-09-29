@@ -38,10 +38,10 @@ def records(path: Path) -> list[Record]:
 
 
 def upstream_version(root: Path) -> str:
-    text = (root / "coding" / "pigversion" / "pigversion.go").read_text(encoding="utf-8")
+    text = (root / "internal" / "coding" / "pigversion" / "pigversion.go").read_text(encoding="utf-8")
     match = re.search(r'const UpstreamVersion = "([^"]+)"', text)
     if not match:
-        raise ValueError("coding/pigversion/pigversion.go has no UpstreamVersion")
+        raise ValueError("internal/coding/pigversion/pigversion.go has no UpstreamVersion")
     return match.group(1)
 
 
@@ -84,7 +84,7 @@ def validate(record: Record, version: str, root: Path) -> list[str]:
             errors.append(f"{location}: unsupported Stock disposition {dispositions[0]!r}")
 
     listed_paths = set(re.findall(r"`([^`]+\.(?:go|rs|py|mjs|toml))`", record.body))
-    repository_roots = ("agent/", "ai/", "cmd/", "coding/", "extensions/", "internal/", "parity/", "piglets/", "automation/", "tests/", "tui/")
+    repository_roots = ("agent/", "ai/", "cmd/", "coding/", "extensions/", "internal/", "test/parity/", "piglets/", "automation/", "test/", "tui/")
     for listed in sorted(listed_paths):
         if not listed.startswith(repository_roots) or any(token in listed for token in ("*", "<", ">", "{", "}")) or ":" in listed:
             continue
@@ -100,7 +100,7 @@ def main() -> int:
     args = parser.parse_args()
     root = Path(args.root).resolve()
     version = upstream_version(root)
-    ledgers = [root / "DIVERGENCES.md", root / "docs" / "additive-features.md"]
+    ledgers = [root / "docs/parity/DIVERGENCES.md", root / "docs" / "additive-features.md"]
     errors: list[str] = []
     count = 0
     for ledger in ledgers:

@@ -162,30 +162,13 @@ func TestWritesMatchUpstreamJSONMembers(t *testing.T) {
 	assertMembersEqual(t, valueWrites, fixtures.ValueWrites)
 	usage := ai.Usage{Input: 1, Output: 2, CacheRead: 3, CacheWrite: 4, TotalTokens: 10}
 	writes := []session.Write{
-		session.InsertEntry(session.Entry{ID: "entry", Type: session.EntryTypeMessage, Message: userText("hello", 1)}),
+		// .upstream/v0.87.1/packages/agent/test/harness/types.test.ts:286
+		session.InsertEntry(session.Entry{ID: "entry", Type: session.EntryTypeMessage, Message: agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserText("hello"), Timestamp: 1}}}),
 		session.InsertUsage(session.UsageRow{ID: "usage", Usage: usage, EntryID: new("entry")}),
 		valueWrites[0],
 		session.DeleteValue(session.EntryLabel("entry")),
 	}
-	// Upstream stores the user content string "hello" verbatim; Go normalizes
-	// user content to text blocks, so compare the entry write separately.
-	assertMembersEqual(t, writes[1:], fixtures.Writes[1:])
-	var entryWrite struct {
-		Kind  string `json:"kind"`
-		Entry struct {
-			ID       string             `json:"id"`
-			ParentID *string            `json:"parentId"`
-			Type     string             `json:"type"`
-			Message  agent.AgentMessage `json:"message"`
-		} `json:"entry"`
-	}
-	if err := json.Unmarshal(fixtures.Writes[0], &entryWrite); err != nil {
-		t.Fatal(err)
-	}
-	if entryWrite.Kind != "entry" || entryWrite.Entry.ID != "entry" || entryWrite.Entry.ParentID != nil {
-		t.Fatalf("upstream entry write = %#v", entryWrite)
-	}
-	assertJSON(t, writes[0], map[string]any{"kind": "entry", "entry": map[string]any{"id": "entry", "parentId": nil, "type": "message", "message": entryWrite.Entry.Message}})
+	assertMembersEqual(t, writes, fixtures.Writes)
 }
 
 func assertMembersEqual[T any](t *testing.T, got []T, want []json.RawMessage) {

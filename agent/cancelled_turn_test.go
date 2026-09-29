@@ -21,9 +21,9 @@ func TestCancelledStreamFinalizesAbortedTurn(t *testing.T) {
 	var finished []AgentTurnContext
 	var persisted []AgentMessage
 	a := NewAgent(AgentOptions{Model: scriptedModel(provider),
-		FinishTurn: func(_ context.Context, turn AgentTurnContext) *AgentTurnDecision {
+		FinishTurn: func(_ context.Context, turn AgentTurnContext) (*AgentTurnDecision, error) {
 			finished = append(finished, turn)
-			return &AgentTurnDecision{Action: AgentTurnContinue}
+			return &AgentTurnDecision{Action: AgentTurnContinue}, nil
 		},
 		OnMessagePersist: func(message AgentMessage) error {
 			persisted = append(persisted, message)

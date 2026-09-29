@@ -1,0 +1,53 @@
+# Behavior family: startup
+# Upstream evidence: Pi 0.87.1 core/package-manager.ts:288-297,2304-2326 expands ** using
+# node:fs globSync; :742-785 applies minimatch exclusions and exact additions.
+# core/skills.ts:425-454 keeps the first valid name and reports the loser.
+# package-manager.ts:655-704 matches a skill's file path and only grants
+# SKILL.md files parent-directory matching; !suite must not hide listed.md.
+# interactive-mode.ts:1642-1680,1855-1863 renders that warning, including the
+# winner's package provenance and the loser's absolute path (only winners
+# contribute skill SourceInfo). Probe: launch with this fixture as agentDir,
+# no CLI resources, then Ctrl+O at 220x60. Before the fix PiG rejects the
+# Package as ambiguous; independently the prompts glob omits root/deep files.
+name = "09-startup-package-glob-collisions"
+description = "Package globstars include root and deeply nested prompts, apply overrides, and warn about first-wins skill name collisions."
+covers = [
+  "packages/coding-agent/src/core/package-manager.ts",
+  "packages/coding-agent/src/core/skills.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_OFFLINE=1", "PIG_CODING_AGENT_DIR=testdata/glob-collisions/pig-agent"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/glob-collisions/pi-agent"]
+override_base_args = true
+
+[tmux]
+width = 220
+height = 60
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "[Skills]"
+capture_end = "(skipped)"
+
+[[tmux.steps]]
+keys = ["C-o"]
+wait_contains = ["drop files to attach"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["suite/listed.md", "second/SKILL.md", "/root", "/nested", "/skip-keep", "[Skill conflicts]", '"same" collision:', "✓ git:github.com/pig-parity/glob-collisions (user) second/SKILL.md", "first/SKILL.md (skipped)"]
+both_not_contain = ["excluded", "/skip,", "/.hidden", "ambiguous"]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: The skipped skill has no SourceInfo in Pi and prints its absolute path.
+# Replace only the runner's independently allocated agent-root directory;
+# retain the complete package-relative path, glyphs, whitespace and ANSI.
+[[assert.normalize_replace]]
+pattern = '/[^\s\x1b]*/parity-snap-(?:PIG|PI)_CODING_AGENT_DIR-[0-9]+'
+with = '<agent>'
+reason = "D2: only the independently allocated agent-root prefix differs. Keep the complete skipped skill path and warning."

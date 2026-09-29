@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -50,6 +51,23 @@ func (p failingRefreshOAuthProvider) StoreOAuthCredentials(ai.OAuthCredentials) 
 	return "", errors.New("store not supported in test")
 }
 func (p failingRefreshOAuthProvider) DeleteOAuthCredentials() (bool, error) { return false, nil }
+
+func requireAnthropicAuthFailure(t *testing.T, model *ai.Model, stream *ai.AssistantMessageEventStream, err error) *ai.AssistantMessage {
+	t.Helper()
+	if err != nil || stream == nil {
+		t.Fatalf("Anthropic setup escaped stream: %v", err)
+	}
+	message := stream.Result()
+	events := slices.Collect(stream.Events(t.Context()))
+	if len(events) != 1 {
+		t.Fatalf("setup events=%#v, want sole error", events)
+	}
+	failure, ok := events[0].(ai.ErrorEvent)
+	if !ok || failure.Error != message || failure.Reason != message.StopReason || message.API != ai.APIAnthropicMessages || message.Provider != model.ProviderMeta.ProviderID || message.Model != model.ID {
+		t.Fatalf("event=%#v result=%#v", events[0], message)
+	}
+	return message
+}
 
 // Pi 0.87.1 packages/coding-agent/src/core/model-resolver.ts:419 selects a model without resolving auth. packages/ai/src/models.ts:657 and auth/resolve.ts:87 resolve stored OAuth on the request and propagate refresh failures.
 func TestBuildModel_OAuthRefreshFailureSurfacesWhenNoFallback(t *testing.T) {
@@ -98,7 +116,14 @@ func TestBuildModel_OAuthRefreshFailureSurfacesWhenNoFallback(t *testing.T) {
 			if err != nil {
 				t.Fatalf("buildModel(%q) resolved OAuth before a request: %v", tc.spec, err)
 			}
-			_, err = model.Provider.Stream(t.Context(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}}), ai.StreamOptions{})
+			stream, err := model.Provider.Stream(t.Context(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}}), ai.StreamOptions{})
+			if tc.name == "anthropic" {
+				message := requireAnthropicAuthFailure(t, model, stream, err)
+				if message.StopReason != ai.StopReasonError {
+					t.Fatalf("refresh failure reason=%s", message.StopReason)
+				}
+				err = errors.New(message.ErrorMessage)
+			}
 			if err == nil || !strings.Contains(err.Error(), "token refresh request failed") {
 				t.Fatalf("first request error = %v, want stored credential refresh failure", err)
 			}
@@ -136,9 +161,10 @@ func TestBuildModel_StoredOAuthRefreshFailureBlocksEnvFallback(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildModel resolved OAuth before a request: %v", err)
 	}
-	_, err = model.Provider.Stream(t.Context(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}}), ai.StreamOptions{})
-	if err == nil || !strings.Contains(err.Error(), "token refresh request failed") {
-		t.Fatalf("first request error = %v, want stored credential refresh failure, not env fallback", err)
+	stream, err := model.Provider.Stream(t.Context(), ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}}), ai.StreamOptions{})
+	message := requireAnthropicAuthFailure(t, model, stream, err)
+	if message.StopReason != ai.StopReasonError || !strings.Contains(message.ErrorMessage, "token refresh request failed") {
+		t.Fatalf("first request result = %#v, want stored credential refresh failure, not env fallback", message)
 	}
 }
 
@@ -171,24 +197,33 @@ func TestBuildModelContextCancelsOAuthRefresh(t *testing.T) {
 	if err != nil {
 		t.Fatalf("buildModelContext resolved OAuth before a request: %v", err)
 	}
-	ctx, cancel := context.WithCancel(t.Context())
+	type requestContextKey struct{}
+	requestMarker := new(17)
+	ctx, cancel := context.WithCancel(context.WithValue(t.Context(), requestContextKey{}, requestMarker))
 	defer cancel()
-	result := make(chan error, 1)
+	type streamOutcome struct {
+		stream *ai.AssistantMessageEventStream
+		err    error
+	}
+	result := make(chan streamOutcome, 1)
 	go func() {
-		_, streamErr := model.Provider.Stream(ctx, ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}}), ai.StreamOptions{})
-		result <- streamErr
+		stream, streamErr := model.Provider.Stream(ctx, ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}}), ai.StreamOptions{})
+		result <- streamOutcome{stream, streamErr}
 	}()
 	select {
 	case refreshCtx := <-started:
-		if refreshCtx != ctx {
-			t.Error("refresh did not receive the request context")
+		// Provider options use context.WithValue, which preserves the request's cancellation channel and values. Pi forwards the request AbortSignal, not Go's metadata-wrapper identity.
+		if refreshCtx.Done() != ctx.Done() || refreshCtx.Value(requestContextKey{}) != requestMarker {
+			t.Error("refresh did not receive the request cancellation signal and values")
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("request did not start OAuth refresh")
 	}
 	cancel()
-	if err := <-result; !errors.Is(err, context.Canceled) {
-		t.Fatalf("request error = %v, want cancellation", err)
+	completed := <-result
+	message := requireAnthropicAuthFailure(t, model, completed.stream, completed.err)
+	if message.StopReason != ai.StopReasonAborted || !strings.Contains(message.ErrorMessage, context.Canceled.Error()) {
+		t.Fatalf("request result = %#v, want cancellation", message)
 	}
 	stored, ok, err := auth.GetRaw("anthropic")
 	if err != nil || !ok || stored.Access != "old" || stored.Refresh != "stale" {

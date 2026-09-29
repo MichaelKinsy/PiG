@@ -1,0 +1,32 @@
+# Upstream evidence: W3 C5: Pi interactive-mode.ts:5393-5394 clears the editor and emits a single status.
+name = "13-clone-status"
+description = "Cloning a saved session reports Pi's status rather than a Markdown path block."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[tmux]
+width = 120
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+capture_start = " Cloned to new session"
+capture_end = "Cloned to new session"
+
+[[tmux.steps]]
+keys = ["reply with exactly: saved", "Enter"]
+wait_visible_contains = [" saved"]
+
+[[tmux.steps]]
+keys = ["/clone", "Enter"]
+wait_visible_contains = ["Cloned to new session"]
+
+[assert]
+runs = 3
+both_contain = [" Cloned to new session"]
+output_equal = true

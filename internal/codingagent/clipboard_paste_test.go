@@ -8,22 +8,24 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // Upstream handleClipboardPaste inserts clipboard text when the clipboard
 // holds no image, and shows nothing: no preview, no status. Interactive mode
 // showed "no image in clipboard" and never pasted text (GUARD-08).
 func TestClipboardPasteWithoutAnImageInsertsText(t *testing.T) {
-	previousGOOS, previousRun := clipboardGOOS, clipboardRun
-	t.Cleanup(func() { clipboardGOOS, clipboardRun = previousGOOS, previousRun })
-	clipboardGOOS = "darwin"
 	withEnv(t, map[string]string{})
-	clipboardRun = func(_ context.Context, name string, _ ...string) ([]byte, error) {
-		if name == "pbpaste" {
-			return []byte("pasted text"), nil
-		}
-		return nil, errors.New("no image")
-	}
+	useClipboardTextTestSeams(t, "darwin", map[string]string{},
+		func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("no image") },
+		func() *tui.NativeClipboard {
+			return &tui.NativeClipboard{
+				GetImage: func(context.Context) ([]byte, bool, error) { return nil, true, nil },
+				GetText:  func(context.Context) (*string, bool, error) { return new("pasted text"), true, nil },
+			}
+		},
+	)
 	m := newSwitchTuiProbe(t)
 	m.tuiInst.CancelPendingRender()
 	t.Cleanup(m.teardownCurrentTui)

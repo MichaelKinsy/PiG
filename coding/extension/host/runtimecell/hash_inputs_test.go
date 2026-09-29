@@ -58,11 +58,11 @@ func TestGoPackedCellHashFollowsSymlinkedSDKRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	absoluteLink := filepath.Join(base, "sdk-absolute")
-	testenv.Symlink(t, target, absoluteLink)
+	testenv.RequireDirectoryLink(t, target, absoluteLink)
 	relativeLink := filepath.Join(base, "sdk-relative")
-	testenv.Symlink(t, "sdk", relativeLink)
+	testenv.RequireDirectoryLink(t, "sdk", relativeLink)
 	chainedLink := filepath.Join(base, "sdk-chained")
-	testenv.Symlink(t, "sdk-relative", chainedLink)
+	testenv.RequireDirectoryLink(t, "sdk-relative", chainedLink)
 	extensions := []GoExtension{{
 		Name:       "ask",
 		ModulePath: "example.com/ask",
@@ -110,7 +110,7 @@ func TestPackedCellHashesTrackSymlinkedSDKChanges(t *testing.T) {
 		t.Fatal(err)
 	}
 	link := filepath.Join(base, "sdk-link")
-	testenv.Symlink(t, "sdk", link)
+	testenv.RequireDirectoryLink(t, "sdk", link)
 	hashers := map[string]func(string) string{
 		"go": func(sdkRoot string) string {
 			return requireGoPackedHash(t, "packed-go", []GoExtension{{Name: "go", ModulePath: "example.com/go", Package: "example.com/go", Factory: "Extension", Hash: "source"}}, sdkRoot)
@@ -168,11 +168,11 @@ func TestPackedCellHashesTrackSDKLocation(t *testing.T) {
 func TestHashTreeRejectsBrokenAndCyclicRootSymlinks(t *testing.T) {
 	base := t.TempDir()
 	broken := filepath.Join(base, "broken")
-	testenv.Symlink(t, "missing", broken)
+	testenv.RequireDirectoryLink(t, "missing", broken)
 	cycleA := filepath.Join(base, "cycle-a")
 	cycleB := filepath.Join(base, "cycle-b")
-	testenv.Symlink(t, "cycle-b", cycleA)
-	testenv.Symlink(t, "cycle-a", cycleB)
+	testenv.RequireDirectoryLink(t, "cycle-b", cycleA)
+	testenv.RequireDirectoryLink(t, "cycle-a", cycleB)
 	for name, root := range map[string]string{"broken": broken, "cyclic": cycleA} {
 		if got := hashTree(root); !strings.HasPrefix(got, "error:") {
 			t.Errorf("%s root hash = %q, want an error identity", name, got)
@@ -254,7 +254,7 @@ func TestHashTreeDoesNotTraverseNestedDirectorySymlink(t *testing.T) {
 	if err := os.WriteFile(outsideSource, []byte("package outside\nconst version = 1\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	testenv.Symlink(t, outside, filepath.Join(root, "nested"))
+	testenv.RequireDirectoryLink(t, outside, filepath.Join(root, "nested"))
 	before := requireTreeHash(t, root)
 	if err := os.WriteFile(outsideSource, []byte("package outside\nconst version = 2\n"), 0o600); err != nil {
 		t.Fatal(err)

@@ -1,0 +1,24 @@
+# Probe: node test/parity/testdata/factory-failure-pi.mjs against installed Pi0.87.1. loader.ts:238-243 rejects every captured API call synchronously after factory rejection; discard removes factory-owned bus subscriptions (462-467).
+# Both drivers load the same working, failing and surviving modules. The complete diagnostic and each method's complete error/synchronous result are compared, including a scheduled post-failure callback. Shared flags/provider publications and listener disposal assert the original8423 rollback case; no transport error or cropped success banner stands in for the failed API.
+name = "56-failed-factory-api"
+description = "A rejected factory rolls back runtime changes and disables captured APIs and scheduled callbacks"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/factory-failure"]
+pi_args = ["node", "./test/parity/testdata/factory-failure-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"flagDuringLoad":true,"eventCalls":0', 'failed to load and its API is no longer active.', '"failedFlagPresent":false,"timerFlagPresent":false', '"providers":[{"name":"working-provider","config":{"baseUrl":"https://provider.test/v1","apiKey":"provider-test-key"}}],"removed":[]']
+runs = 3

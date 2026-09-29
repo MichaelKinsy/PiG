@@ -1,0 +1,24 @@
+# Pi 0.87.1 session-selector-path-delete.test.ts:108-181,253-368 and session-selector.ts:208-247,389-439,567-573.
+# The paired fixture drives the actual selector's input handlers, canonical symlink threading, active-row rejection, and subtree order.
+# Only deterministic state/callback projections are compared; no ANSI, whitespace, names, paths, or IDs are normalized. Async loader races remain a separate obligation.
+name = "31-session-selector-path-delete"
+description = "Session selector deletion state, active symlink identity, and threaded subtree activity match Pi."
+covers = ["packages/coding-agent/src/modes/interactive/components/session-selector.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/session-selector-path-delete.mjs", "pig", "{{TEMP}}"]
+pi_args = ["node", "./test/parity/testdata/session-selector-path-delete.mjs", "pi", "{{TEMP}}"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

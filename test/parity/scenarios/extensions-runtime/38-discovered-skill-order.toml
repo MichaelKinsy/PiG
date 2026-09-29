@@ -1,0 +1,27 @@
+# Pi 0.87.1 core/skills.ts:434-508 retains discovery insertion order. Names in
+# frontmatter deliberately reverse directory order. resources_discover drives
+# the headless resource-extension path, not initial CLI --skill loading, and the
+# command observes the resulting published command catalog through the bridge.
+# The artifact is a stable JSON string array; normalization changes no bytes.
+name = "38-discovered-skill-order"
+description = "Discovered skill commands retain path order when public names differ"
+covers = ["packages/coding-agent/src/core/skills.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["testdata/ext/skill-order.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/skill-order.mjs"]
+
+[cli]
+args = ["--no-session", "--model", "test-faux/faux-1", "--order-root", "{{TEMP}}", "-p", "/skill-order"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/order.json"
+
+[assert]
+exit_code = 0
+artifact_normalized_equal = true
+artifact_both_contain = ['["skill:zulu","skill:alpha"]']
+both_not_contain = ["Extension error", "TypeError"]
+runs = 3

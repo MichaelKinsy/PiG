@@ -4,8 +4,7 @@ PiG reads these variables at startup. Each one has a setting or a default that
 covers the normal case, so set a variable only when you need to change PiG from
 outside its configuration: in a container, in CI, or while debugging.
 
-Variables named `PI_*` are read for compatibility with upstream Pi. PiG reads
-both spellings where both exist.
+Variables named `PI_*` are read for compatibility with upstream Pi. Directory variables use the spellings selected by `PIG_USE_PI_DIRS`; other paired variables accept both spellings.
 
 ## Location
 
@@ -13,10 +12,11 @@ both spellings where both exist.
 |---|---|
 | `PIG_HOME` | Configuration root. Default `~/.pig` |
 | `XDG_CONFIG_HOME` | When `PIG_HOME` is not set, the configuration root is `$XDG_CONFIG_HOME/pig` |
-| `PIG_CODING_AGENT_DIR` | Agent directory alone. Default `$PIG_HOME/agent` |
+| `PIG_CODING_AGENT_DIR` | Agent directory alone in default mode. Default `$PIG_HOME/agent` |
+| `PIG_USE_PI_DIRS` | Exact value `1` selects Pi's agent directory and project `.pi` resources (D2). Off by default |
+| `PI_CODING_AGENT_DIR` | Agent directory in shared mode only. Default `~/.pi/agent` |
 
-`PIG_HOME` moves settings, keybindings, sessions, trust decisions and installed
-packages together. Use it to run two configurations side by side.
+In default mode, `PIG_HOME` moves settings, keybindings, sessions, trust decisions and installed packages together. In shared mode it moves only PiG-owned product state. See [Using Pi's directories](/docs/latest/configuration#using-pis-directories).
 
 ## Network
 
@@ -25,6 +25,7 @@ packages together. Use it to run two configurations side by side.
 | `PIG_OFFLINE`, `PI_OFFLINE` | Do not check for package updates. Accepts `1`, `true` or `yes` |
 | `PIG_UPDATE_URL` | Release manifest used by `pig update` |
 | `PIG_UPDATE_TRUST_ROOT` | Public key that signs the release manifest |
+| `PI_SKIP_VERSION_CHECK` | Do not check for a newer PiG release at startup. Any non-empty value disables the check, as in Pi. `pig update` still checks |
 | `PI_OAUTH_CALLBACK_HOST` | Host the OAuth callback listens on |
 | `PI_SHARE_GATEWAY_URL` | Artifact upload endpoint used only when you run `/share`. Default `https://pi-in-go.dev/v1/artifacts?visibility=unlisted&title=PiG+session` |
 | `PI_TELEMETRY` | Override the `enableInstallTelemetry` setting: `1`, `true` or `yes` enables it, anything else disables it. Gates the install/update ping to `https://pi-in-go.dev/api/report-install?version=<version>` (sent only after a fresh install or an update with new changelog entries) and the OpenRouter/NVIDIA/Cloudflare attribution headers. `PI_OFFLINE` also stops the ping regardless of this setting. |
@@ -43,7 +44,7 @@ mode.
 | Variable | Effect |
 |---|---|
 | `PIG_DEBUG` | Write a debug log |
-| `PIG_DEBUG_KEYS` | Log every key as PiG decodes it |
+| `PIG_DEBUG_KEYS` | Include decoded keys in the `PIG_DEBUG` log without changing active keybindings |
 | `PIG_DEBUG_TOOLS` | Print the number of tools sent with each OpenAI Chat Completions request to stderr. Needs the exact value `1` |
 | `PIG_RENDER_DEBUG` | Write render diagnostics |
 | `PI_TUI_DEBUG_REDRAW` | Log why the screen was fully repainted. Needs the exact value `1` |
@@ -51,14 +52,9 @@ mode.
 | `PIG_PROFILE` | Write Go runtime profiles when PiG exits. Takes a comma-separated list of `cpu`, `heap`, `allocs`, `block`, `mutex`, `goroutine` and `trace` |
 | `PIG_PROFILE_DIR` | Directory for `PIG_PROFILE` output. Default: the working directory |
 
-Use `PIG_DEBUG_KEYS` when a keybinding does not respond: it shows whether the key
-reached PiG at all. See [terminal setup](/docs/latest/terminal-setup).
+Set `PIG_DEBUG=1` and `PIG_DEBUG_KEYS=1` when a keybinding does not respond. The log shows whether the key reaches PiG and uses the active keybinding manager. Diagnostic logging preserves user overrides. See [terminal setup](/docs/latest/terminal-setup).
 
-Use `PI_TUI_DEBUG_REDRAW=1` when the view jumps while output arrives. A full repaint
-clears the terminal's scrollback, which moves the reader, and every cause emits
-the same bytes. The log names the cause, in `$PIG_HOME/agent/pig-debug.log`. Pi
-reads the same variable. PiG ignores the names `PIG_DEBUG_REDRAW` and
-`PI_DEBUG_REDRAW`.
+Use `PI_TUI_DEBUG_REDRAW=1` when the view jumps while output arrives. The log records each full repaint's cause in `pi-tui-debug.log` in the configured TUI log directory, normally the agent directory. Standalone TUI instances without a configured log directory do not write redraw logs. Pi reads the same variable. PiG ignores the names `PIG_DEBUG_REDRAW` and `PI_DEBUG_REDRAW`.
 
 `PIG_DEBUG_TOOLS` and `PI_TUI_DEBUG_REDRAW` need the exact value `1`. The other
 diagnostic variables accept any non-empty value.
@@ -67,7 +63,8 @@ diagnostic variables accept any non-empty value.
 
 | Variable | Effect |
 |---|---|
-| `PIG_CODING_AGENT_SESSION_DIR` | Directory for session storage and lookup. `--session-dir` overrides it |
+| `PIG_CODING_AGENT_SESSION_DIR` | Session storage and lookup in default mode. Ignored in shared mode. `--session-dir` overrides it |
+| `PI_CODING_AGENT_SESSION_DIR` | Session storage and lookup in shared mode only. `--session-dir` overrides it |
 
 ## Experimental features
 

@@ -12,10 +12,12 @@ type workingIndicatorOptions struct {
 	IntervalMs float64  `json:"intervalMs"`
 }
 
+// showStatusIndicator checks the active editor's opt-in; a remote editor does not inherit the dormant default editor's border status.
+// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:setEditorWorkingStatusIndicator
 func (m *InteractiveMode) showStatusIndicator(indicator *tui.StatusIndicator) {
 	m.clearStatusIndicator("")
 	m.activeStatusIndicator = indicator
-	m.activeWorkingIndicatorEmbedded = m.editor != nil && m.editor.EmbedWorkingStatus
+	m.activeWorkingIndicatorEmbedded = m.editor != nil && !m.editor.IsRemote() && m.editor.EmbedWorkingStatus
 	m.statusLastFrame = time.Now()
 	m.statusContainer.Clear()
 	if m.activeWorkingIndicatorEmbedded {
@@ -43,7 +45,7 @@ func (m *InteractiveMode) clearStatusIndicator(kind string) {
 	}
 	if m.statusContainer != nil {
 		m.statusContainer.Clear()
-		if previous != nil && !embedded && m.opts.Settings.TuiMode != "fullscreen" && m.tuiInst != nil && m.statusClearOnShrink() {
+		if previous != nil && !embedded && m.opts.TuiMode != "fullscreen" && m.tuiInst != nil && m.statusClearOnShrink() {
 			m.statusContainer.Add(&tui.IdleStatus{})
 		}
 	}

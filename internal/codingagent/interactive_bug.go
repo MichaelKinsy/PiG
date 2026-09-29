@@ -64,6 +64,10 @@ func (m *InteractiveMode) summarizeForBugReport(modelName, hint string) (string,
 	loader := tui.NewBorderedLoader("Writing summary with "+modelName+"...", true)
 	ctx, cancel := context.WithCancel(loader.CancellableContext().Context())
 	defer cancel()
+	if m.runCtx != nil {
+		stop := context.AfterFunc(m.runCtx, cancel)
+		defer stop()
+	}
 
 	m.editorContainer.SetChildren(loader)
 	m.tuiInst.Render()
@@ -87,9 +91,17 @@ func (m *InteractiveMode) summarizeForBugReport(modelName, hint string) (string,
 	ticker := time.NewTicker(bugReportLoaderFrame)
 	defer ticker.Stop()
 	for {
+		if m.requestExit.Load() {
+			cancel()
+		}
 		select {
+		case err := <-m.inputErrCh:
+			m.inputLoopErr = err
+			cancel()
+		case task := <-m.uiTaskCh:
+			task()
 		case buf := <-inputCh:
-			for _, chunk := range dropKeyReleases(loader, []string{string(buf)}) {
+			for _, chunk := range m.modalInputChunks(loader, []string{string(buf)}) {
 				loader.HandleInput(chunk)
 			}
 			m.tuiInst.Render()

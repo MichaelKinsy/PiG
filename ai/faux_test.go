@@ -74,9 +74,10 @@ func TestFauxProvider_ToolCallResponse(t *testing.T) {
 			continue
 		}
 		gotToolCall = true
-		tool, ok := delta.Partial.Content[delta.ContentIndex].(ToolCall)
+		partial := delta.Partial.Observe()
+		tool, ok := partial.Content[delta.ContentIndex].(ToolCall)
 		if !ok {
-			t.Fatalf("tool content = %#v", delta.Partial.Content[delta.ContentIndex])
+			t.Fatalf("tool content = %#v", partial.Content[delta.ContentIndex])
 		}
 		if tool.Name != "bash" || tool.ID != "tc-1" {
 			t.Errorf("tool = %#v, want bash/tc-1", tool)
@@ -124,8 +125,8 @@ func TestFauxProvider_NoResponsesQueued(t *testing.T) {
 
 func TestFauxProvider_Factory(t *testing.T) {
 	provider := NewFauxProvider(FauxConfig{})
-	provider.SetResponses([]FauxResponseStep{FauxFactoryStep(func(_ TranscriptContext, _ StreamOptions, _ int) FauxResponse {
-		return FauxResponse{Content: []FauxContentBlock{FauxText("dynamic response")}, StopReason: "stop"}
+	provider.SetResponses([]FauxResponseStep{FauxFactoryStep(func(_ TranscriptContext, _ StreamOptions, _ *FauxProviderState, _ *Model) (FauxResponse, error) {
+		return FauxResponse{Content: []FauxContentBlock{FauxText("dynamic response")}, StopReason: "stop"}, nil
 	})})
 	stream, err := provider.Stream(context.Background(), emptyTranscript(), StreamOptions{})
 	if err != nil {

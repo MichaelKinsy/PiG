@@ -7,7 +7,7 @@ import (
 	"sync"
 	"sync/atomic"
 	"testing"
-	"time"
+	"testing/synctest"
 )
 
 func testAssistant(stop StopReason) *AssistantMessage {
@@ -34,39 +34,138 @@ func pushTestDone(t *testing.T, stream *AssistantMessageEventStream) *AssistantM
 
 func waitForStreamWaiters(t *testing.T, stream *AssistantMessageEventStream, count int) {
 	t.Helper()
-	deadline := time.Now().Add(time.Second)
-	for time.Now().Before(deadline) {
-		stream.mu.Lock()
-		got := len(stream.waiters)
-		stream.mu.Unlock()
-		if got == count {
-			return
-		}
-		time.Sleep(time.Millisecond)
+	synctest.Wait()
+	stream.mu.Lock()
+	got := len(stream.waiters)
+	stream.mu.Unlock()
+	if got != count {
+		t.Fatalf("stream waiter count = %d, want %d", got, count)
 	}
-	t.Fatalf("stream waiter count did not reach %d", count)
 }
 
-func TestAssistantStreamBuilderNonterminalEventsRetainEmissionState(t *testing.T) {
+// runAsExecutorProducer runs body as the stream's producer turn, as a managed provider's response body does.
+func runAsExecutorProducer(stream *AssistantMessageEventStream, body func()) {
+	stream.mu.Lock()
+	if stream.executor == nil {
+		stream.executor = &continuationExecutor{}
+	}
+	stream.mu.Unlock()
+	_ = stream.responseContinuation(func(*continuationTurn) error {
+		body()
+		return nil
+	})
+}
+
+// runManagedBuilder runs body as a managed builder's producer turn.
+func runManagedBuilder(builder *assistantStreamBuilder, body func()) {
+	builder.managed = true
+	runAsExecutorProducer(builder.stream, func() {
+		builder.stream.mu.Lock()
+		builder.turn = builder.stream.producer
+		builder.stream.mu.Unlock()
+		defer func() { builder.turn = nil }()
+		body()
+	})
+}
+
+// Pi event-stream.ts:44-91 queues references; iteration after Result observes finalized state, not the producer's push-time state.
+func TestAssistantStreamBuilderQueuedPartialsObserveFinalState(t *testing.T) {
 	builder := newAssistantStreamBuilder(context.Background(), APIOpenAIResponses, "test", "model")
-	builder.textDelta("answer")
-	builder.done(StopReasonStop, nil, "")
+	runManagedBuilder(builder, func() {
+		builder.textDelta("answer")
+		builder.done(StopReasonStop, nil, "")
+	})
+	builder.stream.Result()
 
 	var events []AssistantMessageEvent
 	for event := range builder.stream.Events(context.Background()) {
 		events = append(events, event)
 	}
-	start := events[0].(StartEvent)
-	if len(start.Partial.Content) != 0 || start.Partial.StopReason != StopReasonPending {
-		t.Fatalf("start partial changed after emission: %#v", start.Partial)
+	start := events[0].(StartEvent).Partial.Observe()
+	if len(start.Content) != 1 || start.Content[0].(TextContent).Text != "answer" || start.StopReason != StopReasonStop {
+		t.Fatalf("queued start retained emission state: %#v", start)
 	}
-	delta := events[2].(TextDeltaEvent)
-	if len(delta.Partial.Content) != 1 || delta.Partial.Content[0].(TextContent).Text != "answer" || delta.Partial.StopReason != StopReasonPending {
-		t.Fatalf("delta partial changed after emission: %#v", delta.Partial)
+	delta := events[2].(TextDeltaEvent).Partial.Observe()
+	if len(delta.Content) != 1 || delta.Content[0].(TextContent).Text != "answer" || delta.StopReason != StopReasonStop {
+		t.Fatalf("queued delta retained emission state: %#v", delta)
 	}
 	done := events[len(events)-1].(DoneEvent)
 	if done.Message != builder.stream.Result() {
 		t.Fatal("terminal Message pointer identity changed")
+	}
+}
+
+// Pi retains the delivered reference across an awaited result; a separately captured observation stays owned data.
+func TestAssistantStreamBuilderDeliveredPartialAdvancesAfterResult(t *testing.T) {
+	builder := newAssistantStreamBuilder(t.Context(), APIOpenAIResponses, "test", "model")
+	runManagedBuilder(builder, builder.start)
+	var retained *AssistantMessage
+	for event := range builder.stream.Events(t.Context()) {
+		retained = event.(StartEvent).Partial
+		break
+	}
+	before := retained.Observe()
+	runManagedBuilder(builder, func() {
+		builder.textDelta("later")
+		builder.done(StopReasonStop, nil, "")
+	})
+	builder.stream.Result()
+	after := retained.Observe()
+	if len(before.Content) != 0 || before.StopReason != StopReasonPending {
+		t.Fatalf("owned observation changed: %#v", before)
+	}
+	if len(after.Content) != 1 || after.Content[0].(TextContent).Text != "later" || after.StopReason != StopReasonStop {
+		t.Fatalf("retained view did not advance: %#v", after)
+	}
+}
+
+// A producer outside the executor cannot be ordered against its consumer, so every nonterminal partial is its emission-time snapshot. Pi has no such producer; this keeps the observation deterministic (D82).
+func TestAssistantStreamBuilderUnmanagedProducerPublishesEmissionSnapshots(t *testing.T) {
+	for run := range 50 {
+		builder := newAssistantStreamBuilder(t.Context(), APIAnthropicMessages, "test", "model")
+		produced := make(chan struct{})
+		go func() {
+			defer close(produced)
+			builder.start()
+			builder.textDelta("one")
+			builder.textDelta(" two")
+			builder.done(StopReasonStop, nil, "")
+		}()
+		if run%2 == 0 {
+			<-produced
+		}
+		var observed []string
+		for event := range builder.stream.Events(t.Context()) {
+			var partial *AssistantMessage
+			switch event := event.(type) {
+			case StartEvent:
+				partial = event.Partial
+			case TextDeltaEvent:
+				partial = event.Partial
+			default:
+				continue
+			}
+			data, err := json.Marshal(partial.Observe())
+			if err != nil {
+				t.Fatal(err)
+			}
+			var fields struct {
+				Content    []map[string]any `json:"content"`
+				StopReason StopReason       `json:"stopReason"`
+			}
+			if err := json.Unmarshal(data, &fields); err != nil {
+				t.Fatal(err)
+			}
+			text := ""
+			if len(fields.Content) > 0 {
+				text, _ = fields.Content[0]["text"].(string)
+			}
+			observed = append(observed, string(fields.StopReason)+":"+text)
+		}
+		<-produced
+		if want := []string{"pending:", "pending:one", "pending:one two"}; !reflect.DeepEqual(observed, want) {
+			t.Fatalf("run %d observed %q, want emission snapshots %q", run, observed, want)
+		}
 	}
 }
 
@@ -120,17 +219,55 @@ func TestAssistantMessageEventStreamErrorCanTerminateBeforeStart(t *testing.T) {
 	}
 }
 
-func TestAssistantMessageEventStreamRejectsInvalidOrdering(t *testing.T) {
+// Pi's EventStream.push completes on done/error without imposing a start event (utils/event-stream.ts:44-63).
+func TestAssistantMessageEventStreamDoneCanTerminateBeforeStart(t *testing.T) {
 	stream := NewAssistantMessageEventStream()
-	partial := testAssistant(StopReasonPending)
-	if err := stream.Push(TextDeltaEvent{Delta: "early", Partial: partial}); err == nil {
-		t.Fatal("delta before start succeeded")
-	}
-	if err := stream.Push(StartEvent{Partial: partial}); err != nil {
+	message := testAssistant(StopReasonStop)
+	if err := stream.Push(DoneEvent{Reason: StopReasonStop, Message: message}); err != nil {
 		t.Fatal(err)
 	}
-	if err := stream.Push(StartEvent{Partial: partial}); err == nil {
-		t.Fatal("second start succeeded")
+	if stream.Result() != message {
+		t.Fatal("terminal pointer changed")
+	}
+	var events []AssistantMessageEvent
+	for event := range stream.Events(t.Context()) {
+		events = append(events, event)
+	}
+	if len(events) != 1 {
+		t.Fatalf("synthetic events: %#v", events)
+	}
+	if done, ok := events[0].(DoneEvent); !ok || done.Message != message {
+		t.Fatalf("terminal event: %#v", events[0])
+	}
+}
+
+// Pi event-stream.ts:44-63 does not invent start-order restrictions for valid typed events. Agent decides which pre-start updates it observes.
+func TestAssistantMessageEventStreamAcceptsTypedEventOrder(t *testing.T) {
+	stream := NewAssistantMessageEventStream()
+	partial := testAssistant(StopReasonPending)
+	for _, event := range []AssistantMessageEvent{
+		TextDeltaEvent{Delta: "early", Partial: partial},
+		StartEvent{Partial: partial},
+		StartEvent{Partial: partial},
+	} {
+		if err := stream.Push(event); err != nil {
+			t.Fatalf("typed %s rejected by an invented sequence rule: %v", event.EventType(), err)
+		}
+	}
+	stream.End(testAssistant(StopReasonStop))
+	var types []AssistantEventType
+	for event := range stream.Events(t.Context()) {
+		types = append(types, event.EventType())
+	}
+	if want := []AssistantEventType{EventTextDelta, EventStart, EventStart}; !reflect.DeepEqual(types, want) {
+		t.Fatalf("event order=%v, want %v", types, want)
+	}
+}
+
+func TestAssistantMessageEventStreamRejectsInvalidPayloads(t *testing.T) {
+	stream := NewAssistantMessageEventStream()
+	if err := stream.Push(StartEvent{}); err == nil {
+		t.Fatal("missing partial succeeded")
 	}
 	if err := stream.Push(DoneEvent{Reason: StopReasonError, Message: testAssistant(StopReasonError)}); err == nil {
 		t.Fatal("invalid done reason succeeded")
@@ -200,74 +337,82 @@ func TestAssistantMessageEventStreamPreservesOrderWhileDraining(t *testing.T) {
 }
 
 func TestAssistantMessageEventStreamDeliversToWaitingConsumersInRegistrationOrder(t *testing.T) {
-	stream := NewAssistantMessageEventStream()
-	first := make(chan AssistantEventType, 1)
-	second := make(chan AssistantEventType, 1)
-	go func() {
-		for event := range stream.Events(context.Background()) {
-			first <- event.EventType()
-			return
-		}
-	}()
-	waitForStreamWaiters(t, stream, 1)
-	go func() {
-		for event := range stream.Events(context.Background()) {
-			second <- event.EventType()
-			return
-		}
-	}()
-	waitForStreamWaiters(t, stream, 2)
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		stream := NewAssistantMessageEventStream()
+		defer stream.End()
+		first := make(chan AssistantEventType, 1)
+		second := make(chan AssistantEventType, 1)
+		go func() {
+			for event := range stream.Events(context.Background()) {
+				first <- event.EventType()
+				return
+			}
+		}()
+		waitForStreamWaiters(t, stream, 1)
+		go func() {
+			for event := range stream.Events(context.Background()) {
+				second <- event.EventType()
+				return
+			}
+		}()
+		waitForStreamWaiters(t, stream, 2)
 
-	partial := testAssistant(StopReasonPending)
-	if err := stream.Push(StartEvent{Partial: partial}); err != nil {
-		t.Fatal(err)
-	}
-	if err := stream.Push(TextDeltaEvent{Delta: "x", Partial: partial}); err != nil {
-		t.Fatal(err)
-	}
-	if got := <-first; got != EventStart {
-		t.Fatalf("first waiter received %s, want %s", got, EventStart)
-	}
-	if got := <-second; got != EventTextDelta {
-		t.Fatalf("second waiter received %s, want %s", got, EventTextDelta)
-	}
-	pushTestDone(t, stream)
+		partial := testAssistant(StopReasonPending)
+		if err := stream.Push(StartEvent{Partial: partial}); err != nil {
+			t.Fatal(err)
+		}
+		if err := stream.Push(TextDeltaEvent{Delta: "x", Partial: partial}); err != nil {
+			t.Fatal(err)
+		}
+		if got := <-first; got != EventStart {
+			t.Fatalf("first waiter received %s, want %s", got, EventStart)
+		}
+		if got := <-second; got != EventTextDelta {
+			t.Fatalf("second waiter received %s, want %s", got, EventTextDelta)
+		}
+		pushTestDone(t, stream)
+	})
 }
 
 func TestAssistantMessageEventStreamTerminalWakesAllWaitingConsumers(t *testing.T) {
-	stream := NewAssistantMessageEventStream()
-	partial := testAssistant(StopReasonPending)
-	if err := stream.Push(StartEvent{Partial: partial}); err != nil {
-		t.Fatal(err)
-	}
-	for range stream.Events(context.Background()) {
-		break
-	}
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		stream := NewAssistantMessageEventStream()
+		defer stream.End()
+		partial := testAssistant(StopReasonPending)
+		if err := stream.Push(StartEvent{Partial: partial}); err != nil {
+			t.Fatal(err)
+		}
+		for range stream.Events(context.Background()) {
+			break
+		}
 
-	var wg sync.WaitGroup
-	wg.Add(2)
-	counts := make(chan int, 2)
-	for range 2 {
-		go func() {
-			defer wg.Done()
-			count := 0
-			for range stream.Events(context.Background()) {
-				count++
-			}
-			counts <- count
-		}()
-	}
-	waitForStreamWaiters(t, stream, 2)
-	pushTestDone(t, stream)
-	wg.Wait()
-	close(counts)
-	var got []int
-	for count := range counts {
-		got = append(got, count)
-	}
-	if len(got) != 2 || got[0]+got[1] != 1 {
-		t.Fatalf("waiter delivery counts = %v, want one terminal delivery total", got)
-	}
+		var wg sync.WaitGroup
+		wg.Add(2)
+		counts := make(chan int, 2)
+		for range 2 {
+			go func() {
+				defer wg.Done()
+				count := 0
+				for range stream.Events(context.Background()) {
+					count++
+				}
+				counts <- count
+			}()
+		}
+		waitForStreamWaiters(t, stream, 2)
+		pushTestDone(t, stream)
+		wg.Wait()
+		close(counts)
+		var got []int
+		for count := range counts {
+			got = append(got, count)
+		}
+		if len(got) != 2 || got[0]+got[1] != 1 {
+			t.Fatalf("waiter delivery counts = %v, want one terminal delivery total", got)
+		}
+	})
 }
 
 func TestAssistantMessageEventStreamAbandonedIterationLeavesNoWaiterOrDeliveryGoroutine(t *testing.T) {
@@ -303,26 +448,31 @@ func TestAssistantMessageEventStreamReleasesConsumedQueueEntries(t *testing.T) {
 }
 
 func TestAssistantMessageEventStreamCancellationRemovesWaitingIterator(t *testing.T) {
-	stream := NewAssistantMessageEventStream()
-	ctx, cancel := context.WithCancel(context.Background())
-	finished := make(chan struct{})
-	go func() {
-		defer close(finished)
-		for range stream.Events(ctx) {
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		stream := NewAssistantMessageEventStream()
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+		finished := make(chan struct{})
+		go func() {
+			defer close(finished)
+			for range stream.Events(ctx) {
+			}
+		}()
+		waitForStreamWaiters(t, stream, 1)
+		cancel()
+		synctest.Wait()
+		select {
+		case <-finished:
+		default:
+			t.Fatal("canceled iterator did not return")
 		}
-	}()
-	waitForStreamWaiters(t, stream, 1)
-	cancel()
-	select {
-	case <-finished:
-	case <-time.After(time.Second):
-		t.Fatal("canceled iterator did not return")
-	}
-	stream.mu.Lock()
-	defer stream.mu.Unlock()
-	if len(stream.waiters) != 0 {
-		t.Fatalf("canceled iterator retained %d waiters", len(stream.waiters))
-	}
+		stream.mu.Lock()
+		defer stream.mu.Unlock()
+		if len(stream.waiters) != 0 {
+			t.Fatalf("canceled iterator retained %d waiters", len(stream.waiters))
+		}
+	})
 }
 
 func TestAssistantMessageEventStreamAssignedWaiterWinsCancellationResolution(t *testing.T) {
@@ -344,42 +494,46 @@ func TestAssistantMessageEventStreamAssignedWaiterWinsCancellationResolution(t *
 }
 
 func TestAssistantMessageEventStreamAssignmentWinsCancellationWithoutReordering(t *testing.T) {
-	stream := NewAssistantMessageEventStream()
-	firstContext, cancelFirst := context.WithCancel(context.Background())
-	defer cancelFirst()
-	first := make(chan AssistantEventType, 1)
-	second := make(chan AssistantEventType, 1)
-	go func() {
-		for event := range stream.Events(firstContext) {
-			first <- event.EventType()
-			return
-		}
-	}()
-	waitForStreamWaiters(t, stream, 1)
-	go func() {
-		for event := range stream.Events(context.Background()) {
-			second <- event.EventType()
-			return
-		}
-	}()
-	waitForStreamWaiters(t, stream, 2)
+	t.Parallel()
+	synctest.Test(t, func(t *testing.T) {
+		stream := NewAssistantMessageEventStream()
+		defer stream.End()
+		firstContext, cancelFirst := context.WithCancel(context.Background())
+		defer cancelFirst()
+		first := make(chan AssistantEventType, 1)
+		second := make(chan AssistantEventType, 1)
+		go func() {
+			for event := range stream.Events(firstContext) {
+				first <- event.EventType()
+				return
+			}
+		}()
+		waitForStreamWaiters(t, stream, 1)
+		go func() {
+			for event := range stream.Events(context.Background()) {
+				second <- event.EventType()
+				return
+			}
+		}()
+		waitForStreamWaiters(t, stream, 2)
 
-	partial := testAssistant(StopReasonPending)
-	if err := stream.Push(StartEvent{Partial: partial}); err != nil {
-		t.Fatal(err)
-	}
-	waitForStreamWaiters(t, stream, 1)
-	cancelFirst()
-	if err := stream.Push(TextDeltaEvent{ContentIndex: 0, Delta: "second", Partial: partial}); err != nil {
-		t.Fatal(err)
-	}
-	if got := <-first; got != EventStart {
-		t.Fatalf("assigned canceled waiter received %s, want %s", got, EventStart)
-	}
-	if got := <-second; got != EventTextDelta {
-		t.Fatalf("second waiter received %s, want %s", got, EventTextDelta)
-	}
-	pushTestDone(t, stream)
+		partial := testAssistant(StopReasonPending)
+		if err := stream.Push(StartEvent{Partial: partial}); err != nil {
+			t.Fatal(err)
+		}
+		waitForStreamWaiters(t, stream, 1)
+		cancelFirst()
+		if err := stream.Push(TextDeltaEvent{ContentIndex: 0, Delta: "second", Partial: partial}); err != nil {
+			t.Fatal(err)
+		}
+		if got := <-first; got != EventStart {
+			t.Fatalf("assigned canceled waiter received %s, want %s", got, EventStart)
+		}
+		if got := <-second; got != EventTextDelta {
+			t.Fatalf("second waiter received %s, want %s", got, EventTextDelta)
+		}
+		pushTestDone(t, stream)
+	})
 }
 
 func TestAssistantMessageEventStreamConcurrentPushResultAndIterators(t *testing.T) {

@@ -58,7 +58,7 @@ func (t *orderableScriptTool) ReserveMutationOrder(args json.RawMessage) (*Mutat
 // registration step) runs in call order before any call's async work
 // begins. Without this, admission order would depend on which goroutine
 // happens to reach the queue first, which is exactly the bug
-// parity/scenarios/tools/10-print-batched-file-mutation.toml caught: a
+// test/parity/scenarios/tools/10-print-batched-file-mutation.toml caught: a
 // batched write-then-edit on one file could apply out of order.
 func TestParallelDispatchReservesMutationOrderInSourceOrder(t *testing.T) {
 	ids := []string{"call-1", "call-2", "call-3"}
@@ -88,7 +88,7 @@ func TestParallelDispatchReservesMutationOrderInSourceOrder(t *testing.T) {
 			awaitSignal(t, release[id], "release of "+id)
 			log.add("run:" + id)
 			ticket.Release()
-			return AgentToolResult{Content: id}, nil
+			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: id}}}, nil
 		}}
 	tool := &orderableScriptTool{scriptTool: base, queue: queue, log: &log}
 

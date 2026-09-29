@@ -1,0 +1,32 @@
+# Pi 0.87.1 session-selector-search.ts:23-27,39-203 and session-selector.ts:389-416,637-679.
+# The fixture preserves all original search-test inputs/expectations, then adds DD1's five names and distinguishing scoring, ordering, whitespace and field cases.
+# The original WSL session files were not supplied; the DD1 row is a deterministic reconstruction, not a claim about the missing histories.
+# Both adapters invoke production search and input/Enter paths; the Pi adapter imports the real installed 0.87.1 package.
+# Only Go's test-runner envelope is removed. Every search result and Unicode score is compared without normalization.
+# Binary overrides select component probes, not replacement search implementations.
+name = "20-session-selector-search"
+description = "Pi search fields, tokenization, scores, stable order and resume selection"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts",
+  "packages/coding-agent/src/modes/interactive/components/session-selector.ts",
+  "packages/tui/src/fuzzy.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-search-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/session-search-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['SESSION_SEARCH ["DD1 five named sessions",["00000000-0000-4000-8000-000000000004","a"]]', 'FUZZY_UNICODE ["😀","x😀",-4.7]']
+runs = 3

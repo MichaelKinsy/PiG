@@ -1,0 +1,4 @@
+const bases=new Set(['http://example.test:00080/root','http://example.test:65536/root','http://example.test:+80/root','http://user:pass@example.test/root','http://us@er:pass@example.test/root','http://user:%zz@example.test/root','http://[0:0:0:0:0:0:0:1]/root','http://[::1]:80/root','http://0177.1/root','http://0x7f.1/root','http://127.1/root','http://localhost/root','http://example.test//root///']);
+for(const char of ['^','|','[',']','`','{','}','<','>','"',"'",'!','$','&','(',')','*','+',',',';',':','=','@','_','~','%','%2','%zz','%20','%2f','%2e','%2e%2e','é','😀'])bases.add('https://example.test/a'+char+'b');
+const rows=[...bases].map(Base=>{try{const u=new URL(Base);u.pathname=u.pathname.replace(/\/+$/,'')+'/';return {Base,Want:new URL('v1/chat/completions',u).href,Invalid:false}}catch{return{Base,Want:'',Invalid:true}}});
+console.log(JSON.stringify(rows,null,2));

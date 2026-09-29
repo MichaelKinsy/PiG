@@ -1,0 +1,46 @@
+# Behavior family: project-trust
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:4056-4091 appends the trust warning after
+# resumed messages, with one Spacer when the transcript is nonempty.
+# --no-approve bypasses the prompt (core/project-trust.ts:46-49), not the warning.
+# The snapshot marker fixes the persisted cwd to the per-process fixture copy.
+name = "14-resumed-denied-project-warning-follows-history"
+description = "Explicitly denied trust still warns after the resumed transcript, with Pi's spacing."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "fast", "security", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/warning-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/warning-agent"]
+override_base_args = true
+pi_args = ["--offline", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-approve", "--session", "sessions/session.jsonl", "--model", "openai/gpt-4.1"]
+pig_args = ["--offline", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-approve", "--session", "sessions/session.jsonl", "--model", "openai/gpt-4.1"]
+
+[tmux]
+width = 180
+height = 35
+cwd = "testdata/warning-project"
+ready_pattern_pig = "This project is not trusted."
+ready_pattern_pi = "This project is not trusted."
+ready_timeout_seconds = 30
+capture_start = "remember trust-warning-history"
+capture_start_last = true
+capture_end_regex = 'then restart pi(g)?\.'
+
+[assert]
+both_reach_ready = true
+both_contain = ["remember trust-warning-history", "noted trust-warning-history", "This project is not trusted."]
+both_not_contain = ["Trust project folder?", "panic:"]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: D2 changes only configuration and command identity.
+[[assert.normalize_replace]]
+pattern = '\.pig'
+with = ".pi"
+reason = "D2: this fixture's warning names the project configuration directory; its fixed history contains no product names."
+
+[[assert.normalize_replace]]
+pattern = 'restart pig\.'
+with = "restart pi."
+reason = "D2: only the warning's restart command names the host executable."

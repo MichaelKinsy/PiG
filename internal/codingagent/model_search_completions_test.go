@@ -11,12 +11,14 @@ import (
 func TestModelArgCompletionsSearchModelName(t *testing.T) {
 	dir := t.TempDir()
 	reg := NewModelRegistry(dir)
-	reg.RegisterProvider("zq-proxy", extension.ProviderConfig{
+	if err := reg.RegisterProvider("zq-proxy", extension.ProviderConfig{
 		BaseURL: "https://models.example/v1",
 		APIKey:  "tok",
 		API:     "openai-completions",
 		Models:  []extension.ProviderModelConfig{{ID: "zq-1", Name: "Needle Model"}},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 	m := &InteractiveMode{opts: InteractiveOptions{ModelRegistry: reg, AgentDir: dir}}
 
 	found := false

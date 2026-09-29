@@ -11,14 +11,15 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 )
 
 // OAuthProvider is one entry in the auth provider selector.
 type OAuthProvider struct {
-	ID       string // e.g. "github-copilot"
-	Name     string // display name
-	AuthType string // "oauth" or "api_key"
+	ID         string // e.g. "github-copilot"
+	Name       string // display name
+	AuthType   string // "oauth" or "api_key"
+	MethodName string
+	LoginLabel string
 
 	// Stored indicates auth.json contains a stored credential for this provider.
 	Stored bool
@@ -58,7 +59,7 @@ func FormatAuthSelectorProviderType(authType string) string {
 }
 
 // NewOAuthSelector constructs the picker.
-func NewOAuthSelector(mode string, providers []OAuthProvider) *OAuthSelector {
+func NewOAuthSelector(mode string, providers []OAuthProvider, initialSearch ...string) *OAuthSelector {
 	sel := &OAuthSelector{
 		mode:      mode,
 		providers: append([]OAuthProvider(nil), providers...),
@@ -71,6 +72,10 @@ func NewOAuthSelector(mode string, providers []OAuthProvider) *OAuthSelector {
 		authTypes[p.AuthType] = true
 	}
 	sel.showAuthTypeLabels = len(authTypes) > 1
+	if len(initialSearch) > 0 {
+		sel.search.SetText(initialSearch[0])
+		sel.applyFilter()
+	}
 	return sel
 }
 
@@ -88,13 +93,21 @@ func (s *OAuthSelector) SelectedID() string {
 	return s.filtered[s.cursor].ID
 }
 
+// SelectedProvider returns the selected method, including its auth type in mixed lists.
+func (s *OAuthSelector) SelectedProvider() OAuthProvider {
+	if s.SelectedID() == "" {
+		return OAuthProvider{}
+	}
+	return s.filtered[s.cursor]
+}
+
 func (s *OAuthSelector) applyFilter() {
 	query := ""
 	if s.search != nil {
 		query = s.search.Text()
 	}
 	s.filtered = FuzzyFilter(s.providers, query, func(p OAuthProvider) string {
-		return strings.TrimSpace(p.Name + " " + p.ID + " " + p.AuthType)
+		return p.Name + " " + p.ID + " " + p.AuthType + " " + p.MethodName
 	})
 	if s.cursor >= len(s.filtered) {
 		s.cursor = len(s.filtered) - 1
@@ -124,6 +137,9 @@ func authSelectorIndicator(p OAuthProvider) string {
 		return th.Muted + " • " + th.Reset + th.Warning + configuredOtherLabel(p.StoredType) + th.Reset
 	}
 	if p.AuthType != "api_key" {
+		if p.AuthStatusSource != "" {
+			return th.Muted + " • " + th.Reset + th.Warning + "API key configured" + th.Reset
+		}
 		return th.Muted + " • unconfigured" + th.Reset
 	}
 	switch p.AuthStatusSource {
@@ -136,7 +152,7 @@ func authSelectorIndicator(p OAuthProvider) string {
 	case "runtime":
 		return th.Success + " ✓ runtime API key" + th.Reset
 	case "fallback":
-		return th.Success + " ✓ custom API key" + th.Reset
+		return th.Success + " ✓ fallback" + th.Reset
 	case "models_json_key":
 		return th.Success + " ✓ key in models.json" + th.Reset
 	case "models_json_command":

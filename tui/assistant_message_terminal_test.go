@@ -39,7 +39,8 @@ func TestAssistantMessageBlock_TerminalContent(t *testing.T) {
 			b := NewAssistantMessageBlock(false)
 			b.SetContent([]AssistantSegment{{Text: " \n "}, {Thinking: true, Text: " "}})
 			b.SetTerminalError(tc.stop, tc.err)
-			want := []string{"", " " + ActiveTheme().Error + tc.want + SGRFgReset}
+			want := []string{"\x1b]133;A\x07", "\x1b]133;B\x07\x1b]133;C\x07 " + ActiveTheme().Error + tc.want + SGRFgReset}
+			want[1] += strings.Repeat(" ", 100-lineDisplayWidth(want[1]))
 			if got := b.Render(100); !slices.Equal(got, want) {
 				t.Fatalf("terminal output = %q, want %q", got, want)
 			}

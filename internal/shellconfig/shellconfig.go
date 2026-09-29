@@ -5,8 +5,9 @@
 package shellconfig
 
 import (
-	"regexp"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // Config is the resolved shell binary and its leading arguments. The command
@@ -21,7 +22,7 @@ type Config struct {
 	CommandTransport string
 }
 
-var legacyWSLBashPath = regexp.MustCompile(`^[a-z]:\\windows\\(?:system32|sysnative)\\bash\.exe$`)
+var legacyWSLBashPath = lazyregexp.New(`^[a-z]:\\windows\\(?:system32|sysnative)\\bash\.exe$`)
 
 // IsLegacyWSLBashPath mirrors upstream isLegacyWslBashPath.
 func IsLegacyWSLBashPath(path string) bool {

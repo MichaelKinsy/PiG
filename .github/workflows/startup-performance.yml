@@ -1,0 +1,83 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+name: Startup timing (advisory)
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+  schedule:
+    - cron: '17 7 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: startup-timing-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  timing:
+    name: Startup latency / current, 0.2.0, Pi
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    # Latency is recorded and budgets remain visible, but runner noise cannot block a release.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: v0.2.0
+          path: _startup-baseline
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: extensions/sdk-ts/package-lock.json
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.12'
+      - name: Prepare pinned oracle and matching native binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
+          npm ci --prefix extensions/sdk-ts --no-audit --no-fund
+          mkdir -p bin/startup-timing tmp/startup-timing
+          go build -p 6 -trimpath -ldflags='-s -w' -o bin/startup-timing/pig ./cmd/pig
+          (cd _startup-baseline && go build -p 6 -trimpath -ldflags='-s -w' -o ../bin/startup-timing/baseline ./cmd/pig)
+          git -C _startup-baseline rev-parse HEAD > tmp/startup-timing/baseline-commit.txt
+          go version -m bin/startup-timing/pig > tmp/startup-timing/pig-buildinfo.txt
+          go version -m bin/startup-timing/baseline > tmp/startup-timing/baseline-buildinfo.txt
+      - name: Record 25 cold and warm trials without retries
+        shell: bash
+        run: |
+          automation/ci/with-isolated-pig-home.sh python3 automation/perf/startup_timing.py \
+            --pig bin/startup-timing/pig \
+            --baseline bin/startup-timing/baseline \
+            --pi extensions/sdk-ts/node_modules/.bin/pi \
+            --runs 25 --out tmp/startup-timing
+      - name: Publish timing summary
+        if: always()
+        shell: bash
+        run: |
+          if [ -f tmp/startup-timing/summary.md ]; then
+            tee -a "$GITHUB_STEP_SUMMARY" < tmp/startup-timing/summary.md
+          else
+            echo 'Startup measurement failed; inspect the retained artifacts. No trial is retried.' >> "$GITHUB_STEP_SUMMARY"
+          fi
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        if: always()
+        with:
+          name: startup-timing-${{ github.sha }}
+          path: tmp/startup-timing
+          if-no-files-found: warn

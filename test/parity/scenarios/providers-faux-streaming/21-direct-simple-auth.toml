@@ -1,0 +1,23 @@
+# Pi 0.87.1 pre-generation-error.test.ts:36 calls seven direct streamSimple adapters, not lazy Models/ModelRuntime streams.
+# Missing request auth rejects synchronously without creating an event stream or consulting ambient keys.
+name = "21-direct-simple-auth"
+description = "Direct API authentication rejects before stream creation while preserving low-level keyless transports."
+covers = ["packages/ai/src/api/anthropic-messages.ts", "packages/ai/src/api/azure-openai-responses.ts", "packages/ai/src/api/google-generative-ai.ts", "packages/ai/src/api/mistral-conversations.ts", "packages/ai/src/api/openai-codex-responses.ts", "packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/openai-responses.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/direct-simple-auth/pig"]
+pi_args = ["node", "./test/parity/testdata/direct-simple-auth/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

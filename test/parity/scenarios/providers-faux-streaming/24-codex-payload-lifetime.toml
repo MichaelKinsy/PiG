@@ -1,0 +1,22 @@
+# Pi 0.87.1 openai-codex-responses.ts:391-416,578-596,629-638 uses a header-only timeout,
+# selected thinking maps and the requested priority/flex tier when the service echoes default.
+# Setup errors are projected from Go's error return and Pi's terminal message, without text normalization.
+name = "24-codex-payload-lifetime"
+description = "Codex native thinking maps, disabled strict sampling, tier pricing and header timeout match Pi."
+covers = ["packages/ai/src/api/openai-codex-responses.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/codex-payload-lifetime-pig"]
+pi_args = ["node", "./test/parity/testdata/codex-payload-lifetime-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"strict":null,"cost":7.5', 'Codex SSE response headers timed out after 10ms']
+runs = 3

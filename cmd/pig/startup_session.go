@@ -1,8 +1,9 @@
 package main
 
+// Ports packages/coding-agent/src/main.ts.
+
 import (
 	"bufio"
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,7 +12,11 @@ import (
 	"path/filepath"
 	"strings"
 
+	"golang.org/x/term"
+
+	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
 )
 
 type startupSessionSelection struct {
@@ -21,6 +26,83 @@ type startupSessionSelection struct {
 	forkPath     string
 	missingCWD   *missingSessionCWD
 	crossProject *crossProjectSession
+	manager      *coding.SessionManager
+}
+
+// applyName writes startup metadata before model validation. New Sessions carry the name to the mode that constructs them.
+func (s startupSessionSelection) applyName(name string) (bool, error) {
+	path := s.resumePath
+	if s.forkPath != "" {
+		path = s.forkPath
+	}
+	if name == "" || path == "" {
+		return false, nil
+	}
+	// A --session path that does not exist yet selects a new Session.
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return false, nil
+	}
+	session, err := newSessionManagerWithDir(s.runtimeCWD, s.sessionDir).Load(path)
+	if err != nil {
+		return false, err
+	}
+	_, err = session.AppendSessionInfo(name)
+	return err == nil, err
+}
+
+var listStartupSessions = func(manager *codingagent.SessionManager) ([]codingagent.SessionInfo, error) {
+	return manager.ListCurrentSessions()
+}
+
+func (s startupSessionSelection) startOptions(flags CLIFlags) coding.SessionStartOptions {
+	path := s.resumePath
+	if s.forkPath != "" {
+		path = s.forkPath
+	}
+	return coding.SessionStartOptions{
+		SessionManager: s.manager,
+		ResumePath:     path, SessionDir: s.sessionDir, SessionID: flags.SessionID,
+		NoSession:   flags.NoSession || flags.Help || flags.ListModels != "" || flags.ListModelsAll,
+		CWDOverride: flags.sessionCwdOverride,
+	}
+}
+
+// loadSession retains the selected log for both model resolution and runtime construction, matching main.ts's shared SessionManager passed to createAgentSession.
+func (s *startupSessionSelection) loadSession(flags CLIFlags) error {
+	if s.manager != nil {
+		return nil
+	}
+	path := s.resumePath
+	if s.forkPath != "" {
+		path = s.forkPath
+	}
+	if path == "" {
+		return nil
+	}
+	var override []string
+	if flags.sessionCwdOverride != nil {
+		override = []string{*flags.sessionCwdOverride}
+	}
+	manager, err := newSessionManagerWithDir(s.runtimeCWD, s.sessionDir).Open(path, override...)
+	if err != nil {
+		return err
+	}
+	s.manager = manager
+	return nil
+}
+
+type sessionAlreadyExistsError struct{ id string }
+
+func (e *sessionAlreadyExistsError) Error() string {
+	return fmt.Sprintf("Session already exists with id '%s'", e.id)
+}
+
+func formatSessionCreationWarning(id string, color bool) string {
+	message := fmt.Sprintf("Warning: No project session found with id '%s'; creating a new session with that id.", id)
+	if color {
+		return "\x1b[33m" + message + "\x1b[39m"
+	}
+	return message
 }
 
 type crossProjectSession struct {
@@ -37,19 +119,25 @@ type missingSessionCWD struct {
 func resolveStartupSessionSelection(flags CLIFlags, launchCWD, sessionDir string) (startupSessionSelection, error) {
 	launchCWD = canonicalStartupDir(launchCWD)
 	selection := startupSessionSelection{runtimeCWD: launchCWD, sessionDir: sessionDir}
-	if flags.NoSession || flags.ListModels != "" || flags.ListModelsAll || flags.ResumeAny {
+	if flags.NoSession || flags.Help || flags.ListModels != "" || flags.ListModelsAll || flags.ResumeAny {
 		return selection, nil
 	}
 
 	manager := newSessionManagerWithDir(launchCWD, sessionDir)
 	switch {
 	case flags.Session != "":
+		// Pi main.ts resolveSessionPath: a path argument opens that file, and
+		// SessionManager.open starts a new Session there when it is missing.
+		if path, ok, err := sessionPathArgument(launchCWD, flags.Session); ok {
+			if err != nil {
+				return selection, err
+			}
+			selection.resumePath = path
+			break
+		}
 		resolved, err := resolveSessionArgument(manager, launchCWD, flags.Session)
 		if err != nil {
 			return selection, err
-		}
-		if resolved.path == "" {
-			return selection, fmt.Errorf("session %q not found in %s", flags.Session, manager.SessionDir())
 		}
 		if resolved.global {
 			selection.crossProject = &crossProjectSession{path: resolved.path, cwd: resolved.cwd}
@@ -57,26 +145,38 @@ func resolveStartupSessionSelection(flags CLIFlags, launchCWD, sessionDir string
 		}
 		selection.resumePath = resolved.path
 	case flags.Fork != "":
-		resolved, err := resolveSessionArgument(manager, launchCWD, flags.Fork)
+		if flags.SessionID != "" && manager.FindByID(flags.SessionID) != "" {
+			return selection, &sessionAlreadyExistsError{id: flags.SessionID}
+		}
+		// Pi main.ts createSessionManager forks a path argument whether or not
+		// the file exists; forkFrom reports a missing or invalid source.
+		source, ok, err := sessionPathArgument(launchCWD, flags.Fork)
+		if !ok {
+			var resolved resolvedSessionArgument
+			resolved, err = resolveSessionArgument(manager, launchCWD, flags.Fork)
+			source = resolved.path
+		}
 		if err != nil {
 			return selection, err
 		}
-		if resolved.path == "" {
-			return selection, fmt.Errorf("session %q not found for fork in %s", flags.Fork, manager.SessionDir())
+		var idOption []string
+		if flags.SessionID != "" {
+			idOption = []string{flags.SessionID}
 		}
-		forked, err := manager.ForkFromFile(resolved.path)
+		// Pi forkSessionOrExit prints the forkFrom error as "Error: <message>".
+		forked, err := manager.ForkFromFile(source, idOption...)
 		if err != nil {
-			return selection, fmt.Errorf("fork session: %w", err)
+			return selection, err
 		}
 		selection.forkPath = forked.Path()
 	case flags.Continue:
 		selection.resumePath = manager.FindMostRecentForContinue()
 	case flags.SessionID != "":
-		resolved, err := findExactSession(manager.ListCurrentSessions, flags.SessionID)
-		if err != nil {
-			return selection, err
+		selection.resumePath = manager.FindByID(flags.SessionID)
+		if selection.resumePath == "" {
+			color := chalkColorLevel(environMap(os.Environ()), os.Args[1:], term.IsTerminal(int(os.Stdout.Fd()))) > 0
+			fmt.Fprintln(os.Stderr, formatSessionCreationWarning(flags.SessionID, color))
 		}
-		selection.resumePath = resolved.path
 	}
 
 	path := selection.resumePath
@@ -88,6 +188,11 @@ func resolveStartupSessionSelection(flags CLIFlags, launchCWD, sessionDir string
 	}
 	if selection.sessionDir == "" {
 		selection.sessionDir = filepath.Dir(path)
+	}
+	// Pi SessionManager.open reads the cwd only from an existing file's
+	// header; a new explicit session path keeps the launch cwd.
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return selection, nil
 	}
 
 	sessionCWD, err := readSessionCWD(path)
@@ -101,7 +206,7 @@ func resolveStartupSessionSelection(flags CLIFlags, launchCWD, sessionDir string
 		sessionCWD = filepath.Join(launchCWD, sessionCWD)
 	}
 	sessionCWD = canonicalStartupDir(sessionCWD)
-	if info, statErr := os.Stat(sessionCWD); statErr != nil || !info.IsDir() {
+	if _, statErr := os.Stat(sessionCWD); statErr != nil {
 		selection.missingCWD = &missingSessionCWD{
 			sessionFile: path,
 			storedCWD:   sessionCWD,
@@ -142,82 +247,122 @@ func confirmCrossProjectSession(reader io.Reader, writer io.Writer, cwd string) 
 }
 
 func (issue missingSessionCWD) prompt() string {
-	return fmt.Sprintf("cwd from session file does not exist\n%s\n\ncontinue in current cwd\n%s", issue.storedCWD, issue.fallbackCWD)
+	return codingagent.FormatMissingSessionCwdPrompt(codingagent.SessionCwdIssue{SessionFile: issue.sessionFile, SessionCwd: issue.storedCWD, FallbackCwd: issue.fallbackCWD})
 }
 
 func (issue missingSessionCWD) Error() string {
-	return fmt.Sprintf("Stored session working directory does not exist: %s\nSession file: %s\nCurrent working directory: %s", issue.storedCWD, issue.sessionFile, issue.fallbackCWD)
+	return codingagent.FormatMissingSessionCwdError(codingagent.SessionCwdIssue{SessionFile: issue.sessionFile, SessionCwd: issue.storedCWD, FallbackCwd: issue.fallbackCWD})
 }
 
 func readSessionCWD(path string) (string, error) {
-	f, err := os.Open(path)
+	header, err := codingagent.ReadSessionHeader(path)
 	if err != nil {
-		return "", fmt.Errorf("session: open %s: %w", path, err)
+		if _, ok := errors.AsType[*codingagent.SessionHeaderScanLimitError](err); !ok {
+			return "", err
+		}
+		entries, loadErr := codingagent.LoadEntriesFromFile(path)
+		if loadErr != nil {
+			return "", loadErr
+		}
+		if len(entries) > 0 {
+			if err := json.Unmarshal(entries[0], &header); err != nil {
+				return "", err
+			}
+		}
 	}
-	defer func() { _ = f.Close() }()
-
-	// Only the header line is read; it has no length limit, as upstream
-	// reads session files whole.
-	line, err := bufio.NewReader(f).ReadBytes('\n')
-	if err != nil && !errors.Is(err, io.EOF) {
+	if header != nil {
+		return header.CWD, nil
+	}
+	info, err := os.Stat(path)
+	if err != nil {
 		return "", err
 	}
-	if len(line) == 0 {
-		return "", fmt.Errorf("session: empty file: %s", path)
+	if info.Size() == 0 {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return "", err
+		}
+		session, err := codingagent.NewSessionManagerWithDir(cwd, filepath.Dir(path)).Open(path)
+		if err != nil {
+			return "", err
+		}
+		return session.CWD(), nil
 	}
-	line = bytes.TrimSuffix(line, []byte{'\n'})
-	line = bytes.TrimSuffix(line, []byte{'\r'})
+	return "", fmt.Errorf("Session file is not a valid pi session: %s", path)
+}
 
-	var header struct {
-		Type string `json:"type"`
-		CWD  string `json:"cwd"`
+// sessionNotFoundError is the shared unmatched ID/prefix result for --session and --fork. Unlike other startup failures, Pi prints it without an Error: prefix.
+type sessionNotFoundError struct{ arg string }
+
+func (err *sessionNotFoundError) Error() string {
+	return fmt.Sprintf("No session found matching '%s'", err.arg)
+}
+
+// sessionPathURLError is the error Node's fileURLToPath throws from Pi's
+// resolveSessionPath. Pi's main does not catch it, so Node reports it as an
+// uncaught error headed by its name, code and message.
+type sessionPathURLError struct{ err *nodeurl.Error }
+
+func (err *sessionPathURLError) Error() string {
+	if err.err.Code == "" {
+		return "URIError: " + err.err.Message
 	}
-	if err := json.Unmarshal(line, &header); err != nil {
-		return "", fmt.Errorf("session: parse header: %w", err)
+	return fmt.Sprintf("TypeError [%s]: %s", err.err.Code, err.err.Message)
+}
+
+func formatStartupSessionError(err error, color bool) string {
+	if urlErr, ok := errors.AsType[*sessionPathURLError](err); ok {
+		return urlErr.Error()
 	}
-	if header.Type != "session" {
-		return "", fmt.Errorf("session: missing header in %s", path)
+	_, missing := errors.AsType[*sessionNotFoundError](err)
+	_, exists := errors.AsType[*sessionAlreadyExistsError](err)
+	if missing || exists {
+		message := err.Error()
+		if color {
+			message = "\x1b[31m" + message + "\x1b[39m"
+		}
+		return message
 	}
-	return header.CWD, nil
+	return fmt.Sprintf("Error: %v", err)
+}
+
+// sessionPathArgument reports whether arg names a session file rather than a
+// session ID, and returns that file's path resolved against launchCWD as Pi's
+// resolvePath does. The file need not exist (Pi main.ts resolveSessionPath).
+func sessionPathArgument(launchCWD, arg string) (string, bool, error) {
+	if !strings.ContainsAny(arg, `/\\`) && !strings.HasSuffix(arg, ".jsonl") {
+		return "", false, nil
+	}
+	path, err := codingagent.ResolvePath(arg, launchCWD)
+	if urlErr, ok := errors.AsType[*nodeurl.Error](err); ok {
+		return "", true, &sessionPathURLError{err: urlErr}
+	}
+	return path, true, err
 }
 
 func resolveSessionArgument(manager *codingagent.SessionManager, launchCWD, arg string) (resolvedSessionArgument, error) {
-	if strings.ContainsAny(arg, `/\\`) || strings.HasSuffix(arg, ".jsonl") {
-		if filepath.IsAbs(arg) {
-			if _, err := os.Stat(arg); err == nil {
-				return resolvedSessionArgument{path: filepath.Clean(arg)}, nil
-			}
-			return resolvedSessionArgument{}, nil
+	if path, ok, err := sessionPathArgument(launchCWD, arg); ok {
+		if err != nil {
+			return resolvedSessionArgument{}, err
 		}
-		path := filepath.Join(launchCWD, arg)
 		if _, err := os.Stat(path); err == nil {
-			return resolvedSessionArgument{path: filepath.Clean(path)}, nil
+			return resolvedSessionArgument{path: path}, nil
 		}
 		return resolvedSessionArgument{}, nil
 	}
-	resolved, err := findSession(manager.ListCurrentSessions, arg)
+	resolved, err := findSession(func() ([]codingagent.SessionInfo, error) { return listStartupSessions(manager) }, arg)
 	if err != nil || resolved.path != "" {
 		return resolved, err
 	}
-	resolved, err = findSession(manager.ListAllSessions, arg)
+	resolved, err = findSession(func() ([]codingagent.SessionInfo, error) { return manager.ListAllSessions() }, arg)
 	if err != nil {
 		return resolvedSessionArgument{}, err
 	}
-	resolved.global = resolved.path != ""
+	if resolved.path == "" {
+		return resolvedSessionArgument{}, &sessionNotFoundError{arg: arg}
+	}
+	resolved.global = true
 	return resolved, nil
-}
-
-func findExactSession(loader func() ([]codingagent.SessionInfo, error), id string) (resolvedSessionArgument, error) {
-	infos, err := loader()
-	if err != nil {
-		return resolvedSessionArgument{}, err
-	}
-	for _, info := range infos {
-		if info.ID == id {
-			return resolvedSessionArgument{path: info.Path, cwd: info.CWD}, nil
-		}
-	}
-	return resolvedSessionArgument{}, nil
 }
 
 func findSession(loader func() ([]codingagent.SessionInfo, error), id string) (resolvedSessionArgument, error) {

@@ -3,6 +3,7 @@ package codingagent
 import (
 	"bytes"
 	"context"
+	"io"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -49,15 +50,47 @@ func TestEditorHelperProcess(t *testing.T) {
 	os.Exit(0)
 }
 
-// fakeEditor returns an editor command that runs TestEditorHelperProcess in
-// mode. The command is split on spaces, so the test binary path must have none.
+// fakeEditor names the helper through PATH so Pi's literal-space command splitting also works when the test executable's directory or basename contains spaces.
 func fakeEditor(t *testing.T, mode string) string {
 	t.Helper()
-	if strings.ContainsAny(os.Args[0], " \t") {
-		t.Skipf("editor commands split on spaces; test binary path %q has one", os.Args[0])
+	binary, err := os.Executable()
+	if err != nil {
+		t.Fatal(err)
 	}
+	dir, name := filepath.Dir(binary), filepath.Base(binary)
+	if strings.ContainsAny(name, " \t") {
+		dir, name = t.TempDir(), "pig-editor-helper"
+		if runtime.GOOS == "windows" {
+			name += ".exe"
+		}
+		target := filepath.Join(dir, name)
+		if err := os.Link(binary, target); err != nil {
+			copyEditorHelper(t, binary, target)
+		}
+	}
+	t.Setenv("PATH", dir+string(os.PathListSeparator)+os.Getenv("PATH"))
 	t.Setenv(editorHelperEnv, "1")
-	return os.Args[0] + " -test.run=TestEditorHelperProcess -- " + mode
+	return name + " -test.run=TestEditorHelperProcess -- " + mode
+}
+
+func copyEditorHelper(t *testing.T, source, target string) {
+	t.Helper()
+	input, err := os.Open(source)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = input.Close() }()
+	output, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o755)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = output.Close() }()
+	if _, err := io.Copy(output, input); err != nil {
+		t.Fatal(err)
+	}
+	if err := output.Close(); err != nil {
+		t.Fatal(err)
+	}
 }
 
 func TestOpenExternalEditorPrintsLaunchMessage(t *testing.T) {
@@ -89,7 +122,7 @@ func TestOpenExternalEditorPrintsLaunchMessage(t *testing.T) {
 	if !strings.Contains(got, "Launching external editor: "+fake+" --wait") {
 		t.Fatalf("stdout missing launch message:\n%s", got)
 	}
-	if !strings.Contains(got, "pig will resume when the editor exits.") {
+	if !strings.Contains(got, "Pi will resume when the editor exits.") {
 		t.Fatalf("stdout missing resume message:\n%s", got)
 	}
 }
@@ -178,14 +211,42 @@ func TestOpenExternalEditorAcceptsArguments(t *testing.T) {
 	// Common configuration: $EDITOR="code --wait". The helper splits on
 	// whitespace and forwards the args; the fake records them into the file.
 	t.Setenv("VISUAL", "")
-	t.Setenv("EDITOR", fakeEditor(t, "args")+" --extra-flag")
+	t.Setenv("EDITOR", fakeEditor(t, "args")+" --extra-flag  --second")
 
 	got, err := OpenExternalEditor(context.Background(), "", "")
 	if err != nil {
 		t.Fatalf("run: %v", err)
 	}
-	if !strings.Contains(got, "--extra-flag") {
-		t.Errorf("expected --extra-flag forwarded; got %q", got)
+	prefix := "--extra-flag  --second "
+	if runtime.GOOS == "windows" {
+		// Pi's shell:true lets cmd.exe parse the command line on Windows.
+		prefix = "--extra-flag --second "
+	}
+	if !strings.HasPrefix(got, prefix) {
+		t.Errorf("expected arguments %q forwarded; got %q", prefix, got)
+	}
+}
+
+// Pi resolves the command through SettingsManager before editInExternalEditor spawns the child.
+func TestOpenExternalEditorSettingsResolution(t *testing.T) {
+	for _, configured := range []string{"", " \ufeff\t"} {
+		t.Run(configured, func(t *testing.T) {
+			visual := fakeEditor(t, "visual")
+			t.Setenv("VISUAL", visual)
+			t.Setenv("EDITOR", fakeEditor(t, "editor"))
+			sm := NewSettingsManager(t.TempDir(), t.TempDir())
+			if err := sm.UpdateGlobal(func(settings *Settings) { settings.ExternalEditor = configured }); err != nil {
+				t.Fatal(err)
+			}
+			command := sm.GetExternalEditorCommand()
+			if command != visual {
+				t.Errorf("resolved command = %q, want %q", command, visual)
+			}
+			got, err := OpenExternalEditor(t.Context(), "original", command)
+			if err != nil || got != "from VISUAL" {
+				t.Fatalf("settings/editor result = %q, %v", got, err)
+			}
+		})
 	}
 }
 

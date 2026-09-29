@@ -1,0 +1,29 @@
+# Pi 0.87.1 #6162 switches tools inside an extension tool. The next request in
+# the same run must see both the new declarations and rebuilt tool prompt.
+# All three upstream cases run through the real SDK Session and faux provider.
+# The probes assert full Session/provider prompt equality, then compare the
+# exact tool-snippet lines and tool declarations. A forced run prompt remains
+# unchanged while the tool declarations switch. Setup helpers are transpiled;
+# production code comes unchanged from published Pi 0.87.1.
+name = "18-sdk-next-turn-tools"
+description = "Tool changes rebuild the next provider prompt while retaining forced run prompts"
+covers = ["packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/tool-next-turn-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/tool-next-turn-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['["- after_switch: Run after the active tool set changes"]', 'true,true]']
+runs = 3

@@ -36,7 +36,7 @@ func appendTreeUser(t *testing.T, sess *Session, text string) string {
 	t.Helper()
 	id, err := sess.inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{
 		Role:    "user",
-		Content: []ai.UserContentBlock{ai.TextContent{Text: text}},
+		Content: ai.UserContentBlocks{ai.TextContent{Text: text}},
 	}})
 	if err != nil {
 		t.Fatal(err)
@@ -94,7 +94,7 @@ func (c *promptCapturingCompleter) CompleteSimple(_ context.Context, _ *ai.Model
 		if message.User == nil {
 			continue
 		}
-		for _, block := range message.User.Content {
+		for _, block := range message.ContentBlocks() {
 			if text, ok := block.(ai.TextContent); ok {
 				prompt.WriteString(text.Text)
 			}
@@ -160,7 +160,7 @@ func TestNavigateTreeSummarizeRequiresModel(t *testing.T) {
 	target := appendTreeUser(t, sess, "hello")
 	appendTreeAssistant(t, sess, "hi")
 	leaf := appendTreeUser(t, sess, "again")
-	sess.model.Store(nil)
+	sess.Agent().SetModel(nil)
 
 	_, err := sess.NavigateTree(context.Background(), target, NavigateTreeOptions{Summarize: true})
 	if err == nil || err.Error() != "No model available for summarization" {
@@ -217,7 +217,7 @@ func TestNavigateTreeUserTargetJoinsTextBlocks(t *testing.T) {
 	sess := newTreeTestSession(t)
 	target, err := sess.inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{
 		Role: "user",
-		Content: []ai.UserContentBlock{
+		Content: ai.UserContentBlocks{
 			ai.TextContent{Text: "look at "},
 			ai.ImageContent{Data: "aGk=", MimeType: "image/png"},
 			ai.TextContent{Text: "this"},
@@ -626,8 +626,8 @@ func TestNavigateTreeEmitsSessionBeforeTreeWithPreparation(t *testing.T) {
 	}
 }
 
-// Port of regression 3688: a cancelling session_before_tree handler returns
-// { cancelled: true } and clears the branch summary state.
+// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/3688-tree-cancel-compacting.test.ts:14
+// clears branch summary state when session_before_tree cancels navigation.
 func TestNavigateTreeSessionBeforeTreeCancel(t *testing.T) {
 	sess := newTreeTestSession(t)
 	withTreeHandlers(sess, t, map[string][]extension.HandlerFn{
@@ -636,8 +636,11 @@ func TestNavigateTreeSessionBeforeTreeCancel(t *testing.T) {
 		}},
 	})
 	target := appendTreeUser(t, sess, "first")
-	appendTreeAssistant(t, sess, "reply")
+	appendUpstreamTreeAssistant(t, sess, "reply")
 	current := appendTreeUser(t, sess, "second")
+	if got := treeLeaf(sess); got != current {
+		t.Fatalf("initial leaf = %s, want %s", got, current)
+	}
 
 	res, err := sess.NavigateTree(context.Background(), target, NavigateTreeOptions{})
 	if err != nil {
@@ -654,9 +657,8 @@ func TestNavigateTreeSessionBeforeTreeCancel(t *testing.T) {
 	}
 }
 
-// Port of branch-summary-extensions.test.ts: an extension-provided summary
-// replaces the summarizer, is marked fromHook, and its usage counts in the
-// session totals.
+// .upstream/v0.87.1/packages/coding-agent/test/branch-summary-extensions.test.ts:15
+// persists extension-provided summary usage in session totals.
 func TestNavigateTreeExtensionSummary(t *testing.T) {
 	sess := newTreeTestSession(t)
 	completer := &fakeCompleter{summary: "must not run"}
@@ -678,9 +680,9 @@ func TestNavigateTreeExtensionSummary(t *testing.T) {
 		t.Fatal(err)
 	}
 	target := appendTreeUser(t, sess, "first branch")
-	appendTreeAssistant(t, sess, "first reply")
+	appendUpstreamTreeAssistant(t, sess, "first reply")
 	appendTreeUser(t, sess, "abandoned branch work")
-	source := appendTreeAssistant(t, sess, "abandoned reply")
+	source := appendUpstreamTreeAssistant(t, sess, "abandoned reply")
 
 	res, err := sess.NavigateTree(context.Background(), target, NavigateTreeOptions{Summarize: true})
 	if err != nil {
@@ -702,7 +704,7 @@ func TestNavigateTreeExtensionSummary(t *testing.T) {
 		t.Fatal("extension summary still ran the summarizer")
 	}
 	stats := sess.GetSessionStats()
-	if stats.Tokens != (SessionStatsTokens{Input: 10, Output: 20, CacheRead: 30, CacheWrite: 40, Total: 100}) || stats.Cost != 1 {
+	if stats.Tokens != (SessionStatsTokens{Input: 12, Output: 22, CacheRead: 30, CacheWrite: 40, Total: 104}) || stats.Cost != 1 {
 		t.Fatalf("stats tokens = %+v cost = %v", stats.Tokens, stats.Cost)
 	}
 }
@@ -867,9 +869,8 @@ func TestNavigateTreeEmitsSessionTree(t *testing.T) {
 	})
 }
 
-// Port of regression 9178 "rejects a second navigation while the first is
-// waiting": the first navigation is held inside its session_before_tree
-// handler, and a second navigation is rejected without moving the leaf.
+// .upstream/v0.87.1/packages/coding-agent/test/suite/regressions/9178-tree-during-compaction.test.ts:69
+// rejects a second navigation while the first is waiting.
 func TestNavigateTreeRejectsSecondNavigationDuringSessionBeforeTree(t *testing.T) {
 	sess := newTreeTestSession(t)
 	started := make(chan struct{})
@@ -883,9 +884,10 @@ func TestNavigateTreeRejectsSecondNavigationDuringSessionBeforeTree(t *testing.T
 		}},
 	})
 	secondTarget := appendTreeUser(t, sess, "first user")
-	firstTarget := appendTreeAssistant(t, sess, "first assistant")
+	firstTarget := appendUpstreamTreeAssistant(t, sess, "first assistant")
 	appendTreeUser(t, sess, "second user")
-	originalLeaf := appendTreeAssistant(t, sess, "second assistant")
+	originalLeaf := appendUpstreamTreeAssistant(t, sess, "second assistant")
+	sess.RefreshContext()
 
 	firstDone := make(chan error, 1)
 	go func() {
@@ -902,7 +904,7 @@ func TestNavigateTreeRejectsSecondNavigationDuringSessionBeforeTree(t *testing.T
 	_, secondErr := sess.NavigateTree(context.Background(), secondTarget, NavigateTreeOptions{})
 	leafWhileWaiting := treeLeaf(sess)
 	close(release)
-	if secondErr == nil || secondErr.Error() != treeNavigationInProgressError {
+	if secondErr == nil || secondErr.Error() != "Wait for the current compaction or tree navigation to finish before navigating the session tree." {
 		t.Fatalf("second NavigateTree error = %v", secondErr)
 	}
 	if leafWhileWaiting != originalLeaf {

@@ -8,7 +8,7 @@ on:
     paths:
       - go.mod
       - .node-version
-      - coding/pigversion/pigversion.go
+      - internal/coding/pigversion/pigversion.go
       - .github/workflows/ci.yml
       - .dockerignore
       - automation/images/**
@@ -21,7 +21,7 @@ on:
     paths:
       - go.mod
       - .node-version
-      - coding/pigversion/pigversion.go
+      - internal/coding/pigversion/pigversion.go
       - .github/workflows/ci.yml
       - .dockerignore
       - automation/images/**

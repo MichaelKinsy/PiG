@@ -4,23 +4,23 @@ Operating rules for AI agents maintaining `pig`, the Go port of upstream `pi`. T
 
 ## Mission
 
-`pig` must match upstream `pi` observable behavior unless `DIVERGENCES.md` records a numbered, scrutinized exception. Treat the port as a compiler from upstream TypeScript behavior to Go behavior: `PORT_MAP.md` defines the file map, parity scenarios define behavior, `parity/coverage.md` reports proof, and gates keep the claims honest.
+`pig` must match upstream `pi` observable behavior unless `docs/parity/DIVERGENCES.md` records a numbered, scrutinized exception. Treat the port as a compiler from upstream TypeScript behavior to Go behavior: `docs/parity/PORT_MAP.md` defines the file map, parity scenarios define behavior, `test/parity/coverage.md` reports proof, and gates keep the claims honest.
 
 Source of truth:
 - `.upstream/current/` is the upstream mirror.
-- `coding/pigversion/pigversion.go` pins the upstream version (re-exported by `coding/upstream.go` as `coding.UpstreamVersion`).
-- `PORT_MAP.md` maps upstream files to Go files, deferred entries, or designed-out entries.
-- `parity/scenarios/<family>/*.toml` define observed behavior.
-- `parity/interfaces/upstream-v<version>.json` is the compiler-derived public
+- `internal/coding/pigversion/pigversion.go` pins the upstream version (re-exported by `coding/upstream.go` as `coding.UpstreamVersion`).
+- `docs/parity/PORT_MAP.md` maps upstream files to Go files, deferred entries, or designed-out entries.
+- `test/parity/scenarios/<family>/*.toml` define observed behavior.
+- `test/parity/interfaces/upstream-v<version>.json` is the compiler-derived public
   package interface denominator; observable adapter inventories such as
   `cli-v<version>.json` extend it for non-package user contracts;
   `mapping-v<version>.json` records each Pig disposition and closure evidence. Generated inventory drift and strict mapping
   are Foundation gates. PORT_MAP remains the file navigation roll-up until
   Foundation I finishes generating its statuses from these ledgers.
-- `parity/upstream-sync/v<version>.toml` accounts for every changed tracked source file in a version leap.
-- `parity/async-contracts.toml` accounts for Promise/async semantics across the complete pinned upstream source tree.
-- `parity/coverage.md` and the generated block below report verification.
-- `DIVERGENCES.md` records intentional differences.
+- `test/parity/upstream-sync/v<version>.toml` accounts for every changed tracked source file in a version leap.
+- `test/parity/async-contracts.toml` accounts for Promise/async semantics across the complete pinned upstream source tree.
+- `test/parity/coverage.md` and the generated block below report verification.
+- `docs/parity/DIVERGENCES.md` records intentional differences.
 
 No prose status claim overrides those files.
 
@@ -41,13 +41,15 @@ Classify every proposed additive capability before implementation:
 2. `inert capability` remains in Stock PiG only when an extension or Piglet must select it.
 3. Composition, presentation, policy, and branded behavior belong in PiG Standard or another explicit Piglet or Package.
 4. Caller-free or unneeded behavior is deleted.
-5. Behavior that overlaps Pi but differs observably is fixed or recorded in `DIVERGENCES.md` after explicit approval.
+5. Behavior that overlaps Pi but differs observably is fixed or recorded in `docs/parity/DIVERGENCES.md` after explicit approval.
 
 Use `product-neutral diagnostics` for generic reports that describe Stock mechanisms. Use `explicit unsafe opt-in` only for a capability that stays off by default, is visible at configuration boundaries, and must not be selected by PiG Standard.
 
 A Piglet cannot supply the parser, resolver, verifier, SDK bridge, isolation boundary, or build machinery needed to load itself. Do not move those bootstrap mechanisms into PiG Standard. Do not activate Standard behavior in Stock PiG. Do not put product UI, Piglet-specific recommendations, workflow-specific logic, or linked extension products under `internal/` or `cmd/` except for the minimum generic host capability.
 
-Additive records use `docs/additive-features.md`. Observable Stock PiG differences use `DIVERGENCES.md`. Place one short typed source marker at each production decision point. Tests do not satisfy the source-marker requirement.
+Additive records use `docs/additive-features.md`. Observable Stock PiG differences use `docs/parity/DIVERGENCES.md`. Place one short typed source marker at each production decision point. Tests do not satisfy the source-marker requirement.
+
+Change the version only with `make set-version VERSION=x.y.z`.
 
 ## Pig-owned format and update policy
 
@@ -80,7 +82,7 @@ stay subprocess-only without giving up the pi extension API:
   `coding/extension/host/subprocess/protocol.go` and the same
   registration/host-call/tool-result shapes. The wire has no independent
   version or compatibility negotiation. The conformance suite in
-  `tests/extension-conformance/` is the
+  `test/extension-conformance/` is the
   authority: a new SDK feature is only “done” when it matches the
   in-process Go reference there.
 
@@ -187,7 +189,7 @@ Probe upstream call sites, not only the declared return type: an `async` functio
 ## Reward function
 
 Highest-value work, in order:
-1. Find a pig-vs-pi behavior difference and fix it at the source, or number it in `DIVERGENCES.md`.
+1. Find a pig-vs-pi behavior difference and fix it at the source, or number it in `docs/parity/DIVERGENCES.md`.
 2. Tighten an existing scenario comparator: `wait_contains` → `output_normalized_equal` → `output_equal` → `escaped_output_equal`, or increase `runs` where flake risk matters.
 3. Promote silent drift to a numbered divergence with call-site markers, remove condition, and parity coverage or explicit allowance.
 4. Add honest file coverage where the asserted output actually exercises the claimed `covers` paths.
@@ -222,7 +224,7 @@ Bugs found and fixed at the source (count: N):
 Comparators tightened (count: N):
   - <scenario>: <before> → <after>
 
-Divergences numbered in DIVERGENCES.md (count: N):
+Divergences numbered in docs/parity/DIVERGENCES.md (count: N):
   - D<N> <one-line>
 
 Lint suppressions added or changed (count: N):
@@ -262,7 +264,7 @@ make interface-recommendations
 make interface-mapping-quality
 make interface-mapping-strict
 make upstream-delta
-make async-contracts` or `make verify` from `PORT_MAP.md` and `parity/scenarios/**/*.toml`. Do not hand-edit between the markers. Fix `parity/cmd/coverage/main.go` if the math is wrong.
+make async-contracts` or `make verify` from `docs/parity/PORT_MAP.md` and `test/parity/scenarios/**/*.toml`. Do not hand-edit between the markers. Fix `test/parity/cmd/coverage/main.go` if the math is wrong.
 
 <!-- BEGIN COVERAGE -->
 <!--
@@ -271,45 +273,45 @@ make async-contracts` or `make verify` from `PORT_MAP.md` and `parity/scenarios/
   port. Everything else is invariant rule, not progress narrative.
 -->
 
-**Porting:** 446 / 542 intended-portable entries ✅ (82.3%); **Verification:** 429 behavioral (96.2%), 3 weak-only (no behavioral verification), 14 untested.
-Raw PORT_MAP rows: 616. Breakdown: 74 n/a (designed out) · 24 🟡 partial · 72 ⬜ not started. See DIVERGENCES.md for the documented exceptions.
+**Porting:** 424 / 564 intended-portable entries ✅ (75.2%); **Verification:** 407 behavioral (96.0%), 3 weak-only (no behavioral verification), 14 untested.
+Raw PORT_MAP rows: 622. Breakdown: 58 n/a (designed out) · 108 🟡 partial · 32 ⬜ not started. See docs/parity/DIVERGENCES.md for the documented exceptions.
 Behavioral evidence includes paired scenarios and reviewed mutation-proven unit tests; the family table below counts paired scenarios only.
-Weak scenarios not counted as behavioral verification: 5 boot-only, 3 registration-only, 1 smoke-only.
+Weak scenarios not counted as behavioral verification: 4 boot-only, 4 registration-only, 1 smoke-only.
 
 | family | scenarios | behavioral | boot-only | weak | deferred | upstream behavioral covered | last run |
 |---|---:|---:|---:|---:|---:|---:|---|
 | `_top` | 1 | 1 | 0 | 0 | 0 | 1 | not run |
-| `ai-sdk` | 1 | 1 | 0 | 0 | 0 | 92 | not run |
-| `autocomplete` | 7 | 7 | 0 | 0 | 0 | 5 | not run |
-| `cli-utils` | 9 | 9 | 0 | 0 | 0 | 12 | not run |
-| `clipboard-images` | 4 | 4 | 0 | 0 | 2 | 7 | not run |
-| `compaction` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
+| `ai-sdk` | 3 | 3 | 0 | 0 | 0 | 93 | not run |
+| `autocomplete` | 13 | 13 | 0 | 0 | 0 | 5 | not run |
+| `cli-utils` | 24 | 24 | 0 | 0 | 0 | 13 | not run |
+| `clipboard-images` | 7 | 7 | 0 | 0 | 2 | 11 | not run |
+| `compaction` | 15 | 15 | 0 | 0 | 0 | 14 | not run |
 | `experimental-pico3` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `export-html` | 5 | 5 | 0 | 0 | 0 | 5 | not run |
+| `export-html` | 6 | 6 | 0 | 0 | 0 | 1 | not run |
 | `extension-host` | 1 | 1 | 0 | 0 | 0 | 2 | not run |
-| `extensions-runtime` | 32 | 32 | 0 | 0 | 0 | 31 | not run |
-| `footer` | 7 | 7 | 0 | 0 | 0 | 8 | not run |
+| `extensions-runtime` | 93 | 92 | 0 | 1 | 0 | 62 | not run |
+| `footer` | 11 | 11 | 0 | 0 | 0 | 9 | not run |
 | `fullscreen` | 10 | 10 | 0 | 0 | 0 | 7 | not run |
-| `interactive-rendering` | 32 | 30 | 2 | 0 | 0 | 27 | not run |
-| `json` | 2 | 2 | 0 | 0 | 0 | 3 | not run |
-| `model-resolver-selector` | 17 | 17 | 0 | 0 | 0 | 13 | not run |
-| `model-runtime-store-catalog` | 3 | 3 | 0 | 0 | 0 | 7 | not run |
-| `oauth` | 13 | 13 | 0 | 0 | 0 | 15 | not run |
-| `print` | 3 | 3 | 0 | 0 | 0 | 4 | not run |
-| `project-trust` | 8 | 8 | 0 | 0 | 0 | 13 | not run |
-| `providers-faux-streaming` | 11 | 10 | 0 | 1 | 0 | 15 | not run |
-| `providers-registry` | 6 | 3 | 0 | 3 | 0 | 26 | not run |
-| `rpc` | 31 | 31 | 0 | 0 | 0 | 15 | not run |
-| `selectors` | 10 | 10 | 0 | 0 | 1 | 14 | not run |
-| `session` | 8 | 8 | 0 | 0 | 0 | 9 | not run |
-| `settings` | 7 | 7 | 0 | 0 | 0 | 13 | not run |
-| `slash-commands` | 9 | 8 | 1 | 0 | 0 | 17 | not run |
-| `startup` | 8 | 7 | 1 | 0 | 0 | 5 | not run |
-| `tools` | 13 | 13 | 0 | 0 | 0 | 27 | not run |
-| `tree` | 5 | 4 | 1 | 0 | 0 | 5 | not run |
-| `tui-components` | 11 | 11 | 0 | 0 | 0 | 16 | not run |
+| `interactive-rendering` | 46 | 45 | 1 | 0 | 0 | 34 | not run |
+| `json` | 4 | 4 | 0 | 0 | 0 | 5 | not run |
+| `model-resolver-selector` | 20 | 20 | 0 | 0 | 0 | 13 | not run |
+| `model-runtime-store-catalog` | 25 | 25 | 0 | 0 | 0 | 26 | not run |
+| `oauth` | 24 | 24 | 0 | 0 | 0 | 17 | not run |
+| `print` | 7 | 7 | 0 | 0 | 0 | 6 | not run |
+| `project-trust` | 23 | 23 | 0 | 0 | 0 | 18 | not run |
+| `providers-faux-streaming` | 64 | 63 | 0 | 1 | 0 | 47 | not run |
+| `providers-registry` | 7 | 4 | 0 | 3 | 0 | 26 | not run |
+| `rpc` | 45 | 45 | 0 | 0 | 0 | 22 | not run |
+| `selectors` | 14 | 14 | 0 | 0 | 1 | 15 | not run |
+| `session` | 40 | 40 | 0 | 0 | 0 | 20 | not run |
+| `settings` | 14 | 14 | 0 | 0 | 0 | 19 | not run |
+| `slash-commands` | 16 | 15 | 1 | 0 | 0 | 18 | not run |
+| `startup` | 16 | 15 | 1 | 0 | 0 | 9 | not run |
+| `tools` | 30 | 30 | 0 | 0 | 0 | 39 | not run |
+| `tree` | 8 | 7 | 1 | 0 | 0 | 5 | not run |
+| `tui-components` | 26 | 26 | 0 | 0 | 0 | 27 | not run |
 
-Full per-file detail: `parity/coverage.md`.
+Full per-file detail: `test/parity/coverage.md`.
 
 <!-- END COVERAGE -->
 
@@ -327,10 +329,16 @@ Use a term from `docs/project/CONTEXT.md` when that file defines it. Do not rede
 | Main Screen, terminal rendering, input editing | `tui/AGENTS.md` |
 | Session, Model Runtime, execution mode | `coding/AGENTS.md` |
 | Extension Host, SDK, topology, lifecycle | `coding/extension/AGENTS.md` |
-| upstream oracle, scenario, comparator, evidence | `parity/AGENTS.md` |
+| upstream oracle, scenario, comparator, evidence | `test/parity/AGENTS.md` |
 | Stock PiG artifact, PiG Standard Piglet release, provenance, publication | `.github/AGENTS.md` |
 
 Apply these rules to new work. Do not delete or weaken accepted tests to conform. Coordinate with the lane owner before changing evidence. Brief or restart active agents after an instruction change.
+
+## Upstream test parity
+
+A production file is `ported` only when every upstream test file covering it is ported with the same inputs and expected results, or designed out with a numbered, reviewed reason. Record test locations and current upstream hashes in `test/parity/interfaces/test-mapping-v<version>.json`. A `partial` disposition enumerates the missing cases; file-name similarity, existing code, and a passing smoke test do not close them. Port the covering upstream tests in the same change whenever you port or change a production file. Preserve ordering, cancellation, errors, retained state, and caller effects, not only happy-path output.
+
+No release may treat a pending or partial upstream test tagged `hot-path` as closed. `make ci-contracts` enforces the reviewed path tags in `test/parity/interfaces/test-porting-policy-v<version>.json` and rejects a decrease in the total ported-file count against the committed baseline. The owner-approved 0.3.x exception records explicit `deferred-0.3.x` rows without changing their partial/pending mappings, hot-path tags, assertions or baseline; [the release-policy procedure](test/parity/README.md#approved-03x-test-porting-gaps) defines the required approval, missing-case reference and follow-up. All unlisted pending/partial hot paths remain release blockers. Keep tag review and the ported baseline current in the same change; never remove a hot-path tag or lower the baseline to pass the gate. A credential or toolchain requirement is not a scope exclusion. Dispatch test-file ownership through `docs/parity/pending-tests-batches.md`; coordinate production files and shared evidence separately.
 
 ## Verification-driven development
 
@@ -372,8 +380,8 @@ Shared-path acceptance matrix for regressions:
 ## Done criteria
 
 A surface is done only when:
-1. a canonical scenario exists under `parity/scenarios/<family>/`;
-2. `covers = [...]` names exact upstream paths from `PORT_MAP.md` **and** those paths are exercised by the asserted behavior;
+1. a canonical scenario exists under `test/parity/scenarios/<family>/`;
+2. `covers = [...]` names exact upstream paths from `docs/parity/PORT_MAP.md` **and** those paths are exercised by the asserted behavior;
 3. the scenario has behavioral verification quality (not boot-only, registration-only, smoke-only, or deferred) unless the surface is explicitly accepted as weak-only;
 4. the scenario was derived from upstream first;
 5. drift exposed by the scenario is fixed or recorded as a numbered divergence;
@@ -391,14 +399,14 @@ A surface is done only when:
 11. `make async-contracts` proves every current upstream Promise/async source has an explicit ordering/cancellation/error contract and durable evidence.
 
 12. interaction and state-machine behavior found during probing is closed in
-    `parity/behavior-contracts.toml` when declaration shape cannot express it.
+    `test/parity/behavior-contracts.toml` when declaration shape cannot express it.
     Contracts bind a hashed current-upstream source range and its complete
     keybinding/event inventory to Pig targets, a failing unit regression, and a
     behavioral parity scenario. Boundary transitions such as first/last
     wraparound, empty/singleton states, cancellation, ordering, and persistence
     are separate obligations; interface presence does not prove them.
 
-`parity/interfaces/behavior-inputs-v<version>.json` is the compiler-derived
+`test/parity/interfaces/behavior-inputs-v<version>.json` is the compiler-derived
 denominator for upstream input/action state machines and render surfaces. It
 accounts for keybinding declarations, platform defaults, consumers, raw input,
 branch/state effects, theme calls, glyph/string tokens, width/layout calls,
@@ -449,17 +457,17 @@ Re-probe it against the exact current upstream and current production path at
 every upstream leap and foundation/release review. Delete or reclassify entries
 that are language mechanics, additive behavior, test limitations,
 unreachable/equal behavior, stale scaffolds, or caller-free code. IDs are global
-across `DIVERGENCES.md` and additive ledgers; duplicate IDs fail even when they
+across `docs/parity/DIVERGENCES.md` and additive ledgers; duplicate IDs fail even when they
 live in different files.
 
 A divergence is allowed only when it is user-visible or interop-relevant and cannot or should not be made faithful now. Every active divergence must have:
-- `D<N>` id in `DIVERGENCES.md`;
+- `D<N>` id in `docs/parity/DIVERGENCES.md`;
 - `SCRUTINIZED:approved`;
 - remove-when condition;
 - `// pig divergence (D<N>): ...` at each call site;
 - parity coverage or an explicit parity allowance.
 
-`make divergence-guard` (part of `make check`) catches divergences nobody recorded. It flags, in the agent, ai, coding, internal/codingagent, tui and cmd/pig packages: duration and cap literals with no upstream counterpart (`magic-literal`), event sends that race a context-done case (`cancel-drop-send`), non-blocking sends that drop their value (`default-drop-send`), decode errors skipped inside loops (`stream-parse-continue`), unknown or missing stop reasons mapped to success (`stop-reason-success`), SSE fields parsed outside `ai/sse.go` (`hand-rolled-sse`), `recover()` that discards the panic (`bare-recover`), discarded persistence errors (`discarded-io-error`), hooks that proceed when their handler fails (`hook-fail-open`), errors classified by status-code substrings (`error-status-substring`), and agent `Send`/`Continue` outside `coding/session*.go` (`agent-run-outside-session`). A hit passes only with a `// pig divergence (D<N>): ...` marker on its line or the line above, or, when Pi really does the same, `// upstream: <file>:<symbol>` there; the file must exist in `.upstream/current`, the symbol must appear in it, and for a literal the value must appear too. A literal whose value appears in an upstream file that `PORT_MAP.md` maps to the Go file also passes. Every current hit is listed in `automation/ci/divguard/baseline.toml` with its finding and owning slice. The gate compares the scan with that file in both directions: a new hit fails, and so does an entry whose hit is gone, so a fix deletes its entries in the same change. It does not compare the file with its previous version, so keeping it shrink-only is a review rule: never add an entry for new code. A green guard shows these patterns are absent or accounted for, not that the code matches Pi; allow markers prove only that the cited file and symbol exist (and, for literals, that the value appears there).
+`make divergence-guard` (part of `make check`) catches divergences nobody recorded. It flags, in the agent, ai, coding, internal/codingagent, tui and cmd/pig packages: duration and cap literals with no upstream counterpart (`magic-literal`), event sends that race a context-done case (`cancel-drop-send`), non-blocking sends that drop their value (`default-drop-send`), decode errors skipped inside loops (`stream-parse-continue`), unknown or missing stop reasons mapped to success (`stop-reason-success`), SSE fields parsed outside `ai/sse.go` (`hand-rolled-sse`), `recover()` that discards the panic (`bare-recover`), discarded persistence errors (`discarded-io-error`), hooks that proceed when their handler fails (`hook-fail-open`), errors classified by status-code substrings (`error-status-substring`), and agent `Send`/`Continue` outside `coding/session*.go` (`agent-run-outside-session`). A hit passes only with a `// pig divergence (D<N>): ...` marker on its line or the line above, or, when Pi really does the same, `// upstream: <file>:<symbol>` there; the file must exist in `.upstream/current` or be a SHA-256-verified dependency snapshot whose exact version matches a dependency pin in that mirror (`test/parity/dependency-sources.json`; see `docs/parity/dependency-source-proof.md`), the symbol must appear in it, and for a literal the value must appear too. A literal whose value appears in an upstream file that `docs/parity/PORT_MAP.md` maps to the Go file also passes. Every current hit is listed in `automation/ci/divguard/baseline.toml` with its finding and owning slice. The gate compares the scan with that file in both directions: a new hit fails, and so does an entry whose hit is gone, so a fix deletes its entries in the same change. It does not compare the file with its previous version, so keeping it shrink-only is a review rule: never add an entry for new code. A green guard shows these patterns are absent or accounted for, not that the code matches Pi; allow markers prove only that the cited file and symbol exist (and, for literals, that the value appears there).
 
 Do not record ordinary TS-to-Go mechanics, test harness differences, or an
 SDK's implementation of a capability every SDK has (naming convention, `Result`
@@ -477,7 +485,7 @@ Apply [Faithful, general implementations](#faithful-general-implementations) to 
 Fix valid findings at the source. Preserve upstream behavior over stylistic lint suggestions. Use the narrowest suppression for real false positives and explain why a source fix would be less faithful or less correct. `nolintlint` is enabled; stale or unexplained pragmas fail. Security suppressions must name the CLI threat-model reason.
 
 Code and interface style:
-- Production comments state only current behavior and non-obvious protocol, concurrency, security, compatibility, or behavioral invariants. Delete comments that restate code, narrate an implementation pass, preserve project history, or point to `PORT_MAP.md`, a phase, a future row, or another status ledger instead of stating the current contract. Keep migration and parity rationale in the owning ledger or specification.
+- Production comments state only current behavior and non-obvious protocol, concurrency, security, compatibility, or behavioral invariants. Delete comments that restate code, narrate an implementation pass, preserve project history, or point to `docs/parity/PORT_MAP.md`, a phase, a future row, or another status ledger instead of stating the current contract. Keep migration and parity rationale in the owning ledger or specification.
 - Do not hard-wrap Markdown prose or source comments to fit a terminal pane. Editors can display-wrap long lines. Preserve structural line breaks in code blocks, tables, quoted material, poetry, generated files, and formats with an enforced line-length contract.
 - Roadmap phases, workstream labels, future-work promises, internal issue ownership, and placeholder implementation plans fail the source-hygiene gate; keep them in tracked specifications instead.
 - Historical comments, phase labels, placeholders, compatibility paths, manual
@@ -593,7 +601,7 @@ artifacts, and published evidence.
 
 ## Commit hygiene
 
-Every commit requires both a DCO `Signed-off-by` line and a signature GitHub marks **Verified**. Use `git commit --signoff -S`. Sign-off is not a cryptographic signature. See `CONTRIBUTING.md` for SSH signing setup and unsigned-commit repair. If signing is unavailable, a maintainer lands the change in a maintainer-signed commit with a `Co-authored-by:` trailer.
+Every commit requires both a DCO `Signed-off-by` line and a signature GitHub marks **Verified**. Use `git commit --signoff -S`. Sign-off is not a cryptographic signature. See `.github/CONTRIBUTING.md` for SSH signing setup and unsigned-commit repair. If signing is unavailable, a maintainer lands the change in a maintainer-signed commit with a `Co-authored-by:` trailer.
 
 Before committing, run `git diff --stat HEAD` and `git status --short`, then stage only files intentionally changed. Never `git add .`, `git add -A`, or add a whole directory without inspecting contents. Testdata dirs accumulate temp files.
 

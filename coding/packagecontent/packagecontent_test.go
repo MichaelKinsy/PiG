@@ -112,7 +112,7 @@ func TestValidateRejectsSymlinkEscape(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, "hooks"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	testenv.Symlink(t, outside, filepath.Join(root, "hooks", "escape"))
+	testenv.RequireDirectoryLink(t, outside, filepath.Join(root, "hooks", "escape"))
 	_, err := ValidatePackage(root)
 	if err == nil || !strings.Contains(err.Error(), "resolves outside") {
 		t.Fatalf("error = %v", err)
@@ -126,7 +126,7 @@ func TestValidateRejectsSymlinkedBuildContextEscape(t *testing.T) {
 	writeTestFile(t, filepath.Join(root, "package.json"), `{"name":"pkg","pig":{"agentEnvironments":[".devcontainer/devcontainer.json"]}}`)
 	writeTestFile(t, filepath.Join(root, ".devcontainer", "devcontainer.json"), `{"build":{"context":"context","dockerfile":"Dockerfile"}}`)
 	writeTestFile(t, filepath.Join(outside, "Dockerfile"), "FROM scratch\n")
-	testenv.Symlink(t, outside, filepath.Join(root, ".devcontainer", "context"))
+	testenv.RequireDirectoryLink(t, outside, filepath.Join(root, ".devcontainer", "context"))
 	_, err := ValidatePackage(root)
 	if err == nil || !strings.Contains(err.Error(), "resolves outside") {
 		t.Fatalf("error = %v", err)
@@ -513,7 +513,7 @@ func TestDiscoverSkillDirsRecursesAndFollowsSymlinks(t *testing.T) {
 	target := filepath.Join(t.TempDir(), "linked")
 	writeTestFile(t, filepath.Join(target, "SKILL.md"), "---\nname: linked\ndescription: linked\n---\n")
 	link := filepath.Join(root, "linked")
-	testenv.Symlink(t, target, link)
+	testenv.RequireDirectoryLink(t, target, link)
 
 	got := DiscoverSkillDirs(root)
 	for _, want := range []string{nested, flat, link} {
@@ -637,7 +637,7 @@ func TestValidateConfiguredDoesNotDisableManifestSafetyChecks(t *testing.T) {
 	t.Run("symlink escape", func(t *testing.T) {
 		root := t.TempDir()
 		outside := t.TempDir()
-		testenv.Symlink(t, outside, filepath.Join(root, "outside-link"))
+		testenv.RequireDirectoryLink(t, outside, filepath.Join(root, "outside-link"))
 		writeTestFile(t, filepath.Join(root, "package.json"), `{"name":"pkg","pi":{"extensions":["outside-link"]}}`)
 		if _, err := ValidateConfigured(root, map[Kind][]string{Extensions: {"-outside-link"}}); err == nil || !strings.Contains(err.Error(), "escapes package root") {
 			t.Fatalf("disabled symlink escape error = %v", err)

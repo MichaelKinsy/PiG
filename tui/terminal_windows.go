@@ -58,11 +58,15 @@ func newTerminalInputWaiter(ctx context.Context) (*terminalInputWaiter, error) {
 // wait waits for either console input or cancellation before issuing ReadFile.
 // Stop therefore cannot leave an old reader blocked inside the read that
 // belongs to the next terminal owner.
-func (w *terminalInputWaiter) wait(file *os.File) (bool, error) {
+func (w *terminalInputWaiter) wait(file *os.File, ms int) (bool, error) {
+	timeout := uint32(windows.INFINITE)
+	if ms >= 0 {
+		timeout = uint32(min(int64(ms), int64(windows.INFINITE)-1))
+	}
 	event, err := windows.WaitForMultipleObjects(
 		[]windows.Handle{windows.Handle(file.Fd()), w.cancelEvent},
 		false,
-		windows.INFINITE,
+		timeout,
 	)
 	if w.ctx.Err() != nil {
 		return false, nil
@@ -284,6 +288,7 @@ func isEINTR(_ error) bool { return false }
 // "resize -> re-render" behavior upstream gets from Node's stdout "resize"
 // event (no user-visible divergence).
 func (t *ProcessTerminal) startResizeWatcher(ctx context.Context, onResize func()) func() {
+	refreshTerminalDimensions(true, os.Getpid(), nil)
 	go func() {
 		ticker := time.NewTicker(resizePollInterval)
 		defer ticker.Stop()

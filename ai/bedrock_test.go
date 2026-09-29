@@ -85,12 +85,13 @@ func TestBedrockResolveCacheRetention(t *testing.T) {
 		{"", bedrockCacheShort},
 		{"short", bedrockCacheShort},
 		{"long", bedrockCacheLong},
-		{"none", bedrockCacheNone},
+		// packages/ai/src/api/bedrock-converse-stream.ts:815-823: only explicit options, not the legacy environment, can disable caching.
+		{"none", bedrockCacheShort},
 	}
 	for _, tc := range cases {
 		t.Run(tc.env, func(t *testing.T) {
 			t.Setenv("PI_CACHE_RETENTION", tc.env)
-			if got := resolveBedrockCacheRetention(); got != tc.want {
+			if got := resolveBedrockCacheRetention("", nil); got != tc.want {
 				t.Errorf("PI_CACHE_RETENTION=%q -> %q, want %q", tc.env, got, tc.want)
 			}
 		})
@@ -109,18 +110,18 @@ func TestBedrockSupportsPromptCaching(t *testing.T) {
 	}
 	t.Setenv("AWS_BEDROCK_FORCE_CACHE", "")
 	for id, want := range cases {
-		if got := supportsBedrockPromptCaching(id); got != want {
+		if got := supportsBedrockPromptCaching(id, "", nil); got != want {
 			t.Errorf("supportsBedrockPromptCaching(%q) = %v, want %v", id, got, want)
 		}
 	}
 
-	if !supportsBedrockPromptCachingWithName("arn:aws:bedrock:::application-profile/foo", "Claude Sonnet 4.6") {
+	if !supportsBedrockPromptCaching("arn:aws:bedrock:::application-profile/foo", "Claude Sonnet 4.6", nil) {
 		t.Error("model name should enable prompt caching for inference profiles when ARN omits Claude reference")
 	}
 
 	// FORCE_CACHE flips non-Claude models on.
 	t.Setenv("AWS_BEDROCK_FORCE_CACHE", "1")
-	if !supportsBedrockPromptCaching("arn:aws:bedrock:::application-profile/foo") {
+	if !supportsBedrockPromptCaching("arn:aws:bedrock:::application-profile/foo", "", nil) {
 		t.Error("AWS_BEDROCK_FORCE_CACHE=1 should force caching on non-Claude ids")
 	}
 }
@@ -143,7 +144,7 @@ func TestBedrockNormalizeToolID(t *testing.T) {
 func TestBedrockBuildSystemPrompt(t *testing.T) {
 	t.Setenv("AWS_BEDROCK_FORCE_CACHE", "")
 	// Claude 3.7 Sonnet supports caching → expect text + cache point.
-	got := buildBedrockSystemPrompt("anthropic.claude-3-7-sonnet-20250219-v1:0", "", "hello", bedrockCacheShort)
+	got := buildBedrockSystemPrompt("anthropic.claude-3-7-sonnet-20250219-v1:0", "", "hello", bedrockCacheShort, nil)
 	if len(got) != 2 {
 		t.Fatalf("Claude+short: want 2 blocks, got %d", len(got))
 	}
@@ -155,32 +156,32 @@ func TestBedrockBuildSystemPrompt(t *testing.T) {
 	}
 
 	// Non-Claude with no caching → text only.
-	got = buildBedrockSystemPrompt("amazon.nova-lite-v1:0", "", "hi", bedrockCacheShort)
+	got = buildBedrockSystemPrompt("amazon.nova-lite-v1:0", "", "hi", bedrockCacheShort, nil)
 	if len(got) != 1 {
 		t.Fatalf("Nova: want 1 block, got %d", len(got))
 	}
 
 	// Inference profile with Claude name uses name-based detection.
-	got = buildBedrockSystemPrompt("arn:aws:bedrock:::application-profile/foo", "Claude Sonnet 4.6", "hi", bedrockCacheShort)
+	got = buildBedrockSystemPrompt("arn:aws:bedrock:::application-profile/foo", "Claude Sonnet 4.6", "hi", bedrockCacheShort, nil)
 	if len(got) != 2 {
 		t.Fatalf("inference profile + model name: want 2 blocks, got %d", len(got))
 	}
 
-	// Cache disabled by env → no cache point even on Claude.
-	got = buildBedrockSystemPrompt("anthropic.claude-3-7-sonnet-20250219-v1:0", "", "hi", bedrockCacheNone)
+	// Cache disabled explicitly → no cache point even on Claude.
+	got = buildBedrockSystemPrompt("anthropic.claude-3-7-sonnet-20250219-v1:0", "", "hi", bedrockCacheNone, nil)
 	if len(got) != 1 {
 		t.Fatalf("none retention: want 1 block, got %d", len(got))
 	}
 
 	// Empty system prompt → nil.
-	if got := buildBedrockSystemPrompt("anything", "", "", bedrockCacheShort); got != nil {
+	if got := buildBedrockSystemPrompt("anything", "", "", bedrockCacheShort, nil); got != nil {
 		t.Errorf("empty prompt: want nil, got %+v", got)
 	}
 }
 
 func TestBedrockConvertMessages_UserText(t *testing.T) {
 	msgs := []Message{UserMessage{Content: UserText("hello world")}}
-	out, err := convertBedrockMessages(msgs, "anthropic.claude-3-7-sonnet-20250219-v1:0", "", bedrockCacheNone)
+	out, err := convertBedrockMessages(msgs, "anthropic.claude-3-7-sonnet-20250219-v1:0", "", bedrockCacheNone, nil)
 	if err != nil {
 		t.Fatalf("convert: %v", err)
 	}
@@ -204,7 +205,7 @@ func TestBedrockConvertMessages_UserBlocksSkipBlankContent(t *testing.T) {
 		TextContent{Text: "hello"},
 		TextContent{Text: "   "},
 	}}}
-	out, err := convertBedrockMessages(msgs, "anthropic.claude-3-7-sonnet-20250219-v1:0", "", bedrockCacheNone)
+	out, err := convertBedrockMessages(msgs, "anthropic.claude-3-7-sonnet-20250219-v1:0", "", bedrockCacheNone, nil)
 	if err != nil {
 		t.Fatalf("convert: %v", err)
 	}
@@ -226,7 +227,7 @@ func TestBedrockConvertMessages_PlaceholderForEmptyUser(t *testing.T) {
 	msgs := []Message{UserMessage{Content: UserContentBlocks{
 		TextContent{Text: "   "},
 	}}}
-	out, err := convertBedrockMessages(msgs, "anthropic.claude-3-7-sonnet-20250219-v1:0", "", bedrockCacheNone)
+	out, err := convertBedrockMessages(msgs, "anthropic.claude-3-7-sonnet-20250219-v1:0", "", bedrockCacheNone, nil)
 	if err != nil {
 		t.Fatalf("convert: %v", err)
 	}
@@ -241,7 +242,7 @@ func TestBedrockConvertMessages_PlaceholderForEmptyUser(t *testing.T) {
 
 func TestBedrockConvertMessages_PlaceholderForBlankUserString(t *testing.T) {
 	msgs := []Message{UserMessage{Content: UserText("   ")}}
-	out, err := convertBedrockMessages(msgs, "anthropic.claude-3-7-sonnet-20250219-v1:0", "", bedrockCacheNone)
+	out, err := convertBedrockMessages(msgs, "anthropic.claude-3-7-sonnet-20250219-v1:0", "", bedrockCacheNone, nil)
 	if err != nil {
 		t.Fatalf("convert: %v", err)
 	}
@@ -265,7 +266,7 @@ func TestBedrockConvertMessages_PlaceholderForBlankToolResult(t *testing.T) {
 			ToolCallID: "call_1",
 			Content:    []ToolResultMessageContent{TextContent{Text: content}},
 		}}
-		out, err := convertBedrockMessages(msgs, "anthropic.claude-3-7-sonnet-20250219-v1:0", "", bedrockCacheNone)
+		out, err := convertBedrockMessages(msgs, "anthropic.claude-3-7-sonnet-20250219-v1:0", "", bedrockCacheNone, nil)
 		if err != nil {
 			t.Fatalf("convert %q: %v", content, err)
 		}
@@ -294,7 +295,7 @@ func TestBedrockConvertMessages_SkipsEmptyAssistant(t *testing.T) {
 		}},
 		UserMessage{Content: UserText("again")},
 	}
-	out, err := convertBedrockMessages(msgs, "amazon.nova-lite-v1:0", "", bedrockCacheNone)
+	out, err := convertBedrockMessages(msgs, "amazon.nova-lite-v1:0", "", bedrockCacheNone, nil)
 	if err != nil {
 		t.Fatalf("convert: %v", err)
 	}
@@ -308,7 +309,7 @@ func TestBedrockConvertMessages_SkipsEmptyAssistant(t *testing.T) {
 
 func TestBedrockConvertMessages_FinalCachePointOnLastUser(t *testing.T) {
 	msgs := []Message{UserMessage{Content: UserText("hi")}}
-	out, err := convertBedrockMessages(msgs, "anthropic.claude-3-7-sonnet-20250219-v1:0", "", bedrockCacheShort)
+	out, err := convertBedrockMessages(msgs, "anthropic.claude-3-7-sonnet-20250219-v1:0", "", bedrockCacheShort, nil)
 	if err != nil {
 		t.Fatalf("convert: %v", err)
 	}
@@ -328,7 +329,7 @@ func TestBedrockConvertTools(t *testing.T) {
 	tools := []ToolSchema{
 		{Name: "bash", Description: "run a command", Parameters: map[string]any{"type": "object"}},
 	}
-	cfg, err := convertBedrockTools(tools, false)
+	cfg, err := convertBedrockTools(tools, nil, false)
 	if err != nil {
 		t.Fatalf("convertBedrockTools: %v", err)
 	}
@@ -355,7 +356,7 @@ func TestBedrockConvertStrictTools(t *testing.T) {
 		}},
 		ConstrainedSampling: &ConstrainedSamplingConfig{Type: "json_schema", Strict: "prefer"},
 	}}
-	cfg, err := convertBedrockTools(tools, true)
+	cfg, err := convertBedrockTools(tools, nil, true)
 	if err != nil {
 		t.Fatalf("convertBedrockTools: %v", err)
 	}
@@ -378,10 +379,10 @@ func TestBedrockConvertStrictTools(t *testing.T) {
 }
 
 func TestBedrockConvertTools_Empty(t *testing.T) {
-	if cfg, err := convertBedrockTools(nil, false); err != nil || cfg != nil {
+	if cfg, err := convertBedrockTools(nil, nil, false); err != nil || cfg != nil {
 		t.Errorf("nil tools must yield nil ToolConfiguration, got %+v, %v", cfg, err)
 	}
-	if cfg, err := convertBedrockTools([]ToolSchema{}, false); err != nil || cfg != nil {
+	if cfg, err := convertBedrockTools([]ToolSchema{}, nil, false); err != nil || cfg != nil {
 		t.Errorf("empty tools must yield nil ToolConfiguration, got %+v, %v", cfg, err)
 	}
 }
@@ -488,7 +489,7 @@ func TestBedrockMapStopReason(t *testing.T) {
 		"max_tokens":                    {StopReasonLength, ""},
 		"model_context_window_exceeded": {StopReasonLength, ""},
 		"tool_use":                      {StopReasonToolUse, ""},
-		"guardrail_intervened":          {StopReasonError, "guardrail_intervened"},
+		"guardrail_intervened":          {StopReasonError, "Provider stopped with: guardrail_intervened"},
 		"":                              {StopReasonError, ""},
 	}
 	for in, want := range cases {

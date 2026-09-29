@@ -1,0 +1,21 @@
+# Pi sdk.ts:310-338 lowers Session settings before provider dispatch and consumes the assembled-header hook.
+# Both fixtures create a real Session and send a prompt through a registry-owned custom provider. The provider returns end(result) without fabricated stream events, as sdk-stream-options.test.ts does.
+# Values distinguish every option from its default and require provider/model headers before the extension hook.
+name = "20-sdk-stream-options"
+description = "Session options and the assembled-header hook reach custom provider callbacks."
+covers = ["packages/coding-agent/src/core/sdk.ts", "packages/ai/src/utils/event-stream.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/sdk-options-pig"]
+pi_args = ["node", "./test/parity/testdata/sdk-options-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 40
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

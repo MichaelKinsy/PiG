@@ -338,3 +338,51 @@ func TestResolveNodeManifestDirectoryEntries(t *testing.T) {
 		})
 	}
 }
+
+// A "pi.extensions" entry may name a directory that upstream keeps as the
+// extension path, such as "./" naming the package itself
+// (@plannotator/pi-extension). Upstream loader.ts imports that path with
+// jiti 2.7.0, which resolves a directory to <dir><ext>, then <dir>/index<ext>
+// over .js, .mjs, .cjs, .ts, .tsx, .mts, .cts, .mtsx, .ctsx, and then as
+// require.resolve does through package.json "main". Node's own import refuses
+// a directory, so the runtime is given the file jiti would load (probed on
+// jiti 2.7.0 from Pi 0.87.1's dependencies).
+func TestResolveNodeDirectoryEntryImportsAsJiti(t *testing.T) {
+	for _, tc := range []struct {
+		name  string
+		files map[string]string
+		want  string
+		err   string
+	}{
+		{name: "index.ts", files: map[string]string{"index.ts": ""}, want: "index.ts"},
+		{name: "index.js before index.ts", files: map[string]string{"index.ts": "", "index.js": ""}, want: "index.js"},
+		{name: "index.mjs before index.ts", files: map[string]string{"index.ts": "", "index.mjs": ""}, want: "index.mjs"},
+		{name: "index.cjs before index.ts", files: map[string]string{"index.ts": "", "index.cjs": ""}, want: "index.cjs"},
+		{name: "index.mts", files: map[string]string{"index.mts": ""}, want: "index.mts"},
+		{name: "index before main", files: map[string]string{"package.json": `{"main":"lib/x.js","pi":{"extensions":["./"]}}`, "lib/x.js": "", "index.js": ""}, want: "index.js"},
+		{name: "main without index", files: map[string]string{"package.json": `{"main":"lib/x.ts","pi":{"extensions":["./"]}}`, "lib/x.ts": ""}, want: "lib/x.ts"},
+		{name: "main without extension", files: map[string]string{"package.json": `{"main":"lib/x","pi":{"extensions":["./"]}}`, "lib/x.js": ""}, want: "lib/x.js"},
+		{name: "nothing to import", files: map[string]string{"readme.md": ""}, err: "cannot be imported"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			writeSourceTestFile(t, filepath.Join(root, "package.json"), `{"pi":{"extensions":["./"]}}`)
+			for name, content := range tc.files {
+				writeSourceTestFile(t, filepath.Join(root, filepath.FromSlash(name)), content)
+			}
+			def, err := Resolve(root)
+			if tc.err != "" {
+				if err == nil || !strings.Contains(err.Error(), tc.err) {
+					t.Fatalf("Resolve error = %v, want %q", err, tc.err)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("Resolve: %v", err)
+			}
+			if want := filepath.Join(root, filepath.FromSlash(tc.want)); def.Entrypoint != want {
+				t.Fatalf("Entrypoint = %s, want %s", def.Entrypoint, want)
+			}
+		})
+	}
+}

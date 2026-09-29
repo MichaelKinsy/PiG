@@ -3,6 +3,7 @@ package runtimecell
 import (
 	"context"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -44,6 +45,52 @@ func Extension() *sdk.Extension {
 		}
 	}
 	return extensionRoot
+}
+
+func TestLegacySDKSubpackageImportsAreSelfContained(t *testing.T) {
+	root, alias := t.TempDir(), t.TempDir()
+	for name, content := range map[string]string{
+		"go.mod":                  "module " + extsource.GoSDKModulePath + "\n\ngo 1.26\n",
+		"sdk.go":                  "package sdk\nimport \"" + extsource.GoSDKModulePath + "/internal/count\"\nvar Value = count.Value\n",
+		"internal/count/count.go": "package count\nimport j \"" + extsource.GoSDKModulePath + "/json/nested\"\nvar Value = j.Value\n",
+		"json/nested/value.go":    "package nested\nconst Value = 42\n",
+	} {
+		path := filepath.Join(root, name)
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := StageLegacyGoSDK(root, alias); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.CommandContext(t.Context(), "go", "test", "./...")
+	cmd.Dir = alias
+	cmd.Env = append(os.Environ(), "GOWORK=off", "GOPROXY=off")
+	if output, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("alias build: %v\n%s", err, output)
+	}
+	original, err := os.ReadFile(filepath.Join(root, "sdk.go"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(original), extsource.GoSDKModulePath+"/internal/count") {
+		t.Fatal("source SDK was modified")
+	}
+}
+
+func TestAliasGoSDKImportsOnlyRewritesModuleImports(t *testing.T) {
+	source := "package sdk\nimport (\n j `" + extsource.GoSDKModulePath + "/json`\n _ \"" + extsource.GoSDKModulePath + "-extra\"\n)\nconst text = \"" + extsource.GoSDKModulePath + "/json\"\n"
+	got, err := aliasGoSDKImports("sdk.go", []byte(source))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := strings.Replace(source, "`"+extsource.GoSDKModulePath+"/json`", "\""+extsource.LegacyGoSDKModulePath+"/json\"", 1)
+	if string(got) != want {
+		t.Fatalf("imports = %s, want %s", got, want)
+	}
 }
 
 func TestRenderGoModAliasesLegacySDKToCurrentSDK(t *testing.T) {

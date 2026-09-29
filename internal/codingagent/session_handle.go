@@ -40,6 +40,9 @@ type InteractiveSessionHandle interface {
 	// Events returns the agent's streaming event channel. Used by
 	// processAgentEvents to drive live UI updates.
 	Events() <-chan agent.AgentEvent
+	// IsIdle and WaitForIdle observe the Session-owned operation, including work an extension started.
+	IsIdle() bool
+	WaitForIdle(context.Context) error
 	// SetModel swaps the active LLM model mid-session and persists a
 	// model_change audit entry.
 	SetModel(*ai.Model, ...ModelMutationOptions) error
@@ -47,6 +50,8 @@ type InteractiveSessionHandle interface {
 	SetModelOnMain(*ai.Model, ModelMutationOptions, func(func() error) error) error
 	// SetThinkingLevel applies and records reasoning without changing defaults unless Persist is set.
 	SetThinkingLevel(ai.ThinkingLevel, ...ModelMutationOptions) error
+	// SetSessionName persists and publishes a sanitized Session name.
+	SetSessionName(string) error
 	// StreamModel starts a mode-independent model operation through the
 	// Session-owned runtime.
 	StreamModel(context.Context, *ai.Model, ai.Context, ai.StreamOptions) *ai.AssistantMessageEventStream

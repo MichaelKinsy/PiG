@@ -1,0 +1,26 @@
+# Upstream evidence: Pi 0.87.1 tui.ts:1042-1079 restores eligible focus before input, without dropping an active unmounted replacement.
+# Both real renderers receive the same x,b,1,Enter,y sequence. The Go probe drives InteractiveMode.handleKey, not a test reimplementation of dispatch.
+# The private caller emits structured observations from its regression test; the wrapper rejects test failures or missing observations.
+# Exact input arrays expose lost keys, early restoration and input delivered to the base editor. No output normalization is used.
+name = "14-overlay-input-restoration"
+description = "Main and alternate screen input restores eligible overlays and preserves active replacement input until close."
+covers = ["packages/tui/src/tui.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/overlay-input-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/overlay-input-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"Editor":[]', '"Overlay":["x","b","y"]', '"Replacement":["1","\r"]']
+runs = 3

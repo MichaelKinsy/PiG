@@ -2,10 +2,18 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"io"
-	"regexp"
+	"maps"
+	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // ─── CLI Flags ────────────────────────────────────────────────────────────────
@@ -28,6 +36,8 @@ type CLIFlags struct {
 	// Mode selects the output mode: text (default), json, or rpc.
 	// Mirrors upstream --mode.
 	Mode string
+	// modeSet preserves an explicit --mode text for metadata stdout routing.
+	modeSet bool
 	// Verbose forces verbose startup output (overrides quietStartup setting).
 	// Mirrors upstream --verbose (args.ts:153-154, 239).
 	Verbose bool
@@ -37,9 +47,9 @@ type CLIFlags struct {
 	// Provider overrides the default provider name (e.g. "openai", "anthropic").
 	// Mirrors upstream --provider (args.ts:79).
 	Provider string
-	// SystemPrompt overrides the assembled system prompt.
-	// Mirrors upstream --system-prompt (args.ts:83).
-	SystemPrompt string
+	// SystemPrompt selects explicit prompt text or a file. An explicitly empty option suppresses SYSTEM.md discovery and retains the built-in prompt.
+	SystemPrompt    string
+	systemPromptSet bool
 	// AppendSystemPrompt appends text to the system prompt (repeatable).
 	// Mirrors upstream --append-system-prompt (args.ts:86).
 	AppendSystemPrompt []string
@@ -60,10 +70,12 @@ type CLIFlags struct {
 	SessionDir string
 	// SessionID specifies an exact session ID to use or create.
 	// Mirrors upstream --session-id (args.ts:107, v0.76.0).
-	SessionID string
-	// Name sets the session display name.
-	// Mirrors upstream --name / -n (args.ts, v0.78.0).
+	SessionID          string
+	sessionCwdOverride *string
+	// Name is the raw Session display name from --name / -n.
 	Name string
+	// NameSet distinguishes an omitted --name from an explicitly empty value.
+	NameSet bool
 	// NoTools disables all tools.
 	// Mirrors upstream --no-tools / -nt (args.ts:98).
 	NoTools bool
@@ -79,7 +91,7 @@ type CLIFlags struct {
 	// ListModels prints available models and exits. Optional search pattern.
 	// Mirrors upstream --list-models (args.ts:147).
 	ListModels    string
-	ListModelsAll bool // bare --list-models (no pattern)
+	ListModelsAll bool // --list-models without a nonempty filter
 	// NoSkills disables skill discovery.
 	// Mirrors upstream --no-skills (args.ts:107).
 	NoSkills bool
@@ -119,8 +131,8 @@ type CLIFlags struct {
 	// UnknownFlags preserves flags not claimed by the core parser so
 	// extensions can consume them later.
 	UnknownFlags map[string]any
-	// UseTheme and TuiMode override the theme and TUI mode for this run.
-	UseTheme string
+	// UseTheme and TuiMode override the theme and TUI mode for this run. UseTheme is nil when omitted; an explicitly empty name is a selection.
+	UseTheme *string
 	TuiMode  string
 	// Diagnostics mirrors Pi parseArgs diagnostics. Any error exits before
 	// version or mode handling.
@@ -149,8 +161,9 @@ func reportArgDiagnostics(w io.Writer, diagnostics []argDiagnostic, color bool) 
 	for _, diagnostic := range diagnostics {
 		label, sgr := "Warning: ", "\x1b[33m"
 		if diagnostic.Type == "error" {
-			label, sgr = "Error: ", "\x1b[31m"
+			writeCLIError(w, diagnostic.Message, color)
 			hasError = true
+			continue
 		}
 		text := label + diagnostic.Message
 		if color {
@@ -161,12 +174,34 @@ func reportArgDiagnostics(w io.Writer, diagnostics []argDiagnostic, color bool) 
 	return hasError
 }
 
+// sessionNameFromFlags preserves omission and applies JavaScript name normalization only when the selected CLI route needs a Session.
+func sessionNameFromFlags(flags CLIFlags) (string, error) {
+	if flags.Name == "" && !flags.NameSet {
+		return "", nil
+	}
+	name := widthx.JSTrim(flags.Name)
+	if name == "" {
+		return "", errors.New("--name requires a non-empty value")
+	}
+	return name, nil
+}
+
+// parseFlags parses CLI options, treating arguments after -- as messages or @files.
 func parseFlags(args []string) CLIFlags {
 	flags := CLIFlags{Mode: "text", UnknownFlags: map[string]any{}}
 	i := 0
 	for i < len(args) {
 		arg := args[i]
 		switch {
+		case arg == "--":
+			for _, positionalArg := range args[i+1:] {
+				if path, ok := strings.CutPrefix(positionalArg, "@"); ok {
+					flags.FileArgs = append(flags.FileArgs, path)
+				} else {
+					flags.Args = append(flags.Args, positionalArg)
+				}
+			}
+			return flags
 		case arg == "--version" || arg == "-v":
 			flags.Version = true
 		case arg == "--help" || arg == "-h":
@@ -185,6 +220,7 @@ func parseFlags(args []string) CLIFlags {
 		case arg == "--system-prompt" && i+1 < len(args):
 			i++
 			flags.SystemPrompt = args[i]
+			flags.systemPromptSet = true
 		case arg == "--append-system-prompt" && i+1 < len(args):
 			i++
 			flags.AppendSystemPrompt = append(flags.AppendSystemPrompt, args[i])
@@ -231,6 +267,7 @@ func parseFlags(args []string) CLIFlags {
 			if i+1 < len(args) {
 				i++
 				flags.Name = args[i]
+				flags.NameSet = true
 			} else {
 				flags.Diagnostics = append(flags.Diagnostics, argDiagnostic{Type: "error", Message: "--name requires a value"})
 			}
@@ -290,7 +327,9 @@ func parseFlags(args []string) CLIFlags {
 			if i+1 < len(args) && !strings.HasPrefix(args[i+1], "-") && !strings.HasPrefix(args[i+1], "@") {
 				i++
 				flags.ListModels = args[i]
+				flags.ListModelsAll = flags.ListModels == ""
 			} else {
+				flags.ListModels = ""
 				flags.ListModelsAll = true
 			}
 		case arg == "--offline":
@@ -304,7 +343,7 @@ func parseFlags(args []string) CLIFlags {
 				flags.Diagnostics = append(flags.Diagnostics, argDiagnostic{Type: "error", Message: "--use-theme requires a theme name"})
 			} else {
 				i++
-				flags.UseTheme = args[i]
+				flags.UseTheme = new(args[i])
 			}
 		case arg == "--tui-mode":
 			switch {
@@ -324,6 +363,7 @@ func parseFlags(args []string) CLIFlags {
 			case args[i+1] == "text" || args[i+1] == "json" || args[i+1] == "rpc":
 				i++
 				flags.Mode = args[i]
+				flags.modeSet = true
 			default:
 				i++
 				flags.Diagnostics = append(flags.Diagnostics, argDiagnostic{Type: "error", Message: fmt.Sprintf("Invalid mode \"%s\". Valid values: text, json, rpc", args[i])})
@@ -373,13 +413,23 @@ PiG keeps its configuration in ~/.pig and never reads or writes ~/.pi.
 
 `
 
+// extensionFlagsNote is the help paragraph Pi's printHelp follows with the "Extension CLI Flags:" section (args.ts:333).
+const extensionFlagsNote = "Extensions can register additional flags (e.g., --plan from plan-mode extension).\n\n"
+
 // printHelp prints Pi's --help rendered with PiG's identity
 // (automation/gen/gen-help.sh), with PiG's commands after Pi's. Section headers are
-// bold on a terminal, as chalk.bold renders them.
-func printHelp(w io.Writer, color bool) {
+// bold on a terminal, as chalk.bold renders them. Registered extension flags
+// follow the extension note, as upstream printHelp(extensionFlags) lists them.
+func printHelp(w io.Writer, color bool, extensionFlags ...extension.ExtensionFlag) {
 	sections := strings.SplitAfter(upstreamHelp, "\n\n")
 	var out strings.Builder
 	for _, section := range sections {
+		if section == extensionFlagsNote && len(extensionFlags) > 0 {
+			out.WriteString(strings.TrimSuffix(section, "\n"))
+			out.WriteString(extensionFlagsHelp(extensionFlags))
+			out.WriteString("\n\n")
+			continue
+		}
 		out.WriteString(section)
 		if strings.HasPrefix(section, "Commands:\n") {
 			out.WriteString(pigCommands)
@@ -401,7 +451,50 @@ func printHelp(w io.Writer, color bool) {
 	_, _ = io.WriteString(w, text)
 }
 
-var helpHeader = regexp.MustCompile(`^[A-Z][A-Za-z ]*:$`)
+var helpHeader = lazyregexp.New(`^[A-Z][A-Za-z ]*:$`)
+
+// extensionFlagsHelp ports upstream printHelp's extensionFlagsText (args.ts:262-271): the flag column pads to 30 UTF-16 units without truncation, and a flag without a description names its extension.
+func extensionFlagsHelp(flags []extension.ExtensionFlag) string {
+	var out strings.Builder
+	out.WriteString("Extension CLI Flags:\n")
+	for i, flag := range flags {
+		if i > 0 {
+			out.WriteByte('\n')
+		}
+		name := "  --" + flag.Name
+		if flag.Type == extension.FlagString {
+			name += " <value>"
+		}
+		out.WriteString(name)
+		out.WriteString(strings.Repeat(" ", max(0, 30-len(jsstring.ToUTF16(name)))))
+		if flag.Description != "" {
+			out.WriteString(flag.Description)
+		} else {
+			out.WriteString("Registered by " + flag.ExtensionPath)
+		}
+	}
+	out.WriteByte('\n')
+	return out.String()
+}
+
+// extensionHelpFlags lists registered flags as upstream main.ts collects them for printHelp: extensions in load order, then each extension's flags in first-registration order.
+func extensionHelpFlags(exts []extension.Extension) []extension.ExtensionFlag {
+	var flags []extension.ExtensionFlag
+	for _, ext := range exts {
+		names := slices.Clone(ext.FlagOrder)
+		for _, name := range slices.Sorted(maps.Keys(ext.Flags)) {
+			if !slices.Contains(names, name) {
+				names = append(names, name)
+			}
+		}
+		for _, name := range names {
+			if flag, ok := ext.Flags[name]; ok {
+				flags = append(flags, flag)
+			}
+		}
+	}
+	return flags
+}
 
 // validateForkFlags mirrors upstream main.ts validateForkFlags: --fork
 // cannot be combined with --session, --continue, --resume or --no-session.

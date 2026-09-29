@@ -1,0 +1,38 @@
+# Pi 0.87.1 AgentSession.sendCustomMessage (agent-session.ts:1934-1993)
+# persists an idle custom message and emits start/end before the immediately
+# handled RPC prompt acknowledges success (rpc-mode.ts:394-414).
+# Direct Pi probing observes start, end, response with no agent_start or model call.
+# PiG previously omitted the shared headless SendMessage binding and reported not_ready.
+name = "38-rpc-idle-custom-message"
+description = "An extension publishes an idle custom message before its first RPC command completes"
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"custom","type":"prompt","message":"/custom-message"}'
+wait_contains = ['"id":"custom","type":"response","command":"prompt","success":true']
+wait_timeout_seconds = 5
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["testdata/custom-message.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/custom-message.mjs"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--no-extensions"]
+
+[assert]
+exit_code = 0
+runs = 3
+json_output_equal = true
+stderr_equal = true
+both_contain = ['"type":"message_start"', '"type":"message_end"', '"customType":"probe"', '"text":"idle-message"', '"display":false', '"marker":42']
+both_not_contain = ['"type":"agent_start"', '"success":false', 'not_ready', 'extension_error']
+
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message wall clocks differ; preserve all event order, content, display, details and command response fields."

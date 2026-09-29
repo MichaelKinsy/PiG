@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 const secretInputSuffixCharacters = 4 // pig divergence (D80): reveal only the final four characters of inputs longer than four.
@@ -41,7 +43,7 @@ func RedactSecretInput(text, value string) string {
 type LoginDialog struct {
 	invalidatable
 	mu              sync.Mutex
-	providerName    string
+	title           string
 	lines           []string
 	input           *TextInput
 	inputIndex      int
@@ -56,9 +58,13 @@ type LoginDialog struct {
 }
 
 // NewLoginDialog creates a provider dialog with PiG's configurable input privacy default enabled.
-func NewLoginDialog(providerName string, onCancel func()) *LoginDialog {
+func NewLoginDialog(providerName string, onCancel func(), titleOverride ...string) *LoginDialog {
 	// pig divergence (D80): callers can select Pi's plain-text behavior before prompting.
-	return &LoginDialog{providerName: providerName, onCancel: onCancel, maskSecretInput: true, inputIndex: -1}
+	dialog := &LoginDialog{title: "Login to " + providerName, onCancel: onCancel, maskSecretInput: true, inputIndex: -1}
+	if len(titleOverride) > 0 {
+		dialog.title = titleOverride[0]
+	}
+	return dialog
 }
 
 // SetMaskSecretInput selects masking for subsequent secret prompts. Already masked history stays masked.
@@ -77,16 +83,64 @@ func loginKeyHint(action TUIKeybinding, description string) string {
 func (d *LoginDialog) ShowAuth(url, instructions string) {
 	d.mu.Lock()
 	defer d.mu.Unlock()
+	d.lines = linkedURLLines(url)
+	d.inputIndex = -1
+	if instructions != "" {
+		d.lines = append(d.lines, "", " "+ActiveTheme().FgText("warning", d.redactLocked(instructions)))
+	}
+	d.Invalidate()
+}
+
+// ShowDeviceCode replaces the dialog content with a verification URL and the user code, as Pi's showDeviceCode does.
+func (d *LoginDialog) ShowDeviceCode(verificationURI, userCode string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.lines = append(linkedURLLines(verificationURI), "", " "+ActiveTheme().FgText("warning", "Enter code: "+userCode))
+	d.inputIndex = -1
+	d.Invalidate()
+}
+
+// linkedURLLines renders a spacer, the hyperlinked URL and the platform's click hint.
+func linkedURLLines(url string) []string {
 	t := ActiveTheme()
 	linked := func(label string) string { return "\x1b]8;;" + url + "\x07" + label + "\x1b]8;;\x07" }
 	hint := "Ctrl+click to open"
 	if runtime.GOOS == "darwin" {
 		hint = "Cmd+click to open"
 	}
-	d.lines = []string{"", " " + t.FgText("accent", linked(url)), " " + t.FgText("dim", linked(hint))}
+	return []string{"", " " + t.FgText("accent", linked(url)), " " + t.FgText("dim", linked(hint))}
+}
+
+// ShowDetails replaces the content with informational lines before a provider prompt.
+func (d *LoginDialog) ShowDetails(lines []string) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	d.lines = []string{""}
 	d.inputIndex = -1
-	if instructions != "" {
-		d.lines = append(d.lines, "", " "+t.FgText("warning", d.redactLocked(instructions)))
+	for _, line := range lines {
+		d.lines = append(d.lines, " "+line)
+	}
+	d.Invalidate()
+}
+
+// AuthInfoLink is a provider-owned documentation link shown in a login dialog.
+type AuthInfoLink struct{ URL, Label string }
+
+// ShowInfo appends provider instructions and links before the next prompt.
+func (d *LoginDialog) ShowInfo(message string, links []AuthInfoLink, showCloseHint bool) {
+	d.mu.Lock()
+	defer d.mu.Unlock()
+	t := ActiveTheme()
+	d.lines = append(d.lines, "", " "+t.FgText("text", d.redactLocked(message)))
+	for _, link := range links {
+		text := link.URL
+		if link.Label != "" {
+			text = link.Label + ": " + link.URL
+		}
+		d.lines = append(d.lines, " "+t.FgText("accent", "\x1b]8;;"+link.URL+"\x07"+text+"\x1b]8;;\x07"))
+	}
+	if showCloseHint {
+		d.lines = append(d.lines, "", " ("+loginKeyHint(KBSelectCancel, "to close")+")")
 	}
 	d.Invalidate()
 }
@@ -127,20 +181,31 @@ func (d *LoginDialog) redactLocked(text string) string {
 
 // ShowInput appends a text prompt. Its returned channel delivers the original submitted value and closes on cancellation.
 func (d *LoginDialog) ShowInput(prompt, placeholder string) <-chan string {
-	return d.showInput(prompt, placeholder, false)
+	return d.showInput(prompt, placeholder, false, false)
+}
+
+// ShowManualInput appends a dim callback-code prompt with a cancel-only hint. Its returned channel delivers the submitted value and closes on cancellation.
+func (d *LoginDialog) ShowManualInput(prompt string) <-chan string {
+	return d.showInput(prompt, "", false, true)
 }
 
 // ShowSecretInput honors the configured privacy setting; false uses Pi's ordinary prompt and submitted-text rendering.
 func (d *LoginDialog) ShowSecretInput(prompt, placeholder string) <-chan string {
-	return d.showInput(prompt, placeholder, true)
+	return d.showInput(prompt, placeholder, true, false)
 }
 
-func (d *LoginDialog) showInput(prompt, placeholder string, secret bool) <-chan string {
+func (d *LoginDialog) showInput(prompt, placeholder string, secret, manual bool) <-chan string {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	t := ActiveTheme()
 	d.inputMasked = secret && d.maskSecretInput
-	d.lines = append(d.lines, "", " "+t.FgText("text", d.redactLocked(prompt)))
+	color := "text"
+	hint := loginKeyHint(KBSelectCancel, "to cancel,") + " " + loginKeyHint(KBSelectConfirm, "to submit")
+	if manual {
+		color = "dim"
+		hint = loginKeyHint(KBSelectCancel, "to cancel")
+	}
+	d.lines = append(d.lines, "", " "+t.FgText(color, d.redactLocked(prompt)))
 	if placeholder != "" {
 		d.lines = append(d.lines, " "+t.FgText("dim", "e.g., "+d.redactLocked(placeholder)))
 	}
@@ -149,10 +214,12 @@ func (d *LoginDialog) showInput(prompt, placeholder string, secret bool) <-chan 
 		d.lines = append(d.lines, " "+t.FgText("dim", secretInputHint))
 	}
 	d.inputIndex = len(d.lines)
-	d.lines = append(d.lines, "", " ("+loginKeyHint(KBSelectCancel, "to cancel,")+" "+loginKeyHint(KBSelectConfirm, "to submit")+")")
+	d.lines = append(d.lines, "", " ("+hint+")")
 	d.inputActive = true
 	d.inputCh = make(chan string, 1)
 	d.input = NewInput(InputOptions{})
+	// The host mounts the active prompt in the editor slot.
+	d.input.Focused = true
 	d.input.OnSubmit = func(value string) {
 		submitted := value
 		// pig divergence (D80): only the preview is retained in dialog history when masking is enabled.
@@ -210,7 +277,7 @@ func (d *LoginDialog) Render(width int) []string {
 	t := ActiveTheme()
 	border := NewDynamicBorder("")
 	out := border.Render(width)
-	out = append(out, NewPaddedText(t.FgText("accent", "\x1b[1mLogin to "+d.providerName+SGRBoldDimReset), 1, 0, nil).Render(width)...)
+	out = append(out, NewPaddedText(t.FgText("accent", "\x1b[1m"+d.title+SGRBoldDimReset), 1, 0, nil).Render(width)...)
 	for i, line := range d.lines {
 		if d.inputActive && i == d.inputIndex {
 			input := d.input
@@ -223,7 +290,7 @@ func (d *LoginDialog) Render(width int) []string {
 				}
 				input = NewInput(InputOptions{})
 				input.SetText(fmt.Sprintf("%s (%d %s)", preview, count, unit))
-				input.cursor = len(preview)
+				input.cursor = jsstring.Length(preview)
 				input.Focused = d.input.Focused
 			}
 			out = append(out, input.Render(width)...)

@@ -85,7 +85,7 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]
-          source_version=$(sed -nE 's/^const PigVersion = "([^"]+)"$/\1/p' "$SOURCE_ROOT/coding/pigversion/pigversion.go")
+          source_version=$(sed -nE 's/^const PigVersion = "([^"]+)"$/\1/p' "$SOURCE_ROOT/internal/coding/pigversion/pigversion.go")
           test "$VERSION" = "$source_version"
       - name: Build archive
         id: build
@@ -267,6 +267,10 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.12'
@@ -277,12 +281,18 @@ jobs:
         run: |
           set -euo pipefail
           [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+([+-][0-9A-Za-z.-]+)?$ ]]
-          source_version=$(sed -nE 's/^const PigVersion = "([^"]+)"$/\1/p' coding/pigversion/pigversion.go)
+          source_version=$(sed -nE 's/^const PigVersion = "([^"]+)"$/\1/p' internal/coding/pigversion/pigversion.go)
           test "$VERSION" = "$source_version"
           # go install github.com/MichaelKinsy/PiG/cmd/pig@v<version> needs a
           # go.mod with no replace or exclude directive that requires every
           # nested PiG module at v<version>; publish tags each one.
           automation/release/module-tags.sh "$VERSION" go.mod
+          # Refuse stale working-tree publication hashes before creating immutable SDK tags.
+          make set-version VERSION="$VERSION" SET_VERSION_ARGS='--release-modules --dry-run' | tee "$RUNNER_TEMP/release-version.diff"
+          if [ -s "$RUNNER_TEMP/release-version.diff" ]; then
+            echo "Run make set-version VERSION=$VERSION SET_VERSION_ARGS=--release-modules and commit the release preparation" >&2
+            exit 1
+          fi
       - name: Build source archive
         id: source
         shell: bash
@@ -468,6 +478,12 @@ jobs:
               -f ref="refs/tags/$tag" -f sha="$tag_object" >/dev/null
             echo "Created annotated tag $tag on $GITHUB_SHA"
           done < "$RUNNER_TEMP/module-tags"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: false
+      - name: Verify nested Go module publication before the root release
+        run: python3 automation/ci/check-module-publication.py
       - name: Create the draft GitHub Release
         shell: bash
         env:

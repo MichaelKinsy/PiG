@@ -45,7 +45,7 @@ Use --verbose to stream toolchain output. Progress is written to stderr.
 	defer progress.Close()
 	ctx := buildprogress.Observe(context.Background(), progress.Handle, verbose)
 	fail := func(err error) int {
-		_, _ = fmt.Fprintf(stderr, "error: %v\n", progress.Failure(err))
+		writeCLIError(stderr, fmt.Sprint(progress.Failure(err)), false)
 		return 1
 	}
 	buildprogress.Phase(ctx, "Resolving source", "Locating the PiG checkout and output path")

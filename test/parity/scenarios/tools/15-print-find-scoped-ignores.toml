@@ -1,0 +1,29 @@
+# Pi 0.87.1 packages/coding-agent/test/suite/regressions/3303-find-nested-gitignore.test.ts:75.
+# The fixture matches upstream's deep tree outside a Git repository. Each
+# .gitignore applies only to its subtree. The faux provider echoes the complete
+# result sorted as the upstream test sorts it; fd traversal order is unspecified.
+# No path, whitespace, or ANSI normalization changes returned file names.
+name = "15-print-find-scoped-ignores"
+description = "Nested gitignore rules exclude only their own subtrees in the builtin find tool"
+covers = ["packages/coding-agent/src/core/tools/find.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--no-extensions", "--tools", "find"]
+pi_args = ["--tools", "find"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: find scoped ignores"
+timeout_seconds = 30
+cwd = "testdata/find-regressions"
+
+[assert]
+exit_code = 0
+both_contain = ["a/deep/kept.txt\na/kept.txt\nb/ignored.txt\nb/kept.txt\nroot.txt"]
+both_not_contain = ["a/ignored.txt", "a/deep/ignored.txt", "secret.txt"]
+output_equal = true
+runs = 3

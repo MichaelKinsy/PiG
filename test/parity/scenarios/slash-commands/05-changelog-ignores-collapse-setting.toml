@@ -1,0 +1,48 @@
+# Behavior family: slash-commands
+# Upstream evidence: Pi 0.87.1, interactive-mode.ts:6505-6524 parses all entries, reverses them,
+# and appends a bordered inline block regardless of collapseChangelog.
+# utils/changelog.ts:111-166 drops non-version sections, including Unreleased.
+# Probe: isolated homes, no models/extensions, /changelog Enter at 100x60.
+# Both binaries receive testdata/changelog.md unchanged: Go build overlay for
+# the embedded document, Pi's native PI_PACKAGE_DIR for a private package view.
+# Live release notes can exceed the viewport; their size is not the contract.
+# Capture the complete bordered block, excluding unrelated startup/footer text.
+
+name = "05-changelog-ignores-collapse-setting"
+description = "With collapse-changelog enabled, /changelog renders the complete pinned release block oldest-first."
+covers = [
+  "packages/coding-agent/src/utils/changelog.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/tui/src/components/markdown.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+changelog_fixture = "testdata/changelog.md"
+
+[tmux]
+width = 100
+height = 60
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "────────────────────────────────────────────────────────────────────────────────────────────────────"
+capture_end_regex = "(?s)What's New.*?─{100}[^\\n]*"
+
+[[tmux.steps]]
+keys = ["/changelog", "Enter"]
+settle_seconds = 2
+wait_contains = ["Newest release remains fully expanded."]
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-collapse"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-collapse"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+escaped_output_equal = true
+both_contain = ["What's New", "[0.1.0]", "[0.2.0]", "Oldest release appears first.", "Newest release remains fully expanded."]
+both_not_contain = ["Updated to v", "Unreleased", "No changelog entries found"]
+runs = 3

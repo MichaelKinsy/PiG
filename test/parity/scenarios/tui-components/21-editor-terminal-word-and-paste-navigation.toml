@@ -1,0 +1,50 @@
+# Behavior family: tui-components
+# Upstream evidence: Pi 0.87.1 editor.test.ts:661,3812,3897 supplies the mixed-script word stops
+# and registered-marker atomicity. This terminal path types CJK text, moves by
+# word, creates a real twenty-line bracketed paste, then moves across its marker.
+# The complete final editor row, including cursor styling and padding, is compared.
+# The remaining divider/footer also stays in the exact capture. The paste uses
+# hex bytes because tmux literal-key injection re-encodes ESC/LF; these bytes are
+# the original bracketed-paste markers and the same twenty "line" values.
+name = "21-editor-terminal-word-and-paste-navigation"
+description = "Actual terminal input preserves CJK word stops and skips registered paste markers atomically"
+covers = ["packages/tui/src/components/editor.ts", "packages/tui/src/word-navigation.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../session/testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=../session/testdata/pi-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "WORD:"
+capture_end = ""
+
+[[tmux.steps]]
+keys = ["WORD:hello你好，world世界"]
+wait_contains = ["WORD:hello你好，world世界"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["C-Left", "X"]
+wait_contains = ["WORD:hello你好，worldX世界"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["C-e", " ", "hex:1b 5b 32 30 30 7e 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 0a 6c 69 6e 65 1b 5b 32 30 31 7e", " Y", "C-Left", "C-Left", "P", "Right", "Q"]
+wait_contains = ["WORD:hello你好，worldX世界 P[paste #1 +20 lines]Q Y"]
+wait_timeout_seconds = 5
+
+[assert]
+both_reach_ready = true
+runs = 3
+escaped_output_equal = true
+both_contain = ["WORD:hello你好，worldX世界 P[paste #1 +20 lines]Q Y"]
+both_not_contain = ["panic:"]

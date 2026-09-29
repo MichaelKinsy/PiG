@@ -1,0 +1,39 @@
+# Behavior family: startup
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts setupEditorSubmitHandler returns from the !/!! branch only for a nonempty stripped command. Direct upstream probing records both bare prefixes as normal input; the live input hook records exact text and consumes it without a provider call.
+name = "11-bare-bash-prefixes-submit-as-prompts"
+description = "Bare ! and !! reach normal prompt input rather than disappearing as empty shell commands"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/startup-input/bare-prefix.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/startup-input/bare-prefix.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "BARE PREFIX PROBE READY"
+ready_pattern_pi = "BARE PREFIX PROBE READY"
+ready_timeout_seconds = 30
+capture_start = 'BARE PREFIXES: ["!","!!"]'
+capture_end = 'BARE PREFIXES: ["!","!!"]'
+
+[[tmux.steps]]
+keys = ["!", "Enter"]
+wait_contains = ['BARE PREFIXES: ["!"]']
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["!!", "Enter"]
+wait_contains = ['BARE PREFIXES: ["!","!!"]']
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ['BARE PREFIXES: ["!","!!"]']
+escaped_output_equal = true
+runs = 3

@@ -72,16 +72,24 @@ func (m *InteractiveMode) pickModel(ctx context.Context, initialQuery string) (s
 	return spec, accepted, accepted && selector.SelectedAsDefault()
 }
 
+func (result CatalogRefreshResult) failedProviders() []string {
+	if len(result.errorOrder) == len(result.Errors) {
+		return result.errorOrder
+	}
+	return slices.Sorted(maps.Keys(result.Errors))
+}
+
 func modelCatalogRefreshError(result CatalogRefreshResult, err error) string {
+	providers := result.failedProviders()
 	switch {
 	case errors.Is(err, context.DeadlineExceeded):
 		return "Model refresh timed out; showing cached models."
 	case err != nil:
 		return "Could not refresh model catalogs: " + err.Error()
 	case len(result.Errors) == 1:
-		return "Could not refresh " + slices.Sorted(maps.Keys(result.Errors))[0] + "; showing cached models."
+		return "Could not refresh " + providers[0] + "; showing cached models."
 	case len(result.Errors) > 1:
-		return fmt.Sprintf("Could not refresh %d model catalogs (%s); showing cached models.", len(result.Errors), strings.Join(slices.Sorted(maps.Keys(result.Errors)), ", "))
+		return fmt.Sprintf("Could not refresh %d model catalogs (%s); showing cached models.", len(result.Errors), strings.Join(providers, ", "))
 	default:
 		return ""
 	}
@@ -268,43 +276,27 @@ func modelSpec(model *ai.Model) string {
 	return providerID + "/" + model.ID
 }
 
-// showScopedModels opens the /scoped-models multi-select list.
-// Mirrors upstream showModelsSelector (interactive-mode.ts:3925).
+// showScopedModels opens the selector immediately, including configured IDs absent from the available catalog.
 func (m *InteractiveMode) showScopedModels() {
 	availableModels := func() []tui.ModelItem {
-		catalog := ai.ListModels("")
-		reachable := ReachableProviders()
-		authed := AuthenticatedProviders(m.opts.AgentDir)
-		models := make([]tui.ModelItem, 0, len(catalog))
-		for _, mm := range catalog {
-			if !reachable[mm.Provider] || !authed[mm.Provider] {
-				continue
-			}
-			models = append(models, tui.ModelItem{
-				FullID:   mm.ID,
-				Name:     mm.DisplayName,
-				Provider: mm.Provider,
-			})
-		}
-		for _, entry := range m.dynamicProviderModels() {
-			models = append(models, tui.ModelItem{
-				FullID:   entry.ModelID,
-				Name:     entry.DisplayName,
-				Provider: entry.ProviderID,
-			})
+		items := m.availableModelItems()
+		models := make([]tui.ModelItem, 0, len(items))
+		for _, item := range items {
+			models = append(models, tui.ModelItem{FullID: item.FQ(), Name: item.Name, Provider: item.Provider})
 		}
 		return models
 	}
 
 	allModels := availableModels()
-	if len(allModels) == 0 {
-		m.statusLine.Flash("No authenticated models", 3*time.Second)
-		return
+	configured := m.opts.Settings.EnabledModels
+	if m.opts.SettingsManager != nil {
+		configured = m.opts.SettingsManager.GetEnabledModels()
 	}
+	selection, enabledIDs := newScopedModelsSelection(allModels, configured, m.scopedModelIDs)
 
 	sl := tui.NewScopedModelsList(tui.ScopedModelsConfig{
 		AllModels:       allModels,
-		EnabledModelIDs: m.scopedModelIDs,
+		EnabledModelIDs: enabledIDs,
 		RefreshStatus:   "Refreshing model catalogs…",
 	})
 	// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:showModelsSelector
@@ -320,6 +312,9 @@ func (m *InteractiveMode) showScopedModels() {
 			return
 		}
 		if warning := modelCatalogRefreshError(result, err); warning != "" {
+			if err == nil && len(result.Errors) > 0 {
+				warning = "Could not refresh " + strings.Join(result.failedProviders(), ", ") + "; showing cached models."
+			}
 			status, kind = warning, tui.RefreshStatusWarning
 		} else if m.opts.ModelRegistry != nil && m.opts.ModelRegistry.LoadError() != "" {
 			status = "Could not refresh model catalogs: " + m.opts.ModelRegistry.LoadError()
@@ -332,11 +327,7 @@ func (m *InteractiveMode) showScopedModels() {
 		<-done
 	}()
 
-	result := m.runModalScopedModels(sl, refresh)
-	if result.Cancelled {
-		return
-	}
-	m.scopedModelIDs = result.EnabledIDs
+	m.runModalScopedModels(sl, refresh, selection)
 }
 
 func (m *InteractiveMode) persistScopedModelIDs(enabledIDs []string) {

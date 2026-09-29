@@ -1,0 +1,21 @@
+# The model input and expected tier are from Pi0.87.1 extensions-runner.test.ts:50-79,1173-1195.
+# This paired probe checks the shared registration carrier at startup; the Node host unit regression separately exercises post-bind register/unregister.
+name = "63-provider-registration-cost-tiers"
+description = "Registered model cost tiers survive the host configuration carrier"
+covers = ["packages/coding-agent/src/core/extensions/types.ts", "packages/coding-agent/src/core/model-registry.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "-p", "/cost-tier-probe {{TEMP}}/tiers.json"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/tiers.json"
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["../testdata/provider-cost-tiers.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../testdata/provider-cost-tiers.mjs"]
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+artifact_normalized_equal = true
+artifact_both_contain = ['"inputTokensAbove":272000', '"input":2', '"output":3', '"cacheRead":0.2', '"cacheWrite":2.5']

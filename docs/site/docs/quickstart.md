@@ -84,6 +84,8 @@ version or with `@latest`. PiG does not treat a Go-installed executable as a
 standalone release download, so `pig update` refuses to replace it without a
 matching installation receipt.
 
+Explicit `pig update` version checks retry transient transport failures and transient HTTP statuses at most twice within one ten-second budget. Startup checks do not retry. Signature and manifest errors stop the update. Native standalone updates reject concurrent replacement of the same executable and hold the installation lock until receipt commit or rollback completes (D39). The `<executable>.update.lock` sidecar remains on disk; do not delete it while an update runs.
+
 Each release tags the root module (`v0.2.0`) and the nested Go extension SDK
 module (`extensions/sdk/v0.2.0`) on the same commit; `go install` needs both.
 

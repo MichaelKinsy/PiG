@@ -23,7 +23,7 @@ func TestAPIKeyLoginCustomEndpointDoesNotInventDefault(t *testing.T) {
 		t.Error("login must not invent a default for a custom endpoint")
 		return nil, nil
 	}
-	if err := m.buildSlashContext(t.Context()).SetAPIKey("custom-provider", "synthetic-custom-key"); err != nil {
+	if err := setPostLoginAPIKey(m, "custom-provider", "synthetic-custom-key"); err != nil {
 		t.Fatal(err)
 	}
 	waitPostLoginStatus(t, m, `no default model is configured for provider "custom-provider"`)

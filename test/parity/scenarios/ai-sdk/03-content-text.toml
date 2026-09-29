@@ -1,0 +1,24 @@
+# Pi 0.87.1 packages/ai/test/text.test.ts:12-31 supplies every input and expected result.
+# Both fixtures invoke the public contentText helper. String content bypasses separators; non-text blocks are excluded.
+# Mutation: change the Go default separator from newline to empty; the compiled fixture and assistant-content case fail.
+name = "03-content-text"
+description = "Public contentText preserves text block order and separator semantics."
+covers = ["packages/ai/src/utils/text.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/content-text-pig"]
+pi_args = ["node", "./test/parity/testdata/content-text-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

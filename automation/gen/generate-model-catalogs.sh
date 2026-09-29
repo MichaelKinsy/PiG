@@ -2,7 +2,7 @@
 set -euo pipefail
 
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
-version=$(awk -F'"' '/^const UpstreamVersion = "/ { print $2; exit }' "$root/coding/pigversion/pigversion.go")
+version=$(awk -F'"' '/^const UpstreamVersion = "/ { print $2; exit }' "$root/internal/coding/pigversion/pigversion.go")
 package_root=${PI_PACKAGE_ROOT:-"$root/extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent"}
 ai_dist="$package_root/node_modules/@earendil-works/pi-ai/dist"
 

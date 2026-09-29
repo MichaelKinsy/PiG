@@ -1,0 +1,39 @@
+# Behavior family: rpc
+# Surface: export_html on an in-memory Session.
+#
+# Upstream evidence (Pi 0.87.1, native Windows 2026-09-28): rpc-mode.ts export_html
+# awaits session.exportToHtml, and export-html/index.ts exportSessionToHtml throws
+# "Cannot export in-memory session to HTML" when the Session has no file. The RPC
+# command loop returns that message as the error response. No file is written.
+
+name = "38-rpc-export-html-in-memory"
+description = "RPC export_html on a --no-session Session fails with Pi's in-memory export error."
+covers = [
+  "packages/coding-agent/src/core/export-html/index.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"export","type":"export_html","outputPath":"{{TEMP}}/in-memory.html"}'
+wait_contains = ['"id":"export","type":"response","command":"export_html"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-home/agent"]
+pig_args = ["--offline", "--model", "test-faux/faux-1", "--no-session"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--offline", "--model", "test-faux/faux-1", "--no-session"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '{"id":"export","type":"response","command":"export_html","success":false,"error":"Cannot export in-memory session to HTML"}',
+]
+json_output_equal = true
+stderr_equal = true
+runs = 3

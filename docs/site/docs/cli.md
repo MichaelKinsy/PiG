@@ -61,6 +61,8 @@ Product distributions may contribute additional top-level or nested command path
 | `pig verify [--json] [--checksums <file>] [--provenance] [--packages] [path...]` | Verify this binary, downloaded files, Piglet files, Packages, and extension directories by SHA-256 digest. Piglet Binary signatures are checked offline against the local trust policy. |
 | `pig docs [sync\|path\|list\|show <name>]` | Materialize and read the documentation bundled with Stock PiG. |
 
+`pig install` accepts one source. Missing sources and unknown options show the ordinary single-source usage. Use `pig install --help` for the separate multi-source `--validate-only` forms (D28).
+
 ## Options
 
 These options apply to `pig [options] [prompt]`. Run `pig --help` for the full list.
@@ -96,6 +98,18 @@ These options apply to `pig [options] [prompt]`. Run `pig --help` for the full l
 
 Extensions can register their own options, such as `--plan` from a plan-mode extension.
 
+PiG resolves local extension, Skill, prompt-template, and theme arguments relative to the launch directory. It leaves package-source and remote-URL arguments unchanged during this step.
+
+## File arguments
+
+Use `@path` to attach a file to the initial prompt:
+
+```bash
+pig -p @notes.txt "Summarize these notes."
+```
+
+Text files use `<file name="/absolute/path">\ncontent\n</file>\n`. PiG adds the newline before `</file>` even when the file already ends with a newline, as Pi does. It skips empty files. The first positional prompt follows the closing tag's newline without an additional separator.
+
 ## Tools
 
 ```bash
@@ -111,7 +125,7 @@ The tool options select the tools the model can call for one run. See [Settings]
 | `--no-builtin-tools`, `-nbt` | Turn off the default built-in tools and keep extension and custom tools. |
 | `--no-tools`, `-nt` | Start with every built-in, extension, and custom tool turned off. |
 
-Without these options, PiG enables `read`, `bash`, `edit`, and `write`, unless the `defaultTools` setting changes the set. Extension tools stay enabled.
+Without these options, PiG enables `read`, `bash`, `edit`, and `write`, unless the `defaultTools` setting changes the set. Extension tools stay enabled. An explicit empty active tool set also stays empty in the system prompt, including after reload.
 
 | Built-in tool | Purpose | On by default |
 |---|---|---|

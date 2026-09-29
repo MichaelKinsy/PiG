@@ -2,9 +2,7 @@ package ai
 
 import (
 	"encoding/json"
-	"strconv"
 	"strings"
-	"unicode/utf8"
 )
 
 // ParseStreamingJson incrementally reconstructs a streamed tool-argument object.
@@ -15,17 +13,20 @@ func ParseStreamingJson(input string) JsonObject {
 }
 
 // parseStreamingJsonObject mirrors Pi's total parseStreamingJson contract for
-// streamed tool arguments: strict JSON first, partial parsing second, and an
-// empty object when neither can produce an object.
+// streamed tool arguments: strict and repaired JSON first, partial parsing second,
+// and an empty object when neither can produce an object.
 func parseStreamingJsonObject(input string) JsonObject {
 	if strings.TrimSpace(input) == "" {
 		return JsonObject{}
 	}
-	for _, candidate := range []string{input, repairJSONStringLiterals(input)} {
+	candidates := []string{input, repairJSON(input)}
+	for _, candidate := range candidates {
 		var strict JsonObject
 		if json.Unmarshal([]byte(candidate), &strict) == nil && strict != nil {
 			return strict
 		}
+	}
+	for _, candidate := range candidates {
 		parser := partialJSONParser{input: candidate}
 		if value, ok := parser.parseValue(); ok {
 			if object, ok := value.(JsonObject); ok && object != nil {
@@ -34,61 +35,6 @@ func parseStreamingJsonObject(input string) JsonObject {
 		}
 	}
 	return JsonObject{}
-}
-
-func repairJSONStringLiterals(input string) string {
-	var out strings.Builder
-	out.Grow(len(input))
-	inString := false
-	for index := 0; index < len(input); {
-		r, size := utf8.DecodeRuneInString(input[index:])
-		if !inString {
-			out.WriteRune(r)
-			if r == '"' {
-				inString = true
-			}
-			index += size
-			continue
-		}
-		if r == '"' {
-			out.WriteRune(r)
-			inString = false
-			index += size
-			continue
-		}
-		if r == '\\' {
-			if index+size >= len(input) {
-				out.WriteString(`\\`)
-				index += size
-				continue
-			}
-			next, nextSize := utf8.DecodeRuneInString(input[index+size:])
-			if strings.ContainsRune(`"\\/bfnrt`, next) {
-				out.WriteRune(r)
-				out.WriteRune(next)
-				index += size + nextSize
-				continue
-			}
-			if next == 'u' && index+size+nextSize+4 <= len(input) {
-				digits := input[index+size+nextSize : index+size+nextSize+4]
-				if _, err := strconv.ParseUint(digits, 16, 16); err == nil {
-					out.WriteString(`\u` + digits)
-					index += size + nextSize + 4
-					continue
-				}
-			}
-			out.WriteString(`\\`)
-			index += size
-			continue
-		}
-		if r < 0x20 {
-			out.WriteString(strconv.QuoteRune(r)[1 : len(strconv.QuoteRune(r))-1])
-		} else {
-			out.WriteRune(r)
-		}
-		index += size
-	}
-	return out.String()
 }
 
 type partialJSONParser struct {

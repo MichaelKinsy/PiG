@@ -41,7 +41,13 @@ See [Keybindings](/docs/latest/keybindings) for the complete binding list.
 
 PiG supports regular and fullscreen terminal modes. Configure `tuiMode` in settings or use the corresponding interactive setting.
 
-The TUI responds to terminal resize. It calculates width in terminal cells and preserves Unicode and ANSI rendering boundaries.
+The TUI responds to terminal resize. It calculates width in terminal cells and preserves Unicode and ANSI rendering boundaries. Markdown horizontal rules use at most 80 content columns, including in expanded compaction summaries. Changing output padding retains user-message Markdown transforms and their pending work.
+
+## Error notices
+
+Provider errors appear in the assistant response without a second `Provider request failed` status. After a non-retryable assistant error, PiG shows a `/bug` hint once during the interactive run. Aborted or cancelled requests do not trigger the hint. See [Slash commands](/docs/latest/slash-commands) for the `/bug` report workflow and its D62 delivery difference.
+
+Markdown wraps long unbroken text without truncating it. Link detection scans each word once so long text does not trigger repeated searches through the same suffix.
 
 ## Extension UI
 

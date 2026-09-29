@@ -42,17 +42,17 @@ func GetCacheWarmingDelayMs(ttlMs int64) (int64, bool) {
 	return max(1, int64(math.Floor(math.Min(float64(ttlMs)*0.9, float64(ttlMs-10_000))))), true
 }
 
-// GetPromptCacheTtlMs is the lifetime of the prompt cache entry a request
-// writes, from the model's promptCache tier for the retention the request
-// used. The bool is false when the model has no lifetime for that tier.
-//
-// PiG's StreamOptions has no per-request cacheRetention (providers read only
-// PI_CACHE_RETENTION), so the retention comes from the environment, as it does
-// for every upstream session request.
+// GetPromptCacheTtlMs returns the model's prompt-cache lifetime for the request's retention. Explicit retention wins over the environment; none or a missing tier has no lifetime.
 func GetPromptCacheTtlMs(model *ai.Model, options ai.StreamOptions) (int64, bool) {
-	retention := "short"
-	if cacheWarmingEnvValue("PI_CACHE_RETENTION", options.Env) == "long" {
-		retention = "long"
+	retention := string(options.CacheRetention)
+	if retention == "" {
+		retention = "short"
+		if cacheWarmingEnvValue("PI_CACHE_RETENTION", options.Env) == "long" {
+			retention = "long"
+		}
+	}
+	if retention == "none" {
+		return 0, false
 	}
 	seconds, ok := model.PromptCache[retention]
 	if !ok {

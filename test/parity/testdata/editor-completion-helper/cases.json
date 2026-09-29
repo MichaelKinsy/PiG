@@ -1,0 +1,17 @@
+[
+  {"name":"2096 undo autocomplete","mode":"force","values":["dist/"],"steps":[["d","i"],["\t"],["\u001b[45;5u"]]},
+  {"name":"2338 force single","mode":"force","values":["Workspace/"],"steps":[["W","o","r","k"],["\t"],["\u001b[45;5u"]]},
+  {"name":"2379 force multiple","mode":"force","values":["src/","src.txt"],"steps":[["s","r","c"],["\t"],["\t"]]},
+  {"name":"2423 retained force","mode":"force","values":["readme.md","package.json","src/","dist/"],"steps":[["\t"],["r"],["e"],["\t"]]},
+  {"name":"2508 cursor requery","mode":"cursor","steps":[["/"],["c"],["m"],["d"],[" "],["\u001b[D"]]},
+  {"name":"2689 slash deletion","mode":"slash","steps":[["/"],["\u007f"]]},
+  {"name":"2729 exact filtered argument","mode":"argument","filter":true,"values":["one","two","three"],"steps":[["/","a","r","g","t","e","s","t"," ","t","w","o"],["\r"]]},
+  {"name":"2785 first filtered prefix","mode":"argument","filter":true,"values":["two","three","twelve"],"steps":[["/","a","r","g","t","e","s","t"," ","t"],["\r"]]},
+  {"name":"2836 unique unfiltered prefix","mode":"argument","values":["one","two","three"],"steps":[["/","a","r","g","t","e","s","t"," ","t","w"],["\r"]]},
+  {"name":"2885 first unfiltered prefix","mode":"argument","values":["one","two","three"],"steps":[["/","a","r","g","t","e","s","t"," ","t"],["\r"]]},
+  {"name":"2931 model exact","mode":"argument","filter":true,"values":["gpt-4o","gpt-4o-mini","claude-sonnet"],"steps":[["/","m","o","d","e","l"," ","g","p","t","-","4","o","-","m","i","n","i"],["\r"]]},
+  {"name":"3042 no argument completer","mode":"combined","steps":[["/","h","e"],["\t"]]},
+  {"name":"2994 awaited arguments","mode":"awaited","text":"/load-skills ","steps":[["s"],["\t"]]},
+  {"name":"3019 invalid argument result","mode":"invalid","text":"/load-skills ","steps":[["s"]]},
+  {"name":"selection boundaries","mode":"argument","values":["one","two","three"],"steps":[["/","a","r","g","t","e","s","t"," ","x"],["\u001b[A"],["\u001b[B"],["\u0010"],["\u000e"],["\r"]]}
+]

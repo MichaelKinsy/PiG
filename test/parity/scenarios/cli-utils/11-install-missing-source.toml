@@ -1,0 +1,30 @@
+# Behavior family: cli-utils
+# Pi 0.87.1 probe: `pi install` exits 1 with exactly:
+# Missing install source.\nUsage: pi install <source> [-l] [--approve|--no-approve]\n
+# Source: packages/coding-agent/src/package-manager-cli.ts:265-269,915-920;
+# test: packages/coding-agent/test/package-command-paths.test.ts:543-557.
+name = "11-install-missing-source"
+description = "Ordinary install errors retain Pi's single-source usage, not validation-only syntax"
+covers = ["packages/coding-agent/src/package-manager-cli.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+
+[cli]
+args = ["install"]
+timeout_seconds = 10
+
+[assert]
+exit_code = 1
+both_contain = ["Missing install source.", "install <source> [-l] [--approve|--no-approve]"]
+both_not_contain = ["--validate-only", "<source>..."]
+output_equal = true
+runs = 3
+
+# normalize-rationale: D2 changes only the command identity. Keep every other diagnostic byte.
+[[assert.normalize_replace]]
+pattern = '\bpig\b'
+with = 'pi'
+reason = "D2: PiG uses the pig executable name instead of pi."

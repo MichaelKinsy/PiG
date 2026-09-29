@@ -1,0 +1,21 @@
+# Pi 0.87.1: packages/ai/test/fireworks-model-generation.test.ts:107-125 and api/anthropic-messages.ts:838-885,1035-1073,1159-1182.
+# The supplied model, not a second built-in lookup, owns reasoning capability, native effort mapping, and the output cap.
+# Capture before network through Pi's streamSimple and PiG's Model Runtime API-leaf boundary for API-key, OAuth-token, and custom/no-default-model shapes.
+name = "28-anthropic-model-metadata"
+description = "New Messages models retain adaptive thinking, native effort mappings, and output limits through the Model Runtime."
+covers = ["packages/ai/src/api/anthropic-messages.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/anthropic-model-metadata-pig"]
+pi_args = ["node", "./test/parity/testdata/anthropic-model-metadata-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+[assert]
+exit_code = 0
+json_output_equal = true
+runs = 3

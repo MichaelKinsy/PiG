@@ -1,0 +1,45 @@
+# Upstream evidence: Pi 0.87.1 packages/tui/src/latex.ts:66-72,888-891,1095 spaces relations and renders joins.
+# The faux provider echoes the prompt through the assistant-message Markdown path.
+# The final mc² anchor occurs only in rendered output, not in the input prompt.
+# This caller regression fails if relation normalization or the join symbol/spacing is removed.
+
+name = "18-latex-math-rendering"
+description = "Assistant message renders LaTeX relations and joins as spaced Unicode, matching upstream."
+covers = [
+  "packages/tui/src/latex.ts",
+  "packages/tui/src/components/markdown.ts",
+  "packages/coding-agent/src/modes/interactive/components/assistant-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "reply with exactly: energy"
+capture_end = "mc²"
+
+[[tmux.steps]]
+keys = ["reply with exactly: energy $x=0$ $R\\bowtie S$ $E = mc^2$ done", "Enter"]
+settle_seconds = 4
+wait_contains = ["mc²"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["unknown command", "panic:", "goroutine "]
+escaped_output_equal = true
+both_contain = ["x = 0", "R ⋈ S", "mc²"]
+runtime_ratio_max = 2.0
+runs = 3

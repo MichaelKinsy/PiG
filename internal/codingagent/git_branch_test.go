@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"testing"
@@ -11,7 +12,7 @@ func stubGitBranchSpawn(t *testing.T, branch string) *[]string {
 	t.Helper()
 	var calls []string
 	previous := resolveBranchWithGit
-	resolveBranchWithGit = func(repoDir string) string {
+	resolveBranchWithGit = func(_ context.Context, repoDir string) string {
 		calls = append(calls, repoDir)
 		return branch
 	}
@@ -31,6 +32,7 @@ func writeGitFixtureFile(t *testing.T, path, content string) {
 
 // Ports footer-data-provider.test.ts "uses HEAD directly in a regular repo
 // from a nested directory": the branch comes from HEAD with no git process.
+// .upstream/v0.87.1/packages/coding-agent/test/footer-data-provider.test.ts:115
 func TestResolveGitBranchReadsHeadWithoutGitProcess(t *testing.T) {
 	calls := stubGitBranchSpawn(t, "unused")
 	repoDir := filepath.Join(t.TempDir(), "repo")
@@ -56,6 +58,7 @@ func TestResolveGitBranchReadsHeadWithoutGitProcess(t *testing.T) {
 
 // Ports "resolves the branch via git when HEAD is .invalid in a reftable repo"
 // and "treats an unresolved .invalid reftable HEAD as detached".
+// .upstream/v0.87.1/packages/coding-agent/test/footer-data-provider.test.ts:130,163
 func TestResolveGitBranchAsksGitForReftableHead(t *testing.T) {
 	repoDir := filepath.Join(t.TempDir(), "repo")
 	writeGitFixtureFile(t, filepath.Join(repoDir, ".git", "HEAD"), "ref: refs/heads/.invalid\n")
@@ -76,6 +79,7 @@ func TestResolveGitBranchAsksGitForReftableHead(t *testing.T) {
 }
 
 // Ports "resolves the branch via git in a reftable-backed worktree".
+// .upstream/v0.87.1/packages/coding-agent/test/footer-data-provider.test.ts:151
 func TestResolveGitBranchInReftableWorktree(t *testing.T) {
 	tempDir := t.TempDir()
 	gitDir := filepath.Join(tempDir, "repo", ".git", "worktrees", "src")

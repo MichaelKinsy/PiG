@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"slices"
 	"strings"
 	"testing"
@@ -23,13 +24,23 @@ func runFileTool(t *testing.T, tool agent.AgentTool, ctx context.Context, params
 	return res
 }
 
+// readOnlyAccessCode is the error.code Node's fs.access(path, R_OK | W_OK)
+// rejects with for a read-only file: EACCES from access(2), and on Windows
+// libuv fs__access's UV_EPERM for a file with FILE_ATTRIBUTE_READONLY.
+func readOnlyAccessCode() string {
+	if runtime.GOOS == "windows" {
+		return "EPERM"
+	}
+	return "EACCES"
+}
+
 // Ported from upstream test/tools.test.ts "edit tool" error cases (TOOL-26).
 func TestEditAccessErrorsUseNodeCodes(t *testing.T) {
 	dir := t.TempDir()
 	edit := &EditTool{CWD: dir, Queue: NewFileMutationQueue()}
 	missing := filepath.Join(dir, "missing.txt")
 	res := runFileTool(t, edit, context.Background(), map[string]any{"path": missing, "edits": []editEntry{{"hello", "world"}}})
-	if !res.IsError || res.Content != "Could not edit file: "+missing+". Error code: ENOENT." {
+	if !res.IsError || res.Text() != "Could not edit file: "+missing+". Error code: ENOENT." {
 		t.Fatalf("missing: %+v", res)
 	}
 	if os.Geteuid() == 0 {
@@ -40,7 +51,7 @@ func TestEditAccessErrorsUseNodeCodes(t *testing.T) {
 		t.Fatal(err)
 	}
 	res = runFileTool(t, edit, context.Background(), map[string]any{"path": readonly, "edits": []editEntry{{"hello", "world"}}})
-	if !res.IsError || res.Content != "Could not edit file: "+readonly+". Error code: EACCES." {
+	if !res.IsError || res.Text() != "Could not edit file: "+readonly+". Error code: "+readOnlyAccessCode()+"." {
 		t.Fatalf("read-only: %+v", res)
 	}
 }
@@ -75,7 +86,7 @@ func TestWriteToolUpstreamCases(t *testing.T) {
 	dir := t.TempDir()
 	write := &WriteTool{CWD: dir, Queue: NewFileMutationQueue()}
 	res := runFileTool(t, write, context.Background(), map[string]any{"path": "nested/dir/test.txt", "content": "hello"})
-	if res.IsError || res.Content != "Successfully wrote to nested/dir/test.txt" {
+	if res.IsError || res.Text() != "Successfully wrote to nested/dir/test.txt" {
 		t.Fatalf("res = %+v", res)
 	}
 	if got, _ := os.ReadFile(filepath.Join(dir, "nested", "dir", "test.txt")); string(got) != "hello" {
@@ -104,7 +115,7 @@ func TestFileToolsAbort(t *testing.T) {
 		{&ReadTool{CWD: dir}, map[string]any{"path": "f.txt"}},
 	} {
 		res := runFileTool(t, c.tool, ctx, c.params)
-		if !res.IsError || res.Content != "Operation aborted" {
+		if !res.IsError || res.Text() != "Operation aborted" {
 			t.Errorf("%s: %+v", c.tool.Name(), res)
 		}
 	}
@@ -122,23 +133,23 @@ func TestLsToolUpstreamBehavior(t *testing.T) {
 	}
 	_ = os.WriteFile(filepath.Join(dir, ".hidden"), nil, 0o644)
 	_ = os.WriteFile(filepath.Join(dir, "file.txt"), nil, 0o644)
-	testenv.Symlink(t, filepath.Join(dir, "real"), filepath.Join(dir, "linkdir"))
-	testenv.Symlink(t, filepath.Join(dir, "gone"), filepath.Join(dir, "broken"))
+	testenv.RequireDirectoryLink(t, filepath.Join(dir, "real"), filepath.Join(dir, "linkdir"))
+	testenv.RequireDirectoryLink(t, filepath.Join(dir, "gone"), filepath.Join(dir, "broken"))
 	ls := &LsTool{CWD: dir}
-	lines := strings.Split(runFileTool(t, ls, context.Background(), map[string]any{}).Content, "\n")
+	lines := strings.Split(runFileTool(t, ls, context.Background(), map[string]any{}).Text(), "\n")
 	if !slices.Equal(lines, []string{".hidden", "file.txt", "linkdir/", "real/"}) {
 		t.Fatalf("lines = %q", lines)
 	}
 	missing := filepath.Join(dir, "nope")
-	if res := runFileTool(t, ls, context.Background(), map[string]any{"path": "nope"}); !res.IsError || res.Content != "Path not found: "+missing {
+	if res := runFileTool(t, ls, context.Background(), map[string]any{"path": "nope"}); !res.IsError || res.Text() != "Path not found: "+missing {
 		t.Fatalf("missing: %+v", res)
 	}
 	file := filepath.Join(dir, "file.txt")
-	if res := runFileTool(t, ls, context.Background(), map[string]any{"path": "file.txt"}); !res.IsError || res.Content != "Not a directory: "+file {
+	if res := runFileTool(t, ls, context.Background(), map[string]any{"path": "file.txt"}); !res.IsError || res.Text() != "Not a directory: "+file {
 		t.Fatalf("file: %+v", res)
 	}
 	// Upstream: with limit 0 the loop stops before the first entry.
-	if res := runFileTool(t, ls, context.Background(), map[string]any{"limit": 0}); res.Content != "(empty directory)" {
+	if res := runFileTool(t, ls, context.Background(), map[string]any{"limit": 0}); res.Text() != "(empty directory)" {
 		t.Fatalf("limit 0: %+v", res)
 	}
 }

@@ -68,7 +68,20 @@ type rpcAdmission struct {
 	validateModel func() error
 	write         func(any)
 	tasks         rpcTaskGroup
-	runs          *sync.WaitGroup
+	// shared, when set, is the task group every Session's admission of one RPC process uses, so a replacement does not fork the set of tasks that shutdown joins.
+	shared *rpcTaskGroup
+	runs   *sync.WaitGroup
+	// commandDone runs after the extension command's synchronous prefix, before its prompt continuation reports success.
+	commandDone func()
+	// commands joins in-flight extension commands for the shutdown flush; nil when no subprocess runtime can report a suspended command.
+	commands *rpcCommandJoin
+}
+
+func (a *rpcAdmission) taskGroup() *rpcTaskGroup {
+	if a.shared != nil {
+		return a.shared
+	}
+	return &a.tasks
 }
 
 func rpcAwaitWork[T any](a *rpcAdmission, slow bool, work func() (T, error)) *rpcPromise[T] {
@@ -77,21 +90,26 @@ func rpcAwaitWork[T any](a *rpcAdmission, slow bool, work func() (T, error)) *rp
 		return rpcResolved(a.turn, value, err)
 	}
 	p := &rpcPromise[T]{turn: a.turn}
-	if !a.tasks.Go(func() { value, err := work(); p.resolve(value, err) }) {
+	if !a.taskGroup().Go(func() { value, err := work(); p.resolve(value, err) }) {
 		var zero T
 		p.resolve(zero, context.Canceled)
 	}
 	return p
 }
 
-// rpcAwaitHandler preserves invocation order through the handler's first suspension without waiting for its Promise to settle. Subprocess runtimes acknowledge blocked/completed invocation on the existing request context.
+// rpcAwaitHandler preserves invocation order through the handler's first suspension without waiting for its Promise to settle. Subprocess runtimes acknowledge a blocked invocation on the existing request context. A handler that finishes without suspending admits later input only after its result is published, because Pi runs the continuation of a settled await before its next input event, stdin end included.
 func rpcAwaitHandler[T any](a *rpcAdmission, work func(context.Context) (T, error)) *rpcPromise[T] {
 	entered := make(chan struct{})
-	ctx := invocation.WithAcknowledgment(a.ctx, func() { close(entered) })
-	p := rpcAwaitWork(a, true, func() (T, error) {
+	ctx := invocation.WithSuspensionAcknowledgment(a.ctx, func() { close(entered) })
+	p := &rpcPromise[T]{turn: a.turn}
+	if !a.tasks.Go(func() {
 		defer invocation.Acknowledge(ctx)
-		return work(ctx)
-	})
+		value, err := work(ctx)
+		p.resolve(value, err)
+	}) {
+		var zero T
+		p.resolve(zero, context.Canceled)
+	}
 	select {
 	case <-entered:
 	case <-a.ctx.Done():
@@ -118,7 +136,7 @@ func (a *rpcAdmission) input(text string, images []ai.ImageContent, behavior str
 	emitted.then(wrapped.resolve)
 	return wrapped
 }
-func (a *rpcAdmission) queue(id, command, text string, images []ai.ImageContent) {
+func (a *rpcAdmission) queue(id rpcRequestID, command, text string, images []ai.ImageContent) {
 	queued := &rpcPromise[struct{}]{turn: a.turn}
 	if name, _, ok := a.catalog.extensionCommand(text); ok {
 		queued.resolve(struct{}{}, fmt.Errorf("Extension command %q cannot be queued. Use prompt() or execute the command when not streaming.", "/"+strings.TrimPrefix(name, "/")))
@@ -136,9 +154,9 @@ func (a *rpcAdmission) queue(id, command, text string, images []ai.ImageContent)
 				return
 			}
 			if command == "steer" {
-				a.session.Steer(a.catalog.expandPrompt(input.text), input.images)
+				a.session.QueueSteer(a.catalog.expandPrompt(input.text), input.images)
 			} else {
-				a.session.FollowUp(a.catalog.expandPrompt(input.text), input.images)
+				a.session.QueueFollowUp(a.catalog.expandPrompt(input.text), input.images)
 			}
 			err = a.session.FlushEvents(a.ctx)
 			// _queueUserInput awaits the resolved _queueSteer/_queueFollowUp call.
@@ -156,16 +174,31 @@ func (a *rpcAdmission) queue(id, command, text string, images []ai.ImageContent)
 		}
 	})
 }
-func (a *rpcAdmission) command(id, name, args string) {
-	rpcAwaitHandler(a, func(ctx context.Context) (struct{}, error) {
+func (a *rpcAdmission) command(id rpcRequestID, name, args string) {
+	if a.commands != nil {
+		a.commands.begin()
+	}
+	pending := rpcAwaitHandler(a, func(ctx context.Context) (struct{}, error) {
 		a.catalog.executeCommand(ctx, name, args)
 		return struct{}{}, nil
-	}).then(func(_ struct{}, _ error) {
-		a.turn.after(func() { a.write(rpcSuccess(id, "prompt", nil)) })
+	})
+	if a.commandDone != nil {
+		a.commandDone()
+	}
+	pending.then(func(_ struct{}, _ error) {
+		a.turn.after(func() {
+			if a.commands != nil {
+				if a.commands.isClosed() {
+					return
+				}
+				defer a.commands.end()
+			}
+			a.write(rpcSuccess(id, "prompt", nil))
+		})
 	})
 }
 
-func (a *rpcAdmission) prompt(id string, cmd RPCPromptCommand) {
+func (a *rpcAdmission) prompt(id rpcRequestID, cmd RPCPromptCommand) {
 	if strings.HasPrefix(cmd.Message, "/") {
 		// An unresolved slash command still awaits _tryExecuteExtensionCommand(false).
 		a.turn.after(func() { a.promptInput(id, cmd) })
@@ -174,7 +207,7 @@ func (a *rpcAdmission) prompt(id string, cmd RPCPromptCommand) {
 	a.promptInput(id, cmd)
 }
 
-func (a *rpcAdmission) promptInput(id string, cmd RPCPromptCommand) {
+func (a *rpcAdmission) promptInput(id rpcRequestID, cmd RPCPromptCommand) {
 	fail := func(err error) { a.turn.after(func() { a.write(rpcError(id, "prompt", err.Error())) }) }
 	if a.session.IsCompacting() {
 		fail(fmt.Errorf("Cannot submit a prompt while compaction is in progress. Wait for compaction to finish and retry."))
@@ -199,9 +232,9 @@ func (a *rpcAdmission) promptInput(id string, cmd RPCPromptCommand) {
 				return
 			}
 			if cmd.StreamingBehavior == "followUp" {
-				a.session.FollowUp(text, input.images)
+				a.session.QueueFollowUp(text, input.images)
 			} else {
-				a.session.Steer(text, input.images)
+				a.session.QueueSteer(text, input.images)
 			}
 			if err := a.session.FlushEvents(a.ctx); err != nil {
 				fail(err)
@@ -230,7 +263,7 @@ func (a *rpcAdmission) promptInput(id string, cmd RPCPromptCommand) {
 		}
 	})
 }
-func (a *rpcAdmission) beforeAgentStart(id string, content []ai.UserContentBlock, hasImages bool, fail func(error)) {
+func (a *rpcAdmission) beforeAgentStart(id rpcRequestID, content []ai.UserContentBlock, hasImages bool, fail func(error)) {
 	hasHandlers := a.runner != nil && a.runner.HasHandlers("before_agent_start")
 	var preparation *rpcPromise[*coding.PreparedPrompt]
 	if hasHandlers {

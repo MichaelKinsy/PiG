@@ -1,0 +1,21 @@
+# Pi 0.87.1 cache-stats.test.ts:80 and core/cache-stats.ts:77-90 use the runtime model price when a full cache miss reports no read rate.
+# The Go fixture registers the same custom model and appends the three turns through a real Session; the Pi fixture invokes the pinned cache accounting function.
+# Mutation: ignore the bound runtime price source; Go reports .39375 instead of Pi's .36225 and the exact comparison fails.
+name = "18-cache-stats-model-prices"
+description = "Session cache waste uses registered model prices rather than only generated catalog rates."
+covers = ["packages/coding-agent/src/core/cache-stats.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/cache-stats-pig"]
+pi_args = ["node", "./test/parity/testdata/cache-stats-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

@@ -2,6 +2,7 @@ package ai
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"strings"
@@ -160,6 +161,7 @@ func TestLoginOpenAICodexDeviceCode_EndToEnd(t *testing.T) {
 }
 
 func TestCodexProvider_Login_DeviceCodeDispatch(t *testing.T) {
+	access := codexTestToken(t, "account-device-dispatch")
 	withMockCodexClient(t, func(r *http.Request) (*http.Response, error) {
 		switch r.URL.Path {
 		case "/api/accounts/deviceauth/usercode":
@@ -167,7 +169,7 @@ func TestCodexProvider_Login_DeviceCodeDispatch(t *testing.T) {
 		case "/api/accounts/deviceauth/token":
 			return codexJSONResp(200, `{"authorization_code":"ac","code_verifier":"cv"}`), nil
 		case "/oauth/token":
-			return codexJSONResp(200, `{"access_token":"acc","refresh_token":"ref","expires_in":3600}`), nil
+			return codexJSONResp(200, fmt.Sprintf(`{"access_token":%q,"refresh_token":"ref","expires_in":3600}`, access)), nil
 		}
 		t.Fatalf("unexpected path %q", r.URL.Path)
 		return nil, nil
@@ -188,7 +190,7 @@ func TestCodexProvider_Login_DeviceCodeDispatch(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if creds.Access != "acc" || !deviceShown || selectMsg == "" {
+	if creds.Access != access || !deviceShown || selectMsg == "" {
 		t.Fatalf("dispatch failed: creds=%+v deviceShown=%v msg=%q", creds, deviceShown, selectMsg)
 	}
 }

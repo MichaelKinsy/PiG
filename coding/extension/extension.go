@@ -15,7 +15,7 @@ import (
 // produce these; runners consume them. The runner does not mutate them.
 //
 // Field-level translation rule: Go's idiomatic field naming and JSON tag
-// preservation are applied; see DIVERGENCES.md "TS→Go translation
+// preservation are applied; see docs/parity/DIVERGENCES.md "TS→Go translation
 // rituals" section. The maps, sets, and overall shape mirror upstream
 // verbatim.
 //
@@ -44,8 +44,10 @@ type Extension struct {
 
 	handlerState *eventHandlerState
 
-	// Tools is keyed by the tool's `name` field (matches `RegisteredTool.Definition.Name`).
+	// Tools is the startup construction shape, keyed by name. Runtime readers use RegisteredTools or RegisteredTool to include synchronized late registrations.
 	Tools map[string]RegisteredTool
+
+	toolState *toolRegistry
 
 	// ToolOrder records tool registration order. Go maps do not retain
 	// insertion order; loaders populate this alongside Tools so tool lists
@@ -59,6 +61,11 @@ type Extension struct {
 	// Custom entries (appended via AppendEntry) do not participate in LLM context.
 	EntryRenderers map[string]EntryRenderer
 
+	// MarkdownTransformer is the extension's display-only Markdown transform,
+	// if it registered one; a later registration replaces an earlier one.
+	// upstream: types.ts Extension.markdownTransformer
+	MarkdownTransformer MarkdownTransformer
+
 	// Commands is keyed by the command name (without leading slash).
 	Commands map[string]RegisteredCommand
 
@@ -69,6 +76,9 @@ type Extension struct {
 
 	// Flags is keyed by the flag name.
 	Flags map[string]ExtensionFlag
+
+	// FlagOrder records the first registration of each flag name. Loaders populate it alongside Flags, so --help lists flags in upstream registration order.
+	FlagOrder []string
 
 	// Shortcuts is keyed by the canonical KeyID (e.g. "ctrl+shift+r").
 	Shortcuts map[KeyID]ExtensionShortcut

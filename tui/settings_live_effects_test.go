@@ -15,7 +15,7 @@ func TestEditorRuntimeSettingsApplyImmediately(t *testing.T) {
 		t.Fatalf("padding = %d, want 2", editor.PaddingX())
 	}
 	after := editor.Render(20)
-	if len(after) < 3 || !strings.HasPrefix(after[2], "  hello") {
+	if len(after) < 3 || !strings.HasPrefix(after[1], "  hello") {
 		t.Fatalf("padded editor line = %q", after)
 	}
 	if strings.Join(before, "\n") == strings.Join(after, "\n") {

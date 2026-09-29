@@ -11,6 +11,7 @@ import (
 	"weak"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -147,10 +148,12 @@ func (h *Host) makeToolRenderResult(me *managedExt, toolName string) extension.T
 // hands a renderer its last component, and schedules the renderer to run with
 // the new inputs.
 func (h *Host) toolRenderProxyFor(me *managedExt, toolName, phase string, context extension.ToolRenderContext, payload RenderToolPayload) *toolRenderProxy {
+	me = me.current()
+	conn := me.connection()
 	proxy, _ := context.LastComponent.(*toolRenderProxy)
-	if proxy == nil || proxy.phase != phase || proxy.tool != toolName || proxy.session.conn != me.conn || (context.Card != "" && proxy.session.card != context.Card) {
+	if proxy == nil || proxy.phase != phase || proxy.tool != toolName || proxy.session.conn != conn || (context.Card != "" && proxy.session.card != context.Card) {
 		proxy = &toolRenderProxy{
-			session:    me.toolRenders.session(me.conn, context.Card),
+			session:    me.toolRenders.session(conn, context.Card),
 			tool:       toolName,
 			phase:      phase,
 			inactivity: rendererInactivity,
@@ -194,11 +197,13 @@ func renderToolResultPayload(result extension.AgentToolResult) *RenderToolResult
 	default:
 		return out
 	}
-	if toolResult.Content != "" {
-		out.Content = append(out.Content, RenderToolContent{Type: "text", Text: toolResult.Content})
-	}
-	for _, image := range toolResult.Images {
-		out.Content = append(out.Content, RenderToolContent{Type: "image", Data: image.Data, MimeType: image.MimeType})
+	for _, block := range toolResult.Content {
+		switch value := block.(type) {
+		case ai.TextContent:
+			out.Content = append(out.Content, RenderToolContent{Type: "text", Text: value.Text, TextSignature: value.TextSignature})
+		case ai.ImageContent:
+			out.Content = append(out.Content, RenderToolContent{Type: "image", Data: value.Data, MimeType: value.MimeType})
+		}
 	}
 	if toolResult.Details != nil {
 		if details, err := json.Marshal(toolResult.Details); err == nil {

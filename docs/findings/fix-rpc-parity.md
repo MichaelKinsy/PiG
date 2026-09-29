@@ -74,13 +74,13 @@ Tool tests include ordinary and user-limited reads, a 2001-line read, 60000-byte
 
 ## Verification
 
-Evidence lives in the task's external evidence directory. Compiling mutation logs include `jsonl-mutation.log`, `unknown-id-mutation.log`, `prompt-count-mutation.log`, `source-mutations.log`, `rpc-mutation.log`, `tools-mutation.log`, `signal-mutation.log`, `signal-parity-mutation.log`, `metadata-overlay-mutation.log`, `metadata-parity-mutation.log` and `renderer-projection-mutation.log`. Paired failures also retain raw output and rerun commands under `parity/artifacts/`.
+Evidence lives in the task's external evidence directory. Compiling mutation logs include `jsonl-mutation.log`, `unknown-id-mutation.log`, `prompt-count-mutation.log`, `source-mutations.log`, `rpc-mutation.log`, `tools-mutation.log`, `signal-mutation.log`, `signal-parity-mutation.log`, `metadata-overlay-mutation.log`, `metadata-parity-mutation.log` and `renderer-projection-mutation.log`. Paired failures also retain raw output and rerun commands under `test/parity/artifacts/`.
 
 | Gate | Result |
 |---|---|
 | Assigned 27 cases | pass |
 | Exact tool/result, persistence/replay, signal cleanup and agent_end guards | pass |
-| Complete touched-package suites and `go test ./parity/...` | pass |
+| Complete touched-package suites and `go test ./test/parity/...` | pass |
 | Focused race-detector guards for agent_end, result details and shell updates | pass |
 | `go vet ./...` | pass |
 | `GOOS=windows go vet` for touched production packages and the parity packages | pass; Windows runtime execution is not claimed. The parity TestMain's pre-existing syscall.Kill compile failure is fixed with os.Process self-signalling and a Windows status fallback |
@@ -93,7 +93,7 @@ Evidence lives in the task's external evidence directory. Compiling mutation log
 | RPC/tools/JSON/print/interactive-rendering/export-html parity families | pass against Pi 0.87.1, including unchanged escaped-output read comparators after the presentation fix |
 | `go fix -diff ./...` | pass after converting two test-only split loops to SplitSeq |
 
-`parity/interfaces/pig-go.json` is regenerated with `go run ./parity/cmd/gointerfaces -out parity/interfaces/pig-go.json`. Coverage is regenerated with `make coverage RESULTS=` to avoid importing an inherited last-run results file into this lane's status claims. No upstream test count or baseline is lowered. No divergence or lint suppression is added.
+`test/parity/interfaces/pig-go.json` is regenerated with `go run ./test/parity/cmd/gointerfaces -out test/parity/interfaces/pig-go.json`. Coverage is regenerated with `make coverage RESULTS=` to avoid importing an inherited last-run results file into this lane's status claims. No upstream test count or baseline is lowered. No divergence or lint suppression is added.
 
 ## Commits and integration surface
 

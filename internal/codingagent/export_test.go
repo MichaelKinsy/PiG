@@ -25,15 +25,23 @@ type TestHarness struct {
 // NewTestHarness builds a mode around opts.SessionHandle and starts its owner
 // loop. onEvent, when non-nil, runs on the loop after the mode handles each
 // Session event.
-func NewTestHarness(t *testing.T, opts InteractiveOptions, onEvent func(h *TestHarness, ev agent.AgentEvent)) *TestHarness {
+func NewTestHarness(t testing.TB, opts InteractiveOptions, onEvent func(h *TestHarness, ev agent.AgentEvent)) *TestHarness {
 	t.Helper()
 	m := NewInteractiveMode(opts)
 	m.chatContainer = tui.NewContainer()
+	m.loadedResourcesContainer = tui.NewContainer()
+	m.editorContainer = tui.NewContainer()
 	m.statusContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
-	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
+	m.rendererOut = io.Discard
+	m.tuiInst = tui.NewWithOutput(m.rendererOut, 100, 30)
 	m.statusLine = NewStatusLine(opts.Model, "", nil)
 	m.editor = tui.NewEditor()
+	m.editorContainer.Add(m.editor)
+	m.layout = tui.NewContainer(m.loadedResourcesContainer, m.chatContainer, m.editorContainer)
+	m.tuiInst.SetFocus(m.editor)
+	m.newRunner = opts.ExtensionRunner
+	m.wireInprocContextActions()
 	m.keybindings = DefaultKeybindingsManager()
 	m.slashRegistry = NewSlashRegistry()
 	m.agent = opts.SessionHandle.Agent()
@@ -112,6 +120,17 @@ func (h *TestHarness) Idle() bool {
 	return idle
 }
 
+// WaitForSessionIdle drives the production captured-session waiter off the owner loop.
+func (h *TestHarness) WaitForSessionIdle(ctx context.Context) error { return h.m.waitForIdle(ctx) }
+
+// SetIdleWaitState installs the independent mode cleanup barrier and Session on the owner loop.
+func (h *TestHarness) SetIdleWaitState(session InteractiveSessionHandle, settled chan struct{}) {
+	h.m.queueMu.Lock()
+	h.m.opts.SessionHandle = session
+	h.m.turnSettled = settled
+	h.m.queueMu.Unlock()
+}
+
 // WaitIdle waits until no run is active and the UI shows idle.
 func (h *TestHarness) WaitIdle(t *testing.T, timeout time.Duration) {
 	t.Helper()
@@ -122,6 +141,16 @@ func (h *TestHarness) WaitIdle(t *testing.T, timeout time.Duration) {
 		}
 		time.Sleep(10 * time.Millisecond)
 	}
+}
+
+// Notify and ChatOnOwner are used inside Do callbacks without posting recursively.
+func (h *TestHarness) Notify(message string) { h.m.showExtensionNotify(message, "info") }
+func (h *TestHarness) ChatOnOwner() string {
+	lines := h.m.chatContainer.Render(100)
+	for i := range lines {
+		lines[i] = widthx.StripAnsi(lines[i])
+	}
+	return strings.Join(lines, "\n")
 }
 
 // Chat returns the transcript as plain text.

@@ -1,0 +1,25 @@
+# Pi package-manager.test.ts:125 resolves a configured skill directory to skills/my-skill/SKILL.md.
+# Both probes assert the enabled file entry and local/user metadata. Paths are relative to each isolated agent directory; no output normalization is used.
+# The native probe also guards the internal config bundle path, which remains a directory for resource toggles.
+name = "13-skill-resource-metadata"
+description = "Configured skill metadata exposes its Markdown entry file"
+covers = ["packages/coding-agent/src/core/package-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/skill-metadata-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/skill-metadata-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SKILL_METADATA skills/my-skill/SKILL.md"]
+runs = 3

@@ -36,7 +36,10 @@ func (m *InteractiveMode) completeProviderAuthentication(providerID, providerNam
 	if authType == ai.CredentialAPIKey {
 		actionLabel = "Saved API key for " + providerName
 	}
-	defaultID, hasDefault := DefaultModelPerProvider()[providerID]
+	if m.opts.DefaultModelPerProvider == nil {
+		m.opts.DefaultModelPerProvider = DefaultModelPerProvider()
+	}
+	defaultID, hasDefault := m.opts.DefaultModelPerProvider[providerID]
 	deferSelection := isUnknownModel(previousModel) && hasDefault && !slices.ContainsFunc(m.availableModelItems(), func(model tui.ModelSelectorItem) bool {
 		return model.Provider == providerID && model.ID == defaultID
 	})
@@ -92,9 +95,9 @@ func (m *InteractiveMode) completeProviderAuthentication(providerID, providerNam
 }
 
 // postLoginModel selects only within the authenticated provider, preserving catalog order for Radius accounts without balanced.
-func postLoginModel(providerID, actionLabel string, models []tui.ModelSelectorItem) (string, string) {
+func postLoginModel(providerID, actionLabel, defaultID string, models []tui.ModelSelectorItem) (string, string) {
 	providerModels := slices.DeleteFunc(slices.Clone(models), func(model tui.ModelSelectorItem) bool { return model.Provider != providerID })
-	defaultID, hasDefault := DefaultModelPerProvider()[providerID]
+	hasDefault := defaultID != ""
 	switch {
 	case providerID == "llama.cpp":
 		return "", llamaCppPostLoginGuidance(actionLabel, len(providerModels))
@@ -119,7 +122,7 @@ var errPostLoginSelectionSuperseded = errors.New("post-login model selection sup
 func (m *InteractiveMode) finishProviderAuthentication(providerID, actionLabel string, previousModel *ai.Model, authPath string, redact func(string) string, after func()) {
 	var modelID, selectionError string
 	if isUnknownModel(previousModel) {
-		modelID, selectionError = postLoginModel(providerID, actionLabel, m.availableModelItems())
+		modelID, selectionError = postLoginModel(providerID, actionLabel, m.opts.DefaultModelPerProvider[providerID], m.availableModelItems())
 	}
 	finish := func(selected *ai.Model, err error) {
 		if err != nil {

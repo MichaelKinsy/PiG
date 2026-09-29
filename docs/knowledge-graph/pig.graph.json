@@ -1,7 +1,7 @@
 {
   "entities": [
     {"id": "pi", "label": "Pi", "kind": "project", "summary": "Upstream TypeScript coding agent; the behavior oracle.", "where": "https://github.com/earendil-works/pi", "inspect": "pig version", "doc": "divergences.md"},
-    {"id": "pig", "label": "PiG", "kind": "project", "summary": "The Go implementation; executable pig.", "where": "coding/pigversion/pigversion.go pins Pi", "inspect": "pig verify", "doc": "README.md"},
+    {"id": "pig", "label": "PiG", "kind": "project", "summary": "The Go implementation; executable pig.", "where": "internal/coding/pigversion/pigversion.go pins Pi", "inspect": "pig verify", "doc": "README.md"},
     {"id": "stock", "label": "Stock PiG", "kind": "artifact", "summary": "Product-neutral pig binary with no Piglet selected.", "where": "cmd/pig", "inspect": "pig version", "doc": "built-in-extensions.md"},
     {"id": "session", "label": "Session", "kind": "runtime", "summary": "Append-only JSONL tree of entries for one conversation.", "where": "~/.pig/agent/sessions", "inspect": "/tree, /session", "doc": "sessions.md"},
     {"id": "model_runtime", "label": "Model Runtime", "kind": "runtime", "summary": "Session-owned model lookup, auth, completion, and streaming used by every mode.", "where": "coding/", "inspect": "/model, pig --list-models", "doc": "models.md"},
@@ -19,7 +19,7 @@
     {"id": "piglet_binary", "label": "Piglet Binary", "kind": "artifact", "summary": "Target-native pig executable for one Piglet release; verifies its closure at startup.", "where": "pig piglet build --format binary", "inspect": "pig verify", "doc": "piglets.md"},
     {"id": "builder", "label": "Builder", "kind": "tool", "summary": "Produces Piglet Binaries: native (needs Go and PiG source) or container (needs Docker or Podman).", "where": "coding/pigletbuild", "inspect": "pig setup", "doc": "piglets.md"},
     {"id": "porter", "label": "Pig Porter", "kind": "resource", "summary": "Parity workbench Piglet Resource; proposes ports, never accepts its own work.", "where": "piglets/porter", "inspect": "make porter-check (source checkout)", "doc": "divergences.md"},
-    {"id": "divergence", "label": "Divergence", "kind": "record", "summary": "A numbered, approved, user-visible difference from pinned Pi.", "where": "DIVERGENCES.md", "inspect": "pig docs show divergences", "doc": "divergences.md"}
+    {"id": "divergence", "label": "Divergence", "kind": "record", "summary": "A numbered, approved, user-visible difference from pinned Pi.", "where": "docs/parity/DIVERGENCES.md", "inspect": "pig docs show divergences", "doc": "divergences.md"}
   ],
   "relations": [
     ["pig", "implements", "pi", "exact pinned release"],

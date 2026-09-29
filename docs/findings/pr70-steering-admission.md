@@ -19,7 +19,7 @@ The independent scheduler experiment is discarded before the port. None of that 
 
 `cmd/pig/rpc_admission.go` schedules fulfilled and pending reactions on `rpcResponseTurn`. `coding/session_preflight.go` stores preparation separately from a claimed run. `Agent.BeginSendContent`, `PromptRun.Start` and `PromptRun.Run` share the same production implementation with blocking callers. Shutdown cancels pending work, closes RPC dialogs and joins admission and run workers. A preparation from a replaced Session cannot commit into its replacement. No timeout, retry, skip, record sorting or new divergence is introduced.
 
-The prerequisite also aligns the Go classified-error faux stream's initial snapshot with `parity/testdata/test-faux-provider.ts:emitPlan`. This is a paired fixture correction, not a real Provider change.
+The prerequisite also aligns the Go classified-error faux stream's initial snapshot with `test/parity/testdata/test-faux-provider.ts:emitPlan`. This is a paired fixture correction, not a real Provider change.
 
 ## Red and green evidence
 
@@ -65,7 +65,7 @@ The existing `print/01-print-mode-arithmetic` is a live GitHub Copilot scenario.
 Artifacts are retained outside the source tree: pre-fix binary, red unit and strict-comparison logs, complete failed-pair streams, the 50-pair result JSON, family results and gate logs. Reproduce the durability run after building a fresh binary and setting `PIG_PARITY_PIG_BIN`, `PIG_PARITY_PI_BIN` and `PI_PACKAGE_ROOT` to the selected artifacts:
 
 ```bash
-go test -tags=parity ./parity/runner -run '^TestParity$/13-rpc-steering-queue$' -count=1 -v -args -pig-parity.runs=50
+go test -tags=parity ./test/parity/runner -run '^TestParity$/13-rpc-steering-queue$' -count=1 -v -args -pig-parity.runs=50
 ```
 
 ## Resource evidence

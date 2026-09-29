@@ -3,15 +3,13 @@ package codingagent
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
-	"unicode"
 
-	"go.yaml.in/yaml/v3"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/internal/text"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/frontmatter"
 )
 
 // PromptTemplate is one loaded `.md` file.
@@ -21,15 +19,15 @@ type PromptTemplate struct {
 	ArgumentHint string // from frontmatter `argument-hint`, optional
 	Content      string // body (without frontmatter)
 	FilePath     string // absolute path on disk
-	Scope        string // "user" | "project" | "external"
+	Scope        string // "user" | "project" | "extra"
+	// SourceInfo is prompt-templates.ts PromptTemplate.sourceInfo, set by a resource loader from the resolved resource's metadata.
+	SourceInfo PiSourceInfo
 }
 
 // ─── Argument parsing ────────────────────────────────────────────────────────
 
-// ParsePromptArgs splits an argument string into tokens, respecting
-// single- and double-quoted runs. Whitespace outside quotes is the
-// separator. Mirrors upstream `parseCommandArgs`
-// (core/prompt-templates.ts v0.69.0:24-52).
+// ParsePromptArgs splits arguments using ECMAScript whitespace outside single- and double-quoted runs. Empty quoted strings are omitted, and backslashes are literal.
+// Upstream: packages/coding-agent/src/core/prompt-templates.ts:24-55.
 func ParsePromptArgs(s string) []string {
 	args := make([]string, 0, 4)
 	var cur strings.Builder
@@ -47,7 +45,7 @@ func ParsePromptArgs(s string) []string {
 			quote = char
 			continue
 		}
-		if unicode.IsSpace(char) {
+		if isJSWhitespace(char) {
 			if cur.Len() > 0 {
 				args = append(args, cur.String())
 				cur.Reset()
@@ -76,7 +74,7 @@ var (
 	//   $ARGUMENTS $@ $N                                    (g5 simple)
 	// A single pass matches upstream substituteArgs: inserted argument values
 	// are never re-scanned for further patterns.
-	reSubstitute = regexp.MustCompile(`\$\{(\d+|ARGUMENTS|@):-([^}]*)\}|\$\{@:(\d+)(?::(\d+))?\}|\$(ARGUMENTS|@|\d+)`)
+	reSubstitute = lazyregexp.New(`\$\{(\d+|ARGUMENTS|@):-([^}]*)\}|\$\{@:(\d+)(?::(\d+))?\}|\$(ARGUMENTS|@|\d+)`)
 )
 
 // SubstitutePromptArgs returns content with `$1`, `${1:-default}`, `${@:N:L}`,
@@ -153,12 +151,7 @@ func LoadPromptTemplates(cwd, agentDir string, extraPaths ...string) LoadPromptT
 		add(loadTemplatesFromDir(userDir, "user"))
 	}
 	if cwd != "" {
-		projectRoot := ProjectConfigDir(cwd)
-		absoluteProjectRoot, projectErr := filepath.Abs(projectRoot)
-		absoluteConfigRoot, configErr := filepath.Abs(ConfigRoot())
-		if projectErr != nil || configErr != nil || absoluteProjectRoot != absoluteConfigRoot {
-			add(loadTemplatesFromDir(filepath.Join(projectRoot, "prompts"), "project"))
-		}
+		add(loadTemplatesFromDir(filepath.Join(ProjectConfigDir(cwd), "prompts"), "project"))
 	}
 	for _, path := range extraPaths {
 		if path != "" {
@@ -228,24 +221,8 @@ func loadTemplatesFromDir(dir, scope string) LoadPromptTemplatesResult {
 }
 
 func parsePromptFrontmatter(content string) (map[string]any, string, error) {
-	normalized := strings.NewReplacer("\r\n", "\n", "\r", "\n").Replace(text.StripBom(content))
-	if !strings.HasPrefix(normalized, "---") {
-		return nil, normalized, nil
-	}
-	end := strings.Index(normalized[3:], "\n---")
-	if end < 0 {
-		return nil, normalized, nil
-	}
-	end += 3
-	body := strings.TrimSpace(normalized[end+4:])
-	var parsed any
-	if end > 4 {
-		if err := yaml.Unmarshal([]byte(normalized[4:end]), &parsed); err != nil {
-			return nil, "", err
-		}
-	}
-	fields, _ := parsed.(map[string]any)
-	return fields, body, nil
+	doc := frontmatter.Parse(content)
+	return doc.Frontmatter, doc.Body, doc.Err
 }
 
 func loadTemplateFromFile(path, scope string) LoadPromptTemplatesResult {
@@ -280,20 +257,17 @@ func truncatePromptDescription(line string) string {
 
 // ─── Expansion ───────────────────────────────────────────────────────────────
 
-// ExpandPromptTemplate consumes a `/name [args]` line. If `name`
-// matches a loaded template, returns the expanded body with arg
-// substitution applied and ok=true. Otherwise returns ("", false).
-// Lines without a leading `/` always return ("", false). Mirrors
-// upstream `expandPromptTemplate` (v0.69.0:293-308).
+// ExpandPromptTemplate consumes a /name command separated from its arguments by ECMAScript whitespace. A matching template returns its expanded body and true; a non-command or unknown name returns an empty string and false.
+// Upstream: packages/coding-agent/src/core/prompt-templates.ts:318-334.
 func ExpandPromptTemplate(line string, templates []PromptTemplate) (string, bool) {
 	if !strings.HasPrefix(line, "/") {
 		return "", false
 	}
 	rest := line[1:]
 	var name, argsStr string
-	if i := strings.IndexFunc(rest, unicode.IsSpace); i >= 0 {
+	if i := strings.IndexFunc(rest, isJSWhitespace); i >= 0 {
 		name = rest[:i]
-		argsStr = strings.TrimLeftFunc(rest[i+1:], unicode.IsSpace)
+		argsStr = strings.TrimLeftFunc(rest[i:], isJSWhitespace)
 	} else {
 		name = rest
 	}

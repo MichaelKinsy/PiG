@@ -28,7 +28,7 @@ func runEdit(t *testing.T, content string, edits []editEntry) (string, *EditTool
 		t.Fatal(err)
 	}
 	details, _ := res.Details.(*EditToolDetails)
-	return res.Content, details, string(after), res.IsError
+	return res.Text(), details, string(after), res.IsError
 }
 
 // TOOL-03: a fuzzy match must rewrite only the lines it touches. Upstream
@@ -55,51 +55,74 @@ func TestEditFuzzyMatchingUpstreamCases(t *testing.T) {
 		edits         []editEntry
 		want          string
 	}{
-		{"trailing whitespace", "line one   \nline two  \nline three\n",
+		// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:1072
+		{"should match text with trailing whitespace stripped", "line one   \nline two  \nline three\n",
 			[]editEntry{{"line one\nline two\n", "replaced\n"}}, "replaced\nline three\n"},
-		{"fullwidth punctuation", "你好，世界\n你好（世界）\n",
+		// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:1088
+		{"should match fullwidth punctuation in Chinese text", "你好，世界\n你好（世界）\n",
 			[]editEntry{{"你好,世界\n你好(世界)\n", "你好，pi\n你好(pi)\n"}}, "你好，pi\n你好(pi)\n"},
-		{"compatibility forms", "ＡＢＣ１２３\ncafé\n",
+		// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:1102
+		{"should match compatibility-equivalent Unicode forms", "ＡＢＣ１２３\ncafé\n",
 			[]editEntry{{"ABC123\ncafé\n", "XYZ789\ncoffee\n"}}, "XYZ789\ncoffee\n"},
-		{"smart single quotes", "console.log(‘hello’);\n",
+		// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:1116
+		{"should match smart single quotes to ASCII quotes", "console.log(‘hello’);\n",
 			[]editEntry{{"console.log('hello');", "console.log('world');"}}, "console.log('world');\n"},
-		{"smart double quotes", "const msg = “Hello World”;\n",
+		// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:1132
+		{"should match smart double quotes to ASCII quotes", "const msg = “Hello World”;\n",
 			[]editEntry{{`const msg = "Hello World";`, `const msg = "Goodbye";`}}, "const msg = \"Goodbye\";\n"},
-		{"unicode dashes", "range: 1–5\nbreak—here\n",
+		// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:1148
+		{"should match Unicode dashes to ASCII hyphen", "range: 1–5\nbreak—here\n",
 			[]editEntry{{"range: 1-5\nbreak-here", "range: 10-50\nbreak--here"}}, "range: 10-50\nbreak--here\n"},
-		{"nbsp", "hello world\n",
+		// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:1164
+		{"should match non-breaking space to regular space", "hello world\n",
 			[]editEntry{{"hello world", "hello universe"}}, "hello universe\n"},
-		{"exact preferred", "const x = 'exact';\nconst y = 'other';\n",
+		// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:1180
+		{"should prefer exact match over fuzzy match", "const x = 'exact';\nconst y = 'other';\n",
 			[]editEntry{{"const x = 'exact';", "const x = 'changed';"}}, "const x = 'changed';\nconst y = 'other';\n"},
-		{"multi-edit", "console.log(‘hello’);\nhello world\n",
+		// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:1220
+		{"should support fuzzy matching in multi-edit mode", "console.log(‘hello’);\nhello world\n",
 			[]editEntry{{"console.log('hello');\n", "console.log('world');\n"}, {"hello world\n", "hello universe\n"}},
 			"console.log('world');\nhello universe\n"},
-		{"duplicate nearby line", "replace me   \nafter   \n",
+		// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:1235
+		{"should preserve the correct occurrence when fuzzy replacement equals a nearby line", "replace me   \nafter   \n",
 			[]editEntry{{"replace me\n", "after\n"}}, "after\nafter   \n"},
-		{"multi-edit preserves untouched", "keep before  \nfirst target  \nfirst after\nkeep middle   \nsecond target  \nsecond after\nkeep after  \n",
+		// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:1250
+		{"should preserve untouched lines and produce an applicable patch for fuzzy multi-edits", "keep before  \nfirst target  \nfirst after\nkeep middle   \nsecond target  \nsecond after\nkeep after  \n",
 			[]editEntry{{"first target\nfirst after", "FIRST\nFIRST2"}, {"second target\nsecond after", "SECOND\nSECOND2"}},
 			"keep before  \nFIRST\nFIRST2\nkeep middle   \nSECOND\nSECOND2\nkeep after  \n"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
-			text, _, after, isErr := runEdit(t, c.content, c.edits)
+			text, details, after, isErr := runEdit(t, c.content, c.edits)
 			if isErr || !strings.Contains(text, "Successfully replaced") {
 				t.Fatalf("result = %q", text)
 			}
 			if after != c.want {
 				t.Fatalf("file = %q, want %q", after, c.want)
 			}
+			if strings.HasPrefix(c.name, "should preserve") {
+				if details == nil {
+					t.Fatal("missing patch details")
+				}
+				assertApplicablePatch(t, c.content, details.Patch, c.want)
+			}
 		})
 	}
 
-	text, _, _, isErr := runEdit(t, "completely different content\n", []editEntry{{"this does not exist", "replacement"}})
-	if !isErr || !strings.Contains(text, "Could not find the exact text") {
-		t.Errorf("not found: %q", text)
-	}
-	text, _, _, isErr = runEdit(t, "hello world   \nhello world\n", []editEntry{{"hello world", "replaced"}})
-	if !isErr || !strings.Contains(text, "Found 2 occurrences") {
-		t.Errorf("duplicates: %q", text)
-	}
+	// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:1195
+	t.Run("should still fail when text is not found even with fuzzy matching", func(t *testing.T) {
+		text, _, _, isErr := runEdit(t, "completely different content\n", []editEntry{{"this does not exist", "replacement"}})
+		if !isErr || !strings.Contains(text, "Could not find the exact text") {
+			t.Errorf("not found: %q", text)
+		}
+	})
+	// .upstream/v0.87.1/packages/coding-agent/test/tools.test.ts:1207
+	t.Run("should detect duplicates after fuzzy normalization", func(t *testing.T) {
+		text, _, _, isErr := runEdit(t, "hello world   \nhello world\n", []editEntry{{"hello world", "replaced"}})
+		if !isErr || !strings.Contains(text, "Found 2 occurrences") {
+			t.Errorf("duplicates: %q", text)
+		}
+	})
 }
 
 // The patch of a fuzzy multi-edit removes only the targeted original lines.

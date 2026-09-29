@@ -52,11 +52,22 @@ type TextEndEvent struct {
 	ContentIndex int               `json:"contentIndex"`
 	Content      string            `json:"content"`
 	Partial      *AssistantMessage `json:"partial"`
+
+	// contentSignature is the backend's contentSignature when the event was forwarded from a pi-messages `text_end` (pi-messages.ts:272 `{ ...event, partial }`).
+	contentSignature *string
 }
 
 func (TextEndEvent) EventType() AssistantEventType { return EventTextEnd }
 func (TextEndEvent) assistantMessageEvent()        {}
 func (event TextEndEvent) MarshalJSON() ([]byte, error) {
+	if event.contentSignature != nil {
+		return marshalAssistantEvent(event.EventType(), struct {
+			ContentIndex     int               `json:"contentIndex"`
+			Content          string            `json:"content"`
+			ContentSignature string            `json:"contentSignature"`
+			Partial          *AssistantMessage `json:"partial"`
+		}{event.ContentIndex, event.Content, *event.contentSignature, event.Partial})
+	}
 	type plain TextEndEvent
 	return marshalAssistantEvent(event.EventType(), plain(event))
 }
@@ -90,11 +101,24 @@ type ThinkingEndEvent struct {
 	ContentIndex int               `json:"contentIndex"`
 	Content      string            `json:"content"`
 	Partial      *AssistantMessage `json:"partial"`
+
+	// contentSignature and redacted are the backend's fields when the event was forwarded from a pi-messages `thinking_end` (pi-messages.ts:272 `{ ...event, partial }`).
+	contentSignature *string
+	redacted         *bool
 }
 
 func (ThinkingEndEvent) EventType() AssistantEventType { return EventThinkingEnd }
 func (ThinkingEndEvent) assistantMessageEvent()        {}
 func (event ThinkingEndEvent) MarshalJSON() ([]byte, error) {
+	if event.contentSignature != nil || event.redacted != nil {
+		return marshalAssistantEvent(event.EventType(), struct {
+			ContentIndex     int               `json:"contentIndex"`
+			Content          string            `json:"content"`
+			ContentSignature *string           `json:"contentSignature,omitempty"`
+			Redacted         *bool             `json:"redacted,omitempty"`
+			Partial          *AssistantMessage `json:"partial"`
+		}{event.ContentIndex, event.Content, event.contentSignature, event.redacted, event.Partial})
+	}
 	type plain ThinkingEndEvent
 	return marshalAssistantEvent(event.EventType(), plain(event))
 }
@@ -166,10 +190,10 @@ func marshalAssistantEvent(eventType AssistantEventType, event any) ([]byte, err
 	if err != nil {
 		return nil, err
 	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(body, &fields); err != nil {
-		return nil, err
+	// The discriminator precedes the variant fields, as in Pi's event object literals.
+	prefix := []byte(fmt.Sprintf(`{"type":%q`, eventType))
+	if len(body) > 2 {
+		prefix = append(prefix, ',')
 	}
-	fields["type"] = json.RawMessage(fmt.Sprintf("%q", eventType))
-	return json.Marshal(fields)
+	return append(prefix, body[1:]...), nil
 }

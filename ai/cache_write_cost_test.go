@@ -104,8 +104,9 @@ func TestBedrockStreamCacheWrite1hCost(t *testing.T) {
 	provider := NewBedrockProvider("us.anthropic.claude-opus-4-8", server.URL)
 	defer func() { _ = provider.Close() }()
 	stream, err := provider.Stream(t.Context(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("hi")}}}), StreamOptions{
-		Env:       ProviderEnv{"AWS_BEDROCK_SKIP_AUTH": "1", "AWS_REGION": "us-east-1", "PI_CACHE_RETENTION": "none"},
-		ModelCost: ModelCost{Input: 5, CacheWrite: 6.25},
+		CacheRetention: CacheRetentionNone,
+		Env:            ProviderEnv{"AWS_BEDROCK_SKIP_AUTH": "1", "AWS_REGION": "us-east-1"},
+		ModelCost:      ModelCost{Input: 5, CacheWrite: 6.25},
 	})
 	if err != nil {
 		t.Fatal(err)

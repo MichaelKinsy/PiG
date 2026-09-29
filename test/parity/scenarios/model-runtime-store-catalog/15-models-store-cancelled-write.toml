@@ -1,0 +1,25 @@
+# Pi 0.87.1 models-store.test.ts:130 holds a file lock, starts a write, aborts,
+# releases the lock, and verifies no late write. The fixtures compare the entire
+# unchanged catalog file. Initial object keys are identically ordered inputs;
+# no output bytes are normalized. The Go wrapper removes only test-runner framing.
+name = "15-models-store-cancelled-write"
+description = "Cancelling a write blocked on a model-store lock leaves the existing file unchanged."
+covers = ["packages/coding-agent/src/core/models-store.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/models-store-cancel.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/models-store-cancel.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

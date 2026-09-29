@@ -11,32 +11,40 @@ import (
 	"strings"
 	"syscall"
 
+	"golang.org/x/sys/windows"
+
 	"github.com/MichaelKinsy/PiG/agent/harness"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 const isWindows = true
 
-func detachedProcessAttributes() *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{HideWindow: true}
-}
-
-func hiddenProcessAttributes() *syscall.SysProcAttr {
-	return &syscall.SysProcAttr{HideWindow: true}
-}
+// detachedProcessAttributes is nil: upstream spawns the shell with detached
+// false on win32.
+func detachedProcessAttributes() *syscall.SysProcAttr { return nil }
 
 // killProcessTree runs taskkill /F /T; a failed spawn is ignored.
 var killProcessTree = func(pid int) error {
-	systemRoot := os.Getenv("SystemRoot")
-	if systemRoot == "" {
-		systemRoot = `C:\Windows`
-	}
-	command := exec.Command(filepath.Join(systemRoot, "System32", "taskkill.exe"), "/F", "/T", "/PID", strconv.Itoa(pid))
-	command.SysProcAttr = hiddenProcessAttributes()
+	command := taskkillCommand(pid)
 	if err := command.Start(); err != nil {
 		return err
 	}
 	go func() { _ = command.Wait() }()
 	return nil
+}
+
+// taskkillCommand is upstream's taskkill spawn with stdio "ignore", detached:
+// true, and windowsHide: true. Upstream joins process.env.SystemRoot ??
+// "C:\\Windows", so only an unset SystemRoot takes the default.
+func taskkillCommand(pid int) *exec.Cmd {
+	systemRoot, ok := os.LookupEnv("SystemRoot")
+	if !ok {
+		systemRoot = `C:\Windows`
+	}
+	command := exec.Command(filepath.Join(systemRoot, "System32", "taskkill.exe"), "/F", "/T", "/PID", strconv.Itoa(pid))
+	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS}
+	nodespawn.HideWindow(command, nodespawn.Ignore, nodespawn.Ignore, nodespawn.Ignore)
+	return command
 }
 
 func platformShellConfig(ctx context.Context) (shellConfig, error) {

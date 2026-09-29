@@ -1,0 +1,141 @@
+{
+  "esbuild": "0.28.2",
+  "inputs": [
+    {
+      "path": "pi-dist/pi-tui/alt-screen-search.js",
+      "sha256": "cbdfa0e5871df913d2a3e495a83a69a803389e2ec3c2dfa5e64f8084c2b9f9de"
+    },
+    {
+      "path": "pi-dist/pi-tui/autocomplete.js",
+      "sha256": "1b18b10ff6232f95b8fb5c57390e706686de31449a8f3bd45f34af1038b33e23"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/alt-screen-flash.js",
+      "sha256": "6ca2016101ca570a94fdaa18bfe8edbc6734243cb5363d21110e809fcd47db12"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/box.js",
+      "sha256": "49d9b0afe534c3e2411db328c7d182333b87beefd4456b3ed401c8c0b982ba6b"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/cancellable-loader.js",
+      "sha256": "9fcffa6a7faeafe4686d1b78f375d3b03c465552faaf308ee9a44169580b3467"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/editor.js",
+      "sha256": "eff9e5a18a5bbcd5804de70081f3629c2f99cc0e133c671ca104de2ed8bed747"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/h-stack.js",
+      "sha256": "b4cf1819879bcbbf20f2cfd3a5d5960b92c7f69308310d2ad44f0dbae4ed9c0f"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/image.js",
+      "sha256": "dd6791e17fbeb0a48c2b73d521d31356edf11795e44e0fae05b5f8c322c470e1"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/input.js",
+      "sha256": "464220fb46981ed42fcabb687b5b6b736eeb75dfce3233977b67714e22d8360b"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/loader.js",
+      "sha256": "3bafc056e7161caa1a6ba684116345fdd8ba276a4f3774146642442b65dd49d6"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/markdown.js",
+      "sha256": "cd60f1bfc01eb36ef2ccdae21fd9f55d6369d8e0014cdc56719c1aeb8d2bb3fa"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/mouse-region.js",
+      "sha256": "944855dfb436b93905056157deb5c056e25a838529cc60d4987654aefa47cd26"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/scroll-view.js",
+      "sha256": "601b994d4700c9825b178bbdbc32344dc090be01e2f372282d0e4b67e8aa87cf"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/select-list.js",
+      "sha256": "4c8fe79d053ce465454c55bbeb7e61d84ea875f0b9bce8c6e238f3d7721c7f42"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/settings-list.js",
+      "sha256": "ef0ba838df7a8ad0c6f833e9263fe6ac03033008f2283e6106033a8cf5f3af30"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/spacer.js",
+      "sha256": "72b1bc30e7f2b34ca548b0e5f3a4b596d47538d53be02877fb1686595a107bc3"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/stack.js",
+      "sha256": "02b4dafebc728f1c0e8d01b5cc330f82eb760c58bc71c5cc9bff6d98bf34dbf3"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/text.js",
+      "sha256": "5399879280c62878370ade1ec33f8e8dc8ce61166217f8c6f08058c942f608b8"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/truncated-text.js",
+      "sha256": "32c182d7faf44306d4e6937a0324a1f88b1acabbbe3fa8f385ef99ed9d9e090d"
+    },
+    {
+      "path": "pi-dist/pi-tui/components/v-stack.js",
+      "sha256": "7b6e6f6e1fbb037f33a8238ab02ec9e6e5f65fe49029bb430acd59c40148bfa4"
+    },
+    {
+      "path": "pi-dist/pi-tui/fuzzy.js",
+      "sha256": "f873c8e2d808d215e57942ac325b9e635bde9632526d25b56b4eef253362b91b"
+    },
+    {
+      "path": "pi-dist/pi-tui/index.js",
+      "sha256": "25522e4fc853aff657ca43de57d224548fd86d8631bb351ab9be578416f21d4d"
+    },
+    {
+      "path": "pi-dist/pi-tui/kill-ring.js",
+      "sha256": "52212d532f2c5b85ed8977b0f4431f43998c6dc7746d26efc81eb7975b119122"
+    },
+    {
+      "path": "pi-dist/pi-tui/latex.js",
+      "sha256": "9a2055efaee483b038b2f0f663588eb4128153bedaa3c8c314248da00807c5bf"
+    },
+    {
+      "path": "pi-dist/pi-tui/layout-node.js",
+      "sha256": "73c3942b68d52ed29072f1f78184c99d405f9259bb4e24a1b6b0e3688381f7f5"
+    },
+    {
+      "path": "pi-dist/pi-tui/layout.js",
+      "sha256": "b20cb0b156e506b4639b789be8688fe9dd38d42d15746ae82e69fcd250e42147"
+    },
+    {
+      "path": "pi-dist/pi-tui/native-modifiers.js",
+      "sha256": "8ec9b2e44a2fb2f7f020f5a72be195742da2da148c91d93d359d829e6c0e07a4"
+    },
+    {
+      "path": "pi-dist/pi-tui/stdin-buffer.js",
+      "sha256": "37bcd9c0115f205ec05b7ed1ef44b9de96c6746612e263bd71fd32ba9457feb5"
+    },
+    {
+      "path": "pi-dist/pi-tui/terminal-colors.js",
+      "sha256": "e26c8c31d161d175817b3335baab4476737719c389a2a39312aa2ece67ccb119"
+    },
+    {
+      "path": "pi-dist/pi-tui/terminal.js",
+      "sha256": "d9636fd679aed23830be7c8d248d9725883efd43469392228275dac6a85fcc68"
+    },
+    {
+      "path": "pi-dist/pi-tui/tui-alt-screen.js",
+      "sha256": "816b69efd87fa7991e08d68080ae8dad364bd0bd9fa06b31cb921685ef37f5f1"
+    },
+    {
+      "path": "pi-dist/pi-tui/tui-main-screen.js",
+      "sha256": "a3e3fdee95dfb0a4647abd668cfad7c8e85001163b1abb6f1476a8f5277714af"
+    },
+    {
+      "path": "pi-dist/pi-tui/undo-stack.js",
+      "sha256": "7fbb318db3521aa1fa6804ffe50245c18d9e9f210a85a48e175fae6a629259cb"
+    },
+    {
+      "path": "pi-dist/pi-tui/word-navigation.js",
+      "sha256": "367437cebd7e9aa8efdda682d176e9994cb0ec63a48fc25073a0227ff637eb8e"
+    }
+  ]
+}

@@ -85,10 +85,11 @@ func TestLoadAllPreparesConcurrentlyAndRunsFactoriesInPlanOrder(t *testing.T) {
 	defer host.Shutdown("test done")
 	var mu sync.Mutex
 	var providers []string
-	host.SetProviderCallbacks(func(name string, _ extension.ProviderConfig) {
+	host.SetProviderCallbacks(func(name string, _ extension.ProviderConfig) error {
 		mu.Lock()
 		defer mu.Unlock()
 		providers = append(providers, name)
+		return nil
 	}, func(string) {})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Minute)

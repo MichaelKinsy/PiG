@@ -43,7 +43,6 @@ type PiMessagesEvent struct {
 type piMessagesEventConverter struct {
 	partial  *AssistantMessage
 	toolJSON map[int]string
-	started  bool
 }
 
 func newPiMessagesEventConverter(providerID, modelID string) *piMessagesEventConverter {
@@ -56,27 +55,35 @@ func newPiMessagesEventConverter(providerID, modelID string) *piMessagesEventCon
 	}
 }
 
-// convert returns the events to push for one backend event. A backend that
-// omits "start" gets one before its first non-terminal-error event, because
-// PiG's event stream requires start before partial updates and done.
+// convert returns the event to push for one backend event: createEventConverter's returned function (pi-messages.ts:190-284).
 func (c *piMessagesEventConverter) convert(raw json.RawMessage) ([]AssistantMessageEvent, error) {
 	var event PiMessagesEvent
 	if err := json.Unmarshal(raw, &event); err != nil {
 		return nil, err
 	}
-	var events []AssistantMessageEvent
-	if !c.started && event.Type != "error" {
-		c.started = true
-		events = append(events, StartEvent{Partial: c.partial})
-	}
 	if event.Type == "start" {
-		return events, nil
+		return []AssistantMessageEvent{StartEvent{Partial: c.partial}}, nil
+	}
+	var forwarded struct {
+		ContentSignature *string `json:"contentSignature"`
+		Redacted         *bool   `json:"redacted"`
+	}
+	if err := json.Unmarshal(raw, &forwarded); err != nil {
+		return nil, err
 	}
 	converted, err := c.apply(event)
 	if err != nil {
-		return events, err
+		return nil, err
 	}
-	return append(events, converted), nil
+	switch end := converted.(type) {
+	case TextEndEvent:
+		end.contentSignature = forwarded.ContentSignature
+		converted = end
+	case ThinkingEndEvent:
+		end.contentSignature, end.redacted = forwarded.ContentSignature, forwarded.Redacted
+		converted = end
+	}
+	return []AssistantMessageEvent{converted}, nil
 }
 
 func (c *piMessagesEventConverter) apply(event PiMessagesEvent) (AssistantMessageEvent, error) {

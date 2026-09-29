@@ -29,7 +29,7 @@ func TestEmitBoundaryChainsDraftsContinuationAndPreview(t *testing.T) {
 		}},
 	}}
 	runner := NewRunner([]extension.Extension{first, second}, t.TempDir())
-	result, err := runner.EmitBoundary(context.Background(), "agent_before_settle", extension.AgentActivityCompleted,
+	result, err := runner.EmitBoundary(context.Background(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", BoundaryState: extension.BoundaryState{Outcome: extension.AgentActivityCompleted}},
 		func(entries []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 			return extension.BoundaryContextPreview{ContextEntries: make([]extension.ProjectedSessionEntry, len(entries))}, nil
 		})
@@ -72,7 +72,7 @@ func TestEmitBoundaryReportsInvalidDraftAndLetsLaterHandlerRepair(t *testing.T) 
 	runner := NewRunner([]extension.Extension{first, second}, t.TempDir())
 	var reported []string
 	runner.AddErrorListener(func(err *extension.ExtensionError) { reported = append(reported, err.Error) })
-	result, err := runner.EmitBoundary(context.Background(), "agent_before_settle", extension.AgentActivityCompleted,
+	result, err := runner.EmitBoundary(context.Background(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", BoundaryState: extension.BoundaryState{Outcome: extension.AgentActivityCompleted}},
 		func(entries []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 			if len(entries) != 0 {
 				return extension.BoundaryContextPreview{}, errors.New("Entry missing not found")

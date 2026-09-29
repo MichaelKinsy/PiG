@@ -1,1 +1,0 @@
-D80: configurable secret-input privacy; approved by owner decision 2026-09-27.

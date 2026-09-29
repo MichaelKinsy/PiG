@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
@@ -145,7 +146,7 @@ func TestBridgeToolPrepareArguments(t *testing.T) {
 // contract: Execute must accept tools that return
 // `agent.AgentToolResult` (the pig-native shape).
 func TestBridgeTool_Execute_RoundTripResult(t *testing.T) {
-	want := agent.AgentToolResult{Content: "ok", IsError: false}
+	want := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}, IsError: false}
 	rt := fixtureTool("t", "x", `{}`, func(_ context.Context, _ string, _ json.RawMessage, _ any) (any, error) {
 		return want, nil
 	})
@@ -154,7 +155,7 @@ func TestBridgeTool_Execute_RoundTripResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Content != want.Content || got.IsError != want.IsError {
+	if got.Text() != want.Text() || got.IsError != want.IsError {
 		t.Errorf("Execute returned %+v, want %+v", got, want)
 	}
 }
@@ -171,7 +172,7 @@ func TestBridgeTool_Execute_NilResultIsZeroValue(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got.Content != "" || got.IsError || len(got.Images) != 0 {
+	if got.Text() != "" || got.IsError || len(got.Images()) != 0 {
 		t.Errorf("got %+v, want zero value", got)
 	}
 }
@@ -190,18 +191,16 @@ func TestBridgeTool_Execute_WrongResultTypeIsError(t *testing.T) {
 	}
 }
 
-// TestBridgeTool_ExecutionMode locks the parallel/sequential string
-// mapping. The empty string and any unrecognized value default to
-// sequential, matching upstream and the legacy adapter.
+// .upstream/v0.87.1/packages/agent/src/agent-loop.ts:514 selects sequential execution only for the explicit literal; omitted and unknown values are parallel.
 func TestBridgeTool_ExecutionMode(t *testing.T) {
 	cases := []struct {
 		raw  string
 		want agent.ToolExecutionMode
 	}{
-		{"", agent.ToolModeSequential},
+		{"", agent.ToolModeParallel},
 		{"sequential", agent.ToolModeSequential},
 		{"parallel", agent.ToolModeParallel},
-		{"unknown-future-value", agent.ToolModeSequential},
+		{"unknown-future-value", agent.ToolModeParallel},
 	}
 	for _, c := range cases {
 		t.Run(c.raw, func(t *testing.T) {
@@ -322,4 +321,17 @@ func names(ts []agent.AgentTool) []string {
 		out[i] = t.Name()
 	}
 	return out
+}
+
+// A tool registered with `constrainedSampling: false` keeps the explicit false in its transcript declaration (transcript.ts:123-129).
+func TestBridgeToolKeepsExplicitConstrainedSamplingFalse(t *testing.T) {
+	for raw, want := range map[string]bool{`false`: true, ``: false, `null`: false} {
+		tool, err := newBridgeTool(extension.RegisteredTool{Definition: extension.ToolDefinition{Name: "t", Parameters: json.RawMessage(`{"type":"object"}`), ConstrainedSampling: json.RawMessage(raw)}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := tool.Schema().ConstrainedSamplingDisabled; got != want {
+			t.Errorf("constrained_sampling %q: disabled = %t, want %t", raw, got, want)
+		}
+	}
 }

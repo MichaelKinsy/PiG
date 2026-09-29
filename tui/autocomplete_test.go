@@ -8,6 +8,8 @@ import (
 	"slices"
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 func sampleCommands() []SlashCommand {
@@ -243,13 +245,13 @@ func TestEditor_ArrowsNavigatePopup(t *testing.T) {
 	if e.autocompleteCursor != startCursor+1 {
 		t.Errorf("down: cursor=%d want %d", e.autocompleteCursor, startCursor+1)
 	}
-	e.HandleInput("\x0e") // Ctrl+N
-	if e.autocompleteCursor != startCursor+2 {
-		t.Errorf("Ctrl+N: cursor=%d want %d", e.autocompleteCursor, startCursor+2)
+	e.HandleInput("\x0e") // upstream keybindings.ts:147-148 leaves Ctrl+N unbound.
+	if e.autocompleteCursor != startCursor+1 {
+		t.Errorf("Ctrl+N: cursor=%d want unchanged %d", e.autocompleteCursor, startCursor+1)
 	}
 	e.HandleInput("\033[A") // up
-	if e.autocompleteCursor != startCursor+1 {
-		t.Errorf("up: cursor=%d want %d", e.autocompleteCursor, startCursor+1)
+	if e.autocompleteCursor != startCursor {
+		t.Errorf("up: cursor=%d want %d", e.autocompleteCursor, startCursor)
 	}
 	e.HandleInput("\x10") // Ctrl+P
 	if e.autocompleteCursor != startCursor {
@@ -432,6 +434,7 @@ func TestEditor_PopupCounterTracksCursor(t *testing.T) {
 
 // ─── width-aware truncation ────────────────────────────────────
 
+// upstream: packages/tui/src/utils.ts:truncateToWidth resets SGR around an ellipsis even for plain input.
 func TestTruncateRunes(t *testing.T) {
 	cases := []struct {
 		in       string
@@ -439,20 +442,20 @@ func TestTruncateRunes(t *testing.T) {
 		want     string
 	}{
 		{"hello", 10, "hello"},
-		{"hello world", 5, "hell…"},
+		{"hello world", 5, "hell\x1b[0m…\x1b[0m"},
 		{"hello", 5, "hello"},
-		{"hello", 4, "hel…"},
-		{"hello", 1, "…"},
+		{"hello", 4, "hel\x1b[0m…\x1b[0m"},
+		{"hello", 1, "\x1b[0m…\x1b[0m"},
 		{"hello", 0, ""},
 		{"", 5, ""},
 		// Column-aware: each CJK char is 2 terminal columns.
 		// maxWidth=4 → budget 3 cols → fits 1 CJK char (2 cols) + ellipsis (1 col).
-		{"日本語テスト", 4, "日…"},
+		{"日本語テスト", 4, "日\x1b[0m…\x1b[0m"},
 		// maxWidth=8 → budget 7 cols → fits 3 CJK chars (6 cols) + ellipsis (1 col).
-		{"日本語テスト", 8, "日本語…"},
+		{"日本語テスト", 8, "日本語\x1b[0m…\x1b[0m"},
 	}
 	for _, tc := range cases {
-		if got := truncateRunes(tc.in, tc.maxWidth); got != tc.want {
+		if got := widthx.TruncateToWidth(tc.in, tc.maxWidth, "…", false); got != tc.want {
 			t.Errorf("truncateRunes(%q, %d) = %q, want %q", tc.in, tc.maxWidth, got, tc.want)
 		}
 	}

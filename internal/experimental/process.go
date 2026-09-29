@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 const InternalProcessEnv = "__PI_INTERNAL_SPAWN"
@@ -54,6 +56,16 @@ type InternalProcess struct {
 	cmd  *exec.Cmd
 	done chan struct{}
 	err  error
+	// signal replaces cmd.Process.Kill for in-package tests; it is nil in production.
+	signal func() error
+}
+
+// kill sends SIGKILL without waiting for the reap, as child.kill("SIGKILL") does.
+func (p *InternalProcess) kill() error {
+	if p.signal != nil {
+		return p.signal()
+	}
+	return p.cmd.Process.Kill()
 }
 
 // PID returns the spawned process ID.
@@ -97,6 +109,8 @@ func SpawnInternalProcess(role InternalProcessRole, args []string, options Inter
 	// exec.Cmd keeps the last value for each environment key.
 	cmd.Env = append(cmd.Env, InternalProcessEnv+"="+string(role))
 	cmd.SysProcAttr = internalProcessAttributes()
+	// Upstream spawns with stdio "ignore" and windowsHide: true.
+	nodespawn.HideWindow(cmd, nodespawn.Ignore, nodespawn.Ignore, nodespawn.Ignore)
 	if err := cmd.Start(); err != nil {
 		return nil, err
 	}
@@ -119,7 +133,7 @@ func TerminateInternalProcess(child *InternalProcess) error {
 		return nil
 	default:
 	}
-	if err := child.cmd.Process.Kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
+	if err := child.kill(); err != nil && !errors.Is(err, os.ErrProcessDone) {
 		return err
 	}
 	<-child.done

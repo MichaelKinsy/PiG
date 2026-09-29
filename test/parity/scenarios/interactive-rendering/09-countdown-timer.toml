@@ -1,0 +1,68 @@
+# Behavior family: interactive-rendering
+# Upstream evidence: Pi 0.87.1 countdown-timer.ts and the timeout branches of
+# extension-selector.ts:56-63 and extension-input.ts:60-67, reached through
+# interactive-mode.ts showExtensionSelector, showExtensionConfirm and
+# showExtensionInput. The title shows `${title} (${s}s)` from
+# ceil(timeout/1000) and counts down once a second. The interval callback that
+# reaches zero cancels the dialog, so select resolves undefined, confirm false,
+# and input undefined even after typing. Confirm puts the countdown after its
+# message.
+# The wait barriers observe each countdown frame in both binaries. The strict
+# crop is the results notification once every dialog has expired. No model
+# request is made.
+name = "09-countdown-timer"
+description = "Extension select, confirm and input with a timeout count down in the title and cancel on expiry."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/countdown-timer.ts",
+  "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/extension-input.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Timed results"
+capture_end = '"entered":null}'
+
+[[tmux.steps]]
+keys = ["/timed-dialogs", "Enter"]
+wait_contains = ["Timed pick (2s)", "first"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+wait_contains = ["Timed pick (1s)"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+wait_contains = ["Timed confirm", "Sure? (1s)"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+wait_contains = ["Timed name (1s)"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["abc"]
+wait_contains = ['Timed results {"picked":null,"confirmed":false,"entered":null}']
+wait_timeout_seconds = 5
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_extensions = ["testdata/timed-dialogs.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/timed-dialogs.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ['Timed results {"picked":null,"confirmed":false,"entered":null}']
+both_not_contain = ["(0s)", "panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

@@ -18,7 +18,7 @@ import (
 
 func contextBoundaryTranscript() []agent.AgentMessage {
 	user := func(text string) agent.AgentMessage {
-		return agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: text}}}}
+		return agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: text}}}}
 	}
 	system := func(text string) agent.AgentMessage {
 		return agent.AgentMessage{System: &ai.SystemMessage{Content: ai.SystemText(text)}}
@@ -34,7 +34,7 @@ func contextBoundaryShape(t *testing.T, messages []agent.AgentMessage) []string 
 		case message.System != nil:
 			shape = append(shape, "system:"+ai.GetCurrentSystemPrompt([]ai.Message{*message.System}))
 		case message.User != nil:
-			shape = append(shape, "user:"+message.User.Content[0].(ai.TextContent).Text)
+			shape = append(shape, "user:"+extractUserMessageText(message.User.Content))
 		default:
 			t.Fatalf("unexpected message %+v", message)
 		}
@@ -49,7 +49,7 @@ func contextBoundaryShape(t *testing.T, messages []agent.AgentMessage) []string 
 // REFNL-003.
 func TestContextPhaseInPlaceEditKeepsSystemBoundaries(t *testing.T) {
 	edit := func(event extension.ContextEvent) {
-		event.Messages[0].(agent.AgentMessage).User.Content = []ai.UserContentBlock{ai.TextContent{Text: "edited"}}
+		event.Messages[0].(agent.AgentMessage).User.Content = ai.UserContentBlocks{ai.TextContent{Text: "edited"}}
 	}
 	for _, tc := range []struct {
 		name    string

@@ -9,9 +9,10 @@ import (
 	"os"
 	"path"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"go.yaml.in/yaml/v3"
 
@@ -19,6 +20,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/hookconfig"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/frontmatter"
 	"github.com/MichaelKinsy/PiG/internal/ignorerules"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
 // Kind identifies a discoverable package resource class.
@@ -94,32 +96,45 @@ type pluginManifest struct {
 
 type stringList []string
 
+// UnmarshalJSON reads a path or a list of paths. Vendor manifests give some
+// fields other shapes, such as Claude's inline mcpServers and hooks objects;
+// those are configuration rather than member paths, so they declare no
+// members and never fail the load. A list keeps its string entries.
 func (s *stringList) UnmarshalJSON(data []byte) error {
-	var one string
-	if err := json.Unmarshal(data, &one); err == nil {
-		if one == "" {
-			*s = nil
-		} else {
-			*s = []string{one}
-		}
-		return nil
-	}
-	var many []string
-	if err := json.Unmarshal(data, &many); err != nil {
+	var value any
+	if err := json.Unmarshal(data, &value); err != nil {
 		return err
 	}
-	*s = many
+	*s = nil
+	switch typed := value.(type) {
+	case string:
+		if typed != "" {
+			*s = []string{typed}
+		}
+	case []any:
+		many := make([]string, 0, len(typed))
+		for _, item := range typed {
+			if text, ok := item.(string); ok {
+				many = append(many, text)
+			}
+		}
+		*s = many
+	}
 	return nil
 }
 
 // Discover returns the package and plugin resources exposed by root. A Pi
-// package.json declaration wins for Pi resource kinds; plugin metadata fills
-// kinds the Pi manifest does not declare. Missing or malformed manifests fall
-// back to conventional directory discovery, matching package installation.
+// package.json supplies every Pi resource kind when it has a pi block;
+// plugin metadata supplies Pi kinds only without that block. Missing or
+// malformed manifests fall back to conventional directory discovery.
 func Discover(root string) (Resources, error) {
-	manifest := readPackageManifest(root)
-	plugin := readPluginManifest(root)
+	manifest, plugin := readDiscoveryManifests(root)
 	return discover(root, manifest, plugin), nil
+}
+
+func readDiscoveryManifests(root string) (*packageManifest, *pluginManifest) {
+	manifest := readPackageManifest(root)
+	return manifest, readPluginManifest(root, manifest != nil && manifest.PI != nil)
 }
 
 func discover(root string, manifest *packageManifest, plugin *pluginManifest) Resources {
@@ -136,13 +151,15 @@ func discover(root string, manifest *packageManifest, plugin *pluginManifest) Re
 	}
 	// A "pi" manifest's Pi kinds come only from its entries (upstream
 	// collectPackageResources, addManifestEntries): a kind it does not
-	// declare loads nothing unless plugin metadata declares it.
+	// declare loads nothing, and plugin metadata never adds to it.
 	piEntries := func(kind Kind) *[]string {
-		entries := coalesceEntries(manifestEntries(manifest, kind), pluginEntries(plugin, kind))
-		if entries == nil && manifest != nil && manifest.PI != nil {
+		if manifest != nil && manifest.PI != nil {
+			if entries := manifestEntries(manifest, kind); entries != nil {
+				return entries
+			}
 			return &[]string{}
 		}
-		return entries
+		return pluginEntries(plugin, kind)
 	}
 	skillEntries := piEntries(Skills)
 	if plugin != nil && plugin.AgentPlugins {
@@ -207,7 +224,7 @@ func Validate(root string) (Resources, error) {
 	if err != nil {
 		return Resources{}, err
 	}
-	plugin, err := readStrictPluginManifest(absoluteRoot)
+	plugin, err := readStrictPluginManifest(absoluteRoot, manifest)
 	if err != nil {
 		return Resources{}, err
 	}
@@ -237,15 +254,7 @@ type ExtensionIssue struct {
 	Err  error
 }
 
-// ValidateConfiguredForStartup applies ValidateConfigured's checks for session
-// startup with two differences. An enabled declaration that matches nothing is
-// skipped, as upstream's package manager skips a declared path that does not
-// exist, and is returned so a caller can list it; the rest of the Package
-// loads. An enabled extension whose source does not resolve is
-// returned as an ExtensionIssue, every one of them, and removed from the
-// resources instead of failing the Package; upstream loadExtensions likewise
-// records each failing extension and continues with the rest. Every other
-// failure still fails the Package. Each enabled extension resolves once.
+// ValidateConfiguredForStartup uses discovery's tolerant manifest parsing, then checks the enabled resources. Invalid JSON falls back to conventions and malformed Pi fields declare no members, without a diagnostic. Missing declarations and unresolvable extensions are returned separately so callers can continue loading other resources. Each enabled extension resolves once.
 func ValidateConfiguredForStartup(root string, filters map[Kind][]string) (Resources, []MissingMember, []ExtensionIssue, error) {
 	return ValidateConfiguredForStartupWithResolver(root, filters, resolveExtensionSource)
 }
@@ -254,10 +263,11 @@ func ValidateConfiguredForStartup(root string, filters map[Kind][]string) (Resou
 // resolve for extension source classification. A startup-owned resolver can
 // therefore share the exact Definition or error with later loading.
 func ValidateConfiguredForStartupWithResolver(root string, filters map[Kind][]string, resolve extsource.ResolveFunc) (Resources, []MissingMember, []ExtensionIssue, error) {
-	absoluteRoot, manifest, plugin, err := readConfiguredRoot(root)
+	absoluteRoot, err := validateRoot(root)
 	if err != nil {
 		return Resources{}, nil, nil, err
 	}
+	manifest, plugin := readDiscoveryManifests(absoluteRoot)
 	missing, err := configuredMissingMembers(absoluteRoot, manifest, plugin, filters)
 	if err != nil {
 		return Resources{}, nil, nil, err
@@ -274,11 +284,11 @@ func ValidateConfiguredForStartupWithResolver(root string, filters map[Kind][]st
 	return resources, missing, issues, nil
 }
 
-// InspectConfigured returns the authored configuration inventory, including
-// safe declarations whose files are missing. It validates the same lexical,
-// absolute-path, glob, and symlink boundaries as startup. Missing declarations
-// are data here so pig config can disable them; ValidateConfigured still rejects
-// every enabled missing declaration.
+// InspectConfigured returns the discovery inventory, including safe
+// declarations whose files are missing. It uses discovery's tolerant manifest
+// parsing and validates lexical, absolute-path, glob, and symlink boundaries.
+// Missing declarations are data so pig config can disable them;
+// ValidateConfigured remains strict for explicit validation.
 func InspectConfigured(root string, filters map[Kind][]string) (Resources, []MissingMember, error) {
 	return InspectConfiguredWithResolver(root, filters, resolveExtensionSource)
 }
@@ -287,10 +297,11 @@ func InspectConfigured(root string, filters map[Kind][]string) (Resources, []Mis
 // resolve for extension validation. It preserves InspectConfigured semantics
 // while allowing startup to reuse its source-resolution snapshot.
 func InspectConfiguredWithResolver(root string, filters map[Kind][]string, resolve extsource.ResolveFunc) (Resources, []MissingMember, error) {
-	absoluteRoot, manifest, plugin, err := readConfiguredRoot(root)
+	absoluteRoot, err := validateRoot(root)
 	if err != nil {
 		return Resources{}, nil, err
 	}
+	manifest, plugin := readDiscoveryManifests(absoluteRoot)
 	missing, err := configuredMissingMembers(absoluteRoot, manifest, plugin, filters)
 	if err != nil {
 		return Resources{}, nil, err
@@ -311,7 +322,7 @@ func readConfiguredRoot(root string) (string, *packageManifest, *pluginManifest,
 	if err != nil {
 		return "", nil, nil, err
 	}
-	plugin, err := readStrictPluginManifest(absoluteRoot)
+	plugin, err := readStrictPluginManifest(absoluteRoot, manifest)
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -323,7 +334,7 @@ func readConfiguredRoot(root string) (string, *packageManifest, *pluginManifest,
 func configuredMissingMembers(absoluteRoot string, manifest *packageManifest, plugin *pluginManifest, filters map[Kind][]string) ([]MissingMember, error) {
 	var missing []MissingMember
 	for _, kind := range []Kind{Extensions, Skills, Prompts, Themes} {
-		entries := coalesceEntries(manifestEntries(manifest, kind), pluginEntries(plugin, kind))
+		entries := declaredEntries(manifest, plugin, kind)
 		if entries == nil {
 			continue
 		}
@@ -341,15 +352,12 @@ func configuredMissingMembers(absoluteRoot string, manifest *packageManifest, pl
 			// skills is present even though it has no SKILL.md of its own.
 			candidate := filepath.Join(absoluteRoot, filepath.FromSlash(entry))
 			pattern := entry
-			if kind == Skills && path.Base(pattern) != "SKILL.md" {
-				pattern = path.Join(pattern, "SKILL.md")
+			if kind == Skills {
+				pattern = skillEntryPattern(absoluteRoot, pattern)
 			}
 			missingEntry := false
 			if strings.ContainsAny(entry, "*?") {
-				matches, globErr := filepath.Glob(candidate)
-				if globErr != nil {
-					return nil, fmt.Errorf("%s manifest entry %q: %w", kind, declared, globErr)
-				}
+				matches := expandPackageGlob(absoluteRoot, entry)
 				missingEntry = len(matches) == 0
 			} else if _, statErr := os.Stat(candidate); os.IsNotExist(statErr) {
 				missingEntry = true
@@ -379,7 +387,10 @@ func filterConfigured(absoluteRoot string, resources Resources, filters map[Kind
 				return false
 			}
 			if kind == Skills {
-				relative = filepath.Join(relative, "SKILL.md")
+				relative, relErr = filepath.Rel(absoluteRoot, SkillFile(resourcePath))
+				if relErr != nil {
+					return false
+				}
 			}
 			return !ResourceEnabled(filepath.ToSlash(relative), patterns)
 		})
@@ -441,7 +452,7 @@ func ValidatePackageManifest(root string, data []byte) (Resources, error) {
 	if err != nil {
 		return Resources{}, err
 	}
-	plugin, err := readStrictPluginManifest(absoluteRoot)
+	plugin, err := readStrictPluginManifest(absoluteRoot, manifest)
 	if err != nil {
 		return Resources{}, err
 	}
@@ -492,8 +503,18 @@ func parsePackageManifest(manifestPath string, data []byte, requireName bool) (*
 	return &manifest, nil
 }
 
-func readStrictPluginManifest(root string) (*pluginManifest, error) {
+// vendorPluginManifests are other harnesses' plugin manifests. PiG reads them
+// as additive metadata; upstream Pi reads none of them.
+var vendorPluginManifests = []string{".plugin/plugin.json", ".claude-plugin/plugin.json", ".cursor-plugin/plugin.json"}
+
+func readStrictPluginManifest(root string, manifest *packageManifest) (*pluginManifest, error) {
+	hasPi := manifest != nil && manifest.PI != nil
 	for _, relative := range []string{"plugin.json", ".plugin/plugin.json", ".claude-plugin/plugin.json", ".cursor-plugin/plugin.json", ".pig-plugin/plugin.json"} {
+		// Upstream loads a "pi" package from its manifest alone and never
+		// reads another harness's plugin manifest, so neither does PiG.
+		if hasPi && slices.Contains(vendorPluginManifests, relative) {
+			continue
+		}
 		manifestPath := filepath.Join(root, filepath.FromSlash(relative))
 		data, err := os.ReadFile(manifestPath)
 		if os.IsNotExist(err) {
@@ -509,33 +530,38 @@ func readStrictPluginManifest(root string) (*pluginManifest, error) {
 			Piglets json.RawMessage `json:"piglets"`
 		}
 		if err := json.Unmarshal(data, &packageBoundary); err != nil {
+			// Another harness's manifest that is not JSON declares nothing
+			// PiG reads; readPluginManifest skips it the same way.
+			if slices.Contains(vendorPluginManifests, relative) {
+				continue
+			}
 			return nil, fmt.Errorf("parse %s: %w", manifestPath, err)
 		}
 		if packageBoundary.Piglets != nil {
 			return nil, fmt.Errorf("plugin manifest %s declares piglets; Piglets are independent and cannot be Package members", manifestPath)
 		}
-		manifest, err := parsePluginManifestData(data)
+		plugin, err := parsePluginManifestData(data)
 		if err != nil {
 			return nil, fmt.Errorf("parse %s: %w", manifestPath, err)
 		}
-		if relative == "plugin.json" && isAgentPluginsSchema(manifest.Schema) {
-			if manifest.Schema != agentPluginsV1Schema {
-				return nil, fmt.Errorf("plugin manifest %s targets unsupported Agent Plugins schema %q", manifestPath, manifest.Schema)
+		if relative == "plugin.json" && isAgentPluginsSchema(plugin.Schema) {
+			if plugin.Schema != agentPluginsV1Schema {
+				return nil, fmt.Errorf("plugin manifest %s targets unsupported Agent Plugins schema %q", manifestPath, plugin.Schema)
 			}
-			if !agentPluginNamePattern.MatchString(manifest.Name) || strings.Contains(manifest.Name, "--") || strings.Contains(manifest.Name, "..") {
-				return nil, fmt.Errorf("plugin manifest %s has invalid Agent Plugins name %q", manifestPath, manifest.Name)
+			if !agentPluginNamePattern.MatchString(plugin.Name) || strings.Contains(plugin.Name, "--") || strings.Contains(plugin.Name, "..") {
+				return nil, fmt.Errorf("plugin manifest %s has invalid Agent Plugins name %q", manifestPath, plugin.Name)
 			}
 		}
 	}
-	return readPluginManifest(root), nil
+	return readPluginManifest(root, hasPi), nil
 }
 
 const agentPluginsV1Schema = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 
 var (
-	windowsAbsolutePath    = regexp.MustCompile(`^[A-Za-z]:[\\/]`)
-	agentPluginNamePattern = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?$`)
-	agentSkillNamePattern  = regexp.MustCompile(`^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$`)
+	windowsAbsolutePath    = lazyregexp.New(`^[A-Za-z]:[\\/]`)
+	agentPluginNamePattern = lazyregexp.New(`^[a-z0-9](?:[a-z0-9.-]{0,62}[a-z0-9])?$`)
+	agentSkillNamePattern  = lazyregexp.New(`^[a-z0-9](?:[a-z0-9-]{0,62}[a-z0-9])?$`)
 )
 
 // isHostAbsolutePath reports whether raw is absolute or rooted on any host, so
@@ -595,6 +621,17 @@ func validateMCPServer(value any) error {
 	return nil
 }
 
+func declaredEntries(manifest *packageManifest, plugin *pluginManifest, kind Kind) *[]string {
+	entries := manifestEntries(manifest, kind)
+	if kind == Agents {
+		return pluginEntries(plugin, kind)
+	}
+	if kind == AgentEnvironments || manifest != nil && manifest.PI != nil && (kind == Extensions || kind == Skills || kind == Prompts || kind == Themes) {
+		return entries
+	}
+	return coalesceEntries(entries, pluginEntries(plugin, kind))
+}
+
 func validateDeclaredResources(root string, manifest *packageManifest, plugin *pluginManifest) error {
 	return validateDeclaredResourcesFiltered(root, manifest, plugin, nil)
 }
@@ -610,12 +647,7 @@ func validateDeclaredResourcesFiltered(root string, manifest *packageManifest, p
 // upstream's package manager skips it.
 func validateDeclaredEntries(root string, manifest *packageManifest, plugin *pluginManifest, filters map[Kind][]string, requireEnabled bool) error {
 	for _, kind := range []Kind{Extensions, Skills, Prompts, Themes, Agents, MCP, Hooks, AgentEnvironments} {
-		entries := manifestEntries(manifest, kind)
-		if kind == Agents {
-			entries = pluginEntries(plugin, kind)
-		} else if kind != AgentEnvironments {
-			entries = coalesceEntries(entries, pluginEntries(plugin, kind))
-		}
+		entries := declaredEntries(manifest, plugin, kind)
 		if entries == nil {
 			continue
 		}
@@ -625,8 +657,8 @@ func validateDeclaredEntries(root string, manifest *packageManifest, plugin *plu
 			if resourcePath != "" && strings.ContainsRune("+-!", rune(resourcePath[0])) {
 				resourcePath = resourcePath[1:]
 			}
-			if kind == Skills && path.Base(resourcePath) != "SKILL.md" {
-				resourcePath = path.Join(resourcePath, "SKILL.md")
+			if kind == Skills {
+				resourcePath = skillEntryPattern(root, resourcePath)
 			}
 			piKind := kind == Extensions || kind == Skills || kind == Prompts || kind == Themes
 			requirePresent := (requireEnabled || !piKind) && (!filtered || ResourceEnabled(resourcePath, patterns))
@@ -657,10 +689,7 @@ func validateDeclaredEntry(root string, kind Kind, declared string, requirePrese
 		return nil
 	}
 	if strings.ContainsAny(entry, "*?") {
-		matches, err := filepath.Glob(candidate)
-		if err != nil {
-			return fmt.Errorf("%s manifest entry %q: %w", kind, declared, err)
-		}
+		matches := expandPackageGlob(root, entry)
 		if len(matches) == 0 && requirePresent {
 			return fmt.Errorf("%s manifest entry %q matched no resources", kind, declared)
 		}
@@ -1111,7 +1140,9 @@ func validateUniqueMemberNames(resources Resources, kind Kind) error {
 	case Extensions:
 		paths = resources.ExtensionEntries
 	case Skills:
-		paths = resources.SkillDirs
+		// Skill names collide only after parsing. Keep every path so the
+		// skill loader can select the first valid definition and warn.
+		return nil
 	case Prompts:
 		paths = resources.PromptFiles
 	case Themes:
@@ -1127,6 +1158,9 @@ func validateUniqueMemberNames(resources Resources, kind Kind) error {
 	}
 	seen := make(map[string]string, len(paths))
 	for _, resourcePath := range paths {
+		if kind == Skills && !definesSkill(resourcePath) {
+			continue
+		}
 		name, err := memberName(kind, resourcePath, resources.PackageName)
 		if err != nil {
 			return err
@@ -1137,6 +1171,46 @@ func validateUniqueMemberNames(resources Resources, kind Kind) error {
 		seen[name] = resourcePath
 	}
 	return nil
+}
+
+// SkillFile returns the Markdown file that defines the skill at resourcePath:
+// resourcePath itself when it is a file, as a declared SKILL.md or a
+// root-level Markdown skill is, else the SKILL.md inside the skill directory.
+func SkillFile(resourcePath string) string {
+	if info, err := os.Stat(resourcePath); err == nil && !info.IsDir() {
+		return resourcePath
+	}
+	return filepath.Join(resourcePath, "SKILL.md")
+}
+
+// skillEntryPattern returns the filter path for a declared skill entry
+// relative to root: the entry itself when it names a file (a missing entry
+// with a .md suffix is taken to name one), else its SKILL.md.
+func skillEntryPattern(root, entry string) string {
+	if path.Base(entry) == "SKILL.md" {
+		return entry
+	}
+	info, err := os.Stat(filepath.Join(root, filepath.FromSlash(entry)))
+	if (err == nil && !info.IsDir()) || (err != nil && strings.HasSuffix(entry, ".md")) {
+		return entry
+	}
+	return path.Join(entry, "SKILL.md")
+}
+
+// definesSkill reports whether upstream loadSkillFromFile (core/skills.ts)
+// would load the skill at resourcePath rather than skip it without a
+// diagnostic: a Markdown file other than SKILL.md with no description is not
+// a skill.
+func definesSkill(resourcePath string) bool {
+	file := SkillFile(resourcePath)
+	if filepath.Base(file) == "SKILL.md" {
+		return true
+	}
+	data, err := os.ReadFile(file)
+	if err != nil {
+		return true
+	}
+	return strings.TrimSpace(frontmatter.Parse(string(data)).String("description")) != ""
 }
 
 func requireLexicallyWithinRoot(root, target string) error {
@@ -1229,6 +1303,9 @@ func FindMember(resources Resources, kind Kind, name string) (string, error) {
 	}
 	matches := make([]string, 0, 1)
 	for _, resourcePath := range paths {
+		if kind == Skills && !definesSkill(resourcePath) {
+			continue
+		}
 		candidateName, err := memberName(kind, resourcePath, resources.PackageName)
 		if err != nil {
 			return "", err
@@ -1264,14 +1341,17 @@ func memberName(kind Kind, resourcePath, packageName string) (string, error) {
 		}
 		return name, nil
 	case Skills:
-		data, err := os.ReadFile(filepath.Join(resourcePath, "SKILL.md"))
+		// Upstream loadSkillFromFile: the frontmatter name, else the name of
+		// the directory holding the skill file.
+		file := SkillFile(resourcePath)
+		data, err := os.ReadFile(file)
 		if err != nil {
 			return "", fmt.Errorf("read skill %s: %w", resourcePath, err)
 		}
 		if declared := frontmatter.Parse(string(data)).String("name"); declared != "" {
 			return declared, nil
 		}
-		return filepath.Base(resourcePath), nil
+		return filepath.Base(filepath.Dir(file)), nil
 	case AgentEnvironments:
 		return agentEnvironmentName(resourcePath, packageName)
 	default:
@@ -1424,10 +1504,12 @@ func Collect(paths []string, kind Kind) []string {
 		case Extensions:
 			files = append(files, discoverExtensionEntries(resourcePath)...)
 		case Prompts:
-			files = append(files, walkFilesWithSuffix(resourcePath, ".md")...)
+			files = append(files, collectFiles(resourcePath, ".md")...)
+		case Themes:
+			files = append(files, collectFiles(resourcePath, ".json")...)
 		case Agents:
 			files = append(files, walkAgentFiles(resourcePath)...)
-		case MCP, Themes, Hooks:
+		case MCP, Hooks:
 			files = append(files, walkFilesWithSuffix(resourcePath, ".json")...)
 		case AgentEnvironments:
 			files = append(files, discoverAgentEnvironmentPaths(resourcePath)...)
@@ -1454,19 +1536,78 @@ func DiscoverAutomatic(dir string, kind Kind) []string {
 	}
 }
 
-// ResolveConfigured expands configured paths and applies their include/exclude
-// patterns relative to baseDir.
+// ResolveConfigured expands configured paths and applies their include/exclude patterns relative to baseDir. It returns nil if a path cannot be resolved. Use ResolveConfiguredWithError when resolution errors must be surfaced.
 func ResolveConfigured(entries []string, baseDir string, kind Kind) []string {
+	resolved, err := ResolveConfiguredWithError(entries, baseDir, kind)
+	if err != nil {
+		return nil
+	}
+	return resolved
+}
+
+// ResolveConfiguredWithError expands configured paths and applies their include/exclude patterns relative to baseDir. Invalid file URLs return Node's error, as Pi's resolveLocalEntries does.
+func ResolveConfiguredWithError(entries []string, baseDir string, kind Kind) ([]string, error) {
 	plain, patterns := SplitPatterns(entries)
+	resolved, err := resolvePlainEntries(plain, baseDir)
+	if err != nil {
+		return nil, err
+	}
+	return ApplyPatterns(Collect(resolved, kind), patterns, baseDir, kind), nil
+}
+
+// ValidateConfiguredEntries resolves the plain entries of a settings resource array
+// without reading the filesystem and returns the first resolution error.
+func ValidateConfiguredEntries(entries []string, baseDir string) error {
+	plain, _ := SplitPatterns(entries)
+	_, err := resolvePlainEntries(plain, baseDir)
+	return err
+}
+
+func resolvePlainEntries(plain []string, baseDir string) ([]string, error) {
 	resolved := make([]string, 0, len(plain))
 	for _, entry := range plain {
-		if filepath.IsAbs(entry) {
-			resolved = append(resolved, entry)
-		} else {
-			resolved = append(resolved, filepath.Clean(filepath.Join(baseDir, entry)))
+		path, err := resolvepath.ResolvePackagePath(entry, baseDir)
+		if err != nil {
+			return nil, err
 		}
+		resolved = append(resolved, path)
 	}
-	return ApplyPatterns(Collect(resolved, kind), patterns, baseDir, kind)
+	return resolved, nil
+}
+
+// ResourceState is a resource path and whether the configured patterns enable it.
+type ResourceState struct {
+	Path    string
+	Enabled bool
+}
+
+// ResolveConfiguredStates lists every resource the plain entries resolve, in collection order, with whether the patterns keep it (package-manager.ts resolveLocalEntries adds all files, then marks those the patterns enable).
+func ResolveConfiguredStates(entries []string, baseDir string, kind Kind) []ResourceState {
+	plain, patterns := SplitPatterns(entries)
+	resolved, err := resolvePlainEntries(plain, baseDir)
+	if err != nil {
+		return nil
+	}
+	all := Collect(resolved, kind)
+	enabled := make(map[string]struct{}, len(all))
+	for _, path := range ApplyPatterns(all, patterns, baseDir, kind) {
+		enabled[path] = struct{}{}
+	}
+	states := make([]ResourceState, len(all))
+	for i, path := range all {
+		_, isEnabled := enabled[path]
+		states[i] = ResourceState{Path: path, Enabled: isEnabled}
+	}
+	return states
+}
+
+// AutomaticStates lists automatically discovered paths with whether the overrides leave each enabled (package-manager.ts addAutoDiscoveredResources).
+func AutomaticStates(paths, overrides []string, baseDir string, kind Kind) []ResourceState {
+	states := make([]ResourceState, len(paths))
+	for i, path := range paths {
+		states[i] = ResourceState{Path: path, Enabled: EnabledByOverrides(path, overrides, baseDir, kind)}
+	}
+	return states
 }
 
 // FilterAutomatic applies configured overrides to automatically discovered paths.
@@ -1568,9 +1709,7 @@ func EnabledByOverrides(resourcePath string, patterns []string, baseDir string, 
 	return enabled
 }
 
-// ApplyConfiguredDelta resolves a project Package override against an inherited
-// Package filter. Project overrides contain only exact +/- member paths; they do
-// not autoload a second Package or alter unrelated inherited members.
+// ApplyConfiguredDelta validates and resolves exact Package-relative selector overrides. Authored autoload-disabled filters use ApplyAutoloadDisabledPatterns.
 func ApplyConfiguredDelta(kind Kind, relativePaths, basePatterns, deltaPatterns []string) ([]string, error) {
 	states := make(map[string]bool, len(relativePaths))
 	for _, relativePath := range relativePaths {
@@ -1603,41 +1742,15 @@ func ApplyConfiguredDelta(kind Kind, relativePaths, basePatterns, deltaPatterns 
 	return enabled, nil
 }
 
-// ResourceEnabled applies one PackageSource resource filter to a relative path.
+// ResourceEnabled applies the shared include, exclude, exact force-include, and exact force-exclude rules to one package-relative resource path. A nil filter enables the resource; an explicit empty filter disables it.
 func ResourceEnabled(relativePath string, patterns []string) bool {
-	relativePath = filepath.ToSlash(relativePath)
 	if patterns == nil {
 		return true
 	}
 	if len(patterns) == 0 {
 		return false
 	}
-	hasAllowlist := false
-	for _, pattern := range patterns {
-		if pattern != "" && pattern[0] != '-' && pattern[0] != '+' && pattern[0] != '!' {
-			hasAllowlist = true
-			break
-		}
-	}
-	enabled := !hasAllowlist
-	for _, pattern := range patterns {
-		if pattern == "" {
-			continue
-		}
-		negated := false
-		switch pattern[0] {
-		case '-':
-			negated = true
-			pattern = pattern[1:]
-		case '+', '!':
-			pattern = pattern[1:]
-		}
-		pattern = filepath.ToSlash(pattern)
-		if matched, _ := filepath.Match(pattern, relativePath); matched || pattern == relativePath {
-			enabled = !negated
-		}
-	}
-	return enabled
+	return len(ApplyPatterns([]string{filepath.ToSlash(relativePath)}, patterns, ".", "")) != 0
 }
 
 // DiscoverSkillDirs recursively discovers skill roots and root-level Markdown
@@ -1716,7 +1829,7 @@ func discoverSkillDirs(dir string, agentsMode bool) []string {
 func validAgentPluginSkills(paths []string) []string {
 	valid := make([]string, 0, len(paths))
 	for _, skillDir := range paths {
-		data, err := os.ReadFile(filepath.Join(skillDir, "SKILL.md"))
+		data, err := os.ReadFile(SkillFile(skillDir))
 		if err != nil {
 			continue
 		}
@@ -1800,15 +1913,17 @@ func decodeStringSlice(raw json.RawMessage) *[]string {
 	return &values
 }
 
-func readPluginManifest(root string) *pluginManifest {
+// readPluginManifest merges the plugin manifests at root. hasPi skips the
+// vendor overlays: see readStrictPluginManifest.
+func readPluginManifest(root string, hasPi bool) *pluginManifest {
 	rootManifest := readPluginManifestFile(filepath.Join(root, "plugin.json"))
 	var merged *pluginManifest
 	if rootManifest != nil {
 		copy := *rootManifest
 		merged = &copy
 	}
-	if rootManifest == nil || rootManifest.AgentPlugins {
-		for _, relativePath := range []string{".plugin/plugin.json", ".claude-plugin/plugin.json", ".cursor-plugin/plugin.json"} {
+	if !hasPi && (rootManifest == nil || rootManifest.AgentPlugins) {
+		for _, relativePath := range vendorPluginManifests {
 			if parsed := readPluginManifestFile(filepath.Join(root, relativePath)); parsed != nil {
 				if merged == nil {
 					copy := *parsed
@@ -2058,10 +2173,7 @@ func collectManifestResources(root string, kind Kind, entries *[]string) []strin
 	resolved := make([]string, 0, len(sourceEntries))
 	for _, entry := range sourceEntries {
 		if strings.Contains(entry, "*") || strings.Contains(entry, "?") {
-			matches, err := filepath.Glob(filepath.Join(root, filepath.FromSlash(entry)))
-			if err == nil {
-				resolved = append(resolved, matches...)
-			}
+			resolved = append(resolved, expandPackageGlob(root, entry)...)
 			continue
 		}
 		resolved = append(resolved, filepath.Join(root, filepath.FromSlash(entry)))
@@ -2071,6 +2183,53 @@ func collectManifestResources(root string, kind Kind, entries *[]string) []strin
 		return allFiles
 	}
 	return ApplyPatterns(allFiles, overrides, root, kind)
+}
+
+// collectFiles is upstream collectFiles (core/package-manager.ts): it walks
+// dir recursively, following symlinks, skipping dot entries, node_modules and
+// paths excluded by .gitignore, .ignore or .fdignore, and returns the files
+// whose name ends in suffix.
+func collectFiles(dir, suffix string) []string {
+	root := filepath.Clean(dir)
+	var files []string
+	seenDirs := make(map[string]struct{})
+	var walk func(string, []ignorerules.Rule)
+	walk = func(current string, rules []ignorerules.Rule) {
+		// A symlinked directory cycle is walked once.
+		canonical, err := filepath.EvalSymlinks(current)
+		if err != nil {
+			return
+		}
+		if _, seen := seenDirs[canonical]; seen {
+			return
+		}
+		seenDirs[canonical] = struct{}{}
+		rules = ignorerules.Append(rules, current, root)
+		entries, err := os.ReadDir(current)
+		if err != nil {
+			return
+		}
+		for _, entry := range entries {
+			if strings.HasPrefix(entry.Name(), ".") || entry.Name() == "node_modules" {
+				continue
+			}
+			fullPath := filepath.Join(current, entry.Name())
+			info, err := os.Stat(fullPath)
+			if err != nil {
+				continue
+			}
+			if ignorerules.Ignored(fullPath, info.IsDir(), root, rules) {
+				continue
+			}
+			if info.IsDir() {
+				walk(fullPath, rules)
+			} else if info.Mode().IsRegular() && strings.HasSuffix(entry.Name(), suffix) {
+				files = append(files, fullPath)
+			}
+		}
+	}
+	walk(root, nil)
+	return files
 }
 
 func discoverFlatFiles(dir, suffix string) []string {
@@ -2092,32 +2251,38 @@ func discoverExtensionEntries(dir string) []string {
 	if root := resolveExtensionEntries(dir); len(root) > 0 {
 		return root
 	}
+	// Upstream collectAutoExtensionEntries: symlinks are followed and the
+	// directory's own .gitignore, .ignore and .fdignore apply.
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return nil
 	}
+	rules := ignorerules.Append(nil, dir, dir)
 	var paths []string
 	for _, entry := range entries {
 		if strings.HasPrefix(entry.Name(), ".") || entry.Name() == "node_modules" {
 			continue
 		}
 		full := filepath.Join(dir, entry.Name())
-		if entry.IsDir() {
+		info, err := os.Stat(full)
+		if err != nil {
+			continue
+		}
+		if ignorerules.Ignored(full, info.IsDir(), dir, rules) {
+			continue
+		}
+		if info.IsDir() {
 			paths = append(paths, resolveExtensionEntries(full)...)
 			continue
 		}
-		if strings.HasSuffix(entry.Name(), ".ts") || strings.HasSuffix(entry.Name(), ".js") {
+		if info.Mode().IsRegular() && (strings.HasSuffix(entry.Name(), ".ts") || strings.HasSuffix(entry.Name(), ".js")) {
 			paths = append(paths, full)
 		}
 	}
 	return paths
 }
 
-// resolveExtensionEntries is upstream's resolveExtensionEntries: each
-// existing entry a Pi manifest declares is its own extension, else index.ts,
-// else index.js. A manifest that declares only missing entries, with no index,
-// contributes nothing. A directory with another language's or PiG's
-// conventional source loads as one extension that source.Resolve classifies.
+// resolveExtensionEntries follows Pi's manifest entries, index.ts, then index.js rule. A manifest that declares only missing entries, with no index, contributes nothing. Go and Rust build roots load as one extension for source.Resolve to classify.
 func resolveExtensionEntries(dir string) []string {
 	if dir == "" {
 		return nil
@@ -2182,10 +2347,13 @@ func walkFilesWithSuffix(root, suffix string) []string {
 }
 
 func matchesAnyPattern(filePath string, patterns []string, baseDir string, kind Kind) bool {
+	if kind == Skills {
+		filePath = filepath.FromSlash(skillEntryPattern("", filepath.ToSlash(filePath)))
+	}
 	relative := filepath.ToSlash(mustRel(baseDir, filePath))
 	name := filepath.Base(filePath)
 	absolute := filepath.ToSlash(filePath)
-	isSkill := kind == Skills
+	isSkill := name == "SKILL.md"
 	parentDir := filepath.Dir(filePath)
 	parentRelative := filepath.ToSlash(mustRel(baseDir, parentDir))
 	parentName := filepath.Base(parentDir)
@@ -2203,9 +2371,12 @@ func matchesAnyPattern(filePath string, patterns []string, baseDir string, kind 
 }
 
 func matchesAnyExactPattern(filePath string, patterns []string, baseDir string, kind Kind) bool {
+	if kind == Skills {
+		filePath = filepath.FromSlash(skillEntryPattern("", filepath.ToSlash(filePath)))
+	}
 	relative := filepath.ToSlash(mustRel(baseDir, filePath))
 	absolute := filepath.ToSlash(filePath)
-	isSkill := kind == Skills
+	isSkill := filepath.Base(filePath) == "SKILL.md"
 	parentDir := filepath.Dir(filePath)
 	parentRelative := filepath.ToSlash(mustRel(baseDir, parentDir))
 	parentAbsolute := filepath.ToSlash(parentDir)
@@ -2239,16 +2410,8 @@ func mustRel(baseDir, target string) string {
 	return relative
 }
 
-func matchGlob(name, patternValue string) bool {
-	matched, err := path.Match(patternValue, name)
-	if err != nil {
-		return name == patternValue
-	}
-	return matched || name == patternValue
-}
-
 func hasBuildFile(dir string) bool {
-	for _, name := range []string{"go.mod", "Cargo.toml", "package.json", "index.ts", "index.js", "main.ts", "main.js", "extension.ts", "extension.js"} {
+	for _, name := range []string{"go.mod", "Cargo.toml"} {
 		if _, err := os.Stat(filepath.Join(dir, name)); err == nil {
 			return true
 		}

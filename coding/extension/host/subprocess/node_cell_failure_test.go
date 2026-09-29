@@ -26,6 +26,9 @@ func TestNodeCellRuntimeFailureExitsNonzero(t *testing.T) {
 	} {
 		t.Run(launcher.file, func(t *testing.T) {
 			cmd := exec.CommandContext(testbudget.Context(t), "node", filepath.Join("runtime-node", launcher.file), launcher.arg)
+			if launcher.file == "cell.mjs" {
+				cmd.Stdin = strings.NewReader(nodeCellAdmissions(entry, "broken"))
+			}
 			out, err := cmd.CombinedOutput()
 			var exitErr *exec.ExitError
 			if !errors.As(err, &exitErr) || exitErr.ExitCode() != 1 {
@@ -43,7 +46,7 @@ func TestNodeCellRuntimeFailureExitsNonzero(t *testing.T) {
 
 func TestNodeCellReportsRuntimeFailuresBeforeHealthySiblingStops(t *testing.T) {
 	nodeCellRequireNode(t)
-	_, manifest := nodeCellFailureManifest(t, []string{"broken-a", "healthy", "broken-b"})
+	entry, manifest := nodeCellFailureManifest(t, []string{"broken-a", "healthy", "broken-b"})
 	runtimePath, err := filepath.Abs("runtime-node/runtime.mjs")
 	if err != nil {
 		t.Fatal(err)
@@ -86,9 +89,19 @@ assert.equal(process.exitCode, 1, "healthy completion must not erase failure");
 process.exitCode = 0;
 `, runtimePath, manifest, cellPath)
 	cmd := exec.CommandContext(testbudget.Context(t), "node", "--input-type=module", "--eval", script)
+	cmd.Stdin = strings.NewReader(nodeCellAdmissions(entry, "broken-a", "healthy", "broken-b"))
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("cell runtime failure ordering: %v\n%s", err, out)
 	}
+}
+
+// nodeCellAdmissions is the stdin the host sends a Node cell: one admission line per member, with no socket so the runtime fails at connect.
+func nodeCellAdmissions(entry string, names ...string) string {
+	var lines strings.Builder
+	for _, name := range names {
+		lines.WriteString("admit\t" + name + "\t\t" + entry + "\t\t0\n")
+	}
+	return lines.String()
 }
 
 func nodeCellFailureManifest(t *testing.T, names []string) (string, string) {

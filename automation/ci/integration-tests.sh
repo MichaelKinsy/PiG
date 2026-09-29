@@ -6,7 +6,7 @@
 #
 #   fast      : no LLM calls, deterministic. Runs in ~30s. Gate every commit.
 #   parity    : side-by-side checks that still require the integration harness.
-#               Canonical hermetic behavior belongs in parity/scenarios/.
+#               Canonical hermetic behavior belongs in test/parity/scenarios/.
 #               Run before an upstream update or release.
 #   live      : single-system live tests (TestLive_*, TestExt_Live_*,
 #               TestPerf_*). Uses provider credentials. Run manually before a
@@ -19,7 +19,7 @@
 #   - Never use `tmux kill-server`. Each test creates its own session by
 #     PID-randomized name and kills only itself.
 #   - Always use the cheap model literal: currently github-copilot/gpt-5-mini.
-#     `grep -rE 'github-copilot/(gpt|claude)' tests/integration/` is the
+#     `grep -rE 'github-copilot/(gpt|claude)' test/integration/` is the
 #     audit query.
 
 set -euo pipefail
@@ -42,7 +42,7 @@ case "$CATEGORY" in
         ;;
     parity)
         # Side-by-side checks that need external extension or integration setup.
-        # Hermetic product behavior belongs in parity/scenarios/*.toml.
+        # Hermetic product behavior belongs in test/parity/scenarios/*.toml.
         PATTERN='^TestParity_'
         TIMEOUT=900s
         ;;
@@ -66,4 +66,4 @@ echo
 
 exec go test -tags integration -timeout "$TIMEOUT" -v \
     -run "$PATTERN" \
-    ./tests/integration/... "$@"
+    ./test/integration/... "$@"

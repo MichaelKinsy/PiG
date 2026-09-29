@@ -6,6 +6,8 @@ Most hosted providers accept an API key, and some also accept a browser or devic
 
 ## Built-in providers
 
+Raw Provider-object access from extensions has documented 0.3.x gaps (D78, owner decision 2026-09-28). Registered-native methods cross the SDK bridge, but Go, Rust and Python cannot yet retrieve every builtin/composed raw Provider object. Foreign registered-configuration data is a snapshot, not a live alias of the author's object; callable handles do not synchronize arbitrary property writes. Same-process Node roots, children, functions and receivers must retain Pi's behavior. This limit does not change normal model selection or approve incorrect authentication, refresh, cancellation or registration cleanup.
+
 PiG ships the same built-in provider set as Pi 0.87.1. The provider key is the first part of a `provider/model` spec. The wire column lists the APIs that the provider's built-in models use.
 
 | Provider key | Name | Wire | Credential |
@@ -73,13 +75,33 @@ Each provider in the table above reads the variable in its credential column. Us
 
 `PI_CACHE_RETENTION` sets the prompt cache retention that PiG passes to the provider.
 
+Mistral requests include `prompt_cache_key` and an automatic `x-affinity` header when the request has a session ID and cache retention is not `none`. Explicit affinity headers remain unchanged, including an empty header. Replayed assistant messages use `prefix: false`; they are completed turns, not completion prefixes.
+
+Google Gemini and Vertex requests encode the system instruction as user-role content, matching Pi's Google SDK. They omit the tool-calling mode when no explicit choice or strict tool schema requires it. Explicit `none` and `any` choices take precedence over strict `VALIDATED` mode.
+
 ## Authentication
 
-PiG stores credentials in `~/.pig/agent/auth.json`. The file is created on demand by `pig login` and is never read at module init. Environment variables (`OPENAI_API_KEY`, etc.) always take precedence over stored credentials at request time, matching upstream behavior - this lets per-shell or per-project keys override the global file.
+Provider authentication can require several replies. Bedrock supports a bearer token, an AWS profile, or the existing AWS credential chain. Vertex supports an API key, Application Default Credentials, or a service-account file, with project and location prompts. Cloudflare requests an account ID and, for AI Gateway, a gateway ID after the key. Provider-scoped settings are stored in the credential's `env` object, not in the chat transcript.
+
+API keys are stored as entered. Leading and trailing spaces are preserved. An explicitly empty stored Cloudflare key does not fall back to `CLOUDFLARE_API_KEY`. An empty Vertex key does not select `GOOGLE_CLOUD_API_KEY`; Vertex still checks its cloud credentials. Use `/logout` to remove a stored credential and return to environment-only authentication. Provider searches include authentication method names. A credential for another authentication type is labelled `API key configured` or `subscription configured` in the provider list.
+
+PiG stores credentials in `~/.pig/agent/auth.json`. Agent startup creates a missing file containing `{}` with owner-only permissions (mode `0600` on POSIX; an owner-only DACL on Windows, D68). Startup leaves existing contents and permissions unchanged. Stored credentials take precedence over environment fallback; a runtime API key can override them for the current process.
 
 `auth.json` can contain API keys and OAuth tokens. Keep it private and do not commit it.
 
 Interactive login prompts marked as secret use PiG's `maskSecretInput` setting (default `true`). **Mask secret input** in `/settings` shows dots, a character count and the last four characters while typing, then retains only the masked preview after submission. Inputs shorter than five characters show no suffix. Set `maskSecretInput` to `false` to restore Pi 0.87.1's plain-text behavior. This configurable feature is recorded as divergence D80. Ordinary text and manual-code prompts remain visible. Credentials still belong in `auth.json` or the provider's credential store; the setting protects dialog and authentication-diagnostic output, not credential storage.
+
+### Interactive login and logout
+
+Run `/login <provider>` with a provider ID or display name to configure that provider. Argument completion shows each provider's supported methods. A provider with one method opens that flow directly. A provider with several methods opens its own method selector. An unmatched argument opens a searchable provider list.
+
+Run `/login` without an argument to choose an authentication method first. Press Escape in its provider list to return to the method selector. Keep answering the prompts inside the login dialog until it reports completion. Escape in a key or text prompt aborts the login and leaves existing credentials unchanged. Pi reports this cancellation as `Failed to save API key for <Name>: This operation was aborted`.
+
+Run `/logout` to remove a stored API-key or OAuth credential. The list excludes environment-only credentials. A successful logout also removes the provider's `--api-key` override for the current run. If stored-credential deletion fails or is cancelled, the override remains available. Logout does not change environment variables or `models.json`. If no credentials are stored, PiG reports that there is nothing to remove instead of opening an empty picker.
+
+A matching login option reports its credential source, such as `stored` or an environment variable. The logout list marks the stored credentials it can remove as `configured`. These labels describe different states.
+
+OpenAI-compatible HTTP errors retain Pi's status and provider error body. Completion errors use the status directly. Responses errors include the provider's API-error prefix.
 
 ### Load an API key from a command
 
@@ -98,7 +120,7 @@ PiG runs the command when the key is first needed and uses its standard output a
 
 ### Provider settings in a credential
 
-A stored API-key credential can include an `env` object. Its values take precedence over the process environment for that provider:
+A stored API-key credential can include an `env` object. Its values take precedence over the process environment for that provider. Model Runtime streaming and extension model-auth lookups carry these values to the provider request:
 
 ```json
 {
@@ -114,7 +136,13 @@ A stored API-key credential can include an `env` object. Its values take precede
 
 ### OAuth providers
 
+On Windows, PiG passes browser login URLs directly to the Windows URL handler without a command shell. URL parameters and shell metacharacters remain part of the URL.
+
+Device-code login shows the verification URL, user code, and waiting status without opening a browser. Open the displayed link yourself. Browser authorization URL events still open the default browser.
+
 Built-in OAuth targets are `anthropic`, `github-copilot`, `kimi-coding`, `meta`, `openai-codex`, `openrouter`, `radius`, and `xai`. Each provider owns its flow. For example, GitHub Copilot uses device authorization, while callback-based providers can open a localhost callback server. Tokens are persisted to `auth.json` unless the provider owns another store, and supported providers refresh them when required.
+
+Anthropic login cancels and waits for its contextual manual-code prompt when authorization succeeds or fails. `PI_OAUTH_CALLBACK_HOST` selects its callback listener host; the authorization request retains the localhost redirect URI.
 
 A failed Copilot refresh reports an explicit reauthentication instruction:
 
@@ -194,6 +222,8 @@ export AWS_REGION=us-west-2    # AWS_DEFAULT_REGION also works
 
 ECS task credentials and IRSA work through the standard `AWS_CONTAINER_CREDENTIALS_*` and `AWS_WEB_IDENTITY_TOKEN_FILE` variables.
 
+Claude Opus 5 uses adaptive thinking and supports native `xhigh` effort on Bedrock. PiG recognizes the model ID or the display name of an application inference profile and adds prompt-cache points for supported Claude models. For GovCloud model IDs, GovCloud ARNs, or a configured `us-gov-` region, PiG omits `thinking.display`, which the GovCloud schema rejects.
+
 ### Cloudflare AI Gateway
 
 The gateway needs a token, an account ID, and a gateway ID:
@@ -261,7 +291,11 @@ For Copilot models the model ID itself may contain a slash (e.g. `github-copilot
 
 ## Provider extensions
 
-Extensions can add inference providers at register time. The host treats the `config` payload as opaque. The host owns lifecycle: providers registered by an extension are unregistered automatically on shutdown, reload failure, or quarantine fission. When a reload replaces an extension whose new register declares the same provider name, the registration is preserved across the swap so streaming completions are not interrupted.
+Anthropic Messages requests retain the selected model's reasoning capability, thinking-level map, and output limit. A newly supplied model can use `compat.forceAdaptiveThinking` without an entry in the built-in catalog.
+
+Extensions can add inference providers at register time. PiG validates incoming model configuration before replacing registered model data. Set `api` when registering `streamSimple`. For a new model, supply `api` at the provider or model level. A rejected registration leaves the existing registry entry and native Provider owner intact.
+
+The host retains provider configurations until a registry binds. Binding applies them in order and reports each failed entry with its owning extension path. Later registration and removal take effect immediately. The host owns lifecycle: providers registered by an extension are unregistered automatically on shutdown, reload failure, or quarantine fission. When a reload replaces an extension whose new register declares the same provider name, the registration is preserved across the swap so streaming completions are not interrupted.
 
 ## Troubleshooting
 

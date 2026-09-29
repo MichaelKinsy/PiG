@@ -1,0 +1,37 @@
+# Behavior family: export-html
+# Pi 0.87.1 core/export-html/index.ts:144-177 embeds the template, CSS, JavaScript,
+# vendors and base64 session data. Probe: pi --export <fixture>/plain.jsonl <isolated>/out.html.
+# Complete HTML equality is re-probed after refreshing the pinned assets.
+# Raw evidence and hashes: docs/findings/fix-export-html.md.
+
+name = "01-export-cli-plain"
+description = "CLI --export with plain text session produces matching status and byte-identical HTML"
+covers = [
+  "packages/coding-agent/src/core/export-html/index.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_HOME=testdata/pig-home"]
+pig_args = ["--export", "testdata/sessions/plain.jsonl", "{{TEMP}}/out.html"]
+pi_args = ["--export", "testdata/sessions/plain.jsonl", "{{TEMP}}/out.html"]
+
+[cli]
+timeout_seconds = 15
+cwd = "."
+artifact_path = "{{TEMP}}/out.html"
+
+[assert]
+exit_code = 0
+both_contain = ["Exported to:"]
+output_equal = true
+artifact_equal = true
+runs = 3
+
+# Normalize the temp dir paths so the "Exported to: /path" messages compare equal.
+# normalize-rationale: Pig and Pi receive independent temporary export paths.
+[[assert.normalize_replace]]
+pattern = '(?m)^(Exported to: )/[^\r\n]*/parity-cli-01-export-cli-plain-(pig|pi)-[0-9]+'
+with = '${1}<TEMP>'
+reason = "D2: replace only this scenario's allocated temporary root, preserving the entire destination suffix and status line."

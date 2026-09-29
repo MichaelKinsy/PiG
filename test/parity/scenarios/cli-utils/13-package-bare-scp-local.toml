@@ -1,0 +1,28 @@
+# Pi 0.87.1 package-manager-ssh.test.ts:75 and package-manager.ts:1018-1021,1446-1470 treat unprefixed SCP spelling as a local path.
+# Real Pi install exits 1 with the complete missing-path error; no Git or npm process runs.
+name = "13-package-bare-scp-local"
+description = "Unprefixed SCP-shaped Package sources are validated as local paths"
+covers = ["packages/coding-agent/src/core/package-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig = ["PIG_CODING_AGENT_DIR=testdata/empty-home/agent", "PIG_HOME=testdata/empty-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/empty-home/agent"]
+
+[cli]
+args = ["install", "git@github.com:user/repo"]
+timeout_seconds = 15
+
+[assert]
+exit_code = 1
+output_equal = true
+both_contain = ["Installing git@github.com:user/repo...", "Error: Path does not exist:"]
+runs = 3
+
+# normalize-rationale: Only the independently snapshotted working directory differs. Preserve every byte of the missing source and diagnostic.
+[[assert.normalize_replace]]
+pattern = 'Path does not exist: [^\r\n]*/parity-snap-cwd-[^/\r\n]+/git@github.com:user/repo'
+with = 'Path does not exist: CWD/git@github.com:user/repo'
+reason = "The binaries receive separate temporary working directories."

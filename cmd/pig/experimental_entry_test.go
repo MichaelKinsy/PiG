@@ -8,6 +8,7 @@ import (
 	"testing"
 )
 
+// .upstream/v0.87.1/packages/coding-agent/test/experimental-cli-entry.test.ts:47 — does not dispatch experimental commands from the stable entrypoint.
 // TestStableEntryDoesNotDispatchExperimentalCommands ports upstream
 // test/experimental-cli-entry.test.ts "does not dispatch experimental commands
 // from the stable entrypoint" (#9132: enabling experiments must not pull
@@ -21,21 +22,20 @@ import (
 // PI_EXPERIMENTAL=1 leaves both words to the stable CLI, where --version wins.
 // commands.ts gates `server` and `client` identically, so both are pinned.
 func TestStableEntryDoesNotDispatchExperimentalCommands(t *testing.T) {
-	bin := testExecutable(filepath.Join(t.TempDir(), "pig-experimental-entry"))
-	build := exec.Command("go", "build", "-o", bin, ".")
-	if data, err := build.CombinedOutput(); err != nil {
-		t.Fatalf("build pig: %v\n%s", err, data)
-	}
+	bin := buildPigBinaryForSignalTest(t)
 
 	for _, command := range []string{"server", "client"} {
 		t.Run(command, func(t *testing.T) {
 			directory := t.TempDir()
 			cmd := exec.Command(bin, command, "--server-id", "invalid", "--version")
 			cmd.Dir = directory
+			// Upstream isolates Pi's agent directory; PiG reads PIG_CODING_AGENT_DIR and PIG_HOME unless Pi directories are shared, so both roots are isolated.
 			cmd.Env = append(os.Environ(),
 				"HOME="+directory,
 				"USERPROFILE="+directory,
 				"PI_CODING_AGENT_DIR="+filepath.Join(directory, "agent"),
+				"PIG_CODING_AGENT_DIR="+filepath.Join(directory, "pig-agent"),
+				"PIG_HOME="+filepath.Join(directory, "pig"),
 				"PI_OFFLINE=1",
 				"PI_EXPERIMENTAL=1",
 			)

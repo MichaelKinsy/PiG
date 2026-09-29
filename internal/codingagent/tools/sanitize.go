@@ -14,15 +14,16 @@
 package tools
 
 import (
-	"regexp"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // ansiRegex mirrors upstream utils/ansi.ts ansiRegex (from chalk's
 // ansi-regex): OSC sequences up to the first string terminator (BEL, ESC \
 // or 0x9C), then CSI and related sequences introduced by ESC or the 8-bit
 // CSI 0x9B.
-var ansiRegex = regexp.MustCompile(
+var ansiRegex = lazyregexp.New(
 	`(?:\x1b\][\s\S]*?(?:\x07|\x1b\\|\x{9c}))` +
 		`|[\x1b\x{9b}][\[\]()#;?]*(?:\d{1,4}(?:[;:]\d{0,4})*)?[\dA-PR-TZcf-nq-uy=><~]`)
 

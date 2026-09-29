@@ -1,3 +1,4 @@
+// Ports packages/coding-agent/src/core/export-html/tool-renderer.ts
 package export
 
 import (
@@ -6,10 +7,11 @@ import (
 	"strings"
 	"sync/atomic"
 
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -87,8 +89,12 @@ func (r *toolHTMLRenderer) renderContext(toolCallID string, lastComponent any, e
 	}
 }
 
+var ansiEscapeRegex = lazyregexp.New(`\x1b\[[\d;]*m`)
+
 func isBlankRenderedLine(line string) bool {
-	return strings.TrimSpace(string(tools.StripANSI([]byte(line)))) == ""
+	// ECMAScript WhiteSpace and LineTerminator include BOM but not NEL; only SGR sequences are stripped.
+	const whitespace = "\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff"
+	return strings.Trim(ansiEscapeRegex.ReplaceAllString(line, ""), whitespace) == ""
 }
 
 func trimRenderedResultLines(lines []string) []string {
@@ -212,39 +218,25 @@ func parseToolResultImages(v any) []ai.ImageContent {
 	return images
 }
 
-// toolResultContent flattens a toolResult message's content into the text and
-// images an AgentToolResult carries. Upstream's ToolResultMessage.content is
-// `(TextContent | ImageContent)[]`; text blocks join with newlines, mirroring
-// ai.ToolResultContent's array handling. A bare string is accepted because
-// extensions may emit one.
-func toolResultContent(v any) (string, []ai.ImageContent) {
+// toolResultContent retains the ordered text/image content passed to extension renderers.
+func toolResultContent(v any) []ai.ToolResultMessageContent {
 	if s, ok := v.(string); ok {
-		return s, nil
+		return []ai.ToolResultMessageContent{ai.TextContent{Text: s}}
 	}
-	blocks, ok := v.([]any)
-	if !ok {
-		return "", nil
-	}
-	var text strings.Builder
-	var images []ai.ImageContent
+	blocks, _ := v.([]any)
+	content := make([]ai.ToolResultMessageContent, 0, len(blocks))
 	for _, rawBlock := range blocks {
 		block, _ := rawBlock.(map[string]any)
-		if block == nil {
-			continue
-		}
 		switch block["type"] {
 		case "text":
-			if text.Len() > 0 {
-				text.WriteString("\n")
-			}
-			text.WriteString(blockString(block["text"]))
+			content = append(content, ai.TextContent{Text: blockString(block["text"]), TextSignature: blockString(block["textSignature"])})
 		case "image":
-			if img := parseToolResultImages([]any{block}); len(img) > 0 {
-				images = append(images, img...)
+			for _, image := range parseToolResultImages([]any{block}) {
+				content = append(content, image)
 			}
 		}
 	}
-	return text.String(), images
+	return content
 }
 
 func RenderCustomTools(data *SessionData, tools []extension.RegisteredTool, cwd string, width int) {
@@ -306,10 +298,8 @@ func RenderCustomTools(data *SessionData, tools []extension.RegisteredTool, cwd 
 			if _, isTemplate := templateRenderedTools[toolName]; isTemplate && !hasExisting {
 				continue
 			}
-			text, images := toolResultContent(msg["content"])
 			result := agent.AgentToolResult{
-				Content: text,
-				Images:  images,
+				Content: toolResultContent(msg["content"]),
 				Details: msg["details"],
 				IsError: blockBool(msg["isError"]),
 			}

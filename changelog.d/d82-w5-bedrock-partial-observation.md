@@ -1,0 +1,3 @@
+- Read Amazon Bedrock ConverseStream event streams over HTTP/1 in Pi's order, so the first `message_start` an RPC client receives matches Pi's (the text, thinking or tool-call block after the second event, with its streaming `index` and `partialJson` fields), and report the configured provider id for a custom `bedrock-converse-stream` provider.
+- Keep a Bedrock stream alive when the response arrives before the transport finishes writing the request; the SDK's early close of the request body could end the stream with `terminated`.
+- A Bedrock request aborted while its stream is open now ends with `aborted` (or `Request was aborted` when the body had already been read), as Pi does.

@@ -36,12 +36,33 @@ func (m *InteractiveMode) ensureManagedTools(ctx context.Context, tm *tools.Tool
 		close(statuses)
 	}()
 	// Pi executes each ensureTool up to its first await in Promise.all argument order. Initial reports therefore precede asynchronous completion reports, with fd before rg.
+	readCh := m.inputReadCh
 	for _, initial := range initialStatuses {
-		if status, ok := <-initial; ok {
+		if status, ok := receiveDuringStartup(m, initial, &readCh); ok {
 			m.showManagedToolStatus(status)
 		}
 	}
-	for status := range statuses {
+	for {
+		status, ok := receiveDuringStartup(m, statuses, &readCh)
+		if !ok {
+			return
+		}
 		m.showManagedToolStatus(status)
+	}
+}
+
+// receiveDuringStartup waits for one value while giving terminal input to the startup editor, as Pi's editor accepts text during managed-tool setup (interactive-mode.ts:944-947, 1017-1028).
+func receiveDuringStartup[T any](m *InteractiveMode, ch <-chan T, readCh *chan inputChunk) (T, bool) {
+	for {
+		select {
+		case value, ok := <-ch:
+			return value, ok
+		case input, ok := <-*readCh:
+			if !ok {
+				*readCh = nil
+				continue
+			}
+			m.handleStartupInput(input, true)
+		}
 	}
 }

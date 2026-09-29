@@ -1,0 +1,183 @@
+// SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+// SPDX-FileCopyrightText: Copyright (c) 2025 Mario Zechner
+// SPDX-License-Identifier: MIT
+
+package codingagent
+
+import (
+	"context"
+	"os"
+	"path/filepath"
+	"slices"
+	"strings"
+	"sync"
+	"sync/atomic"
+)
+
+// SessionListProgress receives completed-file counts. A nil partial means no snapshot was published; a non-nil empty slice is an empty published snapshot.
+type SessionListProgress func(loaded, total int, partial []SessionInfo)
+
+// SessionListOptions supplies cancellation and progress for session discovery.
+type SessionListOptions struct {
+	Context    context.Context
+	OnProgress SessionListProgress
+}
+
+func sessionListOptions(options []SessionListOptions) SessionListOptions {
+	var selected SessionListOptions
+	if len(options) > 0 {
+		selected = options[0]
+	}
+	if selected.Context == nil {
+		selected.Context = context.Background()
+	}
+	return selected
+}
+
+// Ports packages/coding-agent/src/core/session-manager.ts (listSessionsFromDir and buildSessionInfosWithConcurrency).
+func listSessionsInDirWithOptions(dir string, options SessionListOptions) ([]SessionInfo, error) {
+	if err := options.Context.Err(); err != nil {
+		return nil, err
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		if options.Context.Err() != nil {
+			return nil, options.Context.Err()
+		}
+		return []SessionInfo{}, nil
+	}
+	files := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		if err := options.Context.Err(); err != nil {
+			return nil, err
+		}
+		if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".jsonl") {
+			files = append(files, filepath.Join(dir, entry.Name()))
+		}
+	}
+	slices.SortFunc(files, func(a, b string) int { return strings.Compare(b, a) })
+	return summarizeSessionFilesWithOptions(files, options, 10, false)
+}
+
+func listSessionsAcrossRootWithOptions(root string, options SessionListOptions) ([]SessionInfo, error) {
+	if err := options.Context.Err(); err != nil {
+		return nil, err
+	}
+	directories, err := os.ReadDir(root)
+	if err != nil {
+		if options.Context.Err() != nil {
+			return nil, options.Context.Err()
+		}
+		return []SessionInfo{}, nil
+	}
+	var files []string
+	for _, directory := range directories {
+		if err := options.Context.Err(); err != nil {
+			return nil, err
+		}
+		path := filepath.Join(root, directory.Name())
+		info, err := os.Stat(path)
+		if err != nil || !info.IsDir() {
+			continue
+		}
+		entries, err := os.ReadDir(path)
+		if err != nil {
+			continue
+		}
+		for _, entry := range entries {
+			if !entry.IsDir() && strings.HasSuffix(entry.Name(), ".jsonl") {
+				files = append(files, filepath.Join(path, entry.Name()))
+			}
+		}
+	}
+	mtimes := make(map[string]int64, len(files))
+	for _, file := range files {
+		if err := options.Context.Err(); err != nil {
+			return nil, err
+		}
+		if info, err := os.Stat(file); err == nil {
+			mtimes[file] = info.ModTime().UnixNano()
+		}
+	}
+	slices.SortFunc(files, func(a, b string) int {
+		if mtimes[a] > mtimes[b] {
+			return -1
+		}
+		if mtimes[a] < mtimes[b] {
+			return 1
+		}
+		return strings.Compare(filepath.Base(b), filepath.Base(a))
+	})
+	return summarizeSessionFilesWithOptions(files, options, 100, true)
+}
+
+type sessionListResult struct {
+	index int
+	info  SessionInfo
+	valid bool
+}
+
+func summarizeSessionFilesWithOptions(files []string, options SessionListOptions, publishInterval int, waitForFirst bool) ([]SessionInfo, error) {
+	ctx, cancel := context.WithCancel(options.Context)
+	if err := ctx.Err(); err != nil {
+		cancel()
+		return nil, err
+	}
+	if len(files) == 0 {
+		cancel()
+		return []SessionInfo{}, nil
+	}
+	results := make(chan sessionListResult, len(files))
+	var next atomic.Int64
+	var workers sync.WaitGroup
+	for range min(maxConcurrentSessionInfoLoads, len(files)) {
+		workers.Go(func() {
+			for {
+				if ctx.Err() != nil {
+					return
+				}
+				index := int(next.Add(1)) - 1
+				if index >= len(files) {
+					return
+				}
+				info, err := summarizeSessionFileContext(ctx, files[index])
+				results <- sessionListResult{index: index, info: info, valid: err == nil}
+			}
+		})
+	}
+	joined := make(chan struct{})
+	go func() { workers.Wait(); close(results); close(joined) }()
+	defer func() { cancel(); <-joined }()
+	infos := make([]SessionInfo, 0, len(files))
+	loaded := 0
+	firstLoaded := false
+	for result := range results {
+		if err := ctx.Err(); err != nil {
+			return nil, err
+		}
+		loaded++
+		if result.index == 0 {
+			firstLoaded = true
+		}
+		if result.valid {
+			infos = append(infos, result.info)
+		}
+		if options.OnProgress != nil {
+			publish := loaded == 1 || loaded%publishInterval == 0 || loaded == len(files)
+			if waitForFirst {
+				publish = firstLoaded && (result.index == 0 || loaded%publishInterval == 0 || loaded == len(files))
+			}
+			var partial []SessionInfo
+			if publish {
+				partial = append([]SessionInfo{}, infos...)
+				slices.SortFunc(partial, compareSessionRecencyDesc)
+			}
+			options.OnProgress(loaded, len(files), partial)
+		}
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	slices.SortFunc(infos, compareSessionRecencyDesc)
+	return infos, nil
+}

@@ -1,0 +1,1980 @@
+{
+	"resolve": [
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\tools\\x."
+			],
+			"want": "C:\\tools\\x."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"D:\\other",
+				"\\tools\\x"
+			],
+			"want": "D:\\tools\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"D:\\other",
+				"/tools/x"
+			],
+			"want": "D:\\tools\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"D:\\base",
+				"\\x"
+			],
+			"want": "D:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "D:\\other",
+			"env": {},
+			"args": [
+				"C:\\work\\proj",
+				"\\x"
+			],
+			"want": "C:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "\\\\srv\\share\\dir",
+			"env": {},
+			"args": [
+				"\\x"
+			],
+			"want": "\\\\srv\\share\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "\\\\srv\\share\\dir",
+			"env": {},
+			"args": [
+				"C:\\work\\proj",
+				"\\x"
+			],
+			"want": "C:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\tools\\x.",
+				"y"
+			],
+			"want": "C:\\tools\\x.\\y"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"x."
+			],
+			"want": "C:\\work\\proj\\x."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"x.."
+			],
+			"want": "C:\\work\\proj\\x.."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"x...\\y"
+			],
+			"want": "C:\\work\\proj\\x...\\y"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a\\x.\\..\\y."
+			],
+			"want": "C:\\work\\proj\\a\\y."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"D:\\tools\\x."
+			],
+			"want": "D:\\tools\\x."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"D:\\tools\\x. "
+			],
+			"want": "D:\\tools\\x. "
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"D:\\tools\\x ."
+			],
+			"want": "D:\\tools\\x ."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"."
+			],
+			"want": "C:\\work\\proj"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				""
+			],
+			"want": "C:\\work\\proj"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [],
+			"want": "C:\\work\\proj"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "\\\\srv\\share\\dir",
+			"env": {},
+			"args": [],
+			"want": "\\\\srv\\share\\dir"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "\\\\srv\\share\\dir",
+			"env": {},
+			"args": [
+				"."
+			],
+			"want": "\\\\srv\\share\\dir"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "\\\\srv\\share\\dir",
+			"env": {},
+			"args": [
+				""
+			],
+			"want": "\\\\srv\\share\\dir"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"..",
+				"..",
+				"..",
+				".."
+			],
+			"want": "C:\\"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"..\\..\\..\\x"
+			],
+			"want": "C:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a\\b\\..\\..\\..\\..\\c"
+			],
+			"want": "C:\\c"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a/b/../c/"
+			],
+			"want": "C:\\work\\proj\\a\\c"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a\\\\b\\\\\\c"
+			],
+			"want": "C:\\work\\proj\\a\\b\\c"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a",
+				"b",
+				"c"
+			],
+			"want": "C:\\work\\proj\\a\\b\\c"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a",
+				"",
+				"b"
+			],
+			"want": "C:\\work\\proj\\a\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a",
+				"/b",
+				"c"
+			],
+			"want": "C:\\b\\c"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a",
+				"\\b",
+				"c"
+			],
+			"want": "C:\\b\\c"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"/"
+			],
+			"want": "C:\\"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\"
+			],
+			"want": "C:\\"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\"
+			],
+			"want": "C:\\"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\\\"
+			],
+			"want": "C:\\"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:x"
+			],
+			"want": "C:\\work\\proj\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"c:x"
+			],
+			"want": "c:\\work\\proj\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:"
+			],
+			"want": "C:\\work\\proj"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"D:x"
+			],
+			"want": "D:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"D:"
+			],
+			"want": "D:\\"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {
+				"=D:": "D:\\dcwd"
+			},
+			"args": [
+				"D:x"
+			],
+			"want": "D:\\dcwd\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {
+				"=D:": "E:\\wrong"
+			},
+			"args": [
+				"D:x"
+			],
+			"want": "D:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {
+				"=D:": "D:\\dcwd"
+			},
+			"args": [
+				"d:x"
+			],
+			"want": "d:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {
+				"=D:": "D:"
+			},
+			"args": [
+				"D:x"
+			],
+			"want": "D:x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {
+				"=D:": "\\\\srv\\share\\dir"
+			},
+			"args": [
+				"D:x"
+			],
+			"want": "D:x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {
+				"=D:": "d:/slash"
+			},
+			"args": [
+				"D:x"
+			],
+			"want": "D:\\slash\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {
+				"=K:": "é\\a\\b"
+			},
+			"args": [
+				"K:a",
+				"x"
+			],
+			"want": "K:é\\a\\b\\a\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {
+				"=I:": "İ:\\x"
+			},
+			"args": [
+				"I:x"
+			],
+			"want": "I:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {
+				"=K:": "K:\\k"
+			},
+			"args": [
+				"K:x"
+			],
+			"want": "K:\\k\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "/é\\x",
+			"env": {},
+			"args": [
+				"b:x"
+			],
+			"want": "b:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {
+				"=D:": "D:\\a\\b"
+			},
+			"args": [
+				"D:.."
+			],
+			"want": "D:\\a"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {
+				"=D:": "D:\\a\\b"
+			},
+			"args": [
+				"D:..",
+				"..",
+				".."
+			],
+			"want": "D:\\"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:x",
+				"D:y"
+			],
+			"want": "D:\\y"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"D:y",
+				"C:x"
+			],
+			"want": "C:\\work\\proj\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a",
+				"D:y",
+				"b"
+			],
+			"want": "D:\\a\\y\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"D:y",
+				"b"
+			],
+			"want": "D:\\y\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"D:\\a",
+				"D:b",
+				"C:c"
+			],
+			"want": "C:\\work\\proj\\c"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"D:\\a",
+				"C:b"
+			],
+			"want": "C:\\work\\proj\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:b",
+				"D:\\a"
+			],
+			"want": "D:\\a"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"c:\\A",
+				"C:b"
+			],
+			"want": "C:\\A\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "c:\\lower",
+			"env": {},
+			"args": [
+				"C:b"
+			],
+			"want": "C:\\lower\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "c:\\lower",
+			"env": {},
+			"args": [
+				"x"
+			],
+			"want": "c:\\lower\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:",
+			"env": {},
+			"args": [
+				"x"
+			],
+			"want": "C:x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\",
+			"env": {},
+			"args": [
+				"x"
+			],
+			"want": "C:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\",
+			"env": {},
+			"args": [
+				"..",
+				"x"
+			],
+			"want": "C:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\srv\\share"
+			],
+			"want": "\\\\srv\\share\\"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\srv\\share\\"
+			],
+			"want": "\\\\srv\\share\\"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\srv\\share\\a\\..\\b"
+			],
+			"want": "\\\\srv\\share\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"//srv/share/a/b"
+			],
+			"want": "\\\\srv\\share\\a\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\srv\\share\\..\\..\\x"
+			],
+			"want": "\\\\srv\\share\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\srv"
+			],
+			"want": "C:\\srv"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\srv\\"
+			],
+			"want": "C:\\srv"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\srv\\\\share\\x"
+			],
+			"want": "\\\\srv\\share\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\.\\PHYSICALDRIVE0"
+			],
+			"want": "\\\\.\\PHYSICALDRIVE0"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\?\\C:\\a\\..\\b"
+			],
+			"want": "\\\\?\\C:\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\?\\UNC\\srv\\share\\x"
+			],
+			"want": "\\\\?\\UNC\\srv\\share\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\.\\pipe\\name",
+				"x"
+			],
+			"want": "\\\\.\\pipe\\name\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\."
+			],
+			"want": "C:\\"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\.\\"
+			],
+			"want": "C:\\"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\?\\C:",
+				"x"
+			],
+			"want": "\\\\?\\C:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\srv\\share",
+				"\\\\SRV\\Share\\x"
+			],
+			"want": "\\\\SRV\\Share\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\srv\\share\\a",
+				"\\\\other\\share\\b"
+			],
+			"want": "\\\\other\\share\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\srv\\share\\a",
+				"\\rooted"
+			],
+			"want": "\\\\srv\\share\\rooted"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"\\\\srv\\share\\a",
+				"D:x"
+			],
+			"want": "D:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a\\...\\b"
+			],
+			"want": "C:\\work\\proj\\a\\...\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a\\.b\\..c\\d."
+			],
+			"want": "C:\\work\\proj\\a\\.b\\..c\\d."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a\\..\\..\\.."
+			],
+			"want": "C:\\"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				".\\a\\.\\b\\."
+			],
+			"want": "C:\\work\\proj\\a\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				".hidden"
+			],
+			"want": "C:\\work\\proj\\.hidden"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a b",
+				"c d"
+			],
+			"want": "C:\\work\\proj\\a b\\c d"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"é\\ü.",
+				"日本語\\x."
+			],
+			"want": "C:\\work\\proj\\é\\ü.\\日本語\\x."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"😀\\x."
+			],
+			"want": "C:\\work\\proj\\😀\\x."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"a:b"
+			],
+			"want": "a:\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"1:x"
+			],
+			"want": "C:\\work\\proj\\1:x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"::"
+			],
+			"want": "C:\\work\\proj\\::"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:\\a:b"
+			],
+			"want": "C:\\a:b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:\\\\\\a\\\\\\b"
+			],
+			"want": "C:\\a\\b"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:/a/b/..//c/"
+			],
+			"want": "C:\\a\\c"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:\\a\\b\\..\\..\\..\\..\\x"
+			],
+			"want": "C:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:a\\..\\..\\x"
+			],
+			"want": "C:\\work\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"D:a\\..\\..\\x"
+			],
+			"want": "D:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:\\tools\\x."
+			],
+			"want": "C:\\tools\\x."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"c:\\TOOLS\\x."
+			],
+			"want": "c:\\TOOLS\\x."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"~"
+			],
+			"want": "C:\\work\\proj\\~"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"~/x."
+			],
+			"want": "C:\\work\\proj\\~\\x."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				".pi",
+				"skills"
+			],
+			"want": "C:\\work\\proj\\.pi\\skills"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:\\Users\\me",
+				"..",
+				"session."
+			],
+			"want": "C:\\Users\\session."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:\\Users\\me\\.pi\\agent\\sessions\\x.jsonl",
+				".."
+			],
+			"want": "C:\\Users\\me\\.pi\\agent\\sessions"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:\\Users\\me",
+				"\\tools\\x."
+			],
+			"want": "C:\\tools\\x."
+		},
+		{
+			"flavor": "win32",
+			"cwd": "C:\\work\\proj",
+			"env": {},
+			"args": [
+				"C:\\Users\\me",
+				"D:\\tools\\x."
+			],
+			"want": "D:\\tools\\x."
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [],
+			"want": "/work/proj"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work//proj/",
+			"env": {},
+			"args": [],
+			"want": "/work//proj/"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work//proj/",
+			"env": {},
+			"args": [
+				""
+			],
+			"want": "/work//proj/"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work//proj/",
+			"env": {},
+			"args": [
+				"."
+			],
+			"want": "/work//proj/"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work//proj/",
+			"env": {},
+			"args": [
+				"x"
+			],
+			"want": "/work/proj/x"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work//proj/",
+			"env": {},
+			"args": [
+				".",
+				""
+			],
+			"want": "/work/proj"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				""
+			],
+			"want": "/work/proj"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"."
+			],
+			"want": "/work/proj"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"x."
+			],
+			"want": "/work/proj/x."
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"a",
+				"b",
+				"c"
+			],
+			"want": "/work/proj/a/b/c"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"/a",
+				"b"
+			],
+			"want": "/a/b"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"a",
+				"/b",
+				"c"
+			],
+			"want": "/b/c"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"..",
+				"..",
+				"..",
+				".."
+			],
+			"want": "/"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"a/b/../../../../c"
+			],
+			"want": "/c"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"a//b///c/"
+			],
+			"want": "/work/proj/a/b/c"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"/"
+			],
+			"want": "/"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"//"
+			],
+			"want": "/"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"//a//b"
+			],
+			"want": "/a/b"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"/a/.../b/..x/y."
+			],
+			"want": "/a/.../b/..x/y."
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"\\a\\b"
+			],
+			"want": "/work/proj/\\a\\b"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"C:\\a",
+				"b"
+			],
+			"want": "/work/proj/C:\\a/b"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/",
+			"env": {},
+			"args": [
+				"x"
+			],
+			"want": "/x"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/",
+			"env": {},
+			"args": [
+				"..",
+				"x"
+			],
+			"want": "/x"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "/work/proj",
+			"env": {},
+			"args": [
+				"é/ü.",
+				"😀"
+			],
+			"want": "/work/proj/é/ü./😀"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"x"
+			],
+			"want": "",
+			"throws": "ENOENT"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"x",
+				"y"
+			],
+			"want": "",
+			"throws": "ENOENT"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"."
+			],
+			"want": "",
+			"throws": "ENOENT"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				""
+			],
+			"want": "",
+			"throws": "ENOENT"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [],
+			"want": "",
+			"throws": "ENOENT"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"",
+				"x"
+			],
+			"want": "",
+			"throws": "ENOENT"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"/abs"
+			],
+			"want": "/abs"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"x",
+				"/abs",
+				"y"
+			],
+			"want": "/abs/y"
+		},
+		{
+			"flavor": "posix",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"/",
+				"x"
+			],
+			"want": "/x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"x"
+			],
+			"want": "",
+			"throws": "ENOENT"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"."
+			],
+			"want": "",
+			"throws": "ENOENT"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				""
+			],
+			"want": "",
+			"throws": "ENOENT"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [],
+			"want": "",
+			"throws": "ENOENT"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"\\x"
+			],
+			"want": "",
+			"throws": "ENOENT"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"C:\\x"
+			],
+			"want": "C:\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"C:x"
+			],
+			"want": "",
+			"throws": "ENOENT"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {
+				"=C:": "C:\\dcwd"
+			},
+			"args": [
+				"C:x"
+			],
+			"want": "C:\\dcwd\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"x",
+				"C:\\y"
+			],
+			"want": "C:\\y"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {},
+			"args": [
+				"\\\\srv\\share\\x"
+			],
+			"want": "\\\\srv\\share\\x"
+		},
+		{
+			"flavor": "win32",
+			"cwd": "",
+			"cwdThrows": true,
+			"env": {
+				"=D:": ""
+			},
+			"args": [
+				"D:x"
+			],
+			"want": "",
+			"throws": "ENOENT"
+		}
+	],
+	"isAbsolute": [
+		{
+			"flavor": "win32",
+			"input": "",
+			"want": false
+		},
+		{
+			"flavor": "win32",
+			"input": ".",
+			"want": false
+		},
+		{
+			"flavor": "win32",
+			"input": "a",
+			"want": false
+		},
+		{
+			"flavor": "win32",
+			"input": "/",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "\\",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "//",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "\\\\",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "/a",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "\\a",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "\\\\a\\b",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "\\\\srv\\share",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "C:",
+			"want": false
+		},
+		{
+			"flavor": "win32",
+			"input": "C:\\",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "C:/",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "C:\\x",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "c:/x",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "C:x",
+			"want": false
+		},
+		{
+			"flavor": "win32",
+			"input": "1:\\x",
+			"want": false
+		},
+		{
+			"flavor": "win32",
+			"input": "::\\",
+			"want": false
+		},
+		{
+			"flavor": "win32",
+			"input": "\\\\.\\pipe",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "é:\\",
+			"want": false
+		},
+		{
+			"flavor": "win32",
+			"input": "~",
+			"want": false
+		},
+		{
+			"flavor": "win32",
+			"input": "a\\b",
+			"want": false
+		},
+		{
+			"flavor": "win32",
+			"input": "..",
+			"want": false
+		},
+		{
+			"flavor": "win32",
+			"input": "C",
+			"want": false
+		},
+		{
+			"flavor": "win32",
+			"input": "C:a\\b",
+			"want": false
+		},
+		{
+			"flavor": "win32",
+			"input": "z:/",
+			"want": true
+		},
+		{
+			"flavor": "win32",
+			"input": "Z:\\\\",
+			"want": true
+		},
+		{
+			"flavor": "posix",
+			"input": "",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": ".",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "a",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "/",
+			"want": true
+		},
+		{
+			"flavor": "posix",
+			"input": "\\",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "//",
+			"want": true
+		},
+		{
+			"flavor": "posix",
+			"input": "\\\\",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "/a",
+			"want": true
+		},
+		{
+			"flavor": "posix",
+			"input": "\\a",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "\\\\a\\b",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "\\\\srv\\share",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "C:",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "C:\\",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "C:/",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "C:\\x",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "c:/x",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "C:x",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "1:\\x",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "::\\",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "\\\\.\\pipe",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "é:\\",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "~",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "a\\b",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "..",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "C",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "C:a\\b",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "z:/",
+			"want": false
+		},
+		{
+			"flavor": "posix",
+			"input": "Z:\\\\",
+			"want": false
+		}
+	],
+	"namespaced": [
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "",
+			"want": ""
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "C:",
+			"want": "\\\\?\\C:\\work\\proj"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "C:\\",
+			"want": "\\\\?\\C:\\"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "C:\\x",
+			"want": "\\\\?\\C:\\x"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "c:\\x\\..\\y.",
+			"want": "\\\\?\\c:\\y."
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "C:/x/y",
+			"want": "\\\\?\\C:\\x\\y"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "C:x",
+			"want": "\\\\?\\C:\\work\\proj\\x"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "x",
+			"want": "\\\\?\\C:\\work\\proj\\x"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "x.",
+			"want": "\\\\?\\C:\\work\\proj\\x."
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": ".",
+			"want": "\\\\?\\C:\\work\\proj"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "..",
+			"want": "\\\\?\\C:\\work"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\",
+			"want": "\\\\?\\C:\\"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\",
+			"want": "\\\\?\\C:\\"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\x",
+			"want": "\\\\?\\C:\\x"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "/x",
+			"want": "\\\\?\\C:\\x"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\srv\\share",
+			"want": "\\\\?\\UNC\\srv\\share\\"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\srv\\share\\dir\\x",
+			"want": "\\\\?\\UNC\\srv\\share\\dir\\x"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "//srv/share/x",
+			"want": "\\\\?\\UNC\\srv\\share\\x"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\?\\C:\\x",
+			"want": "\\\\?\\C:\\x"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\?\\UNC\\srv\\share\\x",
+			"want": "\\\\?\\UNC\\srv\\share\\x"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\.\\pipe\\name",
+			"want": "\\\\.\\pipe\\name"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\.",
+			"want": "\\\\?\\C:\\"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\?",
+			"want": "\\\\?\\C:\\?"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "D:\\a\\b",
+			"want": "\\\\?\\D:\\a\\b"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "d:/a",
+			"want": "\\\\?\\d:\\a"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "é",
+			"want": "\\\\?\\C:\\work\\proj\\é"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "日本語\\x",
+			"want": "\\\\?\\C:\\work\\proj\\日本語\\x"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\srv\\share\\..\\..\\x",
+			"want": "\\\\?\\UNC\\srv\\share\\x"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\srv",
+			"want": "\\\\?\\C:\\srv"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\?\\foo/bar",
+			"want": "\\\\?\\foo\\bar"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\.\\pipe/x/../y",
+			"want": "\\\\.\\pipe\\y"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\?\\C:\\a\\..\\b",
+			"want": "\\\\?\\C:\\b"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "//./x",
+			"want": "\\\\.\\x"
+		},
+		{
+			"cwd": "C:\\work\\proj",
+			"input": "\\\\.\\pipe\\a/b",
+			"want": "\\\\.\\pipe\\a\\b"
+		},
+		{
+			"cwd": "",
+			"input": "./日",
+			"want": "./日"
+		},
+		{
+			"cwd": "",
+			"input": "a/../日",
+			"want": "a/../日"
+		},
+		{
+			"cwd": "",
+			"input": "./ab",
+			"want": "./ab"
+		},
+		{
+			"cwd": "",
+			"input": ".\\ab",
+			"want": ".\\ab"
+		},
+		{
+			"cwd": "",
+			"input": "./abc",
+			"want": "abc"
+		},
+		{
+			"cwd": "",
+			"input": "./😀",
+			"want": "./😀"
+		},
+		{
+			"cwd": "",
+			"input": "./😀x",
+			"want": "😀x"
+		}
+	]
+}

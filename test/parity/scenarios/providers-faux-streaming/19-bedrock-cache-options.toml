@@ -1,0 +1,29 @@
+# Pi 0.87.1 bedrock-converse-stream.ts:260,815-823 resolves explicit retention before the legacy long-only environment.
+# supportsPromptCaching at :852-867 uses the scoped force flag for opaque profiles and other non-Claude IDs, ahead of ambient env.
+# Both real AWS SDKs send requests to a faux HTTP server. Its empty response deliberately fails after request capture.
+# Compare complete system/user cache-point placement, not the empty-stream error.
+name = "19-bedrock-cache-options"
+description = "Bedrock cache options and scoped force flags override ambient preferences."
+covers = ["packages/ai/src/api/bedrock-converse-stream.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+# Unset bearer-token discovery because the Node SDK treats a defined empty token as a selected auth scheme.
+pig_args = ["-u", "AWS_BEARER_TOKEN_BEDROCK", "go", "run", "./test/parity/testdata/bedrock-cache-pig"]
+pi_args = ["-u", "AWS_BEARER_TOKEN_BEDROCK", "node", "./test/parity/testdata/bedrock-cache-pi.mjs"]
+pig = ["PI_CACHE_RETENTION=", "AWS_PROFILE=", "AWS_DEFAULT_PROFILE=", "AWS_CONFIG_FILE={{TEMP}}/config", "AWS_SHARED_CREDENTIALS_FILE={{TEMP}}/credentials", "AWS_EC2_METADATA_DISABLED=true"]
+pi = ["PI_CACHE_RETENTION=", "AWS_PROFILE=", "AWS_DEFAULT_PROFILE=", "AWS_CONFIG_FILE={{TEMP}}/config", "AWS_SHARED_CREDENTIALS_FILE={{TEMP}}/credentials", "AWS_EC2_METADATA_DISABLED=true"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['["explicit-none",[{"text":"system"}],[{"content":[{"text":"hello"}],"role":"user"}]]', '"ttl":"1h"', '"environment-none"', '"scoped-force-on"', '"scoped-force-off"', '"scoped-force-nova"']
+runs = 3

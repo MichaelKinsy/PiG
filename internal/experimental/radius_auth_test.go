@@ -6,17 +6,20 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/nodeurl"
+	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
 const testConnectionID = "00000000-0000-4000-8000-000000000002"
 const testServerID = "00000000-0000-4000-8000-000000000001"
 
-// The pinned experimental-radius-relay.test.ts requires this exact multiplexing envelope.
+// .upstream/v0.87.1/packages/coding-agent/test/experimental-radius-relay.test.ts:104 — matches the Radius multiplexing envelope.
 func TestRelayDataFrameEnvelope(t *testing.T) {
 	payload := []byte{0, 1, 2, 255}
 	frame, err := EncodeRelayDataFrame(testConnectionID, payload)
@@ -143,5 +146,30 @@ func BenchmarkRelayDataFrame(b *testing.B) {
 		if _, ok := ParseRelayDataFrame(frame); !ok {
 			b.Fatal("invalid frame")
 		}
+	}
+}
+
+// radius-auth.ts reads resolvePath(this.#input.path), whose omitted base is process.cwd() (utils/paths.ts:102). Node evaluates that default before it inspects the path, so a deleted working directory throws ENOENT even for an absolute path.
+func TestAuthFilePathReportsAnUnreadableWorkingDirectory(t *testing.T) {
+	absolute := filepath.Join(t.TempDir(), "auth.json")
+	testenv.DeletedWorkingDirectory(t)
+	for _, input := range []string{"auth.json", absolute, "file://" + filepath.ToSlash(absolute)} {
+		if got, err := authFilePath(input); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("authFilePath(%q) = %q, %v; want the process.cwd() error", input, got, err)
+		}
+	}
+}
+
+// resolvePath normalizes a file:// URL with Node's fileURLToPath, so a host other than localhost is ERR_INVALID_FILE_URL_HOST and localhost is the empty host.
+func TestAuthFilePathUsesFileURLToPath(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("fileURLToPath accepts a UNC host on Windows")
+	}
+	var urlErr *nodeurl.Error
+	if _, err := authFilePath("file://example.com/auth.json"); !errors.As(err, &urlErr) || urlErr.Code != "ERR_INVALID_FILE_URL_HOST" {
+		t.Fatalf("authFilePath(file://example.com/...) error = %v; want ERR_INVALID_FILE_URL_HOST", err)
+	}
+	if got, err := authFilePath("file://localhost/tmp/a%20b/auth.json"); err != nil || got != "/tmp/a b/auth.json" {
+		t.Fatalf("authFilePath(file://localhost/...) = %q, %v; want /tmp/a b/auth.json", got, err)
 	}
 }

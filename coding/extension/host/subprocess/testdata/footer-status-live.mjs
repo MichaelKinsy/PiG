@@ -1,4 +1,4 @@
-// Mirrors parity/scenarios/extensions-runtime/testdata/ext/footer-status.mjs:
+// Mirrors test/parity/scenarios/extensions-runtime/testdata/ext/footer-status.mjs:
 // a footer factory that composes its lines from
 // footerData.getExtensionStatuses() instead of a closed-over value, so a
 // later status change is only visible if the host pushes a fresh

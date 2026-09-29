@@ -1,0 +1,25 @@
+# Pi 0.87.1 session-selector.ts:845-859 publishes the successful deletion before awaiting a new scope load.
+# Both adapters hold the real selector's refresh unresolved, inspect all visible rows, and press Enter. They also verify singleton/filter emptiness, touched selection, parent removal, and loader snapshot ownership.
+# The callback/deferred-Promise inputs require component adapters, not CLI flag substitutes. No ANSI, whitespace, or identity normalizer runs.
+name = "33-session-selector-delete-refresh"
+description = "A deleted Session is not visible or selectable while refresh is pending"
+covers = ["packages/coding-agent/src/modes/interactive/components/session-selector.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-selector-delete-refresh.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/session-selector-delete-refresh.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['SESSION_DELETE_REFRESH [["current",["current-keep"],"current-keep"],["all",["all-keep"],"all-keep"],["current singleton",[],""],["all singleton",[],""],["filtered singleton",[],""],["touched selection",["current-keep","other"],"current-keep"],["deleted parent",["current-keep"],"current-keep"]]']
+runs = 3

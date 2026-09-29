@@ -1,0 +1,20 @@
+import {readFileSync} from "node:fs";
+const root=new URL("../../../extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/node_modules/@earendil-works/pi-ai/",import.meta.url);
+if(JSON.parse(readFileSync(new URL("package.json",root),"utf8")).version!=="0.87.1")throw new Error("Expected Pi 0.87.1");
+const {stream,closeOpenAICodexWebSocketSessions,resetOpenAICodexWebSocketDebugStats,getOpenAICodexWebSocketDebugStats}=await import(new URL("dist/api/openai-codex-responses.js",root));
+const {normalizeContext}=await import(new URL("dist/utils/transcript.js",root));
+const token=`aaa.${Buffer.from(JSON.stringify({"https://api.openai.com/auth":{chatgpt_account_id:"acc_test"}})).toString("base64")}.bbb`;
+const model={id:"gpt-5.1-codex",name:"GPT-5.1 Codex",provider:"openai-codex",api:"openai-codex-responses",baseUrl:"https://chatgpt.com/backend-api",reasoning:true,input:["text"],cost:{input:0,output:0,cacheRead:0,cacheWrite:0},contextWindow:400000,maxTokens:128000};
+function frames(id,text){return [{type:"response.created",response:{id}},{type:"response.output_item.added",output_index:0,item:{type:"message",id:"msg_1",role:"assistant",status:"in_progress",content:[]}},{type:"response.output_item.done",output_index:0,item:{type:"message",id:"msg_1",role:"assistant",status:"completed",content:[{type:"output_text",text}]}},{type:"response.completed",response:{id,status:"completed",usage:{input_tokens:5,output_tokens:3,total_tokens:8}}}];}
+let mode,bodies,connections,fetches;
+globalThis.WebSocket=class {readyState=1;listeners=new Map();connection=++connections;constructor(){queueMicrotask(()=>this.emit("open",{}));}addEventListener(type,fn){let set=this.listeners.get(type);if(!set)this.listeners.set(type,set=new Set());set.add(fn);}removeEventListener(type,fn){this.listeners.get(type)?.delete(fn);}emit(type,event){for(const fn of this.listeners.get(type)??[])fn(event);}close(){this.readyState=3;}send(data){const body=JSON.parse(data);bodies.push({connection:this.connection,body});queueMicrotask(()=>{if(bodies.length===2){for(const event of [{type:"codex.rate_limits",plan_type:"plus"},{type:"error",error:{code:"previous_response_not_found",message:"Previous response with id 'resp_1' not found."}}])this.emit("message",{data:JSON.stringify(event)});return;}if(bodies.length===3&&mode==="sse"){this.emit("error",{message:"retry websocket failed"});return;}for(const event of frames(bodies.length===1?"resp_1":"resp_2",bodies.length===1?"Hello":"Recovered"))this.emit("message",{data:JSON.stringify(event)});});}};
+for(mode of ["websocket","sse"]){
+ bodies=[];connections=0;fetches=0;const sessionId=`missing-continuation-${mode}`;
+ const options={apiKey:token,transport:"websocket-cached",sessionId,fetch:async()=>{fetches++;return new Response(frames("resp_sse","Hello").map(event=>`data: ${JSON.stringify(event)}\n\n`).join(""),{headers:{"content-type":"text/event-stream"}});}};
+ const context=normalizeContext({systemPrompt:"You are a helpful assistant.",messages:[{role:"user",content:"Say hello",timestamp:1}]});
+ const first=await stream(model,context,options).result();
+ const secondStream=stream(model,normalizeContext({messages:[...context.messages,first,{role:"user",content:"Now finish",timestamp:2}]}),options);const events=[];for await(const event of secondStream)events.push(event.type);const second=await secondStream.result();
+ const stats=getOpenAICodexWebSocketDebugStats(sessionId);
+ console.log(JSON.stringify({mode,stop:second.stopReason,text:second.content.find(block=>block.type==="text")?.text,starts:events.filter(type=>type==="start").length,errors:events.filter(type=>type==="error").length,connections,connectionIds:bodies.map(x=>x.connection),inputLengths:bodies.map(x=>x.body.input.length),previous:bodies.map(x=>x.body.previous_response_id??""),fetches,requests:stats.requests,created:stats.connectionsCreated,reused:stats.connectionsReused,full:stats.fullContextRequests,delta:stats.deltaRequests,failures:stats.websocketFailures,fallbacks:stats.sseFallbacks}));
+ closeOpenAICodexWebSocketSessions();resetOpenAICodexWebSocketDebugStats();
+}

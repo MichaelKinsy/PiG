@@ -26,14 +26,14 @@ func TestExecuteBashWithOperationsUsesExtensionOperations(t *testing.T) {
 	sess := newBashTestSession(t, `{"shellCommandPrefix":"set -e"}`)
 	ops := &recordingOperations{}
 	var chunks []string
-	result, err := sess.ExecuteBashWithOperations(context.Background(), "ls", false, func(c string) { chunks = append(chunks, c) }, ops)
+	result, err := sess.ExecuteBashWithOperations(context.Background(), "ls", false, func(c string) { chunks = append(chunks, c) }, ops, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if ops.command != "set -e\nls" || ops.cwd != sess.CWD() {
 		t.Fatalf("operations got command %q cwd %q", ops.command, ops.cwd)
 	}
-	if result.Output != "remote output\n" || result.ExitCode != 3 || len(chunks) != 1 {
+	if result.Output != "remote output\n" || result.ExitCode == nil || *result.ExitCode != 3 || len(chunks) != 1 {
 		t.Fatalf("result = %+v chunks = %q", result, chunks)
 	}
 }

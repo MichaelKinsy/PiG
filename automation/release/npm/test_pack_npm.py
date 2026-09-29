@@ -13,6 +13,7 @@ import sys
 import tarfile
 import tempfile
 import unittest
+from unittest.mock import patch
 import zipfile
 
 sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
@@ -151,6 +152,26 @@ class GenerateTest(unittest.TestCase):
         (self.archives / "SHA256SUMS").unlink()
         with self.assertRaisesRegex(pack_npm.PackError, "SHA256SUMS"):
             pack_npm.generate(self.archives, VERSION, self.out, None)
+
+
+class PackShellTest(unittest.TestCase):
+    def test_destination_never_becomes_windows_shell_source(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = pathlib.Path(tmp)
+            # Neither cmd metacharacters nor environment references are code.
+            out = root / "packages&echo.INJECTED" / "%TOKEN%!bang!"
+            package = root / "package"
+            for platform in ("win32", "linux"):
+                with self.subTest(platform=platform):
+                    def run(argv, **kwargs):
+                        self.assertEqual(argv, ["npm", "pack", "--json"])
+                        self.assertEqual(kwargs["cwd"], package)
+                        self.assertEqual(kwargs["env"]["npm_config_pack_destination"], str(out.resolve()))
+                        self.assertEqual(kwargs["shell"], platform == "win32")
+                        return pack_npm.subprocess.CompletedProcess(argv, 0, stdout='[{"filename":"package.tgz"}]')
+
+                    with patch.object(pack_npm.sys, "platform", platform), patch.object(pack_npm.subprocess, "run", side_effect=run):
+                        self.assertEqual(pack_npm.npm_pack(package, out), out / "package.tgz")
 
 
 if __name__ == "__main__":

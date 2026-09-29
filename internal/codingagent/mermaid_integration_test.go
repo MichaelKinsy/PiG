@@ -8,6 +8,17 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
+func TestMermaidAssistantBlockPreservesNestedCode(t *testing.T) {
+	const markdown = "````text\n```mermaid\nflowchart LR\n A --> B\n```\n````\n"
+	block := tui.NewAssistantMessageBlock(false)
+	block.SetMarkdownTransform(createMarkdownTransform(extension.MarkdownMessageAssistant, false, []extension.MarkdownTransformer{createMermaidMarkdownTransformer(func() string { return "streaming" }, nil)}))
+	block.SetTextDelta(markdown)
+	output := strings.Join(block.Render(100), "\n")
+	if !strings.Contains(output, "```mermaid") || !strings.Contains(output, "flowchart LR") || strings.Contains(output, "┌───┐") {
+		t.Fatalf("assistant block rewrote a diagram inside an ordinary code token: %q", output)
+	}
+}
+
 // TestMermaidBlockWiring pins the integration seam: a ```mermaid block set on an
 // AssistantMessageBlock is replaced by a rendered diagram at the block's render
 // width via the Markdown.Transform hook, and the MermaidRenderingMode gating

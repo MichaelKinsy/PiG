@@ -1,0 +1,282 @@
+/** Immutable, credential-blind models.json snapshot. */
+import { readFile } from "node:fs/promises";
+import { Type } from "../../../typebox.mjs";
+import { Compile } from "../../../typebox-compile.mjs";
+import { stripJsonComments } from "../utils/json.js";
+import { normalizePath } from "../utils/paths.js";
+import { stripBom } from "../utils/text.js";
+const PercentileCutoffsSchema = Type.Object({
+    p50: Type.Optional(Type.Number()),
+    p75: Type.Optional(Type.Number()),
+    p90: Type.Optional(Type.Number()),
+    p99: Type.Optional(Type.Number()),
+});
+const OpenRouterRoutingSchema = Type.Object({
+    allow_fallbacks: Type.Optional(Type.Boolean()),
+    require_parameters: Type.Optional(Type.Boolean()),
+    data_collection: Type.Optional(Type.Union([Type.Literal("deny"), Type.Literal("allow")])),
+    zdr: Type.Optional(Type.Boolean()),
+    enforce_distillable_text: Type.Optional(Type.Boolean()),
+    order: Type.Optional(Type.Array(Type.String())),
+    only: Type.Optional(Type.Array(Type.String())),
+    ignore: Type.Optional(Type.Array(Type.String())),
+    quantizations: Type.Optional(Type.Array(Type.String())),
+    sort: Type.Optional(Type.Union([
+        Type.String(),
+        Type.Object({
+            by: Type.Optional(Type.String()),
+            partition: Type.Optional(Type.Union([Type.String(), Type.Null()])),
+        }),
+    ])),
+    max_price: Type.Optional(Type.Object({
+        prompt: Type.Optional(Type.Union([Type.Number(), Type.String()])),
+        completion: Type.Optional(Type.Union([Type.Number(), Type.String()])),
+        image: Type.Optional(Type.Union([Type.Number(), Type.String()])),
+        audio: Type.Optional(Type.Union([Type.Number(), Type.String()])),
+        request: Type.Optional(Type.Union([Type.Number(), Type.String()])),
+    })),
+    preferred_min_throughput: Type.Optional(Type.Union([Type.Number(), PercentileCutoffsSchema])),
+    preferred_max_latency: Type.Optional(Type.Union([Type.Number(), PercentileCutoffsSchema])),
+});
+const VercelGatewayRoutingSchema = Type.Object({
+    only: Type.Optional(Type.Array(Type.String())),
+    order: Type.Optional(Type.Array(Type.String())),
+});
+const ThinkingLevelMapValueSchema = Type.Union([Type.String(), Type.Null()]);
+const ThinkingLevelMapSchema = Type.Object({
+    off: Type.Optional(ThinkingLevelMapValueSchema),
+    minimal: Type.Optional(ThinkingLevelMapValueSchema),
+    low: Type.Optional(ThinkingLevelMapValueSchema),
+    medium: Type.Optional(ThinkingLevelMapValueSchema),
+    high: Type.Optional(ThinkingLevelMapValueSchema),
+    xhigh: Type.Optional(ThinkingLevelMapValueSchema),
+    max: Type.Optional(ThinkingLevelMapValueSchema),
+});
+const ChatTemplateKwargScalarSchema = Type.Union([Type.String(), Type.Number(), Type.Boolean(), Type.Null()]);
+const ChatTemplateKwargVariableSchema = Type.Object({
+    $var: Type.Union([Type.Literal("thinking.enabled"), Type.Literal("thinking.effort")]),
+    omitWhenOff: Type.Optional(Type.Boolean()),
+});
+const ChatTemplateKwargSchema = Type.Union([ChatTemplateKwargScalarSchema, ChatTemplateKwargVariableSchema]);
+const OpenAICompletionsCompatSchema = Type.Object({
+    supportsStore: Type.Optional(Type.Boolean()),
+    supportsDeveloperRole: Type.Optional(Type.Boolean()),
+    supportsReasoningEffort: Type.Optional(Type.Boolean()),
+    supportsUsageInStreaming: Type.Optional(Type.Boolean()),
+    supportsFinishReason: Type.Optional(Type.Boolean()),
+    maxTokensField: Type.Optional(Type.Union([Type.Literal("max_completion_tokens"), Type.Literal("max_tokens")])),
+    requiresToolResultName: Type.Optional(Type.Boolean()),
+    requiresAssistantAfterToolResult: Type.Optional(Type.Boolean()),
+    requiresThinkingAsText: Type.Optional(Type.Boolean()),
+    requiresReasoningContentOnAssistantMessages: Type.Optional(Type.Boolean()),
+    thinkingFormat: Type.Optional(Type.Union([
+        Type.Literal("openai"),
+        Type.Literal("openrouter"),
+        Type.Literal("together"),
+        Type.Literal("baseten"),
+        Type.Literal("deepseek"),
+        Type.Literal("zai"),
+        Type.Literal("qwen"),
+        Type.Literal("chat-template"),
+        Type.Literal("qwen-chat-template"),
+        Type.Literal("string-thinking"),
+        Type.Literal("ant-ling"),
+    ])),
+    chatTemplateKwargs: Type.Optional(Type.Record(Type.String(), ChatTemplateKwargSchema)),
+    chatTemplateArgs: Type.Optional(Type.Record(Type.String(), ChatTemplateKwargSchema)),
+    cacheControlFormat: Type.Optional(Type.Literal("anthropic")),
+    openRouterRouting: Type.Optional(OpenRouterRoutingSchema),
+    vercelGatewayRouting: Type.Optional(VercelGatewayRoutingSchema),
+    supportsOpenAIGrammarTools: Type.Optional(Type.Boolean()),
+    supportsStrictMode: Type.Optional(Type.Boolean()),
+    sendSessionAffinityHeaders: Type.Optional(Type.Boolean()),
+    sessionAffinityFormat: Type.Optional(Type.Union([Type.Literal("openai"), Type.Literal("openai-nosession"), Type.Literal("openrouter")])),
+    supportsLongCacheRetention: Type.Optional(Type.Boolean()),
+    vllmPriority: Type.Optional(Type.Number()),
+});
+const OpenAIResponsesCompatSchema = Type.Object({
+    supportsDeveloperRole: Type.Optional(Type.Boolean()),
+    sessionAffinityFormat: Type.Optional(Type.Union([Type.Literal("openai"), Type.Literal("openai-nosession"), Type.Literal("openrouter")])),
+    supportsLongCacheRetention: Type.Optional(Type.Boolean()),
+    supportsStrictMode: Type.Optional(Type.Boolean()),
+    supportsOpenAIGrammarTools: Type.Optional(Type.Boolean()),
+    supportsMaxOutputTokens: Type.Optional(Type.Boolean()),
+});
+const ModelCostRatesSchema = {
+    input: Type.Number(),
+    output: Type.Number(),
+    cacheRead: Type.Number(),
+    cacheWrite: Type.Number(),
+};
+const ModelCostTierSchema = Type.Object({
+    inputTokensAbove: Type.Number(),
+    ...ModelCostRatesSchema,
+});
+const ModelCostSchema = Type.Object({
+    ...ModelCostRatesSchema,
+    tiers: Type.Optional(Type.Array(ModelCostTierSchema)),
+});
+const ModelPromptCacheSchema = Type.Object({
+    short: Type.Optional(Type.Number({ exclusiveMinimum: 0 })),
+    long: Type.Optional(Type.Number({ exclusiveMinimum: 0 })),
+});
+const ImageResizeSchema = Type.Object({
+    maxWidth: Type.Optional(Type.Integer({ minimum: 1 })),
+    maxHeight: Type.Optional(Type.Integer({ minimum: 1 })),
+    maxBytes: Type.Optional(Type.Integer({ minimum: 1 })),
+    jpegQuality: Type.Optional(Type.Integer({ minimum: 1, maximum: 100 })),
+});
+const ModelInputLimitsSchema = Type.Object({
+    maxRequestBytes: Type.Optional(Type.Integer({ minimum: 1 })),
+    images: Type.Optional(Type.Object({
+        resize: Type.Optional(ImageResizeSchema),
+        maxPerMessage: Type.Optional(Type.Integer({ minimum: 1 })),
+        maxPerRequest: Type.Optional(Type.Integer({ minimum: 1 })),
+    })),
+});
+const AnthropicMessagesCompatSchema = Type.Object({
+    supportsEagerToolInputStreaming: Type.Optional(Type.Boolean()),
+    supportsLongCacheRetention: Type.Optional(Type.Boolean()),
+    sendSessionAffinityHeaders: Type.Optional(Type.Boolean()),
+    supportsCacheControlOnTools: Type.Optional(Type.Boolean()),
+    supportsTemperature: Type.Optional(Type.Boolean()),
+    forceAdaptiveThinking: Type.Optional(Type.Boolean()),
+    allowEmptySignature: Type.Optional(Type.Boolean()),
+    supportsStrictTools: Type.Optional(Type.Boolean()),
+    supportsMidConvoEffort: Type.Optional(Type.Boolean()),
+    allowedFallbackModels: Type.Optional(Type.Array(Type.Object({
+        provider: Type.String({ minLength: 1 }),
+        model: Type.String({ minLength: 1 }),
+        cost: ModelCostSchema,
+    }), { maxItems: 3 })),
+});
+const ProviderCompatSchema = Type.Union([
+    OpenAICompletionsCompatSchema,
+    OpenAIResponsesCompatSchema,
+    AnthropicMessagesCompatSchema,
+]);
+const ModelDefinitionSchema = Type.Object({
+    id: Type.String({ minLength: 1 }),
+    name: Type.Optional(Type.String({ minLength: 1 })),
+    api: Type.Optional(Type.String({ minLength: 1 })),
+    baseUrl: Type.Optional(Type.String({ minLength: 1 })),
+    reasoning: Type.Optional(Type.Boolean()),
+    thinkingLevelMap: Type.Optional(ThinkingLevelMapSchema),
+    input: Type.Optional(Type.Array(Type.Union([Type.Literal("text"), Type.Literal("image")]))),
+    inputLimits: Type.Optional(ModelInputLimitsSchema),
+    cost: Type.Optional(ModelCostSchema),
+    promptCache: Type.Optional(ModelPromptCacheSchema),
+    contextWindow: Type.Optional(Type.Number()),
+    maxTokens: Type.Optional(Type.Number()),
+    samplingParams: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+    headers: Type.Optional(Type.Record(Type.String(), Type.String())),
+    compat: Type.Optional(ProviderCompatSchema),
+});
+const ModelOverrideSchema = Type.Object({
+    name: Type.Optional(Type.String({ minLength: 1 })),
+    reasoning: Type.Optional(Type.Boolean()),
+    thinkingLevelMap: Type.Optional(ThinkingLevelMapSchema),
+    input: Type.Optional(Type.Array(Type.Union([Type.Literal("text"), Type.Literal("image")]))),
+    inputLimits: Type.Optional(ModelInputLimitsSchema),
+    cost: Type.Optional(Type.Object({
+        input: Type.Optional(Type.Number()),
+        output: Type.Optional(Type.Number()),
+        cacheRead: Type.Optional(Type.Number()),
+        cacheWrite: Type.Optional(Type.Number()),
+        tiers: Type.Optional(Type.Array(ModelCostTierSchema)),
+    })),
+    promptCache: Type.Optional(ModelPromptCacheSchema),
+    contextWindow: Type.Optional(Type.Number()),
+    maxTokens: Type.Optional(Type.Number()),
+    samplingParams: Type.Optional(Type.Record(Type.String(), Type.Unknown())),
+    headers: Type.Optional(Type.Record(Type.String(), Type.String())),
+    compat: Type.Optional(ProviderCompatSchema),
+});
+const ProviderConfigSchema = Type.Object({
+    name: Type.Optional(Type.String({ minLength: 1 })),
+    baseUrl: Type.Optional(Type.String({ minLength: 1 })),
+    apiKey: Type.Optional(Type.String({ minLength: 1 })),
+    api: Type.Optional(Type.String({ minLength: 1 })),
+    oauth: Type.Optional(Type.Literal("radius")),
+    headers: Type.Optional(Type.Record(Type.String(), Type.String())),
+    compat: Type.Optional(ProviderCompatSchema),
+    authHeader: Type.Optional(Type.Boolean()),
+    models: Type.Optional(Type.Array(ModelDefinitionSchema)),
+    modelOverrides: Type.Optional(Type.Record(Type.String(), ModelOverrideSchema)),
+});
+const ModelsConfigSchema = Type.Object({
+    providers: Type.Record(Type.String(), ProviderConfigSchema),
+});
+const validateModelsConfig = Compile(ModelsConfigSchema);
+function formatValidationPath(error) {
+    if (error.keyword === "required") {
+        const requiredProperties = error.params.requiredProperties;
+        const requiredProperty = requiredProperties?.[0];
+        if (requiredProperty) {
+            const basePath = error.instancePath.replace(/^\//, "").replace(/\//g, ".");
+            return basePath ? `${basePath}.${requiredProperty}` : requiredProperty;
+        }
+    }
+    const path = error.instancePath.replace(/^\//, "").replace(/\//g, ".");
+    return path || "root";
+}
+function deepFreeze(value) {
+    if (typeof value !== "object" || value === null || Object.isFrozen(value))
+        return value;
+    for (const child of Object.values(value))
+        deepFreeze(child);
+    return Object.freeze(value);
+}
+/** One immutable load of models.json. */
+export class ModelConfig {
+    providers;
+    error;
+    constructor(providers, error) {
+        this.providers = providers;
+        this.error = error;
+    }
+    static async load(modelsJsonPath) {
+        if (!modelsJsonPath)
+            return new ModelConfig(new Map());
+        const path = normalizePath(modelsJsonPath);
+        let content;
+        try {
+            content = await readFile(path, "utf-8");
+        }
+        catch (error) {
+            if (error.code === "ENOENT")
+                return new ModelConfig(new Map());
+            return new ModelConfig(new Map(), `Failed to load models.json: ${error instanceof Error ? error.message : error}\n\nFile: ${path}`);
+        }
+        let parsed;
+        try {
+            parsed = JSON.parse(stripJsonComments(stripBom(content)));
+        }
+        catch (error) {
+            return new ModelConfig(new Map(), `Failed to parse models.json: ${error instanceof Error ? error.message : error}\n\nFile: ${path}`);
+        }
+        if (!validateModelsConfig.Check(parsed)) {
+            const errors = validateModelsConfig
+                .Errors(parsed)
+                .map((error) => `  - ${formatValidationPath(error)}: ${error.message}`)
+                .join("\n") || "Unknown schema error";
+            return new ModelConfig(new Map(), `Invalid models.json schema:\n${errors}\n\nFile: ${path}`);
+        }
+        const config = parsed;
+        const providers = new Map();
+        for (const [providerId, provider] of Object.entries(config.providers)) {
+            providers.set(providerId, deepFreeze(structuredClone(provider)));
+        }
+        return new ModelConfig(providers);
+    }
+    getProvider(providerId) {
+        return this.providers.get(providerId);
+    }
+    getProviderIds() {
+        return [...this.providers.keys()];
+    }
+    getError() {
+        return this.error;
+    }
+}
+//# sourceMappingURL=model-config.js.map

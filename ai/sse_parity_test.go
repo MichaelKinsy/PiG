@@ -7,11 +7,8 @@ import (
 	"testing"
 )
 
-// Pi's SSE consumers follow the SSE field grammar: the single space after a
-// colon is optional, repeated data fields are joined with a newline, and the
-// final event is dispatched at EOF. Keep every HTTP streaming provider on that
-// contract so gateways can use any valid framing.
-func TestProvidersAcceptSpecCompliantSSEFraming(t *testing.T) {
+// Pi's provider SDKs accept an optional field space and join repeated data fields. Their EOF handling is not interchangeable: OpenAI's SDK does not dispatch an unterminated trailing event.
+func TestProviderSSEFramingAndEOFRules(t *testing.T) {
 	t.Run("anthropic", func(t *testing.T) {
 		result, _ := runAnthropicEvents(t, strings.Join([]string{
 			"event:message_start",
@@ -59,7 +56,9 @@ func TestProvidersAcceptSpecCompliantSSEFraming(t *testing.T) {
 			`data:{"type":"response.completed","response":{"status":`,
 			`data:"completed"}}`,
 		}, "\n"))
-		assertSSETextResult(t, result, "hi")
+		if result.StopReason != StopReasonError || result.ErrorMessage != "OpenAI Responses stream ended before a terminal response event" || len(result.Content) != 1 || result.Content[0].(TextContent).Text != "hi" {
+			t.Fatalf("unterminated terminal event was dispatched: %#v", result)
+		}
 	})
 
 	t.Run("google", func(t *testing.T) {

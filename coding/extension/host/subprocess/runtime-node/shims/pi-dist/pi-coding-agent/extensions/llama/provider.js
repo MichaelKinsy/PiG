@@ -1,0 +1,161 @@
+import { stream, streamSimple } from "../../../pi-ai/sdk-bundle/compat.js";
+import { LlamaClient, llamaInferenceUrl, normalizeLlamaServerUrl, } from "./client.js";
+export const LLAMA_PROVIDER_ID = "llama.cpp";
+export const DEFAULT_LLAMA_SERVER_URL = "http://127.0.0.1:8080";
+function credentialServerUrl(credential) {
+    const value = credential?.env?.LLAMA_BASE_URL;
+    return typeof value === "string" && value.trim() ? normalizeLlamaServerUrl(value) : undefined;
+}
+async function resolveServerUrl(ctx, credential) {
+    const configured = credentialServerUrl(credential) ?? (await ctx.env("LLAMA_BASE_URL"))?.trim();
+    return configured ? normalizeLlamaServerUrl(configured) : undefined;
+}
+function modelIsSelectable(model, routerAutoload) {
+    if (model.status.value === "loaded")
+        return true;
+    // llama.cpp reports idle-slept models as "sleeping"; requests wake them automatically.
+    if (model.status.value === "sleeping")
+        return true;
+    // Unloaded presets are routable only when llama.cpp router autoload can load them on first use.
+    return routerAutoload && model.status.value === "unloaded" && !model.status.failed && model.source === "preset";
+}
+async function routerAutoloadEnabled(client, catalog, signal) {
+    if (!catalog.some((model) => model.status.value === "unloaded" && model.source === "preset"))
+        return false;
+    try {
+        return (await client.props({ signal })).models_autoload === true;
+    }
+    catch {
+        return false;
+    }
+}
+function toPiModel(model, serverUrl, props) {
+    const reportedContextWindow = model.meta?.n_ctx ?? model.meta?.n_ctx_train;
+    const contextWindow = reportedContextWindow && reportedContextWindow > 0 ? reportedContextWindow : 128000;
+    const reasoning = props?.chat_template?.includes("enable_thinking") === true;
+    return {
+        id: model.id,
+        name: model.id,
+        api: "openai-completions",
+        provider: LLAMA_PROVIDER_ID,
+        baseUrl: llamaInferenceUrl(serverUrl),
+        reasoning,
+        ...(reasoning && {
+            thinkingLevelMap: { off: "off", minimal: null, low: null, medium: "medium", high: null, xhigh: null },
+        }),
+        input: model.architecture?.input_modalities?.includes("image") ? ["text", "image"] : ["text"],
+        cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+        contextWindow,
+        maxTokens: contextWindow,
+        compat: {
+            supportsStore: false,
+            supportsDeveloperRole: false,
+            supportsReasoningEffort: false,
+            supportsUsageInStreaming: true,
+            supportsStrictMode: false,
+            maxTokensField: "max_tokens",
+            ...(reasoning && { thinkingFormat: "qwen-chat-template" }),
+        },
+    };
+}
+export function createLlamaProvider() {
+    let models = [];
+    const setCatalog = (catalog, serverUrl, options = {}) => {
+        models = catalog
+            .filter((model) => modelIsSelectable(model, options.routerAutoload === true))
+            .map((model) => toPiModel(model, serverUrl));
+    };
+    const provider = {
+        id: LLAMA_PROVIDER_ID,
+        name: "llama.cpp",
+        baseUrl: llamaInferenceUrl(DEFAULT_LLAMA_SERVER_URL),
+        auth: {
+            apiKey: {
+                name: "llama.cpp server",
+                login: async (interaction) => {
+                    const enteredUrl = await interaction.prompt({
+                        type: "text",
+                        message: "llama.cpp server URL",
+                        placeholder: process.env.LLAMA_BASE_URL ?? DEFAULT_LLAMA_SERVER_URL,
+                    });
+                    const serverUrl = normalizeLlamaServerUrl(enteredUrl.trim() || process.env.LLAMA_BASE_URL || DEFAULT_LLAMA_SERVER_URL);
+                    const apiKey = (await interaction.prompt({
+                        type: "secret",
+                        message: "API key (optional)",
+                    })).trim();
+                    await new LlamaClient(serverUrl, apiKey || undefined).list({ signal: interaction.signal });
+                    return {
+                        type: "api_key",
+                        key: apiKey || undefined,
+                        env: { LLAMA_BASE_URL: serverUrl },
+                    };
+                },
+                check: async ({ ctx, credential }) => {
+                    const serverUrl = await resolveServerUrl(ctx, credential);
+                    return serverUrl
+                        ? { type: "api_key", source: credential ? "stored credential" : "LLAMA_BASE_URL" }
+                        : undefined;
+                },
+                resolve: async ({ ctx, credential }) => {
+                    const serverUrl = await resolveServerUrl(ctx, credential);
+                    if (!serverUrl)
+                        return undefined;
+                    const apiKey = credential?.key ?? (await ctx.env("LLAMA_API_KEY")) ?? "local";
+                    return {
+                        auth: { apiKey, baseUrl: llamaInferenceUrl(serverUrl) },
+                        env: { ...credential?.env, LLAMA_BASE_URL: serverUrl },
+                        source: credential ? "stored credential" : "LLAMA_BASE_URL",
+                    };
+                },
+            },
+        },
+        getModels: () => models,
+        refreshModels: async (context) => {
+            if (context.stored) {
+                const restored = context.stored.models.filter((model) => model.provider === LLAMA_PROVIDER_ID && model.api === "openai-completions");
+                if (!(await context.publish({
+                    update: () => {
+                        models = restored;
+                    },
+                }))) {
+                    return;
+                }
+            }
+            if (!context.allowNetwork || context.signal.aborted || context.credential?.type !== "api_key")
+                return;
+            const serverUrl = credentialServerUrl(context.credential);
+            if (!serverUrl)
+                return;
+            const client = new LlamaClient(serverUrl, context.credential.key);
+            const catalog = await client.list({ signal: context.signal });
+            if (context.signal.aborted)
+                return;
+            const routerAutoload = await routerAutoloadEnabled(client, catalog, context.signal);
+            if (context.signal.aborted)
+                return;
+            const refreshed = await Promise.all(catalog
+                .filter((model) => modelIsSelectable(model, routerAutoload))
+                .map(async (model) => {
+                // Only loaded models expose their template without side effects. Unloaded autoload presets
+                // would need to be loaded, while querying sleeping models may wake them. Those models remain
+                // unclassified until they are loaded or woken and a later catalog refresh discovers them.
+                if (model.status.value !== "loaded")
+                    return toPiModel(model, serverUrl);
+                const props = await client.props({ model: model.id, signal: context.signal });
+                return toPiModel(model, serverUrl, props);
+            }));
+            if (context.signal.aborted)
+                return;
+            await context.publish({
+                persist: { models: refreshed, checkedAt: Date.now() },
+                update: () => {
+                    models = refreshed;
+                },
+            });
+        },
+        stream: (model, context, options) => stream(model, context, options),
+        streamSimple: (model, context, options) => streamSimple(model, context, options),
+    };
+    return { provider, setCatalog };
+}
+//# sourceMappingURL=provider.js.map

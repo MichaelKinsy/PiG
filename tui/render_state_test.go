@@ -3,7 +3,6 @@ package tui
 import (
 	"bytes"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 
@@ -40,9 +39,7 @@ func TestTUIRender_NoContentChangeStillRepositionsCursor(t *testing.T) {
 }
 
 func TestTUIRender_TermuxHeightChangeBypassesFullRedraw(t *testing.T) {
-	old := os.Getenv("TERMUX_VERSION")
-	_ = os.Setenv("TERMUX_VERSION", "1")
-	defer func() { _ = os.Setenv("TERMUX_VERSION", old) }()
+	t.Setenv("TERMUX_VERSION", "1")
 
 	comp := renderFuncComponent(func(width int) []string {
 		return []string{"one", "two", "three"}
@@ -303,7 +300,7 @@ func TestTUIRestoreRenderStateBlanksImageLines(t *testing.T) {
 	}
 	var out bytes.Buffer
 	tu := NewWithOutput(&out, 40, 10)
-	tu.previousKittyImageIDs = map[int]struct{}{7: {}}
+	tu.previousKittyImageIDs = []int{7}
 	tu.RestoreRenderState(TUIRenderState{PrevLines: []string{"text", imageLine, "more"}})
 
 	tu.mu.Lock()

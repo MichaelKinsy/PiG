@@ -1,0 +1,23 @@
+# Pinned Pi configureHttpDispatcher(100) leaves Undici8.10.2's 10000ms connector timeout intact. The input server delays TLS by400ms, beyond HTTP idleness but within connection establishment.
+# Both drivers use the same Go loopback server helper. --pi executes the installed pinned Pi provider/dispatcher in Node, observes (without changing) its connector timer, and trusts the fixture certificate via NODE_EXTRA_CA_CERTS. The Go provider uses its existing explicit loopback TLS opt-in; normal certificate validation has separate transport tests.
+name = "24-http-connect-budget"
+description = "Provider connection establishment keeps the pinned connector budget separate from HTTP idle deadlines."
+covers = ["packages/coding-agent/src/core/http-dispatcher.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/http-connect/pig"]
+pi_args = ["go", "run", "./test/parity/testdata/http-connect/pig", "--pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

@@ -13,14 +13,17 @@ package codingagent
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
+	"os"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // forkAndRebuild moves the session leaf to entryID and: critically -
@@ -44,6 +47,17 @@ func forkAndRebuild(sess *Session, agent *agent.Agent, entryID string) error {
 	return nil
 }
 
+// CheckSavedForFork rejects a file-backed Session whose first assistant response has not reached disk. In-memory Sessions do not require a file.
+// Ports packages/coding-agent/src/core/agent-session-runtime.ts (fork).
+func (s *Session) CheckSavedForFork() error {
+	if path := s.Path(); path != "" {
+		if _, err := os.Stat(path); err != nil {
+			return fmt.Errorf("This session has not been saved yet. Wait for the first assistant response before cloning or forking it.")
+		}
+	}
+	return nil
+}
+
 // ForkToNewSession creates a NEW session file branched at the PARENT of
 // userMsgEntryID (so the selected user message itself is excluded) and
 // switches sm's current session to it. It returns the new session and the
@@ -57,12 +71,13 @@ func (sm *SessionManager) ForkToNewSession(source *Session, userMsgEntryID strin
 	}
 	entry, ok := source.EntryByID(userMsgEntryID)
 	if !ok {
-		return nil, "", fmt.Errorf("fork: entry %q not found", userMsgEntryID)
+		return nil, "", fmt.Errorf("Invalid entry ID for forking")
 	}
-	var selectedText string
-	if me, ok := source.messageFor(entry); ok {
-		selectedText = extractMessageText(me)
+	message, ok := source.messageFor(entry)
+	if !ok || message.Message.User == nil {
+		return nil, "", fmt.Errorf("Invalid entry ID for forking")
 	}
+	selectedText := extractMessageText(message)
 	if entry.Base.ParentID == nil {
 		// Selected message is the root: upstream forks into a fresh empty
 		// session that only records parentSession (newSession fallback).
@@ -70,11 +85,21 @@ func (sm *SessionManager) ForkToNewSession(source *Session, userMsgEntryID strin
 		if err != nil {
 			return nil, "", err
 		}
-		newSess, err := sm.Create(id, source.Path())
-		if err != nil {
-			return nil, "", err
+		newSess := NewSession(id, source.CWD())
+		if source.IsPersisted() {
+			newSess, err = sm.Create(id, source.Path())
+			if err != nil {
+				return nil, "", err
+			}
+		} else {
+			sm.mu.Lock()
+			sm.current = newSess
+			sm.mu.Unlock()
 		}
 		return newSess, selectedText, nil
+	}
+	if err := source.CheckSavedForFork(); err != nil {
+		return nil, "", err
 	}
 	newSess, err := sm.Clone(source, *entry.Base.ParentID)
 	if err != nil {
@@ -95,7 +120,10 @@ func (m *InteractiveMode) runModalSelector(list *tui.FilterableList, opts tui.Ov
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
 	for !list.Done() {
-		buf := <-inputCh
+		buf, ok := m.readModalInput(inputCh)
+		if !ok {
+			return -1, false
+		}
 		for _, chunk := range dropKeyReleases(list, []string{string(buf)}) {
 			list.HandleInput(chunk)
 			if list.Done() {
@@ -147,9 +175,17 @@ func (m *InteractiveMode) runModelSelectorInput(ctx context.Context, ms *tui.Mod
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
 	for !ms.Done() {
+		if m.modalStopped() {
+			return "", false
+		}
 		select {
 		case <-ctx.Done():
 			return "", false
+		case err := <-m.inputErrCh:
+			m.inputLoopErr = err
+			return "", false
+		case task := <-m.uiTaskCh:
+			task()
 		case refreshed := <-refresh:
 			if refreshed.updateModels {
 				ms.UpdateModels(refreshed.models)
@@ -162,7 +198,7 @@ func (m *InteractiveMode) runModelSelectorInput(ctx context.Context, ms *tui.Mod
 			m.updateProviderInfo()
 			refresh = nil
 		case buf := <-inputCh:
-			for _, chunk := range dropKeyReleases(ms, []string{string(buf)}) {
+			for _, chunk := range m.modalInputChunks(ms, []string{string(buf)}) {
 				ms.HandleInput(chunk)
 				if ms.Done() {
 					break
@@ -184,7 +220,10 @@ func (m *InteractiveMode) runModalTreeSelector(ts *tui.TreeSelect, opts tui.Over
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
 	for !ts.Done() {
-		buf := <-inputCh
+		buf, ok := m.readModalInput(inputCh)
+		if !ok {
+			return "", false
+		}
 		for _, chunk := range dropKeyReleases(ts, []string{string(buf)}) {
 			ts.HandleInput(chunk)
 			if ts.Done() {
@@ -206,11 +245,15 @@ func settingsFrame(content tui.Component) tui.Component {
 }
 
 // runModalSettingsList opens a SettingsList in the editor slot (no overlay)
-// and blocks until the user cycles a value or cancels.
-// Mirrors upstream showSelector pattern (interactive-mode.ts:3655-3666).
-func (m *InteractiveMode) runModalSettingsList(sl *tui.SettingsList) (string, string, bool) {
+// and blocks until the user cancels. Each change calls onChange while the
+// list stays open with its selection and search, and the row then shows the
+// value onChange returns, as upstream SettingsList's onChange does
+// (settings-list.ts:264-291). Mirrors upstream showSelector pattern
+// (interactive-mode.ts:3655-3666).
+func (m *InteractiveMode) runModalSettingsList(sl *tui.SettingsList, onChange func(id, value string) string) {
 	// Swap editor → framed settings list in the layout's editor slot.
-	m.editorContainer.SetChildren(settingsFrame(sl))
+	frame := settingsFrame(sl)
+	m.editorContainer.SetChildren(frame)
 	m.tuiInst.Render()
 
 	defer func() {
@@ -220,20 +263,27 @@ func (m *InteractiveMode) runModalSettingsList(sl *tui.SettingsList) (string, st
 
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
-	for !sl.Done() {
-		buf := <-inputCh
+	for {
+		buf, ok := m.readModalInput(inputCh)
+		if !ok {
+			return
+		}
 		for _, chunk := range dropKeyReleases(sl, []string{string(buf)}) {
 			sl.HandleInput(chunk)
+			if sl.Cancelled() {
+				return
+			}
 			if sl.Done() {
-				break
+				// A change that opens its own selector takes the editor slot
+				// meanwhile; the list returns to it afterwards.
+				id, value := sl.ChangedID, sl.ChangedValue
+				sl.Reset()
+				sl.UpdateValue(id, onChange(id, value))
+				m.editorContainer.SetChildren(frame)
 			}
 		}
 		m.tuiInst.Render()
 	}
-	if sl.Cancelled() {
-		return "", "", false
-	}
-	return sl.ChangedID, sl.ChangedValue, true
 }
 
 // runEditorSlotSelectSubmenu replaces the editor with a submenu-style selector
@@ -260,7 +310,10 @@ func (m *InteractiveMode) runEditorSlotComponent(component tui.Component, handle
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
 	for !done() {
-		buf := <-inputCh
+		buf, ok := m.readModalInput(inputCh)
+		if !ok {
+			return false
+		}
 		for _, chunk := range dropKeyReleases(component, []string{string(buf)}) {
 			handleInput(chunk)
 			if done() {
@@ -331,7 +384,8 @@ func defaultAutomaticThemeNames(themeSetting string, names []string) (lightTheme
 
 type automaticThemeMenu struct {
 	tui.BaseComponent
-	list *tui.SettingsList
+	list    *tui.SettingsList
+	submenu *tui.SelectSubmenuComponent
 }
 
 func newAutomaticThemeMenu(lightTheme, darkTheme string) *automaticThemeMenu {
@@ -388,7 +442,11 @@ func (m *automaticThemeMenu) Render(width int) []string {
 	lines = append(lines, text(muted+"Choose themes for terminal light and dark appearance."+th.Reset)...)
 	lines = append(lines, text(muted+"Light/dark detection requires terminal support."+th.Reset)...)
 	lines = append(lines, "")
-	lines = append(lines, m.list.Render(width)...)
+	if m.submenu != nil {
+		lines = append(lines, m.submenu.Render(width)...)
+	} else {
+		lines = append(lines, m.list.Render(width)...)
+	}
 	return lines
 }
 
@@ -434,7 +492,10 @@ func (m *InteractiveMode) runEditorSlotThemeSubmenu(currentTheme string) (string
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
 	for !sel.Done() {
-		buf := <-inputCh
+		buf, ok := m.readModalInput(inputCh)
+		if !ok {
+			return "", false
+		}
 		for _, chunk := range dropKeyReleases(sel, []string{string(buf)}) {
 			sel.HandleInput(chunk)
 			preview := sel.CurrentValue()
@@ -443,8 +504,7 @@ func (m *InteractiveMode) runEditorSlotThemeSubmenu(currentTheme string) (string
 					light, dark := defaultAutomaticThemeNames(original, names)
 					preview = light + "/" + dark
 				}
-				tui.SetThemeSetting(preview)
-				m.tuiInst.ForceFullRender()
+				m.previewTheme(preview)
 				lastPreview = sel.CurrentValue()
 			}
 			if sel.Done() {
@@ -454,8 +514,7 @@ func (m *InteractiveMode) runEditorSlotThemeSubmenu(currentTheme string) (string
 		m.tuiInst.Render()
 	}
 	if sel.Cancelled() {
-		tui.SetThemeSetting(original)
-		m.tuiInst.ForceFullRender()
+		m.previewTheme(original)
 		return "", false
 	}
 	selected := sel.SelectedValue()
@@ -488,7 +547,10 @@ func (m *InteractiveMode) runEditorSlotAutomaticThemeSubmenu(currentTheme string
 	defer releaseInput()
 	for {
 		for !menu.Done() {
-			buf := <-inputCh
+			buf, ok := m.readModalInput(inputCh)
+			if !ok {
+				return "", false
+			}
 			for _, chunk := range dropKeyReleases(menu, []string{string(buf)}) {
 				menu.HandleInput(chunk)
 				if menu.Done() {
@@ -498,25 +560,22 @@ func (m *InteractiveMode) runEditorSlotAutomaticThemeSubmenu(currentTheme string
 			m.tuiInst.Render()
 		}
 		if menu.Cancelled() {
-			tui.SetThemeSetting(original)
-			m.tuiInst.ForceFullRender()
+			m.previewTheme(original)
 			return "", false
 		}
 
 		switch menu.ChangedID() {
 		case "light-theme":
-			if chosen, ok := m.runThemeChoiceSubmenu(menu, "Light Theme", "Select the theme to use for light terminal appearance", themeSelectItems(names, lightTheme), lightTheme); ok {
+			if chosen, ok := m.runThemeChoiceSubmenu(menu, "Light Theme", "Select the theme to use for light terminal appearance", themeSelectItems(names, lightTheme), lightTheme, lightTheme+"/"+darkTheme); ok {
 				lightTheme = chosen
 				menu.UpdateValue("light-theme", chosen)
-				tui.SetThemeSetting(lightTheme + "/" + darkTheme)
-				m.tuiInst.ForceFullRender()
+				m.previewTheme(lightTheme + "/" + darkTheme)
 			}
 		case "dark-theme":
-			if chosen, ok := m.runThemeChoiceSubmenu(menu, "Dark Theme", "Select the theme to use for dark terminal appearance", themeSelectItems(names, darkTheme), darkTheme); ok {
+			if chosen, ok := m.runThemeChoiceSubmenu(menu, "Dark Theme", "Select the theme to use for dark terminal appearance", themeSelectItems(names, darkTheme), darkTheme, lightTheme+"/"+darkTheme); ok {
 				darkTheme = chosen
 				menu.UpdateValue("dark-theme", chosen)
-				tui.SetThemeSetting(lightTheme + "/" + darkTheme)
-				m.tuiInst.ForceFullRender()
+				m.previewTheme(lightTheme + "/" + darkTheme)
 			}
 		case "apply":
 			return lightTheme + "/" + darkTheme, true
@@ -531,12 +590,16 @@ func (m *InteractiveMode) runEditorSlotAutomaticThemeSubmenu(currentTheme string
 	}
 }
 
-func (m *InteractiveMode) runThemeChoiceSubmenu(parent tui.Component, title, description string, items []tui.SelectItem, currentValue string) (string, bool) {
+// runThemeChoiceSubmenu replaces only the parent's list content and restores its pending automatic selection when the child is canceled.
+// upstream: packages/coding-agent/src/modes/interactive/components/settings-selector.ts:createThemeSelect
+func (m *InteractiveMode) runThemeChoiceSubmenu(parent *automaticThemeMenu, title, description string, items []tui.SelectItem, currentValue, parentTheme string) (string, bool) {
 	sel := tui.NewSelectSubmenu(title, description, items, currentValue)
-	m.editorContainer.SetChildren(settingsFrame(sel))
+	parent.submenu = sel
+	m.editorContainer.SetChildren(settingsFrame(parent))
 	m.tuiInst.Render()
 	lastPreview := currentValue
 	defer func() {
+		parent.submenu = nil
 		m.editorContainer.SetChildren(settingsFrame(parent))
 		m.tuiInst.RequestRender()
 	}()
@@ -544,13 +607,15 @@ func (m *InteractiveMode) runThemeChoiceSubmenu(parent tui.Component, title, des
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
 	for !sel.Done() {
-		buf := <-inputCh
+		buf, ok := m.readModalInput(inputCh)
+		if !ok {
+			return "", false
+		}
 		for _, chunk := range dropKeyReleases(sel, []string{string(buf)}) {
 			sel.HandleInput(chunk)
 			preview := sel.CurrentValue()
 			if preview != "" && preview != lastPreview {
-				tui.SetThemeByName(preview)
-				m.tuiInst.ForceFullRender()
+				m.previewTheme(preview)
 				lastPreview = preview
 			}
 			if sel.Done() {
@@ -560,8 +625,7 @@ func (m *InteractiveMode) runThemeChoiceSubmenu(parent tui.Component, title, des
 		m.tuiInst.Render()
 	}
 	if sel.Cancelled() {
-		tui.SetThemeByName(currentValue)
-		m.tuiInst.ForceFullRender()
+		m.previewTheme(parentTheme)
 		return "", false
 	}
 	return sel.SelectedValue(), true
@@ -625,7 +689,10 @@ func (m *InteractiveMode) runEditorSlotExtensionSelector(sel *tui.ExtensionSelec
 	defer releaseInput()
 
 	for !sel.Done() {
-		buf := <-inputCh
+		buf, ok := m.readModalInput(inputCh)
+		if !ok {
+			return -1, false
+		}
 		for _, chunk := range dropKeyReleases(sel, []string{string(buf)}) {
 			sel.HandleInput(chunk)
 			if sel.Done() {
@@ -649,6 +716,9 @@ func (m *InteractiveMode) runEditorSlotExtensionSelector(sel *tui.ExtensionSelec
 // Uses the modal input channel to avoid racing with the main input
 // goroutine for stdin reads (same pattern as runEditorSlotTreeSelector).
 func (m *InteractiveMode) runEditorSlotExtensionEditor(ed *tui.ExtensionEditorComponent) (string, bool) {
+	ed.SetExternalEditor(func(content string, apply func(string)) {
+		m.openExternalEditorBuffer(m.runCtx, content, apply)
+	})
 	if m.layout == nil {
 		return "", false
 	}
@@ -662,15 +732,34 @@ func (m *InteractiveMode) runEditorSlotExtensionEditor(ed *tui.ExtensionEditorCo
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
 
+	ctx := m.runCtx
+	if ctx == nil {
+		ctx = context.Background()
+	}
 	for !ed.Done() {
-		buf := <-inputCh
-		for _, chunk := range dropKeyReleases(ed, []string{string(buf)}) {
-			ed.HandleInput(chunk)
-			if ed.Done() {
-				break
-			}
+		if m.modalStopped() {
+			return "", false
 		}
-		m.tuiInst.Render()
+		select {
+		case err := <-m.inputErrCh:
+			m.inputLoopErr = err
+			return "", false
+		case <-ctx.Done():
+			return "", false
+		case fn := <-m.uiTaskCh:
+			fn()
+		case buf := <-inputCh:
+			if m.consumeTerminalThemeInput(string(buf)) {
+				continue
+			}
+			for _, chunk := range dropKeyReleases(ed, []string{string(buf)}) {
+				ed.HandleInput(chunk)
+				if ed.Done() {
+					break
+				}
+			}
+			m.tuiInst.Render()
+		}
 	}
 	if ed.Cancelled() {
 		return "", false
@@ -696,7 +785,10 @@ func (m *InteractiveMode) runEditorSlotUserMessageSelector(sel *tui.UserMessageS
 	defer releaseInput()
 
 	for !sel.Done() {
-		buf := <-inputCh
+		buf, ok := m.readModalInput(inputCh)
+		if !ok {
+			return -1, false
+		}
 		dispatchModalInput(sel, []string{string(buf)}, sel.HandleInput, sel.Done)
 		m.tuiInst.Render()
 	}
@@ -707,6 +799,8 @@ func (m *InteractiveMode) runEditorSlotUserMessageSelector(sel *tui.UserMessageS
 }
 
 func (m *InteractiveMode) runEditorSlotSessionSelector(sel *sessionSelector) (string, bool) {
+	defer sel.close()
+	sel.drainLoadUpdates()
 	if m.layout == nil {
 		return "", false
 	}
@@ -721,14 +815,40 @@ func (m *InteractiveMode) runEditorSlotSessionSelector(sel *sessionSelector) (st
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
 	for !sel.Done() {
-		buf := <-inputCh
-		for _, chunk := range dropKeyReleases(sel, []string{string(buf)}) {
-			sel.HandleInput(chunk)
-			if sel.Done() {
-				break
+		if m.modalStopped() {
+			return "", false
+		}
+		select {
+		case <-m.modalContextDone():
+			return "", false
+		case err := <-m.inputErrCh:
+			m.inputLoopErr = err
+			return "", false
+		case task := <-m.uiTaskCh:
+			task()
+		case <-m.renderWakeCh:
+			m.runScheduledRender()
+		case <-sel.work.ready:
+			sel.drainLoadUpdates()
+		case result := <-sel.loadResult(sessionScopeCurrent):
+			sel.finishLoad(sessionScopeCurrent, result)
+		case result := <-sel.loadResult(sessionScopeAll):
+			sel.finishLoad(sessionScopeAll, result)
+		case update := <-sel.work.updates:
+			update()
+		case <-sel.statusTimeout():
+			sel.clearStatusMessage()
+		case buf, ok := <-inputCh:
+			if !ok {
+				return "", false
 			}
+			m.dispatchModalInput(sel, []string{string(buf)}, sel.HandleInput, sel.Done)
 		}
 		m.tuiInst.Render()
+	}
+	if sel.operationError != nil {
+		// Pi's void confirmRename leaves a rename rejection unhandled, so Node raises it to the uncaughtException handler (interactive-mode.ts:4266) that Run's recover mirrors. The deferred cleanups above run first.
+		panic(uncaughtError{sel.operationError})
 	}
 	if sel.Cancelled() {
 		return "", false
@@ -757,7 +877,10 @@ func (m *InteractiveMode) runEditorSlotTreeSelector(ts *tui.TreeSelect) (string,
 	defer releaseInput()
 
 	for !ts.Done() {
-		buf := <-inputCh
+		buf, ok := m.readModalInput(inputCh)
+		if !ok {
+			return "", false
+		}
 		dispatchModalInput(ts, []string{string(buf)}, ts.HandleInput, ts.Done)
 		// Coalesce a burst of buffered keystrokes (key-repeat, paste,
 		// spamming) into a single render so the loop never queues one
@@ -766,7 +889,7 @@ func (m *InteractiveMode) runEditorSlotTreeSelector(ts *tui.TreeSelect) (string,
 		for !ts.Done() {
 			select {
 			case more := <-inputCh:
-				dispatchModalInput(ts, []string{string(more)}, ts.HandleInput, ts.Done)
+				m.dispatchModalInput(ts, []string{string(more)}, ts.HandleInput, ts.Done)
 			default:
 				break drain
 			}
@@ -822,6 +945,11 @@ func (a *treeNodeAdapter) NodeID() string { return a.n.Entry.Base.ID }
 func (a *treeNodeAdapter) NodeLabelTimestamp() string { return a.n.LabelTimestamp }
 
 func (a *treeNodeAdapter) NodeBranchLabel() string { return a.n.Label }
+
+// SetNodeBranchLabel updates the displayed tree snapshot before its label-change entry is persisted.
+func (a *treeNodeAdapter) SetNodeBranchLabel(label, timestamp string) {
+	a.n.Label, a.n.LabelTimestamp = label, timestamp
+}
 
 // NodeFilterTags classifies the entry for /tree's filter-mode
 // skip-set. Mirrors upstream's `isSettingsEntry`
@@ -911,6 +1039,57 @@ func (a *treeNodeAdapter) NodeSearchableText() string {
 	return strings.Join(parts, " ")
 }
 
+// NodeCopyText returns complete entry text without display truncation or whitespace normalization.
+func (a *treeNodeAdapter) NodeCopyText() *string {
+	e := a.n.Entry
+	text := ""
+	switch e.Base.Type {
+	case "message":
+		var message MessageEntry
+		var ok bool
+		if a.f != nil {
+			message, ok = a.f.asMessage(e)
+		} else {
+			message, ok = e.AsMessage()
+		}
+		if !ok {
+			return nil
+		}
+		if message.Message.Role() == agent.RoleBashExecution {
+			text, _ = message.Message.Custom["command"].(string)
+		} else {
+			var content strings.Builder
+			for _, block := range message.Message.ContentBlocks() {
+				if block, ok := block.(ai.TextContent); ok {
+					content.WriteString(block.Text)
+				}
+			}
+			text = content.String()
+			if text == "" && message.Message.Assistant != nil {
+				text = message.Message.Assistant.ErrorMessage
+			}
+		}
+	case "custom_message":
+		var entry CustomMessageEntry
+		if json.Unmarshal(e.raw, &entry) != nil {
+			return nil
+		}
+		text = extractCustomMessageText(entry)
+	case "compaction", "branch_summary":
+		var entry struct {
+			Summary string `json:"summary"`
+		}
+		if json.Unmarshal(e.raw, &entry) != nil {
+			return nil
+		}
+		text = entry.Summary
+	}
+	if widthx.JSTrim(text) == "" {
+		return nil
+	}
+	return &text
+}
+
 func (a *treeNodeAdapter) NodeLabel() string {
 	f := a.f
 	if f == nil {
@@ -949,11 +1128,8 @@ type scopedModelsRefresh struct {
 	kind   tui.RefreshStatusKind
 }
 
-// runModalScopedModels replaces the editor with the ScopedModelsList
-// in the layout's editor slot and runs the input loop until the user
-// confirms, persists, or cancels. Returns the result.
-// Mirrors upstream showModelsSelector (interactive-mode.ts:3925).
-func (m *InteractiveMode) runModalScopedModels(sl *tui.ScopedModelsList, refresh <-chan scopedModelsRefresh) tui.ScopedModelsResult {
+// runModalScopedModels applies selection changes to the available session scope and persists configured IDs only on save.
+func (m *InteractiveMode) runModalScopedModels(sl *tui.ScopedModelsList, refresh <-chan scopedModelsRefresh, selection *scopedModelsSelection) tui.ScopedModelsResult {
 	m.editorContainer.SetChildren(sl)
 	m.tuiInst.Render()
 
@@ -965,24 +1141,42 @@ func (m *InteractiveMode) runModalScopedModels(sl *tui.ScopedModelsList, refresh
 	defer releaseInput()
 
 	for !sl.Done() {
+		if m.modalStopped() {
+			return tui.ScopedModelsResult{Cancelled: true}
+		}
 		select {
+		case <-m.modalContextDone():
+			return tui.ScopedModelsResult{Cancelled: true}
+		case err := <-m.inputErrCh:
+			m.inputLoopErr = err
+			return tui.ScopedModelsResult{Cancelled: true}
 		case refreshed := <-refresh:
-			sl.UpdateModels(refreshed.models)
+			selection.updateAvailable(refreshed.models)
+			if !selection.changed && !selection.sessionScoped {
+				sl.UpdateModels(refreshed.models, selection.configuredIDs())
+			} else {
+				sl.UpdateModels(refreshed.models)
+			}
+			if enabled := sl.EnabledIDs(); enabled != nil {
+				selection.apply(m, enabled)
+			}
 			sl.SetRefreshStatus(refreshed.status, refreshed.kind)
 			m.tuiInst.Render()
 			refresh = nil
 			continue
+		case task := <-m.uiTaskCh:
+			task()
 		case buf := <-inputCh:
-			for _, chunk := range dropKeyReleases(sl, []string{string(buf)}) {
+			for _, chunk := range m.modalInputChunks(sl, []string{string(buf)}) {
 				previousIDs := sl.EnabledIDs()
 				sl.HandleInput(chunk)
 				currentIDs := sl.EnabledIDs()
 				if !scopedModelIDsEqual(previousIDs, currentIDs) {
-					m.scopedModelIDs = currentIDs
+					selection.changed = true
+					selection.apply(m, currentIDs)
 				}
 				if enabledIDs, ok := sl.ConsumeSave(); ok {
-					m.scopedModelIDs = enabledIDs
-					m.persistScopedModelIDs(enabledIDs)
+					m.persistScopedModelIDs(selection.persistedIDs(enabledIDs))
 				}
 				if sl.Done() {
 					break
@@ -1019,7 +1213,10 @@ func (m *InteractiveMode) runEditorSlotOAuthSelector(sel *tui.OAuthSelector) (st
 	defer releaseInput()
 
 	for !sel.Done() {
-		buf := <-inputCh
+		buf, ok := m.readModalInput(inputCh)
+		if !ok {
+			return "", false
+		}
 		for _, chunk := range dropKeyReleases(sel, []string{string(buf)}) {
 			sel.HandleInput(chunk)
 			if sel.Done() {
@@ -1030,7 +1227,7 @@ func (m *InteractiveMode) runEditorSlotOAuthSelector(sel *tui.OAuthSelector) (st
 		// single render so the loop never queues one render per input message
 		// and falls behind, replaying keys late. End state is identical; only
 		// transient frames are skipped (same pattern as runEditorSlotTreeSelector).
-		drainModalInput(sel, inputCh, func(chunk string) bool {
+		m.drainModalInput(sel, inputCh, func(chunk string) bool {
 			sel.HandleInput(chunk)
 			return sel.Done()
 		})
@@ -1060,16 +1257,26 @@ func (m *InteractiveMode) runEditorSlotLoginDialog(dlg *tui.LoginDialog, renderN
 	defer releaseInput()
 
 	for !dlg.Done() {
+		if m.modalStopped() {
+			return false
+		}
 		select {
+		case <-m.modalContextDone():
+			return false
+		case err := <-m.inputErrCh:
+			m.inputLoopErr = err
+			return false
+		case task := <-m.uiTaskCh:
+			task()
 		case buf := <-inputCh:
-			for _, chunk := range dropKeyReleases(dlg, []string{string(buf)}) {
+			for _, chunk := range m.modalInputChunks(dlg, []string{string(buf)}) {
 				dlg.HandleInput(chunk)
 				if dlg.Done() {
 					break
 				}
 			}
 			// Coalesce queued keystrokes into one render (see OAuth selector).
-			drainModalInput(dlg, inputCh, func(chunk string) bool {
+			m.drainModalInput(dlg, inputCh, func(chunk string) bool {
 				dlg.HandleInput(chunk)
 				return dlg.Done()
 			})

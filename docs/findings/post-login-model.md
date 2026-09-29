@@ -6,82 +6,71 @@ The reference is Pi 0.87.1 (`f07218c4d4bbc12bef056a7058c3dd49dfe41abe`). Paths b
 
 | Behavior | Pi source | PiG implementation |
 |---|---|---|
-| Provider defaults and declaration order | `packages/coding-agent/src/core/model-resolver.ts:20-64` | `internal/codingagent/default_models.go`; startup and login share one table |
+| Provider defaults and declaration order | `packages/coding-agent/src/core/model-resolver.ts:20` | `internal/codingagent/default_models.go`; startup and login share one table |
 | Unknown-model condition | `packages/coding-agent/src/modes/interactive/interactive-mode.ts:298-300` | `isUnknownModel`; nil represents PiG's initial unknown sentinel |
 | Selection, discovery, guidance and messages | `packages/coding-agent/src/modes/interactive/interactive-mode.ts:5879-5975` | `completeProviderAuthentication`, `finishProviderAuthentication`, `postLoginModel` |
 | Model/default/thinking mutation before awaited notifications | `packages/coding-agent/src/core/agent-session.ts:2110-2137` | `Session.SetModelOnMain` separates owner-loop state mutation from worker-side notifications |
 | Submitted text and prompt layout | `packages/coding-agent/src/modes/interactive/components/login-dialog.ts:56-64,77-81,156-182` | `tui.LoginDialog`, with the selectable privacy feature disabled |
 | Secret-prompt classification | `packages/ai/src/auth/helpers.ts:12-16`; `interactive-mode.ts:6085-6093` | Standard API-key prompts use the provider's auth-method name and secret classification |
 
-Radius's catalog-order fallback and llama.cpp guidance remain Pi's own special cases. No login path hard-codes a Copilot or Anthropic model. `TestDefaultModelPerProviderMatchesPinnedUpstream` independently parses the pinned table. Tests cover OAuth, ordinary API keys, custom-base-URL OpenAI-compatible providers and providers without a default.
+Radius's catalog-order fallback and llama.cpp guidance remain Pi's own special cases. No login path hard-codes a Copilot or Anthropic model. `TestDefaultModelPerProviderMatchesPinnedUpstream` independently parses the pinned table.
 
 ## Model completion and credential paths
 
-Model construction runs off the input loop. `Session.SetModelOnMain` dispatches synchronous model, transcript, default and thinking-state changes to the owner loop before awaiting extension notifications on the worker. It uses public main's existing `BeginModelChange` state reducer. The ordinary and RPC paths preserve their existing thinking-notification ordering. This does not import the candidate's Model Runtime, provider or Session changes.
+Model construction runs off the input loop. `Session.SetModelOnMain` dispatches synchronous model, transcript, default and thinking-state changes to the owner loop before awaiting extension notifications on the worker. Generation and Session/handle/model checks reject stale work before mutation and before UI/scope changes. Model and Session commands invalidate the generation even when the model pointer stays the same. A late notification callback never re-applies or re-persists an old choice. Refreshes remain bounded to 15 seconds and owned by the interactive lifetime. No selection scans Session history.
 
-Generation and Session/handle/model checks reject stale work before mutation and before UI/scope changes. Model and Session commands invalidate the generation even when the model pointer stays the same. A late notification callback never re-applies or re-persists an old choice. Refreshes remain bounded to 15 seconds and owned by the interactive lifetime. No selection scans Session history.
+External credential stores belong to PiG's additive capability D40. Pi itself always reports `getAuthPath()` at `interactive-mode.ts:5933,5937,5947`; it does not return a provider-owned store path. PiG preserves the actual `StoreOAuthCredentials` result through immediate and deferred completion.
 
-External credential stores belong to PiG's existing capability D40. Pi always reports `getAuthPath()` at `interactive-mode.ts:5933,5937,5947`; it does not return a provider-owned store path. PiG preserves the actual `StoreOAuthCredentials` result through immediate and deferred completion, and uses `auth.Path()` for core storage.
+The original regressions remain in place:
 
-Regression guards:
+- `TestAPIKeyLoginSelectsProviderDefault` and `TestAPIKeyLoginWithoutDefaultReportsGuidance` failed before shared completion was implemented.
+- `TestPostLoginModelDiscovery` ports Pi's `test/suite/regressions/7027-credential-refresh-hang.test.ts:128-219`, including preferred default, catalog order, empty catalog, errors, timeout, replacement and shutdown. It also checks an external credential path across deferred discovery.
+- `TestRegisteredOAuthLoginReportsReturnedCredentialPath` failed when completion discarded the returned location.
+- `TestPostLoginSelectionLosesToOwnerLoopCommands` and `TestPostLoginSelectionRechecksSessionMutationAndCompletion` failed when delayed construction or completion overwrote newer choices.
+- `TestSetModelOnMainDispatchesAllStateBeforeNotifications` verifies the real Session boundary, including rejected mutation and notifications completing after a newer model is selected.
 
-- `TestAPIKeyLoginSelectsProviderDefault` and `TestAPIKeyLoginWithoutDefaultReportsGuidance`: shared completion after API-key authentication.
-- `TestAPIKeyLoginCustomEndpointDoesNotInventDefault`: preserve the configured endpoint and report missing-default guidance rather than choosing the first custom model.
-- `TestPostLoginModelDiscovery`: Pi's `test/suite/regressions/7027-credential-refresh-hang.test.ts:128-219`, including preferred default, catalog order, empty catalog, errors, timeout, replacement and shutdown. It also checks an external credential path across deferred discovery.
-- `TestRegisteredOAuthLoginReportsReturnedCredentialPath`: report an external store with and without a selected default.
-- `TestPostLoginSelectionLosesToOwnerLoopCommands` and `TestPostLoginSelectionRechecksSessionMutationAndCompletion`: reject delayed construction or completion after a newer choice.
-- `TestSetModelOnMainDispatchesAllStateBeforeNotifications`: the real Session boundary, including rejected mutation and notifications completing after a newer model is selected. A compiling mutation that moves state mutation before dispatch fails both cases with `state changed before owner dispatch`.
+The four model/status scenarios under `test/parity/scenarios/oauth/10-*` through `13-*` compare real runtime state, persisted defaults and completion messages against Pi. They normalize only isolated credential-file paths where necessary. Compiling mutations disabling selection and replacement guards made these guards fail.
 
-The four model/status scenarios under `parity/scenarios/oauth/10-*` through `13-*` compare real runtime state, persisted defaults and completion messages against Pi. Status comparisons normalize only isolated credential-file paths. The observer never selects a model.
+## Owner decision: configurable input privacy
 
-## Configurable input privacy
-
-Owner-approved divergence D80 defines `maskSecretInput`. It defaults to true and appears as **Mask secret input** in `/settings`. The description and prompt hint explain the difference from Pi and the false opt-out.
+The owner decision dated 2026-09-27 replaces unconditional masking with divergence D80, `maskSecretInput`. It defaults to true and appears as **Mask secret input** in `/settings`. Its description and prompt hint explain the difference from Pi and the false opt-out. The integration ledger already allocated the earlier branch-local identifier to another capability. `docs/parity/DIVERGENCE-IDS.txt` now assigns privacy D80 without changing the existing allocations.
 
 When enabled, the dialog shows up to eight dots, a grapheme count and the last four graphemes. Inputs shorter than five graphemes show no suffix. Submission retains the preview, not the full input. Authentication progress and error text redact submitted masked values and their trimmed forms before display. Login input is not appended to Session messages. The authentication flow still receives the submitted value, and the authorized credential store still stores credentials: this is display privacy, not credential encryption.
 
-When disabled, PiG displays the full text while editing and after submission. Pi 0.87.1 does this even for `type: "secret"`. No comparison substitutes dots for Pi's plaintext output. The exact comparison exposed dialog spacing, prompt/placeholder/hint styling, API-key prompt-label and dynamic-border reset differences; these are fixed at their owning components.
+When disabled, PiG displays the full text while editing and after submission. Pi 0.87.1 does this even for `type: "secret"`: an installed-Pi probe through `showAuthPrompt` confirmed plaintext both before and after submission. No comparison substitutes dots for Pi's plaintext output.
 
-Guards:
+The disabled comparison exposed pre-existing dialog drift that is fixed at its source: extra blank rows, unstyled prompt/placeholder/hint text, the generic API-key prompt label, and the default dynamic border's full reset instead of Pi's foreground reset. The prompt label now comes from `BuiltinProviderAuth(...).APIKey.Name`, including distinct OpenAI and Gemini labels.
 
-- `TestLoginDialogMaskedPreview`: empty, short, ordinary, long and Unicode inputs, with suffixes, counts, hint, retained text and redacted progress.
-- `TestLoginDialogSecretValueNeverRendered`: inspect both rendered frames and `LoginDialog.lines`, so render-time redaction cannot hide retained plaintext.
-- `TestLoginDialogMaskDisabledMatchesPi`: compare complete ANSI frames from the installed Pi dialog before typing, during typing, after submission and after progress, without ANSI or whitespace normalization.
-- `TestMaskSecretInputSettingsRoundTrip`, `TestMaskSecretInputSettingsMenuAppliesToNextDialog` and `TestLoginMaskSettingReachesStandardDialog`: default, explicit values, persistence, menu and production-dialog wiring.
-- `TestAPIKeyLoginPromptMasksInput`, `TestLlamaLoginNeverRendersSubmittedSecret` and `TestMaskedLoginErrorDoesNotEnterFramesOrSession`: standard and typed prompt boundaries, diagnostics and persisted Session privacy.
-- `TestPiIgnoresMaskSecretInputInSharedSettings`: Pi reads the Go-serialized boolean, ignores it for its behavior and preserves it when changing another setting; PiG then reads the result. This tests JSON content, not interoperability of the two settings-lock protocols. No candidate lock implementation is included.
-- `oauth/14-login-secret-mask-disabled`: escaped-output equality against real Pi, with three runs.
+New guards:
 
-The settings correspondence rules account for exactly one D80 row and still reject undeclared additions or reordered Pi rows. The settings scenario asserts each raw row count before accounting for this approved difference. The process and tmux launchers discard ambient agent-directory overrides before applying their snapshotted configuration; unit tests guard both boundaries.
+- `TestLoginDialogMaskedPreview`: empty, short, ordinary, long and Unicode inputs; suffixes, counts, hint, retained text and redacted progress. It failed before the configurable preview was implemented.
+- `TestLoginDialogSecretValueNeverRendered`: no full masked value during editing, submission, progress or a later prompt.
+- `TestLoginDialogMaskDisabledMatchesPi`: compares complete ANSI frames from the actual installed Pi dialog before typing, during typing, after submission and after progress. No ANSI or whitespace normalization is used.
+- `TestMaskSecretInputSettingsRoundTrip`: default true, explicit false/true, serialization and reload.
+- `TestMaskSecretInputSettingsMenuAppliesToNextDialog` and `TestLoginMaskSettingReachesStandardDialog`: `/settings` and persisted settings control the production dialog.
+- `TestAPIKeyLoginPromptMasksInput` and `TestLlamaLoginNeverRendersSubmittedSecret`: secret handling at standard OpenAI/Google and typed llama.cpp caller boundaries.
+- `TestMaskedLoginErrorDoesNotEnterFramesOrSession`: a builder that echoes the key cannot put it into rendered error text, Session entries or files outside credential storage.
+- `TestPiIgnoresMaskSecretInputInSharedSettings`: Pi reads the Go-serialized boolean without errors, ignores it for its own behavior, preserves it while changing another setting, and PiG reads the resulting file.
+- `oauth/14-login-secret-mask-disabled`: compares the actual unmasked API-key login dialog against real Pi with `escaped_output_equal` and three runs. The same extra key is present in Pi's settings fixture.
 
-## Verification environment and scope
+## Shared-settings boundary found during probing
 
-The clean public branch starts at `10111db80`: original #74 plus public main `c1550a84a`. It contains no candidate merge. Only login/privacy code, its tests, documentation and feature-derived inventories are added. Release notes are in `CHANGELOG.md` under `[0.3.0]`.
+The earlier isolated-branch probe reported `ELOCKED` because Go used a persistent flock sidecar named `settings.json.lock`, while Pi used a directory with that name. The integration merge supplies `internal/pilock` for settings/auth/model stores and the `PIG_USE_PI_DIRS` implementation. Shared-directory tests are re-run on that implementation; the earlier lock failure is historical evidence, not a claim that the merged code retains it.
 
-Use Go 1.27.1 and real Pi 0.87.1. Resolve tool-manager shims to installed Go, Node, Rust and uv executables before changing HOME. Every test and probe isolates HOME, PIG_HOME and both agent directories. Compiler/package caches are separate from credentials. The `make ci-parity` comparison runs that target on this branch and an unmodified archive of public main `c1550a84a`, with the same installed oracle and toolchains.
+The shared-key guard now uses the merged settings writer, Pi's settings writer, and a Go reload in sequence. The integration's shared-backend and Pi-directory tests own the broader interoperability surface. No stale sidecar is removed by this change.
 
-The earlier review identified a full-suite claim that contradicted a reported `TestParseChangelog_RealFile` failure. That historical claim is not acceptance evidence. The clean branch passes `TestParseChangelog_RealFile`; no full `go test ./...` pass is inferred from focused testing.
+## Verification environment
+
+Use Go 1.27.1 and the pinned real Pi package. Resolve tool-manager shims to installed Go, Node, Rust and uv binaries before changing HOME. Every run isolates HOME, PIG_HOME, PIG_CODING_AGENT_DIR and PI_CODING_AGENT_DIR in temporary directories. Compiler/package caches remain separate from credential directories.
 
 ## Verification results
 
-Build, Linux vet, Windows application vet, full lint with integration/live/parity tags, changed-package lint, `go fix -diff ./...` and focused/race tests pass. Complete `coding`, `internal/codingagent` and `tui` package tests pass. `make ci-contracts` and `make ci-drift` pass. The coverage and Go-interface inventories are regenerated from this branch, not copied from the candidate; committing those feature-derived updates fixes the stale-inventory failures.
+The owner-decision revision before the merge train passed `go test ./...` on Go 1.27.1 with the isolated environment above. That is historical evidence, not a full-suite claim for the merged train. The integration's batch owner runs the full suite. The focused post-login/privacy/model-owner race regressions and imported integration cases pass on merged train `8a880b6e0`; this includes the real Go-settings-write → Pi-settings-write → Go-reload test using the shared directory-lock backend. Linux vet, Windows application vet, and touched-package lint with parity tags pass. OAuth and model-resolver-selector parity families pass. Current settings parity also accounts for the single D80 row in the train's tmux-image-capability scenario.
 
-| Check | Public main `c1550a84a` | Clean PR branch |
-|---|---|---|
-| `make ci-parity` | Pass, 274 scenarios run | Pass, 279 scenarios run |
-| Branch-only failures | None | None |
-| OAuth, settings, model-resolver-selector and selectors declared durability | Not separately repeated | Pass |
+Local generators were run for contract/drift validation, then generated outputs were restored to the integration-owned versions before committing. `ci-contracts` reaches the train's `test-porting-release` gate and fails on existing pending/partial hot-path test dispositions. `ci-drift` reaches the existing D78 record, which lacks `SCRUTINIZED:approved`. Those records were not silently approved or weakened. The remaining divergence guard, source-hygiene and docs-drift gates pass.
 
-The five additional scenarios are the original PR's four post-login cases and the masking-off case. All tracked blobs in the public-main archive were checked against the Git tree after the run; none changed. There are no inherited failures to allow and no comparator weakenings, retries or longer timeouts. The existing disabled-masking scenario also rejects a compiling mutation that ignores the setting, reporting a missing plaintext key and unequal escaped output.
+The added settings row has explicit D80 lineage in the correspondence rules. Tests still reject unclaimed additions, missing declared additions and reordered Pi rows. The settings scenario asserts Pi's raw 31-row count and PiG's raw 32-row count before accounting only for this one approved additive difference. Its other bytes and ANSI remain compared, and durability increased from one run to three.
 
-The local evidence includes the paired-run result files, gate logs, rejected owner-dispatch and retained-secret mutations, and the installed-Pi ANSI comparison. No `go test ./...` pass is claimed.
+Cross-family verification under isolated parent directories exposed a parity-harness issue: ambient agent-directory variables overrode declared fixture homes, including through the tmux server's inherited environment. `TestHermeticEnvironmentDoesNotInheritAgentDirectories` and `TestTmuxPrefixDoesNotInheritAgentDirectories` failed before the fix. Process/RPC and tmux launchers now discard those ambient overrides before applying their snapshotted configuration. Selector scenarios passed afterward without changing their resource assertions.
 
-## CI deadline regression
-
-The CI timeout case exposed a test ordering assumption, not a production deadline change. A `time.Sleep(15 * time.Second)` in the synctest bubble woke at the same instant as the refresh's context timer. The sleeping test could run first and release the blocked store before the context's cancellation callback ran. `RefreshCatalogs` could then correctly return `Aborted: false`; the worker's deferred cleanup cancellation was not evidence that the deadline had fired. The unfixed timeout case failed 31 of 200 race-detector runs locally.
-
-Both deadline tests now wait on the captured refresh context's `Done` channel before releasing the store. They assert `context.DeadlineExceeded` and exactly 15 seconds of virtual elapsed time. This mirrors Pi's awaited `advanceTimersByTimeAsync(15_000)` in `packages/coding-agent/test/suite/regressions/7027-credential-refresh-hang.test.ts:121,214`, which delivers the abort callback before the test checks the warning. No production behavior, sleeps, retries or timeout budgets are added. A compiling mutation that changes the production deadline to 16 seconds fails both tests at the exact elapsed-time assertion.
-
-The active-divergence header is corrected to 32 using the existing `## D<N>` sections as the denominator. The bundled reference already lists D80 and has no numeric count header.
-
-`go test -race ./internal/codingagent -run '^(TestPostLoginModelDiscovery|TestPostLoginCompletesBeforeBackgroundRefresh)$' -count=200` passes normally and under CPU stress: two CPU cores, `GOMAXPROCS=2` and four ready SHA-256 load workers sharing those cores. Both runs use the existing test timeout. `CI=1 make ci-test-fast` passes across all 113 packages selected by the unmodified fast-shard dispatcher. The first local shard run found an old public-main comparison snapshot inside the checkout; moving that disposable snapshot outside the source tree fixes the source-scan failure without changing any test or exclusion. Linux/Windows vet, full lint, `ci-contracts` and `ci-drift` also pass.
+The initial probes were not green: new preview/setting tests failed, disabled-mode comparison exposed prompt/layout/reset drift, the shared-file probe exposed the former lock incompatibility, and gates rejected the previously unaccounted additive row. The merge retains both sets of post-login tests, the train's auth validation and state reducer, the explicit unknown sentinel, and owner-loop theme/render servicing during secret entry. The deadline regression now waits for cancellation delivery at the exact virtual deadline before releasing its blocked catalog, rather than racing those two events.

@@ -1,0 +1,21 @@
+# Pi main.ts:129-130,638-642 applies the same stdout ownership rule to explicit RPC metadata. Listing models is not an RPC protocol response.
+# The configured model needs no endpoint; compare empty stdout and the entire stderr catalog exactly.
+name = "21-rpc-list-models-stdout"
+description = "Explicit RPC list-models reserves stdout and prints the catalog on stderr"
+covers = ["packages/coding-agent/src/main.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/metadata-routing/agent", "FORCE_COLOR=0"]
+pi = ["PI_CODING_AGENT_DIR=testdata/metadata-routing/agent", "FORCE_COLOR=0"]
+
+[cli]
+args = ["--offline", "--no-extensions", "--mode", "rpc", "--list-models", "routing-model"]
+timeout_seconds = 15
+
+[assert]
+exit_code = 0
+output_equal = true
+stderr_equal = true
+runs = 3

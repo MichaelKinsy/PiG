@@ -3,14 +3,16 @@ package subprocess
 import (
 	"context"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 )
@@ -94,10 +96,16 @@ func (e *TransportError) Unwrap() error { return e.Err }
 // goroutines. Only the reader reads the socket, and only the writer writes it.
 // pig-specific: no upstream equivalent.
 type Conn struct {
-	name    string
-	conn    net.Conn
-	closing atomic.Bool
-	closed  atomic.Bool
+	// onDispatch records the owner before a request can run in a shared process.
+	onDispatch func()
+	// inbound observes each decoded frame on the read loop, in wire order, before routing. Cross-process reference accounting uses it so a later release on this connection can never overtake an earlier transmission.
+	inbound func(*Envelope)
+	// onClosed runs once when the read loop ends.
+	onClosed func()
+	name     string
+	conn     net.Conn
+	closing  atomic.Bool
+	closed   atomic.Bool
 
 	// Outgoing message queue. Writer goroutine drains this. A frame that is
 	// queued or being written is outstanding work, so the heartbeat runs while
@@ -108,15 +116,20 @@ type Conn struct {
 
 	// Pending request tracking: maps request ID → response channel, and
 	// request ID → the sink for that request's tool_update notifications.
-	pendingMu sync.Mutex
-	pending   map[string]chan *Envelope
-	updates   map[string]func(json.RawMessage)
+	pendingMu     sync.Mutex
+	pending       map[string]chan *Envelope
+	updates       map[string]func(json.RawMessage)
+	producerTasks sync.WaitGroup
 
 	// Incoming messages that aren't responses go here for the host to process.
 	inCh chan *Envelope
 
 	stateMu       sync.Mutex
 	requestStates map[string]chan RequestStatePayload
+	// suspending counts the suspension frames of a request that the read loop queued for the host and the host has not yet delivered. suspensionsSettled is closed and replaced whenever a count drops.
+	suspending         map[string]int
+	suspendedRequests  map[string]bool
+	suspensionsSettled chan struct{}
 
 	hostCallMu      sync.Mutex
 	hostCalls       map[string]map[string]context.CancelFunc
@@ -124,6 +137,8 @@ type Conn struct {
 
 	// nextID is an atomic counter for generating request IDs.
 	nextID atomic.Uint64
+
+	abortForwards abortForwards
 
 	// lastLargeSize/lastLargeAtNs record the most recent frame written to
 	// the peer above legacyFrameSize. A disconnect that follows can then be
@@ -152,12 +167,14 @@ type Conn struct {
 	heartbeatIdle     chan struct{}
 	heartbeatID       atomic.Uint64
 	failOnce          sync.Once
+	retiring          atomic.Bool
 	failureMu         sync.Mutex
 	failure           error
 
 	// cancel signals all goroutines to stop.
-	cancel context.CancelFunc
-	done   chan struct{} // closed when reader, writer, and heartbeat exit
+	cancel   context.CancelFunc
+	lifetime context.Context
+	done     chan struct{} // closed when reader, writer, and heartbeat exit
 }
 
 // NewConn wraps a connected socket into a managed connection.
@@ -177,23 +194,26 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 		options.HeartbeatTimeout = defaultHeartbeatTimeout
 	}
 	return &Conn{
-		name:              name,
-		conn:              c,
-		outCh:             make(chan outboundFrame, 64),
-		pending:           make(map[string]chan *Envelope),
-		updates:           make(map[string]func(json.RawMessage)),
-		inCh:              make(chan *Envelope, 32),
-		done:              make(chan struct{}),
-		requestStates:     make(map[string]chan RequestStatePayload),
-		hostCalls:         make(map[string]map[string]context.CancelFunc),
-		cancelledParent:   make(map[string]struct{}),
-		clock:             options.Clock,
-		heartbeatInterval: options.HeartbeatInterval,
-		heartbeatTimeout:  options.HeartbeatTimeout,
-		workChanged:       make(chan struct{}, 1),
-		pongCh:            make(chan string, 8),
-		heartbeatReady:    make(chan struct{}),
-		heartbeatIdle:     make(chan struct{}, 1),
+		name:               name,
+		conn:               c,
+		outCh:              make(chan outboundFrame, 64),
+		pending:            make(map[string]chan *Envelope),
+		updates:            make(map[string]func(json.RawMessage)),
+		inCh:               make(chan *Envelope, 32),
+		done:               make(chan struct{}),
+		requestStates:      make(map[string]chan RequestStatePayload),
+		suspending:         make(map[string]int),
+		suspendedRequests:  make(map[string]bool),
+		suspensionsSettled: make(chan struct{}),
+		hostCalls:          make(map[string]map[string]context.CancelFunc),
+		cancelledParent:    make(map[string]struct{}),
+		clock:              options.Clock,
+		heartbeatInterval:  options.HeartbeatInterval,
+		heartbeatTimeout:   options.HeartbeatTimeout,
+		workChanged:        make(chan struct{}, 1),
+		pongCh:             make(chan string, 8),
+		heartbeatReady:     make(chan struct{}),
+		heartbeatIdle:      make(chan struct{}, 1),
 	}
 }
 
@@ -201,6 +221,7 @@ func newConnWithOptions(name string, c net.Conn, options connOptions) *Conn {
 // controls their lifetime. Cancellation stops all three goroutines.
 func (c *Conn) Start(ctx context.Context) {
 	ctx, c.cancel = context.WithCancel(ctx)
+	c.lifetime = ctx
 	var wg sync.WaitGroup
 	wg.Add(3)
 	go func() {
@@ -321,7 +342,20 @@ func (c *Conn) sendAndWait(ctx context.Context, env *Envelope) error {
 	}
 }
 
-func (c *Conn) marshalEnvelope(env *Envelope) ([]byte, error) {
+// encodedEnvelope contains complete JSON produced by a host encoder. It is immutable while queued, so one notification can share its bytes across connections.
+type encodedEnvelope []byte
+
+func (c *Conn) sendEncoded(data encodedEnvelope) error {
+	if err := c.checkSendState(); err != nil {
+		return err
+	}
+	if err := checkFrameSize(data); err != nil {
+		return err
+	}
+	return c.enqueue(context.Background(), outboundFrame{data: data, work: true})
+}
+
+func (c *Conn) checkSendState() error {
 	if c.closing.Load() || c.closed.Load() {
 		// A caller that keeps sending after the connection failed (for example
 		// a retry loop racing the writer's queue drain: a Send already queued
@@ -330,18 +364,100 @@ func (c *Conn) marshalEnvelope(env *Envelope) ([]byte, error) {
 		// the connection's real terminal error, not a generic placeholder that
 		// masks it.
 		if failure := c.failureError(); failure != nil {
-			return nil, failure
+			return failure
 		}
-		return nil, errors.New("connection closed")
+		return errors.New("connection closed")
+	}
+	return nil
+}
+
+func checkFrameSize(data []byte) error {
+	if len(data) > MaxFrameSize {
+		return &FrameTooLargeError{Size: len(data), Max: MaxFrameSize}
+	}
+	return nil
+}
+
+func (c *Conn) marshalEnvelope(env *Envelope) ([]byte, error) {
+	if err := c.checkSendState(); err != nil {
+		return nil, err
+	}
+	if err := checkResultFrameSize(env); err != nil {
+		return nil, err
 	}
 	data, err := json.Marshal(env)
 	if err != nil {
 		return nil, fmt.Errorf("marshal envelope: %w", err)
 	}
-	if len(data) > MaxFrameSize {
-		return nil, &FrameTooLargeError{Size: len(data), Max: MaxFrameSize}
+	if err := checkFrameSize(data); err != nil {
+		return nil, err
 	}
 	return data, nil
+}
+
+// checkResultFrameSize rejects a call result whose frame the encoder would build above the frame limit, without building it. Marshaling validates the raw JSON and copies every byte of it before the size check fails, and a rejected payload must not cost memory proportional to itself. The encoder removes only whitespace outside strings and adds bytes only by escaping <, >, & (five bytes each) and U+2028, U+2029 (three bytes each), so one pass over the raw bytes gives the exact size of json.Marshal(env) for valid JSON. Invalid JSON takes the marshal path so its error keeps the "marshal envelope" classification instead of becoming a size error. Sizes are int64 so a result that encodes above the largest int of a 32-bit build is still measured as oversized.
+func checkResultFrameSize(env *Envelope) error {
+	if env.CallResult == nil {
+		return nil
+	}
+	raw := env.CallResult.Result
+	// The encoder grows a byte to at most six, so the frame is at most six times the bytes it carries plus the envelope's fixed text. Frames that cannot reach the limit skip the measurement; the general check in marshalEnvelope still bounds them.
+	if int64(len(raw))*6+resultShellBound(env) <= MaxFrameSize {
+		return nil
+	}
+	resultSize := encodedRawSize(raw)
+	shell := *env
+	shell.CallResult = &CallResultPayload{Result: json.RawMessage("0"), Error: env.CallResult.Error}
+	framed, err := json.Marshal(&shell)
+	if err != nil {
+		return nil
+	}
+	size := int64(len(framed)) - 1 + resultSize
+	if size <= MaxFrameSize || !json.Valid(raw) {
+		return nil
+	}
+	return oversizedFrameError(size)
+}
+
+// oversizedFrameError reports a frame size that may exceed the largest int of a 32-bit build; the reported size saturates there.
+func oversizedFrameError(size int64) *FrameTooLargeError {
+	return &FrameTooLargeError{Size: int(min(size, math.MaxInt)), Max: MaxFrameSize}
+}
+
+// resultShellBound is an upper bound on the encoded bytes of a call result envelope other than its raw result: the string fields grow at most six-fold when escaped, and the field names and punctuation take a fixed amount.
+func resultShellBound(env *Envelope) int64 {
+	const fixed = 512
+	text := int64(len(env.Type) + len(env.ID))
+	if e := env.CallResult.Error; e != nil {
+		text += int64(len(e.Code) + len(e.Message) + len(e.Stack))
+	}
+	return text*6 + fixed
+}
+
+// encodedRawSize is the length the encoder emits for raw when raw is valid JSON: its length less the whitespace outside strings, plus the HTML and line-separator escapes.
+func encodedRawSize(raw []byte) int64 {
+	size := int64(len(raw))
+	inString, escaped := false, false
+	for i := range raw {
+		c := raw[i]
+		switch {
+		case c == '<' || c == '>' || c == '&':
+			size += 5
+		case c == 0xE2 && i+2 < len(raw) && raw[i+1] == 0x80 && raw[i+2]&^1 == 0xA8:
+			size += 3
+		}
+		switch {
+		case inString && escaped:
+			escaped = false
+		case inString && c == '\\':
+			escaped = true
+		case c == '"':
+			inString = !inString
+		case !inString && (c == ' ' || c == '\t' || c == '\n' || c == '\r'):
+			size--
+		}
+	}
+	return size
 }
 
 // Request sends a message and waits for the correlated response. Blocks until
@@ -416,6 +532,7 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 		c.pendingMu.Unlock()
 		c.stateMu.Lock()
 		delete(c.requestStates, env.ID)
+		delete(c.suspendedRequests, env.ID)
 		c.stateMu.Unlock()
 		c.hostCallMu.Lock()
 		delete(c.cancelledParent, env.ID)
@@ -430,12 +547,15 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 	defer c.endWork()
 
 	// Send the request.
+	if c.onDispatch != nil {
+		c.onDispatch()
+	}
 	if err := c.sendAndWait(ctx, env); err != nil {
 		return nil, err
 	}
 	// Admission ends only after the handler reaches an observable suspension
 	// boundary or finishes, not when its request reaches the socket.
-	defer invocation.Acknowledge(ctx)
+	defer invocation.Complete(ctx)
 
 	var inactivityTimer livenessTimer
 	var inactivityC <-chan time.Time
@@ -445,9 +565,23 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 		defer inactivityTimer.Stop()
 	}
 	// Wait for response or meaningful request activity.
+	cancelled := ctx.Done()
+	suspensionApplied := false
 	for {
 		select {
 		case resp := <-respCh:
+			// A state frame that preceded the response was queued first; apply it before the response is delivered. The host delivers a suspension only after every earlier call of the connection applied, so the response waits for it only while a suspension can change what the response does.
+			if requestSuspensionDecides(ctx) {
+				c.awaitSuspensions(ctx, env.ID)
+			}
+			suspensionApplied = drainRequestStates(ctx, stateCh) || suspensionApplied
+			// A suspension is never lost to a full state channel: it is also recorded per request.
+			c.stateMu.Lock()
+			recorded := c.suspendedRequests[env.ID]
+			c.stateMu.Unlock()
+			if recorded && !suspensionApplied {
+				applyRequestSuspension(ctx, RequestStatePayload{RequestID: env.ID, State: "suspended"})
+			}
 			if resp != nil && resp.Response != nil && resp.Response.Error != nil {
 				switch resp.Response.Error.Code {
 				case "extension_unresponsive":
@@ -463,8 +597,13 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 			}
 			return resp, nil
 		case state := <-stateCh:
-			if state.State == "blocked" || state.State == "completed" {
+			suspensionApplied = suspensionApplied || state.State == "suspended"
+			applyRequestSuspension(ctx, state)
+			switch state.State {
+			case "blocked":
 				invocation.Acknowledge(ctx)
+			case "completed":
+				invocation.Complete(ctx)
 			}
 			if inactivity > 0 && (state.State == "started" || state.State == "progress" || state.State == "blocked") {
 				inactivityTimer.Stop()
@@ -475,7 +614,7 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 			c.cancelHostCalls(env.ID)
 			_ = c.Send(&Envelope{Type: MsgCancel, ID: env.ID, Cancel: &CancelPayload{RequestID: env.ID, Reason: "handler inactivity"}})
 			return nil, &HandlerStalledError{Extension: c.name, Operation: operation, HeartbeatHealthy: !c.closed.Load()}
-		case <-ctx.Done():
+		case <-cancelled:
 			c.cancelHostCalls(env.ID)
 			_ = c.Send(&Envelope{
 				Type: MsgCancel,
@@ -485,6 +624,12 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 					Reason:    ctx.Err().Error(),
 				},
 			})
+			if env.Request != nil && env.Request.Method == MethodProviderStream && (errors.Is(context.Cause(ctx), context.Canceled) || errors.Is(context.Cause(ctx), context.DeadlineExceeded)) {
+				// Pi forwards the native stream's own terminal event after signaling
+				// abort. The connection still owns liveness and closes on shutdown.
+				cancelled = nil
+				continue
+			}
 			return nil, ctx.Err()
 		}
 	}
@@ -494,6 +639,12 @@ func (c *Conn) request(ctx context.Context, env *Envelope, inactivity time.Durat
 // The host reads from this to handle calls, widget pushes, etc.
 func (c *Conn) Incoming() <-chan *Envelope {
 	return c.inCh
+}
+
+// Retire asks the peer to end its side and waits for it to close after tearing down, then closes. A retiring peer that shares its process with a live successor generation must finish its teardown, such as leaving the shared event bus, before the successor is visible as the only generation. The peer closing ends the read loop. The wait is outstanding work, so the heartbeat fails a peer that stops answering, and a peer that answers keeps its teardown running, as Pi awaits session_shutdown handlers without a deadline (agent-session.ts:3291-3314).
+func (c *Conn) Retire(reason string) error {
+	c.retiring.Store(true)
+	return c.Close(reason)
 }
 
 // Close gracefully shuts down the connection. Sends a shutdown message if
@@ -514,6 +665,10 @@ func (c *Conn) Close(reason string) error {
 	// the heartbeat instead of holding Close open.
 	writeResult := make(chan error, 1)
 	queued := false
+	if c.retiring.Load() {
+		// The wait for the peer to end its side is outstanding work, so a peer that stops answering is failed by the heartbeat instead of holding Retire open.
+		defer c.holdLiveness()()
+	}
 	c.beginWork()
 	select {
 	case c.outCh <- outboundFrame{data: shutdown, result: writeResult, work: true}:
@@ -528,6 +683,9 @@ func (c *Conn) Close(reason string) error {
 		case <-c.done:
 			shutdownErr = c.failureError()
 		}
+	}
+	if c.retiring.Load() && queued && shutdownErr == nil {
+		<-c.done
 	}
 	c.closed.Store(true)
 
@@ -561,9 +719,22 @@ func (c *Conn) Close(reason string) error {
 	c.pendingMu.Unlock()
 
 	if err != nil {
+		c.producerTasks.Wait()
 		return err
 	}
+	c.producerTasks.Wait()
 	return shutdownErr
+}
+
+// startProducerTask admits a stream worker before close and joins it with connection shutdown. Pending requests wake on connection closure, so producer cleanup cannot outlive Close.
+func (c *Conn) startProducerTask(run func()) bool {
+	c.pendingMu.Lock()
+	defer c.pendingMu.Unlock()
+	if c.closed.Load() || c.closing.Load() {
+		return false
+	}
+	c.producerTasks.Go(run)
+	return true
 }
 
 // failureError returns the terminal transport or liveness error, if any.
@@ -609,6 +780,10 @@ func (c *Conn) readLoop(ctx context.Context) {
 		}
 		// On reader exit, close inCh so the host knows we're done.
 		close(c.inCh)
+		c.stopAbortForwards()
+		if c.onClosed != nil {
+			c.onClosed()
+		}
 	}()
 
 	for {
@@ -657,19 +832,26 @@ func (c *Conn) readLoop(ctx context.Context) {
 			return
 		}
 
+		if c.inbound != nil {
+			c.inbound(&env)
+		}
 		if env.Type == MsgRequestState && env.RequestState != nil {
-			c.stateMu.Lock()
-			ch := c.requestStates[env.RequestState.RequestID]
-			c.stateMu.Unlock()
-			if ch != nil {
+			if env.RequestState.State == "suspended" {
+				// A suspension reports that the calls sent before it are in flight. The host loop delivers it after those calls applied their synchronous parts.
+				c.stateMu.Lock()
+				c.suspending[env.RequestState.RequestID]++
+				c.stateMu.Unlock()
 				select {
-				case ch <- *env.RequestState:
-				default:
+				case c.inCh <- &env:
+				case <-ctx.Done():
+					return
 				}
+				continue
 			}
+			c.deliverRequestState(*env.RequestState)
 			continue
 		}
-		if env.Type == MsgNotify && env.Notify != nil && env.Notify.Method == NotifyToolUpdate {
+		if env.Type == MsgNotify && env.Notify != nil && (env.Notify.Method == NotifyToolUpdate || env.Notify.Method == NotifyProviderStreamEvent) {
 			c.deliverToolUpdate(env.Notify.Args)
 			continue
 		}
@@ -704,6 +886,74 @@ func (c *Conn) readLoop(ctx context.Context) {
 		case c.inCh <- &env:
 		case <-ctx.Done():
 			return
+		}
+	}
+}
+
+// settleSuspension records that the host delivered or dropped a suspension frame that the read loop queued, and wakes the requests that wait on it.
+func (c *Conn) settleSuspension(requestID string) {
+	c.stateMu.Lock()
+	defer c.stateMu.Unlock()
+	if c.suspending[requestID] <= 1 {
+		delete(c.suspending, requestID)
+	} else {
+		c.suspending[requestID]--
+	}
+	close(c.suspensionsSettled)
+	c.suspensionsSettled = make(chan struct{})
+}
+
+// awaitSuspensions blocks until every suspension frame of the request that preceded its response has been delivered to the request. The host loop delivers a suspension asynchronously, after the calls received before it applied, while a response is routed directly; without this wait a response that follows a suspension immediately could overtake it.
+func (c *Conn) awaitSuspensions(ctx context.Context, requestID string) {
+	for {
+		c.stateMu.Lock()
+		pending := c.suspending[requestID]
+		settled := c.suspensionsSettled
+		c.stateMu.Unlock()
+		if pending == 0 {
+			return
+		}
+		select {
+		case <-settled:
+		case <-ctx.Done():
+			return
+		case <-c.done:
+			return
+		}
+	}
+}
+
+// drainRequestStates applies the state frames already queued for a request whose response arrived, and reports whether one was a suspension. A frame that lost the select to the response still admits the caller that waits for the handler's first suspension: the response can be held afterwards, and then nothing else would.
+func drainRequestStates(ctx context.Context, stateCh <-chan RequestStatePayload) (suspended bool) {
+	for {
+		select {
+		case state := <-stateCh:
+			suspended = suspended || state.State == "suspended"
+			applyRequestSuspension(ctx, state)
+			switch state.State {
+			case "blocked":
+				invocation.Acknowledge(ctx)
+			case "completed":
+				invocation.Complete(ctx)
+			}
+		default:
+			return suspended
+		}
+	}
+}
+
+// deliverRequestState hands a request lifecycle frame to the request waiting for it.
+func (c *Conn) deliverRequestState(state RequestStatePayload) {
+	c.stateMu.Lock()
+	ch := c.requestStates[state.RequestID]
+	if ch != nil && state.State == "suspended" {
+		c.suspendedRequests[state.RequestID] = true
+	}
+	c.stateMu.Unlock()
+	if ch != nil {
+		select {
+		case ch <- state:
+		default:
 		}
 	}
 }
@@ -782,22 +1032,27 @@ func (c *Conn) deliverToolUpdate(args json.RawMessage) {
 
 func (c *Conn) hostCallContext(parentRequestID, callID string) (context.Context, func()) {
 	ctx, cancel := context.WithCancel(context.Background())
-	if parentRequestID == "" {
-		return ctx, cancel
-	}
-	c.pendingMu.Lock()
-	_, pending := c.pending[parentRequestID]
-	if !pending {
+	if parentRequestID != "" {
+		c.pendingMu.Lock()
+		_, pending := c.pending[parentRequestID]
+		if !pending {
+			c.pendingMu.Unlock()
+			cancel()
+			return ctx, func() {}
+		}
+		c.hostCallMu.Lock()
 		c.pendingMu.Unlock()
-		cancel()
-		return ctx, func() {}
+	} else {
+		c.hostCallMu.Lock()
 	}
-	c.hostCallMu.Lock()
-	c.pendingMu.Unlock()
-	if _, cancelled := c.cancelledParent[parentRequestID]; cancelled {
+	_, cancelled := c.cancelledParent[parentRequestID]
+	if cancelled || c.closed.Load() {
 		c.hostCallMu.Unlock()
 		cancel()
 		return ctx, func() {}
+	}
+	if callID == "" {
+		callID = fmt.Sprintf("host-%d", c.nextID.Add(1))
 	}
 	calls := c.hostCalls[parentRequestID]
 	if calls == nil {
@@ -944,7 +1199,8 @@ heartbeat:
 			continue
 		}
 		nonce := fmt.Sprintf("h%d", c.heartbeatID.Add(1))
-		ping, err := c.marshalEnvelope(&Envelope{Type: MsgPing, Ping: &PingPayload{Nonce: nonce}})
+		// A closing connection still pings: Retire waits for its peer while closing, and only the heartbeat bounds that wait.
+		ping, err := json.Marshal(&Envelope{Type: MsgPing, Ping: &PingPayload{Nonce: nonce}})
 		if err != nil {
 			c.fail(&TransportError{Extension: c.name, Operation: "heartbeat write", Err: err})
 			return
@@ -1054,3 +1310,36 @@ func (c *Conn) writeFrame(data []byte, countProgress bool) error {
 // writeChunk bounds one socket write so writeProgress advances while a large
 // frame drains.
 const writeChunk = 64 * 1024
+
+type requestSuspensionKey struct{}
+
+type requestSuspension struct {
+	report func(suspended bool)
+	// decides reports whether a suspension can still change what the response does; nil means always.
+	decides func() bool
+}
+
+// withRequestSuspension has request report the runtime's suspended state of the request to fn, in frame order before the response. A suspension affects the response only while decides reports true, or always when decides is nil; otherwise the response does not wait for a suspension that the host has not delivered yet.
+func withRequestSuspension(ctx context.Context, fn func(suspended bool), decides func() bool) context.Context {
+	return context.WithValue(ctx, requestSuspensionKey{}, requestSuspension{report: fn, decides: decides})
+}
+
+// requestSuspensionDecides reports whether the request's response must wait for the suspensions that preceded it.
+func requestSuspensionDecides(ctx context.Context) bool {
+	suspension, ok := ctx.Value(requestSuspensionKey{}).(requestSuspension)
+	if !ok || suspension.report == nil {
+		return false
+	}
+	return suspension.decides == nil || suspension.decides()
+}
+
+func applyRequestSuspension(ctx context.Context, state RequestStatePayload) {
+	suspension, _ := ctx.Value(requestSuspensionKey{}).(requestSuspension)
+	fn := suspension.report
+	if fn == nil {
+		return
+	}
+	if state.State == "suspended" {
+		fn(true)
+	}
+}

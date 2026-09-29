@@ -1,0 +1,53 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:779-794,2562-2565 constructs
+# the wrapper around the current provider at registration, and editor.ts:766-782
+# applies the wrapper's completion. Probe the complete resulting state dialog.
+# Factories wrap the actual current provider; provider instances survive queries.
+# Both the default and custom editor route completion through that chain.
+name = "09-extension-wrapper-state"
+description = "Autocomplete wrappers receive the current provider and own completion."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/tui/src/autocomplete.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+# The footer is drawn when the TUI mounts, before session_start installs the
+# wrapper provider (interactive-mode.ts:951-1036, 1911-1980); PiG keeps that
+# order. The no-model warning follows init in both binaries
+# (interactive-mode.ts:1149-1150), so typing starts only once binding has finished.
+ready_pattern_pig = "No models available"
+ready_pattern_pi = "No models available"
+ready_timeout_seconds = 30
+capture_start = "Autocomplete results"
+capture_end = "escape/ctrl+c cancel"
+
+[[tmux.steps]]
+keys = ["/rigidity-probe"]
+wait_contains = ["Rigidity completion"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+# Use a distinct query marker: a resize can legitimately query the first prefix more than once.
+keys = ["!"]
+wait_contains = ["Rigidity completion next"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Tab", "Enter"]
+wait_contains = ["Autocomplete results"]
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../selectors/testdata/dialogs-default"]
+pi = ["PI_CODING_AGENT_DIR=../selectors/testdata/dialogs-default"]
+pig_extensions = ["testdata/wrapper-state.ts"]
+pi_extensions = ["testdata/wrapper-state.ts"]
+pig_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["registered=true", "base=true", "applied=true", "retained=true", "shared=true", "args=chosen"]
+escaped_output_equal = true
+runs = 3

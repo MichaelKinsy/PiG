@@ -20,7 +20,7 @@ func TestBashTool_BackgroundChildKeepsResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if res.IsError || strings.TrimSpace(res.Content) != "hi" {
+	if res.IsError || strings.TrimSpace(res.Text()) != "hi" {
 		t.Fatalf("res = %+v, want success with output hi", res)
 	}
 	if elapsed > 15*time.Second {

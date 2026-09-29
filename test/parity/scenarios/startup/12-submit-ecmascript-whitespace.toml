@@ -1,0 +1,38 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:3079 trims editor submissions with ECMAScript String.trim: U+FEFF is removed and U+0085 is retained. The input hook reports every resulting code point, avoiding terminal interpretation of the NEL control without normalizing either input. The two original input strings are sent through the real editor and compared as an exact terminal record.
+name = "12-submit-ecmascript-whitespace"
+description = "Editor submission trims BOM whitespace but preserves NEL in the text delivered to input hooks."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/startup-input/whitespace.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/startup-input/whitespace.mjs"]
+
+[tmux]
+width = 150
+height = 35
+ready_pattern_pig = "SUBMIT WHITESPACE READY"
+ready_pattern_pi = "SUBMIT WHITESPACE READY"
+ready_timeout_seconds = 30
+capture_start = "SUBMIT_POINTS [[116"
+capture_end_regex = 'SUBMIT_POINTS[^\n]*'
+
+[[tmux.steps]]
+keys = ["\ufefftrimmed\ufeff", "Enter"]
+wait_contains = ["SUBMIT_POINTS [[116,114,105,109,109,101,100]]"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["\u0085retained\u0085", "Enter"]
+wait_contains = ["SUBMIT_POINTS [[116,114,105,109,109,101,100],[133,114,101,116,97,105,110,101,100,133]]"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["SUBMIT_POINTS [[116,114,105,109,109,101,100],[133,114,101,116,97,105,110,101,100,133]]"]
+escaped_output_equal = true
+runs = 3

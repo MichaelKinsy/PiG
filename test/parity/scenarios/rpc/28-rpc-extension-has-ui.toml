@@ -1,0 +1,44 @@
+# Pi 0.87.1 rpc-mode.ts:136-159,320 and runner.ts:578-580: RPC binds a UI context.
+# Unlike print/JSON, hasUI is true and notify/select produce protocol requests.
+# The staged response uses each process's random request ID; only generated UUIDs are normalized.
+name = "28-rpc-extension-has-ui"
+description = "RPC extensions retain hasUI true and await real UI responses"
+covers = ["packages/coding-agent/src/core/extensions/runner.ts", "packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"probe","type":"prompt","message":"/ui-probe"}'
+wait_contains = ['"method":"select"']
+wait_timeout_seconds = 5
+
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID}}","value":"B"}'
+wait_contains = ['"message":"selected:B"']
+wait_timeout_seconds = 5
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["../testdata/extension-ui-context.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../testdata/extension-ui-context.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+runs = 3
+json_output_equal = true
+stderr_equal = true
+both_contain = ['"message":"hasUI:true"', '"method":"select"', '"title":"Choose"', '"options":["A","B"]', '"message":"selected:B"', '"id":"probe","type":"response","command":"prompt","success":true']
+both_not_contain = ['"success":false', 'extension_error']
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui"
+pattern = '^[0-9a-f-]{36}$'
+reason = "UI requests have generated UUIDs; a bijection preserves uniqueness and correlation without changing command IDs."

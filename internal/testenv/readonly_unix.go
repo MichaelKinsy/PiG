@@ -8,12 +8,13 @@ import (
 )
 
 // ReadOnlyDir lets the current user list and traverse dir but not add or
-// remove its entries (mode 0555) until the test ends. Root ignores permission
-// bits, so the test is skipped there.
+// remove its entries (mode 0555) until the test ends. The test must start with
+// RunUnprivileged, because root ignores permission bits.
 func ReadOnlyDir(t testing.TB, dir string) {
 	t.Helper()
+	requireUnprivileged(t)
 	if os.Geteuid() == 0 {
-		t.Skip("root bypasses file permission bits")
+		t.Fatal("root bypasses file permission bits")
 	}
 	if err := os.Chmod(dir, 0o555); err != nil {
 		t.Fatal(err)

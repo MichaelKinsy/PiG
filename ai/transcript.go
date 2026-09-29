@@ -8,6 +8,7 @@ import (
 	"maps"
 	"slices"
 	"strings"
+	"unicode/utf8"
 )
 
 // Context is the public request shape accepted before provider normalization.
@@ -25,6 +26,7 @@ type TranscriptContext struct {
 }
 
 func newTranscriptContext(messages []Message) TranscriptContext {
+	messages = normalizeMissingMessageContent(messages)
 	context := TranscriptContext{messages: messages}
 	if err := validateTranscriptContext(context); err != nil {
 		return TranscriptContext{err: err}
@@ -40,9 +42,9 @@ func (context TranscriptContext) Messages() []Message {
 	return cloneMessages(context.messages)
 }
 
-// NormalizeContext folds shorthand prompt and tools into a leading system message.
+// NormalizeContext folds shorthand prompt/tools into a leading system message and normalizes missing content to empty block arrays.
 func NormalizeContext(context Context) TranscriptContext {
-	candidate := TranscriptContext{messages: append([]Message(nil), context.Messages...)}
+	candidate := TranscriptContext{messages: normalizeMissingMessageContent(context.Messages)}
 	if context.SystemPrompt != "" || len(context.Tools) > 0 {
 		initial := SystemMessage{Content: SystemText(context.SystemPrompt), ToolsAdded: context.Tools, Timestamp: 0}
 		candidate.messages = append([]Message{initial}, candidate.messages...)
@@ -51,6 +53,37 @@ func NormalizeContext(context Context) TranscriptContext {
 		return TranscriptContext{err: err}
 	}
 	return TranscriptContext{messages: cloneMessages(candidate.messages)}
+}
+
+// Ports packages/ai/src/api/transform-messages.ts
+// Null and omitted content share the empty-array normalization before provider conversion.
+func normalizeMissingMessageContent(messages []Message) []Message {
+	result := append([]Message(nil), messages...)
+	for index, message := range result {
+		switch message := message.(type) {
+		case SystemMessage:
+			if message.Content == nil {
+				message.Content = SystemTextBlocks{}
+			}
+			result[index] = message
+		case UserMessage:
+			if message.Content == nil {
+				message.Content = UserContentBlocks{}
+			}
+			result[index] = message
+		case AssistantMessage:
+			if message.Content == nil {
+				message.Content = []AssistantContentBlock{}
+			}
+			result[index] = message
+		case ToolResultMessage:
+			if message.Content == nil {
+				message.Content = []ToolResultMessageContent{}
+			}
+			result[index] = message
+		}
+	}
+	return result
 }
 
 func CreateInitialSystemMessage(systemPrompt string, tools []ToolSchema) *SystemMessage {
@@ -332,16 +365,9 @@ func ResolveTranscriptTools(messages []Message, supportsToolAdditions bool) Tran
 func systemContentText(content SystemContent) string {
 	switch content := content.(type) {
 	case SystemText:
-		return string(content)
+		return ContentText(content)
 	case SystemTextBlocks:
-		var text strings.Builder
-		for i, block := range content {
-			if i > 0 {
-				text.WriteByte('\n')
-			}
-			text.WriteString(block.Text)
-		}
-		return text.String()
+		return ContentText(content)
 	default:
 		return ""
 	}
@@ -470,10 +496,60 @@ func normalizeJSONValue(value any) (any, error) {
 	return normalized, nil
 }
 
+// cloneJSONValue retains normalization's validation and single marshaler invocation, then restores native scalar types and nil containers without retaining mutable input objects.
 func cloneJSONValue(value any) any {
 	normalized, err := normalizeJSONValue(value)
 	if err != nil {
 		panic(fmt.Sprintf("clone validated JSON value: %v", err))
 	}
-	return normalized
+	return preserveJSONValueTypes(value, normalized)
+}
+
+func preserveJSONValueTypes(value, normalized any) any {
+	switch value := value.(type) {
+	case float64, float32, int, int8, int16, int32, int64, uint, uint8, uint16, uint32, uint64, uintptr:
+		// A custom marshaler can mutate a sibling after JSON captured it. Restore a native number's type only when its value still matches that captured value.
+		if number, ok := normalized.(json.Number); ok {
+			if encoded, err := json.Marshal(value); err == nil && string(encoded) == string(number) {
+				return value
+			}
+		}
+		return normalized
+	case JsonObject:
+		return preserveJSONValueTypes(map[string]any(value), normalized)
+	case map[string]any:
+		if value == nil && normalized == nil {
+			return value
+		}
+		copy, ok := normalized.(map[string]any)
+		if !ok {
+			return normalized
+		}
+		// Invalid UTF-8 keys can collide after JSON replacement. Keep the normalizer's key and last-value result rather than restoring a different original entry.
+		for key := range value {
+			if !utf8.ValidString(key) {
+				return normalized
+			}
+		}
+		for key, item := range copy {
+			if original, exists := value[key]; exists {
+				copy[key] = preserveJSONValueTypes(original, item)
+			}
+		}
+		return copy
+	case []any:
+		if value == nil && normalized == nil {
+			return value
+		}
+		copy, ok := normalized.([]any)
+		if !ok {
+			return normalized
+		}
+		for i := range min(len(value), len(copy)) {
+			copy[i] = preserveJSONValueTypes(value[i], copy[i])
+		}
+		return copy
+	default:
+		return normalized
+	}
 }

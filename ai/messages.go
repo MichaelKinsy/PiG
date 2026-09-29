@@ -87,9 +87,9 @@ func (ImageContent) isToolResultMessageContent() {}
 type SystemMessage struct {
 	Content      SystemContent   `json:"content"`
 	Sections     OrderedSections `json:"sections,omitempty"`
+	Timestamp    int64           `json:"timestamp"`
 	ToolsAdded   []ToolSchema    `json:"toolsAdded,omitempty"`
 	ToolsRemoved []ToolReference `json:"toolsRemoved,omitempty"`
-	Timestamp    int64           `json:"timestamp"`
 }
 
 func (SystemMessage) messageRole() string { return "system" }
@@ -113,8 +113,9 @@ func (message UserMessage) cloneMessage() Message {
 	return message
 }
 
-// AssistantMessage is the authoritative complete or partial model response.
+// AssistantMessage is a complete or partial model response. A stream event delivers a partial whose exported fields equal the stream state at delivery; they do not change behind readers. Observe and RefreshEvent read the current state of a partial retained past its delivery.
 type AssistantMessage struct {
+	observation           *assistantMessageObservation
 	Content               []AssistantContentBlock      `json:"content"`
 	API                   API                          `json:"api"`
 	Provider              string                       `json:"provider"`
@@ -134,7 +135,13 @@ type AssistantMessage struct {
 
 func (AssistantMessage) messageRole() string { return "assistant" }
 func (message AssistantMessage) cloneMessage() Message {
+	return *message.Observe()
+}
+
+func cloneAssistantMessage(message AssistantMessage) AssistantMessage {
+	message.observation = nil
 	message.Content = cloneAssistantContent(message.Content)
+	message.Usage = cloneUsage(message.Usage)
 	message.Diagnostics = cloneDiagnostics(message.Diagnostics)
 	message.Deferred = cloneDeferredHandle(message.Deferred)
 	if message.EndTurn != nil {
@@ -159,7 +166,7 @@ func (message ToolResultMessage) cloneMessage() Message {
 	message.Content = cloneToolResultMessageContent(message.Content)
 	message.Details = cloneJSONValue(message.Details)
 	if message.Usage != nil {
-		message.Usage = new(*message.Usage)
+		message.Usage = new(cloneUsage(*message.Usage))
 	}
 	return message
 }
@@ -169,12 +176,12 @@ func marshalMessage(role string, value any) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var fields map[string]json.RawMessage
-	if err := json.Unmarshal(body, &fields); err != nil {
-		return nil, err
+	// Role is inserted before the message fields without decoding nested objects into maps.
+	prefix := []byte(fmt.Sprintf(`{"role":%q`, role))
+	if len(body) > 2 {
+		prefix = append(prefix, ',')
 	}
-	fields["role"] = json.RawMessage(fmt.Sprintf("%q", role))
-	return json.Marshal(fields)
+	return append(prefix, body[1:]...), nil
 }
 
 func (message SystemMessage) MarshalJSON() ([]byte, error) {
@@ -189,6 +196,9 @@ func (message UserMessage) MarshalJSON() ([]byte, error) {
 
 func (message AssistantMessage) MarshalJSON() ([]byte, error) {
 	type plain AssistantMessage
+	if message.observation != nil {
+		message = *message.Observe()
+	}
 	return marshalMessage(message.messageRole(), plain(message))
 }
 
@@ -234,7 +244,9 @@ func cloneAssistantContent(blocks []AssistantContentBlock) []AssistantContentBlo
 		case ThinkingContent:
 			out[i] = value
 		case ToolCall:
-			value.Arguments = JsonObject(cloneJSONValue(value.Arguments).(map[string]any))
+			if value.Arguments != nil {
+				value.Arguments = JsonObject(cloneJSONValue(value.Arguments).(map[string]any))
+			}
 			out[i] = value
 		default:
 			panic(fmt.Sprintf("unsupported assistant content block %T", block))

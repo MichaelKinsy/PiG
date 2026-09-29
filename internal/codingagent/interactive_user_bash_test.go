@@ -66,9 +66,12 @@ func TestInteractiveBashShowsAndRecordsUserBashResult(t *testing.T) {
 	m.chatContainer = tui.NewContainer()
 	m.pendingMessagesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 100, 30)
-	ctx := t.Context()
+	ctx, cancel := context.WithCancel(t.Context())
 	m.runCtx = ctx
 	m.abortCtx, m.abortFn = context.WithCancel(ctx)
+	loopDone := make(chan struct{})
+	go m.drainLoop(ctx, loopDone)
+	defer func() { cancel(); <-loopDone }()
 	ext := extension.Extension{Path: "/ext/remote", Handlers: map[string][]extension.HandlerFn{
 		"user_bash": {func(...any) (any, error) {
 			return &extension.UserBashEventResult{Result: map[string]any{"output": "ran remotely\n", "exitCode": float64(0), "cancelled": false, "truncated": false}}, nil
@@ -77,8 +80,14 @@ func TestInteractiveBashShowsAndRecordsUserBashResult(t *testing.T) {
 	m.newRunner = inproc.NewRunner([]extension.Extension{ext}, dir)
 
 	marker := filepath.Join(dir, "ran")
-	m.handleBashCommand(ctx, "touch "+marker, false)
-	time.Sleep(300 * time.Millisecond) // a local run would have created the marker by now
+	submitted := make(chan struct{})
+	m.runOnMain(ctx, func() {
+		m.handleBashCommand(ctx, "touch "+marker, false)
+		close(submitted)
+	})
+	<-submitted
+	m.backgroundTasks.Wait()
+	// The owned task has acknowledged rendering and persistence before it finishes.
 	if _, err := os.Stat(marker); err == nil {
 		t.Fatal("the command ran locally although user_bash returned a result")
 	}
@@ -88,7 +97,7 @@ func TestInteractiveBashShowsAndRecordsUserBashResult(t *testing.T) {
 	}
 	recorded := false
 	for _, entry := range session.Entries() {
-		if entry.Base.Type == "bashExecution" || entry.Base.Type == "bash_execution" {
+		if message, ok := entry.AsMessage(); ok && message.Message.Role() == "bashExecution" {
 			recorded = strings.Contains(string(entry.Raw()), "ran remotely")
 		}
 	}

@@ -1,0 +1,149 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# Reviewed missing cells in the 0.3.0 member inventory. These reasons describe
+# current limitations, not behavioral closure or approval of a new divergence.
+# Exact entries fail when implemented; prefixes fail when no missing cell remains.
+
+[[exception]]
+prefix = "pi.events."
+sdks = ["go", "rust", "python"]
+reason = "No native SDK event-bus bridge exists. Node realms share one bus through cross-process references; native SDKs have no reader or owner for that wire yet (D83 boundary 5)."
+
+[[exception]]
+key = 'pi.on("cache_warming_decision")'
+sdks = ["node", "go", "rust", "python"]
+reason = "Generic handlers receive the emitted cache_warming_decision payload and result. Typed registration remains a separate API declaration gap in test/parity/known-gaps.toml api:OnCacheWarmingDecision."
+
+[[exception]]
+key = "pi.sendUserMessage(options.expandPromptTemplates)"
+sdks = ["node", "go", "rust", "python"]
+reason = "The host SendUserMessageOptions carries deliverAs only; expandPromptTemplates would be dropped. Requires host prompt-expansion control."
+
+[[exception]]
+key = "ctx.newSession(options.setup)"
+sdks = ["node", "go", "rust", "python"]
+reason = "The wire has no writable replacement SessionManager callback handle. Requires replacement callback ownership in the Pi runner bridge (0.3.0), not JSON serialization of a function."
+
+[[exception]]
+key = "ctx.newSession(options.withSession)"
+sdks = ["node", "go", "rust", "python"]
+reason = "No ReplacedSessionContext callback bridge exists. Requires destination-generation callback handles in the Pi runner bridge (0.3.0)."
+
+[[exception]]
+key = "ctx.fork(options.withSession)"
+sdks = ["node", "go", "rust", "python"]
+reason = "No ReplacedSessionContext callback bridge exists. Requires destination-generation callback handles in the Pi runner bridge (0.3.0)."
+
+[[exception]]
+key = "ctx.switchSession(options.withSession)"
+sdks = ["node", "go", "rust", "python"]
+reason = "No ReplacedSessionContext callback bridge exists. Requires destination-generation callback handles in the Pi runner bridge (0.3.0)."
+
+[[exception]]
+prefix = "withSession ctx."
+sdks = ["node", "go", "rust", "python"]
+reason = "No ReplacedSessionContext is created. Its awaited send methods need destination ownership distinct from the ordinary void pi.sendMessage/pi.sendUserMessage operations (Pi runner bridge, 0.3.0)."
+
+[[exception]]
+key = "ctx.ui.theme.sourceInfo"
+sdks = ["node", "go", "rust", "python"]
+reason = "The theme snapshot carries sourcePath but no SourceInfo. Requires theme resource provenance publication."
+
+[[exception]]
+key = "user_bash return.operations"
+sdks = ["node", "go", "rust", "python"]
+reason = "The wire has no host-invoked streaming BashOperations executor callback. Returning a completed result works; operations requires callback/stream ownership."
+
+[[exception]]
+key = "ctx.ui.custom(options.onHandle)"
+sdks = ["go", "rust", "python"]
+reason = "Native SDKs do not expose the mounted-overlay control handle. Node uses the host overlay control protocol and synchronous acknowledgement."
+
+[[exception]]
+key = "tool render context.lastComponent"
+sdks = ["go", "rust", "python"]
+reason = "Native renderers return lines rather than Components (D56), so no previous component is returned. Card state persists separately in context.state/State."
+
+[[exception]]
+key = "provider.streamSimple"
+sdks = ["node", "go", "rust", "python"]
+reason = "The host cannot invoke an extension-served provider EventStream. Requires provider callback and streaming transport, not the existing host-served modelStream direction."
+
+[[exception]]
+key = "provider.refreshModels"
+sdks = ["node", "go", "rust", "python"]
+reason = "The provider bridge has no host-to-extension refreshModels request or publication callback handles."
+
+[[exception]]
+key = "provider.oauth.usesCallbackServer"
+sdks = ["node", "go", "rust", "python"]
+reason = "Deprecated and ignored by Pi 0.87.1 canonical auth flows (core/extensions/types.ts); runtimes do not forward this inert legacy metadata."
+
+[[exception]]
+key = "provider.oauth.modifyModels"
+sdks = ["node", "go", "rust", "python"]
+reason = "The host OAuth bridge has no credential-dependent modify-models callback request."
+
+[[exception]]
+key = "ctx.ui.getEditorComponent"
+sdks = ["rust", "python"]
+reason = "Native Rust/Python editor factories are not implemented. Returning a fabricated factory would hide the missing editor-component bridge."
+
+[[exception]]
+key = "ctx.ui.setTheme → error"
+sdks = ["node"]
+reason = "Node returns synchronously before host theme validation, so it cannot report host errors. Requires synchronous validation/state acknowledgement rather than optimistic success."
+
+# The interface inventory describes both type and value exports. Pi's root
+# re-exports KeybindingsManager with `export type`, so it has no runtime value.
+[[exception]]
+key = "pi-coding-agent: KeybindingsManager"
+sdks = ["node"]
+reason = "Pi's published root index.d.ts re-exports KeybindingsManager as a type only. Both actual runtime namespaces omit it (TestNodeCodingAgentTypeOnlyExportsMatchPi)."
+
+[[exception]]
+prefix = "pi-coding-agent: KeybindingsManager."
+sdks = ["node"]
+reason = "Members of the type-only root re-export have no runtime receiver. Both Pi and PiG omit the value; the actual class remains in the private core/keybindings module."
+
+# Optional platform/library hooks are absent in the exact Pi runtime too.
+[[exception]]
+key = "pi-agent-core: HarnessClosed.cause"
+sdks = ["node"]
+reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
+
+[[exception]]
+key = "pi-agent-core: SessionBranchExistsError.cause"
+sdks = ["node"]
+reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
+
+[[exception]]
+key = "pi-agent-core: SessionInvalidBranchError.cause"
+sdks = ["node"]
+reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
+
+[[exception]]
+key = "pi-agent-core: SessionInvariantError.cause"
+sdks = ["node"]
+reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
+
+[[exception]]
+key = "pi-agent-core: SessionPendingAssistantMessageError.cause"
+sdks = ["node"]
+reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
+
+[[exception]]
+key = "pi-agent-core: SessionUnknownTargetError.cause"
+sdks = ["node"]
+reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
+
+[[exception]]
+key = "pi-agent-core: SliceNotImplemented.cause"
+sdks = ["node"]
+reason = "Optional Error.cause is not installed by Pi's constructor; the class is vendored."
+
+[[exception]]
+key = "pi-tui: StdinBuffer.[Symbol.captureRejectionSymbol]"
+sdks = ["node"]
+reason = "Inherited optional Node EventEmitter rejection hook. Pi's StdinBuffer does not install it; this declaration is not an implemented method in the Pi oracle either."

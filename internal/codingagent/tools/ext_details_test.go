@@ -92,7 +92,7 @@ func TestFindAndLsDetails_Sparse(t *testing.T) {
 	if got := marshalDetails(t, &FindDetails{}); got != "" {
 		t.Fatalf("empty find details should be nil, got %s", got)
 	}
-	if got := marshalDetails(t, &FindDetails{ResultLimitReached: 200}); got != `{"resultLimitReached":200}` {
+	if got := marshalDetails(t, &FindDetails{ResultLimitReached: new(200.0)}); got != `{"resultLimitReached":200}` {
 		t.Fatalf("find details wrong: %s", got)
 	}
 	if got := marshalDetails(t, &LsDetails{}); got != "" {
@@ -159,7 +159,7 @@ func TestLsTool_EmitsEntryLimitDetails(t *testing.T) {
 	args, _ := json.Marshal(map[string]any{"limit": 5})
 	res, err := (&LsTool{CWD: dir}).Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("ls failed: %v %s", err, res.Content)
+		t.Fatalf("ls failed: %v %s", err, res.Text())
 	}
 	got := marshalDetails(t, res.Details)
 	if !strings.Contains(got, `"entryLimitReached":5`) {

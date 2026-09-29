@@ -157,3 +157,96 @@ func TestTUIKeybindingsGlobalAliases(t *testing.T) {
 		t.Fatal("GetTUIKeybindings should share global instance with GetKeybindings")
 	}
 }
+
+func TestTUIKeybindingsUpstream(t *testing.T) {
+	newManager := func(bindings map[string][]string) *TUIKeybindingsManager {
+		// Pi's test supplies the unmodified TUI_KEYBINDINGS table, not the coding-agent's Windows/WSL overrides. The Linux column preserves that table on every test host.
+		return NewKeybindingsManager(TUIKeybindingDefinitionsFor(KeybindingPlatformLinux), bindings)
+	}
+	assertKeys := func(t *testing.T, manager *TUIKeybindingsManager, action string, want []string) {
+		t.Helper()
+		if got := manager.GetKeys(action); !reflect.DeepEqual(got, want) {
+			t.Fatalf("GetKeys(%q)=%q, want %q", action, got, want)
+		}
+	}
+
+	// upstream: packages/tui/test/keybindings.test.ts:6
+	t.Run("binds Ctrl+J as a default newline alias", func(t *testing.T) {
+		previous := IsKittyProtocolActive()
+		SetKittyProtocolActive(false)
+		t.Cleanup(func() { SetKittyProtocolActive(previous) })
+		manager := newManager(nil)
+		assertKeys(t, manager, KBInputNewLine, []string{"shift+enter", "ctrl+j"})
+		for _, input := range []string{"\n", "\x1b[106;5u"} {
+			if !manager.Matches(input, KBInputNewLine) {
+				t.Fatalf("newline did not match %q", input)
+			}
+		}
+	})
+
+	// upstream: packages/tui/test/keybindings.test.ts:14
+	t.Run("binds modified and unmodified editor viewport navigation", func(t *testing.T) {
+		manager := newManager(nil)
+		assertKeys(t, manager, KBEditorCursorLineStart, []string{"home", "ctrl+home", "ctrl+a"})
+		assertKeys(t, manager, KBEditorCursorLineEnd, []string{"end", "ctrl+end", "ctrl+e"})
+		assertKeys(t, manager, KBEditorPageUp, []string{"pageUp", "ctrl+pageUp"})
+		assertKeys(t, manager, KBEditorPageDown, []string{"pageDown", "ctrl+pageDown"})
+	})
+
+	// upstream: packages/tui/test/keybindings.test.ts:23
+	t.Run("leaves dedicated prompt history navigation unbound by default", func(t *testing.T) {
+		manager := newManager(nil)
+		assertKeys(t, manager, KBEditorHistoryPrevious, []string{})
+		assertKeys(t, manager, KBEditorHistoryNext, []string{})
+	})
+
+	// upstream: packages/tui/test/keybindings.test.ts:30
+	t.Run("binds unmodified terminal viewport shortcuts to alternate-screen navigation", func(t *testing.T) {
+		manager := newManager(nil)
+		for _, row := range []struct {
+			action string
+			keys   []string
+		}{
+			{KBAltScreenPageUp, []string{"pageUp"}},
+			{KBAltScreenPageDown, []string{"pageDown"}},
+			{KBAltScreenHalfPageUp, []string{}},
+			{KBAltScreenHalfPageDown, []string{}},
+			{KBAltScreenLineUp, []string{}},
+			{KBAltScreenLineDown, []string{}},
+			{KBAltScreenPreviousPrompt, []string{"ctrl+shift+up", "ctrl+up"}},
+			{KBAltScreenNextPrompt, []string{"ctrl+shift+down", "ctrl+down"}},
+			{KBAltScreenSearch, []string{"ctrl+shift+f"}},
+			{KBAltScreenSearchNext, []string{"enter", "ctrl+g"}},
+			{KBAltScreenSearchPrevious, []string{"shift+enter", "ctrl+shift+g"}},
+			{KBAltScreenSearchClose, []string{"escape"}},
+			{KBAltScreenTop, []string{"home"}},
+			{KBAltScreenBottom, []string{"end"}},
+		} {
+			assertKeys(t, manager, row.action, row.keys)
+		}
+	})
+
+	// upstream: packages/tui/test/keybindings.test.ts:49
+	t.Run("does not evict selector confirm when input submit is rebound", func(t *testing.T) {
+		manager := newManager(map[string][]string{KBInputSubmit: {"enter", "ctrl+enter"}})
+		assertKeys(t, manager, KBInputSubmit, []string{"enter", "ctrl+enter"})
+		assertKeys(t, manager, KBSelectConfirm, []string{"enter"})
+	})
+
+	// upstream: packages/tui/test/keybindings.test.ts:58
+	t.Run("does not evict cursor bindings when another action reuses the same key", func(t *testing.T) {
+		manager := newManager(map[string][]string{KBSelectUp: {"up", "ctrl+p"}})
+		assertKeys(t, manager, KBSelectUp, []string{"up", "ctrl+p"})
+		assertKeys(t, manager, KBEditorCursorUp, []string{"up"})
+	})
+
+	// upstream: packages/tui/test/keybindings.test.ts:67
+	t.Run("still reports direct user binding conflicts without evicting defaults", func(t *testing.T) {
+		manager := newManager(map[string][]string{KBInputSubmit: {"ctrl+x"}, KBSelectConfirm: {"ctrl+x"}})
+		want := []TUIKeybindingConflict{{Key: "ctrl+x", Actions: []string{KBInputSubmit, KBSelectConfirm}}}
+		if got := manager.GetConflicts(); !reflect.DeepEqual(got, want) {
+			t.Fatalf("conflicts=%#v, want %#v", got, want)
+		}
+		assertKeys(t, manager, KBEditorCursorLeft, []string{"left", "ctrl+b"})
+	})
+}

@@ -74,7 +74,7 @@ PiG can run one extension per process, or pack compatible extensions of one lang
 
 Because extensions run in other processes, PiG checks that each process still responds while it has work in flight. When an extension process stops responding, PiG fails that extension's pending work and keeps the others running. Pi has no equivalent check. This difference is D56.
 
-PiG keeps one extension runner for the whole process. When you switch sessions with `/new`, `/fork` or `/resume`, the same extensions serve the next session. Pi creates a new runner for each session. This difference is D30.
+PiG creates a new extension runner and starts new extension processes for every session, as Pi creates a new runner for each session. When you switch sessions with `/new`, `/fork`, `/clone` or `/resume`, an extension that requested the switch keeps its process until its command returns, and PiG then stops it. Pi calls the extension factory again inside the same Node process, so process-wide state such as environment variables carries over there and does not in PiG. This is D70, which also covers `/reload`. A `ctx` or `pi` captured before the switch still answers local getters with the old session's values, and its host calls are rejected without throwing at the call site (D30). Code that embeds the Go `coding` package and replaces a session through `Session` methods without a `Runtime` still keeps one runner (D30).
 
 Other resources work as in Pi. Skills provide instructions and supporting files. Prompt templates provide reusable message text. Themes set terminal colors. Packages distribute these resources through npm, Git or a local path. [Piglets](/docs/latest/piglets) are a PiG addition: a Piglet selects extensions, skills, tools and a model for one named agent.
 

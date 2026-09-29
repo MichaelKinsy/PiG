@@ -16,39 +16,56 @@ import (
 // upstream case it ports. upstream subscribe() listeners become an EventCh
 // consumer (eventRecorder), and an AbortSignal becomes the run's context.
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:128
 // upstream: "should create an agent instance with default state"
 func TestAgent_CreatesAgentWithDefaultState(t *testing.T) {
 	a := NewAgent(AgentOptions{})
 
+	if a.Model() == nil || a.ThinkingLevel() != ai.ThinkingOff || a.StreamingMessage() != nil || len(a.PendingToolCalls()) != 0 || a.ErrorMessage() != "" {
+		t.Fatalf("unexpected default runtime state: model=%v thinking=%v streaming=%v pending=%v error=%q", a.Model(), a.ThinkingLevel(), a.StreamingMessage(), a.PendingToolCalls(), a.ErrorMessage())
+	}
 	if len(a.Tools()) != 0 || len(a.Messages()) != 0 || a.IsStreaming() || len(a.PeekQueuedMessages()) != 0 {
 		t.Fatalf("tools %v, messages %v, streaming %v, queued %v; want empty idle state",
 			a.Tools(), a.Messages(), a.IsStreaming(), a.PeekQueuedMessages())
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:142
 // upstream: "should create an agent instance with custom initial state".
 func TestAgent_CreatesAgentWithCustomInitialState(t *testing.T) {
 	model := scriptedModel(&scriptedProvider{respond: replyText("unused")})
 	a := NewAgent(AgentOptions{SystemPrompt: "You are a helpful assistant.", Model: model, ThinkingLevel: ai.ThinkingLow})
 
+	initial := a.Messages()[0].System
+	if initial == nil || initial.Content != ai.SystemText("You are a helpful assistant.") || initial.Timestamp != 0 || len(initial.ToolsAdded) != 0 || len(initial.ToolsRemoved) != 0 || len(initial.Sections) != 0 {
+		t.Fatalf("initial = %+v", initial)
+	}
 	if a.SystemPrompt() != "You are a helpful assistant." || a.Model() != model || a.ThinkingLevel() != ai.ThinkingLow {
 		t.Fatalf("prompt %q, model %v, thinking %q", a.SystemPrompt(), a.Model(), a.ThinkingLevel())
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:323
 // upstream: "should subscribe to events": state mutators emit no events.
 func TestAgent_SubscribesToEvents(t *testing.T) {
-	rec := newEventRecorder(nil)
-	a := NewAgent(AgentOptions{EventCh: rec.ch})
-
+	a := NewAgent(AgentOptions{})
+	count := 0
+	unsubscribe := a.Subscribe(func(context.Context, AgentEvent) error { count++; return nil })
+	if count != 0 {
+		t.Fatal("subscription emitted an initial event")
+	}
 	a.SetThinkingLevel(ai.ThinkingLow)
+	if count != 0 || a.ThinkingLevel() != ai.ThinkingLow {
+		t.Fatal("state mutation emitted an event")
+	}
+	unsubscribe()
 	a.SetThinkingLevel(ai.ThinkingHigh)
-
-	if events := rec.stop(); len(events) != 0 || a.ThinkingLevel() != ai.ThinkingHigh {
-		t.Fatalf("events %v, thinking %q; want no events and high", events, a.ThinkingLevel())
+	if count != 0 {
+		t.Fatal("unsubscribed listener called")
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:345
 // upstream: "emits full lifecycle events for thrown run failures"
 func TestAgent_EmitsFullLifecycleEventsForThrownRunFailures(t *testing.T) {
 	rec := newEventRecorder(nil)
@@ -59,6 +76,9 @@ func TestAgent_EmitsFullLifecycleEventsForThrownRunFailures(t *testing.T) {
 	want := []string{"agent_start", "turn_start", "message_start", "message_end", "message_start", "message_end", "turn_end", "agent_end"}
 	if got := eventTypes(rec.stop()); !reflect.DeepEqual(got, want) {
 		t.Fatalf("events = %v, want %v", got, want)
+	}
+	if a.ErrorMessage() != "provider exploded" {
+		t.Fatalf("state error = %q", a.ErrorMessage())
 	}
 	last := msgs[len(msgs)-1].Assistant
 	if last == nil || last.StopReason != ai.StopReasonError || last.ErrorMessage != "provider exploded" {
@@ -109,10 +129,11 @@ func captureTool(name string, captured chan<- ToolUpdateCallback, update bool) *
 			if update {
 				onUpdate("running", map[string]any{"status": "running"})
 			}
-			return AgentToolResult{Content: "ok", Details: map[string]any{"status": "done"}, Terminate: true}, nil
+			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}, Details: map[string]any{"status": "done"}, Terminate: true}, nil
 		}}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:487
 // upstream: "should ignore tool updates after the tool execution settles"
 func TestAgent_IgnoresToolUpdatesAfterToolExecutionSettles(t *testing.T) {
 	captured := make(chan ToolUpdateCallback, 1)
@@ -141,6 +162,7 @@ func TestAgent_IgnoresToolUpdatesAfterToolExecutionSettles(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:552
 // upstream: "should ignore a settled parallel tool update while another tool is still running"
 func TestAgent_IgnoresSettledParallelToolUpdateWhileAnotherToolRuns(t *testing.T) {
 	captured := make(chan ToolUpdateCallback, 1)
@@ -150,7 +172,7 @@ func TestAgent_IgnoresSettledParallelToolUpdateWhileAnotherToolRuns(t *testing.T
 		execute: func(context.Context, string, json.RawMessage, ToolUpdateCallback) (AgentToolResult, error) {
 			close(slowStarted)
 			<-releaseSlow
-			return AgentToolResult{Content: "done", Terminate: true}, nil
+			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}, Terminate: true}, nil
 		}}
 	rec := newEventRecorder(nil)
 	a := NewAgent(AgentOptions{
@@ -163,8 +185,8 @@ func TestAgent_IgnoresSettledParallelToolUpdateWhileAnotherToolRuns(t *testing.T
 	done := sendAsync(t, a, "run tools")
 	waitSignal(t, slowStarted, "slow tool")
 	rec.waitFor(t, func(ev AgentEvent) bool {
-		end, ok := ev.(TimingEvent)
-		return ok && end.Kind == "tool" && end.Name == "settled_tool"
+		end, ok := ev.(ToolExecutionEndEvent)
+		return ok && end.ToolName == "settled_tool"
 	})
 	countBefore := len(rec.snapshot())
 	(<-captured)("late", map[string]any{"status": "late"})
@@ -182,10 +204,9 @@ func TestAgent_IgnoresSettledParallelToolUpdateWhileAnotherToolRuns(t *testing.T
 	}
 }
 
-// upstream: "should update state with mutators". Upstream's
-// `state.messages.push` on the live array has no Go counterpart: Messages()
-// returns the transcript slice, and appending to a slice never grows the
-// agent's.
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:628
+// upstream: "should update state with mutators". appendMessages is the
+// Go slice-growth operation corresponding to upstream state.messages.push.
 func TestAgent_UpdatesStateWithMutators(t *testing.T) {
 	a := NewAgent(AgentOptions{})
 	model := scriptedModel(&scriptedProvider{})
@@ -204,12 +225,18 @@ func TestAgent_UpdatesStateWithMutators(t *testing.T) {
 	if a.Tools()[0].Name() != "test" || a.Messages()[0].User == nil {
 		t.Fatal("SetTools/SetMessages kept the caller's array instead of a copy")
 	}
+	appended := assistantText("Hi")
+	a.appendMessages(appended)
+	if len(a.Messages()) != 2 || a.Messages()[1].Assistant != appended.Assistant {
+		t.Fatal("appended message not retained")
+	}
 	a.SetMessages(nil)
 	if len(a.Messages()) != 0 {
 		t.Fatalf("messages = %v after clearing", a.Messages())
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:663
 // upstream: "should support steering message queue"
 func TestAgent_SupportsSteeringMessageQueue(t *testing.T) {
 	a := NewAgent(AgentOptions{})
@@ -219,6 +246,7 @@ func TestAgent_SupportsSteeringMessageQueue(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:673
 // upstream: "should support follow-up message queue"
 func TestAgent_SupportsFollowUpMessageQueue(t *testing.T) {
 	a := NewAgent(AgentOptions{})
@@ -228,6 +256,7 @@ func TestAgent_SupportsFollowUpMessageQueue(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:690
 // upstream: "should reject reset while processing without corrupting the transcript"
 func TestAgent_RejectsResetWhileProcessing(t *testing.T) {
 	started := make(chan struct{})
@@ -249,7 +278,7 @@ func TestAgent_RejectsResetWhileProcessing(t *testing.T) {
 	if !a.IsStreaming() || !reflect.DeepEqual(roles(a.Messages()), []string{"user"}) {
 		t.Fatalf("streaming %v, roles %v; want streaming with [user]", a.IsStreaming(), roles(a.Messages()))
 	}
-	if err := a.Reset(); !errors.Is(err, ErrAlreadyProcessing) {
+	if err := a.Reset(); !errors.Is(err, ErrAlreadyProcessing) || err.Error() != "Agent is already processing. Wait for completion before resetting." {
 		t.Fatalf("Reset error = %v, want ErrAlreadyProcessing", err)
 	}
 	if !a.IsStreaming() || !reflect.DeepEqual(roles(a.Messages()), []string{"user"}) {
@@ -284,6 +313,7 @@ func busyAgent(t *testing.T) (*Agent, func()) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:724
 // upstream: "should throw when prompt() called while streaming"
 func TestAgent_ThrowsWhenPromptCalledWhileStreaming(t *testing.T) {
 	a, stop := busyAgent(t)
@@ -292,21 +322,23 @@ func TestAgent_ThrowsWhenPromptCalledWhileStreaming(t *testing.T) {
 	if !a.IsStreaming() {
 		t.Fatal("agent is not streaming")
 	}
-	if _, err := a.Send(context.Background(), "Second message"); !errors.Is(err, ErrAlreadyProcessingPrompt) {
+	if _, err := a.Send(context.Background(), "Second message"); !errors.Is(err, ErrAlreadyProcessingPrompt) || err.Error() != "Agent is already processing a prompt. Use steer() or followUp() to queue messages, or wait for completion." {
 		t.Fatalf("second Send error = %v, want ErrAlreadyProcessingPrompt", err)
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:764
 // upstream: "should throw when continue() called while streaming"
 func TestAgent_ThrowsWhenContinueCalledWhileStreaming(t *testing.T) {
 	a, stop := busyAgent(t)
 	defer stop()
 
-	if _, err := a.Continue(context.Background()); !errors.Is(err, ErrAlreadyProcessing) {
+	if _, err := a.Continue(context.Background()); !errors.Is(err, ErrAlreadyProcessing) || err.Error() != "Agent is already processing. Wait for completion before continuing." {
 		t.Fatalf("Continue error = %v, want ErrAlreadyProcessing", err)
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:800
 // upstream: "continue() should process queued follow-up messages after an assistant turn"
 func TestAgent_ContinueProcessesQueuedFollowUpAfterAssistantTurn(t *testing.T) {
 	a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("Processed")})})
@@ -319,7 +351,7 @@ func TestAgent_ContinueProcessesQueuedFollowUpAfterAssistantTurn(t *testing.T) {
 	}
 
 	hasFollowUp := slices.ContainsFunc(msgs, func(m AgentMessage) bool {
-		return m.User != nil && m.User.Content[0].(ai.TextContent).Text == "Queued follow-up"
+		return m.User != nil && m.User.Content.(ai.UserContentBlocks)[0].(ai.TextContent).Text == "Queued follow-up"
 	})
 	if !hasFollowUp || msgs[len(msgs)-1].Assistant == nil {
 		t.Fatalf("roles %v, follow-up present %v; want the follow-up answered", roles(msgs), hasFollowUp)
@@ -353,6 +385,7 @@ func checkSteeringRequests(t *testing.T, mode QueueMode, requests [][]string, fi
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:838
 // upstream: "continue() keeps $mode steering semantics for assistant-tail fallback"
 func TestAgent_ContinueKeepsSteeringModeForAssistantTailFallback(t *testing.T) {
 	for _, mode := range []QueueMode{QueueModeOneAtATime, QueueModeAll} {
@@ -371,6 +404,7 @@ func TestAgent_ContinueKeepsSteeringModeForAssistantTailFallback(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:874
 // upstream: "keeps legacy prepareNextTurn signal callback behavior": the hook
 // receives the run's context in place of the abort signal.
 func TestAgent_KeepsPrepareNextTurnSignalCallbackBehavior(t *testing.T) {
@@ -379,9 +413,9 @@ func TestAgent_KeepsPrepareNextTurnSignalCallbackBehavior(t *testing.T) {
 	a := NewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		Tools: []AgentTool{noopTool()},
-		PrepareNextTurn: func(ctx context.Context, _ PrepareNextTurnContext) *AgentLoopTurnUpdate {
+		PrepareNextTurn: func(ctx context.Context, _ PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
 			sawContext = ctx != nil && ctx.Done() != nil
-			return nil
+			return nil, nil
 		},
 	})
 	ctx := t.Context()
@@ -394,21 +428,21 @@ func TestAgent_KeepsPrepareNextTurnSignalCallbackBehavior(t *testing.T) {
 	}
 }
 
-// upstream: "forwards finishTurn through AgentOptions with the active abort
-// signal". Upstream's context starts with the tool-loadout system message,
-// which PiG's transcript does not carry (reported gap).
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:915
+// upstream: "forwards finishTurn through AgentOptions with the active abort signal".
 func TestAgent_ForwardsFinishTurnWithActiveRunContext(t *testing.T) {
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "noop", nil))}
 	ctx := t.Context()
 	var sawRunContext bool
 	var contextRoles []string
-	a := NewAgent(AgentOptions{
+	var a *Agent
+	a = NewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		Tools: []AgentTool{noopTool()},
-		FinishTurn: func(turnCtx context.Context, turn AgentTurnContext) *AgentTurnDecision {
-			sawRunContext = turnCtx == ctx
+		FinishTurn: func(turnCtx context.Context, turn AgentTurnContext) (*AgentTurnDecision, error) {
+			sawRunContext = turnCtx == a.Signal() && turnCtx.Done() != nil
 			contextRoles = roles(turn.Context)
-			return &AgentTurnDecision{Action: AgentTurnEnd}
+			return &AgentTurnDecision{Action: AgentTurnEnd}, nil
 		},
 	})
 
@@ -420,27 +454,34 @@ func TestAgent_ForwardsFinishTurnWithActiveRunContext(t *testing.T) {
 	}
 }
 
-// upstream: "rejects a queued continuation from $name context without
-// draining queues" (empty). The system-only case needs transcript system
-// messages, which PiG does not model (reported gap).
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:959
+// upstream: "rejects a queued continuation from $name context without draining queues".
 func TestAgent_RejectsQueuedContinuationFromEmptyContext(t *testing.T) {
-	a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("unexpected")})})
-	steering, followUp := userMessage("steering"), userMessage("follow-up")
-	a.Steer(steering)
-	a.FollowUp(followUp)
+	for _, name := range []string{"empty", "system-only"} {
+		t.Run(name, func(t *testing.T) {
+			a := NewAgent(AgentOptions{Model: scriptedModel(&scriptedProvider{respond: replyText("unexpected")})})
+			if name == "system-only" {
+				a.SetMessages([]AgentMessage{{System: &ai.SystemMessage{Content: ai.SystemText("system only"), Timestamp: 1}}})
+			}
+			steering, followUp := userMessage("steering"), userMessage("follow-up")
+			a.Steer(steering)
+			a.FollowUp(followUp)
 
-	if _, err := a.Continue(context.Background()); !errors.Is(err, ErrNoMessagesToContinue) {
-		t.Fatalf("Continue error = %v, want ErrNoMessagesToContinue", err)
-	}
-	if got := a.PeekQueuedMessages(); len(got) != 1 || got[0].User != steering.User {
-		t.Fatalf("queued = %v, want the steering message", got)
-	}
-	a.ClearSteeringQueue()
-	if got := a.PeekQueuedMessages(); len(got) != 1 || got[0].User != followUp.User {
-		t.Fatalf("queued = %v, want the follow-up message", got)
+			if _, err := a.Continue(context.Background()); !errors.Is(err, ErrNoMessagesToContinue) || err.Error() != "No messages to continue from" {
+				t.Fatalf("Continue error = %v, want ErrNoMessagesToContinue", err)
+			}
+			if got := a.PeekQueuedMessages(); len(got) != 1 || got[0].User != steering.User {
+				t.Fatalf("queued = %v, want the steering message", got)
+			}
+			a.ClearSteeringQueue()
+			if got := a.PeekQueuedMessages(); len(got) != 1 || got[0].User != followUp.User {
+				t.Fatalf("queued = %v, want the follow-up message", got)
+			}
+		})
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:975
 // upstream: "defers follow-up input on the first continuation request from a $name tail" (user, toolResult)
 func TestAgent_DefersFollowUpOnFirstContinuationRequest(t *testing.T) {
 	toolResultTail := []AgentMessage{
@@ -465,6 +506,7 @@ func TestAgent_DefersFollowUpOnFirstContinuationRequest(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:1021
 // upstream: "polls $mode steering at continuation startup"
 func TestAgent_PollsSteeringAtContinuationStartup(t *testing.T) {
 	for _, mode := range []QueueMode{QueueModeOneAtATime, QueueModeAll} {
@@ -483,6 +525,7 @@ func TestAgent_PollsSteeringAtContinuationStartup(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:1057
 // upstream: "keeps steering ahead of follow-up from a non-assistant continuation tail"
 func TestAgent_KeepsSteeringAheadOfFollowUpFromNonAssistantTail(t *testing.T) {
 	var requests [][]string
@@ -520,6 +563,7 @@ func checkQueuesKept(t *testing.T, a *Agent, steering, followUp AgentMessage) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:1085
 // upstream: "keeps queues on a %s response even when finishTurn requests continuation" (error, aborted)
 func TestAgent_KeepsQueuesOnFailedResponseDespiteContinuation(t *testing.T) {
 	for _, reason := range []ai.StopReason{ai.StopReasonError, ai.StopReasonAborted} {
@@ -530,8 +574,8 @@ func TestAgent_KeepsQueuesOnFailedResponseDespiteContinuation(t *testing.T) {
 			a = NewAgent(AgentOptions{
 				Model:   scriptedModel(&scriptedProvider{respond: func(int, scriptedRequest) *ai.AssistantMessageEventStream { return errorStream(reason) }}),
 				EventCh: rec.ch,
-				FinishTurn: func(context.Context, AgentTurnContext) *AgentTurnDecision {
-					return &AgentTurnDecision{Action: AgentTurnContinue}
+				FinishTurn: func(context.Context, AgentTurnContext) (*AgentTurnDecision, error) {
+					return &AgentTurnDecision{Action: AgentTurnContinue}, nil
 				},
 			})
 			a.FollowUp(followUp)
@@ -543,6 +587,7 @@ func TestAgent_KeepsQueuesOnFailedResponseDespiteContinuation(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:1123
 // upstream: "keeps queues when finishTurn ends the run"
 func TestAgent_KeepsQueuesWhenFinishTurnEndsTheRun(t *testing.T) {
 	steering, followUp := userMessage("steering"), userMessage("follow-up")
@@ -551,8 +596,8 @@ func TestAgent_KeepsQueuesWhenFinishTurnEndsTheRun(t *testing.T) {
 	a = NewAgent(AgentOptions{
 		Model:   scriptedModel(&scriptedProvider{respond: replyText("done")}),
 		EventCh: rec.ch,
-		FinishTurn: func(context.Context, AgentTurnContext) *AgentTurnDecision {
-			return &AgentTurnDecision{Action: AgentTurnEnd}
+		FinishTurn: func(context.Context, AgentTurnContext) (*AgentTurnDecision, error) {
+			return &AgentTurnDecision{Action: AgentTurnEnd}, nil
 		},
 	})
 	a.FollowUp(followUp)
@@ -562,6 +607,7 @@ func TestAgent_KeepsQueuesWhenFinishTurnEndsTheRun(t *testing.T) {
 	checkQueuesKept(t, a, steering, followUp)
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:1150
 // upstream: "previews the next selected queued messages without consuming them"
 func TestAgent_PreviewsNextSelectedQueuedMessagesWithoutConsuming(t *testing.T) {
 	a := NewAgent(AgentOptions{SteeringMode: QueueModeOneAtATime, FollowUpMode: QueueModeAll})
@@ -581,6 +627,7 @@ func TestAgent_PreviewsNextSelectedQueuedMessagesWithoutConsuming(t *testing.T) 
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent.test.ts:1169
 // upstream: "forwards sessionId to streamFunction options"
 func TestAgent_ForwardsSessionIDToStreamOptions(t *testing.T) {
 	provider := &scriptedProvider{respond: replyText("ok")}

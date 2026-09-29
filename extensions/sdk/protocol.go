@@ -1,13 +1,15 @@
 package sdk
 
 import (
+	"context"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"io"
 	"net"
 	"sync"
 	"sync/atomic"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // MaxFrameSize is the maximum allowed message size (128 MB). Bounds a single
@@ -63,18 +65,24 @@ type registerMsg struct {
 	Providers      []providerDef `json:"providers,omitempty"`
 	Renderers      []rendererDef `json:"message_renderers,omitempty"`
 	EntryRenderers []rendererDef `json:"entry_renderers,omitempty"`
+	// MarkdownTransformer reports a registered Markdown transformer; the host
+	// runs it with markdown_transform requests.
+	MarkdownTransformer bool `json:"markdown_transformer,omitempty"`
 }
 
 type toolDef struct {
 	Name                string   `json:"name"`
+	Label               string   `json:"label,omitempty"` // upstream ToolDefinition.label
 	Description         string   `json:"description"`
-	Parameters          any      `json:"parameters"`                     // JSON Schema: must match host's ToolDecl.Parameters
+	Parameters          Schema   `json:"parameters"`                     // JSON Schema: must match host's ToolDecl.Parameters
 	ConstrainedSampling any      `json:"constrained_sampling,omitempty"` // false | ConstrainedSampling: provider-side constrained sampling request
-	PromptGuidelines    []string `json:"prompt_guidelines,omitempty"`    // Bullets injected into system prompt Guidelines section when tool is active
-	Source              string   `json:"source,omitempty"`               // pig additive (D23): optional per-tool source; defaults to extension name
-	RenderShell         string   `json:"render_shell,omitempty"`         // "self" when the renderers draw their own framing
-	RendersCall         bool     `json:"renders_call,omitempty"`         // the tool has a call renderer
-	RendersResult       bool     `json:"renders_result,omitempty"`       // the tool has a result renderer
+	PromptSnippet       string   `json:"prompt_snippet,omitempty"`
+	ExecutionMode       string   `json:"execution_mode,omitempty"`
+	PromptGuidelines    []string `json:"prompt_guidelines,omitempty"` // Bullets injected into system prompt Guidelines section when tool is active
+	Source              string   `json:"source,omitempty"`            // pig additive (D23): optional per-tool source; defaults to extension name
+	RenderShell         string   `json:"render_shell,omitempty"`      // "self" when the renderers draw their own framing
+	RendersCall         bool     `json:"renders_call,omitempty"`      // the tool has a call renderer
+	RendersResult       bool     `json:"renders_result,omitempty"`    // the tool has a result renderer
 }
 
 type handlerDef struct {
@@ -104,8 +112,10 @@ type flagDef struct {
 }
 
 type providerDef struct {
-	Name   string          `json:"name"`
-	Config json.RawMessage `json:"config"`
+	StreamSimple bool                       `json:"stream_simple,omitempty"`
+	Name         string                     `json:"name"`
+	Config       json.RawMessage            `json:"config"`
+	Native       *providerObjectDeclaration `json:"native,omitempty"`
 }
 
 type rendererDef struct {
@@ -196,6 +206,7 @@ type conn struct {
 	pendingMu      sync.Mutex
 	pending        map[string]chan *callResultMsg
 	pendingParents map[string]string
+	requestParents map[string]*requestParent
 
 	// incoming is where the read loop puts request/notify/shutdown messages.
 	incoming chan envelope
@@ -211,8 +222,10 @@ type conn struct {
 }
 
 type pendingCall struct {
+	id     string
 	method string
 	ch     <-chan *callResultMsg
+	ctx    context.Context
 }
 
 func newConn(nc net.Conn) *conn {
@@ -235,6 +248,7 @@ func (c *conn) readLoop() {
 		c.pendingMu.Lock()
 		clear(c.pending)
 		clear(c.pendingParents)
+		clear(c.requestParents)
 		c.pendingMu.Unlock()
 		close(c.done)
 	}()
@@ -295,7 +309,10 @@ func (c *conn) readFrame() ([]byte, error) {
 func (c *conn) writeFrame(data []byte) error {
 	c.writeMu.Lock()
 	defer c.writeMu.Unlock()
+	return c.writeFrameLocked(data)
+}
 
+func (c *conn) writeFrameLocked(data []byte) error {
 	var hdr [4]byte
 	binary.BigEndian.PutUint32(hdr[:], uint32(len(data)))
 	if _, err := c.nc.Write(hdr[:]); err != nil {
@@ -306,14 +323,30 @@ func (c *conn) writeFrame(data []byte) error {
 }
 
 func (c *conn) send(env envelope) error {
-	data, err := json.Marshal(env)
+	data, err := marshalEnvelope(env)
 	if err != nil {
 		return err
 	}
-	if len(data) > MaxFrameSize {
-		return fmt.Errorf("frame too large: %d bytes exceeds %d", len(data), MaxFrameSize)
-	}
 	return c.writeFrame(data)
+}
+
+func (c *conn) sendLocked(env envelope) error {
+	data, err := marshalEnvelope(env)
+	if err != nil {
+		return err
+	}
+	return c.writeFrameLocked(data)
+}
+
+func marshalEnvelope(env envelope) ([]byte, error) {
+	data, err := json.Marshal(env)
+	if err != nil {
+		return nil, err
+	}
+	if len(data) > MaxFrameSize {
+		return nil, fmt.Errorf("frame too large: %d bytes exceeds %d", len(data), MaxFrameSize)
+	}
+	return data, nil
 }
 
 // call sends a call message and blocks until the host replies with call_result.
@@ -333,6 +366,14 @@ func (c *conn) callFor(parentRequestID, method string, args any) (*callResultMsg
 // written. Streaming APIs use this to establish the host-side consumer before
 // sending ordered notify frames on the same connection.
 func (c *conn) beginCallFor(parentRequestID, method string, args any) (pendingCall, error) {
+	return c.beginCall(parentRequestID, nil, method, args)
+}
+
+func (c *conn) beginParentCall(parent *requestParent, method string, args any) (pendingCall, error) {
+	return c.beginCall("", parent, method, args)
+}
+
+func (c *conn) beginCall(parentRequestID string, parent *requestParent, method string, args any) (pendingCall, error) {
 	id := fmt.Sprintf("c%d", c.callID.Add(1))
 
 	argsJSON, err := json.Marshal(args)
@@ -340,13 +381,33 @@ func (c *conn) beginCallFor(parentRequestID, method string, args any) (pendingCa
 		return pendingCall{}, err
 	}
 
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
 	ch := make(chan *callResultMsg, 1)
+	callCtx := context.Background()
 	c.pendingMu.Lock()
+	select {
+	case <-c.done:
+		c.pendingMu.Unlock()
+		return pendingCall{}, fmt.Errorf("extension connection closed")
+	default:
+	}
+	if parent != nil {
+		parentRequestID, err = c.parentIDLocked(parent)
+		if err != nil {
+			c.pendingMu.Unlock()
+			return pendingCall{}, err
+		}
+		callCtx = parent.request
+		if parent.completed {
+			callCtx = parent.runtime
+		}
+	}
 	c.pending[id] = ch
 	c.pendingParents[id] = parentRequestID
 	c.pendingMu.Unlock()
 
-	if err := c.send(envelope{
+	if err := c.sendLocked(envelope{
 		Type: msgCall,
 		ID:   id,
 		Call: &callMsg{Method: method, Args: argsJSON, ParentRequestID: parentRequestID},
@@ -357,11 +418,19 @@ func (c *conn) beginCallFor(parentRequestID, method string, args any) (pendingCa
 		c.pendingMu.Unlock()
 		return pendingCall{}, err
 	}
-	return pendingCall{method: method, ch: ch}, nil
+	return pendingCall{id: id, method: method, ch: ch, ctx: callCtx}, nil
 }
 
 func (c *conn) waitCall(call pendingCall) (*callResultMsg, error) {
+	defer func() {
+		c.pendingMu.Lock()
+		delete(c.pending, call.id)
+		delete(c.pendingParents, call.id)
+		c.pendingMu.Unlock()
+	}()
 	select {
+	case <-call.ctx.Done():
+		return nil, fmt.Errorf("host call %s: %w", call.method, call.ctx.Err())
 	case result, ok := <-call.ch:
 		if !ok {
 			return nil, fmt.Errorf("host call %s cancelled with its parent request", call.method)
@@ -374,6 +443,9 @@ func (c *conn) waitCall(call pendingCall) (*callResultMsg, error) {
 
 func (c *conn) cancelParentCalls(parentRequestID string) {
 	c.pendingMu.Lock()
+	if parent := c.requestParents[parentRequestID]; parent != nil {
+		parent.cancelled = true
+	}
 	var cancelled []chan *callResultMsg
 	for id, parent := range c.pendingParents {
 		if parent != parentRequestID {
@@ -404,7 +476,19 @@ func (c *conn) notify(method string, args any) error {
 
 // respond sends a response to a host request.
 func (c *conn) respond(id string, result any, respErr error) error {
-	if err := c.requestState(id, "completed", ""); err != nil {
+	c.writeMu.Lock()
+	defer c.writeMu.Unlock()
+	c.pendingMu.Lock()
+	if parent := c.requestParents[id]; parent != nil {
+		parent.finished = true
+		parent.completed = !parent.cancelled
+		delete(c.requestParents, id)
+	}
+	c.pendingMu.Unlock()
+	if id != "" {
+		c.cancelParentCalls(id)
+	}
+	if err := c.sendLocked(envelope{Type: msgRequestState, RequestState: &requestStateMsg{RequestID: id, State: "completed"}}); err != nil {
 		return err
 	}
 	resp := &responseMsg{}
@@ -419,7 +503,7 @@ func (c *conn) respond(id string, result any, respErr error) error {
 			resp.Result = data
 		}
 	}
-	return c.send(envelope{Type: msgResponse, ID: id, Response: resp})
+	return c.sendLocked(envelope{Type: msgResponse, ID: id, Response: resp})
 }
 
 func (c *conn) requestState(id, state, reason string) error {

@@ -4,12 +4,13 @@ package rpcclient
 import (
 	"bufio"
 	"bytes"
-	"encoding/json"
 	"errors"
 	"io"
+
+	json "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
-// SerializeJsonLine emits JSON.stringify framing, including literal Unicode line and paragraph separators. Escaped backslashes remain escaped.
+// SerializeJsonLine emits JSON.stringify framing, retaining unmatched UTF-16 units as surrogate escapes and literal HTML characters and Unicode line/paragraph separators even inside custom marshalers. Escaped backslashes remain escaped.
 func SerializeJsonLine(value any) ([]byte, error) {
 	var buffer bytes.Buffer
 	encoder := json.NewEncoder(&buffer)
@@ -21,10 +22,25 @@ func SerializeJsonLine(value any) ([]byte, error) {
 	output := make([]byte, 0, len(input))
 	for i := 0; i < len(input); i++ {
 		if input[i] == '\\' && i+1 < len(input) {
-			if i+6 <= len(input) && (string(input[i:i+6]) == `\u2028` || string(input[i:i+6]) == `\u2029`) {
-				output = append(output, 0xe2, 0x80, 0xa8+(input[i+5]-'8'))
-				i += 5
-				continue
+			if i+6 <= len(input) {
+				var replacement string
+				switch string(input[i : i+6]) {
+				case `\u003c`, `\u003C`:
+					replacement = "<"
+				case `\u003e`, `\u003E`:
+					replacement = ">"
+				case `\u0026`:
+					replacement = "&"
+				case `\u2028`:
+					replacement = "\u2028"
+				case `\u2029`:
+					replacement = "\u2029"
+				}
+				if replacement != "" {
+					output = append(output, replacement...)
+					i += 5
+					continue
+				}
 			}
 			output = append(output, input[i], input[i+1])
 			i++

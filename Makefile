@@ -29,10 +29,7 @@ PIG_DEV_HOME ?= $(PIG_CACHE_HOME)/pig-dev
 # Machine-local toolchain and module-proxy settings written by `make setup`.
 # Absent on machines that need neither.
 -include $(PIG_DEV_HOME)/env.mk
-# An env.mk written by an older `make setup` (module-proxy fallback) exported
-# GOWORK=off. The root module resolves extensions/sdk only through go.work, so
-# never let that setting reach the gates; nested-module recipes set GOWORK=off
-# on their own commands.
+# Development gates select the local SDK through go.work, regardless of env.mk. Standalone-module and publication recipes set GOWORK=off on their own commands.
 ifeq ($(GOWORK),off)
 unexport GOWORK
 endif
@@ -42,10 +39,7 @@ export GOFLAGS := $(strip $(filter-out -mod=mod,$(GOFLAGS)))
 endif
 
 PIG_BIN ?= $(HOME)/.local/bin/pig
-# Gate-only pig binary. It is built through go.work (the root module requires
-# the nested SDK at its release version, which exists only after the release is
-# tagged) and then runs with GOWORK=off so the extensions it validates build as
-# standalone modules.
+# Gate-only pig binary. It is built through go.work to exercise the developing SDK, then runs with GOWORK=off so the extensions it validates build as standalone modules. module-publication separately verifies the published dependency pins.
 CHECK_PIG_BIN := $(CURDIR)/tmp/check-bin/pig
 
 # Default parity to a freshly built in-tree binary. If callers explicitly set
@@ -70,7 +64,7 @@ PARITY_PARALLEL ?= $(word 1,$(PARITY_RESOURCE_LIMITS))
 
 PARITY_GROUP_LIMITS ?= $(word 2,$(PARITY_RESOURCE_LIMITS))
 
-UPSTREAM_VERSION := $(shell awk -F'"' '/^const UpstreamVersion = "/ { print $$2; exit }' coding/pigversion/pigversion.go)
+UPSTREAM_VERSION := $(shell awk -F'"' '/^const UpstreamVersion = "/ { print $$2; exit }' internal/coding/pigversion/pigversion.go)
 
 UPSTREAM_REVIEWED_VERSION := $(shell awk -F'"' '/^const UpstreamReviewedVersion = "/ { print $$2; exit }' coding/upstream.go)
 
@@ -96,9 +90,9 @@ PROFILE ?= cpu,heap
 BENCH ?= .
 BENCH_PKGS ?= ./agent/... ./tui/... ./internal/codingagent/...
 BENCH_COUNT ?= 6
-SLOP_MAX_VERBOSITY = $(shell sed -n 's/^max_verbosity *= *//p' evals/budgets.toml)
-SLOP_MAX_EROSION = $(shell sed -n 's/^max_erosion *= *//p' evals/budgets.toml)
-PIGEVAL := PYTHONPATH=$(CURDIR)/evals python3 -m pigeval
+SLOP_MAX_VERBOSITY = $(shell sed -n 's/^max_verbosity *= *//p' test/evals/budgets.toml)
+SLOP_MAX_EROSION = $(shell sed -n 's/^max_erosion *= *//p' test/evals/budgets.toml)
+PIGEVAL := PYTHONPATH=$(CURDIR)/test/evals python3 -m pigeval
 HELP_AWK := BEGIN {FS = ":.*\#\# "} /^\#\#@ / {printf "\n%s\n", substr($$0, 5); next} /^[a-zA-Z0-9_%-]+:.*\#\# / {printf "  %-24s %s\n", $$1, $$2}
 
 ##@ Start here
@@ -117,21 +111,34 @@ help: ## List targets by group
 help-parity: ## List the parity and porting targets (automation/make/parity.mk)
 	@awk '$(HELP_AWK)' automation/make/parity.mk
 
+##@ Release maintenance
+
+.PHONY: set-version module-publication
+set-version: ## Update the release identity; preserve dependencies unless SET_VERSION_ARGS=--release-modules
+	@./automation/ci/with-isolated-pig-home.sh go run ./automation/release/set-version -version "$(VERSION)" $(SET_VERSION_ARGS)
+
+module-publication: ## Verify nested Go dependency tags and checksums against their public source
+	@./automation/ci/with-isolated-pig-home.sh python3 -B -m unittest automation/ci/test_module_publication.py
+	@python3 automation/ci/check-module-publication.py
+
 ##@ Build
 
-pig: ## Build bin/pig from this checkout, with symbols for profiling
+pig: node-runtime ## Build bin/pig from this checkout, with symbols for profiling
 	@mkdir -p bin
 	CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags "-X main.Build=$$(git rev-parse --short HEAD 2>/dev/null || echo dev)" -o bin/pig ./cmd/pig
 
 clean: ## Remove bin/ and tmp/ (builds, eval results, profiles, benchmarks)
 	rm -rf bin tmp
 
-build: ## Compile every package (go build ./...)
+node-runtime: ## Regenerate the embedded Node runtime archive and content digest
+	go generate ./coding/extension/host/subprocess
+
+build: node-runtime ## Compile every package (go build ./...)
 	go build -buildvcs=false ./...
 
 # install: build pig binary → ~/.local/bin/pig (or PIG_BIN override)
 # with embedded git sha + macOS ad-hoc codesign.
-install: ## Install a stripped pig to PIG_BIN (default ~/.local/bin/pig)
+install: node-runtime ## Install a stripped pig to PIG_BIN (default ~/.local/bin/pig)
 	@mkdir -p $(dir $(PIG_BIN))
 	CGO_ENABLED=0 go build -buildvcs=false -trimpath -ldflags "-s -w -X main.Build=$$(git rev-parse --short HEAD 2>/dev/null || echo dev)" -o $(PIG_BIN) ./cmd/pig
 	@[ "$$(uname -s)" = "Darwin" ] && command -v codesign >/dev/null 2>&1 && codesign --force --sign - $(PIG_BIN) >/dev/null 2>&1 || true
@@ -145,10 +152,12 @@ generate help-text: export FORCE_COLOR := 0
 
 generate: ## Regenerate committed inventories, coverage, catalogs, help, and docs mirrors
 	@$(MAKE) model-catalogs
+	@$(MAKE) node-runtime
 	@$(MAKE) help-text
 	@$(MAKE) knowledge-graph
 	@$(MAKE) interface-proposals
 	@$(MAKE) test-inventory-generate
+	@$(MAKE) known-gaps
 	@$(MAKE) custom-factory-ledger
 	@$(MAKE) coverage RESULTS=
 	@echo "Generated files refreshed. Review and commit the diff; CI compares these files."
@@ -169,9 +178,10 @@ lint: ## Run golangci-lint over the repository (part of make check)
 	@echo "Running golangci-lint..."
 	go tool golangci-lint run --allow-parallel-runners --build-tags=integration,live,parity ./...
 
+# Like go list ./..., exclude testdata directories, including nested fixture modules.
 lint-changed: ## Lint whole changed Go files in changed packages against LINT_BASE (default main)
 	@base=$$(git merge-base HEAD "$(LINT_BASE)") || { echo "lint-changed: cannot find merge base with $(LINT_BASE)" >&2; exit 2; }; \
-	changed_go=$$({ git diff --name-only "$$base"...HEAD; git diff --name-only; git diff --name-only --cached; git ls-files --others --exclude-standard; } | awk '/\.go$$/' | sort -u); \
+	changed_go=$$({ git diff --name-only "$$base"...HEAD; git diff --name-only; git diff --name-only --cached; git ls-files --others --exclude-standard; } | awk '/\.go$$/ && !/(^|\/)testdata\//' | sort -u); \
 	if [ -z "$$changed_go" ]; then echo "lint-changed: no changed Go files"; exit 0; fi; \
 	packages=$$(printf '%s\n' "$$changed_go" | while IFS= read -r file; do dir=$${file%/*}; [ "$$dir" = "$$file" ] && dir=.; [ -d "$$dir" ] && printf './%s\n' "$$dir"; done | sort -u); \
 	if [ -z "$$packages" ]; then echo "lint-changed: no changed Go packages"; exit 0; fi; \
@@ -213,8 +223,12 @@ test-sdk-rs: ## Run the Rust extension SDK's unit tests
 test-sdk-ts: parity-deps ## Check the pinned TypeScript extension declarations and runtime helpers
 	@cd extensions/sdk-ts && npm test
 
+# Resolve the selected Rust toolchain before validators replace HOME so tool-manager shims do not select a different compiler.
 examples-check: test-prereqs parity-bin ## Build and validate every example extension
 	@set -eu; tmp=$$($(MKTEMP_DIR)); trap 'rm -rf "$$tmp"' EXIT; \
+		rust_root=$$(rustc --print sysroot); \
+		case "$${OSTYPE:-}" in msys*|cygwin*) rust_root=$$(cygpath -u "$$rust_root");; esac; \
+		export PATH="$$rust_root/bin:$$PATH"; \
 		cd examples/extensions/rust-factory && cargo build --release --quiet; \
 		cd "$(CURDIR)"; \
 		for extension in \
@@ -223,7 +237,7 @@ examples-check: test-prereqs parity-bin ## Build and validate every example exte
 			examples/extensions/python-factory; do \
 			name=$$(basename "$$extension"); \
 			echo "validating example extension: $$extension"; \
-			"$(PARITY_PIG_BIN)" install --validate-only --json "$$extension" >"$$tmp/$$name.json"; \
+			./automation/ci/with-isolated-pig-home.sh "$(PARITY_PIG_BIN)" install --validate-only --json "$$extension" >"$$tmp/$$name.json"; \
 			python3 -c 'import json,sys; data=json.load(open(sys.argv[1])); assert data["valid"], data; assert not data.get("diagnostics"), data.get("diagnostics")' "$$tmp/$$name.json"; \
 		done
 
@@ -285,15 +299,15 @@ compliance: ## Check badge and OpenSSF evidence: files, pins, workflow hardening
 	@./automation/ci/check-compliance.py $(COMPLIANCE_ARGS)
 
 # divergence-consistency enforces AGENTS.md rule #4. Every divergence
-# numbered in DIVERGENCES.md must have a matching `// pig divergence (DN):`
+# numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN):`
 # call-site comment in a .go file, and vice versa. Catches silent drift.
-divergence-consistency: ## Match every DIVERGENCES.md entry to its call-site marker
+divergence-consistency: ## Match every docs/parity/DIVERGENCES.md entry to its call-site marker
 	@./automation/ci/check-divergence-consistency.sh
 
 divergence-quality: ## Validate divergence records as enforceable contracts
 	@./automation/ci/check-divergence-quality.py
 
-# divergence-guard fails on hidden divergences no DIVERGENCES.md entry
+# divergence-guard fails on hidden divergences no docs/parity/DIVERGENCES.md entry
 # records: invented limits and timeouts, dropped events, swallowed errors,
 # success on an unknown stop reason. Current hits are ratcheted in
 # automation/ci/divguard/baseline.toml, which may only shrink.
@@ -305,7 +319,7 @@ divergence-guard: ## Fail on unrecorded invented limits, dropped events and swal
 # every page must be reachable from the index.
 docs-drift: ## Fail when generated documentation no longer matches its source
 	@python3 automation/gen/gen-knowledge-graph.py --check
-	@go test ./tests/docs-drift/ -count=1
+	@go test ./test/docs-drift/ -count=1
 
 npm-dist-test: ## Unit-test the npm package generator and launcher
 	@python3 -m unittest automation/release/npm/test_pack_npm.py
@@ -319,21 +333,21 @@ standard-check: ## Verify PiG Standard requires and resolves only fused extensio
 	@go test ./coding/pigletbuild -run '^TestRunBuildRejectsRequiredFusedFallback$$' -count=1
 	@go test ./coding/extension/host/subprocess -run '^TestHost_MixedFusedPackedAndIsolatedExtensions$$' -count=1
 	@go build -buildvcs=false -o $(CHECK_PIG_BIN) ./cmd/pig
-	@GOWORK=off $(CHECK_PIG_BIN) install --validate-only --json piglets/standard/extensions/piglogin >/dev/null
-	@GOWORK=off $(CHECK_PIG_BIN) install --validate-only --json piglets/standard/extensions/pigrunner >/dev/null
-	@GOWORK=off $(CHECK_PIG_BIN) install --validate-only --json piglets/standard/extensions/angrypigs >/dev/null
-	@GOWORK=off $(CHECK_PIG_BIN) piglet validate piglets/standard/pig-standard.yaml >/dev/null
+	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" install --validate-only --json piglets/standard/extensions/piglogin >/dev/null
+	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" install --validate-only --json piglets/standard/extensions/pigrunner >/dev/null
+	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" install --validate-only --json piglets/standard/extensions/angrypigs >/dev/null
+	@GOWORK=off ./automation/ci/with-isolated-pig-home.sh "$(CHECK_PIG_BIN)" piglet validate piglets/standard/pig-standard.yaml >/dev/null
 
 ##@ Gates
 
-check-core: build vet lint test test-go-modules test-sdk-rs test-sdk-ts typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard check-contracts-fast source-hygiene docs-drift ## All deterministic build, lint, unit, race, and drift gates
+check-core: startup-proxies build vet lint test test-go-modules test-sdk-rs test-sdk-ts typescript-extension-corpus examples-check test-race test-integration lint-scenarios port-map-drift coverage-drift standard-check go-fix-clean divergence-consistency divergence-quality divergence-guard check-contracts-fast source-hygiene docs-drift ## All deterministic build, lint, unit, race, and drift gates
 
-check: check-core parity-fast ## Pre-commit gate: check-core plus parity-fast
+check: module-publication check-core parity-fast ## Pre-commit gate: published dependencies, check-core and parity-fast
 	@echo
 	@echo "make check: all gates green."
 	@echo
 	@echo "Reminder: run 'make coverage' before signaling success to refresh"
-	@echo "the AGENTS.md dashboard and parity/coverage.md. Do not hand-edit."
+	@echo "the AGENTS.md dashboard and test/parity/coverage.md. Do not hand-edit."
 
 # verify = deterministic gates + declared durability parity + coverage.
 # The recommended one-shot for end-of-loop verification: `parity` proves every
@@ -341,16 +355,22 @@ check: check-core parity-fast ## Pre-commit gate: check-core plus parity-fast
 verify: check-core check-contracts parity ## End-of-loop gate: check-core, contracts, and full parity
 	@echo
 	@echo "make verify: dashboard refreshed deterministically from"
-	@echo "PORT_MAP.md + parity/scenarios. Commit the diff if any."
+	@echo "docs/parity/PORT_MAP.md + test/parity/scenarios. Commit the diff if any."
 
 qc: parity-bin ## Build a fresh pig, then run the smoke and focused parity QC
 	@PIG_BIN="$(PARITY_PIG_BIN)" ./automation/ci/qc-smoke.sh
 
 # Release gate. Tighter than `check`: parity-live must pass, coverage
-# must not regress, no new entries in DIVERGENCES.md without justification.
+# must not regress, no new entries in docs/parity/DIVERGENCES.md without justification.
 release-check: parity-live parity-perf ## Release gate: live and perf parity, no new divergences, no coverage loss
 	@./automation/ci/check-divergence-delta.sh
 	@./automation/ci/check-coverage-delta.sh
+
+startup-proxies: ## Run deterministic startup allocation, cache, encoding, and artifact guards
+	@automation/ci/with-isolated-pig-home.sh python3 automation/perf/startup_proxies.py
+	@automation/ci/with-isolated-pig-home.sh python3 -m unittest discover -s automation/perf -p 'test_*.py'
+
+.PHONY: startup-proxies
 
 ##@ Evals and performance
 
@@ -361,7 +381,7 @@ evals: pig ## Measure harness overhead against the mock model (HARNESSES=all for
 evals-requests: pig ## Save every request body and diff the first two HARNESSES (default: pig against pi)
 	@$(PIGEVAL) requests --harnesses $(HARNESSES) --pig bin/pig --diff
 
-evals-live: pig ## Run evals/tasks with a real model: make evals-live MODEL=provider/model
+evals-live: pig ## Run test/evals/tasks with a real model: make evals-live MODEL=provider/model
 	@test -n "$(MODEL)" || { echo "evals-live: set MODEL, for example MODEL=anthropic/claude-sonnet-5" >&2; exit 2; }
 	@$(PIGEVAL) live --harnesses $(HARNESSES) --pig bin/pig --model "$(MODEL)" --runs $(LIVE_RUNS) $(if $(EVAL_TASKS_DIR),--tasks-dir $(EVAL_TASKS_DIR)) --out tmp/evals/live.json
 	@$(PIGEVAL) report tmp/evals/live.json --out tmp/evals/live.md
@@ -369,15 +389,15 @@ evals-live: pig ## Run evals/tasks with a real model: make evals-live MODEL=prov
 evals-mutate: ## Generate seeded bug-fix tasks from real Go files (MUTATIONS=30 SEED=1) into tmp/evals/mutation-tasks
 	@$(PIGEVAL) mutate --count $(MUTATIONS) --seed $(SEED) --out tmp/evals/mutation-tasks
 
-evals-publish: ## Copy a reviewed EVAL_RESULTS run to evals/results/latest.json and regenerate docs/site/docs/evals.md
+evals-publish: ## Copy a reviewed EVAL_RESULTS run to test/evals/results/latest.json and regenerate docs/site/docs/evals.md
 	@test -f "$(EVAL_RESULTS)" || { echo "evals-publish: $(EVAL_RESULTS) not found; run make evals first" >&2; exit 2; }
-	@cp "$(EVAL_RESULTS)" evals/results/latest.json
-	@$(PIGEVAL) report evals/results/latest.json --out docs/site/docs/evals.md
+	@cp "$(EVAL_RESULTS)" test/evals/results/latest.json
+	@$(PIGEVAL) report test/evals/results/latest.json --out docs/site/docs/evals.md
 
 evals-test: ## Unit-test pigeval, the eval harness
-	@PYTHONPATH=$(CURDIR)/evals python3 -m unittest discover -s evals/tests -q
+	@PYTHONPATH=$(CURDIR)/test/evals python3 -m unittest discover -s test/evals/tests -q
 
-perf-check: ## Apply evals/budgets.toml (latency, memory, and request-size ceilings) to EVAL_RESULTS
+perf-check: ## Apply test/evals/budgets.toml (latency, memory, and request-size ceilings) to EVAL_RESULTS
 	@$(PIGEVAL) check $(EVAL_RESULTS)
 
 profile: pig ## Profile one prompt round trip (PROFILE=cpu,heap,allocs,block,mutex,trace) into tmp/profile
@@ -389,7 +409,7 @@ pgo: pig ## Merge CPU profiles from repeated round trips into tmp/pgo/default.pg
 slop: ## Measure erosion and clone verbosity (SlopCodeBench metrics) and list the heaviest functions
 	@go run ./automation/ci/slopmetrics -top 15
 
-slop-check: ## Fail when erosion or verbosity exceed the ratchet in evals/budgets.toml [slop]
+slop-check: ## Fail when erosion or verbosity exceed the ratchet in test/evals/budgets.toml [slop]
 	@go run ./automation/ci/slopmetrics -top 0 -max-verbosity $(SLOP_MAX_VERBOSITY) -max-erosion $(SLOP_MAX_EROSION) >/dev/null && echo "slop-check: within verbosity $(SLOP_MAX_VERBOSITY), erosion $(SLOP_MAX_EROSION)"
 
 bench: ## Run Go benchmarks into tmp/bench/current.txt (BENCH=regex, BENCH_PKGS, BENCH_COUNT=6)
@@ -418,7 +438,7 @@ model-catalogs: parity-deps ## Regenerate model catalogs from the pinned publish
 ##@ Dependencies
 
 interface-deps: ## Install the locked TypeScript compiler used by parity inventories
-	@python3 automation/ci/npm-locked.py parity/interface-extractor
+	@python3 automation/ci/npm-locked.py test/parity/interface-extractor
 
 parity-deps: interface-deps ## Install the exact locked Pi comparator and the TypeScript compiler its scenarios import
 	@python3 automation/ci/npm-locked.py extensions/sdk-ts
@@ -426,7 +446,7 @@ parity-deps: interface-deps ## Install the exact locked Pi comparator and the Ty
 	@test -d "$(PI_PACKAGE_ROOT)" || { echo "exact published Pi package not found: $(PI_PACKAGE_ROOT)" >&2; exit 1; }
 	@test "$$(env -u HTTPS_PROXY -u HTTP_PROXY -u ALL_PROXY -u https_proxy -u http_proxy -u all_proxy "$(PIG_PARITY_PI_BIN)" --version)" = "$(UPSTREAM_VERSION)" || { echo "Pi comparator version does not match $(UPSTREAM_VERSION)" >&2; exit 1; }
 
-.PHONY: npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build check check-core clean dev divergence-guard divergence-quality doctor evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-prereqs test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet
+.PHONY: node-runtime npm-dist-test npm-dist-e2e compliance evals-mutate slop slop-check # Deterministic tmux-driven integration tier # Release gate. Tighter than `check` # The recommended one-shot for end-of-loop verification # docs-drift gates the shipped docs bundle against the code it describes # install # numbered in docs/parity/DIVERGENCES.md must have a matching `// pig divergence (DN) # the single-main-loop ownership invariant bench bench-base bench-compare build check check-core clean dev divergence-guard divergence-quality doctor evals evals-live evals-publish evals-requests evals-test examples-check go-fix-clean help help-parity interface-deps knowledge-graph lint lint-changed model-catalogs parity-deps perf-check pgo pig profile qc setup standard-check test test-fixtures test-go-modules test-prereqs test-sdk-go test-sdk-rs test-sdk-ts test-stress upstream-mirror vet
 
 include automation/make/parity.mk
 include automation/make/ci.mk

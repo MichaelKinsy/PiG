@@ -190,7 +190,8 @@ func TestOpenAIResponsesTerminalMetadataAndStopReasons(t *testing.T) {
 data: {"type":"response.completed","response":{"id":"response-1","model":"completed-model","status":"completed"}}
 
 `,
-			wantReason: StopReasonStop, wantRaw: "completed", wantResponse: "response-1", wantResponseModel: "created-model", wantTerminal: EventDone,
+			// Pi openai-responses-shared.ts:599-600 records the ID, not response.model.
+			wantReason: StopReasonStop, wantRaw: "completed", wantResponse: "response-1", wantTerminal: EventDone,
 		},
 		{
 			name: "max output incomplete",

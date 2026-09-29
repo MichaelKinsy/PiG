@@ -1,0 +1,33 @@
+# Upstream evidence: Pi 0.87.1 --offline --no-extensions --model deepseek/deepseek-flash at 120x30 prints `deepseek-flash • high` on the 0.0%/1.0M footer. The pre-fix PiG candidate prints `thinking off` with the same inputs.
+# sdk.ts:231-255 clamps medium to high for this sparse map; footer.ts:186-190 reads Session state.
+# The complete two-row footer crop preserves ANSI/layout. No live credentials or network access are required.
+name = "09-footer-session-thinking"
+description = "The footer reads the Session's clamped thinking level instead of reclamping settings to off."
+covers = ["packages/coding-agent/src/modes/interactive/components/footer.ts", "packages/coding-agent/src/core/sdk.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 120
+height = 30
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 20
+capture_start = "parity-snap-cwd-"
+capture_start_last = true
+
+# A typed, unsubmitted marker acknowledges a post-startup editor render before capturing the footer. Pi's first footer can precede its startup header redraw.
+[[tmux.steps]]
+keys = ["Type:footer-ready"]
+wait_visible_contains = ["footer-ready", "deepseek-flash", "parity-snap-cwd-"]
+
+[env]
+ pig_args = ["--no-extensions", "--offline", "--model", "deepseek/deepseek-flash"]
+ pi_args = ["--no-extensions", "--offline", "--model", "deepseek/deepseek-flash"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["deepseek-flash • high"]
+both_not_contain = ["thinking off"]
+escaped_output_equal = true
+runs = 3

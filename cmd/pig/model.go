@@ -17,12 +17,28 @@ import (
 
 // ─── Model Resolution ─────────────────────────────────────────────────────────
 
-// buildModelFromRef resolves the startup model and builds it with
-// coding.BuildModelFromEntry, which resolves credentials the same way for
-// startup and /model.
-func buildModelFromRef(_ context.Context, providerID, modelID string, services *coding.Services) (*ai.Model, error) {
+// buildModelFromRef resolves the startup model with resolveStartupModelEntry
+// and builds it with coding.BuildModelFromEntry, the constructor /model uses.
+func buildModelFromRef(ctx context.Context, providerID, modelID string, services *coding.Services) (*ai.Model, error) {
 	registry := services.Registry().ModelRegistry
+	if model := coding.BuildNativeModel(registry, providerID, modelID); model != nil {
+		return model, nil
+	}
+	if registry.GetProvider(providerID) != nil {
+		model := services.ModelRuntime().GetModel(providerID, modelID)
+		if model == nil {
+			return nil, fmt.Errorf("model not found: %s/%s", providerID, modelID)
+		}
+		return model, nil
+	}
 	entry := resolveStartupModelEntry(providerID, modelID, registry)
+
+	// Radius runtime keys are in-memory metadata; the shared builder owns stored credential reads and refresh.
+	if _, radius := registry.RadiusOAuth(providerID); radius {
+		if key, ok := registry.RuntimeAPIKey(providerID); ok && key != "" {
+			entry.APIKey = key
+		}
+	}
 	return coding.BuildModelFromEntry(providerID, modelID, entry, services)
 }
 
@@ -87,10 +103,7 @@ func agentDirForModel() string {
 	if agentDirForModelOverride != "" {
 		return agentDirForModelOverride
 	}
-	if envDir := os.Getenv("PIG_CODING_AGENT_DIR"); envDir != "" {
-		return envDir
-	}
-	return codingagent.DefaultAgentDir()
+	return codingagent.AgentDir()
 }
 
 // formatTokenCount formats a token count as human-readable (e.g., 200000 → "200K").

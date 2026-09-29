@@ -1,0 +1,27 @@
+# Pi 0.87.1 #6596 mocks child_process.spawn and forces the win32 branch. This
+# probe does the same at the kernel boundary, importing unchanged published Pi
+# killProcessTree. Compare the exact executable/argv and successful error
+# consumption; no actual PID is signalled. Native Windows console attributes
+# remain covered by the Windows-only Go assertion and require a Windows run.
+name = "22-taskkill-path-and-errors"
+description = "Windows tree cleanup chooses System32 taskkill and consumes spawn errors"
+covers = ["packages/coding-agent/src/utils/shell.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/taskkill-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/taskkill-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['System32/taskkill.exe', '["/F","/T","/PID","1234"]']
+runs = 3

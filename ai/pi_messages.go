@@ -9,7 +9,6 @@ package ai
 // through a models.json provider with "api": "pi-messages".
 
 import (
-	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
@@ -76,39 +75,61 @@ func (p *piMessagesProvider) Stream(ctx context.Context, transcript TranscriptCo
 		return nil, fmt.Errorf("pi-messages: invalid transcript: %w", err)
 	}
 	stream := NewAssistantMessageEventStream()
-	go func() {
-		convert := newPiMessagesEventConverter(p.cfg.ProviderID, p.cfg.Model)
-		if err := p.run(ctx, transcript, opts, stream, convert); err != nil {
-			_ = stream.Push(p.errorEvent(err, ctx.Err() != nil))
-		}
-	}()
+	ctx = stream.ObservationContext(ctx)
+	go p.run(ctx, transcript, opts, stream, newPiMessagesEventConverter(p.cfg.ProviderID, p.cfg.Model))
 	return stream, nil
 }
 
-func (p *piMessagesProvider) run(ctx context.Context, transcript TranscriptContext, opts StreamOptions, stream *AssistantMessageEventStream, convert *piMessagesEventConverter) error {
-	response, err := p.send(ctx, transcript, opts)
+// run is the async IIFE of upstream stream() (pi-messages.ts:377-448). Its catch pushes the error event.
+func (p *piMessagesProvider) run(ctx context.Context, transcript TranscriptContext, opts StreamOptions, stream *AssistantMessageEventStream, convert *piMessagesEventConverter) {
+	response, err := p.send(ctx, transcript, opts) // pi-messages.ts:383-413 payload, `await fetch`, `await onResponse`, status check.
 	if err != nil {
-		return err
+		_ = stream.Push(p.errorEvent(ctx, err))
+		return
 	}
 	defer func() { _ = response.Body.Close() }()
-	var terminal bool
-	err = readPiMessagesEvents(response.Body, func(raw json.RawMessage) (bool, error) {
+	body, ok := response.Body.(*observedResponseBody)
+	if !ok {
+		// A body from a client that is not PiG's transport cannot report whether bytes are buffered: every read awaits input (D82).
+		body = &observedResponseBody{ReadCloser: response.Body, owner: &bodyReadOwner{}, alwaysPending: true}
+	}
+	// The IIFE resumes from `await fetch` as an executor turn. Everything up to the next external completion runs in it.
+	_ = stream.responseContinuation(func(turn *continuationTurn) error {
+		// readPiMessagesEvents reads with getReader().read(), not values().next().
+		reader := newNativeBodyReader(ctx, body, turn, nil)
+		defer func() { _ = reader.Close() }()
+		p.consumeBody(ctx, stream, convert, reader, turn)
+		return nil
+	})
+}
+
+// consumeBody continues the IIFE after the response headers: `await onResponse`, then the for-await over the body.
+func (p *piMessagesProvider) consumeBody(ctx context.Context, stream *AssistantMessageEventStream, convert *piMessagesEventConverter, reader interface{ ReadChunk() ([]byte, error) }, turn *continuationTurn) {
+	_, _ = jsAwait(turn, jsValue(struct{}{})) // pi-messages.ts:415 `await options?.onResponse?.(...)`: an await of undefined still costs one microtask.
+	p.consume(ctx, stream, convert, &piMessagesEventLoop{reader: reader, turn: turn})
+}
+
+// consume is the `for await` over readPiMessagesEvents with the try/catch around it (pi-messages.ts:432-448).
+func (p *piMessagesProvider) consume(ctx context.Context, stream *AssistantMessageEventStream, convert *piMessagesEventConverter, loop *piMessagesEventLoop) {
+	err := loop.run(func(raw json.RawMessage) (bool, error) {
 		events, err := convert.convert(raw)
 		for _, event := range events {
 			if pushErr := stream.Push(event); pushErr != nil {
 				return false, pushErr
 			}
 			if isTerminalEvent(event) {
-				terminal = true
-				return false, nil
+				return true, nil
 			}
 		}
-		return true, err
+		return false, err
 	})
-	if err != nil || terminal {
-		return err
+	switch {
+	case err == nil:
+	case errors.Is(err, errPiMessagesEventsEnded):
+		_ = stream.Push(p.errorEvent(ctx, fmt.Errorf("%s %w", p.cfg.ProviderID, err))) // pi-messages.ts:443
+	default:
+		_ = stream.Push(p.errorEvent(ctx, err))
 	}
-	return fmt.Errorf("%s stream ended without a terminal event", p.cfg.ProviderID)
 }
 
 func isTerminalEvent(event AssistantMessageEvent) bool {
@@ -155,8 +176,12 @@ func (p *piMessagesProvider) send(ctx context.Context, transcript TranscriptCont
 	request.Header.Set("accept", "text/event-stream")
 	request.Header.Set("content-type", "application/json")
 	applyProviderHeaders(request, mergeProviderHeaders(ProviderHeadersFromStrings(p.cfg.ExtraHeaders), opts.Headers))
-	response, err := p.client.Do(request)
+	response, err := providerHTTPClient(p.client, opts.Fetch).Do(request)
 	if err != nil {
+		return nil, err
+	}
+	if err := observeProviderResponse(ctx, opts, response, &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID, API: APIPiMessages}}); err != nil {
+		_ = response.Body.Close()
 		return nil, err
 	}
 	if err := p.checkResponse(endpoint, response); err != nil {
@@ -177,11 +202,7 @@ func mergeProviderHeaders(base, override ProviderHeaders) ProviderHeaders {
 
 func (p *piMessagesProvider) checkResponse(endpoint *url.URL, response *http.Response) error {
 	if p.cfg.OnResponse != nil {
-		headers := make(map[string]string, len(response.Header))
-		for name := range response.Header {
-			headers[strings.ToLower(name)] = response.Header.Get(name)
-		}
-		if err := p.cfg.OnResponse(PiMessagesResponse{Status: response.StatusCode, Headers: headers}); err != nil {
+		if err := p.cfg.OnResponse(PiMessagesResponse{Status: response.StatusCode, Headers: headersToRecord(response.Header)}); err != nil {
 			return err
 		}
 	}
@@ -295,10 +316,16 @@ func truncateDiagnosticString(value string) string {
 	return truncateUTF16(value, 8192) + "…"
 }
 
-func (p *piMessagesProvider) errorEvent(err error, aborted bool) ErrorEvent {
+// errorEvent is createErrorEvent (pi-messages.ts:325-346). aborted is options.signal.aborted at the time of the catch, and an abort
+// that surfaced as a cancellation reports the signal's reason the way fetch rejects with it.
+func (p *piMessagesProvider) errorEvent(ctx context.Context, err error) ErrorEvent {
+	aborted := ctx.Err() != nil
 	reason := StopReasonError
 	if aborted {
 		reason = StopReasonAborted
+		if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+			err = abortSignalReason(context.Cause(ctx))
+		}
 	}
 	message := &AssistantMessage{
 		Content: []AssistantContentBlock{}, API: APIPiMessages, Provider: p.cfg.ProviderID, Model: p.cfg.Model,
@@ -317,58 +344,14 @@ func (p *piMessagesProvider) errorEvent(err error, aborted bool) ErrorEvent {
 	return ErrorEvent{Reason: reason, Error: message}
 }
 
-// readPiMessagesEvents splits the SSE body on blank lines and hands each
-// event's first data payload to handle until handle reports false.
-func readPiMessagesEvents(body io.Reader, handle func(json.RawMessage) (bool, error)) error {
-	scanner := bufio.NewScanner(body)
-	scanner.Buffer(make([]byte, 0, 64*1024), 64*1024*1024)
-	scanner.Split(splitSSEEvents)
-	for scanner.Scan() {
-		data, ok := piMessagesEventData(scanner.Text())
-		if !ok {
-			continue
-		}
-		if !json.Valid([]byte(data)) {
-			return fmt.Errorf("invalid pi-messages event JSON: %s", data)
-		}
-		more, err := handle(json.RawMessage(data))
-		if err != nil || !more {
-			return err
-		}
+// abortSignalReason is the error fetch rejects with when its signal aborts: the signal's reason. A plain abort() has DOMException
+// AbortError's message, and AbortSignal.timeout() has TimeoutError's.
+func abortSignalReason(cause error) error {
+	switch {
+	case cause == nil || errors.Is(cause, context.Canceled):
+		return errors.New("This operation was aborted")
+	case errors.Is(cause, context.DeadlineExceeded):
+		return errors.New("The operation was aborted due to timeout")
 	}
-	return scanner.Err()
-}
-
-// splitSSEEvents yields blank-line-separated events after CRLF normalization.
-func splitSSEEvents(data []byte, atEOF bool) (int, []byte, error) {
-	for index := range data {
-		if data[index] != '\n' {
-			continue
-		}
-		next := index + 1
-		if next < len(data) && data[next] == '\r' {
-			next++
-		}
-		if next < len(data) && data[next] == '\n' {
-			return next + 1, bytes.ReplaceAll(data[:index], []byte("\r\n"), []byte("\n")), nil
-		}
-	}
-	if atEOF && len(bytes.TrimSpace(data)) > 0 {
-		return len(data), bytes.ReplaceAll(data, []byte("\r\n"), []byte("\n")), nil
-	}
-	if atEOF {
-		return len(data), nil, nil
-	}
-	return 0, nil, nil
-}
-
-// upstream: ai/src/api/pi-messages.ts:parsePiMessagesEvent
-func piMessagesEventData(raw string) (string, bool) {
-	for line := range strings.SplitSeq(raw, "\n") {
-		if data, ok := strings.CutPrefix(line, "data:"); ok {
-			data = strings.TrimSpace(data)
-			return data, data != "" && data != "[DONE]"
-		}
-	}
-	return "", false
+	return cause
 }

@@ -37,6 +37,16 @@ func (c *CompactionSummaryComponent) SetExpanded(expanded bool) {
 	c.Invalidate()
 }
 
+// HandleMouse toggles the summary on a left click inside the box content, excluding its one-cell padding.
+// Ports packages/coding-agent/src/modes/interactive/components/compaction-summary-message.ts:60.
+func (c *CompactionSummaryComponent) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
+	if event.Type != MouseClick || event.Button != MouseButtonLeft || event.X < 1 || event.X-1 >= max(1, event.Width-2) || event.Y < 1 || event.Y >= event.Height-1 {
+		return nil
+	}
+	c.SetExpanded(!c.expanded)
+	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true}}
+}
+
 // Render returns the lines for this component at the given terminal width.
 // All column measurements are delegated to paintBgWith (which uses
 // lineDisplayWidth / runewidth.StringWidth internally).

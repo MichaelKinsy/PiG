@@ -1,0 +1,9 @@
+[
+ {"name":"direct-short","path":"/api.openai.com/v1","session":"xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"},
+ {"name":"proxy-affinity","path":"/proxy","session":"session-proxy","compat":{"sendSessionAffinityHeaders":true}},
+ {"name":"openrouter","path":"/openrouter.ai/api/v1","session":"session-router"},
+ {"name":"no-session","path":"/api.openai.com/v1","session":"session-no-session","compat":{"sendSessionAffinityHeaders":true,"sessionAffinityFormat":"openai-nosession"}},
+ {"name":"disabled","path":"/api.openai.com/v1","session":"session-none","retention":"none","compat":{"sendSessionAffinityHeaders":true}},
+ {"name":"long-proxy","path":"/proxy","session":"session-long","retention":"long"},
+ {"name":"override","path":"/proxy","session":"session-generated","compat":{"sendSessionAffinityHeaders":true},"headers":{"x-client-request-id":"request"},"modelHeaders":{"session_id":"model"}}
+]

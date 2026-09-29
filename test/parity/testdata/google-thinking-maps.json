@@ -1,0 +1,6 @@
+[
+ {"name":"omitted","id":"gemini-3.8-flash","mapping":{"off":null,"minimal":null,"low":"low","medium":"medium","high":"high","xhigh":null,"max":null},"level":"","budget":0},
+ {"name":"medium-pro","id":"gemini-3.1-pro-preview","mapping":{"off":null,"minimal":null,"low":"low","medium":"medium","high":"high","xhigh":null,"max":null},"level":"medium","budget":0},
+ {"name":"uppercase","id":"gemini-3.7-flash","mapping":{"high":"LOW"},"level":"high","budget":0},
+ {"name":"extended-budget","id":"gemini-2.5-flash","mapping":{"xhigh":"high"},"level":"xhigh","budget":1234}
+]

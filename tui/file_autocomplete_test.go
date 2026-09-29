@@ -176,7 +176,7 @@ func TestFindUnclosedQuoteStart(t *testing.T) {
 	}
 }
 
-// TestReaddirFileSuggestions tests the os.ReadDir fallback path.
+// TestReaddirFileSuggestions tests direct path listing.
 func TestReaddirFileSuggestions(t *testing.T) {
 	// Create temp dir structure.
 	tmp := t.TempDir()
@@ -184,7 +184,7 @@ func TestReaddirFileSuggestions(t *testing.T) {
 	_ = os.WriteFile(filepath.Join(tmp, "README.md"), []byte("hello"), 0o644)
 	_ = os.WriteFile(filepath.Join(tmp, "readme.txt"), []byte("yo"), 0o644)
 	_ = os.WriteFile(filepath.Join(tmp, "src", "main.go"), []byte("package main"), 0o644)
-	_ = os.MkdirAll(filepath.Join(tmp, ".git"), 0o755) // should be filtered
+	_ = os.MkdirAll(filepath.Join(tmp, ".git"), 0o755)
 
 	p := &CombinedProvider{baseDir: tmp, fdPath: ""}
 
@@ -193,18 +193,12 @@ func TestReaddirFileSuggestions(t *testing.T) {
 		if len(items) == 0 {
 			t.Fatal("expected items")
 		}
-		// Should not include .git.
-		for _, it := range items {
-			if it.Label == ".git/" {
-				t.Error(".git should be filtered out")
-			}
-		}
-		// Should have README.md, readme.txt, src/
+		// Pi autocomplete.ts:623-634 includes .git in direct listings; only fd attachment search excludes it.
 		found := map[string]bool{}
 		for _, it := range items {
 			found[it.Label] = true
 		}
-		for _, want := range []string{"README.md", "readme.txt", "src/"} {
+		for _, want := range []string{".git/", "README.md", "readme.txt", "src/"} {
 			if !found[want] {
 				t.Errorf("missing %q in results", want)
 			}
@@ -246,12 +240,8 @@ func TestReaddirFileSuggestions(t *testing.T) {
 
 	t.Run("dirs first", func(t *testing.T) {
 		items := p.readdirFileSuggestions("", false)
-		if len(items) < 2 {
-			t.Skip("need at least 2 items")
-		}
-		// First item should be src/ (directory).
-		if items[0].Label != "src/" {
-			t.Errorf("expected src/ first, got %s", items[0].Label)
+		if len(items) < 2 || items[0].Label != ".git/" || items[1].Label != "src/" {
+			t.Fatalf("expected .git/ and src/ before files, got %v", items)
 		}
 	})
 
@@ -274,7 +264,8 @@ func TestCombinedProviderAtPrefix(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p := NewCombinedProvider(nil, tmp, "")
+	// Pi autocomplete.ts:750 requires fd for attachment queries.
+	p := NewCombinedProvider(nil, tmp, requireFDForTest(t))
 
 	t.Run("@hel suggests hello.go", func(t *testing.T) {
 		lines := []string{"@hel"}
@@ -293,6 +284,14 @@ func TestCombinedProviderAtPrefix(t *testing.T) {
 		}
 		if !found {
 			t.Error("expected hello.go in results")
+		}
+	})
+
+	// Pi autocomplete.ts:750 returns no attachment suggestions without fd.
+	t.Run("@hel without fd suggests nothing", func(t *testing.T) {
+		withoutFd := NewCombinedProvider(nil, tmp, "")
+		if res := withoutFd.GetSuggestions([]string{"@hel"}, 0, 4); res != nil {
+			t.Fatalf("suggestions without fd = %+v, want none", res.Items)
 		}
 	})
 
@@ -378,9 +377,17 @@ func TestCombinedProviderNakedPath(t *testing.T) {
 	}
 	p := NewCombinedProvider(nil, dir, "")
 
-	// Shipped upstream UX: naked paths do not open naturally while typing.
-	if res := p.GetSuggestions([]string{"./"}, 0, 2); res != nil {
-		t.Fatalf("natural naked ./ unexpectedly opened popup: %+v", res)
+	// upstream: packages/tui/src/autocomplete.ts:380-393. The provider answers path queries; the Editor, not the provider, gates automatic queries.
+	natural := p.GetSuggestions([]string{"./"}, 0, 2)
+	if natural == nil || natural.Prefix != "./" || len(natural.Items) != 2 || natural.Items[0].Value != "./beta/" || natural.Items[1].Value != "./alpha.txt" {
+		t.Fatalf("path suggestions=%+v, want ./beta/ then ./alpha.txt", natural)
+	}
+	editor := NewEditor()
+	editor.SetAutocomplete(p)
+	editor.HandleInput(".")
+	editor.HandleInput("/")
+	if editor.AutocompleteOpen() {
+		t.Fatal("typing a naked path opened the editor popup")
 	}
 	// Plain word without force returns nil.
 	if res := p.GetSuggestions([]string{"hello"}, 0, 5); res != nil {
@@ -449,7 +456,7 @@ func TestEditorTabAcceptsShallowFileAutocompleteMatch(t *testing.T) {
 
 	e := NewEditor()
 	e.SetAutocomplete(NewCombinedProvider(nil, baseDir, fdPath))
-	e.SetText("@scope/pro")
+	e.HandleInput("@scope/pro")
 	if !e.AutocompleteOpen() {
 		t.Fatal("expected file autocomplete popup")
 	}
@@ -613,13 +620,36 @@ func TestAsyncFileSearch_GatesSyncFdPath(t *testing.T) {
 
 func lookFdForTest(t *testing.T) string {
 	t.Helper()
+	path, err := lookFD()
+	if err != nil {
+		t.Skip("fd not available")
+	}
+	return path
+}
+
+// requireFDForTest fails when fd is absent: Pi autocomplete.ts:750 requires fd for attachment queries.
+func requireFDForTest(t *testing.T) string {
+	t.Helper()
+	path, err := lookFD()
+	if err != nil {
+		t.Fatal("attachment queries require fd:", err)
+	}
+	return path
+}
+
+// lookFD resolves fd as the tools manager does (tools.go systemToolConfigs): fd, then Debian and Ubuntu's fdfind.
+func lookFD() (string, error) {
+	var firstErr error
 	for _, name := range []string{"fd", "fdfind"} {
-		if path, err := exec.LookPath(name); err == nil {
-			return path
+		path, err := exec.LookPath(name)
+		if err == nil {
+			return path, nil
+		}
+		if firstErr == nil {
+			firstErr = err
 		}
 	}
-	t.Skip("fd not available")
-	return ""
+	return "", firstErr
 }
 
 type countingAsyncFileProvider struct {

@@ -24,7 +24,7 @@ import (
 
 // printModeTestHost builds a print-mode runtime whose session talks to
 // provider in fresh, isolated directories.
-func printModeTestHost(t *testing.T, provider ai.Provider, tools ...agent.AgentTool) printModeRuntime {
+func printModeTestHost(t testing.TB, provider ai.Provider, tools ...agent.AgentTool) printModeRuntime {
 	t.Helper()
 	services, err := coding.NewServices(coding.ServicesOptions{CWD: t.TempDir(), AgentDir: t.TempDir()})
 	if err != nil {
@@ -110,9 +110,9 @@ func TestPrintAndJSONInputHandlersConsumeEveryPrompt(t *testing.T) {
 func TestPrintInputTransformRetainsImages(t *testing.T) {
 	captured := make(chan []ai.Message, 1)
 	provider := ai.NewFauxProvider(ai.FauxConfig{})
-	provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(context ai.TranscriptContext, _ ai.StreamOptions, _ int) ai.FauxResponse {
+	provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(context ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
 		captured <- context.Messages()
-		return fauxTextResponse("done")
+		return fauxTextResponse("done"), nil
 	})})
 	var encoded bytes.Buffer
 	pixels := image.NewRGBA(image.Rect(0, 0, 1, 1))
@@ -215,7 +215,7 @@ func (printTestTool) Schema() ai.ToolSchema {
 	return ai.ToolSchema{Name: "print_test_tool", Parameters: map[string]any{"type": "object"}}
 }
 func (printTestTool) Execute(context.Context, string, json.RawMessage, agent.ToolUpdateCallback) (agent.AgentToolResult, error) {
-	return agent.AgentToolResult{Content: "tool output"}, nil
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "tool output"}}}, nil
 }
 
 func fauxSteps(responses ...ai.FauxResponse) []ai.FauxResponseStep {
@@ -285,8 +285,8 @@ func TestPrintModePrintsAnswerAfterOverflowRecovery(t *testing.T) {
 	}
 	steps := make([]ai.FauxResponseStep, 16)
 	for i := range steps {
-		steps[i] = ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ int) ai.FauxResponse {
-			return respond(request)
+		steps[i] = ai.FauxFactoryStep(func(request ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
+			return respond(request), nil
 		})
 	}
 	provider.SetResponses(steps)
@@ -313,9 +313,9 @@ func TestPrintAndJSONModeRunExtensionCommandsAndExpandTemplates(t *testing.T) {
 		t.Run(mode, func(t *testing.T) {
 			captured := make(chan []ai.Message, 1)
 			provider := ai.NewFauxProvider(ai.FauxConfig{})
-			provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(context ai.TranscriptContext, _ ai.StreamOptions, _ int) ai.FauxResponse {
+			provider.SetResponses([]ai.FauxResponseStep{ai.FauxFactoryStep(func(context ai.TranscriptContext, _ ai.StreamOptions, _ *ai.FauxProviderState, _ *ai.Model) (ai.FauxResponse, error) {
 				captured <- context.Messages()
-				return fauxTextResponse("reviewed")
+				return fauxTextResponse("reviewed"), nil
 			})})
 			var ran []string
 			var inputs []string

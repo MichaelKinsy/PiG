@@ -41,6 +41,10 @@ func TestSessionFirstPromptPersistsStructuredSystemSections(t *testing.T) {
 }
 
 func TestSessionDefaultSectionsReachEventsProviderAndPersistenceOnce(t *testing.T) {
+	// The default loader reads ~/.agents/skills (package-manager.ts getHomeDir); an empty home keeps the user's skills out of the asserted sections.
+	home := t.TempDir()
+	t.Setenv("HOME", home)
+	t.Setenv("USERPROFILE", home)
 	provider := &transcriptCaptureProvider{}
 	services := newTestServices(t)
 	options := SessionOptions{Model: fakeModelWithProvider(provider)}

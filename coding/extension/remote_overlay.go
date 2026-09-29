@@ -2,8 +2,9 @@ package extension
 
 import (
 	"encoding/json"
-	"regexp"
 	"strconv"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // RemoteOverlayOptions controls how a remote (subprocess-backed) overlay
@@ -58,7 +59,7 @@ type OverlaySizeValue struct {
 	Invalid bool
 }
 
-var overlayPercentRE = regexp.MustCompile(`^(\d+(?:\.\d+)?)%$`)
+var overlayPercentRE = lazyregexp.New(`^(\d+(?:\.\d+)?)%$`)
 
 func (v *OverlaySizeValue) UnmarshalJSON(data []byte) error {
 	var n float64
@@ -117,6 +118,28 @@ func (m OverlayMarginValue) MarshalJSON() ([]byte, error) {
 		return json.Marshal(*m.All)
 	}
 	return json.Marshal(map[string]int{"top": m.Top, "right": m.Right, "bottom": m.Bottom, "left": m.Left})
+}
+
+// RemoteOverlayFocusTarget is an explicit OverlayHandle.unfocus target resolved by the host. The zero value is Pi's null target. Overlay is another mounted overlay of the same extension, as the host registered it; Editor selects the main editor component.
+type RemoteOverlayFocusTarget struct {
+	Overlay any
+	Editor  bool
+}
+
+// RemoteOverlayState is the host's mounted-overlay state at a control/input boundary.
+type RemoteOverlayState struct {
+	Hidden  bool                 `json:"hidden"`
+	Focused bool                 `json:"focused"`
+	Visible bool                 `json:"visible"`
+	Bounds  *RemoteOverlayBounds `json:"bounds,omitempty"`
+}
+
+// RemoteOverlayBounds is the last rendered terminal-relative rectangle.
+type RemoteOverlayBounds struct {
+	Row    int `json:"row"`
+	Col    int `json:"col"`
+	Width  int `json:"width"`
+	Height int `json:"height"`
 }
 
 // RemoteOverlayHandle is returned to the caller of

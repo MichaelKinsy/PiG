@@ -1,0 +1,24 @@
+# Pi 0.87.1 main.ts:368-382,694-700 and startup-session-name.test.ts:111 apply startup metadata before model validation.
+# The fixture launches each real CLI with an invalid model, reads session_info entries, and verifies the selected Session and requested fork ID.
+# It compares complete metadata names, IDs, exit status, and signal, not diagnostics or volatile entry timestamps. No value normalization runs.
+name = "10-startup-session-metadata"
+description = "Startup names persist on the selected Session before model validation, including explicitly identified forks."
+covers = ["packages/coding-agent/src/main.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/startup-session-metadata.mjs", "pig", "{{TEMP}}"]
+pi_args = ["node", "./test/parity/testdata/startup-session-metadata.mjs", "pi", "{{TEMP}}"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

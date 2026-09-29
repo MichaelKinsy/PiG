@@ -19,10 +19,16 @@ type ResourceSourceInfo struct {
 	BaseDir      string // package root for package-relative shortening
 }
 
-// DisplayName derives the logical resource name used for collision grouping.
+// DisplayName derives the path-based resource name used for collision grouping. A skill entry file uses its parent directory, matching Pi's default skill name.
 func (i ResourceSourceInfo) DisplayName() string {
 	switch i.ResourceType {
-	case "skills", "extensions":
+	case "skills":
+		path := i.Path
+		if strings.HasSuffix(path, ".md") {
+			path = filepath.Dir(path)
+		}
+		return filepath.Base(path)
+	case "extensions":
 		return filepath.Base(i.Path)
 	case "prompts", "themes":
 		base := filepath.Base(i.Path)

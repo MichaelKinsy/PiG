@@ -84,16 +84,21 @@ func DomainToUnicode(host string) string {
 	return unicode
 }
 
-// parseFileURL runs the WHATWG URL parser on raw far enough to return a file
-// URL's host and serialized path.
-func parseFileURL(raw string) (host, pathname string, err error) {
+// PrepareInput applies the URL parser's C0/space trimming and tab/newline removal.
+func PrepareInput(raw string) string {
 	input := strings.TrimFunc(raw, func(r rune) bool { return r <= 0x20 })
-	input = strings.Map(func(r rune) rune {
+	return strings.Map(func(r rune) rune {
 		if r == '\t' || r == '\n' || r == '\r' {
 			return -1
 		}
 		return r
 	}, input)
+}
+
+// parseFileURL runs the WHATWG URL parser on raw far enough to return a file
+// URL's host and serialized path.
+func parseFileURL(raw string) (host, pathname string, err error) {
+	input := PrepareInput(raw)
 	colon := strings.IndexByte(input, ':')
 	if colon <= 0 || !isScheme(input[:colon]) {
 		return "", "", errInvalidURL
@@ -123,6 +128,15 @@ func parseFileURL(raw string) (host, pathname string, err error) {
 // and \, the query and fragment dropped, dot segments resolved, and a leading
 // Windows drive letter normalized to X: and never removed by "..".
 func parseFilePath(rest string) []string {
+	return parseSpecialPath(rest, true)
+}
+
+// SpecialPath resolves dot segments in a special URL pathname. File URLs additionally preserve and normalize a leading Windows drive letter.
+func SpecialPath(pathname string, file bool) string {
+	return "/" + strings.Join(parseSpecialPath(pathname, file), "/")
+}
+
+func parseSpecialPath(rest string, file bool) []string {
 	if end := strings.IndexAny(rest, "?#"); end >= 0 {
 		rest = rest[:end]
 	}
@@ -136,7 +150,7 @@ func parseFilePath(rest string) []string {
 		switch {
 		case isDoubleDot(buffer):
 			// Shortening never removes a file URL's lone drive letter.
-			if len(path) > 1 || len(path) == 1 && !isNormalizedWindowsDriveLetter(path[0]) {
+			if len(path) > 0 && (!file || len(path) > 1 || !isNormalizedWindowsDriveLetter(path[0])) {
 				path = path[:len(path)-1]
 			}
 			if last {
@@ -147,7 +161,7 @@ func parseFilePath(rest string) []string {
 				path = append(path, "")
 			}
 		default:
-			if len(path) == 0 && isWindowsDriveLetter(buffer) {
+			if file && len(path) == 0 && isWindowsDriveLetter(buffer) {
 				buffer = buffer[:1] + ":"
 			}
 			path = append(path, buffer)

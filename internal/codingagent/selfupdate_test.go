@@ -395,6 +395,7 @@ func TestCheckForBinaryUpdate(t *testing.T) {
 	}))
 	defer srv.Close()
 	t.Setenv("PIG_UPDATE_URL", srv.URL)
+	t.Setenv("PI_SKIP_VERSION_CHECK", "")
 
 	if u := CheckForBinaryUpdate(context.Background(), srv.Client(), "0.1.1"); u == nil || u.LatestVersion != "9.9.9" || u.Command != "pig update" {
 		t.Fatalf("CheckForBinaryUpdate = %#v, want newer", u)
@@ -697,6 +698,7 @@ func TestAC6CheckAndFallbackBehavior(t *testing.T) {
 	}))
 	defer srv.Close()
 	t.Setenv("PIG_UPDATE_URL", srv.URL)
+	t.Setenv("PI_SKIP_VERSION_CHECK", "")
 
 	for _, key := range []string{"PIG_OFFLINE", "PI_OFFLINE"} {
 		t.Run("offline_"+key, func(t *testing.T) {
@@ -719,6 +721,23 @@ func TestAC6CheckAndFallbackBehavior(t *testing.T) {
 			t.Fatalf("PI_OFFLINE=0 startup check = %#v, want nil", got)
 		}
 	})
+
+	// upstream: packages/coding-agent/src/utils/version-check.ts:checkForNewPiVersion
+	// returns undefined before any request when PI_SKIP_VERSION_CHECK is truthy
+	// (any non-empty string, so "0" also skips).
+	for _, value := range []string{"1", "0"} {
+		t.Run("skip_version_check_"+value, func(t *testing.T) {
+			t.Setenv("PIG_OFFLINE", "")
+			t.Setenv("PI_OFFLINE", "")
+			t.Setenv("PI_SKIP_VERSION_CHECK", value)
+			if got := CheckForBinaryUpdate(context.Background(), srv.Client(), "0.1.0"); got != nil {
+				t.Fatalf("PI_SKIP_VERSION_CHECK=%s startup check = %#v, want nil", value, got)
+			}
+			if requests.Load() != 0 {
+				t.Fatalf("PI_SKIP_VERSION_CHECK=%s startup check made %d request(s)", value, requests.Load())
+			}
+		})
+	}
 
 	t.Run("unreachable_is_best_effort", func(t *testing.T) {
 		t.Setenv("PIG_OFFLINE", "")

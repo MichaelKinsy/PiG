@@ -1,10 +1,11 @@
 package tui
 
 import (
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // Ports pi-tui's terminal-image.ts Kitty metadata registry and the two layout
@@ -43,13 +44,13 @@ var (
 
 // kittyGraphicPattern matches the APC \x1b_G...; control prefix; group 1 is the
 // control string (up to the first ';').
-var kittyGraphicPattern = regexp.MustCompile("\x1b_G([^;]*);")
+var kittyGraphicPattern = lazyregexp.New("\x1b_G([^;]*);")
 
 // kittyImageIDPattern extracts i=<digits> from a Kitty control string.
-var kittyImageIDPattern = regexp.MustCompile(`(?:^|,)i=(\d+)(?:,|$)`)
+var kittyImageIDPattern = lazyregexp.New(`(?:^|,)i=(\d+)(?:,|$)`)
 
 // kittyCropControlPattern matches the y/h/r controls a crop overrides.
-var kittyCropControlPattern = regexp.MustCompile(`^[yhr]=`)
+var kittyCropControlPattern = lazyregexp.New(`^[yhr]=`)
 
 // RegisterKittyImageMetadata records metadata for a transmitted Kitty image,
 // evicting the oldest entry past the cap. Mirrors upstream
@@ -164,7 +165,7 @@ const kittyPrefix = "\x1b_G"
 
 // kittyMoreChunksPattern matches m=1 (more chunks follow) in a control string.
 // Mirrors upstream /(?:^|,)m=1(?:,|$)/.
-var kittyMoreChunksPattern = regexp.MustCompile(`(?:^|,)m=1(?:,|$)`)
+var kittyMoreChunksPattern = lazyregexp.New(`(?:^|,)m=1(?:,|$)`)
 
 // kittyPlacementControlKeys is the set of control keys copied into a
 // placement-only command. Mirrors upstream KITTY_PLACEMENT_CONTROL_KEYS.

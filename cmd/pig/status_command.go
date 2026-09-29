@@ -13,6 +13,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/packagecontent"
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 )
 
 type statusOutput struct {
@@ -102,8 +103,9 @@ func collectStatus() statusOutput {
 		cwd = "."
 	}
 	agentDir := codingagent.AgentDir()
+	// The report leaves the project path empty when the workspace's config directory is the user config root. Resource loading has no such rule.
 	projectPath := ""
-	if projectRoot, ok := projectResourceRoot(cwd); ok {
+	if projectRoot := codingagent.ProjectConfigDir(cwd); canonicalStatusPath(projectRoot) != canonicalStatusPath(codingagent.ConfigRoot()) {
 		projectPath = canonicalStatusPath(projectRoot)
 	}
 	status := statusOutput{
@@ -119,7 +121,7 @@ func collectStatus() statusOutput {
 	for _, settingsError := range settings.DrainErrors() {
 		status.Errors = append(status.Errors, fmt.Sprintf("%s settings: %v", settingsError.Scope, settingsError.Error))
 	}
-	packages := configuredPackagesForResolution(cwd, settings)
+	packages := packagemanager.ConfiguredPackagesForResolution(cwd, settings.AgentDir(), settings)
 	status.Packages.Total = len(packages)
 	for _, pkg := range packages {
 		if pkg.Scope == "project" {
@@ -213,7 +215,7 @@ func renderStatus(status statusOutput) {
 	fmt.Printf("  resources: %d (enabled=%d disabled=%d)\n", status.Resources.Total, status.Resources.Enabled, status.Resources.Disabled)
 	fmt.Printf("  piglets: %d (source=%d binary=%d)\n", status.Piglets.Total, status.Piglets.WithSource, status.Piglets.WithBinary)
 	for _, message := range status.Errors {
-		fmt.Fprintln(os.Stderr, "error:", message)
+		printCLIError("%s", message)
 	}
 }
 

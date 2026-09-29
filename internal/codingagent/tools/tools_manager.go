@@ -13,7 +13,7 @@
 //
 // The asset table selects platform-specific release archives. On darwin/x64, fd uses a pinned release.
 //
-// Extraction divergence (D14: documented in DIVERGENCES.md): upstream
+// Extraction divergence (D14: documented in docs/parity/DIVERGENCES.md): upstream
 // spawns `tar`, `unzip`, and PowerShell. pig uses Go stdlib
 // (archive/tar + compress/gzip + archive/zip) on all platforms. The
 // extracted binary is byte-identical; only the error message text on
@@ -31,7 +31,6 @@ import (
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -40,6 +39,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/managementhttp"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 const (
@@ -214,7 +214,7 @@ func (m *ToolsManager) GetToolPath(tool string) string {
 		BinaryName:        config.BinaryName,
 		SystemBinaryNames: config.SystemBinaryNames,
 	}) {
-		if path, err := exec.LookPath(name); err == nil {
+		if path, err := nodespawn.LookPath(name, "", nil); err == nil {
 			if runtime.GOOS == "windows" {
 				return name
 			}
@@ -259,7 +259,7 @@ func (m *ToolsManager) EnsureTool(ctx context.Context, tool string, onStatus fun
 		return ""
 	}
 
-	// Deduplicate concurrent EnsureTool calls for the same tool.
+	// pig additive (D81): coalesce same-tool downloads within this manager.
 	if m.beforeInflightLock != nil {
 		m.beforeInflightLock(tool)
 	}

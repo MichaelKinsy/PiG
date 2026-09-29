@@ -19,7 +19,7 @@ import (
 // unsynchronized, to acquire that per-key mutex, so a goroutine whose
 // registration landed later could still win that separate race and run its
 // callback before an earlier-registered caller (a batched write-then-edit on
-// one file could apply out of order; parity/scenarios/tools/
+// one file could apply out of order; test/parity/scenarios/tools/
 // 10-print-batched-file-mutation.toml).
 //
 // A pre-call atomic ticket (assigned just before invoking With) cannot

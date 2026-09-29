@@ -109,6 +109,18 @@ func fakeModel() *ai.Model {
 	}
 }
 
+// newTestServicesWithSettings is newTestServices over in-memory settings, as the upstream tests build with SettingsManager.inMemory(settings). Settings applied to Services with ApplyOverrides do not survive the reload createAgentSession runs.
+func newTestServicesWithSettings(t *testing.T, settings icodingagent.Settings) *Services {
+	t.Helper()
+	t.Setenv("PIG_HOME", t.TempDir())
+	srv, err := NewServices(ServicesOptions{CWD: t.TempDir(), SettingsManager: NewInMemorySettingsManager(settings)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(srv.Close)
+	return srv
+}
+
 func newTestServices(t *testing.T) *Services {
 	t.Helper()
 	tmp := t.TempDir()
@@ -117,7 +129,86 @@ func newTestServices(t *testing.T) *Services {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(srv.Close)
 	return srv
+}
+
+func sessionManagerFixture(t *testing.T) (*Services, *ai.Model, string, string) {
+	t.Helper()
+	root := t.TempDir()
+	cwd, agentDir := filepath.Join(root, "project"), filepath.Join(root, "agent")
+	for _, path := range []string{cwd, agentDir} {
+		if err := os.MkdirAll(path, 0o755); err != nil {
+			t.Fatal(err)
+		}
+	}
+	t.Setenv("HOME", root)
+	t.Setenv("PIG_HOME", filepath.Join(root, "ambient"))
+	t.Setenv("PIG_CODING_AGENT_DIR", "")
+	t.Setenv("PI_CODING_AGENT_DIR", "")
+	services, err := NewServices(ServicesOptions{CWD: cwd, AgentDir: agentDir})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(services.Close)
+	model, err := BuildModel("anthropic/claude-sonnet-4-5", services)
+	if err != nil || model == nil {
+		t.Fatalf("model=%v err=%v", model, err)
+	}
+	return services, model, cwd, agentDir
+}
+
+func createSessionWithServicesOptions(t *testing.T, serviceOptions ServicesOptions, options SessionOptions) *Session {
+	t.Helper()
+	services, err := NewServices(serviceOptions)
+	if err != nil {
+		t.Fatal(err)
+	}
+	session, err := NewSession(services, options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := session.Close(); err != nil {
+			t.Error(err)
+		}
+	})
+	return session
+}
+
+func printSessionManagerProbe(t *testing.T, index int, value any) {
+	t.Helper()
+	if os.Getenv("PIG_SDK_MANAGER_PROBE") != "1" {
+		return
+	}
+	raw, err := json.Marshal([]any{index, value})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Println("SDK_SESSION_MANAGER " + string(raw))
+}
+
+func executeSessionBash(t *testing.T, session *Session, command string) string {
+	t.Helper()
+	var bash agent.AgentTool
+	for _, tool := range session.Agent().Tools() {
+		if tool.Name() == "bash" {
+			bash = tool
+			break
+		}
+	}
+	if bash == nil {
+		t.Fatal("missing built-in bash")
+	}
+	args, err := json.Marshal(map[string]string{"command": command})
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := bash.Execute(t.Context(), "test", args, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return result.Text()
 }
 
 // newTestServicesSmallKeep is newTestServices with a tiny keepRecentTokens so
@@ -141,6 +232,7 @@ func newTestServicesSmallKeep(t *testing.T) *Services {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(srv.Close)
 	return srv
 }
 
@@ -208,6 +300,7 @@ func TestResumeRestoresModelAndThinkingLevel(t *testing.T) {
 	}
 	if _, err := first.inner.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{
 		Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "saved"}}, StopReason: "stop",
+		Provider: model.Provider.ID(), ModelID: model.ID, API: model.ProviderMeta.API, Usage: &ai.Usage{},
 	}}); err != nil {
 		t.Fatal(err)
 	}
@@ -216,11 +309,8 @@ func TestResumeRestoresModelAndThinkingLevel(t *testing.T) {
 		t.Fatalf("close source session: %v", err)
 	}
 
-	fallback, err := BuildModel("openai/gpt-4o", services)
-	if err != nil {
-		t.Fatal(err)
-	}
-	resumed, err := NewSession(services, SessionOptions{Model: fallback, ResumePath: path})
+	// sdk.ts:198-205: omit the model to restore saved selection; a supplied model is an explicit override.
+	resumed, err := NewSession(services, SessionOptions{ResumePath: path})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -355,7 +445,8 @@ func TestNewSessionPowerShellIsOptIn(t *testing.T) {
 		opts SessionOptions
 		want []string
 	}{
-		{"default", SessionOptions{}, []string{"read", "bash", "edit", "write", "grep", "find", "ls"}},
+		// .upstream/v0.87.1/packages/coding-agent/src/core/sdk.ts:258 defines the SDK default, not all registered builtins.
+		{"default", SessionOptions{}, []string{"read", "bash", "edit", "write"}},
 		{"cli default active set", SessionOptions{ActiveBuiltinTools: map[string]struct{}{"read": {}, "bash": {}, "edit": {}, "write": {}}},
 			[]string{"read", "bash", "edit", "write"}},
 		{"allowlist", SessionOptions{AllowedTools: map[string]struct{}{"powershell": {}, "bash": {}}}, []string{"bash", "powershell"}},
@@ -626,7 +717,7 @@ func TestSessionResumeRebuildsAgentMessages(t *testing.T) {
 	userMsg := agent.AgentMessage{
 		User: &agent.UserMessage{
 			Role:      "user",
-			Content:   []ai.UserContentBlock{ai.TextContent{Text: "hello"}},
+			Content:   ai.UserContentBlocks{ai.TextContent{Text: "hello"}},
 			Timestamp: 1,
 		},
 	}
@@ -731,7 +822,7 @@ func TestSessionSendPersistsUserPromptBeforeAgentLoop(t *testing.T) {
 		if m.User == nil {
 			continue
 		}
-		for _, c := range m.User.Content {
+		for _, c := range m.ContentBlocks() {
 			if tc, ok := c.(ai.TextContent); ok && tc.Text == "persist-me-please" {
 				found = true
 			}
@@ -762,7 +853,7 @@ func TestPersistenceFollowsReplaceInner(t *testing.T) {
 	oldEntriesBefore := len(oldInner.Entries())
 
 	// Swap in a fresh empty session, exactly as /new, /clone, and /resume do.
-	sm := newSessionManagerForDir(svcs.CWD(), "")
+	sm := newSessionManagerForDir(svcs, "")
 	newInner, err := sm.Create("sess-replaced", "")
 	if err != nil {
 		t.Fatal(err)
@@ -860,7 +951,7 @@ func buildSessionWithMessages(t *testing.T, svcs *Services, n int) *Session {
 		userMsg := agent.AgentMessage{
 			User: &agent.UserMessage{
 				Role:    "user",
-				Content: []ai.UserContentBlock{ai.TextContent{Text: fmt.Sprintf("q%d", i)}},
+				Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("q%d", i)}},
 			},
 		}
 		asstMsg := agent.AgentMessage{
@@ -1095,7 +1186,7 @@ func TestAutoCompaction_ExtensionLifecycleMetadata(t *testing.T) {
 	}}
 	sess.ReplaceRunner(inproc.NewRunner([]extension.Extension{ext}, t.TempDir()))
 
-	if !sess.runAutoCompaction(context.Background(), "threshold", false) {
+	if compacted, err := sess.runAutoCompaction(context.Background(), "threshold", false); !compacted || err != nil {
 		t.Fatal("auto compaction did not run")
 	}
 	if beforeReason != "threshold" || compactReason != "threshold" {
@@ -1193,7 +1284,9 @@ func TestAutoCompactionCancelsSynchronouslyFromStartEvent(t *testing.T) {
 	})
 	defer unsubscribe()
 
-	sess.runAutoCompaction(t.Context(), "threshold", false)
+	if _, err := sess.runAutoCompaction(t.Context(), "threshold", false); err != nil {
+		t.Fatal(err)
+	}
 	select {
 	case <-startHandled:
 	case <-time.After(5 * time.Second):
@@ -1229,7 +1322,7 @@ func TestAutoCompactionProviderErrorsAreNotCancellation(t *testing.T) {
 			defer func() { _ = sess.Close() }()
 			sess.completer = &fakeCompleter{err: errors.New(message)}
 
-			if sess.runAutoCompaction(t.Context(), "threshold", false) {
+			if compacted, err := sess.runAutoCompaction(t.Context(), "threshold", false); compacted || err != nil {
 				t.Fatal("failed auto-compaction reported success")
 			}
 			var end *agent.CompactionEndEvent
@@ -1257,7 +1350,7 @@ func TestAutoCompactionFailureAlwaysReportsWillRetryFalse(t *testing.T) {
 		}},
 	}}}, t.TempDir()))
 
-	if sess.runAutoCompaction(t.Context(), "overflow", true) {
+	if compacted, err := sess.runAutoCompaction(t.Context(), "overflow", true); compacted || err != nil {
 		t.Fatal("failed overflow compaction reported success")
 	}
 	select {
@@ -1278,7 +1371,9 @@ func TestAutoCompaction_NothingToCompactIsSilent(t *testing.T) {
 	fakeComp := &fakeCompleter{summary: "must not be called"}
 	sess.completer = fakeComp
 
-	sess.runAutoCompaction(context.Background(), "threshold", false)
+	if _, err := sess.runAutoCompaction(context.Background(), "threshold", false); err != nil {
+		t.Fatal(err)
+	}
 
 	if fakeComp.called.Load() {
 		t.Fatal("auto compaction called completer despite nothing to compact")
@@ -1294,7 +1389,9 @@ func TestAutoCompaction_SuccessEmitsEstimatedTokensAfter(t *testing.T) {
 	defer func() { _ = sess.Close() }()
 
 	sess.completer = &fakeCompleter{summary: "auto summary"}
-	sess.runAutoCompaction(context.Background(), "threshold", false)
+	if _, err := sess.runAutoCompaction(context.Background(), "threshold", false); err != nil {
+		t.Fatal(err)
+	}
 
 	var end *agent.CompactionEndEvent
 	for _, ev := range drainEvents(t, sess) {
@@ -1392,7 +1489,7 @@ func TestNavigateTree_NoSummary(t *testing.T) {
 	userMsg := agent.AgentMessage{
 		User: &agent.UserMessage{
 			Role:    "user",
-			Content: []ai.UserContentBlock{ai.TextContent{Text: "first"}},
+			Content: ai.UserContentBlocks{ai.TextContent{Text: "first"}},
 		},
 	}
 	if _, err := sess.inner.AppendMessage(userMsg); err != nil {
@@ -1409,7 +1506,7 @@ func TestNavigateTree_NoSummary(t *testing.T) {
 	userMsg2 := agent.AgentMessage{
 		User: &agent.UserMessage{
 			Role:    "user",
-			Content: []ai.UserContentBlock{ai.TextContent{Text: "second"}},
+			Content: ai.UserContentBlocks{ai.TextContent{Text: "second"}},
 		},
 	}
 	if _, err := sess.inner.AppendMessage(userMsg2); err != nil {
@@ -1454,7 +1551,7 @@ func TestNavigateTree_WithSummary(t *testing.T) {
 	userMsg := agent.AgentMessage{
 		User: &agent.UserMessage{
 			Role:    "user",
-			Content: []ai.UserContentBlock{ai.TextContent{Text: "root"}},
+			Content: ai.UserContentBlocks{ai.TextContent{Text: "root"}},
 		},
 	}
 	if _, err := sess.inner.AppendMessage(userMsg); err != nil {
@@ -1466,7 +1563,7 @@ func TestNavigateTree_WithSummary(t *testing.T) {
 	userMsg2 := agent.AgentMessage{
 		User: &agent.UserMessage{
 			Role:    "user",
-			Content: []ai.UserContentBlock{ai.TextContent{Text: "diverged"}},
+			Content: ai.UserContentBlocks{ai.TextContent{Text: "diverged"}},
 		},
 	}
 	if _, err := sess.inner.AppendMessage(userMsg2); err != nil {
@@ -1565,7 +1662,13 @@ func TestCompactAbortsInFlightAutoCompactionAndRestarts(t *testing.T) {
 	originalLeafID := *sess.inner.LeafID()
 
 	autoDone := make(chan bool, 1)
-	go func() { autoDone <- sess.runAutoCompaction(t.Context(), "threshold", false) }()
+	go func() {
+		compacted, err := sess.runAutoCompaction(t.Context(), "threshold", false)
+		if err != nil {
+			t.Error(err)
+		}
+		autoDone <- compacted
+	}()
 	<-completer.started
 	manualDone := make(chan error, 1)
 	go func() { manualDone <- sess.Compact(t.Context(), "manual") }()
@@ -1786,7 +1889,7 @@ func TestCheckCompactionThreshold(t *testing.T) {
 	// contextWindow=128000, reserve=16384 → threshold at 111616 tokens.
 	m := fakeModel()
 	m.Capabilities.ContextWindow = 128000
-	sess.model.Store(m)
+	sess.Agent().SetModel(m)
 
 	// Fake assistant message: usage that pushes total tokens above threshold.
 	// input=100000 + output=15000 = 115000 > 111616 → should compact.
@@ -1844,7 +1947,7 @@ func TestCheckCompactionOverflow(t *testing.T) {
 
 	m := fakeModel()
 	m.Capabilities.ContextWindow = 8000
-	sess.model.Store(m)
+	sess.Agent().SetModel(m)
 
 	overflowMsg := &agent.AssistantMessage{
 		Role:         "assistant",
@@ -1920,7 +2023,7 @@ func TestOverflowNoDoubleRetry(t *testing.T) {
 
 	m := fakeModel()
 	m.Capabilities.ContextWindow = 8000
-	sess.model.Store(m)
+	sess.Agent().SetModel(m)
 
 	// Simulate that the first recovery was already attempted.
 	sess.overflowRecoveryAttempted.Store(true)
@@ -1973,7 +2076,7 @@ func TestOverflowRecoveryFlagResetsOnNewTurn(t *testing.T) {
 
 	m := fakeModel()
 	m.Capabilities.ContextWindow = 8000
-	sess.model.Store(m)
+	sess.Agent().SetModel(m)
 
 	// Simulate that a prior overflow recovery was attempted.
 	sess.overflowRecoveryAttempted.Store(true)
@@ -2030,7 +2133,7 @@ func TestPreSendCompactionCheck(t *testing.T) {
 
 	m := fakeModel()
 	m.Capabilities.ContextWindow = 8000
-	sess.model.Store(m)
+	sess.Agent().SetModel(m)
 
 	// Inject an overflow error assistant message into agent state.
 	// Scenario: the last turn returned an overflow error. The post-send check
@@ -2086,7 +2189,7 @@ func TestPreSendCompactionSkipsAborted(t *testing.T) {
 
 	m := fakeModel()
 	m.Capabilities.ContextWindow = 8000
-	sess.model.Store(m)
+	sess.Agent().SetModel(m)
 
 	// Aborted message with high usage: exceeds threshold but stopReason is aborted.
 	abortedHighUsage := &agent.AssistantMessage{
@@ -2125,7 +2228,7 @@ func TestNavigateTree_SummaryJoinsDestinationFromAbandonedLeaf(t *testing.T) {
 	firstMsg := agent.AgentMessage{
 		User: &agent.UserMessage{
 			Role:    "user",
-			Content: []ai.UserContentBlock{ai.TextContent{Text: "first question"}},
+			Content: ai.UserContentBlocks{ai.TextContent{Text: "first question"}},
 		},
 	}
 	if _, err := sess.inner.AppendMessage(firstMsg); err != nil {
@@ -2137,7 +2240,7 @@ func TestNavigateTree_SummaryJoinsDestinationFromAbandonedLeaf(t *testing.T) {
 	secondMsg := agent.AgentMessage{
 		User: &agent.UserMessage{
 			Role:    "user",
-			Content: []ai.UserContentBlock{ai.TextContent{Text: "second question"}},
+			Content: ai.UserContentBlocks{ai.TextContent{Text: "second question"}},
 		},
 	}
 	if _, err := sess.inner.AppendMessage(secondMsg); err != nil {
@@ -2282,7 +2385,7 @@ func TestAutoRetryUsesContinueNotSend(t *testing.T) {
 	userMsg := agent.AgentMessage{
 		User: &agent.UserMessage{
 			Role:    "user",
-			Content: []ai.UserContentBlock{ai.TextContent{Text: "hello"}},
+			Content: ai.UserContentBlocks{ai.TextContent{Text: "hello"}},
 		},
 	}
 	errAssistant := agent.AgentMessage{
@@ -2483,6 +2586,179 @@ func TestGetSessionStatsIncludesToolUsageAndCost(t *testing.T) {
 	}
 }
 
+// Ports packages/coding-agent/test/agent-session-stats.test.ts:101-317. Each subtest keeps the upstream inputs and assertions; the accounting snapshot is Go's getUsageCostBreakdown implementation.
+func TestGetSessionStatsUpstream(t *testing.T) {
+	newSession := func(t *testing.T) *Session {
+		t.Helper()
+		services, model, cwd, _ := sessionManagerFixture(t)
+		session, err := NewSession(services, SessionOptions{Model: model, ThinkingLevel: "high", SystemPrompt: "You are a helpful assistant.", SkipBuiltinTools: true, existing: icodingagent.NewSession("stats", cwd)})
+		if err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() {
+			if err := session.Close(); err != nil {
+				t.Error(err)
+			}
+		})
+		return session
+	}
+	usage := func(tokens int) *ai.Usage { return &ai.Usage{Input: tokens, TotalTokens: tokens} }
+	user := func(text string, timestamp int64) agent.AgentMessage {
+		return agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: text}}, Timestamp: timestamp}}
+	}
+	assistant := func(text string, tokens int, timestamp int64) agent.AgentMessage {
+		return agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: text}}, API: "anthropic-messages", Provider: "anthropic", ModelID: "claude-sonnet-4-5", Usage: usage(tokens), StopReason: ai.StopReasonStop, Timestamp: timestamp}}
+	}
+	toolResult := func(usage *ai.Usage) agent.AgentMessage {
+		return agent.AgentMessage{ToolResult: &agent.ToolResultMessage{Role: agent.RoleToolResult, ToolCallID: "tool-call-1", ToolName: "test_tool", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "tool result"}}, Usage: usage, Timestamp: 1}}
+	}
+	appendMessage := func(t *testing.T, session *Session, message agent.AgentMessage) string {
+		t.Helper()
+		id, err := session.inner.AppendMessage(message)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return id
+	}
+	compacted := func(t *testing.T) *Session {
+		t.Helper()
+		session := newSession(t)
+		appendMessage(t, session, user("first", 1))
+		appendMessage(t, session, assistant("response1", 180_000, 2))
+		kept := appendMessage(t, session, user("second", 3))
+		appendMessage(t, session, assistant("response2", 195_000, 4))
+		if _, err := session.inner.AppendCompaction("summary", kept, 195_000, nil, false, nil); err != nil {
+			t.Fatal(err)
+		}
+		appendMessage(t, session, user("third", 5))
+		return session
+	}
+	assertContext := func(t *testing.T, session *Session, stats SessionStats, tokens int) {
+		t.Helper()
+		window := session.Model().Capabilities.ContextWindow
+		percent := float64(tokens) / float64(window) * 100
+		want := &SessionContextUsage{Tokens: &tokens, ContextWindow: window, Percent: &percent}
+		if !reflect.DeepEqual(stats.ContextUsage, want) {
+			t.Fatalf("context = %+v, want %+v", stats.ContextUsage, want)
+		}
+	}
+
+	t.Run("exposes current context usage alongside token totals", func(t *testing.T) { // upstream:101
+		session := newSession(t)
+		appendMessage(t, session, user("hello", 1))
+		appendMessage(t, session, assistant("hi", 200, 2))
+		session.refreshContext()
+		stats := session.GetSessionStats()
+		if !reflect.DeepEqual(stats.ContextUsage, session.ContextUsage()) {
+			t.Fatalf("stats context = %+v, ContextUsage = %+v", stats.ContextUsage, session.ContextUsage())
+		}
+		assertContext(t, session, stats, 200)
+	})
+	t.Run("unknown current context immediately after compaction", func(t *testing.T) { // upstream:119
+		session := compacted(t)
+		session.refreshContext()
+		stats := session.GetSessionStats()
+		if stats.Tokens.Input != 375_000 || stats.ContextUsage == nil || stats.ContextUsage.Tokens != nil || stats.ContextUsage.Percent != nil {
+			t.Fatalf("stats = %+v, context = %+v", stats, stats.ContextUsage)
+		}
+	})
+	t.Run("post-compaction usage replaces stale kept usage", func(t *testing.T) { // upstream:142
+		session := compacted(t)
+		appendMessage(t, session, assistant("response3", 25_000, 6))
+		session.refreshContext()
+		stats := session.GetSessionStats()
+		if stats.Tokens.Input != 400_000 {
+			t.Fatalf("input = %d, want 400000 including compacted history", stats.Tokens.Input)
+		}
+		assertContext(t, session, stats, 25_000)
+	})
+	for _, kind := range []string{"branch summary", "compaction", "tool result"} {
+		t.Run("includes "+kind+" usage", func(t *testing.T) { // upstream:166,188,244
+			session := newSession(t)
+			billed := &ai.Usage{Input: 10, Output: 20, CacheRead: 30, CacheWrite: 40, TotalTokens: 100, Cost: ai.UsageCost{Input: 0.1, Output: 0.2, CacheRead: 0.3, CacheWrite: 0.4, Total: 1}}
+			var err error
+			switch kind {
+			case "branch summary":
+				_, err = session.inner.AppendBranchSummary(nil, "summary", nil, false, billed)
+			case "compaction":
+				kept := appendMessage(t, session, user("hello", 1))
+				_, err = session.inner.AppendCompaction("summary", kept, 100, nil, false, billed)
+			case "tool result":
+				appendMessage(t, session, toolResult(billed))
+			}
+			if err != nil {
+				t.Fatal(err)
+			}
+			session.refreshContext()
+			stats := session.GetSessionStats()
+			if stats.Tokens != (SessionStatsTokens{Input: 10, Output: 20, CacheRead: 30, CacheWrite: 40, Total: 100}) || stats.Cost != 1 {
+				t.Fatalf("stats = %+v", stats)
+			}
+		})
+	}
+	t.Run("cache-warming usage counted exactly once without messages", func(t *testing.T) { // upstream:211
+		session := newSession(t)
+		billed := ai.Usage{Input: 2, Output: 1, CacheRead: 97, TotalTokens: 100, Cost: ai.UsageCost{Input: 0.001, Output: 0.002, CacheRead: 0.007, Total: 0.01}}
+		if _, err := session.inner.AppendUsage("cache_warm", "anthropic", session.Model().ID, billed, "extension override"); err != nil {
+			t.Fatal(err)
+		}
+		entries := session.inner.Entries()
+		var entry icodingagent.UsageEntry
+		if len(entries) != 1 {
+			t.Fatalf("entries = %d, want the single usage append", len(entries))
+		}
+		if err := json.Unmarshal(entries[0].Raw(), &entry); err != nil {
+			t.Fatal(err)
+		}
+		if entry.Type != "usage" || entry.Kind != "cache_warm" || entry.Note != "extension override" {
+			t.Fatalf("entry = %+v", entry)
+		}
+		stats := session.GetSessionStats()
+		if stats.Tokens != (SessionStatsTokens{Input: 2, Output: 1, CacheRead: 97, Total: 100}) || stats.TotalMessages != 0 || len(session.inner.BuildSessionProjection().Messages) != 0 {
+			t.Fatalf("stats = %+v, context = %+v", stats, session.inner.BuildSessionProjection())
+		}
+		want := []icodingagent.SessionUsageBreakdown{{Key: "anthropic/" + session.Model().ID, Cost: 0.01, Tokens: 100}}
+		if got := session.inner.Accounting().UsageBreakdown; !reflect.DeepEqual(got, want) {
+			t.Fatalf("breakdown = %+v, want %+v", got, want)
+		}
+	})
+	t.Run("groups tool and summary usage separately from model usage", func(t *testing.T) { // upstream:268
+		session := newSession(t)
+		root := appendMessage(t, session, user("hello", 1))
+		message := assistant("response", 100, 2)
+		message.Assistant.Usage.Cost.Total = 0.5
+		appendMessage(t, session, message)
+		toolUsage := usage(100)
+		toolUsage.Cost.Total = 1
+		appendMessage(t, session, toolResult(toolUsage))
+		compactionUsage := usage(100)
+		compactionUsage.Cost.Total = 2
+		if _, err := session.inner.AppendCompaction("summary", root, 100, nil, false, compactionUsage); err != nil {
+			t.Fatal(err)
+		}
+		branchUsage := usage(100)
+		branchUsage.Cost.Total = 3
+		if _, err := session.inner.AppendBranchSummary(nil, "branch summary", nil, false, branchUsage); err != nil {
+			t.Fatal(err)
+		}
+		want := []icodingagent.SessionUsageBreakdown{{Key: "Tools/summaries", Cost: 6, Tokens: 300}, {Key: "anthropic/claude-sonnet-4-5", Cost: 0.5, Tokens: 100}}
+		if got := session.inner.Accounting().UsageBreakdown; !reflect.DeepEqual(got, want) {
+			t.Fatalf("breakdown = %+v, want %+v", got, want)
+		}
+	})
+	t.Run("ignores zero-usage messages after compaction", func(t *testing.T) { // upstream:293
+		session := compacted(t)
+		appendMessage(t, session, assistant("response3", 25_000, 6))
+		appendMessage(t, session, user("continue", 7))
+		appendMessage(t, session, assistant("partial", 0, 8))
+		session.refreshContext()
+		stats := session.GetSessionStats()
+		if stats.ContextUsage == nil || stats.ContextUsage.Tokens == nil || *stats.ContextUsage.Tokens <= 25_000 {
+			t.Fatalf("context = %+v, want known usage greater than 25000", stats.ContextUsage)
+		}
+	})
+}
+
 func TestUserMessagesForForkingEmpty(t *testing.T) {
 	svcs := newTestServices(t)
 	sess, err := NewSession(svcs, SessionOptions{Model: fakeModel()})
@@ -2504,32 +2780,39 @@ func TestRecordBashResultPreservesTruncationProvenance(t *testing.T) {
 	}
 	defer func() { _ = sess.Close() }()
 
-	sess.recordBashResult("large output", BashResult{
-		Output: "tail", ExitCode: 0, Truncated: true, FullOutputPath: "/tmp/original-output",
-	}, false)
+	if err := sess.recordBashResult("large output", BashResult{
+		Output: "tail", ExitCode: new(0), Truncated: true, FullOutputPath: "/tmp/original-output",
+	}, false); err != nil {
+		t.Fatal(err)
+	}
 	messages := sess.Inner().BuildSessionProjection().Messages
 	if len(messages) != 1 || messages[0].Custom["truncated"] != true || messages[0].Custom["fullOutputPath"] != "/tmp/original-output" {
 		t.Fatalf("persisted bash projection = %#v", messages)
 	}
 }
 
-func TestAppendBashFallbackPreservesTruncationProvenance(t *testing.T) {
+func TestAppendBashFailureRetainsEntryProvenanceWithoutRefreshingAgent(t *testing.T) {
 	sess := buildSessionWithMessages(t, newTestServices(t), 1)
 	defer func() { _ = sess.Close() }()
-	if err := os.Chmod(sess.Path(), 0o400); err != nil {
-		t.Fatal(err)
-	}
-	t.Cleanup(func() { _ = os.Chmod(sess.Path(), 0o600) })
+	before := len(sess.Messages())
+	sess.Inner().SetPath(t.TempDir())
 
 	sess.mu.Lock()
-	sess.appendBashLocked(pendingBashRecord{command: "large output", result: BashResult{
-		Output: "tail", ExitCode: 0, Truncated: true, FullOutputPath: "/tmp/original-output",
+	err := sess.appendBashLocked(pendingBashRecord{command: "large output", result: BashResult{
+		Output: "tail", ExitCode: new(0), Truncated: true, FullOutputPath: "/tmp/original-output",
 	}})
 	sess.mu.Unlock()
-	messages := sess.Messages()
+	if err == nil {
+		t.Fatal("append did not report the write failure")
+	}
+	if len(sess.Messages()) != before {
+		t.Fatal("failed append refreshed Agent context")
+	}
+	// Pi appends to the Session entry list before attempting persistence.
+	messages := sess.Inner().BuildSessionProjection().Messages
 	last := messages[len(messages)-1]
 	if last.Custom["truncated"] != true || last.Custom["fullOutputPath"] != "/tmp/original-output" {
-		t.Fatalf("fallback bash message = %#v", last.Custom)
+		t.Fatalf("failed Bash entry = %#v", last.Custom)
 	}
 }
 
@@ -2546,8 +2829,8 @@ func TestExecuteBashBasic(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExecuteBash: %v", err)
 	}
-	if result.ExitCode != 0 {
-		t.Errorf("exit code: got %d, want 0", result.ExitCode)
+	if result.ExitCode == nil || *result.ExitCode != 0 {
+		t.Errorf("exit code: got %v, want 0", result.ExitCode)
 	}
 	if !strings.Contains(result.Output, "hello_from_bash") {
 		t.Errorf("output does not contain expected string: %q", result.Output)
@@ -2567,7 +2850,7 @@ func TestExecuteBashRecordsResultInContext(t *testing.T) {
 	ctx := context.Background()
 
 	// excludeFromContext=false: result is recorded into live agent state and
-	// persisted as a bash_execution entry (idle path: no turn streaming).
+	// persisted as a message with role bashExecution (idle path: no turn streaming).
 	if _, err := sess.ExecuteBash(ctx, "echo recorded_output", false); err != nil {
 		t.Fatalf("ExecuteBash: %v", err)
 	}
@@ -2592,7 +2875,7 @@ func TestExecuteBashRecordsResultInContext(t *testing.T) {
 		t.Fatalf("excludeFromContext should be false")
 	}
 	if !hasBashEntry(sess) {
-		t.Fatal("bash_execution entry not persisted to session")
+		t.Fatal("bashExecution message entry not persisted to session")
 	}
 
 	// excludeFromContext=true: still recorded (so reload/transcript shows it)
@@ -2609,7 +2892,7 @@ func TestExecuteBashRecordsResultInContext(t *testing.T) {
 
 func hasBashEntry(sess *Session) bool {
 	for _, e := range sess.Inner().Entries() {
-		if e.Base.Type == "bash_execution" {
+		if message, ok := e.AsMessage(); ok && message.Message.Role() == agent.RoleBashExecution {
 			return true
 		}
 	}
@@ -2634,9 +2917,11 @@ func TestRecordBashResultDeferredWhileStreaming(t *testing.T) {
 	sess.mu.Lock()
 	done := make(chan struct{})
 	go func() {
-		sess.recordBashResult("echo deferred", BashResult{
-			Output: "deferred_out", ExitCode: 0, Truncated: true, FullOutputPath: "/tmp/deferred-output",
-		}, false)
+		if err := sess.recordBashResult("echo deferred", BashResult{
+			Output: "deferred_out", ExitCode: new(0), Truncated: true, FullOutputPath: "/tmp/deferred-output",
+		}, false); err != nil {
+			t.Error(err)
+		}
 		close(done)
 	}()
 	select {
@@ -2659,8 +2944,11 @@ func TestRecordBashResultDeferredWhileStreaming(t *testing.T) {
 	}
 
 	// End-of-turn flush (caller holds s.mu).
-	sess.flushPendingBashLocked()
+	flushErr := sess.flushPendingBashLocked()
 	sess.mu.Unlock()
+	if flushErr != nil {
+		t.Fatal(flushErr)
+	}
 
 	if got := len(sess.Agent().Messages()); got != before+1 {
 		t.Fatalf("flush did not append buffered bash record: before=%d after=%d", before, got)
@@ -2684,8 +2972,8 @@ func TestExecuteBashNonZeroExit(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ExecuteBash: %v", err)
 	}
-	if result.ExitCode != 42 {
-		t.Errorf("exit code: got %d, want 42", result.ExitCode)
+	if result.ExitCode == nil || *result.ExitCode != 42 {
+		t.Errorf("exit code: got %v, want 42", result.ExitCode)
 	}
 }
 
@@ -2733,7 +3021,7 @@ func TestReplaceInnerDoesNotRetainOutgoingSystemMessage(t *testing.T) {
 
 	replacement := icodingagent.NewSession("replacement", sess.Inner().CWD())
 	if _, err := replacement.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{
-		Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "existing imported user"}},
+		Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "existing imported user"}},
 	}}); err != nil {
 		t.Fatal(err)
 	}
@@ -2754,7 +3042,7 @@ func TestRefreshContextRetainsSameSessionInstructionBaseline(t *testing.T) {
 	system := agent.AgentMessage{System: &ai.SystemMessage{Content: ai.SystemText("same session instructions")}}
 	sess.agent.SetMessages([]agent.AgentMessage{system})
 	if _, err := sess.Inner().AppendMessage(agent.AgentMessage{User: &agent.UserMessage{
-		Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "conversation"}},
+		Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "conversation"}},
 	}}); err != nil {
 		t.Fatal(err)
 	}

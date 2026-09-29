@@ -1,0 +1,48 @@
+# Upstream evidence: W3 C3/C4: Pi tree-selector.ts:436-562 rebuilds filtered geometry, 1047-1107 treats digits as search text.
+# Search for the inactive branch so the single matching leaf has neither connector nor active bullet.
+name = "12-tree-digit-search"
+description = "Digits enter the tree query and filtered rows use visible ancestor geometry."
+covers = ["packages/coding-agent/src/modes/interactive/components/tree-selector.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--session", "sessions/branch.jsonl"]
+pi_args = ["--session", "sessions/branch.jsonl"]
+
+[tmux]
+width = 120
+height = 35
+cwd = "testdata/w3-branch"
+ready_pattern_pig = "active 12345"
+ready_pattern_pi = "active 12345"
+capture_start = "Type to search:"
+capture_end = "(1/1)"
+
+[[tmux.steps]]
+keys = ["/tree", "Enter"]
+wait_visible_contains = ["(3/5)"]
+
+[[tmux.steps]]
+keys = ["1", "2", "3", "4", "5"]
+wait_visible_contains = ["Type to search: 12345", "(2/2)"]
+
+# Wait for Pi's clear-query transition (tree-selector.ts:1039-1044) before typing the next query.
+# Adjacent ESC and "a" are one Alt+A sequence in StdinBuffer, not Escape followed by text.
+[[tmux.steps]]
+keys = ["Escape"]
+wait_visible_contains = ["(3/5)"]
+wait_not_contains = ["Type to search: 12345"]
+
+[[tmux.steps]]
+keys = ["assistant old"]
+wait_visible_contains = ["Type to search: assistant old", "(1/1)"]
+
+[assert]
+runs = 3
+both_contain = ["› assistant: old", "(1/1)"]
+both_not_contain = ["•", "⊟", "│"]
+output_equal = true

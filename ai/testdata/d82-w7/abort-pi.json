@@ -1,0 +1,143 @@
+{
+  "openai-completions": {
+    "pre-headers": {
+      "phase": "pre-headers",
+      "types": [],
+      "stopReason": "aborted",
+      "errorMessage": "Request aborted",
+      "content": []
+    },
+    "post-headers": {
+      "phase": "post-headers",
+      "types": [],
+      "stopReason": "aborted",
+      "errorMessage": "Request was aborted",
+      "content": []
+    },
+    "mid-body": {
+      "phase": "mid-body",
+      "types": [
+        "text_start",
+        "text_delta",
+        "text_end"
+      ],
+      "stopReason": "aborted",
+      "errorMessage": "Request was aborted",
+      "content": [
+        "a"
+      ]
+    }
+  },
+  "mistral-conversations": {
+    "pre-headers": {
+      "phase": "pre-headers",
+      "types": [],
+      "stopReason": "aborted",
+      "errorMessage": "This operation was aborted",
+      "content": []
+    },
+    "post-headers": {
+      "phase": "post-headers",
+      "types": [],
+      "stopReason": "aborted",
+      "errorMessage": "This operation was aborted",
+      "content": []
+    },
+    "mid-body": {
+      "phase": "mid-body",
+      "types": [
+        "text_start",
+        "text_delta"
+      ],
+      "stopReason": "aborted",
+      "errorMessage": "This operation was aborted",
+      "content": [
+        "a"
+      ]
+    }
+  },
+  "openai-responses": {
+    "pre-headers": {
+      "phase": "pre-headers",
+      "types": [],
+      "stopReason": "aborted",
+      "errorMessage": "Request aborted",
+      "content": []
+    },
+    "post-headers": {
+      "phase": "post-headers",
+      "types": [],
+      "stopReason": "aborted",
+      "errorMessage": "OpenAI Responses stream ended before a terminal response event",
+      "content": []
+    },
+    "mid-body": {
+      "phase": "mid-body",
+      "types": [
+        "text_start",
+        "text_delta"
+      ],
+      "stopReason": "aborted",
+      "errorMessage": "OpenAI Responses stream ended before a terminal response event",
+      "content": [
+        "a"
+      ]
+    }
+  },
+  "anthropic-messages": {
+    "pre-headers": {
+      "phase": "pre-headers",
+      "types": [],
+      "stopReason": "aborted",
+      "errorMessage": "Request aborted",
+      "content": []
+    },
+    "post-headers": {
+      "phase": "post-headers",
+      "types": [],
+      "stopReason": "aborted",
+      "errorMessage": "This operation was aborted",
+      "content": []
+    },
+    "mid-body": {
+      "phase": "mid-body",
+      "types": [
+        "text_start",
+        "text_delta"
+      ],
+      "stopReason": "aborted",
+      "errorMessage": "This operation was aborted",
+      "content": [
+        "a"
+      ]
+    }
+  },
+  "google-generative-ai": {
+    "pre-headers": {
+      "phase": "pre-headers",
+      "types": [],
+      "stopReason": "aborted",
+      "errorMessage": "Request aborted",
+      "content": []
+    },
+    "post-headers": {
+      "phase": "post-headers",
+      "types": [],
+      "stopReason": "aborted",
+      "errorMessage": "This operation was aborted",
+      "content": []
+    },
+    "mid-body": {
+      "phase": "mid-body",
+      "types": [
+        "text_start",
+        "text_delta"
+      ],
+      "stopReason": "aborted",
+      "errorMessage": "This operation was aborted",
+      "content": [
+        "a"
+      ]
+    }
+  }
+}

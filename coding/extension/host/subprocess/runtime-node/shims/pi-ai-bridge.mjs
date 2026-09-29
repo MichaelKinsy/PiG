@@ -6,7 +6,7 @@
 // sees Pi's dispatch, credential order and result shapes, and the request runs
 // on PiG's port of the same provider.
 import { getRuntime } from "../state.mjs";
-import { AssistantMessageEventStream } from "./pi-dist/pi-ai/utils/event-stream.js";
+import { AssistantMessageEventStream } from "./pi-dist/pi-ai/sdk-bundle/index.js";
 
 // Headers that stand in for an API key, per upstream API implementation
 // (assertRequestAuth / getClientApiKey). An API not listed needs options.apiKey.
@@ -67,8 +67,12 @@ function bridged(api, simple) {
     // streamSimple carries the thinking level as options.reasoning; stream()
     // takes provider-specific options instead, so it runs without reasoning
     // unless the caller names a level. Neither inherits the session's level.
-    const thinking = (simple ? options?.reasoning : undefined) ?? "off";
-    return runtime.startModelStream(model, context, { ...options, thinking });
+    // upstream: packages/ai/src/api/google-generative-ai.ts:stream and google-vertex.ts:stream accept the global fetch identity, but reject a different implementation.
+    if ((api === "google-generative-ai" || api === "google-vertex") && options?.fetch === globalThis.fetch) {
+      options = { ...options, fetch: undefined };
+    }
+    const reasoning = (simple ? options?.reasoning : undefined) ?? "off";
+    return runtime.startModelStream(model, context, { ...options, reasoning }, simple, true);
   };
 }
 
@@ -87,7 +91,7 @@ export function bridgeImages(api) {
     model: model?.id,
     output: [],
     stopReason: "error",
-    errorMessage: "Image generation is not available to extensions running in PiG (see DIVERGENCES.md D74)",
+    errorMessage: "Image generation is not available to extensions running in PiG (see docs/parity/DIVERGENCES.md D74)",
     timestamp: Date.now(),
   });
 }

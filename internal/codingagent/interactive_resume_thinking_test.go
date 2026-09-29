@@ -2,8 +2,11 @@ package codingagent
 
 import (
 	"bytes"
+	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -45,7 +48,7 @@ func resumeThinkingMode(t *testing.T, hide bool, messages ...agent.AgentMessage)
 }
 
 func userMsg(text string) agent.AgentMessage {
-	return agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: text}}}}
+	return agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: text}}}}
 }
 
 func assistantMsg(thinking string, content ...ai.AssistantContentBlock) agent.AgentMessage {
@@ -56,6 +59,60 @@ func assistantMsg(thinking string, content ...ai.AssistantContentBlock) agent.Ag
 
 func renderedChat(m *InteractiveMode) string {
 	return stripANSITest(strings.Join(m.chatContainer.Render(80), "\n"))
+}
+
+// Ports packages/coding-agent/test/suite/regressions/8611-thinking-toggle-pending-bash-output.test.ts:26.
+func TestInteractiveModeThinkingTogglePreservesPartialBashOutputUpstream(t *testing.T) {
+	for _, path := range []string{"component", "agent events and Ctrl+T"} {
+		t.Run(path, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				m, _ := newTickRenderProbe(t, "regular")
+				agentDir := t.TempDir()
+				m.opts.SettingsManager = NewSettingsManager(m.opts.CWD, agentDir)
+				args := json.RawMessage(`{"command":"echo first; sleep 10"}`)
+				var component *tui.ToolExecutionComponent
+				if path == "component" {
+					component = tui.NewToolExecutionComponent("bash", tui.HeaderForTool("bash", args, m.opts.CWD))
+					component.ShowImages = false
+					component.Cwd = m.opts.CWD
+					component.SetHeaderArgs(args)
+					component.MarkExecutionStarted()
+					component.SetResultValue(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "first"}}, IsError: false})
+					component.SetStreaming("first")
+					m.chatContainer.Add(component)
+				} else {
+					m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "tool-8611", ToolName: "bash", Args: args})
+					m.handleAgentEvent(agent.ToolExecutionUpdateEvent{ToolCallID: "tool-8611", ToolName: "bash", Content: "first"})
+					component = m.toolByID["tool-8611"]
+				}
+				before := m.chatContainer.Render(120)
+				if chat := stripANSITest(strings.Join(before, "\n")); !strings.Contains(chat, "first") {
+					t.Fatalf("partial output missing before toggle:\n%s", chat)
+				}
+				if path == "component" {
+					m.toggleThinkingVisibility()
+				} else if err := m.handleKey(t.Context(), "\x14"); err != nil {
+					t.Fatal(err)
+				}
+				if !m.hideThinking || !m.opts.SettingsManager.GetHideThinkingBlock() {
+					t.Fatal("toggle did not set hideThinkingBlock to true")
+				}
+				if !NewSettingsManager(m.opts.CWD, agentDir).GetHideThinkingBlock() {
+					t.Fatal("hideThinkingBlock was not persisted")
+				}
+				if !slices.Contains(m.chatContainer.Children(), tui.Component(component)) {
+					t.Fatal("toggle removed or replaced the running bash component")
+				}
+				// The command header also contains "first". Check retained output and the exact frame so the header cannot hide dropped partial output.
+				if component == nil || component.Output != "first" || component.State != tui.ToolStateRunning || !component.IsPartial {
+					t.Fatalf("toggle changed pending bash state: %+v", component)
+				}
+				if after := m.chatContainer.Render(120); !slices.Equal(after, before) {
+					t.Fatalf("toggle changed bash rendering:\nbefore: %q\nafter: %q", before, after)
+				}
+			})
+		})
+	}
 }
 
 // Upstream renderInitialMessages/rebuildChatFromMessages render each assistant
@@ -123,7 +180,7 @@ func TestInteractiveMode_ResumeThinkingFollowsContentOrder(t *testing.T) {
 	for i := range lines {
 		lines[i] = strings.TrimRight(stripANSITest(lines[i]), " ")
 	}
-	want := []string{"", " THINK_A", "", " THINK_B", "", " TEXT_C", " THINK_D"}
+	want := []string{"\x1b]133;A\x07", " THINK_A", "", " THINK_B", "", " TEXT_C", "\x1b]133;B\x07\x1b]133;C\x07 THINK_D"}
 	if strings.Join(lines, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("rendered lines:\n%q\nwant:\n%q", lines, want)
 	}
@@ -142,7 +199,7 @@ func TestInteractiveMode_ResumeSpacesUserMessageAfterAssistant(t *testing.T) {
 	for i := range lines {
 		lines[i] = strings.TrimSpace(stripANSITest(lines[i]))
 	}
-	want := []string{"", "FIRST_USER", "", "", "ANSWER", "TRAILING_THOUGHT", "", "", "SECOND_USER", ""}
+	want := []string{"\x1b]133;A\x07", "FIRST_USER", "\x1b]133;B\x07\x1b]133;C\x07", "\x1b]133;A\x07", "ANSWER", "\x1b]133;B\x07\x1b]133;C\x07 TRAILING_THOUGHT", "", "\x1b]133;A\x07", "SECOND_USER", "\x1b]133;B\x07\x1b]133;C\x07"}
 	if strings.Join(lines, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("resumed chat lines:\n%q\nwant:\n%q", lines, want)
 	}

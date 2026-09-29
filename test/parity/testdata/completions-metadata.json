@@ -1,0 +1,8 @@
+[
+  {"name":"routed","chunks":[{"id":"chatcmpl-1","model":"anthropic/claude-opus-4.8","choices":[{"index":0,"delta":{"content":"hi"}}]},{"id":"chatcmpl-1","model":"anthropic/claude-opus-4.8","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}]},
+  {"name":"echo","chunks":[{"id":"chatcmpl-2","model":"openrouter/auto","choices":[{"index":0,"delta":{"content":"hi"}}]},{"id":"chatcmpl-2","model":"openrouter/auto","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}]},
+  {"name":"empty-missing","chunks":[{"id":"chatcmpl-3","choices":[{"index":0,"delta":{"content":"hi"}}]},{"id":"chatcmpl-3","model":"","choices":[{"index":0,"delta":{"content":"!"}}]},{"id":"chatcmpl-3","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}]},
+  {"name":"filter","chunks":[{"id":"chatcmpl-4","model":"anthropic/claude-opus-4.8","choices":[{"index":0,"delta":{},"finish_reason":"content_filter"}]}]},
+  {"name":"first-wins","chunks":[{"id":"first","model":"routed-first","choices":[{"index":0,"delta":{"content":"hi"}}]},{"id":"second","model":"routed-second","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}]},
+  {"name":"non-string-model","chunks":[{"id":"chatcmpl-6","model":42,"choices":[{"index":0,"delta":{"content":"hi"}}]},{"id":"chatcmpl-6","model":null,"choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}]}
+]

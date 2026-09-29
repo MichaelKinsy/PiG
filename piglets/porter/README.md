@@ -6,12 +6,12 @@ SPDX-License-Identifier: MIT
 # Pig Porter
 
 Pig Porter is the repository workbench for maintaining behavioral parity with
-the Pi release pinned in `coding/pigversion/pigversion.go`.
+the Pi release pinned in `internal/coding/pigversion/pigversion.go`.
 
 It combines:
 
-- the deterministic contracts under `parity/closure`,
-  `parity/correspondence`, and `parity/porter`;
+- the deterministic contracts under `test/parity/closure`,
+  `test/parity/correspondence`, and `test/parity/porter`;
 - the `pig_porter` extension in `extensions/pig-porter`;
 - the procedure in `skills/pig-porter/SKILL.md`;
 - one interactive launcher and one read-only campaign launcher.

@@ -1,0 +1,26 @@
+# Pi 0.87.1 validation.ts:312-349 applies native TypeBox conversion, then plain
+# JSON coercion. A single extension schema contains both kinds of subtree.
+# The provider echoes the actual execution result: [2,true,[3],false,2,true,false].
+name = "14-print-extension-argument-coercion"
+description = "TypeBox metadata survives the extension boundary without changing plain JSON coercion"
+covers = ["packages/coding-agent/src/core/tools/tool-definition-wrapper.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/coercion-probe.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/coercion-probe.mjs"]
+
+[print]
+prompt = "Run: extension argument coercion"
+timeout_seconds = 30
+cwd = "testdata"
+
+[assert]
+exit_code = 0
+both_contain = ["[2,true,[3],false,2,true,false]"]
+output_equal = true
+runs = 3

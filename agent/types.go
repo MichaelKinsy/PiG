@@ -49,8 +49,8 @@ type AgentTurnDecision struct {
 // or follow-up scheduling satisfies that request without adding another;
 // otherwise the loop continues once with the current context. Error and
 // aborted responses remain hard exits. ctx is the run's context (upstream's
-// abort signal). Mirrors upstream FinishTurn.
-type FinishTurn func(ctx context.Context, turn AgentTurnContext) *AgentTurnDecision
+// abort signal). A rejected callback enters the owning failed-turn lifecycle. Mirrors upstream FinishTurn.
+type FinishTurn func(ctx context.Context, turn AgentTurnContext) (*AgentTurnDecision, error)
 
 // AgentLoopTurnUpdate carries optional next-turn overrides returned by
 // PrepareNextTurn. Mirrors upstream AgentLoopTurnUpdate.
@@ -68,8 +68,8 @@ type AgentLoopTurnUpdate struct {
 
 // PrepareNextTurn is called after TurnEndEvent when the loop continues,
 // immediately before the next turn starts. ctx is the run's context.
-// Mirrors upstream prepareNextTurnWithContext.
-type PrepareNextTurn func(ctx context.Context, turn PrepareNextTurnContext) *AgentLoopTurnUpdate
+// Mirrors upstream prepareNextTurnWithContext. An error preserves Promise rejection and prevents the next provider request.
+type PrepareNextTurn func(ctx context.Context, turn PrepareNextTurnContext) (*AgentLoopTurnUpdate, error)
 
 // PrepareRequestContext is the runtime state available immediately before a
 // provider request. Mirrors upstream PrepareRequestContext.
@@ -90,5 +90,5 @@ type AgentRequestUpdate struct {
 
 // PrepareRequest is called immediately before every provider request,
 // including the first. Pending messages have already been appended and emitted
-// when it runs, and it does not poll queues. Mirrors upstream PrepareRequest.
-type PrepareRequest func(ctx context.Context, request PrepareRequestContext) *AgentRequestUpdate
+// when it runs, and it does not poll queues. A rejected callback enters the owning failed-turn lifecycle. Mirrors upstream PrepareRequest.
+type PrepareRequest func(ctx context.Context, request PrepareRequestContext) (*AgentRequestUpdate, error)

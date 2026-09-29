@@ -147,7 +147,7 @@ type UIContext interface {
 	// AddAutocompleteProvider stacks additional autocomplete
 	// behavior on top of the built-in provider.
 	// upstream: types.ts:216
-	AddAutocompleteProvider(factory AutocompleteProviderFactory)
+	AddAutocompleteProvider(factory AutocompleteProviderFactory) error
 
 	// SetEditorComponent installs a custom editor component
 	// factory. Nil restores the default editor.
@@ -223,7 +223,7 @@ type UIContext interface {
 type noopUIContext struct{}
 
 // NoopUIContext is the package-level no-op singleton. Hosts that have
-// no UI (RPC mode, print mode) wire `ContextActions.UI = NoopUIContext`;
+// no UI (print and JSON modes) wire `ContextActions.UI = NoopUIContext`;
 // equivalently, leaving `ContextActions.UI` nil produces the same
 // behavior because [Context.UI] falls back to this value.
 //
@@ -244,29 +244,29 @@ func (*noopUIContext) Confirm(context.Context, string, string, ExtensionUIDialog
 func (*noopUIContext) Input(context.Context, string, string, ExtensionUIDialogOptions) (string, error) {
 	return "", nil
 }
-func (*noopUIContext) Notify(string, string)                                  {}
-func (*noopUIContext) OnTerminalInput(TerminalInputHandler) func()            { return func() {} }
-func (*noopUIContext) SetStatus(string, string)                               {}
-func (*noopUIContext) SetWorkingMessage(string)                               {}
-func (*noopUIContext) SetWorkingVisible(bool)                                 {}
-func (*noopUIContext) SetWorkingIndicator(WorkingIndicatorOptions)            {}
-func (*noopUIContext) SetHiddenThinkingLabel(string)                          {}
-func (*noopUIContext) SetWidget(string, any, ExtensionWidgetOptions)          {}
-func (*noopUIContext) SetFooter(any)                                          {}
-func (*noopUIContext) SetHeader(any)                                          {}
-func (*noopUIContext) SetLogin(LoginDefinition) error                         { return ErrUIUnavailable }
-func (*noopUIContext) SetTitle(string)                                        {}
-func (*noopUIContext) Custom(context.Context, any, any) (any, error)          { return nil, nil }
-func (*noopUIContext) PasteToEditor(string)                                   {}
-func (*noopUIContext) SetEditorText(string)                                   {}
-func (*noopUIContext) GetEditorText() string                                  { return "" }
-func (*noopUIContext) Editor(context.Context, string, string) (string, error) { return "", nil }
-func (*noopUIContext) AddAutocompleteProvider(AutocompleteProviderFactory)    {}
-func (*noopUIContext) SetEditorComponent(any)                                 {}
-func (*noopUIContext) GetEditorComponent() any                                { return nil }
-func (*noopUIContext) Theme() Theme                                           { return nil }
-func (*noopUIContext) GetAllThemes() []ThemeMeta                              { return nil }
-func (*noopUIContext) GetTheme(string) (Theme, error)                         { return nil, nil }
+func (*noopUIContext) Notify(string, string)                                     {}
+func (*noopUIContext) OnTerminalInput(TerminalInputHandler) func()               { return func() {} }
+func (*noopUIContext) SetStatus(string, string)                                  {}
+func (*noopUIContext) SetWorkingMessage(string)                                  {}
+func (*noopUIContext) SetWorkingVisible(bool)                                    {}
+func (*noopUIContext) SetWorkingIndicator(WorkingIndicatorOptions)               {}
+func (*noopUIContext) SetHiddenThinkingLabel(string)                             {}
+func (*noopUIContext) SetWidget(string, any, ExtensionWidgetOptions)             {}
+func (*noopUIContext) SetFooter(any)                                             {}
+func (*noopUIContext) SetHeader(any)                                             {}
+func (*noopUIContext) SetLogin(LoginDefinition) error                            { return ErrUIUnavailable }
+func (*noopUIContext) SetTitle(string)                                           {}
+func (*noopUIContext) Custom(context.Context, any, any) (any, error)             { return nil, nil }
+func (*noopUIContext) PasteToEditor(string)                                      {}
+func (*noopUIContext) SetEditorText(string)                                      {}
+func (*noopUIContext) GetEditorText() string                                     { return "" }
+func (*noopUIContext) Editor(context.Context, string, string) (string, error)    { return "", nil }
+func (*noopUIContext) AddAutocompleteProvider(AutocompleteProviderFactory) error { return nil }
+func (*noopUIContext) SetEditorComponent(any)                                    {}
+func (*noopUIContext) GetEditorComponent() any                                   { return nil }
+func (*noopUIContext) Theme() Theme                                              { return nil }
+func (*noopUIContext) GetAllThemes() []ThemeMeta                                 { return nil }
+func (*noopUIContext) GetTheme(string) (Theme, error)                            { return nil, nil }
 func (*noopUIContext) SetTheme(any) SetThemeResult {
 	// Mirrors the unavailable-UI result at runner.ts:214: `{ success: false,
 	// error: "UI not available" }`. The string is upstream-verbatim

@@ -1,0 +1,17 @@
+# Pi main.ts:680-701 selects the Session before checking --name. A missing Session must win over an empty name.
+# Direct pinned-Pi probes also show that a new exact-ID creation warning precedes the name error; the unit caller guard covers that separate effect.
+name = "19-cli-name-selection-order"
+description = "A Session lookup error is not masked by invalid Session-name validation"
+covers = ["packages/coding-agent/src/main.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--offline", "--no-extensions", "--session-dir", "{{TEMP}}/sessions", "--session", "notfound", "--name", "", "-p"]
+timeout_seconds = 10
+
+[assert]
+exit_code = 1
+output_equal = true
+both_contain = ["No session found matching 'notfound'"]
+runs = 3

@@ -26,27 +26,37 @@ func errorFaux(errorMessage string) AssistantMessage {
 }
 
 func TestIsRetryableAssistantErrorClassification(t *testing.T) {
-	retryable := []string{
-		"An error occurred while processing your request. You can retry your request, or contact us through our help center at help.openai.com if the error persists. Please include the request ID req_******** in your message.",
-		`{"message":"The system encountered an unexpected error during processing. Try your request again."}`,
-		"ResourceExhausted: Worker local total request limit reached (288/48)",
-		"The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()",
-		"Error: exceeded request buffer limit while retrying upstream",
-		"The pending stream has been canceled (caused by: getaddrinfo ENOTFOUND bedrock-runtime.us-east-1.amazonaws.com)",
-		"connect ENOTFOUND api.example.com",
-		"EAI_AGAIN api.example.com",
-		"getaddrinfo failed for api.example.com",
-		"OpenAI Responses stream ended before a terminal response event",
-		"The system is currently experiencing high demand and cannot process your request. Your request exceeds the maximum usage size allowed during peak load. For improved capacity reliability, consider switching to Provisioned Throughput.",
-		"overloaded_error",
-		"520 status code (no body)",
-		"524 status code (no body)",
+	retryable := []struct{ name, message string }{
+		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:19
+		{"matches explicit provider retry guidance/OpenAI", "An error occurred while processing your request. You can retry your request, or contact us through our help center at help.openai.com if the error persists. Please include the request ID req_******** in your message."},
+		{"matches explicit provider retry guidance/Bedrock", `{"message":"The system encountered an unexpected error during processing. Try your request again."}`},
+		{"matches explicit provider retry guidance/NVIDIA", "ResourceExhausted: Worker local total request limit reached (288/48)"},
+		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:37
+		{"matches Bun fetch socket drop wording", "The socket connection was closed unexpectedly. For more information, pass `verbose: true` in the second argument to fetch()"},
+		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:45
+		{"matches upstream request buffer exhaustion wording", "Error: exceeded request buffer limit while retrying upstream"},
+		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:56 (all four table rows)
+		{"matches DNS transport failure wording/wrapped", "The pending stream has been canceled (caused by: getaddrinfo ENOTFOUND bedrock-runtime.us-east-1.amazonaws.com)"},
+		{"matches DNS transport failure wording/ENOTFOUND", "connect ENOTFOUND api.example.com"},
+		{"matches DNS transport failure wording/EAI_AGAIN", "EAI_AGAIN api.example.com"},
+		{"matches DNS transport failure wording/getaddrinfo", "getaddrinfo failed for api.example.com"},
+		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:65
+		{"matches OpenAI Responses streams that end before terminal events", "OpenAI Responses stream ended before a terminal response event"},
+		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:73
+		{"matches Azure peak-load capacity errors", "The system is currently experiencing high demand and cannot process your request. Your request exceeds the maximum usage size allowed during peak load. For improved capacity reliability, consider switching to Provisioned Throughput."},
+		// .upstream/v0.87.1/packages/ai/test/retry.test.ts:88
+		{"classifies assistant error messages/overloaded", "overloaded_error"},
+		{"classifies assistant error messages/520", "520 status code (no body)"},
+		{"classifies assistant error messages/524", "524 status code (no body)"},
 	}
-	for _, message := range retryable {
-		if !IsRetryableAssistantError(errorFaux(message)) {
-			t.Errorf("expected retryable: %q", message)
-		}
+	for _, tc := range retryable {
+		t.Run(tc.name, func(t *testing.T) {
+			if !IsRetryableAssistantError(errorFaux(tc.message)) {
+				t.Errorf("expected retryable: %q", tc.message)
+			}
+		})
 	}
+	// .upstream/v0.87.1/packages/ai/test/retry.test.ts:80
 	if IsRetryableAssistantError(errorFaux("429 quota exceeded")) {
 		t.Error("provider limit error must stay non-retryable")
 	}
@@ -55,6 +65,7 @@ func TestIsRetryableAssistantErrorClassification(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/ai/test/retry.test.ts:108 — caps agent retry delay.
 func TestRetryDelayMsCapsAgentRetryDelay(t *testing.T) {
 	if got := RetryDelayMs(2000, nil, 6); got != 60000 {
 		t.Fatalf("default cap = %d", got)
@@ -101,17 +112,19 @@ var (
 	retryEnabled  = &RetryPolicy{Enabled: true, MaxRetries: 3}
 )
 
+// .upstream/v0.87.1/packages/ai/test/retry.test.ts:120 — returns a successful response immediately without retrying.
 func TestRetryAssistantCallReturnsSuccessImmediately(t *testing.T) {
 	calls := 0
 	response, err := RetryAssistantCall(context.Background(), func() (AssistantMessage, error) {
 		calls++
 		return retryFaux("ok", "", ""), nil
 	}, retryEnabled, RetryCallbacks{})
-	if err != nil || calls != 1 || response.Content[0].(TextContent).Text != "ok" {
+	if err != nil || calls != 1 || !reflect.DeepEqual(response.Content, []AssistantContentBlock{TextContent{Text: "ok"}}) {
 		t.Fatalf("response=%#v err=%v calls=%d", response, err, calls)
 	}
 }
 
+// .upstream/v0.87.1/packages/ai/test/retry.test.ts:127 — does not retry an aborted message.
 func TestRetryAssistantCallDoesNotRetryAbortedMessage(t *testing.T) {
 	recorder := &retryRecorder{}
 	calls := 0
@@ -124,6 +137,7 @@ func TestRetryAssistantCallDoesNotRetryAbortedMessage(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/ai/test/retry.test.ts:136 — does not retry a non-retryable error (quota/billing).
 func TestRetryAssistantCallDoesNotRetryNonRetryableError(t *testing.T) {
 	recorder := &retryRecorder{}
 	calls := 0
@@ -136,6 +150,7 @@ func TestRetryAssistantCallDoesNotRetryNonRetryableError(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/ai/test/retry.test.ts:149 — retries a transient error up to maxRetries then returns the final error.
 func TestRetryAssistantCallRetriesUpToMaxRetries(t *testing.T) {
 	recorder := &retryRecorder{}
 	calls := 0
@@ -151,6 +166,7 @@ func TestRetryAssistantCallRetriesUpToMaxRetries(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/ai/test/retry.test.ts:160 — reports capped retry delays.
 func TestRetryAssistantCallReportsCappedRetryDelays(t *testing.T) {
 	recorder := &retryRecorder{}
 	calls := 0
@@ -173,6 +189,7 @@ func TestRetryAssistantCallReportsCappedRetryDelays(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/ai/test/retry.test.ts:177 — stops retrying once a call succeeds.
 func TestRetryAssistantCallStopsOnceACallSucceeds(t *testing.T) {
 	recorder := &retryRecorder{}
 	calls := 0
@@ -183,7 +200,7 @@ func TestRetryAssistantCallStopsOnceACallSucceeds(t *testing.T) {
 		}
 		return retryFaux("recovered", "", ""), nil
 	}, retryEnabled, recorder.callbacks())
-	if err != nil || calls != 3 || response.Content[0].(TextContent).Text != "recovered" {
+	if err != nil || calls != 3 || !reflect.DeepEqual(response.Content, []AssistantContentBlock{TextContent{Text: "recovered"}}) {
 		t.Fatalf("response=%#v err=%v calls=%d", response, err, calls)
 	}
 	if !reflect.DeepEqual(recorder.finished, [][3]any{{true, 2, ""}}) {
@@ -191,6 +208,7 @@ func TestRetryAssistantCallStopsOnceACallSucceeds(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/ai/test/retry.test.ts:192 — reports an aborted retried call as unsuccessful.
 func TestRetryAssistantCallReportsAbortedRetriedCallAsUnsuccessful(t *testing.T) {
 	recorder := &retryRecorder{}
 	calls := 0
@@ -209,6 +227,7 @@ func TestRetryAssistantCallReportsAbortedRetriedCallAsUnsuccessful(t *testing.T)
 	}
 }
 
+// .upstream/v0.87.1/packages/ai/test/retry.test.ts:207 — does not retry when policy is disabled.
 func TestRetryAssistantCallDoesNotRetryWhenPolicyDisabled(t *testing.T) {
 	recorder := &retryRecorder{}
 	calls := 0
@@ -221,6 +240,7 @@ func TestRetryAssistantCallDoesNotRetryWhenPolicyDisabled(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/ai/test/retry.test.ts:218 — emits onRetryAttemptStart after backoff before each retried call.
 func TestRetryAssistantCallEmitsAttemptStartAfterBackoffBeforeEachRetry(t *testing.T) {
 	recorder := &retryRecorder{}
 	calls := 0
@@ -232,7 +252,7 @@ func TestRetryAssistantCallEmitsAttemptStartAfterBackoffBeforeEachRetry(t *testi
 		}
 		return retryFaux("recovered", "", ""), nil
 	}, retryEnabled, recorder.callbacks())
-	if err != nil || response.Content[0].(TextContent).Text != "recovered" || len(recorder.scheduled) != 2 || recorder.attemptStarts != 2 {
+	if err != nil || !reflect.DeepEqual(response.Content, []AssistantContentBlock{TextContent{Text: "recovered"}}) || len(recorder.scheduled) != 2 || recorder.attemptStarts != 2 {
 		t.Fatalf("response=%#v err=%v recorder=%#v", response, err, recorder)
 	}
 	want := []string{"produce:0", "retry:1", "attempt-start", "produce:1", "retry:2", "attempt-start", "produce:2"}
@@ -241,6 +261,7 @@ func TestRetryAssistantCallEmitsAttemptStartAfterBackoffBeforeEachRetry(t *testi
 	}
 }
 
+// .upstream/v0.87.1/packages/ai/test/retry.test.ts:249 — aborts backoff sleep via signal, returns an aborted message, and emits onRetryFinished(false).
 func TestRetryAssistantCallAbortsBackoffSleepViaContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()

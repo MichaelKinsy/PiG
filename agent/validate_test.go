@@ -17,7 +17,7 @@ func TestValidateToolArgs_ValidArgs(t *testing.T) {
 	}
 
 	args := json.RawMessage(`{"path": "/tmp/foo.go", "content": "package main"}`)
-	err := validateToolArgs("write", schema, args)
+	_, err := validateToolArgs("write", schema, args)
 	if err != nil {
 		t.Fatalf("expected valid args to pass: %v", err)
 	}
@@ -34,7 +34,7 @@ func TestValidateToolArgs_MissingRequired(t *testing.T) {
 	}
 
 	args := json.RawMessage(`{"path": "/tmp/foo.go"}`)
-	err := validateToolArgs("write", schema, args)
+	_, err := validateToolArgs("write", schema, args)
 	if err == nil {
 		t.Fatal("expected validation error for missing required field")
 	}
@@ -56,7 +56,7 @@ func TestValidateToolArgs_WrongType(t *testing.T) {
 
 	// timeout is a string instead of integer
 	args := json.RawMessage(`{"command": "ls", "timeout": "not a number"}`)
-	err := validateToolArgs("bash", schema, args)
+	_, err := validateToolArgs("bash", schema, args)
 	if err == nil {
 		t.Fatal("expected validation error for wrong type")
 	}
@@ -68,11 +68,11 @@ func TestValidateToolArgs_WrongType(t *testing.T) {
 func TestValidateToolArgs_EmptySchema(t *testing.T) {
 	// No schema → skip validation (always passes).
 	args := json.RawMessage(`{"anything": "goes"}`)
-	err := validateToolArgs("custom", nil, args)
+	_, err := validateToolArgs("custom", nil, args)
 	if err != nil {
 		t.Fatalf("empty schema should skip validation: %v", err)
 	}
-	err = validateToolArgs("custom", map[string]any{}, args)
+	_, err = validateToolArgs("custom", map[string]any{}, args)
 	if err != nil {
 		t.Fatalf("empty schema map should skip validation: %v", err)
 	}
@@ -84,10 +84,10 @@ func TestValidateToolArgs_NullArgs(t *testing.T) {
 		"properties": map[string]any{},
 	}
 
-	// Null/empty args with no required fields → valid.
-	err := validateToolArgs("tool", schema, json.RawMessage("null"))
-	if err != nil {
-		t.Fatalf("null args with no required fields should pass: %v", err)
+	// Pi preserves a root null and rejects it against an object schema.
+	_, err := validateToolArgs("tool", schema, json.RawMessage("null"))
+	if err == nil {
+		t.Fatal("root null must fail an object schema")
 	}
 }
 
@@ -99,7 +99,7 @@ func TestValidateToolArgs_InvalidJSON(t *testing.T) {
 		},
 	}
 
-	err := validateToolArgs("broken", schema, json.RawMessage(`{invalid`))
+	_, err := validateToolArgs("broken", schema, json.RawMessage(`{invalid`))
 	if err == nil {
 		t.Fatal("expected error for invalid JSON")
 	}
@@ -120,7 +120,7 @@ func TestValidateToolArgs_AdditionalProperties(t *testing.T) {
 	}
 
 	args := json.RawMessage(`{"path": "/tmp/x", "extra_field": true}`)
-	err := validateToolArgs("read", schema, args)
+	_, err := validateToolArgs("read", schema, args)
 	if err != nil {
 		t.Fatalf("additional properties should be allowed by default: %v", err)
 	}

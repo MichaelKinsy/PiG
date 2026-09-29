@@ -531,7 +531,7 @@ func convertToLlm(msgs []agent.AgentMessage) []ai.Message {
 		case m.System != nil:
 			out = append(out, *m.System)
 		case m.User != nil:
-			out = append(out, ai.UserMessage{Content: ai.UserContentBlocks(m.User.Content), Timestamp: m.User.Timestamp})
+			out = append(out, m.User.LLMMessage())
 		case m.Assistant != nil:
 			usage := ai.Usage{}
 			if m.Assistant.Usage != nil {
@@ -579,7 +579,12 @@ func customMessageToLlm(custom map[string]any) (ai.Message, bool) {
 		if json.Unmarshal(raw, &decoded) != nil || decoded.User == nil {
 			return nil, false
 		}
-		return ai.UserMessage{Content: ai.UserContentBlocks(decoded.User.Content), Timestamp: timestamp}, true
+		if content, ok := decoded.User.Content.(ai.UserText); ok {
+			return text(string(content)), true
+		}
+		user := decoded.User.LLMMessage()
+		user.Timestamp = timestamp
+		return user, true
 	case agent.RoleBranchSummary:
 		summary, _ := custom["summary"].(string)
 		return text(agent.BranchSummaryContextText(summary)), true
@@ -688,7 +693,11 @@ func completeSummarization(
 	}
 	return completeSimpleWithRetries(ctx, retry, func() (string, *ai.Usage, error) {
 		if streamFn != nil {
-			return streamFn(ctx, model, systemPrompt, messages, requestOptions)
+			text, usage, err := streamFn(ctx, model, systemPrompt, messages, requestOptions)
+			if err != nil {
+				return "", nil, &summarizationCallError{err}
+			}
+			return text, usage, nil
 		}
 		return completer.CompleteSimple(ctx, model, systemPrompt, messages, requestOptions)
 	})
@@ -734,7 +743,7 @@ func generateSummary(
 		{
 			User: &agent.UserMessage{
 				Role: "user",
-				Content: []ai.UserContentBlock{
+				Content: ai.UserContentBlocks{
 					ai.TextContent{Text: promptText},
 				},
 				Timestamp: ts,
@@ -771,7 +780,7 @@ func generateTurnPrefixSummary(
 		{
 			User: &agent.UserMessage{
 				Role: "user",
-				Content: []ai.UserContentBlock{
+				Content: ai.UserContentBlocks{
 					ai.TextContent{Text: promptText},
 				},
 				Timestamp: ts,
@@ -791,9 +800,17 @@ func generateTurnPrefixSummary(
 // standalone summarization requests never provide executable tools.
 var ErrSummarizationToolCall = errors.New("summarization attempted to call a tool")
 
+type summarizationCallError struct{ err error }
+
+func (e *summarizationCallError) Error() string { return e.err.Error() }
+func (e *summarizationCallError) Unwrap() error { return e.err }
+
 func summarizationFailure(operation string, err error) error {
 	if errors.Is(err, ErrSummarizationToolCall) {
 		return fmt.Errorf("%s attempted to call a tool", operation)
+	}
+	if callError, ok := errors.AsType[*summarizationCallError](err); ok {
+		return callError.err
 	}
 	message := err.Error()
 	if errors.Is(err, context.Canceled) {

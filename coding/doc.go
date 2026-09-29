@@ -13,6 +13,7 @@
 //	    AgentDir: coding.DefaultAgentDir(),
 //	})
 //	if err != nil { return err }
+//	defer svcs.Close()
 //
 //	rt, err := coding.NewRuntime(coding.RuntimeOptions{Services: svcs})
 //	if err != nil { return err }

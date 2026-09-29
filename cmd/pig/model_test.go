@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -195,15 +196,15 @@ func TestResolveModel_ThreadsAzureScopedEnv(t *testing.T) {
 	}
 }
 
-// TestResolveModel_ThreadsAnthropicScopedEnv proves the startup resolver wires
-// entry.Env into the Anthropic provider config: a scoped PI_CACHE_RETENTION=none
-// from auth.json must win over the process env and suppress the
-// x-session-affinity header. The CLI's former builder passed entry.Env directly;
-// the shared coding.BuildModelFromEntry must keep doing so.
+// TestResolveModel_ThreadsAnthropicScopedEnv proves the shared startup constructor retains provider-scoped env. Pi anthropic-messages.ts:60-82 maps scoped none to short retention, overriding ambient long without disabling affinity.
 func TestResolveModel_ThreadsAnthropicScopedEnv(t *testing.T) {
 	var gotHeader string
+	var gotBody map[string]any
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotHeader = r.Header.Get("x-session-affinity")
+		if err := json.NewDecoder(r.Body).Decode(&gotBody); err != nil {
+			t.Error(err)
+		}
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = io.WriteString(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg\",\"usage\":{\"input_tokens\":1,\"output_tokens\":0}}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
 	}))
@@ -212,7 +213,7 @@ func TestResolveModel_ThreadsAnthropicScopedEnv(t *testing.T) {
 	dir := t.TempDir()
 	models := `{"providers":{"myco-anthropic":{"baseUrl":"` + srv.URL + `","apiKey":"sk-x",` +
 		`"api":"anthropic-messages",` +
-		`"compat":{"sendSessionAffinityHeaders":true},` +
+		`"compat":{"sendSessionAffinityHeaders":true,"supportsLongCacheRetention":true},` +
 		`"models":[{"id":"m1","name":"M1"}]}}}`
 	if err := os.WriteFile(filepath.Join(dir, "models.json"), []byte(models), 0o644); err != nil {
 		t.Fatal(err)
@@ -222,8 +223,8 @@ func TestResolveModel_ThreadsAnthropicScopedEnv(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	// Process env would send the affinity header; the scoped "none" must win.
-	t.Setenv("PI_CACHE_RETENTION", "short")
+	// Losing the scoped value would add a one-hour TTL from the ambient environment.
+	t.Setenv("PI_CACHE_RETENTION", "long")
 
 	model, _, _, err := resolveModel("myco-anthropic/m1", "", codingagent.Settings{}, testServices(t, dir))
 	if err != nil {
@@ -236,7 +237,14 @@ func TestResolveModel_ThreadsAnthropicScopedEnv(t *testing.T) {
 		t.Fatalf("Stream: %v", err)
 	}
 	_ = stream.Result()
-	if gotHeader != "" {
-		t.Fatalf("scoped PI_CACHE_RETENTION=none must omit x-session-affinity, got %q", gotHeader)
+	if gotHeader != "sess-1" {
+		t.Fatalf("scoped env none retains affinity under short caching, got %q", gotHeader)
+	}
+	var wantMessages any
+	if err := json.Unmarshal([]byte(`[{"role":"user","content":[{"type":"text","text":"hi","cache_control":{"type":"ephemeral"}}]}]`), &wantMessages); err != nil {
+		t.Fatal(err)
+	}
+	if !reflect.DeepEqual(gotBody["messages"], wantMessages) {
+		t.Fatalf("scoped env did not override ambient long: messages=%#v want=%#v", gotBody["messages"], wantMessages)
 	}
 }

@@ -1,0 +1,414 @@
+[
+  {
+    "provider": "opencode",
+    "id": "claude-fable-5"
+  },
+  {
+    "provider": "opencode",
+    "id": "claude-fable-5-1"
+  },
+  {
+    "provider": "opencode",
+    "id": "claude-haiku-4-5"
+  },
+  {
+    "provider": "opencode",
+    "id": "claude-opus-4-5"
+  },
+  {
+    "provider": "opencode",
+    "id": "claude-opus-4-6"
+  },
+  {
+    "provider": "opencode",
+    "id": "claude-opus-4-7"
+  },
+  {
+    "provider": "opencode",
+    "id": "claude-opus-4-8"
+  },
+  {
+    "provider": "opencode",
+    "id": "claude-opus-5"
+  },
+  {
+    "provider": "opencode",
+    "id": "claude-opus-5-5"
+  },
+  {
+    "provider": "opencode",
+    "id": "claude-sonnet-4"
+  },
+  {
+    "provider": "opencode",
+    "id": "claude-sonnet-4-5"
+  },
+  {
+    "provider": "opencode",
+    "id": "claude-sonnet-4-6"
+  },
+  {
+    "provider": "opencode",
+    "id": "claude-sonnet-5"
+  },
+  {
+    "provider": "opencode",
+    "id": "qwen3.5-plus"
+  },
+  {
+    "provider": "opencode",
+    "id": "qwen3.6-plus"
+  },
+  {
+    "provider": "opencode",
+    "id": "qwen3.8-flash"
+  },
+  {
+    "provider": "opencode",
+    "id": "gemini-3-flash"
+  },
+  {
+    "provider": "opencode",
+    "id": "gemini-3.1-pro"
+  },
+  {
+    "provider": "opencode",
+    "id": "gemini-3.5-flash"
+  },
+  {
+    "provider": "opencode",
+    "id": "gemini-3.5-flash-lite"
+  },
+  {
+    "provider": "opencode",
+    "id": "gemini-3.6-flash"
+  },
+  {
+    "provider": "opencode",
+    "id": "gemini-3.7-flash"
+  },
+  {
+    "provider": "opencode",
+    "id": "gemini-3.8-flash"
+  },
+  {
+    "provider": "opencode",
+    "id": "big-pickle"
+  },
+  {
+    "provider": "opencode",
+    "id": "deepseek-v4-flash"
+  },
+  {
+    "provider": "opencode",
+    "id": "deepseek-v4-flash-vision-exp"
+  },
+  {
+    "provider": "opencode",
+    "id": "deepseek-v4-pro"
+  },
+  {
+    "provider": "opencode",
+    "id": "deepseek-v4.1-flash"
+  },
+  {
+    "provider": "opencode",
+    "id": "glm-5"
+  },
+  {
+    "provider": "opencode",
+    "id": "glm-5.1"
+  },
+  {
+    "provider": "opencode",
+    "id": "glm-5.2"
+  },
+  {
+    "provider": "opencode",
+    "id": "glm-5.3"
+  },
+  {
+    "provider": "opencode",
+    "id": "glm-5.3-flash"
+  },
+  {
+    "provider": "opencode",
+    "id": "kimi-k2.5"
+  },
+  {
+    "provider": "opencode",
+    "id": "kimi-k2.6"
+  },
+  {
+    "provider": "opencode",
+    "id": "kimi-k2.7-code"
+  },
+  {
+    "provider": "opencode",
+    "id": "kimi-k3"
+  },
+  {
+    "provider": "opencode",
+    "id": "ling-3.0-flash-fin-free"
+  },
+  {
+    "provider": "opencode",
+    "id": "mimo-v2.6-flash-free"
+  },
+  {
+    "provider": "opencode",
+    "id": "minimax-m2.5"
+  },
+  {
+    "provider": "opencode",
+    "id": "minimax-m2.7"
+  },
+  {
+    "provider": "opencode",
+    "id": "minimax-m3"
+  },
+  {
+    "provider": "opencode",
+    "id": "nemotron-3-ultra-free"
+  },
+  {
+    "provider": "opencode",
+    "id": "nemotron-3.5-lightning-free"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5-codex"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5-nano"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.1"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.1-codex"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.1-codex-max"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.1-codex-mini"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.2"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.2-codex"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.3-codex"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.4"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.4-mini"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.4-nano"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.4-pro"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.5"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.5-pro"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.6-luna"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.6-sol"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-5.6-terra"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-6-astra"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-6-luna"
+  },
+  {
+    "provider": "opencode",
+    "id": "gpt-6-sol"
+  },
+  {
+    "provider": "opencode",
+    "id": "grok-4.5"
+  },
+  {
+    "provider": "opencode",
+    "id": "grok-4.6"
+  },
+  {
+    "provider": "opencode",
+    "id": "grok-build-0.1"
+  },
+  {
+    "provider": "opencode",
+    "id": "muse-spark-1.2"
+  },
+  {
+    "provider": "opencode",
+    "id": "muse-spark-1.2-contributor-free"
+  },
+  {
+    "provider": "opencode",
+    "id": "muse-spark-1.3"
+  },
+  {
+    "provider": "opencode",
+    "id": "muse-spark-1.3-contributor-free"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "minimax-m3"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "qwen3.8-flash"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "deepseek-v4-flash"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "deepseek-v4-flash-vision-exp"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "deepseek-v4-pro"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "deepseek-v4.1-flash"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "glm-5.1"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "glm-5.2"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "glm-5.3"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "glm-5.3-flash"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "hy3"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "hy4-preview"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "kimi-k2.6"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "kimi-k2.7-code"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "kimi-k3"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "longcat-2.0"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "mimo-v2.5"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "mimo-v2.5-pro"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "mimo-v2.6-flash"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "mimo-v2.6-pro"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "minimax-m2.7"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "qwen3.6-plus"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "qwen3.7-max"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "qwen3.7-plus"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "qwen3.8-max"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "gpt-5.6-luna"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "grok-4.6"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "grok-4.7"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "muse-spark-1.2-contributor"
+  },
+  {
+    "provider": "opencode-go",
+    "id": "muse-spark-1.3-contributor"
+  }
+]

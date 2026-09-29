@@ -1,0 +1,53 @@
+# Behavior family: extensions-runtime
+# Surface: a custom footer that renders no lines (pi-powerline-footer's
+# secondary row at startup).
+#
+# empty-footer.mjs puts a widget above the editor and replaces the footer
+# with a component whose render returns [] on session_start. The capture runs
+# from a fixed chat notification through the widget to the bottom of the pane. This includes
+# Pi's leading spacer and one-column text-list indent, not just the footer.
+#
+# Upstream evidence (Pi 0.87.1, tmux 100x30, probed 2026-09-26):
+# setExtensionFooter swaps the built-in footer for the extension's component,
+# so below the editor nothing is drawn. PiG before the fix kept its built-in
+# footer (the cwd row and the "(auto)" context row) when the custom footer's
+# frame had no lines.
+
+name = "34-empty-custom-footer"
+description = "A custom footer that renders no lines replaces the built-in footer"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/empty-footer.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/empty-footer.mjs",
+]
+
+[tmux]
+width = 100
+height = 30
+ready_pattern_pig = "EMPTY FOOTER PROBE"
+ready_pattern_pi = "EMPTY FOOTER PROBE"
+ready_timeout_seconds = 30
+capture_start = "EMPTY FOOTER HEADER"
+
+[[tmux.steps]]
+keys = ["/footer-probe", "Enter"]
+wait_contains = ["EMPTY FOOTER HEADER"]
+wait_timeout_seconds = 20
+settle_seconds = 2
+
+[assert]
+both_reach_ready = true
+both_contain = ["EMPTY FOOTER PROBE"]
+both_not_contain = ["(auto)", "panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

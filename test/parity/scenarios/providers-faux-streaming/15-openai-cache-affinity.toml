@@ -1,0 +1,28 @@
+# Pi 0.87.1 Completions separates body caching (:820-825) from affinity headers
+# (:770-781). Responses preserves raw session headers (:257-266), leaves omitted
+# reasoning off (:333-344), and forwards tool_choice. These HTTP probes compare
+# both APIs using direct/proxy URL paths, each affinity format, long/none retention
+# and configured/request header precedence. No network credentials or output
+# normalization are used. Only the prompt cache key, not generic headers, clamps.
+name = "15-openai-cache-affinity"
+description = "Completions and Responses preserve independent cache-body and affinity-header policies, omitted reasoning and required tool choice."
+covers = ["packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/openai-responses.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/openai-cache-affinity-pig"]
+pi_args = ["node", "./test/parity/testdata/openai-cache-affinity-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"case":"long-proxy","key":"session-long","retention":"24h"', '"reasoning":null,"choice":"required"', '"session":"session-generated","client":"request"']
+runs = 3

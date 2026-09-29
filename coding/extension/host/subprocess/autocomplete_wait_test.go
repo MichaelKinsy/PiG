@@ -2,11 +2,11 @@ package subprocess
 
 import (
 	"context"
+	"errors"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -32,7 +32,7 @@ const slowAutocompleteExtension = `export default function (pi) {
 
 // loadAutocompleteFixture loads a Node extension whose provider answers after
 // 400 ms, or throws for the line "boom", and returns its registered source.
-func loadAutocompleteFixture(t *testing.T, notify func(msg, level string)) extension.AsyncSuggestionSource {
+func loadAutocompleteFixture(t *testing.T, notify func(msg, level string)) *extension.AutocompleteProvider {
 	t.Helper()
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Fatalf("node is required for the autocomplete fixture: %v", err)
@@ -64,36 +64,27 @@ func loadAutocompleteFixture(t *testing.T, notify func(msg, level string)) exten
 // cancels it, so a provider that answers after 400 ms shows its items.
 func TestSlowAutocompleteProviderShowsItems(t *testing.T) {
 	source := loadAutocompleteFixture(t, nil)
-	got := source.Suggest(testbudget.Context(t), []string{"slow"}, 0, len("slow"))
+	got, err := source.GetSuggestions(testbudget.Context(t), []string{"slow"}, 0, len("slow"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got == nil || len(got.Items) != 1 || got.Items[0].Value != "slow-item" {
 		t.Fatalf("suggestions = %+v, want the slow provider's item", got)
 	}
 }
 
-// A provider error reaches the user instead of silently showing nothing, and
-// an editor change that cancels the query reports nothing.
-func TestAutocompleteProviderErrorIsVisible(t *testing.T) {
-	var mu sync.Mutex
-	var notices []string
-	source := loadAutocompleteFixture(t, func(msg, level string) {
-		mu.Lock()
-		defer mu.Unlock()
-		notices = append(notices, level+":"+msg)
-	})
-	if got := source.Suggest(testbudget.Context(t), []string{"boom"}, 0, len("boom")); got != nil {
-		t.Fatalf("failed provider returned %+v", got)
+// Provider rejection and cancellation return to the caller which owns popup/error presentation.
+func TestAutocompleteProviderErrorIsReturned(t *testing.T) {
+	source := loadAutocompleteFixture(t, nil)
+	if got, err := source.GetSuggestions(testbudget.Context(t), []string{"boom"}, 0, len("boom"), false); got != nil || err == nil || !strings.Contains(err.Error(), "provider exploded") {
+		t.Fatalf("failed provider returned %+v, %v", got, err)
 	}
 	cancelled, cancel := context.WithCancel(context.Background())
 	go func() {
 		time.Sleep(50 * time.Millisecond)
 		cancel()
 	}()
-	if got := source.Suggest(cancelled, []string{"slow"}, 0, len("slow")); got != nil {
-		t.Fatalf("cancelled query returned %+v", got)
-	}
-	mu.Lock()
-	defer mu.Unlock()
-	if len(notices) != 1 || !strings.HasPrefix(notices[0], "error:") || !strings.Contains(notices[0], "provider exploded") {
-		t.Fatalf("notices = %v, want one error naming the provider failure", notices)
+	if got, err := source.GetSuggestions(cancelled, []string{"slow"}, 0, len("slow"), false); got != nil || !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled query returned %+v, %v", got, err)
 	}
 }

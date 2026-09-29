@@ -9,7 +9,6 @@ import (
 	"image/gif"
 	"image/jpeg"
 	"image/png"
-	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -63,45 +62,29 @@ func makeGIFBase64(t *testing.T, w, h int) string {
 }
 
 func TestDetectCapabilities(t *testing.T) {
-	// Each case clears the whole environment, so restore all of it, not only
-	// the variables the cases set; later tests need HOME, PATH, and TMPDIR.
-	saved := os.Environ()
-	t.Cleanup(func() {
-		os.Clearenv()
-		for _, entry := range saved {
-			name, value, _ := strings.Cut(entry, "=")
-			_ = os.Setenv(name, value)
-		}
-		ResetCapabilitiesCache()
-	})
-	detectCapabilitiesAs(t, "linux")
-
 	cases := []struct {
 		name          string
-		setEnv        func()
+		env           map[string]string
 		wantImg       ImageProtocol
 		wantTrueColor bool
 		wantHL        bool
 	}{
-		{"tmux disables images and hyperlinks without forwarding", func() { _ = os.Setenv("TMUX", "1"); _ = os.Setenv("COLORTERM", "truecolor") }, "", true, false},
-		{"kitty", func() { _ = os.Setenv("KITTY_WINDOW_ID", "1") }, ImageProtocolKitty, true, true},
-		{"ghostty", func() { _ = os.Setenv("TERM_PROGRAM", "ghostty") }, ImageProtocolKitty, true, true},
-		{"herdr inherited ghostty without graphics", func() { _ = os.Setenv("HERDR_ENV", "1"); _ = os.Setenv("TERM_PROGRAM", "ghostty") }, "", false, false},
-		{"herdr positively advertises graphics", func() {
-			_ = os.Setenv("HERDR_ENV", "1")
-			_ = os.Setenv("HERDR_KITTY_GRAPHICS", "1")
-			_ = os.Setenv("TERM_PROGRAM", "ghostty")
-		}, ImageProtocolKitty, true, true},
-		{"wezterm", func() { _ = os.Setenv("WEZTERM_PANE", "1") }, ImageProtocolKitty, true, true},
-		{"iterm2", func() { _ = os.Setenv("ITERM_SESSION_ID", "1") }, ImageProtocolITerm2, true, true},
-		{"apple terminal without a truecolor hint", func() { _ = os.Setenv("TERM_PROGRAM", "Apple_Terminal") }, "", false, false},
-		{"windows terminal enables truecolor and hyperlinks", func() { _ = os.Setenv("WT_SESSION", "1") }, "", true, true},
+		{"tmux disables images and hyperlinks without forwarding", map[string]string{"TMUX": "1", "COLORTERM": "truecolor"}, "", true, false},
+		{"kitty", map[string]string{"KITTY_WINDOW_ID": "1"}, ImageProtocolKitty, true, true},
+		{"ghostty", map[string]string{"TERM_PROGRAM": "ghostty"}, ImageProtocolKitty, true, true},
+		{"herdr inherited ghostty without graphics", map[string]string{"HERDR_ENV": "1", "TERM_PROGRAM": "ghostty"}, "", false, false},
+		{"herdr positively advertises graphics", map[string]string{"HERDR_ENV": "1", "HERDR_KITTY_GRAPHICS": "1", "TERM_PROGRAM": "ghostty"}, ImageProtocolKitty, true, true},
+		{"wezterm", map[string]string{"WEZTERM_PANE": "1"}, ImageProtocolKitty, true, true},
+		{"iterm2", map[string]string{"ITERM_SESSION_ID": "1"}, ImageProtocolITerm2, true, true},
+		{"apple terminal without a truecolor hint", map[string]string{"TERM_PROGRAM": "Apple_Terminal"}, "", false, false},
+		{"windows terminal enables truecolor and hyperlinks", map[string]string{"WT_SESSION": "1"}, "", true, true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			os.Clearenv()
-			ResetCapabilitiesCache()
-			tc.setEnv()
+			isolateCapabilityEnv(t)
+			for name, value := range tc.env {
+				t.Setenv(name, value)
+			}
 			got := DetectCapabilities(func() bool { return false })
 			if got.Images != tc.wantImg || got.TrueColor != tc.wantTrueColor || got.Hyperlinks != tc.wantHL {
 				t.Fatalf("DetectCapabilities() = %+v want images=%q trueColor=%v hyperlinks=%v", got, tc.wantImg, tc.wantTrueColor, tc.wantHL)
@@ -111,6 +94,7 @@ func TestDetectCapabilities(t *testing.T) {
 }
 
 func TestGetCapabilitiesConcurrentInitialization(t *testing.T) {
+	isolateCapabilityEnv(t)
 	t.Setenv("TERM_PROGRAM", "kitty")
 	ResetCapabilitiesCache()
 	t.Cleanup(ResetCapabilitiesCache)
@@ -213,7 +197,8 @@ func TestEncodeKitty_ExactByteParity(t *testing.T) {
 
 func TestEncodeITerm2_ExactByteParity(t *testing.T) {
 	got := EncodeITerm2("Zm9v", 10, "auto", "x.png", true)
-	want := "\x1b]1337;File=inline=1;width=10;height=auto;name=eC5wbmc=:Zm9v\x07"
+	// packages/tui/src/terminal-image.ts:294 includes Buffer.byteLength("Zm9v", "base64") = 3.
+	want := "\x1b]1337;File=inline=1;size=3;width=10;height=auto;name=eC5wbmc=:Zm9v\x07"
 	if got != want {
 		t.Fatalf("iterm2 mismatch\n got: %q\nwant: %q", got, want)
 	}
@@ -238,6 +223,104 @@ func TestIsImageLine(t *testing.T) {
 	if IsImageLine("plain text") {
 		t.Fatal("false positive image line")
 	}
+}
+
+// TestIsImageLineStartsWithBug preserves every case in packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts.
+func TestIsImageLineStartsWithBug(t *testing.T) {
+	// packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts:20.
+	t.Run("old implementation would return false, causing crash", func(t *testing.T) {
+		oldIsImageLine := func(line string, prefix *string) bool {
+			return prefix != nil && strings.HasPrefix(line, *prefix)
+		}
+		line := "Read image file [image/jpeg]\x1b]1337;File=size=800,600;inline=1:base64data...\x07"
+		if oldIsImageLine(line, nil) {
+			t.Fatal("old implementation must miss the sequence without terminal image support")
+		}
+	})
+
+	for _, tc := range []struct {
+		name  string
+		lines []string
+		want  bool
+	}{
+		// packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts:58.
+		{"new implementation returns true correctly", []string{
+			"Read image file [image/jpeg]\x1b]1337;File=size=800,600;inline=1:base64data...\x07",
+		}, true},
+		// packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts:70.
+		{"new implementation detects Kitty sequences in any position", []string{
+			"At start: \x1b_Ga=T,f=100,data...\x1b\\",
+			"Prefix \x1b_Ga=T,data...\x1b\\",
+			"Suffix text \x1b_Ga=T,data...\x1b\\ suffix",
+			"Middle \x1b_Ga=T,data...\x1b\\ more text",
+			"Text before \x1b_Ga=T,f=100" + strings.Repeat("A", 300000) + " text after",
+		}, true},
+		// packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts:87.
+		{"new implementation detects iTerm2 sequences in any position", []string{
+			"At start: \x1b]1337;File=size=100,100:base64...\x07",
+			"Prefix \x1b]1337;File=inline=1:data==\x07",
+			"Suffix text \x1b]1337;File=inline=1:data==\x07 suffix",
+			"Middle \x1b]1337;File=inline=1:data==\x07 more text",
+			"Text before \x1b]1337;File=size=800,600;inline=1:" + strings.Repeat("B", 300000) + " text after",
+		}, true},
+		// packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts:123. Pi simulates the read-tool output rather than invoking the tool.
+		{"detects image sequences in read tool output", []string{
+			"Read image file [image/jpeg]\x1b]1337;File=size=800,600;inline=1:base64image...\x07",
+		}, true},
+		// packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts:133. Pi supplies the Image component's output as a literal.
+		{"detects Kitty sequences from Image component", []string{
+			"\x1b_Ga=T,f=100,t=f,d=base64data...\x1b\\\x1b_Gm=i=1;\x1b\\",
+		}, true},
+		// packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts:142.
+		{"handles ANSI codes before image sequences", []string{
+			"\x1b[31mError\x1b[0m: \x1b]1337;File=inline=1:base64==\x07",
+			"\x1b[33mWarning\x1b[0m: \x1b_Ga=T,data...\x1b\\",
+			"\x1b[1mBold\x1b[0m \x1b]1337;File=:base64==\x07\x1b[0m",
+		}, true},
+		// packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts:213.
+		{"does not detect images in regular long text", []string{strings.Repeat("A", 100000)}, false},
+		// packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts:222.
+		{"does not detect images in lines with file paths", []string{
+			"/path/to/1337/image.jpg",
+			"/usr/local/bin/File_converter",
+			"~/Documents/1337File_backup.png",
+			"./_G_test_file.txt",
+		}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for i, line := range tc.lines {
+				if got := IsImageLine(line); got != tc.want {
+					t.Errorf("line %d (%d bytes): IsImageLine = %v, want %v", i, len(line), got, tc.want)
+				}
+			}
+		})
+	}
+
+	// packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts:163.
+	t.Run("does NOT crash on very long lines with image sequences", func(t *testing.T) {
+		base64Char := strings.Repeat("A", 100)
+		sequence := "\x1b]1337;File=size=800,600;inline=1:"
+		line := "Output: " + sequence + strings.Repeat(base64Char, 3040) + " end of output"
+		if len(line) <= 300000 {
+			t.Fatalf("test line should be > 300KB, got %d bytes", len(line))
+		}
+		if !IsImageLine(line) {
+			t.Fatal("image sequence in very long line not detected")
+		}
+	})
+	// packages/tui/test/bug-regression-isimageline-startswith-bug.test.ts:192.
+	t.Run("handles lines exactly matching crash log dimensions", func(t *testing.T) {
+		const targetWidth = 58649
+		prefix, sequence, suffix := "Text", "\x1b_Ga=T,f=100", "End"
+		padding := strings.Repeat("A", targetWidth-len(prefix)-len(sequence)-len(suffix))
+		line := prefix + sequence + padding + suffix
+		if len(line) != targetWidth {
+			t.Fatalf("line length = %d, want %d", len(line), targetWidth)
+		}
+		if !IsImageLine(line) {
+			t.Fatal("image sequence in 58649-char line not detected")
+		}
+	})
 }
 
 func TestAllocateImageID_NonZero(t *testing.T) {
@@ -285,7 +368,7 @@ func TestRenderImage_UsesMaxHeightAndOmitsITermName(t *testing.T) {
 	}
 
 	SetCapabilities(TerminalCapabilities{Images: ImageProtocolITerm2, TrueColor: true, Hyperlinks: true})
-	iterm := RenderImage(pngData, *dims, ImageRenderOptions{MaxWidthCells: 10, Name: "ignored.png", PreserveAspectRatio: true})
+	iterm := RenderImage(pngData, *dims, ImageRenderOptions{MaxWidthCells: 10, Name: "ignored.png", PreserveAspectRatio: new(true)})
 	if iterm == nil {
 		t.Fatal("iterm render nil")
 		return

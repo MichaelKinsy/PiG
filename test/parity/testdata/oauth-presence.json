@@ -1,0 +1,6 @@
+[
+  {"type":"oauth","access":"old","refresh":"r","expires":42},
+  {"type":"oauth","access":"old","refresh":"r","expires":42,"projectId":"","accountId":null,"scope":"","enterpriseUrl":null,"nullable":null,"disabled":false},
+  {"type":"oauth","access":"old","refresh":"r","expires":42,"projectId":{"id":"p"},"accountId":false,"scope":0,"enterpriseUrl":[],"env":false,"key":null},
+  {"type":"api_key","key":"","env":{},"note":"provider metadata"}
+]

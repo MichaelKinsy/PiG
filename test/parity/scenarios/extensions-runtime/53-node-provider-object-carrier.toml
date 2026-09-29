@@ -1,0 +1,23 @@
+# Pi 0.87.1 model-runtime.ts:744-750 retains a native Provider by identity;
+# model-registry.ts:101-103,165-167 exposes it to other extensions. Invoke every
+# Provider method and injected callback, not just catalog/registration reads.
+# Ordinary Node factories share a cell. Cross-process carriers remain D78.
+name = "53-node-provider-object-carrier"
+description = "Another Node extension receives the original callable native Provider"
+covers = ["packages/coding-agent/src/core/model-registry.ts", "packages/coding-agent/src/core/model-runtime.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "-p", "/carrier-probe {{TEMP}}/carrier.json"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/carrier.json"
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["../testdata/extension-provider-carrier-owner.mjs", "../testdata/extension-provider-carrier-reader.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../testdata/extension-provider-carrier-owner.mjs", "../testdata/extension-provider-carrier-reader.mjs"]
+[assert]
+exit_code = 0
+runs = 3
+# The artifact contains fixed JSON values and no host paths, timestamps, or ANSI.
+artifact_normalized_equal = true
+artifact_both_contain = ['"identity":true', '"source":"injected:CARRIER_SOURCE"', '"cancelled":"aborted"', '"persist","update"']

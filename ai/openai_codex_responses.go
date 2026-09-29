@@ -17,11 +17,14 @@ const defaultCodexBaseURL = "https://chatgpt.com/backend-api"
 // Codex uses SSE when explicitly selected. Its default auto transport prefers a
 // session-scoped WebSocket and falls back to SSE before output starts.
 type OpenAICodexResponsesConfig struct {
-	APIKey     string
-	Model      string
-	ProviderID string
-	BaseURL    string
-	Compat     *OpenAIResponsesCompat
+	APIKey        string
+	Model         string
+	ModelMetadata *Model
+	// ThinkingLevelMap supplies an explicit map when selected ModelMetadata is absent.
+	ThinkingLevelMap ThinkingLevelMap
+	ProviderID       string
+	BaseURL          string
+	Compat           *OpenAIResponsesCompat
 }
 
 // NewOpenAICodexResponsesProvider creates an OpenAI Codex Responses provider.
@@ -44,6 +47,8 @@ func NewOpenAICodexResponsesProvider(cfg OpenAICodexResponsesConfig) Provider {
 		Codex:                 true,
 		IsReasoning:           true,
 		Model:                 cfg.Model,
+		ModelMetadata:         cfg.ModelMetadata,
+		ThinkingLevelMap:      cfg.ThinkingLevelMap,
 		ProviderID:            providerID,
 		APIKeyHeader:          "Authorization",
 		APIKeyPrefix:          "Bearer ",

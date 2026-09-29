@@ -15,6 +15,9 @@ import (
 // a failed write aborts startup instead of losing the migrated credentials
 // silently (GUARD-18).
 func TestMigrateAuthToAuthJSONReportsWriteFailure(t *testing.T) {
+	if testenv.RunUnprivileged(t) {
+		return
+	}
 	agentDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(`{"apiKeys":{"openai":"sk-legacy"}}`), 0o644); err != nil {
 		t.Fatal(err)
@@ -33,6 +36,9 @@ func TestMigrateAuthToAuthJSONReportsWriteFailure(t *testing.T) {
 // TestMigrateCommandsToPromptsWarnsOnRenameFailure mirrors upstream
 // migrateCommandsToPrompts, which prints a warning when the rename fails.
 func TestMigrateCommandsToPromptsWarnsOnRenameFailure(t *testing.T) {
+	if testenv.RunUnprivileged(t) {
+		return
+	}
 	baseDir := t.TempDir()
 	if err := os.Mkdir(filepath.Join(baseDir, "commands"), 0o755); err != nil {
 		t.Fatal(err)
@@ -52,9 +58,19 @@ func captureStdout(t *testing.T, fn func()) string {
 	}
 	previous := os.Stdout
 	os.Stdout = writer
+	defer func() {
+		os.Stdout = previous
+		_ = writer.Close()
+		_ = reader.Close()
+	}()
 	fn()
 	os.Stdout = previous
-	_ = writer.Close()
-	data, _ := io.ReadAll(reader)
+	if err := writer.Close(); err != nil {
+		t.Fatal(err)
+	}
+	data, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
 	return string(data)
 }

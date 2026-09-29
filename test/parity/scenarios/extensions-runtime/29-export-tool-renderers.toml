@@ -1,0 +1,70 @@
+# Behavior family: extensions-runtime
+# Surface: HTML export draws extension tools with their renderCall and
+# renderResult.
+#
+# Upstream evidence (Pi 0.87.1, core/export-html/tool-renderer.ts and
+# index.ts preRenderCustomTools): AgentSession.exportToHtml passes a tool
+# renderer that calls each registered definition's renderCall (collapsed,
+# partial) and renderResult (collapsed and expanded, final) and converts the
+# ANSI lines to HTML in renderedTools; a renderer that throws leaves the
+# default rendering. RPC export_html goes through the same path.
+# PiG skipped renderers that run in an extension process, and RPC
+# export_html rendered no extension tool at all.
+# The export-only wrapper declares sequential tool execution (Pi 0.87.1
+# agent-loop.ts:511-526). Parallel timers do not define a cross-runtime
+# completion order; sequential execution retains every update and end event
+# under the complete JSON comparator. Interactive renderer fixtures stay parallel.
+
+name = "29-export-tool-renderers"
+description = "HTML export pre-renders Node extension tool renderers as upstream does"
+covers = [
+  "packages/coding-agent/src/core/export-html/tool-renderer.ts",
+  "packages/coding-agent/src/core/export-html/index.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+cwd = "testdata/export-cwd"
+timeout_seconds = 40
+
+[[rpc.steps]]
+line = '{"id":"run","type":"prompt","message":"Run: extension render cards"}'
+wait_contains = ['"type":"agent_end"']
+wait_timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"export","type":"export_html","outputPath":"cards.html"}'
+wait_contains = ['"id":"export","type":"response","command":"export_html"']
+wait_timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"dump","type":"bash","command":"node export-rendered-tools.mjs cards.html"}'
+wait_contains = ['"id":"dump","type":"response","command":"bash"']
+wait_timeout_seconds = 20
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "Export renderers probe.", "--no-context-files", "--no-skills", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/export-tool-renderers.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/export-tool-renderers.mjs",
+]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "Export renderers probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+runs = 3
+json_output_equal = true
+stderr_equal = true
+both_contain = ["RENDERED {", "render_card#0", "render_self#1"]
+
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd", "/*/data/path"]
+kind = "path"
+reason = "D2: substitute only exact isolated cwd roots in the system section and export destination; retain all surrounding text and suffixes."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message wall clocks vary; no event, tool result or rendered HTML field is removed."

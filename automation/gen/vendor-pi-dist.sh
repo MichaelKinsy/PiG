@@ -1,33 +1,14 @@
 #!/usr/bin/env bash
-# Copy the parts of the pinned Pi release that run unchanged inside an
-# extension process into the Node extension runtime, so the runtime's Pi
-# modules re-export Pi's own code for them. Run `npm ci` in extensions/sdk-ts
-# first: its lockfile pins the Pi release named by coding.UpstreamVersion, with
-# integrity checks.
+# Copy the pinned Pi runtime graphs and exact dependencies installed by the
+# extensions/sdk-ts lock. This command performs no package resolution or install.
 #
-# shims/pi-dist/<package>/ mirrors that package's dist/ directory. Files are
-# verbatim except for import specifiers of third-party packages, which point
-# at the vendored copies by path so the modules also load without the
-# extension loader:
-# - pi-tui utils.js imports shims/get-east-asian-width and
-#   components/markdown.js shims/marked;
-# - pi-ai utils/json-parse.js imports shims/partial-json, and index.js,
-#   utils/validation.js and utils/typebox-helpers.js the TypeBox bundle
-#   (shims/typebox*.mjs, built by vendor-typebox.sh);
-# - pi-ai's builtin API implementations (api/<api>.js, which import the
-#   vendor SDKs) are one-line stubs that load shims/pi-ai-bridge.mjs, so
-#   Pi's lazy wrappers, api registry and compat dispatch run unchanged over
-#   PiG's providers (D74);
-# - pi-coding-agent utils/frontmatter.js imports shims/yaml, and
-#   utils/syntax-highlight.js shims/highlight.js;
-# - pi-coding-agent core/session-manager.js keeps only its pure section (entry
-#   parsing and migration, context projection, from CURRENT_SESSION_VERSION
-#   through buildSessionContext) with the imports that section uses, importing
-#   pi-ai from the runtime's pi-ai module.
-# shims/yaml/ is yaml's ES module build (its browser/ directory),
-# shims/marked/ marked's ES module build, and shims/get-east-asian-width/ and
-# shims/partial-json/ the published packages, shims/highlight.js/ its lib/,
-# each the release Pi depends on.
+# shims/pi-dist/<package>/ mirrors the package's published dist directory.
+# Import specifiers point at private dependency copies. The audited seams are
+# D2 config paths, D74 provider API leaves, and connection-owned SDK Sessions.
+# Whole coding-agent modules, docs, examples, themes and image-worker assets
+# remain available for source verification and absolute package-root imports.
+# bundle-pi-sdk.mjs compiles the same graph without changing its API bodies.
+# vendor-manifest.json records package identities, input/output hashes and seams.
 set -euo pipefail
 root=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/../.." && pwd)
 agent="$root/extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent"
@@ -38,6 +19,12 @@ eaw="$agent/node_modules/get-east-asian-width"
 pjson="$agent/node_modules/partial-json"
 marked="$agent/node_modules/marked"
 hljs="$agent/node_modules/highlight.js"
+jiti="$agent/node_modules/jiti"
+core="$agent/node_modules/@earendil-works/pi-agent-core"
+chord="$agent/node_modules/@earendil-works/chord"
+telemetry="$agent/node_modules/@earendil-works/pi-telemetry"
+ignore="$agent/node_modules/ignore"
+jsdiff="$agent/node_modules/diff"
 shims="$root/coding/extension/host/subprocess/runtime-node/shims"
 dist="$shims/pi-dist"
 
@@ -51,19 +38,17 @@ copy() {
   done
 }
 
-rm -rf "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/highlight.js"
-mkdir -p "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json/dist" "$shims/marked/lib" "$shims/highlight.js"
+rm -rf "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json" "$shims/marked" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
+mkdir -p "$dist" "$shims/yaml" "$shims/get-east-asian-width" "$shims/partial-json/dist" "$shims/marked/lib" "$shims/highlight.js" "$shims/jiti" "$shims/ignore" "$shims/diff"
 printf '{\n  "type": "module"\n}\n' >"$dist/package.json"
 
-# pi-tui: the key parser, width utilities, keybindings and the components
-# extensions construct, with the modules they import.
-copy "$tui/dist" "$dist/pi-tui" \
-  keys.js keybindings.js fuzzy.js kill-ring.js undo-stack.js word-navigation.js autocomplete.js \
-  tui.js terminal-colors.js terminal-image.js layout-node.js latex.js stdin-buffer.js \
-  components/box.js components/text.js components/spacer.js components/truncated-text.js \
-  components/loader.js components/cancellable-loader.js components/settings-list.js \
-  components/select-list.js components/input.js components/editor.js components/mouse-region.js \
-  components/stack.js components/h-stack.js components/v-stack.js
+# pi-tui: every runtime module, including locally constructed screens and scroll views. Native helpers keep the package's platform/architecture layout at one of getNativeModuleCandidates' unchanged lookup locations.
+while IFS= read -r file; do
+  copy "$tui/dist" "$dist/pi-tui" "$file"
+done < <(cd "$tui/dist" && find . -name '*.js' | sed 's#^\./##' | sort)
+cp -R "$tui/native" "$dist/pi-tui/native"
+sed 's#^export { Marked } from "marked";$#export { Marked } from "../../marked/lib/marked.esm.js";#' \
+  "$tui/dist/index.js" >"$dist/pi-tui/index.js"
 sed 's#^import { eastAsianWidth } from "get-east-asian-width";$#import { eastAsianWidth } from "../../get-east-asian-width/index.js";#' \
   "$tui/dist/utils.js" >"$dist/pi-tui/utils.js"
 sed 's#^import { Marked, Tokenizer } from "marked";$#import { Marked, Tokenizer } from "../../../marked/lib/marked.esm.js";#' \
@@ -97,20 +82,57 @@ sed -e 's#^import { Compile } from "typebox/compile";$#import { Compile } from "
 sed 's#^import { Type } from "typebox";$#import { Type } from "../../../typebox.mjs";#' \
   "$ai/dist/utils/typebox-helpers.js" >"$dist/pi-ai/utils/typebox-helpers.js"
 
-# pi-coding-agent.
-copy "$agent/dist" "$dist/pi-coding-agent" core/messages.js utils/text.js utils/html.js
-sed 's#"highlight\.js/lib/#"../../../highlight.js/lib/#' \
-  "$agent/dist/utils/syntax-highlight.js" >"$dist/pi-coding-agent/utils/syntax-highlight.js"
-sed 's#^import { parse } from "yaml";$#import { parse } from "../../../yaml/index.js";#' \
-  "$agent/dist/utils/frontmatter.js" >"$dist/pi-coding-agent/utils/frontmatter.js"
+# pi-coding-agent and pi-agent-core use their complete public module graphs.
+node "$root/automation/gen/vendor-pi-closure.mjs" "$shims" "$(cat <<JSON
 {
-  grep -E '^import .* from "(@earendil-works/pi-ai|crypto|\./messages\.js)";$' "$agent/dist/core/session-manager.js" |
-    sed 's#from "@earendil-works/pi-ai";$#from "../../../pi-ai.mjs";#'
-  awk '/^export const CURRENT_SESSION_VERSION/ { on = 1 } on { print } on && /^export function buildSessionContext/ { last = 1 } last && /^}$/ { exit }' \
-    "$agent/dist/core/session-manager.js"
-} >"$dist/pi-coding-agent/core/session-manager.js"
+  "entries": ["$core/dist/index.js", "$agent/dist/index.js", "$agent/dist/core/sdk.js", "$agent/dist/utils/image-resize-worker.js"],
+  "packages": {
+    "@earendil-works/pi-coding-agent": { "root": "$agent", "to": "pi-dist/pi-coding-agent" },
+    "@earendil-works/pi-agent-core": { "root": "$core", "to": "pi-dist/pi-agent-core" },
+    "@earendil-works/chord": { "root": "$chord", "to": "pi-dist/chord" },
+    "@earendil-works/pi-telemetry": { "root": "$telemetry", "to": "pi-dist/pi-telemetry" },
+    "@earendil-works/pi-ai": { "root": "$ai", "to": "pi-dist/pi-ai", "vendored": true }
+  },
+  "overrides": {
+    "@earendil-works/pi-coding-agent/index.js": "pi-coding-agent.mjs",
+    "@earendil-works/pi-coding-agent/core/sdk.js": "independent-session.mjs"
+  },
+  "externalPrefixes": { "highlight.js/lib/": "highlight.js/lib/" },
+  "external": {
+    "@earendil-works/pi-tui": "pi-tui.mjs",
+    "chalk": "chalk/source/index.js",
+    "proper-lockfile": "proper-lockfile.mjs",
+    "jiti": "jiti/lib/jiti.mjs",
+    "jiti/static": "jiti/lib/jiti-static.mjs",
+    "undici": "undici/index.js",
+    "semver": "semver/index.js",
+    "minimatch": "minimatch/dist/esm/index.js",
+    "hosted-git-info": "hosted-git-info/lib/index.js",
+    "grok-mermaid": "grok-mermaid/dist/index.js",
+    "@silvia-odwyer/photon-node": "photon-node/photon_rs.js",
+    "typebox": "typebox.mjs",
+    "typebox/value": "typebox-value.mjs",
+    "typebox/compile": "typebox-compile.mjs",
+    "yaml": "yaml/index.js",
+    "ignore": "ignore/index.js",
+    "diff": "diff/libesm/index.js",
+    "cross-spawn": "cross-spawn/index.js"
+  }
+}
+JSON
+)"
 
 # Third-party packages the vendored modules import.
+for dependency in chalk undici semver minimatch hosted-git-info grok-mermaid proper-lockfile; do
+  rm -rf "${shims:?}/$dependency"
+  node "$root/automation/gen/vendor-node-dependencies.mjs" "$agent/node_modules/$dependency/package.json" "$shims/$dependency"
+done
+rm -rf "$shims/photon-node"
+node "$root/automation/gen/vendor-node-dependencies.mjs" "$agent/node_modules/@silvia-odwyer/photon-node/package.json" "$shims/photon-node"
+node "$root/automation/gen/vendor-pi-session-seams.mjs" "$agent" "$dist/pi-coding-agent"
+node "$root/automation/gen/vendor-pi-startup-seams.mjs" "$dist/pi-coding-agent"
+rm -rf "$shims/cross-spawn"
+node "$root/automation/gen/vendor-node-dependencies.mjs" "$agent/node_modules/cross-spawn/package.json" "$shims/cross-spawn"
 cp -R "$yaml/browser/dist" "$shims/yaml/dist"
 cp "$yaml/browser/index.js" "$yaml/browser/package.json" "$yaml/LICENSE" "$shims/yaml/"
 cp "$eaw"/index.js "$eaw"/lookup.js "$eaw"/lookup-data.js "$eaw"/utilities.js "$eaw"/license "$eaw"/package.json "$shims/get-east-asian-width/"
@@ -120,10 +142,17 @@ cp "$marked/lib/marked.esm.js" "$shims/marked/lib/"
 cp "$marked/package.json" "$marked/LICENSE" "$shims/marked/"
 cp -R "$hljs/lib" "$shims/highlight.js/lib"
 cp "$hljs/package.json" "$hljs/LICENSE" "$shims/highlight.js/"
+cp -R "$jiti/lib" "$jiti/dist" "$shims/jiti/"
+cp "$jiti/package.json" "$jiti/LICENSE" "$shims/jiti/"
+cp "$ignore/index.js" "$ignore/package.json" "$ignore/LICENSE-MIT" "$shims/ignore/"
+cp -R "$jsdiff/libesm" "$shims/diff/libesm"
+find "$shims/diff/libesm" -name '*.d.ts' -delete -o -name '*.d.ts.map' -delete
+cp "$jsdiff/package.json" "$jsdiff/LICENSE" "$shims/diff/"
 
 # Every rewritten specifier must have matched: a pin change that alters an
 # import line fails here instead of shipping a module that cannot load.
 for check in \
+  "$dist/pi-tui/index.js:../../marked/lib/marked.esm.js" \
   "$dist/pi-tui/utils.js:../../get-east-asian-width/index.js" \
   "$dist/pi-tui/components/markdown.js:../../../marked/lib/marked.esm.js" \
   "$dist/pi-ai/utils/json-parse.js:../../../partial-json/dist/index.js" \
@@ -133,9 +162,24 @@ for check in \
   "$dist/pi-ai/index.js:../../typebox.mjs" \
   "$dist/pi-coding-agent/utils/frontmatter.js:../../../yaml/index.js" \
   "$dist/pi-coding-agent/utils/syntax-highlight.js:../../../highlight.js/lib/core.js" \
-  "$dist/pi-coding-agent/utils/syntax-highlight.js:../../../highlight.js/lib/index.js"; do
+  "$dist/pi-coding-agent/utils/syntax-highlight.js:../../../highlight.js/lib/index.js" \
+  "$dist/pi-coding-agent/core/settings-manager.js:../../pi-ai/sdk-bundle/index.js" \
+  "$dist/pi-coding-agent/core/settings-manager.js:../../../proper-lockfile.mjs" \
+  "$dist/pi-coding-agent/core/settings-manager.js:../config.js" \
+  "$dist/pi-coding-agent/modes/interactive/components/custom-editor.js:../../../../../pi-tui.mjs"; do
   grep -qF "\"${check#*:}\"" "${check%%:*}" || { echo "vendor-pi-dist: import rewrite failed in ${check%%:*}" >&2; exit 1; }
 done
 
+# Required helpers must exist in the complete copied modules.
+for check in \
+  "$dist/pi-coding-agent/utils/paths.js:export function resolvePath(" \
+  "$dist/pi-coding-agent/core/http-dispatcher.js:export function parseHttpIdleTimeoutMs("; do
+  grep -qF "${check#*:}" "${check%%:*}" || { echo "vendor-pi-dist: required helper missing in ${check%%:*}" >&2; exit 1; }
+done
+
+node "$root/automation/gen/bundle-pi-libraries.mjs" "$shims"
+node "$root/automation/gen/bundle-pi-sdk.mjs" "$shims"
+node "$root/automation/gen/vendor-node-manifest.mjs" "$shims" "$agent"
+
 version() { node -p "require('$1/package.json').version"; }
-echo "vendored Pi $(version "$agent") dist modules, yaml $(version "$yaml"), get-east-asian-width $(version "$eaw"), partial-json $(version "$pjson"), marked $(version "$marked") and highlight.js $(version "$hljs") into $shims"
+echo "vendored Pi $(version "$agent") dist modules, yaml $(version "$yaml"), get-east-asian-width $(version "$eaw"), partial-json $(version "$pjson"), marked $(version "$marked"), highlight.js $(version "$hljs"), jiti $(version "$jiti"), ignore $(version "$ignore") and diff $(version "$jsdiff") into $shims"

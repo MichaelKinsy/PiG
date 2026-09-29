@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -15,6 +14,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // Schema is a JSON Schema object for tool parameter definitions.
@@ -91,6 +92,20 @@ type EntryRenderOptions struct {
 // EntryRendererFunc renders a custom session entry into terminal lines for the host.
 type EntryRendererFunc func(ctx Context, entry map[string]any, options EntryRenderOptions, width int) ([]string, error)
 
+// MarkdownTransformContext mirrors Pi's MarkdownTransformContext: the
+// transcript message being rendered ("user", "assistant" or
+// "assistant-thinking"), whether it is still streaming, and the width it is
+// rendered at.
+type MarkdownTransformContext struct {
+	MessageType    string `json:"messageType"`
+	IsStreaming    bool   `json:"isStreaming"`
+	AvailableWidth int    `json:"availableWidth"`
+}
+
+// MarkdownTransformerFunc rewrites Markdown for display only, as Pi's
+// MarkdownTransformer does. A transformer that panics keeps its input.
+type MarkdownTransformerFunc func(markdown string, context MarkdownTransformContext) string
+
 // Factory constructs an extension instance for generated standalone or packed
 // runners. Factory-style packages should expose a function such as:
 //
@@ -111,19 +126,29 @@ type Extension struct {
 	eventMu     sync.Mutex
 	eventNextID int
 
-	toolFuncs          map[string]ToolFunc
-	toolPrepareFuncs   map[string]ToolPrepareArgumentsFunc
-	commandFuncs       map[string]CommandFunc
-	eventFuncs         map[int]EventFunc
-	shortcutFuncs      map[string]ShortcutFunc
-	rendererFuncs      map[string]RendererFunc
-	entryRendererFuncs map[string]EntryRendererFunc
-	flagDefaults       map[string]any
-	shortcuts          []shortcutDef
-	flags              []flagDef
-	providers          []providerDef
-	renderers          []rendererDef
-	entryRenderers     []rendererDef
+	providerStreams         map[string]ProviderStreamSimpleFunc
+	toolMu                  sync.RWMutex
+	toolConn                *conn
+	toolFuncs               map[string]ToolFunc
+	toolPrepareFuncs        map[string]ToolPrepareArgumentsFunc
+	commandFuncs            map[string]CommandFunc
+	eventFuncs              map[int]EventFunc
+	shortcutFuncs           map[string]ShortcutFunc
+	rendererFuncs           map[string]RendererFunc
+	entryRendererFuncs      map[string]EntryRendererFunc
+	flagDefaults            map[string]any
+	shortcuts               []shortcutDef
+	flags                   []flagDef
+	providers               []providerDef
+	providerMu              sync.RWMutex
+	autocomplete            autocompleteRegistry
+	nativeProviders         map[string]*Provider
+	providerObjectCallbacks map[string]func(string, json.RawMessage) (any, error)
+	providerUpdates         map[string]func() error
+	providerObjectCache     map[string]*Provider
+	renderers               []rendererDef
+	entryRenderers          []rendererDef
+	markdownTransform       MarkdownTransformerFunc
 
 	// toolRenderMu guards toolRenderers and toolRenderCards: render requests
 	// run on their own goroutines.
@@ -160,11 +185,15 @@ type Extension struct {
 	sessionName   string
 	cwd           string
 	mode          string
+	hasUI         bool
 	width         int
 	height        int
 	model         string
 	modelProvider string
 	sessionFile   string
+	// uiTheme is the host's theme palette from the state snapshot and
+	// theme_change notifies (upstream ctx.ui.theme).
+	uiTheme UITheme
 
 	requestsMu sync.Mutex
 	requests   map[string]context.CancelFunc
@@ -409,38 +438,46 @@ func New(name string) *Extension {
 // Name returns the extension's registered name.
 func (e *Extension) Name() string { return e.name }
 
-// Tool registers a tool that the LLM can invoke.
+// Tool registers a tool that the LLM can invoke. A nil schema panics before registration; an empty object is valid.
 func (e *Extension) Tool(name, description string, schema Schema, handler ToolFunc) {
-	e.tools = append(e.tools, toolDef{
-		Name:        name,
-		Description: description,
-		Parameters:  schema,
-	})
-	e.toolFuncs[name] = handler
+	e.registerTool(toolDef{Name: name, Description: description, Parameters: schema}, handler, nil, ToolRenderers{})
 }
 
-// ToolWithPrepareArguments registers a tool with a local pre-validation argument transform.
+// validateToolSchema rejects invalid programmer input before a declaration can replace a valid tool.
+// upstream: packages/coding-agent/src/core/extensions/loader.ts:registerTool
+func (e *Extension) validateToolSchema(name string, schema Schema) {
+	if schema == nil {
+		panic(fmt.Errorf(`Tool "%s" registered by extension "%s" must define an object parameter schema.`, name, e.name))
+	}
+}
+
+// ToolPromptSnippet sets the registered tool's optional system-prompt summary and refreshes a running Session.
+func (e *Extension) ToolPromptSnippet(name, snippet string) {
+	e.toolMu.Lock()
+	defer e.toolMu.Unlock()
+	for i := range e.tools {
+		if e.tools[i].Name == name {
+			e.tools[i].PromptSnippet = snippet
+			e.publishTool(e.tools[i])
+		}
+	}
+}
+
+// ToolWithPrepareArguments registers a tool with a local pre-validation argument transform. A nil schema panics before registration.
 func (e *Extension) ToolWithPrepareArguments(name, description string, schema Schema, prepare ToolPrepareArgumentsFunc, handler ToolFunc) {
-	e.Tool(name, description, schema, handler)
-	e.toolPrepareFuncs[name] = prepare
+	e.registerTool(toolDef{Name: name, Description: description, Parameters: schema}, handler, prepare, ToolRenderers{})
 }
 
-// ToolWithGuidelines registers a tool with system prompt guidelines.
+// ToolWithGuidelines registers a tool with system prompt guidelines. A nil schema panics before registration.
 // Guidelines are bullets injected into the system prompt's Guidelines section
 // when this tool is active. Each guideline must name the tool it refers to -
 // write "Use my_tool when..." not "Use this tool when...".
 // Mirrors upstream pi's promptGuidelines on ToolDefinition.
 func (e *Extension) ToolWithGuidelines(name, description string, schema Schema, guidelines []string, handler ToolFunc) {
-	e.tools = append(e.tools, toolDef{
-		Name:             name,
-		Description:      description,
-		Parameters:       schema,
-		PromptGuidelines: guidelines,
-	})
-	e.toolFuncs[name] = handler
+	e.registerTool(toolDef{Name: name, Description: description, Parameters: schema, PromptGuidelines: guidelines}, handler, nil, ToolRenderers{})
 }
 
-// ToolWithSource registers a tool with an explicit source identifier.
+// ToolWithSource registers a tool with an explicit source identifier. A nil schema panics before registration.
 // Source overrides the default extension-name attribution Piglet tool
 // scoping reads, allowing extensions that wrap external tool sources (e.g.
 // MCP servers) to provide per-tool provenance. GetAllTools reports it in the
@@ -448,14 +485,7 @@ func (e *Extension) ToolWithGuidelines(name, description string, schema Schema, 
 // pig additive (D23): ToolWithSource adds per-tool source attribution.
 // Example: ext.ToolWithSource("list_models", desc, schema, "mcp:mctl-platform", guidelines, handler)
 func (e *Extension) ToolWithSource(name, description string, schema Schema, source string, guidelines []string, handler ToolFunc) {
-	e.tools = append(e.tools, toolDef{
-		Name:             name,
-		Description:      description,
-		Parameters:       schema,
-		PromptGuidelines: guidelines,
-		Source:           source,
-	})
-	e.toolFuncs[name] = handler
+	e.registerTool(toolDef{Name: name, Description: description, Parameters: schema, PromptGuidelines: guidelines, Source: source}, handler, nil, ToolRenderers{})
 }
 
 // ConstrainedSampling is a provider-side constrained sampling request for a tool.
@@ -468,18 +498,11 @@ type ConstrainedSampling struct {
 	Variants map[string]string `json:"variants,omitempty"`
 }
 
-// ToolWithConstrainedSampling registers a tool that requests provider-side
-// constrained sampling. The host forwards the request to the provider, which (for
-// OpenAI-compatible providers) turns a grammar request into a custom grammar
-// tool. Mirrors upstream ToolDefinition.constrainedSampling.
-func (e *Extension) ToolWithConstrainedSampling(name, description string, schema Schema, sampling ConstrainedSampling, handler ToolFunc) {
-	e.tools = append(e.tools, toolDef{
-		Name:                name,
-		Description:         description,
-		Parameters:          schema,
-		ConstrainedSampling: sampling,
-	})
-	e.toolFuncs[name] = handler
+// ToolWithConstrainedSampling registers a tool that requests provider-side constrained sampling. A nil schema panics before registration.
+// The host forwards the request to the provider, including grammar and strict-mode settings for OpenAI-compatible providers.
+// Pass DisabledConstrainedSampling{} to send Pi's explicit false.
+func (e *Extension) ToolWithConstrainedSampling(name, description string, schema Schema, sampling ToolConstrainedSampling, handler ToolFunc) {
+	e.registerTool(toolDef{Name: name, Description: description, Parameters: schema, ConstrainedSampling: constrainedSamplingWire(sampling)}, handler, nil, ToolRenderers{})
 }
 
 // Command registers a slash command (e.g. /hello).
@@ -512,7 +535,9 @@ func (e *Extension) Flag(name string, options FlagOptions) {
 		def.Default = data
 	}
 	e.flags = append(e.flags, def)
-	e.flagDefaults[name] = options.Default
+	if e.flagDefaults[name] == nil {
+		e.flagDefaults[name] = options.Default
+	}
 }
 
 // RegisterProvider registers or overrides a model provider. When config carries
@@ -520,6 +545,22 @@ func (e *Extension) Flag(name string, options FlagOptions) {
 // dispatch and the wire config gets a serializable capability descriptor in
 // their place.
 func (e *Extension) RegisterProvider(name string, config ProviderConfig) {
+	e.providerMu.Lock()
+	defer e.providerMu.Unlock()
+	config = maps.Clone(config)
+	streaming := false
+	if raw, exists := config["streamSimple"]; exists {
+		handler, ok := raw.(ProviderStreamSimpleFunc)
+		if !ok {
+			panic("provider streamSimple has an invalid Go callback signature")
+		}
+		if e.providerStreams == nil {
+			e.providerStreams = make(map[string]ProviderStreamSimpleFunc)
+		}
+		e.providerStreams[name] = handler
+		delete(config, "streamSimple")
+		streaming = true
+	}
 	if raw, ok := config["oauth"]; ok {
 		if provider, ok := raw.(*OAuthProvider); ok && provider != nil {
 			e.registerOAuthProvider(name, provider)
@@ -530,11 +571,14 @@ func (e *Extension) RegisterProvider(name string, config ProviderConfig) {
 		}
 	}
 	data, _ := json.Marshal(config)
-	e.providers = append(e.providers, providerDef{Name: name, Config: data})
+	e.providers = append(e.providers, providerDef{Name: name, Config: data, StreamSimple: streaming})
 }
 
 // UnregisterProvider removes a previously queued provider registration.
 func (e *Extension) UnregisterProvider(name string) {
+	e.providerMu.Lock()
+	defer e.providerMu.Unlock()
+	delete(e.providerStreams, name)
 	filtered := e.providers[:0]
 	for _, provider := range e.providers {
 		if provider.Name != name {
@@ -554,6 +598,14 @@ func (e *Extension) MessageRenderer(customType string, handler RendererFunc) {
 func (e *Extension) EntryRenderer(customType string, handler EntryRendererFunc) {
 	e.entryRenderers = append(e.entryRenderers, rendererDef{CustomType: customType})
 	e.entryRendererFuncs[customType] = handler
+}
+
+// MarkdownTransformer registers the extension's display-only Markdown
+// transform (Pi's pi.registerMarkdownTransformer). The host applies it to
+// user and assistant Markdown in the interactive transcript, after its own
+// transformers; a later registration replaces an earlier one.
+func (e *Extension) MarkdownTransformer(transformer MarkdownTransformerFunc) {
+	e.markdownTransform = transformer
 }
 
 // OnSessionStart registers a handler for the session_start event.
@@ -659,19 +711,26 @@ func (e *Extension) RunWithConn(nc net.Conn) error {
 	e.eventMu.Unlock()
 	conn.start()
 
+	e.toolMu.Lock()
+	defer func() {
+		if e.toolConn == nil {
+			e.toolMu.Unlock()
+		}
+	}()
 	// Send register message.
 	if err := conn.send(envelope{
 		Type: msgRegister,
 		Register: &registerMsg{
-			Name:           e.name,
-			Tools:          e.tools,
-			Commands:       e.commands,
-			Shortcuts:      e.shortcuts,
-			Handlers:       e.handlers,
-			Flags:          e.flags,
-			Providers:      e.providers,
-			Renderers:      e.renderers,
-			EntryRenderers: e.entryRenderers,
+			Name:                e.name,
+			Tools:               e.tools,
+			Commands:            e.commands,
+			Shortcuts:           e.shortcuts,
+			Handlers:            e.handlers,
+			Flags:               e.flags,
+			Providers:           e.providers,
+			Renderers:           e.renderers,
+			EntryRenderers:      e.entryRenderers,
+			MarkdownTransformer: e.markdownTransform != nil,
 		},
 	}); err != nil {
 		return fmt.Errorf("send register: %w", err)
@@ -711,6 +770,9 @@ func (e *Extension) RunWithConn(nc net.Conn) error {
 		})
 	}
 
+	e.toolConn = conn
+	e.toolMu.Unlock()
+
 	// Main message loop.
 	return e.loop()
 }
@@ -719,7 +781,11 @@ func (e *Extension) loop() error {
 	for env := range e.conn.incoming {
 		switch env.Type {
 		case msgRequest:
-			e.requestWG.Go(func() { e.handleRequest(env.ID, env.Request) })
+			ctx, finish := e.armRequest(env.ID)
+			e.requestWG.Go(func() {
+				defer finish()
+				e.handleArmedRequest(env.ID, env.Request, ctx)
+			})
 		case msgCancel:
 			e.cancelRequest(env)
 		case msgNotify:
@@ -744,13 +810,42 @@ func (e *Extension) stopRequests() error {
 	}()
 	select {
 	case <-done:
+		e.autocomplete.mu.Lock()
+		e.autocomplete.factories = nil
+		e.autocomplete.providers = nil
+		e.autocomplete.invoked = nil
+		e.autocomplete.mu.Unlock()
 		return nil
 	case <-time.After(extensionHandlerStopTimeout):
 		return errors.New("extension handlers did not stop before the shutdown deadline")
 	}
 }
 
+func (e *Extension) armRequest(id string) (Context, func()) {
+	requestRoot := e.runCtx
+	if requestRoot == nil {
+		requestRoot = context.Background()
+	}
+	reqCtx, cancel := context.WithCancel(requestRoot)
+	parent := e.conn.armParent(id, requestRoot, reqCtx)
+	e.requestsMu.Lock()
+	e.requests[id] = cancel
+	e.requestsMu.Unlock()
+	return Context{ext: e, requestID: id, parent: parent, ctx: reqCtx}, func() {
+		e.requestsMu.Lock()
+		delete(e.requests, id)
+		e.requestsMu.Unlock()
+		cancel()
+	}
+}
+
 func (e *Extension) handleRequest(id string, req *requestMsg) {
+	ctx, finish := e.armRequest(id)
+	defer finish()
+	e.handleArmedRequest(id, req, ctx)
+}
+
+func (e *Extension) handleArmedRequest(id string, req *requestMsg, ctx Context) {
 	_ = e.conn.requestState(id, "started", "")
 	if req == nil {
 		_ = e.conn.respond(id, nil, fmt.Errorf("nil request"))
@@ -764,6 +859,7 @@ func (e *Extension) handleRequest(id string, req *requestMsg) {
 	// mirrors upstream's per-request error isolation (a thrown handler error in
 	// the TS runtime rejects one call, it does not tear down the runtime).
 	var boundaryData map[string]any
+	var promptOptions map[string]any
 	defer func() {
 		if r := recover(); r != nil {
 			name := req.Tool
@@ -775,30 +871,25 @@ func (e *Extension) handleRequest(id string, req *requestMsg) {
 			if boundaryData != nil {
 				result = map[string]any{"_pigBoundaryEntries": boundaryData["entries"], "_pigBoundaryResult": nil}
 			}
+			if promptOptions != nil {
+				result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptResult": nil}
+			}
 			_ = e.conn.respond(id, result, fmt.Errorf("handler panicked: %v", r))
 		}
 	}()
 
-	requestRoot := e.runCtx
-	if requestRoot == nil {
-		requestRoot = context.Background()
-	}
-	reqCtx, cancel := context.WithCancel(requestRoot)
-	if id != "" {
-		e.requestsMu.Lock()
-		e.requests[id] = cancel
-		e.requestsMu.Unlock()
-		defer func() {
-			e.requestsMu.Lock()
-			delete(e.requests, id)
-			e.requestsMu.Unlock()
-		}()
-	}
-	defer cancel()
-
-	ctx := Context{ext: e, requestID: id, ctx: reqCtx}
-
 	switch req.Method {
+	case "autocomplete.sync", "autocomplete.suggest":
+		result, err := e.dispatchAutocomplete(ctx, req.Args)
+		_ = e.conn.respond(id, result, err)
+	case "provider_stream_simple":
+		e.dispatchProviderStream(ctx, id, req)
+	case "provider_call", "provider_stream", "provider_sync":
+		result, err := e.dispatchProviderObject(ctx, req)
+		_ = e.conn.respond(id, result, err)
+	case "provider_object_callback", "provider_object_callback_sync":
+		result, err := e.dispatchProviderObjectCallback(req)
+		_ = e.conn.respond(id, result, err)
 	case methodOAuthLogin, methodOAuthRefresh, methodOAuthGetAPIKey,
 		methodOAuthCredentialStatus, methodOAuthStoreCredentials, methodOAuthDeleteCredentials:
 		e.dispatchOAuth(id, req)
@@ -807,7 +898,10 @@ func (e *Extension) handleRequest(id string, req *requestMsg) {
 		e.dispatchTerminalInput(id, req)
 
 	case "tool_call":
+		e.toolMu.RLock()
 		handler, ok := e.toolFuncs[req.Tool]
+		prepare := e.toolPrepareFuncs[req.Tool]
+		e.toolMu.RUnlock()
 		if !ok {
 			_ = e.conn.respond(id, nil, fmt.Errorf("unknown tool: %s", req.Tool))
 			return
@@ -820,7 +914,7 @@ func (e *Extension) handleRequest(id string, req *requestMsg) {
 				return
 			}
 		}
-		if prepare := e.toolPrepareFuncs[req.Tool]; prepare != nil {
+		if prepare != nil {
 			var err error
 			params, err = prepare(params)
 			if err != nil {
@@ -856,15 +950,30 @@ func (e *Extension) handleRequest(id string, req *requestMsg) {
 		if len(req.Args) > 0 {
 			_ = json.Unmarshal(req.Args, &data)
 		}
-		if req.Event == "agent_before_settle" {
+		if req.Event == "agent_before_settle" || req.Event == "turn_end" {
 			boundaryData = data
+		}
+		if req.Event == "before_agent_start" {
+			var err error
+			promptOptions, err = preparePromptOptions(req.Args, data)
+			if err != nil {
+				_ = e.conn.respond(id, nil, err)
+				return
+			}
 		}
 		snapshot := snapshotContextMessages(req.Event, data)
 		result, err := handler(ctx, data)
+		if req.Event == "user_bash" && err == nil {
+			result, err = userBashEventResult(result)
+		}
 		if snapshot != nil && err == nil {
 			result = contextEventResult(data, snapshot, result)
 		}
-		if req.Event == "agent_before_settle" {
+		if req.Event == "before_agent_start" {
+			result = map[string]any{"_pigPromptSections": promptOptions["sections"], "_pigPromptSelectedTools": promptOptions["selectedTools"], "_pigPromptResult": result}
+		}
+		// pig additive (D19): return boundary mutations separately from the handler result and error.
+		if req.Event == "agent_before_settle" || req.Event == "turn_end" {
 			if err != nil {
 				result = nil
 			}
@@ -915,6 +1024,9 @@ func (e *Extension) handleRequest(id string, req *requestMsg) {
 		lines, err := handler(ctx, payload.Entry, payload.Options, payload.Width)
 		_ = e.conn.respond(id, map[string]any{"lines": lines}, err)
 
+	case "markdown_transform":
+		_ = e.conn.respond(id, e.transformMarkdown(req.Args), nil)
+
 	case "command_argument_completions":
 		items, err := e.commandArgumentCompletions(req.Tool, req.Args)
 		_ = e.conn.respond(id, items, err)
@@ -926,6 +1038,28 @@ func (e *Extension) handleRequest(id string, req *requestMsg) {
 	default:
 		_ = e.conn.respond(id, nil, fmt.Errorf("unknown request method: %s", req.Method))
 	}
+}
+
+// transformMarkdown answers a markdown_transform request: the transformed
+// Markdown, or nil to keep the input when there is no transformer or it
+// panicked.
+func (e *Extension) transformMarkdown(args json.RawMessage) (result any) {
+	if e.markdownTransform == nil {
+		return nil
+	}
+	var payload struct {
+		Markdown string                   `json:"markdown"`
+		Context  MarkdownTransformContext `json:"context"`
+	}
+	if err := json.Unmarshal(args, &payload); err != nil {
+		return nil
+	}
+	defer func() {
+		if recover() != nil {
+			result = nil
+		}
+	}()
+	return e.markdownTransform(payload.Markdown, payload.Context)
 }
 
 // reportHostCallFailure writes a failed host call the caller cannot return to
@@ -982,10 +1116,29 @@ func (e *Extension) handleNotify(env envelope) {
 	switch env.Notify.Method {
 	case "tool_render_release":
 		e.releaseToolRenderCard(env.Notify.Args)
+	case "provider_release":
+		var release struct {
+			Key string `json:"key"`
+		}
+		if json.Unmarshal(env.Notify.Args, &release) == nil {
+			e.providerMu.Lock()
+			delete(e.nativeProviders, release.Key)
+			e.providerMu.Unlock()
+		}
+	case "autocomplete.release":
+		var released struct {
+			ID string `json:"id"`
+		}
+		if json.Unmarshal(env.Notify.Args, &released) == nil {
+			e.autocomplete.mu.Lock()
+			delete(e.autocomplete.providers, released.ID)
+			e.autocomplete.mu.Unlock()
+		}
 	case "model_stream_event":
 		var payload struct {
 			StreamID string         `json:"streamId"`
 			Event    map[string]any `json:"event"`
+			Started  bool           `json:"started"`
 		}
 		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil {
 			return
@@ -994,13 +1147,19 @@ func (e *Extension) handleNotify(env envelope) {
 		stream := e.modelStreams[payload.StreamID]
 		e.modelStreamsMu.RUnlock()
 		if stream != nil {
-			stream.push(payload.Event)
+			if payload.Started {
+				stream.markStarted(nil)
+			} else {
+				stream.push(payload.Event)
+			}
 		}
 	case "state_update":
 		var payload struct {
 			State struct {
+				HasUI   *bool           `json:"hasUI"`
 				Model   map[string]any  `json:"model"`
 				Session json.RawMessage `json:"session"`
+				Theme   json.RawMessage `json:"theme"`
 			} `json:"state"`
 		}
 		if err := json.Unmarshal(env.Notify.Args, &payload); err != nil {
@@ -1017,8 +1176,14 @@ func (e *Extension) handleNotify(env envelope) {
 		e.session.applySessionUpdate(payload.State.Session)
 
 		e.mu.Lock()
+		if payload.State.HasUI != nil {
+			e.hasUI = *payload.State.HasUI
+		}
 		if sessionState.SessionFile != "" {
 			e.sessionFile = sessionState.SessionFile
+		}
+		if theme, ok := decodeUITheme(payload.State.Theme); ok {
+			e.uiTheme = theme
 		}
 		defer e.mu.Unlock()
 		if m := payload.State.Model; m != nil {
@@ -1040,6 +1205,21 @@ func (e *Extension) handleNotify(env envelope) {
 				}
 			}
 		}
+	case "theme_change":
+		// A palette sent as a JSON string is parsed, and one that is not an
+		// object resets to an empty palette, as the Node runtime does.
+		args := env.Notify.Args
+		var encoded string
+		if json.Unmarshal(args, &encoded) == nil {
+			args = json.RawMessage(encoded)
+		}
+		theme, ok := decodeUITheme(args)
+		if !ok {
+			theme, _ = decodeUITheme(json.RawMessage(`{}`))
+		}
+		e.mu.Lock()
+		e.uiTheme = theme
+		e.mu.Unlock()
 	case "width_change":
 		var payload struct {
 			Width int `json:"width"`
@@ -1100,11 +1280,11 @@ func (e *Extension) cancelRequest(env envelope) {
 	e.requestsMu.Lock()
 	cancel := e.requests[id]
 	e.requestsMu.Unlock()
-	if cancel != nil {
-		cancel()
-	}
 	if e.conn != nil {
 		e.conn.cancelParentCalls(id)
+	}
+	if cancel != nil {
+		cancel()
 	}
 }
 
@@ -1167,12 +1347,17 @@ func NewToolError(content string) *ToolError {
 // Images follow Content as upstream image blocks, and Terminate mirrors
 // upstream's terminate: the agent stops after the current tool batch when every
 // result in it sets Terminate.
+//
+// Usage is upstream AgentToolResult.usage: the tool execution's own model
+// usage, in upstream's Usage JSON shape (input, output, cacheRead, cacheWrite,
+// totalTokens, cost). Nil leaves it unset.
 type ToolResult struct {
 	Content   string
 	Images    []ImageContent
 	Preview   string
 	Details   any
 	IsError   bool
+	Usage     any
 	Terminate bool
 }
 
@@ -1208,8 +1393,9 @@ func (r ToolResult) MarshalJSON() ([]byte, error) {
 		Preview   string `json:"preview,omitempty"`
 		Details   any    `json:"details,omitempty"`
 		IsError   bool   `json:"is_error,omitempty"`
+		Usage     any    `json:"usage,omitempty"`
 		Terminate bool   `json:"terminate,omitempty"`
-	}{content, r.Preview, r.Details, r.IsError, r.Terminate})
+	}{content, r.Preview, r.Details, r.IsError, r.Usage, r.Terminate})
 }
 
 // widthChangeSub pairs a width handler with the token used to remove it.
@@ -1313,37 +1499,46 @@ func readSessionEntries(path string) []json.RawMessage {
 // whole session into every loaded extension, including the majority that only
 // ever ask for a session id or act on events. On a large session that is the
 // difference between a few megabytes and hundreds per extension.
-func (e *Extension) ensureSessionLog() {
+func (e *Extension) ensureSessionLog() error {
 	e.session.subMu.Lock()
 	defer e.session.subMu.Unlock()
 	if e.session.subscribed.Load() {
-		return
+		return e.session.subErr
 	}
 	// Mark subscribed before the call, not after. The host starts sending the
 	// log the moment it registers the subscription, and those pushes must be
 	// applied rather than dropped. It also stands regardless of outcome: a host
 	// that cannot serve the log will not serve a retry either, and retrying on
-	// every read would turn a local read back into an IPC call per event.
+	// every read would turn a local read back into an IPC call per event. The
+	// failure is kept and returned by every read instead of an empty mirror.
 	e.session.subscribed.Store(true)
 	if e.conn == nil {
-		return
+		return nil
 	}
+	e.session.subErr = e.subscribeSessionLog()
+	return e.session.subErr
+}
+
+func (e *Extension) subscribeSessionLog() error {
 	type sessionPage struct {
 		Entries    []json.RawMessage `json:"entries"`
 		EntryCount int               `json:"entryCount"`
 		HasMore    bool              `json:"hasMore"`
 		LeafID     string            `json:"leafId"`
 	}
-	fetch := func(cursor int, complete bool) (sessionPage, bool) {
-		result, err := e.conn.call("watchSessionLog", map[string]any{"cursor": cursor, "complete": complete})
-		if err != nil || result == nil {
-			return sessionPage{}, false
-		}
+	fetch := func(cursor int, complete bool) (sessionPage, error) {
 		var page sessionPage
-		if err := json.Unmarshal(result.Result, &page); err != nil {
-			return sessionPage{}, false
+		result, err := e.conn.call("watchSessionLog", map[string]any{"cursor": cursor, "complete": complete})
+		if err := callResultError(result, err); err != nil {
+			return page, fmt.Errorf("watchSessionLog: %w", err)
 		}
-		return page, true
+		if result == nil {
+			return page, errors.New("watchSessionLog: host returned no result")
+		}
+		if err := json.Unmarshal(result.Result, &page); err != nil {
+			return page, fmt.Errorf("watchSessionLog: %w", err)
+		}
+		return page, nil
 	}
 
 	e.mu.RLock()
@@ -1353,9 +1548,9 @@ func (e *Extension) ensureSessionLog() {
 	leafID := ""
 	for {
 		requestedCursor := cursor
-		page, ok := fetch(cursor, false)
-		if !ok {
-			return
+		page, err := fetch(cursor, false)
+		if err != nil {
+			return err
 		}
 		if page.EntryCount-len(page.Entries) != requestedCursor {
 			entries = nil
@@ -1371,9 +1566,9 @@ func (e *Extension) ensureSessionLog() {
 
 	for {
 		requestedCursor := cursor
-		page, ok := fetch(cursor, true)
-		if !ok {
-			return
+		page, err := fetch(cursor, true)
+		if err != nil {
+			return err
 		}
 		if page.EntryCount-len(page.Entries) != requestedCursor {
 			entries = nil
@@ -1383,7 +1578,7 @@ func (e *Extension) ensureSessionLog() {
 		leafID = page.LeafID
 		e.session.seed(entries, cursor, leafID)
 		if !page.HasMore && len(page.Entries) == 0 {
-			return
+			return nil
 		}
 	}
 }

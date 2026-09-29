@@ -1,0 +1,28 @@
+# Behavior family: tui-components
+# Pi 0.87.1 packages/tui/src/components/markdown.ts:303-329 lexes and wraps the
+# complete paragraph. Its dependency is marked 18.0.11 (packages/tui/package.json:56).
+# Probe: node test/parity/testdata/markdown-unbroken-pi.mjs. The full 64 KiB output is
+# compared without stripping ANSI, trimming rows, cropping, or hashing. Plain
+# text has no theme calls; width 64 divides the input exactly on both sides.
+# Pre-fix Go takes 134 seconds; the existing 30-second process budget fails it.
+name = "13-markdown-unbroken-autolink-scaling"
+description = "A full 64 KiB unbroken paragraph renders unchanged without quadratic autolink scanning."
+covers = ["packages/tui/src/components/markdown.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/markdown-unbroken-pig"]
+pi_args = ["node", "./test/parity/testdata/markdown-unbroken-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

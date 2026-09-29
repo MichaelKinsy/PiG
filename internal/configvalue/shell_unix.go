@@ -14,6 +14,14 @@ import (
 // (Node's execSync uses /bin/sh -c on POSIX). stderr is discarded.
 // On non-zero exit or empty stdout, returns ("", false).
 func runShellCommand(ctx context.Context, payload string) (string, bool) {
+	return runDefaultShell(ctx, payload)
+}
+
+func configuredShellCommand(ctx context.Context, path string, _ bool, args ...string) *exec.Cmd {
+	return exec.CommandContext(ctx, path, args...)
+}
+
+func runDefaultShell(ctx context.Context, payload string) (string, bool) {
 	cmd := exec.CommandContext(ctx, "/bin/sh", "-c", payload)
 	cmd.Stdin = nil
 	cmd.Stderr = nil

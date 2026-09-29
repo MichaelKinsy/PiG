@@ -1,72 +1,114 @@
+// Ports packages/coding-agent/src/modes/json-event.ts.
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"slices"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding"
 )
 
-// rpcAgentEvent converts an internal agent event to the pinned Pi JSON/RPC event
-// shapes. Conversion errors are returned so writer paths can terminate loudly.
+// subscribeRPCEvents observes each mode event after awaited extension handling and before Session persistence, as rpc-mode.ts:354-363 subscribes to AgentSession. The separate Events consumer only drains and acknowledges delivery barriers.
+func subscribeRPCEvents(session *coding.Session, write func(any), fail func(error)) func() {
+	failed := false
+	return session.Subscribe(func(event agent.AgentEvent) {
+		if failed {
+			return
+		}
+		if _, alreadyPublished := event.(agent.SessionInfoChangedEvent); alreadyPublished {
+			return
+		}
+		frames, err := rpcAgentEvent(event)
+		if err != nil {
+			failed = true
+			fail(err)
+			return
+		}
+		for _, frame := range frames {
+			write(frame)
+		}
+	})
+}
+
+// subscribeStdoutBackpressure registers Pi's Agent listener `async () => { await waitForRawStdoutBackpressure(); }` (rpc-mode.ts:361-363, print-mode.ts:113-118). It is subscribed after the Session's own Agent listener, so it runs after that event's subscribers have serialized and written it. Every write here completes before it returns, so the wait is the barrier against a write in flight on another goroutine; the observable effect is that the awaited listener resumes from the write callback, which Node runs after every promise reaction (output-guard.ts:95-101). A listener without a stream scope runs outside the continuation queue and waits directly.
+func subscribeStdoutBackpressure(a *agent.Agent, wait func()) func() {
+	return a.Subscribe(func(_ context.Context, event agent.AgentEvent) error {
+		if observation := agent.EventObservation(event); observation != nil {
+			return observation.AwaitTick(func() error { wait(); return nil })
+		}
+		wait()
+		return nil
+	})
+}
+
+// rpcAgentEvent observes retained messages and converts events to Pi JSON/RPC shapes in source insertion order. Conversion errors are returned so writer paths can terminate loudly.
 func rpcAgentEvent(event agent.AgentEvent) ([]any, error) {
 	switch event := event.(type) {
 	case agent.AgentStartEvent:
-		return []any{map[string]any{"type": "agent_start"}}, nil
+		return []any{rpcObject{{"type", "agent_start"}}}, nil
 	case agent.AgentEndEvent:
 		messages, err := rpcAgentMessages(event.Messages)
 		if err != nil {
 			return nil, err
 		}
-		return []any{map[string]any{"type": "agent_end", "messages": messages, "willRetry": event.WillRetry}}, nil
+		return []any{rpcObject{{"type", "agent_end"}, {"messages", messages}, {"willRetry", event.WillRetry}}}, nil
 	case agent.AgentSettledEvent:
-		return []any{map[string]any{"type": "agent_settled"}}, nil
+		return []any{rpcObject{{"type", "agent_settled"}}}, nil
+	case agent.BashExecutionUpdateEvent:
+		var id rpcRequestID
+		if event.ID != nil {
+			id = rpcRequestID(*event.ID)
+		}
+		return []any{RPCBashExecutionUpdate{Type: "bash_execution_update", ID: id, Delta: event.Delta}}, nil
 	case agent.QueueUpdateEvent:
 		return []any{RPCQueueUpdateEvent{Type: "queue_update", Steering: event.Steering, FollowUp: event.FollowUp}}, nil
+	case agent.SessionInfoChangedEvent:
+		return []any{rpcSessionInfoChanged(event.Name)}, nil
 	case agent.ThinkingLevelChangedEvent:
 		return []any{RPCThinkingLevelChangedEvent{Type: "thinking_level_changed", Level: event.Level}}, nil
 	case agent.CompactionStartEvent:
-		return []any{map[string]any{"type": "compaction_start", "reason": event.Reason}}, nil
+		return []any{rpcObject{{"type", "compaction_start"}, {"reason", event.Reason}}}, nil
 	case agent.CompactionEndEvent:
-		out := map[string]any{"type": "compaction_end", "reason": event.Reason, "aborted": event.Aborted, "willRetry": event.WillRetry}
+		out := rpcObject{{"type", "compaction_end"}, {"reason", event.Reason}}
 		if event.Summary != "" {
-			result := map[string]any{
-				"summary": event.Summary, "firstKeptEntryId": event.FirstKeptEntryID,
-				"tokensBefore": event.TokensBefore, "estimatedTokensAfter": event.EstimatedTokensAfter,
+			result := rpcObject{{"summary", event.Summary}, {"firstKeptEntryId", event.FirstKeptEntryID}, {"tokensBefore", event.TokensBefore}, {"estimatedTokensAfter", event.EstimatedTokensAfter}}
+			if event.Usage != nil {
+				result = append(result, rpcField{"usage", rpcUsage(event.Usage)})
 			}
 			if details := rpcOptionalCompactionDetails(event.Details); details != nil {
-				result["details"] = details
+				result = append(result, rpcField{"details", details})
 			}
-			if event.Usage != nil {
-				result["usage"] = rpcUsage(event.Usage)
-			}
-			out["result"] = result
+			out = append(out, rpcField{"result", result})
 		}
+		out = append(out, rpcField{"aborted", event.Aborted}, rpcField{"willRetry", event.WillRetry})
 		if event.ErrorMessage != "" {
-			out["errorMessage"] = event.ErrorMessage
+			out = append(out, rpcField{"errorMessage", event.ErrorMessage})
 		}
 		return []any{out}, nil
 	case agent.AutoRetryStartEvent:
-		return []any{map[string]any{"type": "auto_retry_start", "attempt": event.Attempt, "maxAttempts": event.MaxAttempts, "delayMs": event.DelayMs, "errorMessage": event.ErrorMessage}}, nil
+		return []any{rpcObject{{"type", "auto_retry_start"}, {"attempt", event.Attempt}, {"maxAttempts", event.MaxAttempts}, {"delayMs", event.DelayMs}, {"errorMessage", event.ErrorMessage}}}, nil
 	case agent.AutoRetryEndEvent:
-		out := map[string]any{"type": "auto_retry_end", "success": event.Success, "attempt": event.Attempt}
+		out := rpcObject{{"type", "auto_retry_end"}, {"success", event.Success}, {"attempt", event.Attempt}}
 		if event.FinalError != "" {
-			out["finalError"] = event.FinalError
+			out = append(out, rpcField{"finalError", event.FinalError})
 		}
 		return []any{out}, nil
 	case agent.SummarizationRetryScheduledEvent:
-		return []any{map[string]any{"type": "summarization_retry_scheduled", "attempt": event.Attempt, "maxAttempts": event.MaxAttempts, "delayMs": event.DelayMs, "errorMessage": event.ErrorMessage}}, nil
+		return []any{rpcObject{{"type", "summarization_retry_scheduled"}, {"attempt", event.Attempt}, {"maxAttempts", event.MaxAttempts}, {"delayMs", event.DelayMs}, {"errorMessage", event.ErrorMessage}}}, nil
 	case agent.SummarizationRetryAttemptStartEvent:
-		out := map[string]any{"type": "summarization_retry_attempt_start", "source": event.Source}
+		out := rpcObject{{"type", "summarization_retry_attempt_start"}, {"source", event.Source}}
 		if event.Source == "compaction" {
-			out["reason"] = event.Reason
+			out = append(out, rpcField{"reason", event.Reason})
 		}
 		return []any{out}, nil
 	case agent.SummarizationRetryFinishedEvent:
-		return []any{map[string]any{"type": "summarization_retry_finished"}}, nil
+		return []any{rpcObject{{"type", "summarization_retry_finished"}}}, nil
 	case agent.TurnStartEvent:
-		return []any{map[string]any{"type": "turn_start"}}, nil
+		return []any{rpcObject{{"type", "turn_start"}}}, nil
 	case agent.TurnEndEvent:
 		message, err := rpcAgentMessage(event.Message)
 		if err != nil {
@@ -76,13 +118,13 @@ func rpcAgentEvent(event agent.AgentEvent) ([]any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return []any{map[string]any{"type": "turn_end", "message": message, "toolResults": toolResults}}, nil
+		return []any{rpcObject{{"type", "turn_end"}, {"message", message}, {"toolResults", toolResults}}}, nil
 	case agent.MessageStartEvent:
 		message, err := rpcAgentMessage(event.Message)
 		if err != nil {
 			return nil, err
 		}
-		return []any{map[string]any{"type": "message_start", "message": message}}, nil
+		return []any{rpcObject{{"type", "message_start"}, {"message", message}}}, nil
 	case agent.MessageUpdateEvent:
 		update, err := rpcMessageUpdate(event)
 		if err != nil {
@@ -94,40 +136,34 @@ func rpcAgentEvent(event agent.AgentEvent) ([]any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return []any{map[string]any{"type": "message_end", "message": message}}, nil
-	case agent.TimingEvent:
-		return nil, nil
+		return []any{rpcObject{{"type", "message_end"}, {"message", message}}}, nil
 	case agent.EntryAppendedEvent:
 		return []any{rpcSessionEntryAppendedEvent{Type: "entry_appended", Entry: event.Entry}}, nil
 	case agent.ToolExecutionStartEvent:
-		args := any(json.RawMessage(event.Args))
-		if decoded, ok := tryDecodeJSON(string(event.Args)); ok {
-			args = decoded
-		}
-		return []any{map[string]any{"type": "tool_execution_start", "toolCallId": event.ToolCallID, "toolName": event.ToolName, "args": args}}, nil
+		return []any{rpcObject{{"type", "tool_execution_start"}, {"toolCallId", event.ToolCallID}, {"toolName", event.ToolName}, {"args", json.RawMessage(event.Args)}}}, nil
 	case agent.ToolExecutionUpdateEvent:
-		args := any(json.RawMessage(event.Args))
-		if decoded, ok := tryDecodeJSON(string(event.Args)); ok {
-			args = decoded
+		// Shell startup has neither text nor details (bash.ts:301-302). Output snapshots carry details even when a chunk decodes to empty text (bash.ts:270-276).
+		var text *string
+		if event.Content != "" || event.Details != nil {
+			text = &event.Content
 		}
-		return []any{map[string]any{
-			"type": "tool_execution_update", "toolCallId": event.ToolCallID,
-			"toolName": event.ToolName, "args": args,
-			"partialResult": rpcToolResultPayload(event.Content, nil, event.Details),
-		}}, nil
+		return []any{rpcObject{{"type", "tool_execution_update"}, {"toolCallId", event.ToolCallID}, {"toolName", event.ToolName}, {"args", json.RawMessage(event.Args)}, {"partialResult", rpcToolResultPayload(text, nil, event.Details)}}}, nil
 	case agent.ToolExecutionEndEvent:
-		return []any{map[string]any{
-			"type": "tool_execution_end", "toolCallId": event.ToolCallID, "toolName": event.ToolName,
-			"result":  rpcToolResultPayload(event.Result.Content, event.Result.Images, event.Result.Details),
-			"isError": event.Result.IsError,
-		}}, nil
+		content := event.Result.Content
+		if content == nil {
+			content = []ai.ToolResultMessageContent{}
+		}
+		result := rpcObject{{"content", content}}
+		if event.Result.Details != nil {
+			result = append(result, rpcField{"details", event.Result.Details})
+		}
+		return []any{rpcObject{{"type", "tool_execution_end"}, {"toolCallId", event.ToolCallID}, {"toolName", event.ToolName}, {"result", result}, {"isError", event.Result.IsError}}}, nil
 	default:
 		return nil, fmt.Errorf("unsupported agent event %T", event)
 	}
 }
 
-// rpcSessionEntryAppendedEvent carries a Session entry appended outside the
-// agent loop, such as cache-warming usage, exactly as it was persisted.
+// rpcSessionEntryAppendedEvent carries a Session entry appended outside the agent loop exactly as it was persisted.
 type rpcSessionEntryAppendedEvent struct {
 	Type  string          `json:"type"`
 	Entry json.RawMessage `json:"entry"`
@@ -140,30 +176,54 @@ func rpcMessageUpdate(event agent.MessageUpdateEvent) (any, error) {
 	if event.AssistantMessageEvent == nil {
 		return nil, fmt.Errorf("message_update assistant event is nil")
 	}
-	encoded, err := json.Marshal(event.AssistantMessageEvent)
+	encoded, err := json.Marshal(rpcAssistantEventFields(event.AssistantMessageEvent))
 	if err != nil {
 		return nil, fmt.Errorf("marshal message_update assistant event: %w", err)
 	}
-	var wire map[string]any
+	var wire rpcObject
 	if err := json.Unmarshal(encoded, &wire); err != nil {
 		return nil, fmt.Errorf("decode message_update assistant event: %w", err)
 	}
-	delete(wire, "partial")
+	wire = slices.DeleteFunc(wire, func(field rpcField) bool { return field.name == "partial" })
 	if start, ok := event.AssistantMessageEvent.(ai.ToolCallStartEvent); ok {
-		if start.Partial == nil || start.ContentIndex < 0 || start.ContentIndex >= len(start.Partial.Content) {
+		id, name, toolCall, indexValid := start.Partial.ObserveToolCallIdentity(start.ContentIndex)
+		if !indexValid {
 			return nil, fmt.Errorf("toolcall_start content index %d is invalid", start.ContentIndex)
 		}
-		call, ok := start.Partial.Content[start.ContentIndex].(ai.ToolCall)
-		if !ok {
+		if !toolCall {
 			return nil, fmt.Errorf("toolcall_start content at index %d is not a tool call", start.ContentIndex)
 		}
-		wire["id"] = call.ID
-		wire["toolName"] = call.Name
+		wire = append(wire, rpcField{"id", id}, rpcField{"toolName", name})
 	}
-	return map[string]any{
-		"type": "message_update", "usage": rpcUsage(event.Message.Assistant.Usage),
-		"assistantMessageEvent": wire,
-	}, nil
+	return rpcObject{{"type", "message_update"}, {"usage", rpcUsage(event.Message.Assistant.ObserveUsage())}, {"assistantMessageEvent", wire}}, nil
+}
+
+// rpcAssistantEventFields excludes cumulative partials before invoking any JSON marshaler. Retained fields keep their existing serialization, order and error handling.
+func rpcAssistantEventFields(event ai.AssistantMessageEvent) any {
+	switch event := event.(type) {
+	case ai.StartEvent:
+		return rpcObject{{"type", ai.EventStart}}
+	case ai.TextStartEvent:
+		return rpcObject{{"type", ai.EventTextStart}, {"contentIndex", event.ContentIndex}}
+	case ai.TextDeltaEvent:
+		return rpcObject{{"type", ai.EventTextDelta}, {"contentIndex", event.ContentIndex}, {"delta", event.Delta}}
+	case ai.TextEndEvent:
+		return rpcObject{{"type", ai.EventTextEnd}, {"contentIndex", event.ContentIndex}, {"content", event.Content}}
+	case ai.ThinkingStartEvent:
+		return rpcObject{{"type", ai.EventThinkingStart}, {"contentIndex", event.ContentIndex}}
+	case ai.ThinkingDeltaEvent:
+		return rpcObject{{"type", ai.EventThinkingDelta}, {"contentIndex", event.ContentIndex}, {"delta", event.Delta}}
+	case ai.ThinkingEndEvent:
+		return rpcObject{{"type", ai.EventThinkingEnd}, {"contentIndex", event.ContentIndex}, {"content", event.Content}}
+	case ai.ToolCallStartEvent:
+		return rpcObject{{"type", ai.EventToolCallStart}, {"contentIndex", event.ContentIndex}}
+	case ai.ToolCallDeltaEvent:
+		return rpcObject{{"type", ai.EventToolCallDelta}, {"contentIndex", event.ContentIndex}, {"delta", event.Delta}}
+	case ai.ToolCallEndEvent:
+		return rpcObject{{"type", ai.EventToolCallEnd}, {"contentIndex", event.ContentIndex}, {"toolCall", event.ToolCall}}
+	default:
+		return event
+	}
 }
 
 func rpcAgentMessages(messages []agent.AgentMessage) ([]any, error) {
@@ -187,46 +247,42 @@ func rpcAgentMessage(message agent.AgentMessage) (any, error) {
 		if err != nil {
 			return nil, err
 		}
-		return map[string]any{"role": "user", "content": content, "timestamp": message.User.Timestamp}, nil
+		return rpcObject{{"role", "user"}, {"content", content}, {"timestamp", message.User.Timestamp}}, nil
 	case message.Assistant != nil:
-		content, err := rpcAssistantContent(message.Assistant.Content)
+		assistant := message.Assistant.Observe()
+		content, err := rpcAssistantContent(assistant.Content)
 		if err != nil {
 			return nil, err
 		}
-		assistant := message.Assistant
-		out := map[string]any{
-			"role": "assistant", "content": content, "api": assistant.API,
-			"provider": assistant.Provider, "model": assistant.ModelID,
-			"usage": rpcUsage(assistant.Usage), "timestamp": assistant.Timestamp,
-		}
-		// A missing stop reason stays missing, as JSON.stringify drops an
-		// undefined stopReason upstream.
+		out := rpcObject{{"role", "assistant"}, {"content", content}, {"api", assistant.API}, {"provider", assistant.Provider}, {"model", assistant.ModelID}, {"usage", rpcUsage(assistant.Usage)}}
+		// JSON.stringify omits an undefined stopReason; timestamp is part of the initial provider message, before subsequently appended metadata.
 		if assistant.StopReason != "" {
-			out["stopReason"] = assistant.StopReason
+			out = append(out, rpcField{"stopReason", assistant.StopReason})
 		}
+		out = append(out, rpcField{"timestamp", assistant.Timestamp})
 		if assistant.ResponseModel != "" {
-			out["responseModel"] = assistant.ResponseModel
+			out = append(out, rpcField{"responseModel", assistant.ResponseModel})
 		}
 		if assistant.ResponseID != "" {
-			out["responseId"] = assistant.ResponseID
+			out = append(out, rpcField{"responseId", assistant.ResponseID})
 		}
 		if assistant.ProviderThinkingLevel != "" {
-			out["providerThinkingLevel"] = assistant.ProviderThinkingLevel
+			out = append(out, rpcField{"providerThinkingLevel", assistant.ProviderThinkingLevel})
 		}
 		if len(assistant.Diagnostics) > 0 {
-			out["diagnostics"] = assistant.Diagnostics
+			out = append(out, rpcField{"diagnostics", assistant.Diagnostics})
 		}
 		if assistant.Deferred != nil {
-			out["deferred"] = assistant.Deferred
+			out = append(out, rpcField{"deferred", assistant.Deferred})
 		}
 		if assistant.ErrorMessage != "" {
-			out["errorMessage"] = assistant.ErrorMessage
+			out = append(out, rpcField{"errorMessage", assistant.ErrorMessage})
 		}
 		if assistant.RawStopReason != "" {
-			out["rawStopReason"] = assistant.RawStopReason
+			out = append(out, rpcField{"rawStopReason", assistant.RawStopReason})
 		}
 		if assistant.EndTurn != nil {
-			out["endTurn"] = *assistant.EndTurn
+			out = append(out, rpcField{"endTurn", *assistant.EndTurn})
 		}
 		return out, nil
 	case message.ToolResult != nil:
@@ -255,33 +311,38 @@ func rpcToolResultMessage(message agent.ToolResultMessage) (any, error) {
 	if err != nil {
 		return nil, err
 	}
-	out := map[string]any{
-		"role": "toolResult", "toolCallId": message.ToolCallID, "toolName": message.ToolName,
-		"content": content, "isError": message.IsError, "timestamp": message.Timestamp,
-	}
+	out := rpcObject{{"role", "toolResult"}, {"toolCallId", message.ToolCallID}, {"toolName", message.ToolName}, {"content", content}}
 	if message.Details != nil {
-		out["details"] = message.Details
+		out = append(out, rpcField{"details", message.Details})
 	}
 	if message.Usage != nil {
-		out["usage"] = rpcUsage(message.Usage)
+		out = append(out, rpcField{"usage", rpcUsage(message.Usage)})
 	}
+	out = append(out, rpcField{"isError", message.IsError}, rpcField{"timestamp", message.Timestamp})
 	return out, nil
 }
 
-func rpcToolResultPayload(text string, images []ai.ImageContent, details any) any {
+// rpcToolResultPayload preserves absent text separately from an explicit empty text block.
+func rpcToolResultPayload(text *string, images []ai.ImageContent, details any) any {
 	content := make([]any, 0, 1+len(images))
-	content = append(content, map[string]any{"type": "text", "text": text})
-	for _, image := range images {
-		content = append(content, map[string]any{"type": "image", "data": image.Data, "mimeType": image.MimeType})
+	if text != nil {
+		content = append(content, rpcObject{{"type", "text"}, {"text", *text}})
 	}
-	out := map[string]any{"content": content}
+	for _, image := range images {
+		content = append(content, rpcObject{{"type", "image"}, {"data", image.Data}, {"mimeType", image.MimeType}})
+	}
+	out := rpcObject{{"content", content}}
 	if details != nil {
-		out["details"] = details
+		out = append(out, rpcField{"details", details})
 	}
 	return out
 }
 
-func rpcUserContent(blocks []ai.UserContentBlock) ([]any, error) {
+func rpcUserContent(content ai.UserContent) (any, error) {
+	if text, ok := content.(ai.UserText); ok {
+		return string(text), nil
+	}
+	blocks, _ := content.(ai.UserContentBlocks)
 	out := make([]any, 0, len(blocks))
 	for i, block := range blocks {
 		wire, err := rpcContentBlock(block)
@@ -300,9 +361,52 @@ func rpcAssistantContent(blocks []ai.AssistantContentBlock) ([]any, error) {
 		if err != nil {
 			return nil, fmt.Errorf("assistant content[%d]: %w", i, err)
 		}
+		if object, ok := wire.(rpcObject); ok {
+			scratch, err := rpcStreamingBlockScratch(block)
+			if err != nil {
+				return nil, fmt.Errorf("assistant content[%d]: %w", i, err)
+			}
+			wire = scratch.apply(object)
+		}
 		out = append(out, wire)
 	}
 	return out, nil
+}
+
+// rpcBlockScratch is what a streamed text or thinking block carries beyond its stable fields: the provider event index while its content block is open, and a thinking signature that is present but empty.
+type rpcBlockScratch struct {
+	index          *int
+	emptySignature bool
+}
+
+// rpcStreamingBlockScratch reads the block's own JSON encoding, which owns those fields and their order; the wire object built from the stable fields holds neither.
+func rpcStreamingBlockScratch(block ai.AssistantContentBlock) (rpcBlockScratch, error) {
+	encoded, err := json.Marshal(block)
+	if err != nil {
+		return rpcBlockScratch{}, err
+	}
+	var fields struct {
+		Index     *int    `json:"index"`
+		Signature *string `json:"thinkingSignature"`
+	}
+	if err := json.Unmarshal(encoded, &fields); err != nil {
+		return rpcBlockScratch{}, err
+	}
+	return rpcBlockScratch{index: fields.Index, emptySignature: fields.Signature != nil && *fields.Signature == ""}, nil
+}
+
+// apply adds the scratch fields in Pi's property order: signature after the thinking text, index last.
+func (scratch rpcBlockScratch) apply(object rpcObject) rpcObject {
+	if scratch.emptySignature {
+		fields := make(rpcObject, 0, len(object)+2)
+		fields = append(fields, object[:2]...)
+		fields = append(fields, rpcField{"thinkingSignature", ""})
+		object = append(fields, object[2:]...)
+	}
+	if scratch.index != nil {
+		object = append(object, rpcField{"index", *scratch.index})
+	}
+	return object
 }
 
 func rpcToolResultContent(blocks []ai.ToolResultMessageContent) ([]any, error) {
@@ -319,66 +423,41 @@ func rpcToolResultContent(blocks []ai.ToolResultMessageContent) ([]any, error) {
 
 func rpcContentBlock(block ai.ContentBlock) (any, error) {
 	switch block := block.(type) {
-	case ai.TextContent:
-		out := map[string]any{"type": "text", "text": block.Text}
-		if block.TextSignature != "" {
-			out["textSignature"] = block.TextSignature
-		}
-		return out, nil
+	case ai.TextContent, ai.ToolCall, ai.ThinkingContent:
+		// These blocks own the provider's optional streaming scratch fields (`index`, `partialJson`, ...), the presence of an empty thinking signature, and their JSON order.
+		return block, nil
 	case ai.ImageContent:
-		return map[string]any{"type": "image", "data": block.Data, "mimeType": block.MimeType}, nil
-	case ai.ToolCall:
-		out := map[string]any{"type": "toolCall", "id": block.ID, "name": block.Name, "arguments": block.Arguments}
-		if block.ThoughtSignature != "" {
-			out["thoughtSignature"] = block.ThoughtSignature
-		}
-		if block.Namespace != "" {
-			out["namespace"] = block.Namespace
-		}
-		return out, nil
-	case ai.ThinkingContent:
-		out := map[string]any{"type": "thinking", "thinking": block.Thinking}
-		if block.ThinkingSignature != "" {
-			out["thinkingSignature"] = block.ThinkingSignature
-		}
-		if block.Redacted {
-			out["redacted"] = true
-		}
-		return out, nil
+		return rpcObject{{"type", "image"}, {"data", block.Data}, {"mimeType", block.MimeType}}, nil
 	default:
 		return nil, fmt.Errorf("unsupported content block %T", block)
 	}
 }
 
-func rpcUsage(usage *ai.Usage) map[string]any {
+// RPCUsage preserves reported totals and the insertion order of streaming usage counters.
+type RPCUsage struct {
+	Input        int          `json:"input"`
+	Output       int          `json:"output"`
+	CacheRead    int          `json:"cacheRead"`
+	CacheWrite   int          `json:"cacheWrite"`
+	TotalTokens  int          `json:"totalTokens"`
+	Cost         ai.UsageCost `json:"cost"`
+	CacheWrite1h *int         `json:"cacheWrite1h,omitempty"`
+	Reasoning    *int         `json:"reasoning,omitempty"`
+}
+
+func rpcUsage(usage *ai.Usage) *RPCUsage {
 	if usage == nil {
 		usage = &ai.Usage{}
 	}
-	out := map[string]any{
-		"input": usage.Input, "output": usage.Output, "cacheRead": usage.CacheRead,
-		"cacheWrite": usage.CacheWrite, "totalTokens": usage.TotalTokens,
-		"cost": map[string]any{
-			"input": usage.Cost.Input, "output": usage.Cost.Output,
-			"cacheRead": usage.Cost.CacheRead, "cacheWrite": usage.Cost.CacheWrite,
-			"total": usage.Cost.Total,
-		},
+	value := &RPCUsage{
+		Input: usage.Input, Output: usage.Output, CacheRead: usage.CacheRead,
+		CacheWrite: usage.CacheWrite, TotalTokens: usage.TotalTokens, Cost: usage.Cost,
 	}
 	if usage.CacheWrite1h != nil {
-		out["cacheWrite1h"] = *usage.CacheWrite1h
+		value.CacheWrite1h = new(*usage.CacheWrite1h)
 	}
 	if usage.Reasoning != nil {
-		out["reasoning"] = *usage.Reasoning
+		value.Reasoning = new(*usage.Reasoning)
 	}
-	return out
-}
-
-func tryDecodeJSON(text string) (any, bool) {
-	if text == "" {
-		return nil, false
-	}
-	var value any
-	if err := json.Unmarshal([]byte(text), &value); err != nil {
-		return nil, false
-	}
-	return value, true
+	return value
 }

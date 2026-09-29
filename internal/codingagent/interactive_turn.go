@@ -11,12 +11,20 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 func (m *InteractiveMode) handleSubmit(ctx context.Context, prompt string) {
 	m.handleSubmitWithImages(ctx, prompt, nil)
+}
+
+// isUserBashCommand requires a nonempty command after Pi's ! or !! prefix. Bare prefixes remain ordinary prompts.
+func isUserBashCommand(text string) bool {
+	return strings.HasPrefix(text, "!") && widthx.JSTrim(strings.TrimPrefix(text[1:], "!")) != ""
 }
 
 func (m *InteractiveMode) handleSubmitWithImages(ctx context.Context, prompt string, images []ai.ImageContent) {
@@ -38,7 +46,7 @@ func (m *InteractiveMode) handleSubmitWithImages(ctx context.Context, prompt str
 	// the registry is a local/UI dispatch that must run now, even mid-compaction.
 	// Queueing it (as prior pig did) showed "/session" as a steering message
 	// and stalled it until compaction finished.
-	if m.isCompacting && !strings.HasPrefix(prompt, "!") && !m.resolvableSlashCommand(prompt) {
+	if m.isCompacting && !isUserBashCommand(prompt) && !m.resolvableSlashCommand(prompt) {
 		m.compactionQueue = append(m.compactionQueue, compactionQueuedMessage{text: prompt, images: images, mode: compactionQueueSteer})
 		m.statusLine.Flash("Queued message for after compaction", 2*time.Second)
 		m.editor.SetText("")
@@ -54,16 +62,13 @@ func (m *InteractiveMode) handleSubmitWithImages(ctx context.Context, prompt str
 	// `bash_execution` entry. `!!cmd` (double-bang) sets
 	// excludeFromContext=true so the LLM doesn't see the entry on
 	// its next turn. Mirrors upstream interactive-mode.ts:2505-2520.
-	if strings.HasPrefix(prompt, "!") {
+	if isUserBashCommand(prompt) {
 		exclude := strings.HasPrefix(prompt, "!!")
 		var cmd string
 		if exclude {
-			cmd = strings.TrimSpace(prompt[2:])
+			cmd = widthx.JSTrim(prompt[2:])
 		} else {
-			cmd = strings.TrimSpace(prompt[1:])
-		}
-		if cmd == "" {
-			return // bare `!`: ignore (matches upstream)
+			cmd = widthx.JSTrim(prompt[1:])
 		}
 		// Upstream keeps the text and warns instead of starting a second
 		// command, whose completion would mark the UI idle under the first.
@@ -151,13 +156,13 @@ func (m *InteractiveMode) runInputHandlers(ctx context.Context, text string, ima
 // the caller, a compaction, or a before_agent_start handler produces before
 // the run starts precedes it, and a prompt the run rejects is never shown.
 func (m *InteractiveMode) runPromptTurnWithImages(ctx context.Context, prompt string, images []ai.ImageContent) {
-	m.runTurnWithImages(ctx, prompt, images, func(runCtx context.Context) ([]agent.AgentMessage, error) {
+	m.startTurn(ctx, prompt, images, true, func(runCtx context.Context) ([]agent.AgentMessage, error) {
 		content := promptContent(prompt, images)
 		autoResize := true
 		if m.opts.SettingsManager != nil {
 			autoResize = m.opts.SettingsManager.GetImageAutoResize()
 		}
-		content = NormalizePromptContent(content, autoResize, m.agent.Model())
+		content = NormalizePromptContent(content, autoResize, m.agent.Model(), imageprocessing.ProcessImage)
 		// upstream: packages/coding-agent/src/core/agent-session.ts:_runAgentPrompt
 		return m.agent.SendContent(runCtx, content)
 	})
@@ -199,11 +204,15 @@ func (m *InteractiveMode) extensionIsIdle() bool {
 // emitAgentSettledEvent awaits every settled handler before releasing actions
 // that would start a replacement run.
 func (m *InteractiveMode) emitAgentSettledEvent() {
+	m.emitAgentSettledFor(m.newRunner)
+}
+
+func (m *InteractiveMode) emitAgentSettledFor(runner *inproc.Runner) {
 	m.settledMu.Lock()
 	m.emittingAgentSettled = true
 	m.settledMu.Unlock()
 
-	emitAgentSettled(m.newRunner)
+	emitAgentSettled(runner)
 
 	m.settledMu.Lock()
 	m.emittingAgentSettled = false
@@ -233,10 +242,13 @@ func (m *InteractiveMode) deferSettledAction(action func()) bool {
 // prompt is the user text for the before_agent_start event payload only; it is
 // empty for turns not seeded by typed input.
 func (m *InteractiveMode) runTurn(ctx context.Context, prompt string, start func(context.Context) ([]agent.AgentMessage, error)) {
-	m.runTurnWithImages(ctx, prompt, nil, start)
+	m.startTurn(ctx, prompt, nil, false, start)
 }
 
-func (m *InteractiveMode) runTurnWithImages(ctx context.Context, prompt string, images []ai.ImageContent, start func(context.Context) ([]agent.AgentMessage, error)) {
+// startTurn starts a run. userPrompt marks a turn seeded by a prompt, which
+// upstream prompt() validates before compaction and before_agent_start; a
+// rejected prompt shows its error and emits no run events.
+func (m *InteractiveMode) startTurn(ctx context.Context, prompt string, images []ai.ImageContent, userPrompt bool, start func(context.Context) ([]agent.AgentMessage, error)) {
 	m.isIdle = false
 	// runGen identifies this run to its own UI cleanup, which runs later on
 	// the owner loop: a cleanup that finds a newer run leaves that run's
@@ -253,8 +265,10 @@ func (m *InteractiveMode) runTurnWithImages(ctx context.Context, prompt string, 
 	// the main loop replaces m.abortCtx after an abort, so the goroutine never
 	// reads the field.
 	runCtx := m.abortCtx
+	session, runner := m.opts.SessionHandle, m.newRunner
 
 	go func() {
+		rejected := false
 		defer func() {
 			// Turn-end state (isIdle, workStart, statusLine, loaders) and the
 			// final flush/render are read/rendered by the main input loop, so
@@ -264,7 +278,6 @@ func (m *InteractiveMode) runTurnWithImages(ctx context.Context, prompt string, 
 			// dropped only when the whole session is shutting down.
 			m.runOnMain(m.runCtx, func() {
 				if m.runGen == gen {
-					m.clearTurnSystemPrompt()
 					m.isIdle = true
 					m.workStart = time.Time{}
 					m.statusLine.SetWorking(false)
@@ -277,6 +290,11 @@ func (m *InteractiveMode) runTurnWithImages(ctx context.Context, prompt string, 
 				m.updatePendingMessagesDisplay() // clear stale queue indicators
 				m.tuiInst.Render()
 			})
+			// Upstream prompt() throws before _runAgentPrompt, so a rejected
+			// prompt has no agent_settled.
+			if rejected {
+				return
+			}
 			// Follow-up messages are now drained by the agent loop
 			// itself (via followUpQueue). No explicit drain needed here.
 			// The run has fully settled here (retries, recovery, compaction,
@@ -288,52 +306,54 @@ func (m *InteractiveMode) runTurnWithImages(ctx context.Context, prompt string, 
 			// coding.Session.emitAgentSettled, so it calls OnAgentSettled
 			// directly here. Awaiting every settled handler before releasing a
 			// deferred action keeps a handler-started run from beginning
-			// before this one settles.
-			if m.opts.SessionHandle != nil {
-				m.opts.SessionHandle.OnAgentSettled()
+			// before this one settles. The run's prompt inputs end first, as
+			// upstream clears _runSystemPromptOptions before agent_settled.
+			if session != nil {
+				session.OnAgentSettled()
 			}
-			m.emitAgentSettledEvent()
+			m.emitAgentSettledFor(runner)
 		}()
+		// agent-session.ts:1673-1691 validates the model and its auth before
+		// the compaction check and before_agent_start. interactive-mode.ts
+		// shows the rejection with showError.
+		if userPrompt {
+			if err := m.validatePromptModelAuth(runCtx); err != nil {
+				rejected = true
+				_ = m.settleTurn(runCtx, err)
+				if runCtx.Err() == nil {
+					m.runOnMain(m.runCtx, func() { m.showError(err.Error()) })
+				}
+				return
+			}
+		}
 		// Pre-prompt compaction check: before sending the new user message,
 		// compact if the prior context already exceeds the threshold, including
 		// after an aborted turn. Mirrors upstream prompt()'s
 		// _checkCompaction(lastAssistant, false). A custom-message seed has no
 		// such check upstream (sendCustomMessage calls _runAgentPrompt directly).
-		if prompt != "" {
+		if userPrompt {
 			m.checkPromptCompaction(runCtx)
 		}
 		// Fire before_agent_start after the pre-prompt compaction check and off the
 		// input loop. Upstream runs the async extension event after compaction and
 		// before the provider request; Pig used to run it synchronously before
 		// rendering the user's message, so a slow hook made Enter appear frozen.
-		turnSystemPrompt := m.currentSystemPrompt()
-		spOpts := m.opts.SystemPromptOptions
-		// Mirror upstream: event.systemPromptOptions.cwd always reflects the
-		// current session cwd (agent-session.ts:_rebuildSystemPrompt:916).
-		if spOpts.Cwd == "" {
-			spOpts.Cwd = m.opts.CWD
+		// The run's prompt and tool loadout come from the handlers' result.
+		var err error
+		if userPrompt {
+			err = m.prepareRunPrompt(runCtx, runner, gen, prompt, images)
+			rejected = err != nil
 		}
-		if combined := emitBeforeAgentStartWithImages(ctx, m.newRunner, prompt, images, turnSystemPrompt, spOpts); combined != nil {
-			if combined.SystemPrompt != nil {
-				turnSystemPrompt = *combined.SystemPrompt
-			}
-			// The Session adds the returned messages to this prompt.
-			if session, ok := m.opts.SessionHandle.(interface {
-				QueueAgentStartMessages([]extension.CustomMessageRef)
-			}); ok {
-				session.QueueAgentStartMessages(combined.Messages)
-			}
-		}
-		m.setTurnSystemPrompt(turnSystemPrompt)
-		m.agent.SetSystemPrompt(turnSystemPrompt)
 
 		// The user prompt, assistant messages, and tool results are all persisted
 		// incrementally by the OnMessagePersist hook (wired in coding.NewSession),
 		// driven by the agent's message_end events. This mirrors upstream's
 		// single message_end persistence site (agent-session.ts:511-525) and keeps
 		// a mid-turn kill from losing the turn.
-		_, err := m.runAgentPrompt(runCtx, start)
-		err = m.settleTurn(runCtx, err)
+		if err == nil {
+			_, err = m.runAgentPrompt(runCtx, start)
+		}
+		err = m.settleTurnWithPrompt(runCtx, err, func() { m.endRunPrompt(gen) })
 		// Only the run's own cancellation (Esc or shutdown) is silent; any
 		// other error, a deadline from elsewhere included, is shown.
 		if err != nil && runCtx.Err() == nil {
@@ -382,9 +402,17 @@ func (m *InteractiveMode) runAgentPrompt(ctx context.Context, start func(context
 // Upstream gets the same guarantee from its single-threaded event loop. It
 // returns the error of the last run.
 func (m *InteractiveMode) settleTurn(ctx context.Context, err error) error {
+	return m.settleTurnWithPrompt(ctx, err, nil)
+}
+
+func (m *InteractiveMode) settleTurnWithPrompt(ctx context.Context, err error, finishPrompt func()) error {
 	for {
 		m.queueMu.Lock()
 		if err != nil || ctx.Err() != nil || !m.agent.HasQueuedMessages() {
+			// Clear the outgoing prompt before publishing idle or releasing replacement waiters.
+			if finishPrompt != nil {
+				finishPrompt()
+			}
 			m.turnActive.Store(false)
 			if m.turnSettled != nil {
 				close(m.turnSettled)
@@ -428,19 +456,27 @@ func (m *InteractiveMode) submitInitialMessages(ctx context.Context, messages []
 func (m *InteractiveMode) waitForIdle(ctx context.Context) error {
 	m.queueMu.Lock()
 	settled := m.turnSettled
+	session := m.opts.SessionHandle
 	m.queueMu.Unlock()
-	if settled == nil {
-		return nil
-	}
+	return waitForSessionIdle(ctx, settled, session)
+}
+
+// waitForSessionIdle joins the captured outgoing Session even if a UI task rebinds the mode while its turn cleanup is pending.
+func waitForSessionIdle(ctx context.Context, settled <-chan struct{}, session InteractiveSessionHandle) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-	select {
-	case <-settled:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
+	if settled != nil {
+		select {
+		case <-settled:
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
+	if session != nil {
+		return session.WaitForIdle(ctx)
+	}
+	return nil
 }
 
 // showTurnError surfaces a failed run on the main loop.
@@ -463,116 +499,81 @@ func (m *InteractiveMode) showTurnError(err error) {
 	}
 }
 
-// handleBashCommand runs a `!cmd` (or `!!cmd` excluded) directly via
-// the bash executor.
-//
-// Mirrors upstream `interactive-mode.ts:5037-5126::handleBashCommand`.
-// Three behaviors:
-//
-//  1. While agent is streaming: queue the bash component to a pending
-//     buffer; flush after agent_end so message ordering is preserved.
-//     Mirrors upstream `pendingBashComponents` flush.
-//  2. While agent is idle: render inline immediately, run the command,
-//     persist the result as a `bash_execution` session entry.
-//  3. Esc cancels the running command (parallels LLM abort).
-//
-// Extension hook: emits `user_bash` before execution; a handler may return
-// a full result (shown and recorded without running the command) or
-// operations the command runs through.
+// handleBashCommand owns the awaited user_bash dispatch, execution and persistence off the input loop. UI mutations return to the owner loop; hook failure never falls back to local execution.
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts.
 func (m *InteractiveMode) handleBashCommand(ctx context.Context, command string, excludeFromContext bool) {
-	// Pending-while-streaming queue: when agent is mid-turn, defer
-	// the bash component into pendingBashBlocks; the goroutine that
-	// runs the command publishes its block to chat after the agent's
-	// turn finishes (handled by flushPendingBashBlocks below).
-	deferred := !m.isIdle
-
-	// Emit user_bash first. A failed handler was already reported; like
-	// upstream, do not fall back to local execution.
-	eventResult, err := emitUserBash(m.newRunner, command, m.opts.CWD, excludeFromContext)
-	if err != nil {
-		return
-	}
-
-	block := tui.NewBashExecutionBlock(command, excludeFromContext)
-
-	// Apply the current global expansion state to blocks created after Ctrl+O.
-	m.toolMu.Lock()
-	m.bashOrder = append(m.bashOrder, block)
-	if m.toolsExpanded {
-		block.SetExpanded(true)
-	}
-	m.toolMu.Unlock()
-
-	if deferred {
-		m.pendingBashBlocksMu.Lock()
-		m.pendingBashBlocks = append(m.pendingBashBlocks, block)
-		m.pendingBashBlocksMu.Unlock()
-	} else {
-		m.appendToChat(block)
-		m.tuiInst.Render()
-	}
-
-	// An extension's full result is shown and recorded without running the
-	// command (upstream handleBashCommand's eventResult.result branch).
-	if eventResult != nil && eventResult.Result != nil {
-		m.showUserBashResultOverride(block, command, excludeFromContext, eventResult.Result, deferred)
-		return
-	}
-	var operations extension.BashOperations
-	if eventResult != nil {
-		operations = eventResult.Operations
-	}
-
-	// Mark bash as running so Esc can cancel it. resolveOutcome maps
-	// Esc while busy to outcomeAbort. The bash context derives from m.abortCtx,
-	// so cancellation reaps the process group.
-	if !deferred {
-		m.isIdle = false
-	}
-	bashCtx, bashCancel := context.WithCancel(m.abortCtx)
-	prev := m.bashCancel
-	m.bashCancel = bashCancel
-
-	go func() {
-		defer func() {
-			// The process context is cancelled off-main (it only reaps the
-			// process group). The shared fields it restores are touched on the
-			// main loop, after the final render posted below (uiTaskCh is FIFO).
-			bashCancel()
-			m.runOnMain(m.runCtx, func() {
-				m.bashCancel = prev
+	runner, session := m.newRunner, m.currentSession()
+	cwd, settings, agentDir := m.opts.CWD, m.opts.Settings, m.opts.AgentDir
+	m.startUserBashTask(ctx, func(task *userBashTask) {
+		eventResult, err := emitUserBash(task.ctx, runner, command, cwd, excludeFromContext)
+		if err != nil || task.ctx.Err() != nil {
+			return
+		}
+		var override *BashResult
+		var operations extension.BashOperations
+		if eventResult != nil {
+			operations = eventResult.Operations
+			if eventResult.Result != nil {
+				result := userBashResultOverride(eventResult.Result)
+				override = &result
+			}
+		}
+		var block *tui.BashExecutionBlock
+		var deferred bool
+		if !m.awaitUserBashMain(task.owner, func() {
+			if task.ctx.Err() != nil {
+				return
+			}
+			// Upstream reads streaming state after the hook has completed.
+			deferred = m.runStreaming()
+			block = tui.NewBashExecutionBlock(command, excludeFromContext)
+			m.toolMu.Lock()
+			m.bashOrder = append(m.bashOrder, block)
+			if m.toolsExpanded {
+				block.SetExpanded(true)
+			}
+			m.toolMu.Unlock()
+			if deferred {
+				m.pendingBashBlocksMu.Lock()
+				m.pendingBashBlocks = append(m.pendingBashBlocks, block)
+				m.pendingBashBlocksMu.Unlock()
+			} else {
+				m.appendToChat(block)
+			}
+			if override != nil {
+				block.AppendOutput(override.Output)
+			} else {
+				task.running = true
+				m.bashCancel = m.cancelRunningUserBash
 				if !deferred {
-					m.isIdle = true
+					m.isIdle = false
 				}
-			})
-		}()
-
-		// Upstream executeBash applies the shell command prefix and runs
-		// through the extension's operations or local bash; the block and the
-		// session record keep the command as typed.
+			}
+			m.tuiInst.Render()
+		}) || block == nil {
+			return
+		}
+		if override != nil {
+			m.finishUserBash(task.owner, session, block, command, excludeFromContext, *override, deferred)
+			return
+		}
 		resolvedCommand := command
-		if prefix := m.opts.Settings.GetCommandPrefix(); prefix != "" {
+		if prefix := settings.GetCommandPrefix(); prefix != "" {
 			resolvedCommand = prefix + "\n" + command
 		}
 		if operations == nil {
-			operations = tools.NewLocalBashOperations(m.opts.Settings, filepath.Join(m.opts.AgentDir, "bin"))
+			operations = tools.NewLocalBashOperations(settings, filepath.Join(agentDir, "bin"))
 		}
-		res, err := tools.ExecuteBashWithOperations(bashCtx, resolvedCommand, m.opts.CWD, operations, BashExecOptions{
-			// Streamed output must not be lost, so post reliably (backpressure)
-			// onto the main loop rather than mutating the block + rendering from
-			// this goroutine, which races keystroke handling. runCtx (not bashCtx)
-			// so a cancelled bash still delivers output already produced.
+		res, err := tools.ExecuteBashWithOperations(task.ctx, resolvedCommand, cwd, operations, BashExecOptions{
 			OnChunk: func(chunk string) {
-				m.runOnMain(m.runCtx, func() {
+				m.awaitUserBashMain(task.owner, func() {
 					block.AppendOutput(chunk)
 					m.tuiInst.Render()
 				})
 			},
 		})
 		if err != nil {
-			// Upstream: the block completes without an exit code, the failure
-			// is shown, and nothing is recorded.
-			m.runOnMain(m.runCtx, func() {
+			m.awaitUserBashMain(task.owner, func() {
 				block.SetComplete(nil, false, false)
 				if deferred {
 					m.flushPendingBashBlocks()
@@ -581,13 +582,11 @@ func (m *InteractiveMode) handleBashCommand(ctx context.Context, command string,
 			})
 			return
 		}
-		m.finishUserBash(block, command, excludeFromContext, res, deferred)
-	}()
+		m.finishUserBash(task.owner, session, block, command, excludeFromContext, res, deferred)
+	})
 }
 
-// showUserBashResultOverride shows and records a user_bash handler's result
-// in place of running the command.
-func (m *InteractiveMode) showUserBashResultOverride(block *tui.BashExecutionBlock, command string, excludeFromContext bool, override any, deferred bool) {
+func userBashResultOverride(override any) BashResult {
 	var result struct {
 		Output         string  `json:"output"`
 		ExitCode       *int    `json:"exitCode"`
@@ -598,34 +597,30 @@ func (m *InteractiveMode) showUserBashResultOverride(block *tui.BashExecutionBlo
 	if encoded, err := json.Marshal(override); err == nil {
 		_ = json.Unmarshal(encoded, &result)
 	}
-	if result.Output != "" {
-		block.AppendOutput(result.Output)
-	}
 	res := BashResult{Output: result.Output, ExitCode: result.ExitCode, Cancelled: result.Cancelled, Truncated: result.Truncated}
 	if result.FullOutputPath != nil {
 		res.FullOutputPath = *result.FullOutputPath
 	}
-	go m.finishUserBash(block, command, excludeFromContext, res, deferred)
+	return res
 }
 
-// finishUserBash records a user bash result in the session and completes its
-// block on the main loop.
-func (m *InteractiveMode) finishUserBash(block *tui.BashExecutionBlock, command string, excludeFromContext bool, res BashResult, deferred bool) {
-	// Persist to the session off the main loop (I/O); capture only a
-	// warning to surface on the loop.
+// finishUserBash persists to the captured Session, then completes the block on its owner loop.
+func (m *InteractiveMode) finishUserBash(ctx context.Context, session *Session, block *tui.BashExecutionBlock, command string, excludeFromContext bool, res BashResult, deferred bool) {
 	var persistWarn string
-	if m.currentSession() != nil {
-		if _, perr := m.currentSession().AppendBashExecution(
-			command, res.Output, res.ExitCode, res.Cancelled,
-			res.Truncated, res.FullOutputPath, excludeFromContext,
-		); perr != nil {
+	if session != nil {
+		if _, perr := session.AppendBashExecution(BashExecutionMessage{
+			Role: "bashExecution", Command: command, Output: res.Output,
+			ExitCode: res.ExitCode, Cancelled: res.Cancelled, Truncated: res.Truncated,
+			FullOutputPath: res.FullOutputPath, ExcludeFromContext: excludeFromContext,
+			Timestamp: time.Now().UnixMilli(),
+		}); perr != nil {
 			persistWarn = perr.Error()
 		}
 	}
 	// Apply the terminal block state on the main loop, after every OnChunk
 	// post, so the block's output, completion, promotion, and render are
 	// single-threaded with keystrokes.
-	m.runOnMain(m.runCtx, func() {
+	m.awaitUserBashMain(ctx, func() {
 		block.SetCompleteWithOutput(res.ExitCode, res.Cancelled, res.Truncated, res.Output, res.FullOutputPath)
 		// A deferred block is appended after the current chat content, which
 		// preserves the order observed by the user.

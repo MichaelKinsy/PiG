@@ -2,12 +2,15 @@ package subprocess
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
+	"slices"
 	"strings"
 	"sync"
+	"weak"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
@@ -24,9 +27,11 @@ import (
 //
 // pig-specific: no upstream equivalent.
 type UIBridge struct {
-	mu       sync.RWMutex
-	headerMu sync.Mutex
-	widgets  map[string]*PushProxy // key → proxy
+	modelCatalogEncoder func() (json.RawMessage, error)
+	mu                  sync.RWMutex
+	headerMu            sync.Mutex
+	footerMu            sync.Mutex            // footer admission, pending state and application are one step, as for headerMu; lock headerMu first
+	widgets             map[string]*PushProxy // key → proxy
 
 	// customOverlays tracks the active ui.custom overlays keyed by
 	// "<extName>:<key>" so render/close notifications from the TS
@@ -37,7 +42,16 @@ type UIBridge struct {
 	// extConns holds the per-extension socket connection so the
 	// bridge can forward overlay input notifications back to the
 	// extension subprocess.
-	extConns map[string]*Conn
+	extConns               map[string]*Conn
+	autocompleteReferences map[string]autocompleteReference
+	autocompleteOrigins    map[weak.Pointer[extension.AutocompleteProvider]]autocompleteOrigin
+	autocompleteQueries    map[autocompleteQueryKey]*autocompleteQuery
+
+	// editor is the extension editor component installed last
+	// (ctx.ui.setEditorComponent), and editorsByConn each connection's
+	// latest one, keyed by customOverlayOwnerPrefix.
+	editor        *editorProxy
+	editorsByConn map[string]*editorProxy
 
 	// modelStreams cancels an in-flight modelStream call, keyed by the
 	// owning connection and its stream ID, so an extension's AbortSignal
@@ -54,6 +68,8 @@ type UIBridge struct {
 	terminalCapabilities func() TerminalCapabilitiesPayload
 	// theme reports the host's active theme palette for the state snapshot.
 	theme func() any
+	// keybindings reports the host's resolved keybinding table.
+	keybindings func() any
 
 	uiCtx            extension.UIContext
 	uiReady          bool
@@ -70,6 +86,16 @@ type UIBridge struct {
 	// actions holds agent-loop callbacks (sendMessage, setModel, etc.).
 	// Set via [SetActions] after the agent session is created.
 	actions *HostCallbacks
+	// resolveFlag enforces registration scope and supplies host-owned defaults after CLI overrides.
+	resolveFlag func(extName, name string, override any) any
+
+	// registeredProviderConfigs holds the provider configs extensions
+	// registered, merged per upstream registerProvider, and
+	// registeredProviderOrder their registration order. Upstream keeps them in
+	// ModelRuntime.extensionProviders, shared by every extension.
+	registeredProviderConfigs map[string]map[string]json.RawMessage
+	registeredProviderOrder   []string
+	registeredNativeProviders map[string]NativeProviderDeclaration
 
 	// WatchSessionLog enrolls one extension in session-log replication and
 	// returns the entries it has not seen. Set by the Host, which owns the
@@ -126,7 +152,10 @@ type HostCallbacks struct {
 
 	// AppendEntry appends a custom session entry.
 	// upstream: types.ts:1450: AppendEntryHandler
-	AppendEntry func(customType string, data any) error
+	// direct is non-nil for ctx.sessionManager.appendCustomEntry, which
+	// writes the log only and has already returned the entry's id; nil is
+	// pi.appendEntry, which also emits entry_appended.
+	AppendEntry func(customType string, data any, direct *DirectEntryAppend) error
 
 	// Exec runs a local command and returns stdout/stderr/exit status.
 	// ExecContext is preferred by production hosts: the call context carries
@@ -181,7 +210,7 @@ type HostCallbacks struct {
 
 	// RefreshTools reloads tool definitions.
 	// upstream: types.ts:1457
-	RefreshTools func()
+	RefreshTools func() error
 
 	// GetCommands returns available slash commands.
 	// upstream: types.ts:1458
@@ -216,6 +245,9 @@ type HostCallbacks struct {
 	// upstream: runner.ts:609 (model getter on ExtensionContext)
 	GetModelInfo func() map[string]any
 
+	// GetScopedModels returns the Session's resolved model scope in selection order.
+	GetScopedModels func() []extension.ScopedModel
+
 	// GetModel resolves metadata by provider and model ID through the Session-owned runtime registry.
 	GetModel  func(providerID, modelID string) map[string]any
 	GetModels func() []map[string]any
@@ -244,6 +276,29 @@ type HostCallbacks struct {
 
 	// StreamModel starts a model operation through the Session-owned runtime.
 	StreamModel func(context.Context, map[string]any, map[string]any) (*ai.AssistantMessageEventStream, error)
+
+	// GetModelRegistryState returns the state behind upstream ModelRegistry's
+	// synchronous reads: the catalog, the available models, each provider's
+	// display name, auth status and OAuth use, and the registry error.
+	// upstream: model-registry.ts getAll, getAvailable, hasConfiguredAuth,
+	// getProviderAuthStatus, getProvider, getProviderDisplayName,
+	// isUsingOAuth, getError.
+	GetModelRegistryState func() map[string]any
+
+	// GetProviderAuth resolves request auth for a provider, or nil when it has
+	// none. upstream: model-registry.ts getProviderAuth(provider)
+	GetProviderAuth func(ctx context.Context, provider string) (map[string]any, error)
+
+	// RefreshModelRegistry reloads models.json and refreshes the provider
+	// catalogs. allowNetwork nil means the runtime default; providers nil
+	// means every provider. upstream: model-registry.ts refresh(options)
+	RefreshModelRegistry func(ctx context.Context, allowNetwork *bool, providers []string, force *bool) (map[string]any, error)
+
+	// SessionRead answers a ReadonlySessionManager read computed from the
+	// host's session: the header facts (method "info"), and for the Go, Rust
+	// and Python SDKs the reads their session mirror cannot answer.
+	// upstream: session-manager.ts ReadonlySessionManager
+	SessionRead func(method string, args json.RawMessage) (any, error)
 
 	// Agent control.
 
@@ -350,8 +405,7 @@ type CommandInfo struct {
 }
 
 // Snapshot returns the current host-side state visible to the extension via
-// upstream-faithful synchronous getters. It reads through whatever
-// [HostCallbacks] are registered; missing callbacks contribute zero values.
+// upstream-faithful synchronous getters. Missing usage stays absent; unknown token and percentage counts stay null.
 //
 // The result is suitable for the protocol's [StatePayload]: callers send it
 // at handshake time (embedded in [ReadyPayload]) and on host-side state
@@ -367,11 +421,11 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	uiCtx := b.uiCtx
 	terminalCapabilities := b.terminalCapabilities
 	theme := b.theme
+	keybindings := b.keybindings
 	b.mu.RUnlock()
 
-	// Defaults mirror the upstream runner's unbound defaults: idle, has UI, and
-	// project trusted (runner.ts:280).
-	state := &StatePayload{IsIdle: true, HasUI: true, ProjectTrusted: true}
+	// Upstream runner.ts:578-580 reports UI availability from the bound context.
+	state := &StatePayload{IsIdle: true, HasUI: uiCtx != nil && uiCtx != extension.NoopUIContext, ProjectTrusted: true, ScopedModels: []scopedModelSnapshot{}}
 	// The Node runtime answers getEditorText, getToolsExpanded, and
 	// getAllThemes synchronously, matching the in-process API, so it cannot
 	// make a host call for them. The host pushes state immediately before
@@ -385,11 +439,27 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	if theme != nil {
 		state.Theme = theme()
 	}
+	if keybindings != nil {
+		state.Keybindings = keybindings()
+	}
 	if ui := uiCtx; ui != nil {
 		state.EditorText = ui.GetEditorText()
 		state.ToolsExpanded = ui.GetToolsExpanded()
 		for _, m := range ui.GetAllThemes() {
 			state.AllThemes = append(state.AllThemes, themeMetaDTO{Name: m.Name, Path: m.Path})
+		}
+	}
+	if len(flagNames) > 0 {
+		state.Flags = make(map[string]json.RawMessage, len(flagNames))
+		for _, name := range flagNames {
+			val := b.flagValue(actions, "", name)
+			if val == nil {
+				state.Flags[name] = json.RawMessage("null")
+				continue
+			}
+			if raw, err := json.Marshal(val); err == nil {
+				state.Flags[name] = raw
+			}
 		}
 	}
 	if actions == nil {
@@ -410,8 +480,16 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	if actions.GetModelInfo != nil {
 		state.Model = actions.GetModelInfo()
 	}
-	if actions.GetSessionID != nil || actions.GetSessionName != nil || actions.GetSessionFile != nil || actions.GetLeafID != nil || actions.GetEntriesPage != nil {
+	if actions.GetScopedModels != nil {
+		state.ScopedModels = snapshotScopedModels(actions.GetScopedModels())
+	}
+	if actions.GetSessionID != nil || actions.GetSessionName != nil || actions.GetSessionFile != nil || actions.GetLeafID != nil || actions.GetEntriesPage != nil || actions.SessionRead != nil {
 		state.Session = &SessionStatePayload{}
+		if actions.SessionRead != nil {
+			if info, err := actions.SessionRead("info", nil); err == nil {
+				state.Session.Info, _ = json.Marshal(info)
+			}
+		}
 		if actions.GetSessionID != nil {
 			state.Session.SessionID = actions.GetSessionID()
 		}
@@ -451,14 +529,7 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 	}
 	if actions.GetContextUsage != nil {
 		if cu := actions.GetContextUsage(); cu != nil {
-			dto := &extensionContextUsageDTO{ContextWindow: cu.ContextWindow}
-			if cu.Tokens != nil {
-				dto.Tokens = *cu.Tokens
-			}
-			if cu.Percent != nil {
-				dto.Percent = float64(*cu.Percent)
-			}
-			state.ContextUsage = dto
+			state.ContextUsage = &extensionContextUsageDTO{Tokens: cu.Tokens, ContextWindow: cu.ContextWindow, Percent: cu.Percent}
 		}
 	}
 	if actions.GetSystemPrompt != nil {
@@ -471,18 +542,6 @@ func (b *UIBridge) Snapshot(flagNames []string, cursor int, wantSessionLog bool)
 			state.SystemPromptOptions = encoded
 		}
 	}
-	if actions.GetFlag != nil && len(flagNames) > 0 {
-		state.Flags = make(map[string]json.RawMessage, len(flagNames))
-		for _, name := range flagNames {
-			val := actions.GetFlag("", name)
-			if val == nil {
-				continue
-			}
-			if raw, err := json.Marshal(val); err == nil {
-				state.Flags[name] = raw
-			}
-		}
-	}
 	return state
 }
 
@@ -492,6 +551,14 @@ func (b *UIBridge) SetThemeFunc(fn func() any) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.theme = fn
+}
+
+// SetKeybindingsFunc registers the source of the host's resolved keybinding
+// table, which every state snapshot carries.
+func (b *UIBridge) SetKeybindingsFunc(fn func() any) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	b.keybindings = fn
 }
 
 // SetTerminalCapabilitiesFunc registers the source of the host terminal's
@@ -508,6 +575,7 @@ func NewUIBridge(invalidateTUI func()) *UIBridge {
 		customOverlays:   make(map[string]extension.RemoteOverlayHandle),
 		interactiveFocus: make(chan struct{}, 1),
 		extConns:         make(map[string]*Conn),
+		editorsByConn:    make(map[string]*editorProxy),
 		modelStreams:     make(map[modelStreamKey]context.CancelFunc),
 		uiCtx:            extension.NoopUIContext,
 		pendingStatuses:  make(map[string]string),
@@ -552,8 +620,11 @@ func (b *UIBridge) SetWidth(width int) {
 // SetUIContext upgrades the UI context from noop to the real TUI. Thread-safe.
 // Called by InteractiveMode after TUI creation.
 func (b *UIBridge) SetUIContext(ctx extension.UIContext) {
+	// The replay paints each slot's current value, so it holds the slot mutexes a later call takes; otherwise the replay can paint over a call applied after it read the value.
 	b.headerMu.Lock()
 	defer b.headerMu.Unlock()
+	b.footerMu.Lock()
+	defer b.footerMu.Unlock()
 	b.mu.Lock()
 	if ctx == nil {
 		ctx = extension.NoopUIContext
@@ -573,6 +644,9 @@ func (b *UIBridge) SetUIContext(ctx extension.UIContext) {
 	if ready {
 		for key, text := range statuses {
 			ctx.SetStatus(key, text)
+		}
+		if editor := b.activeEditor(); editor != nil {
+			ctx.SetEditorComponent(editor)
 		}
 		if footerSet {
 			ctx.SetFooter(footer)
@@ -641,19 +715,24 @@ func (b *UIBridge) SetActions(actions *HostCallbacks) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
 	b.actions = actions
+	b.modelCatalogEncoder = nil
 }
 
 // BindCommandActions binds the non-nil command-context actions to the host
 // actions subprocess extensions call, as Runner.BindCommandActions does for
 // in-process extensions. A nil action keeps the one already bound.
 func (b *UIBridge) BindCommandActions(actions extension.CommandActions) {
+	// Upstream's waitForIdle has no effect to apply before it returns its
+	// Promise, so the call is initiated before it waits for the session.
 	if actions.WaitForIdleContext != nil {
-		b.SetHostAction("waitForIdle", actions.WaitForIdleContext)
+		b.SetHostAction("waitForIdle", func(ctx context.Context) error {
+			extension.CallInitiated(ctx)
+			return actions.WaitForIdleContext(ctx)
+		})
 	} else if actions.WaitForIdle != nil {
 		b.SetHostAction("waitForIdle", func(ctx context.Context) error {
-			err := actions.WaitForIdle()
 			extension.CallInitiated(ctx)
-			return err
+			return actions.WaitForIdle()
 		})
 	}
 	if actions.NewSessionContext != nil {
@@ -725,10 +804,10 @@ func (b *UIBridge) BindCommandActions(actions extension.CommandActions) {
 //     OR func(string, []string, *extension.ExecOptions) (extension.ExecResult, error)
 //   - "sendMessage":     func(extension.CustomMessageRef, SendMessageOptions) error
 //   - "sendUserMessage": func(any, SendUserMessageOptions) error
-//   - "appendEntry":     func(string, any) error
+//   - "appendEntry":     func(string, any, *DirectEntryAppend) error
 //   - "setLabel":        func(string, string) error
 //   - "setActiveTools":  func([]string)
-//   - "refreshTools":    func()
+//   - "refreshTools":    func() error
 //   - "setModel":        func(context.Context, string) (bool, error)
 //   - "isIdle":          func() bool
 //   - "abort":           func()
@@ -779,13 +858,13 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 	case "sendUserMessage":
 		b.actions.SendUserMessage = fn.(func(any, SendUserMessageOptions) error)
 	case "appendEntry":
-		b.actions.AppendEntry = fn.(func(string, any) error)
+		b.actions.AppendEntry = fn.(func(string, any, *DirectEntryAppend) error)
 	case "setLabel":
 		b.actions.SetLabel = fn.(func(string, string) error)
 	case "setActiveTools":
 		b.actions.SetActiveTools = fn.(func([]string))
 	case "refreshTools":
-		b.actions.RefreshTools = fn.(func())
+		b.actions.RefreshTools = fn.(func() error)
 	case "setModel":
 		b.actions.SetModel = fn.(func(context.Context, string) (bool, error))
 	case "isIdle":
@@ -818,12 +897,15 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.SwitchSession = fn.(func(context.Context, string, *extension.SwitchSessionOptions) (extension.CancelledResult, error))
 	case "reload":
 		b.actions.Reload = fn.(func(context.Context) error)
+	case "getScopedModels":
+		b.actions.GetScopedModels = fn.(func() []extension.ScopedModel)
 	case "getModelInfo":
 		b.actions.GetModelInfo = fn.(func() map[string]any)
 	case "getModel":
 		b.actions.GetModel = fn.(func(string, string) map[string]any)
 	case "getModels":
 		b.actions.GetModels = fn.(func() []map[string]any)
+		b.modelCatalogEncoder = nil
 	case "getBranch":
 		b.actions.GetBranch = fn.(func() []json.RawMessage)
 	case "getEntries":
@@ -844,6 +926,14 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		b.actions.StreamModel = fn.(func(context.Context, map[string]any, map[string]any) (*ai.AssistantMessageEventStream, error))
 	case "getSessionName":
 		b.actions.GetSessionName = fn.(func() string)
+	case "getModelRegistryState":
+		b.actions.GetModelRegistryState = fn.(func() map[string]any)
+	case "getProviderAuth":
+		b.actions.GetProviderAuth = fn.(func(context.Context, string) (map[string]any, error))
+	case "refreshModelRegistry":
+		b.actions.RefreshModelRegistry = fn.(func(context.Context, *bool, []string, *bool) (map[string]any, error))
+	case "sessionRead":
+		b.actions.SessionRead = fn.(func(string, json.RawMessage) (any, error))
 	case "setSessionName":
 		b.actions.SetSessionName = fn.(func(string) error)
 	default:
@@ -854,7 +944,7 @@ func (b *UIBridge) SetHostAction(key string, fn any) {
 		panic(fmt.Sprintf("SetHostAction: unknown action %q", key))
 	}
 	b.mu.Unlock()
-	if key == "getModels" {
+	if key == "getModels" || key == "getModelRegistryState" {
 		b.PublishModelCatalog()
 	}
 }
@@ -891,6 +981,14 @@ func reportsDialogInitiation(ui extension.UIContext, method string) bool {
 	return ok && reporter.ReportsDialogInitiation()
 }
 
+// gatesOtherLanes reports whether a call's initiation orders the calls of
+// other lanes. ui.custom initiates on the TUI main loop, which may be waiting
+// for a terminal-input handler's reply, so gating on it could stall until the
+// liveness bound.
+func gatesOtherLanes(method string) bool {
+	return method != CallUICustom && takesInteractiveFocus(method)
+}
+
 func takesInteractiveFocus(method string) bool {
 	switch method {
 	case "ui.select", "ui.confirm", "ui.input", "ui.editor", CallUICustom:
@@ -911,6 +1009,21 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 	ui := b.uiCtx
 	actions := b.actions
 	b.mu.RUnlock()
+	// Upstream runner.ts:noOpUIContext ignores mutations without retaining
+	// factories, subscriptions, or state for a later UI binding.
+	if ui == extension.NoopUIContext {
+		switch call.Method {
+		case "ui.notify", "ui.setStatus", "ui.setWorkingIndicator", "ui.setWorkingMessage",
+			"ui.setWorkingVisible", "ui.setHiddenThinkingLabel", "ui.setWidget", "ui.setFooter",
+			"ui.setHeader", "ui.setTitle", "ui.setEditorComponent", "ui.pasteToEditor",
+			"ui.setEditorText", "ui.setToolsExpanded", "ui.addAutocompleteProvider",
+			"ui.onTerminalInput", "ui.offTerminalInput":
+			return &CallResultPayload{}, nil
+		case CallUICustom:
+			extension.CallInitiated(ctx)
+			return &CallResultPayload{}, nil
+		}
+	}
 	// A UI implementation that cannot report dialog installation has no
 	// earlier initiation boundary. Production interactive UI contexts report
 	// from inside Select/Confirm/Input/Editor after queuing the dialog. Custom
@@ -958,6 +1071,8 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleConfirm(ctx, ui, call.Args)
 	case "ui.input":
 		return b.handleInput(ctx, ui, call.Args)
+	case CallUICustomControl:
+		return b.handleCustomControl(ctx, extName, owner, call.Args)
 	case CallUICustom:
 		return b.handleCustom(ctx, extName, owner, ui, call.Args)
 	case "ui.editor":
@@ -1003,7 +1118,13 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 
 	// ── Category 7: Advanced UI (streaming/callback) ─────────────────────
 	case "ui.addAutocompleteProvider":
-		return b.handleAddAutocompleteProvider(extName, ui, call.Args)
+		return b.handleAddAutocompleteProvider(ctx, extName, owner, ui, call.Args)
+	case "ui.autocomplete.invoke":
+		return b.handleAutocompleteInvoke(ctx, owner, call.Args)
+	case "ui.autocomplete.cancel":
+		return b.handleAutocompleteCancel(owner, call.Args)
+	case "ui.autocomplete.current":
+		return b.handleAutocompleteCurrent(ctx, extName, owner, ui)
 	case "ui.onTerminalInput":
 		return b.handleOnTerminalInput(extName, call.Args)
 	case "ui.offTerminalInput":
@@ -1056,6 +1177,13 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleGetSystemPrompt(actions)
 	case "getSystemPromptOptions":
 		return b.handleGetSystemPromptOptions(actions)
+	case "getScopedModels":
+		var models []extension.ScopedModel
+		if actions != nil && actions.GetScopedModels != nil {
+			models = actions.GetScopedModels()
+		}
+		data, err := json.Marshal(snapshotScopedModels(models))
+		return &CallResultPayload{Result: data}, err
 	case "getModelInfo":
 		return b.handleGetModelInfo(actions)
 	case "getModel":
@@ -1066,6 +1194,14 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 		return b.handleGetEntries(actions)
 	case "getModelAuth":
 		return b.handleGetModelAuth(ctx, actions, call.Args)
+	case "getModelRegistryState":
+		return b.handleGetModelRegistryState()
+	case "getProviderAuth":
+		return b.handleGetProviderAuth(ctx, actions, call.Args)
+	case "refreshModelRegistry":
+		return b.handleRefreshModelRegistry(ctx, actions, call.Args)
+	case "sessionRead":
+		return b.handleSessionRead(actions, call.Args)
 	case "complete":
 		return b.handleComplete(ctx, actions, call.Args)
 	case "modelStream":
@@ -1116,6 +1252,10 @@ func (b *UIBridge) HandleWidgetPush(extName string, push *WidgetPushPayload) {
 	key := extName + ":" + push.Key
 
 	b.mu.Lock()
+	if b.uiCtx == extension.NoopUIContext {
+		b.mu.Unlock()
+		return
+	}
 	proxy, ok := b.widgets[key]
 	if !ok {
 		// b.Invalidate reads the callback at call time, so a widget pushed
@@ -1176,6 +1316,12 @@ func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly bool) {
 	var overlays []extension.RemoteOverlayHandle
 	b.mu.Lock()
 	currentOwner := b.extConns[extName] == owner
+	for key, query := range b.autocompleteQueries {
+		if key.owner == owner || (!ownerOnly && key.owner == b.extConns[extName]) {
+			query.cancel()
+			delete(b.autocompleteQueries, key)
+		}
+	}
 	if !ownerOnly || currentOwner {
 		for k, proxy := range b.widgets {
 			if strings.HasPrefix(k, prefix) {
@@ -1188,6 +1334,16 @@ func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly bool) {
 		if strings.HasPrefix(k, customOverlayOwnerPrefix(extName, owner)) || (!ownerOnly && strings.HasPrefix(k, prefix)) {
 			overlays = append(overlays, handle)
 			delete(b.customOverlays, k)
+		}
+	}
+	for id, ref := range b.autocompleteReferences {
+		if (ownerOnly && ref.owner == owner) || (!ownerOnly && ref.name == extName) {
+			delete(b.autocompleteReferences, id)
+		}
+	}
+	for provider, origin := range b.autocompleteOrigins {
+		if origin.owner == owner || (!ownerOnly && origin.owner == b.extConns[extName]) {
+			delete(b.autocompleteOrigins, provider)
 		}
 	}
 	if !ownerOnly || currentOwner {
@@ -1203,6 +1359,20 @@ func (b *UIBridge) clearExtension(extName string, owner *Conn, ownerOnly bool) {
 	for _, handle := range overlays {
 		handle.Close(nil)
 	}
+	b.clearEditorConn(extName, owner, ownerOnly)
+}
+
+// SetModelCatalog installs equivalent value and JSON projections atomically. Publication uses the encoder without changing the value getter or its notification boundary. Replacing the getter through SetHostAction or SetActions clears the encoder.
+// pig additive (D19): subprocess snapshot encoding reuses the same current model data without changing the extension API.
+func (b *UIBridge) SetModelCatalog(getModels func() []map[string]any, encodeModels func() (json.RawMessage, error)) {
+	b.mu.Lock()
+	if b.actions == nil {
+		b.actions = &HostCallbacks{}
+	}
+	b.actions.GetModels = getModels
+	b.modelCatalogEncoder = encodeModels
+	b.mu.Unlock()
+	b.PublishModelCatalog()
 }
 
 func (b *UIBridge) ModelCatalog() []map[string]any {
@@ -1233,16 +1403,130 @@ func (b *UIBridge) PublishModelCatalog() {
 		return
 	}
 	for _, connection := range connections {
-		_ = connection.Send(message)
+		_ = connection.sendEncoded(message)
 	}
 }
 
-func (b *UIBridge) modelCatalogUpdate() *Envelope {
-	args, err := json.Marshal(map[string]any{"models": b.ModelCatalog()})
+func (b *UIBridge) modelCatalogUpdate() encodedEnvelope {
+	state, err := b.modelRegistryState(true)
 	if err != nil {
 		return nil
 	}
-	return &Envelope{Type: MsgNotify, Notify: &NotifyPayload{Method: "model_registry_update", Args: args}}
+	args, err := json.Marshal(state)
+	if err != nil {
+		return nil
+	}
+	// args is already complete, escaped JSON. Re-marshaling it as RawMessage would parse and copy the catalog again for every connection.
+	const prefix = `{"type":"notify","notify":{"method":"model_registry_update","args":`
+	data := make(encodedEnvelope, 0, len(prefix)+len(args)+2)
+	data = append(data, prefix...)
+	data = append(data, args...)
+	return append(data, '}', '}')
+}
+
+// ModelRegistryState is the registry snapshot an extension's synchronous
+// ctx.modelRegistry reads answer from: the host's registry state (the catalog
+// under "models", availability, provider auth and the registry error) and the
+// provider configs extensions registered, in registration order. Upstream
+// ModelRegistry reads the same state in process.
+func (b *UIBridge) ModelRegistryState() map[string]any {
+	state, _ := b.modelRegistryState(false)
+	return state
+}
+
+func (b *UIBridge) modelRegistryState(encodedModels bool) (map[string]any, error) {
+	b.mu.RLock()
+	actions := b.actions
+	encodeModels := b.modelCatalogEncoder
+	registered := make([]map[string]any, 0, len(b.registeredProviderOrder))
+	for _, name := range b.registeredProviderOrder {
+		if native, ok := b.registeredNativeProviders[name]; ok {
+			registered = append(registered, map[string]any{"name": name, "native": native})
+		} else {
+			registered = append(registered, map[string]any{"name": name, "config": b.registeredProviderConfigs[name]})
+		}
+	}
+	b.mu.RUnlock()
+	state := map[string]any{}
+	if actions != nil && actions.GetModelRegistryState != nil {
+		maps.Copy(state, actions.GetModelRegistryState())
+	}
+	if _, ok := state["models"]; !ok {
+		if encodedModels && encodeModels != nil {
+			models, err := encodeModels()
+			if err != nil {
+				return nil, err
+			}
+			state["models"] = models
+		} else {
+			state["models"] = b.ModelCatalog()
+		}
+	}
+	state["registered"] = registered
+	return state, nil
+}
+
+// RecordNativeProviderRegistration publishes native ownership metadata.
+func (b *UIBridge) RecordNativeProviderRegistration(name string, native NativeProviderDeclaration) {
+	b.recordNativeProviderRegistration(name, native)
+	b.PublishModelCatalog()
+}
+
+func (b *UIBridge) recordNativeProviderRegistration(name string, native NativeProviderDeclaration) {
+	b.mu.Lock()
+	if b.registeredNativeProviders == nil {
+		b.registeredNativeProviders = map[string]NativeProviderDeclaration{}
+	}
+	delete(b.registeredProviderConfigs, name)
+	b.registeredNativeProviders[name] = native
+	if !slices.Contains(b.registeredProviderOrder, name) {
+		b.registeredProviderOrder = append(b.registeredProviderOrder, name)
+	}
+	b.mu.Unlock()
+}
+
+// RecordProviderRegistration records a provider config an extension
+// registered. A re-registration merges its defined top-level values over the
+// previous config and keeps the provider's place, as upstream
+// ModelRuntime.registerProvider does with its extensionProviders map.
+func (b *UIBridge) RecordProviderRegistration(name string, config json.RawMessage) {
+	var incoming map[string]json.RawMessage
+	if err := json.Unmarshal(config, &incoming); err != nil || incoming == nil {
+		incoming = map[string]json.RawMessage{}
+	}
+	b.mu.Lock()
+	if b.registeredProviderConfigs == nil {
+		b.registeredProviderConfigs = make(map[string]map[string]json.RawMessage)
+	}
+	previous, exists := b.registeredProviderConfigs[name]
+	delete(b.registeredNativeProviders, name)
+	exists = exists || slices.Contains(b.registeredProviderOrder, name)
+	merged := make(map[string]json.RawMessage, len(previous)+len(incoming))
+	maps.Copy(merged, previous)
+	maps.Copy(merged, incoming)
+	b.registeredProviderConfigs[name] = merged
+	if !exists {
+		b.registeredProviderOrder = append(b.registeredProviderOrder, name)
+	}
+	b.mu.Unlock()
+	b.PublishModelCatalog()
+}
+
+// ForgetProviderRegistration drops a registered provider config. Upstream
+// ModelRuntime.unregisterProvider.
+func (b *UIBridge) ForgetProviderRegistration(name string) {
+	b.mu.Lock()
+	_, exists := b.registeredProviderConfigs[name]
+	exists = exists || slices.Contains(b.registeredProviderOrder, name)
+	delete(b.registeredNativeProviders, name)
+	if exists {
+		delete(b.registeredProviderConfigs, name)
+		b.registeredProviderOrder = slices.DeleteFunc(b.registeredProviderOrder, func(existing string) bool { return existing == name })
+	}
+	b.mu.Unlock()
+	if exists {
+		b.PublishModelCatalog()
+	}
 }
 
 // RegisterExtConn associates an extension's socket connection with the
@@ -1255,7 +1539,7 @@ func (b *UIBridge) RegisterExtConn(extName string, conn *Conn) {
 	b.extConns[extName] = conn
 	b.mu.Unlock()
 	if message := b.modelCatalogUpdate(); message != nil {
-		_ = conn.Send(message)
+		_ = conn.sendEncoded(message)
 	}
 }
 
@@ -1271,6 +1555,9 @@ func (b *UIBridge) HandleNotify(extName string, n *NotifyPayload) {
 
 func (b *UIBridge) HandleNotifyFrom(extName string, owner *Conn, n *NotifyPayload) {
 	if n == nil {
+		return
+	}
+	if b.handleEditorNotify(extName, owner, n) {
 		return
 	}
 	switch n.Method {
@@ -1321,6 +1608,12 @@ type remoteOverlayError struct {
 // frame from racing ahead of the ui.custom handler without allowing late frames
 // to recreate a completed overlay.
 func (b *UIBridge) reserveCustomOverlay(extName string, owner *Conn, args json.RawMessage) {
+	b.mu.RLock()
+	hasUI := b.uiCtx != extension.NoopUIContext
+	b.mu.RUnlock()
+	if !hasUI {
+		return
+	}
 	var payload RemoteOverlayOpenPayload
 	if json.Unmarshal(args, &payload) != nil || payload.Key == "" {
 		return
@@ -1357,7 +1650,7 @@ func (b *UIBridge) unregisterCustomOverlay(extName string, owner *Conn, key stri
 	delete(b.customOverlays, customOverlayOwnerPrefix(extName, owner)+key)
 }
 
-func (b *UIBridge) sendCustomInput(extName string, conn *Conn, key, data string) {
+func (b *UIBridge) sendCustomInput(ctx context.Context, extName string, conn *Conn, key, data string) {
 	b.mu.RLock()
 	handle, ok := b.customOverlays[customOverlayOwnerPrefix(extName, conn)+key]
 	b.mu.RUnlock()
@@ -1369,7 +1662,11 @@ func (b *UIBridge) sendCustomInput(extName string, conn *Conn, key, data string)
 		proxy.Close(remoteOverlayError{message: "extension connection is unavailable"})
 		return
 	}
-	args, _ := json.Marshal(RemoteOverlayInputPayload{Key: key, Data: data})
+	payload := RemoteOverlayInputPayload{Key: key, Data: data}
+	if state, err := proxy.Control(ctx, "", false, nil); err == nil {
+		payload.State = &state
+	}
+	args, _ := json.Marshal(payload)
 	if err := conn.Send(&Envelope{
 		Type: MsgNotify,
 		Notify: &NotifyPayload{
@@ -1459,16 +1756,55 @@ func (b *UIBridge) handleShutdown(actions *HostCallbacks) (*CallResultPayload, e
 }
 
 func (b *UIBridge) handleCompact(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
-	if actions == nil || actions.Compact == nil {
-		extension.CallInitiated(ctx)
-		return &CallResultPayload{}, nil
-	}
 	var opts extension.CompactOptions
+	var mode struct {
+		// AwaitCompletion asks for the call to answer when compaction
+		// finishes, with the result or the error: the SDK runs upstream's
+		// onComplete/onError from that answer.
+		AwaitCompletion bool `json:"awaitCompletion"`
+	}
 	if len(args) > 0 {
 		_ = json.Unmarshal(args, &opts)
+		_ = json.Unmarshal(args, &mode)
+	}
+	if actions == nil || actions.Compact == nil {
+		extension.CallInitiated(ctx)
+		if mode.AwaitCompletion {
+			return &CallResultPayload{Error: &ErrorInfo{Message: "compaction is not available"}}, nil
+		}
+		return &CallResultPayload{}, nil
+	}
+	if !mode.AwaitCompletion {
+		actions.Compact(ctx, &opts)
+		return &CallResultPayload{}, nil
+	}
+	type outcome struct {
+		result extension.CompactionResult
+		err    error
+	}
+	// Upstream settles once: the first outcome answers the call.
+	done := make(chan outcome, 1)
+	var settle sync.Once
+	opts.OnComplete = func(result extension.CompactionResult) {
+		settle.Do(func() { done <- outcome{result: result} })
+	}
+	opts.OnError = func(err error) {
+		settle.Do(func() { done <- outcome{err: err} })
 	}
 	actions.Compact(ctx, &opts)
-	return &CallResultPayload{}, nil
+	select {
+	case out := <-done:
+		if out.err != nil {
+			return &CallResultPayload{Error: &ErrorInfo{Message: out.err.Error()}}, nil
+		}
+		raw, err := json.Marshal(out.result)
+		if err != nil {
+			return nil, err
+		}
+		return &CallResultPayload{Result: raw}, nil
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
@@ -1775,7 +2111,7 @@ func (b *UIBridge) handleCustom(ctx context.Context, extName string, owner *Conn
 	stopCancel := context.AfterFunc(ctx, func() { proxy.Close(nil) })
 	defer stopCancel()
 
-	host := &customOverlayHost{bridge: b, extName: extName, owner: owner, key: p.Key}
+	host := &customOverlayHost{ctx: ctx, bridge: b, extName: extName, owner: owner, key: p.Key}
 	value, ok := ui.RunRemoteOverlay(
 		extension.RemoteOverlayOptions{
 			Title:          p.Title,
@@ -1788,6 +2124,11 @@ func (b *UIBridge) handleCustom(ctx context.Context, extName string, owner *Conn
 		func(h extension.RemoteOverlayHandle) {
 			proxy.SetTarget(h)
 			extension.CallInitiated(ctx)
+			if p.HasHandle && p.Overlay && owner != nil {
+				if err := sendCustomOpened(ctx, owner, p.Key, proxy); err != nil {
+					proxy.Close(remoteOverlayError{message: err.Error()})
+				}
+			}
 		},
 	)
 	if !ok {
@@ -1807,6 +2148,7 @@ func (b *UIBridge) handleCustom(ctx context.Context, extName string, owner *Conn
 // customOverlayHost forwards every input chunk from the Go-side
 // overlay back to the Node-side extension over the bridge connection.
 type customOverlayHost struct {
+	ctx     context.Context
 	bridge  *UIBridge
 	extName string
 	owner   *Conn
@@ -1814,7 +2156,7 @@ type customOverlayHost struct {
 }
 
 func (h *customOverlayHost) OnInput(data string) {
-	h.bridge.sendCustomInput(h.extName, h.owner, h.key, data)
+	h.bridge.sendCustomInput(h.ctx, h.extName, h.owner, h.key, data)
 }
 
 // overlayProxy is the buffering RemoteOverlayHandle registered
@@ -1956,27 +2298,30 @@ func (b *UIBridge) handleEditor(ctx context.Context, ui extension.UIContext, arg
 // ═══════════════════════════════════════════════════════════════════════════════
 
 func (b *UIBridge) handleSetFooter(args json.RawMessage) (*CallResultPayload, error) {
+	b.footerMu.Lock()
+	defer b.footerMu.Unlock()
 	var p struct {
 		Clear bool     `json:"clear"`
 		Lines []string `json:"lines"`
 		Width int      `json:"width"`
 	}
 	_ = json.Unmarshal(args, &p)
-	if p.Clear || len(args) == 0 || string(args) == "null" {
-		b.mu.Lock()
-		b.pendingFooterSet, b.pendingFooter = true, nil
-		ui := b.uiCtx
-		b.mu.Unlock()
-		ui.SetFooter(nil)
-		return &CallResultPayload{}, nil
+	cleared := p.Clear || len(args) == 0 || string(args) == "null"
+	var factory any
+	if !cleared {
+		factory = framedLines(p.Lines, p.Width)
 	}
 	b.mu.Lock()
 	b.pendingFooterSet = true
-	b.pendingFooter = append([]string(nil), p.Lines...)
-	b.pendingFooterW = p.Width
+	if cleared {
+		b.pendingFooter = nil
+	} else {
+		b.pendingFooter = append([]string(nil), p.Lines...)
+		b.pendingFooterW = p.Width
+	}
 	ui := b.uiCtx
 	b.mu.Unlock()
-	ui.SetFooter(framedLines(p.Lines, p.Width))
+	ui.SetFooter(factory)
 	return &CallResultPayload{}, nil
 }
 
@@ -1989,22 +2334,23 @@ func (b *UIBridge) handleSetHeader(args json.RawMessage) (*CallResultPayload, er
 		Width int      `json:"width"`
 	}
 	_ = json.Unmarshal(args, &p)
-	if p.Clear || len(args) == 0 || string(args) == "null" {
-		b.mu.Lock()
-		b.pendingHeaderSet, b.pendingHeader, b.pendingLogin = true, nil, nil
-		ui := b.uiCtx
-		b.mu.Unlock()
-		ui.SetHeader(nil)
-		return &CallResultPayload{}, nil
+	cleared := p.Clear || len(args) == 0 || string(args) == "null"
+	var factory any
+	if !cleared {
+		factory = framedLines(p.Lines, p.Width)
 	}
 	b.mu.Lock()
 	b.pendingHeaderSet = true
-	b.pendingHeader = append([]string(nil), p.Lines...)
-	b.pendingHeaderW = p.Width
 	b.pendingLogin = nil
+	if cleared {
+		b.pendingHeader = nil
+	} else {
+		b.pendingHeader = append([]string(nil), p.Lines...)
+		b.pendingHeaderW = p.Width
+	}
 	ui := b.uiCtx
 	b.mu.Unlock()
-	ui.SetHeader(framedLines(p.Lines, p.Width))
+	ui.SetHeader(factory)
 	return &CallResultPayload{}, nil
 }
 
@@ -2027,6 +2373,7 @@ func (b *UIBridge) handleSetLogin(args json.RawMessage) (*CallResultPayload, err
 	b.mu.RUnlock()
 	if ready {
 		if err := ui.SetLogin(definition); err != nil {
+			// A rejected login installs no replacement and leaves the header slot as it was.
 			return &CallResultPayload{Error: &ErrorInfo{Code: "ui_error", Message: "set login: " + err.Error()}}, nil
 		}
 	}
@@ -2067,53 +2414,25 @@ func (b *UIBridge) handleSetTitle(ui extension.UIContext, args json.RawMessage) 
 }
 
 func (b *UIBridge) handleSetEditorComponent(ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
-	// Subprocess shim: function factories can't cross the process
-	// boundary, but the TS shim runtime captures the editor
-	// "decoration" parameters (mode label + ANSI styles + border
-	// color + history entries) from the factory's returned object and
-	// forwards them here. The host applies these to the live pig
-	// editor without otherwise routing input across the socket.
-	//
-	// Wire shape:
-	//   { clear: true }                          → clear decorations
-	//   { decoration: {label, labelPrefix, labelSuffix,
-	//                  borderPrefix, borderSuffix, lockBorder},
-	//     history: [string, ...] }               → apply decorations
+	// An SDK extension's setEditorComponent(undefined): restore the host's
+	// editor, whichever extension installed the current one. A Node
+	// extension's editor component runs in its own process and installs
+	// through the ui.editor.* notifies (editor_proxy.go).
 	var p struct {
-		Clear      bool `json:"clear"`
-		Decoration *struct {
-			Label        string `json:"label"`
-			LabelPrefix  string `json:"labelPrefix"`
-			LabelSuffix  string `json:"labelSuffix"`
-			BorderPrefix string `json:"borderPrefix"`
-			BorderSuffix string `json:"borderSuffix"`
-			LockBorder   bool   `json:"lockBorder"`
-		} `json:"decoration"`
-		History []string `json:"history"`
+		Clear bool `json:"clear"`
 	}
 	_ = json.Unmarshal(args, &p)
-	if p.Clear || (p.Decoration == nil && len(p.History) == 0) {
-		ui.SetEditorComponent(nil)
+	if !p.Clear {
 		return &CallResultPayload{}, nil
 	}
-	// Hand the editor a fully-decoded decoration shape. Using a
-	// map[string]any (instead of a typed struct) is the only way to
-	// cross the extension/UI package boundary without exposing the
-	// subprocess types upstream of this file.
-	decoMap := map[string]any{}
-	if p.Decoration != nil {
-		decoMap["label"] = p.Decoration.Label
-		decoMap["labelPrefix"] = p.Decoration.LabelPrefix
-		decoMap["labelSuffix"] = p.Decoration.LabelSuffix
-		decoMap["borderPrefix"] = p.Decoration.BorderPrefix
-		decoMap["borderSuffix"] = p.Decoration.BorderSuffix
-		decoMap["lockBorder"] = p.Decoration.LockBorder
+	b.mu.Lock()
+	current := b.editor
+	b.editor = nil
+	b.mu.Unlock()
+	if current != nil {
+		current.Close()
 	}
-	payload := map[string]any{
-		"decoration": decoMap,
-		"history":    p.History,
-	}
-	ui.SetEditorComponent(payload)
+	ui.SetEditorComponent(nil)
 	return &CallResultPayload{}, nil
 }
 
@@ -2159,7 +2478,17 @@ func (b *UIBridge) handleGetEditorComponent(ui extension.UIContext) (*CallResult
 // ═══════════════════════════════════════════════════════════════════════════════
 
 func (b *UIBridge) handleTheme(ui extension.UIContext) (*CallResultPayload, error) {
-	result, err := json.Marshal(map[string]any{"theme": ui.Theme()})
+	theme := ui.Theme()
+	if ui == extension.NoopUIContext {
+		// Upstream runner.ts:noOpUIContext still exposes the active theme.
+		b.mu.RLock()
+		activeTheme := b.theme
+		b.mu.RUnlock()
+		if activeTheme != nil {
+			theme = activeTheme()
+		}
+	}
+	result, err := json.Marshal(map[string]any{"theme": theme})
 	if err != nil {
 		return nil, fmt.Errorf("serialize theme: %w", err)
 	}
@@ -2168,6 +2497,9 @@ func (b *UIBridge) handleTheme(ui extension.UIContext) (*CallResultPayload, erro
 
 func (b *UIBridge) handleGetAllThemes(ui extension.UIContext) (*CallResultPayload, error) {
 	themes := ui.GetAllThemes()
+	if themes == nil {
+		themes = []extension.ThemeMeta{}
+	}
 	result, _ := json.Marshal(map[string]any{"themes": themes})
 	return &CallResultPayload{Result: result}, nil
 }
@@ -2200,7 +2532,7 @@ func (b *UIBridge) handleSetTheme(ui extension.UIContext, args json.RawMessage) 
 		return nil, fmt.Errorf("parse setTheme args: %w", err)
 	}
 	res := ui.SetTheme(p.Theme)
-	result, _ := json.Marshal(map[string]any{"success": res.Success, "error": res.Error})
+	result, _ := json.Marshal(res)
 	return &CallResultPayload{Result: result}, nil
 }
 
@@ -2229,105 +2561,6 @@ func (b *UIBridge) handleSetToolsExpanded(ui extension.UIContext, args json.RawM
 // Category 7: Advanced UI (streaming/callback: protocol stubs)
 // ═══════════════════════════════════════════════════════════════════════════════
 
-// remoteAutocompleteSource is the bridge-side adapter that fans an
-// autocomplete query out to a TS subprocess extension. It implements
-// extension.AsyncSuggestionSource so the host UI layer can install it
-// into the editor's async-source list without depending on the
-// subprocess types.
-type remoteAutocompleteSource struct {
-	bridge     *UIBridge
-	extName    string
-	providerID string
-}
-
-// Suggest issues an autocomplete.suggest request to the registered
-// extension and returns the resulting suggestions. Honors ctx so that
-// editor mutations cancel in-flight queries.
-func (r *remoteAutocompleteSource) Suggest(ctx context.Context, lines []string, cursorLine, cursorCol int) *extension.AutocompleteSuggestions {
-	r.bridge.mu.RLock()
-	conn := r.bridge.extConns[r.extName]
-	r.bridge.mu.RUnlock()
-	if conn == nil {
-		return nil
-	}
-	args, err := json.Marshal(map[string]any{
-		"providerId": r.providerID,
-		"lines":      lines,
-		"cursorLine": cursorLine,
-		"cursorCol":  cursorCol,
-	})
-	if err != nil {
-		return nil
-	}
-	// Upstream awaits the provider and only an editor change cancels it, so
-	// the query has no host deadline; ctx is the editor's cancellation. A
-	// failure other than that cancellation is reported to the user.
-	resp, err := conn.Request(ctx, &Envelope{
-		Type:    MsgRequest,
-		Request: &RequestPayload{Method: "autocomplete.suggest", Args: args},
-	})
-	if err == nil && resp != nil && resp.Response != nil && resp.Response.Error != nil {
-		err = resp.Response.Error.ToError()
-	}
-	if err != nil {
-		if ctx.Err() == nil {
-			r.bridge.reportProviderError(r.extName, err)
-		}
-		return nil
-	}
-	if resp == nil || resp.Response == nil {
-		return nil
-	}
-	var out struct {
-		Items  []extension.AutocompleteItem `json:"items"`
-		Prefix string                       `json:"prefix"`
-	}
-	if err := json.Unmarshal(resp.Response.Result, &out); err != nil {
-		return nil
-	}
-	if len(out.Items) == 0 {
-		return nil
-	}
-	return &extension.AutocompleteSuggestions{Items: out.Items, Prefix: out.Prefix}
-}
-
-// reportProviderError shows an autocomplete provider failure as an error
-// notification, where upstream's rejected provider Promise surfaces.
-func (b *UIBridge) reportProviderError(extName string, err error) {
-	b.mu.RLock()
-	ui := b.uiCtx
-	b.mu.RUnlock()
-	if ui != nil {
-		ui.Notify(fmt.Sprintf("Extension %q autocomplete provider failed: %v", extName, err), "error")
-	}
-}
-
-func (b *UIBridge) handleAddAutocompleteProvider(extName string, ui extension.UIContext, args json.RawMessage) (*CallResultPayload, error) {
-	var p struct {
-		ProviderID string `json:"providerId"`
-	}
-	_ = json.Unmarshal(args, &p)
-	if p.ProviderID == "" {
-		// Go/Rust SDK callers register an in-process function factory
-		// which can't cross the boundary; only the TS shim adapter
-		// supplies a providerId so the host can call back. Preserve
-		// the original unsupported response for the in-process path.
-		return &CallResultPayload{
-			Error: &ErrorInfo{
-				Code:    "unsupported",
-				Message: "addAutocompleteProvider with an in-process factory requires the TS shim adapter; supply a providerId",
-			},
-		}, nil
-	}
-	src := &remoteAutocompleteSource{bridge: b, extName: extName, providerID: p.ProviderID}
-	// Pass the source through the existing AddAutocompleteProvider
-	// surface. ExtUIContext recognises the extension.AsyncSuggestionSource
-	// shape and installs it onto the editor; non-interactive UIContexts
-	// ignore it.
-	ui.AddAutocompleteProvider(src)
-	return &CallResultPayload{}, nil
-}
-
 // handleOnTerminalInput subscribes a subprocess extension to raw terminal
 // input through the UI's remote listener registration.
 //
@@ -2350,7 +2583,11 @@ func (b *UIBridge) handleOnTerminalInput(extName string, _ json.RawMessage) (*Ca
 	}
 
 	unsubscribe := ui.OnRemoteTerminalInput(extName, func(ctx context.Context, data string) extension.TerminalInputResult {
-		args, err := json.Marshal(map[string]string{"data": data})
+		state, ok := ctx.Value(terminalInputStateKey{}).(terminalInputState)
+		if !ok {
+			state = terminalInputState{editorText: ui.GetEditorText(), toolsExpanded: ui.GetToolsExpanded()}
+		}
+		args, err := json.Marshal(TerminalInputArgs{Data: data, EditorText: state.editorText, ToolsExpanded: state.toolsExpanded})
 		if err != nil {
 			return extension.TerminalInputResult{}
 		}
@@ -2447,10 +2684,20 @@ func (b *UIBridge) handleSendUserMessage(actions *HostCallbacks, args json.RawMe
 	return &CallResultPayload{}, nil
 }
 
+// DirectEntryAppend is a custom entry ctx.sessionManager.appendCustomEntry
+// appended in the extension process: upstream's SessionManager returns the
+// entry's id synchronously, so the extension generates the id and timestamp
+// and the host writes the entry with them.
+type DirectEntryAppend struct {
+	ID        string `json:"id"`
+	Timestamp string `json:"timestamp"`
+}
+
 func (b *UIBridge) handleAppendEntry(actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
 	var p struct {
-		CustomType string `json:"customType"`
-		Data       any    `json:"data"`
+		CustomType string             `json:"customType"`
+		Data       any                `json:"data"`
+		Direct     *DirectEntryAppend `json:"direct"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse appendEntry args: %w", err)
@@ -2458,7 +2705,7 @@ func (b *UIBridge) handleAppendEntry(actions *HostCallbacks, args json.RawMessag
 	if actions == nil || actions.AppendEntry == nil {
 		return &CallResultPayload{}, nil
 	}
-	if err := actions.AppendEntry(p.CustomType, p.Data); err != nil {
+	if err := actions.AppendEntry(p.CustomType, p.Data, p.Direct); err != nil {
 		return &CallResultPayload{
 			Error: &ErrorInfo{Code: "append_failed", Message: err.Error()},
 		}, nil
@@ -2499,6 +2746,17 @@ func (b *UIBridge) handleExec(ctx context.Context, actions *HostCallbacks, args 
 	return &CallResultPayload{Result: result}, nil
 }
 
+func (b *UIBridge) flagValue(actions *HostCallbacks, extName, name string) any {
+	var value any
+	if actions != nil && actions.GetFlag != nil {
+		value = actions.GetFlag(extName, name)
+	}
+	if b.resolveFlag != nil {
+		value = b.resolveFlag(extName, name, value)
+	}
+	return value
+}
+
 func (b *UIBridge) handleGetFlag(extName string, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
 	var p struct {
 		Name string `json:"name"`
@@ -2506,10 +2764,7 @@ func (b *UIBridge) handleGetFlag(extName string, actions *HostCallbacks, args js
 	if err := json.Unmarshal(args, &p); err != nil {
 		return nil, fmt.Errorf("parse getFlag args: %w", err)
 	}
-	var value any
-	if actions != nil && actions.GetFlag != nil {
-		value = actions.GetFlag(extName, p.Name)
-	}
+	value := b.flagValue(actions, extName, p.Name)
 	result, _ := json.Marshal(map[string]any{"value": value})
 	return &CallResultPayload{Result: result}, nil
 }
@@ -2626,7 +2881,9 @@ func (b *UIBridge) handleSetActiveTools(actions *HostCallbacks, args json.RawMes
 
 func (b *UIBridge) handleRefreshTools(actions *HostCallbacks) (*CallResultPayload, error) {
 	if actions != nil && actions.RefreshTools != nil {
-		actions.RefreshTools()
+		if err := actions.RefreshTools(); err != nil {
+			return nil, err
+		}
 	}
 	return &CallResultPayload{}, nil
 }
@@ -2686,14 +2943,9 @@ func (b *UIBridge) handleSetThinkingLevel(actions *HostCallbacks, args json.RawM
 }
 
 func (b *UIBridge) handleGetContextUsage(actions *HostCallbacks) (*CallResultPayload, error) {
-	if actions == nil || actions.GetContextUsage == nil {
-		result, _ := json.Marshal(map[string]any{"tokens": 0, "contextWindow": 0, "percent": 0})
-		return &CallResultPayload{Result: result}, nil
-	}
-	usage := actions.GetContextUsage()
-	if usage == nil {
-		result, _ := json.Marshal(map[string]any{"tokens": 0, "contextWindow": 0, "percent": 0})
-		return &CallResultPayload{Result: result}, nil
+	var usage *extension.ContextUsage
+	if actions != nil && actions.GetContextUsage != nil {
+		usage = actions.GetContextUsage()
 	}
 	result, _ := json.Marshal(usage)
 	return &CallResultPayload{Result: result}, nil
@@ -2791,6 +3043,87 @@ func (b *UIBridge) handleGetModelAuth(ctx context.Context, actions *HostCallback
 	return &CallResultPayload{Result: result}, nil
 }
 
+func (b *UIBridge) handleGetModelRegistryState() (*CallResultPayload, error) {
+	result, err := json.Marshal(b.ModelRegistryState())
+	if err != nil {
+		return nil, err
+	}
+	return &CallResultPayload{Result: result}, nil
+}
+
+func (b *UIBridge) handleGetProviderAuth(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+	var p struct {
+		Provider string `json:"provider"`
+	}
+	if err := json.Unmarshal(args, &p); err != nil {
+		return nil, fmt.Errorf("parse getProviderAuth args: %w", err)
+	}
+	extension.CallInitiated(ctx)
+	if actions == nil || actions.GetProviderAuth == nil {
+		return &CallResultPayload{Result: json.RawMessage("null")}, nil
+	}
+	auth, err := actions.GetProviderAuth(ctx, p.Provider)
+	if err != nil {
+		return nil, err
+	}
+	result, err := json.Marshal(auth)
+	if err != nil {
+		return nil, err
+	}
+	return &CallResultPayload{Result: result}, nil
+}
+
+func (b *UIBridge) handleRefreshModelRegistry(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+	var p struct {
+		AllowNetwork *bool    `json:"allowNetwork"`
+		Providers    []string `json:"providers"`
+		Force        *bool    `json:"force"`
+	}
+	if len(args) > 0 {
+		if err := json.Unmarshal(args, &p); err != nil {
+			return nil, fmt.Errorf("parse refreshModelRegistry args: %w", err)
+		}
+	}
+	extension.CallInitiated(ctx)
+	refreshed := map[string]any{"aborted": false, "errors": map[string]string{}}
+	if actions != nil && actions.RefreshModelRegistry != nil {
+		var err error
+		if refreshed, err = actions.RefreshModelRegistry(ctx, p.AllowNetwork, p.Providers, p.Force); err != nil {
+			return nil, err
+		}
+	}
+	// The caller's synchronous reads after `await refresh()` see the
+	// refreshed registry, so the result carries the state it applies.
+	refreshed["state"] = b.ModelRegistryState()
+	result, err := json.Marshal(refreshed)
+	if err != nil {
+		return nil, err
+	}
+	return &CallResultPayload{Result: result}, nil
+}
+
+func (b *UIBridge) handleSessionRead(actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
+	var p struct {
+		Method string          `json:"method"`
+		Args   json.RawMessage `json:"args"`
+	}
+	if err := json.Unmarshal(args, &p); err != nil {
+		return nil, fmt.Errorf("parse sessionRead args: %w", err)
+	}
+	if actions == nil || actions.SessionRead == nil {
+		return &CallResultPayload{Result: json.RawMessage("null")}, nil
+	}
+	value, err := actions.SessionRead(p.Method, p.Args)
+	if err != nil {
+		return nil, err
+	}
+	result, err := json.Marshal(value)
+	if err != nil {
+		return nil, err
+	}
+	return &CallResultPayload{Result: result}, nil
+}
+
 func (b *UIBridge) handleComplete(ctx context.Context, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
 	var p struct {
 		Model   map[string]any `json:"model"`
@@ -2859,11 +3192,7 @@ func decodeModelStreamRequest(raw json.RawMessage) (map[string]any, error) {
 }
 
 func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *HostCallbacks, args json.RawMessage) (*CallResultPayload, error) {
-	var request struct {
-		StreamID string          `json:"streamId"`
-		Model    map[string]any  `json:"model"`
-		Request  json.RawMessage `json:"request"`
-	}
+	var request ModelStreamCall
 	if err := json.Unmarshal(args, &request); err != nil {
 		return nil, fmt.Errorf("parse modelStream args: %w", err)
 	}
@@ -2882,8 +3211,9 @@ func (b *UIBridge) handleModelStream(ctx context.Context, owner *Conn, actions *
 	}
 	// Cancellation reaches the provider request only; delivery below keeps the
 	// call's context so the provider's terminal aborted event still arrives.
-	providerCtx, cancel := context.WithCancel(ctx)
+	providerCtx, cancel := context.WithCancel(extension.WithProviderStreamSimple(ctx, request.Simple))
 	defer cancel()
+	providerCtx = extension.WithModelStreamRequest(providerCtx, modelStreamCallbacks(providerCtx, owner, request))
 	key := modelStreamKey{owner: owner, streamID: request.StreamID}
 	b.modelStreamMu.Lock()
 	b.modelStreams[key] = cancel
@@ -2950,6 +3280,7 @@ func (b *UIBridge) handleSetWidget(extName string, args json.RawMessage) (*CallR
 		Key     string                           `json:"key"`
 		Lines   []string                         `json:"lines"` // legacy/current fast path
 		Content []string                         `json:"content"`
+		Width   int                              `json:"width"`
 		Options extension.ExtensionWidgetOptions `json:"options"`
 	}
 	if err := json.Unmarshal(args, &p); err != nil {
@@ -2958,6 +3289,13 @@ func (b *UIBridge) handleSetWidget(extName string, args json.RawMessage) (*CallR
 	lines := p.Lines
 	if lines == nil {
 		lines = p.Content
+	}
+	b.mu.RLock()
+	request := b.widgetRequestFunc
+	b.mu.RUnlock()
+	if request != nil {
+		request(extName, p.Key, lines, p.Options)
+		return &CallResultPayload{}, nil
 	}
 
 	if lines == nil {
@@ -2973,14 +3311,7 @@ func (b *UIBridge) handleSetWidget(extName string, args json.RawMessage) (*CallR
 		}
 	} else {
 		// Set/update widget lines (same path as widget_push).
-		b.HandleWidgetPush(extName, &WidgetPushPayload{Key: p.Key, Lines: lines})
-	}
-	b.mu.RLock()
-	request := b.widgetRequestFunc
-	b.mu.RUnlock()
-	if request != nil {
-		request(extName, p.Key, lines, p.Options)
-		return &CallResultPayload{}, nil
+		b.HandleWidgetPush(extName, &WidgetPushPayload{Key: p.Key, Lines: lines, Width: p.Width})
 	}
 	b.notifyWidgetSync()
 

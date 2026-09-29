@@ -35,23 +35,23 @@ func TestResumeCommand(t *testing.T) {
 	missing := filepath.Join(dir, "gone.jsonl")
 
 	t.Run("empty path returns empty (not persisted)", func(t *testing.T) {
-		if got := resumeCommand("", "abc", ""); got != "" {
+		if got := resumeCommand("", "abc", "", false); got != "" {
 			t.Errorf("got %q, want empty", got)
 		}
 	})
 	t.Run("missing file returns empty", func(t *testing.T) {
-		if got := resumeCommand(missing, "abc", ""); got != "" {
+		if got := resumeCommand(missing, "abc", "", false); got != "" {
 			t.Errorf("got %q, want empty", got)
 		}
 	})
 	t.Run("default dir omits --session-dir", func(t *testing.T) {
-		got := resumeCommand(existing, "abc123", "")
+		got := resumeCommand(existing, "abc123", "", false)
 		if want := "pig --session abc123"; got != want {
 			t.Errorf("got %q, want %q", got, want)
 		}
 	})
 	t.Run("custom dir includes quoted --session-dir", func(t *testing.T) {
-		got := resumeCommand(existing, "abc123", "/my sessions/dir")
+		got := resumeCommand(existing, "abc123", "/my sessions/dir", true)
 		if want := "pig --session-dir '/my sessions/dir' --session abc123"; got != want {
 			t.Errorf("got %q, want %q", got, want)
 		}

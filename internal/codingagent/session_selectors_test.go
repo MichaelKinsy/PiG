@@ -119,8 +119,8 @@ func TestSlashHandlerForkPickerCancelMessage(t *testing.T) {
 	if called {
 		t.Errorf("ForkToNewSession should not run on cancel")
 	}
-	if !strings.Contains(out.String(), "cancelled") {
-		t.Errorf("missing cancel message: %q", out.String())
+	if out.String() != "" {
+		t.Errorf("Pi cancels the fork picker silently: %q", out.String())
 	}
 }
 

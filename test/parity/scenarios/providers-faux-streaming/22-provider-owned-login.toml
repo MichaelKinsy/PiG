@@ -1,0 +1,22 @@
+# Pi providers.test.ts:293,387,474 drives provider-owned login with fixed answers. Compare complete prompts, notifications and resulting credentials, not only auth availability.
+name = "22-provider-owned-login"
+description = "Provider-owned API-key, Bedrock and Vertex login preserve prompts, notifications and scoped credentials."
+covers = ["packages/ai/src/auth/helpers.ts", "packages/ai/src/auth/types.ts", "packages/ai/src/providers/amazon-bedrock.ts", "packages/ai/src/providers/google-vertex.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/provider-login/pig"]
+pi_args = ["node", "./test/parity/testdata/provider-login/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

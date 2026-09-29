@@ -3,6 +3,8 @@ package tui
 import (
 	"strings"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 func TestExtensionInputComponentRender(t *testing.T) {
@@ -17,7 +19,8 @@ func TestExtensionInputComponentRender(t *testing.T) {
 	if !strings.Contains(joined, "Rename Session") {
 		t.Fatalf("render missing title: %q", joined)
 	}
-	if !strings.Contains(joined, "> ") || !strings.Contains(joined, "alpha") {
+	// Pi Input.setValue keeps the initial cursor before the first character.
+	if !strings.Contains(joined, "> "+widthx.CursorMarker+"\x1b[7ma\x1b[27mlpha") {
 		t.Fatalf("render missing bare input line: %q", joined)
 	}
 	if !strings.Contains(joined, "submit") || !strings.Contains(joined, "cancel") {

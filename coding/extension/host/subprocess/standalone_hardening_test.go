@@ -146,13 +146,12 @@ func TestHandleIncoming_AttributesFrameSkewDisconnect(t *testing.T) {
 		reasonCh <- reason
 	})
 
-	me := &managedExt{
+	me := withConn(&managedExt{
 		config:     ExtConfig{Name: "ctx", Path: "/x/ctx"}, // standalone (no Source)
 		host:       h,
 		supervisor: NewSupervisor(DefaultSupervisorConfig()),
-		conn:       c,
-	}
-	go h.handleIncoming(me)
+	}, c)
+	go h.handleIncoming(me, me.connection())
 
 	select {
 	case reason := <-reasonCh:

@@ -2,21 +2,15 @@ package ai
 
 import (
 	"bytes"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 )
 
 type codexMappedEvent struct {
 	data     []byte
 	terminal bool
 	skip     bool
-}
-
-func mapCodexEventFrame(data []byte) (codexMappedEvent, error) {
-	return mapCodexEventFrameForTransport(data, "SSE")
 }
 
 func mapCodexWebSocketEventFrame(data []byte) (codexMappedEvent, error) {
@@ -32,6 +26,11 @@ func mapCodexEventFrameForTransport(data []byte, transport string) (codexMappedE
 	if err := json.Unmarshal(data, &event); err != nil {
 		return codexMappedEvent{}, fmt.Errorf("Invalid Codex %s JSON: %w", transport, err)
 	}
+	return mapCodexEvent(event, data)
+}
+
+// mapCodexEvent is mapCodexEvents' per-event step (openai-codex-responses.ts:729-760) for a parsed JSON object.
+func mapCodexEvent(event map[string]any, data []byte) (codexMappedEvent, error) {
 	typeName, _ := event["type"].(string)
 	if typeName == "" {
 		return codexMappedEvent{skip: true}, nil
@@ -83,39 +82,4 @@ func codexErrorCodeAndMessage(event map[string]any) (code, message string) {
 		}
 	}
 	return code, message
-}
-
-func newCodexMappedSSEReader(ctx context.Context, source io.Reader) io.Reader {
-	reader, writer := io.Pipe()
-	go func() {
-		err := mapCodexSSE(ctx, source, writer)
-		_ = writer.CloseWithError(err)
-	}()
-	return reader
-}
-
-func mapCodexSSE(ctx context.Context, source io.Reader, destination io.Writer) error {
-	decoder := newSSEDecoder(source)
-	for decoder.Next() {
-		if err := ctx.Err(); err != nil {
-			return err
-		}
-		mapped, err := mapCodexEventFrame([]byte(decoder.Event().Data))
-		if err != nil {
-			return err
-		}
-		if mapped.skip {
-			continue
-		}
-		if _, err := fmt.Fprintf(destination, "data: %s\n\n", mapped.data); err != nil {
-			return err
-		}
-		if mapped.terminal {
-			return nil
-		}
-	}
-	if err := ctx.Err(); err != nil {
-		return err
-	}
-	return decoder.Err()
 }

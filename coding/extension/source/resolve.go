@@ -14,6 +14,8 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+
 	"github.com/BurntSushi/toml"
 	"golang.org/x/mod/modfile"
 )
@@ -483,7 +485,7 @@ func returnsSDKExtension(fn *ast.FuncDecl, aliases map[string]string) (string, b
 	return sdkModulePath, ok
 }
 
-var rustFactory = regexp.MustCompile(`(?m)^\s*pub\s+fn\s+new_extension\s*\(\s*\)\s*->\s*(?:pig_sdk::)?Extension\b`)
+var rustFactory = lazyregexp.New(`(?m)^\s*pub\s+fn\s+new_extension\s*\(\s*\)\s*->\s*(?:pig_sdk::)?Extension\b`)
 
 func resolveRust(root string) (Definition, error) {
 	var manifest struct {
@@ -527,7 +529,7 @@ func resolveRust(root string) (Definition, error) {
 	return Definition{}, fmt.Errorf("Rust extension %s has no src/lib.rs pub fn new_extension() factory or src/main.rs standalone", root)
 }
 
-var pythonFactory = regexp.MustCompile(`(?m)^def[ \t]+new_extension[ \t]*\([ \t]*\)[ \t]*->[ \t]*(?:pig_sdk\.)?Extension[ \t]*:`)
+var pythonFactory = lazyregexp.New(`(?m)^def[ \t]+new_extension[ \t]*\([ \t]*\)[ \t]*->[ \t]*(?:pig_sdk\.)?Extension[ \t]*:`)
 
 func resolvePython(root string) (Definition, error) {
 	entries, err := os.ReadDir(root)
@@ -594,6 +596,15 @@ func nodeEntrypoints(root string) ([]string, error) {
 			// Upstream loads only what pi.extensions names, so a declared
 			// directory without an entry file contributes nothing.
 			return nil, fmt.Errorf("Node extension %s declares pi.extensions directories with no extension entry file", root)
+		}
+		for i, entry := range entries {
+			if info, err := os.Stat(entry); err == nil && info.IsDir() {
+				file, ok := NodeDirectoryImport(entry)
+				if !ok {
+					return nil, fmt.Errorf("Node extension %s: pi.extensions directory %s cannot be imported: it has no index file or package.json main", root, entry)
+				}
+				entries[i] = file
+			}
 		}
 		return entries, nil
 	}

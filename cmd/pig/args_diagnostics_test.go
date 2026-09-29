@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"reflect"
 	"regexp"
 	"slices"
 	"strings"
@@ -70,8 +71,25 @@ func TestReportArgDiagnosticsMatchesPiMainOutput(t *testing.T) {
 
 func TestTuiModeAndUseThemeParseForThisRun(t *testing.T) {
 	flags := parseFlags([]string{"--tui-mode", "fullscreen", "--use-theme", "light"})
-	if flags.TuiMode != "fullscreen" || flags.UseTheme != "light" || len(flags.Diagnostics) != 0 {
+	if flags.TuiMode != "fullscreen" || flags.UseTheme == nil || *flags.UseTheme != "light" || len(flags.Diagnostics) != 0 {
 		t.Fatalf("flags = %+v", flags)
+	}
+}
+
+// Pi 0.87.1 args.ts:190-197 keeps any following argument that does not start with "-" as useTheme, including "". main.ts:666-667 and main.ts:944 forward it whenever it is not undefined, so the empty name reaches the theme controller, which reports it and falls back to dark.
+func TestUseThemeExplicitEmptyIsNotOmitted(t *testing.T) {
+	flags := parseFlags([]string{"--use-theme", ""})
+	if len(flags.Diagnostics) != 0 {
+		t.Fatalf("diagnostics = %+v", flags.Diagnostics)
+	}
+	if reflect.DeepEqual(flags, parseFlags(nil)) {
+		t.Fatal("an explicitly empty --use-theme parsed the same as an omitted flag")
+	}
+	if flags.UseTheme == nil || *flags.UseTheme != "" {
+		t.Fatalf("UseTheme = %v, want the empty name", flags.UseTheme)
+	}
+	if omitted := parseFlags(nil); omitted.UseTheme != nil {
+		t.Fatalf("omitted UseTheme = %q, want nil", *omitted.UseTheme)
 	}
 }
 

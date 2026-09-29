@@ -2,11 +2,12 @@ package codingagent
 
 import (
 	"os"
-	"regexp"
 	"runtime"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"golang.org/x/term"
 )
@@ -19,10 +20,10 @@ func chalkModifiersEnabled() bool {
 }
 
 var (
-	chalkTeamCityRe = regexp.MustCompile(`^(?:9\.0*[1-9]\d*\.|\d{2,}\.)`)
-	chalk256Re      = regexp.MustCompile(`(?i)-256(?:color)?$`)
-	chalkBasicRe    = regexp.MustCompile(`(?i)^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux`)
-	chalkNumericRe  = regexp.MustCompile(`^\d+$`)
+	chalkTeamCityRe = lazyregexp.New(`^(?:9\.0*[1-9]\d*\.|\d{2,}\.)`)
+	chalk256Re      = lazyregexp.New(`(?i)-256(?:color)?$`)
+	chalkBasicRe    = lazyregexp.New(`(?i)^screen|^xterm|^vt100|^vt220|^rxvt|color|ansi|cygwin|linux`)
+	chalkNumericRe  = lazyregexp.New(`^\d+$`)
 )
 
 // chalkColorLevel is chalk's vendored supports-color _supportsColor for a

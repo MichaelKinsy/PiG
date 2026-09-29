@@ -12,7 +12,7 @@ import (
 func bugSummaryMessages(texts ...string) []agent.AgentMessage {
 	messages := make([]agent.AgentMessage, len(texts))
 	for i, text := range texts {
-		messages[i] = agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: text}}}}
+		messages[i] = agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: text}}}}
 	}
 	return messages
 }
@@ -24,7 +24,7 @@ func TestGenerateBugReportSummaryBuildsUpstreamPrompt(t *testing.T) {
 	var gotMax int
 	completer := simpleCompleterFunc(func(_ context.Context, _ *ai.Model, system string, messages []agent.AgentMessage, options ai.StreamOptions) (string, *ai.Usage, error) {
 		gotSystem, gotMax = system, options.MaxTokens
-		gotPrompt = messages[0].User.Content[0].(ai.TextContent).Text
+		gotPrompt = messages[0].User.Content.(ai.UserContentBlocks)[0].(ai.TextContent).Text
 		return "  ## What went wrong\nHung.  ", nil, nil
 	})
 	model := &ai.Model{ID: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 100_000, MaxOutputTokens: 2048}}
@@ -50,7 +50,7 @@ func TestGenerateBugReportSummaryBuildsUpstreamPrompt(t *testing.T) {
 func TestGenerateBugReportSummaryKeepsNewestMessagesWithinBudget(t *testing.T) {
 	long := strings.Repeat("x", 4000)
 	selected := selectBugReportMessages(bugSummaryMessages(long, long, "newest"), 1100)
-	if len(selected) != 2 || selected[1].User.Content[0].(ai.TextContent).Text != "newest" {
+	if len(selected) != 2 || selected[1].User.Content.(ai.UserContentBlocks)[0].(ai.TextContent).Text != "newest" {
 		t.Fatalf("selected %d messages", len(selected))
 	}
 	if got := selectBugReportMessages(bugSummaryMessages(long), 1); len(got) != 1 {

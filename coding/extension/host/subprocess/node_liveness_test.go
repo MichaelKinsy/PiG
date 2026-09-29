@@ -50,7 +50,8 @@ func TestNodeRuntimeHeartbeatAndRequestStatesBypassHandlers(t *testing.T) {
 	if register := readLivenessEnvelope(t, peer); register.Type != MsgRegister {
 		t.Fatalf("register = %+v", register)
 	}
-	writeLivenessEnvelope(t, peer, Envelope{Type: MsgReady, Ready: &ReadyPayload{Cwd: root, Width: 80}})
+	writeLivenessEnvelope(t, peer, Envelope{Type: MsgReady, Ready: &ReadyPayload{Cwd: root, Width: 80, State: &StatePayload{HasUI: true}}})
+	// A ready snapshot must not publish UI setters for slots this extension never selected.
 	writeLivenessEnvelope(t, peer, Envelope{Type: MsgPing, Ping: &PingPayload{Nonce: "heartbeat-1"}})
 	if pong := readLivenessEnvelope(t, peer); pong.Type != MsgPong || pong.Pong == nil || pong.Pong.Nonce != "heartbeat-1" {
 		t.Fatalf("pong = %+v", pong)

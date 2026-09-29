@@ -1,0 +1,23 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode-status.test.ts:236 and interactive-mode.ts:2857-2942 transfer focus when custom UI replaces the editor, then restore the still-mounted overlay before input. The probes run actual Pi showExtensionCustom and PiG RunRemoteOverlay; they assert mounting focus, replacement input, overlay input after closure, and editor focus after a standalone replacement closes. This proves the host focus boundary, not subprocess transport or remote component identity.
+name = "43-remote-custom-focus"
+description = "Custom editor-slot UI receives focus, then restores overlay or editor focus before the next input."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/custom-focus-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/custom-focus-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"overlayFocused":true,"replacementFocused":true,"restoredFocus":true,"editorRestored":true,"editor":""']
+runs = 3

@@ -1,0 +1,23 @@
+# Pi providers.test.ts exercises explicit Models collections, model.api dispatch, superseding refresh and faux deferred lifecycle. The refresh assertion waits for the superseded caller before releasing old network work, then checks retained memory/store state.
+# Random deferred IDs are checked for presence and exact handle consistency instead of comparing unrelated generated identifiers. No ANSI, whitespace or content normalization is used.
+name = "23-models-provider-lifecycle"
+description = "Model-aware dispatch, lazy capabilities, superseding catalog refresh and deferred submit/poll/cancel match Pi."
+covers = ["packages/ai/src/models.ts", "packages/ai/src/api/lazy.ts", "packages/ai/src/models-store.ts", "packages/ai/src/providers/faux.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/provider-models/pig"]
+pi_args = ["node", "./test/parity/testdata/provider-models/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

@@ -180,7 +180,7 @@ type Verdict struct {
 // represented in the plan and do not masquerade as a successful self-contained
 // target.
 func Validate(plan Plan, resolutionWarnings []string, extensionCount int, requireFused bool) Verdict {
-	blockers := make([]string, 0, len(resolutionWarnings)+1)
+	blockers := make([]string, 0, len(resolutionWarnings))
 	for _, warning := range resolutionWarnings {
 		blockers = append(blockers, "unresolved extension: "+warning)
 	}

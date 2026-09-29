@@ -20,7 +20,7 @@ func TestLoginDialogMaskDisabledMatchesPi(t *testing.T) {
 	previous := ActiveTheme()
 	SetTheme("dark")
 	defer storeActiveTheme(previous)
-	data, err := exec.CommandContext(t.Context(), "node", filepath.Join(root, "parity/testdata/login-dialog-privacy.mjs"), root).CombinedOutput()
+	data, err := exec.CommandContext(t.Context(), "node", filepath.Join(root, "test/parity/testdata/login-dialog-privacy.mjs"), root).CombinedOutput()
 	if err != nil {
 		t.Fatalf("Pi oracle: %v: %s", err, data)
 	}

@@ -1,0 +1,30 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:1008-1015,2467-2488 retains the outer header spacers when replacing its component.
+# Capture from the top of the pane, including the leading blank row and the gap after the header. No whitespace normalization is applied.
+name = "53-extension-header-spacers"
+description = "Replacing a custom header retains host-owned outer blank rows"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/header-spacers.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/header-spacers.mjs"]
+
+[tmux]
+width = 100
+height = 30
+ready_pattern_pig = "HEADER PROBE READY"
+ready_pattern_pi = "HEADER PROBE READY"
+ready_timeout_seconds = 30
+# Stop at the first loaded-resource heading, before the host-specific provider fixture inventory.
+capture_end = "[Context]"
+steps = [{keys = ["/header-swap", "Enter"], wait_contains = ["HEADER REPLACED"], wait_timeout_seconds = 20, settle_seconds = 1}]
+
+[assert]
+both_reach_ready = true
+both_contain = ["HEADER REPLACED", "HEADER LAST"]
+escaped_output_equal = true
+runs = 3

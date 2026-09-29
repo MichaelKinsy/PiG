@@ -103,10 +103,10 @@ func TestFullscreenTuiOptionsStyleIndicatorAndMatches(t *testing.T) {
 }
 
 // TestReadClipboardTextCommandOrder ports upstream readClipboardText's Linux
-// command chain and PiG's macOS and Windows readers.
+// command chain; macOS and Windows read only through the native helper.
 func TestReadClipboardTextCommandOrder(t *testing.T) {
-	previous := clipboardGOOS
-	t.Cleanup(func() { clipboardGOOS = previous })
+	previous, previousNative := clipboardGOOS, getNativeClipboard
+	t.Cleanup(func() { clipboardGOOS, getNativeClipboard = previous, previousNative })
 	for _, tc := range []struct {
 		name  string
 		goos  string
@@ -114,6 +114,8 @@ func TestReadClipboardTextCommandOrder(t *testing.T) {
 		calls []fakeCall
 		want  string
 		log   []string
+		// native is the getNativeClipboard text; nil models no helper.
+		native *string
 	}{
 		{
 			name: "linux falls through failures in order", goos: "linux",
@@ -127,16 +129,19 @@ func TestReadClipboardTextCommandOrder(t *testing.T) {
 			calls: []fakeCall{{out: []byte{}}}, want: "", log: []string{"wl-paste --no-newline --type text"},
 		},
 		{name: "headless linux", goos: "linux", env: map[string]string{}, want: ""},
-		{name: "darwin", goos: "darwin", calls: []fakeCall{{out: []byte("mac")}}, want: "mac", log: []string{"pbpaste "}},
-		{
-			name: "windows", goos: "windows", calls: []fakeCall{{out: []byte("win\r\n")}}, want: "win\r\n",
-			log: []string{"powershell.exe -NoProfile -NonInteractive -Command [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); [Console]::Write((Get-Clipboard -Raw))"},
-		},
+		{name: "darwin", goos: "darwin", want: "mac", native: new("mac")},
+		{name: "windows", goos: "windows", want: "win\r\n", native: new("win\r\n")},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			clipboardGOOS = tc.goos
 			withEnv(t, tc.env)
 			runner := withRunner(t, &fakeRunner{calls: tc.calls})
+			getNativeClipboard = func() *tui.NativeClipboard {
+				if tc.native == nil {
+					return nil
+				}
+				return &tui.NativeClipboard{GetText: func(context.Context) (*string, bool, error) { return tc.native, true, nil }}
+			}
 			if got := readClipboardText(context.Background()); got != tc.want {
 				t.Fatalf("text = %q, want %q", got, tc.want)
 			}
@@ -151,10 +156,12 @@ func TestReadClipboardTextCommandOrder(t *testing.T) {
 // clipboard text reaches the focused editor as a bracketed paste on the owner
 // loop.
 func TestRightClickPastesIntoFocusedComponent(t *testing.T) {
-	previous := clipboardGOOS
-	t.Cleanup(func() { clipboardGOOS = previous })
-	clipboardGOOS = "darwin"
-	withRunner(t, &fakeRunner{calls: []fakeCall{{out: []byte("pasted")}}})
+	useClipboardTextTestSeams(t, "darwin", nil,
+		func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("unused") },
+		func() *tui.NativeClipboard {
+			return nativeTextHelper(func(context.Context) (*string, error) { return new("pasted"), nil })
+		},
+	)
 	m := newFullscreenProbe(t)
 	m.altScreen.SetFocus(m.editor)
 	m.handleRightClickPaste()
@@ -175,16 +182,13 @@ func TestRightClickPastesIntoFocusedComponent(t *testing.T) {
 }
 
 func TestRightClickPasteStopsWithRenderer(t *testing.T) {
-	oldRun, oldGOOS := clipboardRun, clipboardGOOS
-	t.Cleanup(func() { clipboardRun, clipboardGOOS = oldRun, oldGOOS })
-	clipboardGOOS = "darwin"
 	started, finished := make(chan struct{}), make(chan struct{})
-	clipboardRun = func(ctx context.Context, _ string, _ ...string) ([]byte, error) {
+	useBlockingClipboardBackend(t, "darwin", nil, false, func(ctx context.Context) error {
 		close(started)
 		<-ctx.Done()
 		close(finished)
-		return nil, ctx.Err()
-	}
+		return ctx.Err()
+	})
 	m := newFullscreenProbe(t)
 	m.altScreen.SetFocus(m.editor)
 	m.handleRightClickPaste()
@@ -207,19 +211,16 @@ func TestRightClickPasteStopsWithRenderer(t *testing.T) {
 }
 
 func TestClipboardReadPropagatesCancellation(t *testing.T) {
-	oldRun, oldGOOS := clipboardRun, clipboardGOOS
-	t.Cleanup(func() { clipboardRun, clipboardGOOS = oldRun, oldGOOS })
-	clipboardGOOS = "darwin"
 	started, release, done := make(chan struct{}), make(chan struct{}), make(chan struct{})
-	clipboardRun = func(ctx context.Context, _ string, _ ...string) ([]byte, error) {
+	useBlockingClipboardBackend(t, "darwin", nil, false, func(ctx context.Context) error {
 		close(started)
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return ctx.Err()
 		case <-release:
-			return nil, errors.New("test cleanup")
+			return errors.New("test cleanup")
 		}
-	}
+	})
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
 	go func() { defer close(done); readClipboardText(ctx) }()
@@ -235,12 +236,12 @@ func TestClipboardReadPropagatesCancellation(t *testing.T) {
 
 func TestRightClickPasteWaitsForOwnerQueueCapacity(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		oldRun, oldGOOS := clipboardRun, clipboardGOOS
-		t.Cleanup(func() { clipboardRun, clipboardGOOS = oldRun, oldGOOS })
-		clipboardGOOS = "darwin"
-		clipboardRun = func(context.Context, string, ...string) ([]byte, error) {
-			return []byte("queued paste"), nil
-		}
+		useClipboardTextTestSeams(t, "darwin", nil,
+			func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("unused") },
+			func() *tui.NativeClipboard {
+				return nativeTextHelper(func(context.Context) (*string, error) { return new("queued paste"), nil })
+			},
+		)
 		m := newFullscreenProbe(t)
 		m.altScreen.SetFocus(m.editor)
 	fillQueue:

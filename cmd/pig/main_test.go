@@ -57,7 +57,7 @@ func TestBuildInitialMessage_ConcatenatesFileEnvelopeAndFirstPrompt(t *testing.T
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `<file name="` + filePath + `">` + "\nhello from file\n</file>\n prompt text "
+	want := `<file name="` + filePath + `">` + "\nhello from file\n\n</file>\n prompt text "
 	if got != want {
 		t.Fatalf("prepareInitialMessage() = %q, want %q", got, want)
 	}
@@ -75,8 +75,7 @@ func TestBuildInitialMessage_MissingFileReturnsError(t *testing.T) {
 	}
 }
 
-// Ports upstream test/initial-message.test.ts. Every CLI message after the
-// first is returned for sending on its own; pig dropped them.
+// Ports packages/coding-agent/test/initial-message.test.ts:15,26,37 with the exact stdin, file text, CLI messages, and remaining-message expectations.
 func TestBuildInitialMessage_UpstreamCases(t *testing.T) {
 	for _, tc := range []struct {
 		name         string
@@ -160,7 +159,7 @@ func TestResolveBuildIdentity(t *testing.T) {
 
 func TestDetailedVersionStringIncludesPigAndUpstreamVersions(t *testing.T) {
 	got := detailedVersionString()
-	// evals/harnesses.toml reads PiG's own version from the last word of
+	// test/evals/harnesses.toml reads PiG's own version from the last word of
 	// the first line of `pig version`.
 	if first, _, _ := strings.Cut(got, "\n"); first != "pig: "+PigVersion {
 		t.Fatalf("detailedVersionString() first line = %q, want %q", first, "pig: "+PigVersion)

@@ -6,9 +6,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 cd "$ROOT"
 
-CUR=parity/coverage.md
+CUR=test/parity/coverage.md
 if [[ ! -f "$CUR" ]]; then
-  echo "release-check: parity/coverage.md missing: run 'make coverage' first"
+  echo "release-check: test/parity/coverage.md missing: run 'make coverage' first"
   exit 1
 fi
 
@@ -32,7 +32,7 @@ extract_behavioral_count() {
 }
 
 cur_covered=$(extract_behavioral_count "$(cat "$CUR")")
-prev_covered=$(extract_behavioral_count "$(git show HEAD:parity/coverage.md 2>/dev/null || true)")
+prev_covered=$(extract_behavioral_count "$(git show HEAD:test/parity/coverage.md 2>/dev/null || true)")
 
 if (( cur_covered < prev_covered )); then
   echo "release-check: coverage regressed ($prev_covered -> $cur_covered)"
@@ -41,7 +41,7 @@ fi
 
 # Any "fail" cell in the current report = release-blocker.
 if grep -q '\*\*[0-9]\+ fail\*\*' "$CUR"; then
-  echo "release-check: failing scenarios in parity/coverage.md"
+  echo "release-check: failing scenarios in test/parity/coverage.md"
   grep '\*\*[0-9]\+ fail\*\*' "$CUR"
   exit 1
 fi

@@ -41,18 +41,18 @@ func TestPaintBgWith_EmojiNoPaddingOvershoot(t *testing.T) {
 	}
 }
 
-// Case 3: chunkByWidth splits at column boundaries, not rune boundaries.
+// The production word wrapper splits at column boundaries, not rune boundaries.
 // "🚀🚀🚀hello" at width=6: three rockets fill 6 cols exactly, then "hello".
-func TestChunkByWidth_WideCharBoundary(t *testing.T) {
-	chunks, _ := chunkByWidth("\U0001F680\U0001F680\U0001F680hello", 6)
+func TestWordWrapLine_WideCharBoundary(t *testing.T) {
+	chunks := wordWrapLine("\U0001F680\U0001F680\U0001F680hello", 6, nil)
 	if len(chunks) != 2 {
-		t.Fatalf("chunkByWidth: got %d chunks %q, want 2", len(chunks), chunks)
+		t.Fatalf("got %d chunks %v, want 2", len(chunks), chunks)
 	}
-	if chunks[0] != "\U0001F680\U0001F680\U0001F680" {
-		t.Fatalf("chunkByWidth chunk[0] = %q, want 3 rockets", chunks[0])
+	if chunks[0].text != "\U0001F680\U0001F680\U0001F680" {
+		t.Fatalf("chunk[0]=%q want 3 rockets", chunks[0].text)
 	}
-	if chunks[1] != "hello" {
-		t.Fatalf("chunkByWidth chunk[1] = %q, want \"hello\"", chunks[1])
+	if chunks[1].text != "hello" {
+		t.Fatalf("chunk[1]=%q want hello", chunks[1].text)
 	}
 }
 

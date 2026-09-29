@@ -7,7 +7,7 @@ import (
 
 // OpenRouter image usage is priced by upstream openrouter-images.ts
 // parseUsage; the expected value is Pi 0.87.1's serialized usage for the same
-// response usage (parity/testdata/ai-sdk-pi.mjs).
+// response usage (test/parity/testdata/ai-sdk-pi.mjs).
 func TestOpenRouterImagesUsageCostMatchesUpstream(t *testing.T) {
 	model, ok := GetImageModel(ProviderImagesOpenRouter, "google/gemini-2.5-flash-image")
 	if !ok {

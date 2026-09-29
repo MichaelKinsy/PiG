@@ -1,0 +1,34 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:5855-5859 distinguishes API-key removal from OAuth logout.
+# Both hosts use the same synthetic API-key fixture, and --offline prevents catalog/network activity.
+name = "20-logout-api-key-removal"
+description = "API-key logout reports the same removal notice as Pi"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui", "fixture-auth"]
+driver = "interactive-tmux"
+model = "openai/gpt-5.5"
+[tmux]
+width = 200
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Removed stored API key for OpenAI."
+capture_end = "unchanged."
+settle_seconds = 1
+cwd = "../selectors/testdata/login-empty-project"
+[[tmux.steps]]
+keys = ["/logout", "Enter"]
+wait_contains = ["Select provider to logout:", "OpenAI ✓ configured"]
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Removed stored API key for OpenAI. Environment variables and models.json config are unchanged."]
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/w3-stored-key", "PI_CODING_AGENT_DIR=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["PI_CODING_AGENT_DIR=testdata/w3-stored-key", "PIG_CODING_AGENT_DIR=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--offline", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--offline", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+[assert]
+both_reach_ready = true
+both_contain = ["Removed stored API key for OpenAI. Environment variables and models.json config are unchanged."]
+escaped_output_equal = true
+runs = 3

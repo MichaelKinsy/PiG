@@ -24,6 +24,12 @@ type BeforeAgentStartCombinedResult struct {
 	// SystemPrompt is the final mutated system prompt, non-nil only if at
 	// least one handler set `result.systemPrompt` (an empty prompt included).
 	SystemPrompt *string `json:"systemPrompt,omitempty"`
+
+	// SystemPromptOptions is the per-run options object the handlers shared. It is set when the incoming options or a handler supplied sections, or a handler edited selectedTools. It does not alias the caller's base options.
+	SystemPromptOptions *BuildSystemPromptOptions `json:"systemPromptOptions,omitempty"`
+
+	// SelectedToolsEdited retains an explicit edit even when filtering non-string registry misses produces the original list.
+	SelectedToolsEdited bool `json:"-"`
 }
 
 // AttributedResourcePath pairs a resource path with the extension that

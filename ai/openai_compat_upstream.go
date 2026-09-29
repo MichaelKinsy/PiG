@@ -28,6 +28,15 @@ func upstreamUsesMaxTokens(provider, baseURL string) bool {
 		strings.Contains(strings.ToLower(baseURL), "deepseek.com")
 }
 
+// upstreamSupportsReasoningEffort mirrors detectCompat's reasoning-effort default, independently of whether the endpoint is OpenAI itself.
+func upstreamSupportsReasoningEffort(provider, baseURL string) bool {
+	switch provider {
+	case "xai", "zai", "zai-coding-cn", "moonshotai", "moonshotai-cn", "together", "cloudflare-ai-gateway", "nvidia", "ant-ling":
+		return false
+	}
+	return !upstreamURLHas(baseURL, "api.x.ai", "api.z.ai", "open.bigmodel.cn", "api.moonshot.", "api.together.ai", "api.together.xyz", "gateway.ai.cloudflare.com", "integrate.api.nvidia.com", "api.ant-ling.com")
+}
+
 func upstreamURLHas(baseURL string, parts ...string) bool {
 	for _, part := range parts {
 		if strings.Contains(baseURL, part) {

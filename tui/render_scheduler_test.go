@@ -121,6 +121,21 @@ func TestTUICancelPendingRenderInvalidatesDispatchedFrame(t *testing.T) {
 	}
 }
 
+// Pi tui.ts:932-934 cancels the render timer when stopping, including a callback
+// already runnable on the event loop. The Go timer must share its cancellation lock.
+func TestTUIStopCancelsRacingRenderTimer(t *testing.T) {
+	ui := NewWithOutput(&bytes.Buffer{}, 20, 5)
+	var timer *manualRenderTimer
+	ui.afterFunc = func(_ time.Duration, fn func()) stoppableTimer {
+		timer = &manualRenderTimer{fn: fn}
+		return timer
+	}
+	ui.SetRenderDispatcher(func(func()) { t.Fatal("stopped timer dispatched a render") })
+	ui.RequestRender()
+	ui.Stop()
+	timer.fn()
+}
+
 func TestTUIRequestRender_CoalescesPendingCalls(t *testing.T) {
 	var out bytes.Buffer
 	ui := NewWithOutput(&out, 20, 5)

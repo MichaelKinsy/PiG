@@ -9,6 +9,7 @@ import (
 	"testing/synctest"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -31,10 +32,8 @@ func TestAPIKeyLoginPromptMasksInput(t *testing.T) {
 			m := newPostLoginTestMode(t)
 			m.layout = tui.NewContainer(m.chatContainer, m.editorContainer)
 			sc := m.buildSlashContext(t.Context())
-			sc.ShowLoginAuthType = func() (string, bool) { return "api_key", true }
-			sc.ShowOAuthSelector = func(string) (string, bool) { return provider, true }
-			var received string
-			sc.SetAPIKey = func(_ string, value string) error { received = value; return nil }
+			sc.Args = provider
+			sc.SelectAuthMethod = func([]tui.OAuthProvider) (string, bool) { return "api_key", true }
 			done := make(chan error, 1)
 			go func() { done <- loginHandler(sc) }()
 			auth, err := ai.BuiltinProviderAuth(provider)
@@ -51,7 +50,12 @@ func TestAPIKeyLoginPromptMasksInput(t *testing.T) {
 			if err := <-done; err != nil {
 				t.Fatal(err)
 			}
-			if received != secret {
+			store, err := ai.NewAuthStorage(filepath.Join(m.opts.AgentDir, "auth.json"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			received, ok, err := store.Get(provider)
+			if err != nil || !ok || received.Key != secret {
 				t.Fatal("API key prompt changed the provider's value")
 			}
 			if leaked {
@@ -92,6 +96,11 @@ func TestPostLoginSelectionLosesToOwnerLoopCommands(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				m := newPostLoginTestMode(t)
 				m.opts.CWD = t.TempDir()
+				m.opts.SessionHandle = &beforeUIHandle{
+					recordingCompactHandle: &recordingCompactHandle{agent: m.agent},
+					runner:                 inproc.NewRunner(nil, m.opts.CWD),
+					sm:                     NewSessionManagerWithDir(m.opts.CWD, t.TempDir()),
+				}
 				unknown := &ai.Model{ID: "unknown", ProviderMeta: ai.ProviderMetadata{ProviderID: "unknown", API: "unknown"}}
 				if command == "same model" {
 					m.opts.Model = unknown
@@ -109,7 +118,7 @@ func TestPostLoginSelectionLosesToOwnerLoopCommands(t *testing.T) {
 					}
 					return build(spec)
 				}
-				if err := m.buildSlashContext(t.Context()).SetAPIKey("openai", "test-key"); err != nil {
+				if err := setPostLoginAPIKey(m, "openai", "test-key"); err != nil {
 					t.Fatal(err)
 				}
 				<-started
@@ -125,9 +134,10 @@ func TestPostLoginSelectionLosesToOwnerLoopCommands(t *testing.T) {
 					t.Fatal(err)
 				}
 				expected := m.opts.Model
+				expectedAgent := m.agent.Model()
 				close(release)
 				drainPostLoginTasks(m)
-				if m.opts.Model != expected || m.agent.Model() != expected {
+				if m.opts.Model != expected || m.agent.Model() != expectedAgent {
 					t.Fatalf("late login changed model: UI=%s agent=%v", modelSpec(m.opts.Model), m.agent.Model())
 				}
 				if m.opts.SettingsManager.GetDefaultModel() != "" {
@@ -185,7 +195,7 @@ func TestPostLoginSelectionRechecksSessionMutationAndCompletion(t *testing.T) {
 				m := newPostLoginTestMode(t)
 				h := &blockedPostLoginHandle{recordingCompactHandle: recordingCompactHandle{agent: m.agent, inner: NewSession("login-race", m.opts.AgentDir)}, started: make(chan struct{}), release: make(chan struct{}), afterMutation: after}
 				m.opts.SessionHandle = h
-				if err := m.buildSlashContext(t.Context()).SetAPIKey("openai", "test-key"); err != nil {
+				if err := setPostLoginAPIKey(m, "openai", "test-key"); err != nil {
 					t.Fatal(err)
 				}
 				// Serve the owner-loop queue while SetModel reaches the controlled await.

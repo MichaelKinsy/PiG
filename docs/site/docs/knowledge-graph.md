@@ -7,7 +7,7 @@ PiG is built from a small set of entities. This page lists each entity, where it
 | Entity | What it is | Where it lives | Inspect with | Read |
 |---|---|---|---|---|
 | Pi | Upstream TypeScript coding agent; the behavior oracle. | `https://github.com/earendil-works/pi` | `pig version` | `divergences.md` |
-| PiG | The Go implementation; executable pig. | `coding/pigversion/pigversion.go pins Pi` | `pig verify` | `README.md` |
+| PiG | The Go implementation; executable pig. | `internal/coding/pigversion/pigversion.go pins Pi` | `pig verify` | `README.md` |
 | Stock PiG | Product-neutral pig binary with no Piglet selected. | `cmd/pig` | `pig version` | `built-in-extensions.md` |
 | Session | Append-only JSONL tree of entries for one conversation. | `~/.pig/agent/sessions` | `/tree, /session` | `sessions.md` |
 | Model Runtime | Session-owned model lookup, auth, completion, and streaming used by every mode. | `coding/` | `/model, pig --list-models` | `models.md` |
@@ -25,7 +25,7 @@ PiG is built from a small set of entities. This page lists each entity, where it
 | Piglet Binary | Target-native pig executable for one Piglet release; verifies its closure at startup. | `pig piglet build --format binary` | `pig verify` | `piglets.md` |
 | Builder | Produces Piglet Binaries: native (needs Go and PiG source) or container (needs Docker or Podman). | `coding/pigletbuild` | `pig setup` | `piglets.md` |
 | Pig Porter | Parity workbench Piglet Resource; proposes ports, never accepts its own work. | `piglets/porter` | `make porter-check (source checkout)` | `divergences.md` |
-| Divergence | A numbered, approved, user-visible difference from pinned Pi. | `DIVERGENCES.md` | `pig docs show divergences` | `divergences.md` |
+| Divergence | A numbered, approved, user-visible difference from pinned Pi. | `docs/parity/DIVERGENCES.md` | `pig docs show divergences` | `divergences.md` |
 
 | From | Relation | To | Note |
 |---|---|---|---|

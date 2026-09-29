@@ -1,15 +1,16 @@
+// Ports packages/agent/src/types.ts.
 package agent
 
 import (
-	"encoding/json"
 	"fmt"
 	"maps"
 	"slices"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	json "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
-// Clone copies the message envelope and mutable top-level slices/maps.
+// Clone copies the message envelope and mutable top-level slices/maps. A streaming assistant becomes an independently owned current observation.
 func (m AgentMessage) Clone() AgentMessage {
 	clone := AgentMessage{}
 	switch {
@@ -17,23 +18,12 @@ func (m AgentMessage) Clone() AgentMessage {
 		clone.System = ai.GetInitialSystemMessage([]ai.Message{*m.System})
 	case m.User != nil:
 		value := *m.User
-		value.Content = slices.Clone(m.User.Content)
+		if blocks, ok := m.User.Content.(ai.UserContentBlocks); ok {
+			value.Content = slices.Clone(blocks)
+		}
 		clone.User = &value
 	case m.Assistant != nil:
-		value := *m.Assistant
-		value.Content = slices.Clone(m.Assistant.Content)
-		value.Diagnostics = slices.Clone(m.Assistant.Diagnostics)
-		if m.Assistant.Usage != nil {
-			usage := *m.Assistant.Usage
-			value.Usage = &usage
-		}
-		if m.Assistant.Deferred != nil {
-			deferred := *m.Assistant.Deferred
-			value.Deferred = &deferred
-		}
-		if m.Assistant.EndTurn != nil {
-			value.EndTurn = new(*m.Assistant.EndTurn)
-		}
+		value := *m.Assistant.Observe()
 		clone.Assistant = &value
 	case m.ToolResult != nil:
 		value := *m.ToolResult
@@ -49,7 +39,13 @@ func (m AgentMessage) Clone() AgentMessage {
 	return clone
 }
 
-// MarshalJSON emits the upstream flat role-discriminated AgentMessage union.
+// MarshalJSON observes retained streaming messages at the serialization boundary.
+func (m AssistantMessage) MarshalJSON() ([]byte, error) {
+	type plain AssistantMessage
+	return json.Marshal((*plain)(m.Observe()))
+}
+
+// MarshalJSON emits the upstream flat role-discriminated AgentMessage union. User strings and text blocks retain their JavaScript UTF-16 units.
 func (m AgentMessage) MarshalJSON() ([]byte, error) {
 	variants := 0
 	if m.System != nil {
@@ -75,21 +71,30 @@ func (m AgentMessage) MarshalJSON() ([]byte, error) {
 	case m.System != nil:
 		return json.Marshal(m.System)
 	case m.User != nil:
-		content, err := marshalAgentContent(m.User.Content)
-		if err != nil {
-			return nil, err
+		var content any
+		switch value := m.User.Content.(type) {
+		case ai.UserText:
+			content = value
+		case ai.UserContentBlocks:
+			encoded, err := marshalAgentContent(value)
+			if err != nil {
+				return nil, err
+			}
+			content = encoded
+		case nil:
+			content = []any{}
 		}
 		return json.Marshal(struct {
 			Role      string `json:"role"`
-			Content   []any  `json:"content"`
+			Content   any    `json:"content"`
 			Timestamp int64  `json:"timestamp"`
 		}{Role: RoleUser, Content: content, Timestamp: m.User.Timestamp})
 	case m.Assistant != nil:
-		content, err := marshalAgentContent(m.Assistant.Content)
+		message := m.Assistant.Observe()
+		content, err := marshalAgentContent(message.Content)
 		if err != nil {
 			return nil, err
 		}
-		message := m.Assistant
 		return json.Marshal(struct {
 			Role                  string                          `json:"role"`
 			Content               []any                           `json:"content"`
@@ -146,7 +151,7 @@ func (m AgentMessage) MarshalJSON() ([]byte, error) {
 	}
 }
 
-// UnmarshalJSON decodes the upstream flat role-discriminated AgentMessage union.
+// UnmarshalJSON decodes the upstream flat role-discriminated AgentMessage union and retains lone UTF-16 units in user content as WTF-8.
 func (m *AgentMessage) UnmarshalJSON(data []byte) error {
 	var wire agentMessageWire
 	if err := json.Unmarshal(data, &wire); err != nil {
@@ -286,11 +291,7 @@ func marshalAgentContent[T any](content []T) ([]any, error) {
 func marshalAgentContentBlock(block ai.ContentBlock) (any, error) {
 	switch value := block.(type) {
 	case ai.TextContent:
-		return struct {
-			Type          string `json:"type"`
-			Text          string `json:"text"`
-			TextSignature string `json:"textSignature,omitempty"`
-		}{Type: "text", Text: value.Text, TextSignature: value.TextSignature}, nil
+		return value, nil
 	case ai.ImageContent:
 		return struct {
 			Type     string `json:"type"`
@@ -300,25 +301,25 @@ func marshalAgentContentBlock(block ai.ContentBlock) (any, error) {
 	case ai.ThinkingContent:
 		return value, nil
 	case ai.ToolCall:
-		return struct {
-			Type             string        `json:"type"`
-			ID               string        `json:"id"`
-			Name             string        `json:"name"`
-			Arguments        ai.JsonObject `json:"arguments"`
-			ThoughtSignature string        `json:"thoughtSignature,omitempty"`
-			Namespace        string        `json:"namespace,omitempty"`
-		}{Type: "toolCall", ID: value.ID, Name: value.Name, Arguments: value.Arguments, ThoughtSignature: value.ThoughtSignature, Namespace: value.Namespace}, nil
+		return value, nil
 	default:
 		return nil, fmt.Errorf("unsupported content block %T", block)
 	}
 }
 
-func unmarshalUserContent(data []byte) ([]ai.UserContentBlock, error) {
+func unmarshalUserContent(data []byte) (ai.UserContent, error) {
+	if len(data) > 0 && data[0] == '"' {
+		var text string
+		if err := json.Unmarshal(data, &text); err != nil {
+			return nil, err
+		}
+		return ai.UserText(text), nil
+	}
 	blocks, err := unmarshalAgentContent(data)
 	if err != nil {
 		return nil, err
 	}
-	content := make([]ai.UserContentBlock, len(blocks))
+	content := make(ai.UserContentBlocks, len(blocks))
 	for i, block := range blocks {
 		value, ok := block.(ai.UserContentBlock)
 		if !ok {

@@ -147,10 +147,13 @@ func TestUpstreamReferenceNeedsAUniqueFile(t *testing.T) {
 
 func TestPortMapExpandsBracesAndBareNames(t *testing.T) {
 	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "docs", "parity"), 0o755); err != nil {
+		t.Fatal(err)
+	}
 	portMap := "| `packages/agent/src/a.ts` | `agent/harness/env/{env,exec}.go` | ✅ |\n" +
 		"| `packages/agent/src/b.ts` | `internal/codingagent/tools/bash.go + bash_executor.go (note)` | ✅ |\n" +
 		"| `packages/agent/src/c.ts` | `(not needed)` | n/a |\n"
-	if err := os.WriteFile(filepath.Join(root, "PORT_MAP.md"), []byte(portMap), 0o600); err != nil {
+	if err := os.WriteFile(filepath.Join(root, "docs/parity/PORT_MAP.md"), []byte(portMap), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	m, err := loadPortMap(root)
@@ -243,7 +246,7 @@ func TestBaselineRejectsUntiedEntries(t *testing.T) {
 func TestBaselineFileIsValid(t *testing.T) {
 	root := filepath.Join("..", "..", "..")
 	e := &env{Divergences: map[string]bool{}}
-	for _, ledger := range []string{"DIVERGENCES.md", filepath.Join("docs", "additive-features.md")} {
+	for _, ledger := range []string{"docs/parity/DIVERGENCES.md", filepath.Join("docs", "additive-features.md")} {
 		data, err := os.ReadFile(filepath.Join(root, ledger))
 		if err != nil {
 			t.Fatal(err)

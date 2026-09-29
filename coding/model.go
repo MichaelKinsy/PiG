@@ -40,6 +40,7 @@ import (
 // hand-rolling provider switching:
 //
 //	svcs, _ := coding.NewServices(...)
+//	defer svcs.Close()
 //	model, _ := coding.BuildModel("github-copilot/gpt-4o-mini", svcs)
 //	rt, _ := coding.NewRuntime(coding.RuntimeOptions{Services: svcs})
 //	sess, _ := rt.New(coding.SessionStartOptions{Model: model})
@@ -62,6 +63,13 @@ func buildModel(spec string, svcs *Services, apiKey string) (*ai.Model, error) {
 	modelID := parts[1]
 
 	registry := svcs.Registry()
+	if registry.GetProvider(providerID) != nil {
+		model := svcs.ModelRuntime().GetModel(providerID, modelID)
+		if model == nil {
+			return nil, fmt.Errorf("model not found: %s/%s", providerID, modelID)
+		}
+		return model, nil
+	}
 	generated, hasGenerated := lookupGeneratedModel(providerID, modelID)
 	var entry icodingagent.ModelEntry
 	if hasGenerated {
@@ -81,16 +89,17 @@ func BuildModelFromEntry(providerID, modelID string, entry icodingagent.ModelEnt
 	return buildModelFromEntry(providerID, modelID, entry, svcs, "")
 }
 
-// buildModelFromEntry is BuildModelFromEntry with upstream's options.apiKey:
-// a non-empty apiKey replaces the resolved credential.
 func buildModelFromEntry(providerID, modelID string, entry icodingagent.ModelEntry, svcs *Services, apiKey string) (*ai.Model, error) {
 	if svcs == nil {
 		return nil, fmt.Errorf("coding: BuildModelFromEntry: Services is required")
 	}
+	if model := BuildNativeModel(svcs.Registry().ModelRegistry, providerID, modelID); model != nil {
+		return model, nil
+	}
 	entry.ProviderID = providerID
 	entry.ModelID = modelID
 	apiKind := ai.API(entry.API)
-	provider, err := buildProviderForEntry(providerID, modelID, apiKind, entry, svcs, apiKey)
+	provider, err := buildProviderForEntry(providerID, modelID, apiKind, entry, svcs, apiKey, false)
 	if err != nil {
 		return nil, err
 	}
@@ -171,8 +180,8 @@ func lookupGeneratedModel(providerID, modelID string) (*ai.GeneratedModel, bool)
 
 // buildProviderForEntry builds the provider for entry. A non-empty explicitKey
 // is upstream's options.apiKey: it owns the request ahead of runtime, stored,
-// configured, and environment credentials.
-func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry icodingagent.ModelEntry, svcs *Services, explicitKey string) (ai.Provider, error) {
+// configured, and environment credentials. The Anthropic leaf retains the selected model's reasoning metadata and limits instead of resolving it again from the built-in catalog.
+func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry icodingagent.ModelEntry, svcs *Services, explicitKey string, resolvedAuth bool) (ai.Provider, error) {
 	apiKey := entry.APIKey
 	if explicitKey != "" {
 		apiKey = explicitKey
@@ -180,14 +189,14 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 	baseURL := entry.BaseURL
 	extraHeaders := cloneStringMap(entry.Headers)
 
-	if providerID == "test-faux" {
+	if providerID == "test-faux" && !resolvedAuth {
 		if os.Getenv("PIG_TEST_FAUX") != "1" {
 			return nil, fmt.Errorf("coding: BuildModel: test-faux is disabled")
 		}
 		return svcs.testFauxProvider(), nil
 	}
 
-	if providerID == "github-copilot" {
+	if providerID == "github-copilot" && !resolvedAuth {
 		// Re-open auth from disk so this provider has its own handle
 		// (the Services-owned handle is shared and may be in-use).
 		auth, err := ai.NewAuthStorage(filepath.Join(svcs.AgentDir(), "auth.json"))
@@ -200,10 +209,14 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 			API:       apiKind,
 			Reasoning: entry.Reasoning,
 			// EnvToken carries the env-resolved API key (entry.APIKey is set
-			// from COPILOT_GITHUB_TOKEN/GH_TOKEN/GITHUB_TOKEN for github-copilot)
+			// from COPILOT_GITHUB_TOKEN for github-copilot)
 			// so the provider can fall back to it when auth.json has no OAuth
 			// credential, matching upstream auth-storage.getApiKey.
 			EnvToken: entry.APIKey,
+			// A resolved key sends the request model's base URL, which the
+			// ModelRuntime sets from the credential's derived auth base URL.
+			BaseURL:       baseURL,
+			ModelMetadata: modelFromEntry(entry, nil),
 			RuntimeToken: func() (string, bool) {
 				if explicitKey != "" {
 					return explicitKey, true
@@ -218,8 +231,13 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 	// key callback resolve it there so an OAuth refresh follows the request
 	// context; the others resolve it here, once per BuildModel.
 	resolveAPIKey := requestAPIKey(svcs, providerID, apiKey)
-	if explicitKey != "" {
+	if explicitKey != "" || resolvedAuth {
 		resolveAPIKey = func(context.Context) (string, error) { return explicitKey, nil }
+	}
+	if callback := svcs.Registry().ProviderStreamSimple(providerID); callback != nil {
+		provider := &registeredStreamProvider{id: providerID, streamSimple: callback, apiKey: resolveAPIKey}
+		provider.model = modelFromEntry(entry, provider)
+		return provider, nil
 	}
 	if !acceptsRequestAPIKey(apiKind) {
 		var err error
@@ -233,6 +251,7 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 			baseURL = firstNonEmpty(os.Getenv("OLLAMA_HOST"), "http://localhost:11434/v1")
 		}
 		return ai.NewOpenAIProvider(ai.OpenAIConfig{
+			ModelMetadata:  modelFromEntry(entry, nil),
 			BaseURL:        baseURL,
 			APIKey:         apiKey,
 			GetAPIKey:      resolveAPIKey,
@@ -246,6 +265,7 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 		}), nil
 	case ai.APIOpenAIResponses:
 		return ai.NewOpenAIResponsesProvider(ai.OpenAIResponsesConfig{
+			ModelMetadata:  modelFromEntry(entry, nil),
 			BaseURL:        baseURL,
 			APIKey:         apiKey,
 			GetAPIKey:      resolveAPIKey,
@@ -259,14 +279,16 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 		}), nil
 	case ai.APIOpenAICodexResponses:
 		return ai.NewOpenAICodexResponsesProvider(ai.OpenAICodexResponsesConfig{
-			Compat:     cloneCompat(entry.Compat),
-			BaseURL:    baseURL,
-			APIKey:     apiKey,
-			Model:      modelID,
-			ProviderID: providerID,
+			ModelMetadata: modelFromEntry(entry, nil),
+			Compat:        cloneCompat(entry.Compat),
+			BaseURL:       baseURL,
+			APIKey:        apiKey,
+			Model:         modelID,
+			ProviderID:    providerID,
 		}), nil
 	case ai.APIAzureOpenAIResponses:
 		return ai.NewAzureOpenAIResponsesProvider(ai.AzureOpenAIResponsesConfig{
+			ModelMetadata:  modelFromEntry(entry, nil),
 			Compat:         cloneCompat(entry.Compat),
 			BaseURL:        baseURL,
 			APIKey:         apiKey,
@@ -278,47 +300,53 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 		}), nil
 	case ai.APIAnthropicMessages:
 		config := ai.AnthropicConfig{
-			BaseURL:      baseURL,
-			APIKey:       apiKey,
-			Model:        modelID,
-			ProviderID:   providerID,
-			ExtraHeaders: extraHeaders,
-			Compat:       cloneCompat(entry.Compat),
-			GetAPIKey:    resolveAPIKey,
-			Env:          ai.ProviderEnv(maps.Clone(entry.Env)),
+			ModelMetadata: modelFromEntry(entry, nil),
+			BaseURL:       baseURL,
+			APIKey:        apiKey,
+			Model:         modelID,
+			ProviderID:    providerID,
+			ExtraHeaders:  extraHeaders,
+			Compat:        cloneCompat(entry.Compat),
+			GetAPIKey:     resolveAPIKey,
+			Env:           ai.ProviderEnv(maps.Clone(entry.Env)),
 		}
 		return ai.NewAnthropicProvider(config), nil
 	case ai.APIGoogleGenerativeAI:
 		return ai.NewGoogleProvider(ai.GoogleConfig{
-			BaseURL:      baseURL,
-			APIKey:       apiKey,
-			Model:        modelID,
-			ProviderID:   providerID,
-			APIVersion:   googleAPIVersionForBaseURL(baseURL),
-			ExtraHeaders: extraHeaders,
+			BaseURL:          baseURL,
+			APIKey:           apiKey,
+			Model:            modelID,
+			ProviderID:       providerID,
+			APIVersion:       googleAPIVersionForBaseURL(baseURL),
+			ExtraHeaders:     extraHeaders,
+			ThinkingLevelMap: cloneThinkingLevelMap(entry.ThinkingLevelMap),
 		}), nil
 	case ai.APIGoogleVertex:
 		return ai.NewGoogleVertexProvider(ai.GoogleVertexConfig{
-			BaseURL:    baseURL,
-			APIKey:     apiKey,
-			Model:      modelID,
-			ProviderID: providerID,
-			Headers:    extraHeaders,
+			BaseURL:          baseURL,
+			APIKey:           apiKey,
+			Model:            modelID,
+			ProviderID:       providerID,
+			Headers:          extraHeaders,
+			ThinkingLevelMap: cloneThinkingLevelMap(entry.ThinkingLevelMap),
 		}), nil
 	case ai.APIBedrockConverseStream:
 		// Amazon Bedrock uses AWS native auth (SigV4 via the default
 		// credentials chain, or AWS_BEARER_TOKEN_BEDROCK). No API key
 		// from env or registry is required at construction time; the
-		// AWS SDK resolves credentials at request time.
-		return ai.NewBedrockProviderWithName(modelID, entry.DisplayName, baseURL), nil
+		// AWS SDK resolves credentials at request time. The selected model
+		// carries the configured provider identity (bedrock-converse-stream.ts:130
+		// reports model.provider), the base URL and the limits.
+		return ai.NewBedrockProviderWithModel(*modelFromEntry(entry, nil)), nil
 	case ai.APIMistralConversations:
 		return ai.NewMistralProvider(ai.MistralConfig{
-			BaseURL:      baseURL,
-			APIKey:       apiKey,
-			Model:        modelID,
-			ProviderID:   providerID,
-			ExtraHeaders: extraHeaders,
-			Reasoning:    entry.Reasoning,
+			ModelMetadata: modelFromEntry(entry, nil),
+			BaseURL:       baseURL,
+			APIKey:        apiKey,
+			Model:         modelID,
+			ProviderID:    providerID,
+			ExtraHeaders:  extraHeaders,
+			Reasoning:     entry.Reasoning,
 		}), nil
 	case ai.APIPiMessages:
 		config := ai.PiMessagesConfig{
@@ -328,7 +356,7 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 			ProviderID:   providerID,
 			ExtraHeaders: extraHeaders,
 		}
-		if _, radius := svcs.Registry().RadiusOAuth(providerID); radius {
+		if _, radius := svcs.Registry().RadiusOAuth(providerID); radius && !resolvedAuth {
 			registry := svcs.Registry().ModelRegistry
 			config.GetAPIKey = func(ctx context.Context) (string, error) { return registry.RadiusAPIKey(ctx, providerID) }
 		} else {
@@ -337,6 +365,7 @@ func buildProviderForEntry(providerID, modelID string, apiKind ai.API, entry ico
 		return ai.NewPiMessagesProvider(config), nil
 	default:
 		return ai.NewOpenAIProvider(ai.OpenAIConfig{
+			ModelMetadata:  modelFromEntry(entry, nil),
 			BaseURL:        baseURL,
 			APIKey:         apiKey,
 			GetAPIKey:      resolveAPIKey,

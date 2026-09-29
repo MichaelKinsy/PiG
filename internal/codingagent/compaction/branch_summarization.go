@@ -1,3 +1,4 @@
+// Ports packages/coding-agent/src/core/compaction/branch-summarization.ts
 // Branch summarization for tree navigation.
 //
 // When navigating to a different point in the session tree, this generates
@@ -10,14 +11,13 @@ package compaction
 
 import (
 	"context"
-	"encoding/json"
-	"fmt"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -77,6 +77,8 @@ type GenerateBranchSummaryOptions struct {
 	Model *ai.Model
 	// Completer handles the actual LLM call.
 	Completer SimpleCompleter
+	// StreamFn overrides Completer when supplied, as in compaction.
+	StreamFn StreamFn
 	// CustomInstructions are appended to (or replace) the default prompt.
 	CustomInstructions string
 	// ReplaceInstructions, when true, replaces the default prompt entirely.
@@ -332,7 +334,7 @@ func PrepareBranchEntries(entries []codingagent.SessionEntry, tokenBudget int) B
 // entries by calling the LLM via opts.Completer.
 //
 // Returns BranchSummaryResult{Aborted: true} when ctx is cancelled.
-// Returns BranchSummaryResult{Error: "..."} on LLM error.
+// Returns BranchSummaryResult{Error: "..."} with Pi's operation label and tool-call diagnostic on LLM failure.
 //
 // Mirrors upstream generateBranchSummary (branch-summarization.ts:250).
 func GenerateBranchSummary(ctx context.Context, entries []codingagent.SessionEntry, opts GenerateBranchSummaryOptions) BranchSummaryResult {
@@ -376,7 +378,7 @@ func GenerateBranchSummary(ctx context.Context, entries []codingagent.SessionEnt
 		{
 			User: &agent.UserMessage{
 				Role: "user",
-				Content: []ai.UserContentBlock{
+				Content: ai.UserContentBlocks{
 					ai.TextContent{Text: promptText},
 				},
 				Timestamp: ts,
@@ -391,13 +393,13 @@ func GenerateBranchSummary(ctx context.Context, entries []codingagent.SessionEnt
 		maxTokens = min(maxTokens, opts.Model.Capabilities.MaxOutputTokens)
 	}
 
-	raw, usage, err := completeSummarization(ctx, opts.Model, opts.Completer, nil, opts.Retry, SummarizationSystemPrompt, req, ai.StreamOptions{MaxTokens: maxTokens})
+	raw, usage, err := completeSummarization(ctx, opts.Model, opts.Completer, opts.StreamFn, opts.Retry, SummarizationSystemPrompt, req, ai.StreamOptions{MaxTokens: maxTokens})
 	if err != nil {
 		// Distinguish context cancellation (aborted) from other errors.
 		if ctx.Err() != nil {
 			return BranchSummaryResult{Aborted: true}
 		}
-		return BranchSummaryResult{Error: fmt.Sprintf("branch summarization failed: %s", err.Error())}
+		return BranchSummaryResult{Error: summarizationFailure("Branch summarization", err).Error()}
 	}
 
 	// Build final summary with preamble and file ops.

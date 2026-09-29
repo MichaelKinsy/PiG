@@ -12,10 +12,11 @@ import (
 func TestAssistantThinkingUsesThinkingTransformContext(t *testing.T) {
 	m := resumeThinkingMode(t, false, userMsg("question"), assistantMsg(""))
 	block := m.newAssistantMessageBlock()
-	const diagram = "```mermaid\nsequenceDiagram\n  A->>B: seq [1;1:1A]\n```"
+	// Pi emits a final partial-parse warning for this flowchart, but never transforms the thinking block.
+	const diagram = "```mermaid\nflowchart LR\n  A[Foo] invalid\n```"
 	block.SetContent([]tui.AssistantSegment{{Thinking: true, Text: diagram}, {Text: diagram}})
 	got := stripANSITest(strings.Join(block.Render(80), "\n"))
-	if strings.Count(got, "Mermaid diagram not rendered") != 1 || !strings.Contains(got, "sequenceDiagram") {
+	if strings.Count(got, "Mermaid diagram not rendered") != 1 || !strings.Contains(got, "flowchart LR") {
 		t.Fatalf("thinking must retain the code block while only text gets the Mermaid transform: %q", got)
 	}
 }
@@ -45,7 +46,7 @@ func TestReviewResumeThinkingMarkdown(t *testing.T) {
 		ai.TextContent{Text: "answer"},
 	))
 	m.renderSessionEntries()
-	want := []string{"", " Resumed bold and code", "", " - first", " - second", "", " answer"}
+	want := []string{"\x1b]133;A\x07", " Resumed bold and code", "", " - first", " - second", "", "\x1b]133;B\x07\x1b]133;C\x07 answer"}
 	if got := assistantLines(m.assistantBlocks[0]); !slices.Equal(got, want) {
 		t.Fatalf("RRT-002: %q, want %q", got, want)
 	}

@@ -1,48 +1,33 @@
 package tools
 
 import (
-	"errors"
 	"fmt"
-	"syscall"
+
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 )
 
-// nodeErrorMessages are libuv's messages for the errno values the file
-// tools surface (uv_strerror).
-var nodeErrorMessages = map[syscall.Errno][2]string{
-	syscall.ENOENT:       {"ENOENT", "no such file or directory"},
-	syscall.EACCES:       {"EACCES", "permission denied"},
-	syscall.EPERM:        {"EPERM", "operation not permitted"},
-	syscall.ENOTDIR:      {"ENOTDIR", "not a directory"},
-	syscall.EISDIR:       {"EISDIR", "illegal operation on a directory"},
-	syscall.ELOOP:        {"ELOOP", "too many symbolic links encountered"},
-	syscall.ENAMETOOLONG: {"ENAMETOOLONG", "name too long"},
-}
+// NodeErrorCode returns the Node error code (error.code) for a file system or spawn error, or "" when it has none.
+func NodeErrorCode(err error) string { return nodeErrorCode(err) }
 
 // nodeErrorCode returns the Node error code (error.code) for a file system
-// error, or "" when it has none.
+// error, or "" when it has none. On Windows it is libuv's translation of the
+// system error: a missing file or parent directory is ENOENT and
+// ERROR_ACCESS_DENIED is EPERM.
 func nodeErrorCode(err error) string {
-	if errno, ok := errors.AsType[syscall.Errno](err); ok {
-		if m, ok := nodeErrorMessages[errno]; ok {
-			return m[0]
-		}
-	}
-	return ""
+	return nodeerrno.ErrorCode(err)
 }
 
-// nodeFSError formats err as Node's fs promises reject it:
+// NodeFSError formats err as Node's fs promises reject it:
 // "<CODE>: <message>, <syscall> '<path>'" (read errors carry no path).
 // Errors without a known errno keep their Go text.
-func nodeFSError(err error, syscallName, path string) string {
-	var errno syscall.Errno
-	if !errors.As(err, &errno) {
-		return err.Error()
-	}
-	m, ok := nodeErrorMessages[errno]
+func NodeFSError(err error, syscallName, path string) string {
+	code := nodeErrorCode(err)
+	description, ok := nodeerrno.Description(code)
 	if !ok {
 		return err.Error()
 	}
 	if path == "" {
-		return fmt.Sprintf("%s: %s, %s", m[0], m[1], syscallName)
+		return fmt.Sprintf("%s: %s, %s", code, description, syscallName)
 	}
-	return fmt.Sprintf("%s: %s, %s '%s'", m[0], m[1], syscallName, path)
+	return fmt.Sprintf("%s: %s, %s '%s'", code, description, syscallName, path)
 }

@@ -1,0 +1,1 @@
+- Name generated Google and Vertex tool-call IDs `name_<epoch ms>_<counter>` with one counter per API, and regenerate an ID that repeats an earlier call in the same message, as Pi does.

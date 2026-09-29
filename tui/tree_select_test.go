@@ -332,6 +332,7 @@ func TestFoldRendersFoldedConnectorMarker(t *testing.T) {
 		}},
 	}}
 	ts := NewTreeSelect("", root)
+	ts.SetInitialCursor("a1", "")
 	// A is at idx 1 with prefix "├─ " (branch under TOP, !isLast).
 	// A is foldable: nChildren=1 AND parent TOP has multipleChildren.
 	rendered := ts.Render(80)
@@ -616,6 +617,7 @@ func TestFilterDefaultHidesSettingsTaggedRows(t *testing.T) {
 // including the settings-tagged ones. With 5 modes the cycle is
 // default → no-tools → user-only → labeled-only → all.
 func TestFilterAllShowsEverything(t *testing.T) {
+	treeHelpTestKeybindings(t, map[string][]string{"app.tree.filter.cycleForward": {"tab"}})
 	root := &fakeNodeTagged{id: "r", kids: []TreeNode{
 		&fakeNodeTagged{id: "u", label: "user msg"},
 		&fakeNodeTagged{id: "m", label: "model_change", tags: []string{"settings"}},
@@ -634,9 +636,9 @@ func TestFilterAllShowsEverything(t *testing.T) {
 	}
 }
 
-// TestFilterTabCyclesAndShiftTabReverses: Tab advances forward, Shift+Tab
-// (\\x1b[Z) reverses. Tests the first two steps of the 5-mode cycle.
+// Explicit app filter bindings can use Tab and Shift+Tab. The first steps and backward wrap follow the five-mode cycle.
 func TestFilterTabCyclesAndShiftTabReverses(t *testing.T) {
+	treeHelpTestKeybindings(t, map[string][]string{"app.tree.filter.cycleForward": {"tab"}, "app.tree.filter.cycleBackward": {"shift+tab"}})
 	root := &fakeNodeTagged{id: "r", kids: []TreeNode{
 		&fakeNodeTagged{id: "u", label: "user"},
 	}}
@@ -663,6 +665,7 @@ func TestFilterTabCyclesAndShiftTabReverses(t *testing.T) {
 // to a mode that still has the current row visible, the cursor
 // stays put on the same id.
 func TestFilterCyclePreservesCursorWhenRowStillVisible(t *testing.T) {
+	treeHelpTestKeybindings(t, map[string][]string{"app.tree.filter.cycleForward": {"tab"}})
 	root := &fakeNodeTagged{id: "r", kids: []TreeNode{
 		&fakeNodeTagged{id: "u", label: "user"},
 		&fakeNodeTagged{id: "m", label: "settings", tags: []string{"settings"}},
@@ -720,12 +723,13 @@ func TestFilterRenderHeaderMatchesUpstreamShape(t *testing.T) {
 	ts := NewTreeSelect("", root)
 	header := func() []string {
 		var out []string
-		for _, line := range ts.Render(100)[:5] {
+		for _, line := range ts.Render(100)[:6] {
 			out = append(out, strings.TrimRight(stripANSI(line), " "))
 		}
 		return out
 	}
 	want := []string{
+		"",
 		strings.Repeat("─", 100),
 		"   Session Tree",
 		"  ↑/↓ move · ←/→ page · " + FormatKeyText("alt", false) + "+←/→ branch · ctrl+x copy · shift+l label · shift+t label time",
@@ -737,7 +741,7 @@ func TestFilterRenderHeaderMatchesUpstreamShape(t *testing.T) {
 	}
 	// Cycling filters keeps the header shape.
 	for range 4 {
-		ts.HandleInput("\t")
+		ts.HandleInput("\x0f")
 	}
 	if got := header(); strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("header after cycling filters =\n%s", strings.Join(got, "\n"))
@@ -779,6 +783,7 @@ func TestTreeHelpWrapsWholeItems(t *testing.T) {
 }
 
 func TestFilterNoToolsHidesToolResultAndSettings(t *testing.T) {
+	useTreeKeybindings(t, nil)
 	root := &fakeNodeTagged{id: "r", kids: []TreeNode{
 		&fakeNodeTagged{id: "u", label: "user"},
 		&fakeNodeTagged{id: "tr", label: "tool result", tags: []string{"tool_result"}},
@@ -786,7 +791,7 @@ func TestFilterNoToolsHidesToolResultAndSettings(t *testing.T) {
 		&fakeNodeTagged{id: "a", label: "assistant"},
 	}}
 	ts := NewTreeSelect("", root)
-	ts.HandleInput("2") // direct key → no-tools
+	ts.HandleInput("\x14") // ctrl+t → no-tools
 	if ts.filterMode != "no-tools" {
 		t.Fatalf("filterMode=%q want no-tools", ts.filterMode)
 	}
@@ -805,13 +810,14 @@ func TestFilterNoToolsHidesToolResultAndSettings(t *testing.T) {
 // TestFilterUserOnlyShowsOnlyUserRows: `user-only` mode shows only
 // rows tagged `user`. Mirrors upstream tree-selector.ts:308-310.
 func TestFilterUserOnlyShowsOnlyUserRows(t *testing.T) {
+	useTreeKeybindings(t, nil)
 	root := &fakeNodeTagged{id: "r", kids: []TreeNode{
 		&fakeNodeTagged{id: "u", label: "user", tags: []string{"user"}},
 		&fakeNodeTagged{id: "tr", label: "tool result", tags: []string{"tool_result"}},
 		&fakeNodeTagged{id: "a", label: "assistant"},
 	}}
 	ts := NewTreeSelect("", root)
-	ts.HandleInput("3") // direct key → user-only
+	ts.HandleInput("\x15") // ctrl+u → user-only
 	if ts.filterMode != "user-only" {
 		t.Fatalf("filterMode=%q want user-only", ts.filterMode)
 	}
@@ -824,13 +830,14 @@ func TestFilterUserOnlyShowsOnlyUserRows(t *testing.T) {
 // TestFilterLabeledOnlyShowsLabeledRows: `labeled-only` mode shows
 // only rows tagged `labeled`. Mirrors upstream :317-319.
 func TestFilterLabeledOnlyShowsLabeledRows(t *testing.T) {
+	useTreeKeybindings(t, nil)
 	root := &fakeNodeTagged{id: "r", kids: []TreeNode{
 		&fakeNodeTagged{id: "u", label: "user"},
 		&fakeNodeTagged{id: "lbl", label: "labeled msg", tags: []string{"labeled"}},
 		&fakeNodeTagged{id: "a", label: "assistant"},
 	}}
 	ts := NewTreeSelect("", root)
-	ts.HandleInput("4") // direct key → labeled-only
+	ts.HandleInput("\x0c") // ctrl+l → labeled-only
 	if ts.filterMode != "labeled-only" {
 		t.Fatalf("filterMode=%q want labeled-only", ts.filterMode)
 	}
@@ -840,9 +847,9 @@ func TestFilterLabeledOnlyShowsLabeledRows(t *testing.T) {
 	}
 }
 
-// TestFilterDirectKeys1to5: keys 1-5 jump directly to each mode
-// without cycling.
-func TestFilterDirectKeys1to5(t *testing.T) {
+// Pi's direct filter actions use control keys; printable digits remain search input.
+func TestFilterDirectControlKeys(t *testing.T) {
+	useTreeKeybindings(t, nil)
 	root := &fakeNodeTagged{id: "r", kids: []TreeNode{
 		&fakeNodeTagged{id: "u", label: "user", tags: []string{"user"}},
 	}}
@@ -851,11 +858,11 @@ func TestFilterDirectKeys1to5(t *testing.T) {
 		key  string
 		want string
 	}{
-		{"1", "default"},
-		{"2", "no-tools"},
-		{"3", "user-only"},
-		{"4", "labeled-only"},
-		{"5", "all"},
+		{"\x04", "default"},
+		{"\x14", "no-tools"},
+		{"\x15", "user-only"},
+		{"\x0c", "labeled-only"},
+		{"\x01", "all"},
 	}
 	for _, tc := range cases {
 		ts.HandleInput(tc.key)
@@ -1028,6 +1035,7 @@ func TestTreeSelectRowBudgetFollowsTheTerminalHeight(t *testing.T) {
 // refreshes) never appear, not even in `all` mode. Mirrors upstream
 // tree-selector.ts applyFilter.
 func TestFilterHidesUsageTaggedRowsInEveryMode(t *testing.T) {
+	treeHelpTestKeybindings(t, map[string][]string{"app.tree.filter.cycleForward": {"tab"}})
 	root := &fakeNodeTagged{id: "r", kids: []TreeNode{
 		&fakeNodeTagged{id: "u", label: "user msg", tags: []string{"user"}},
 		&fakeNodeTagged{id: "w", label: "usage", tags: []string{"usage"}},

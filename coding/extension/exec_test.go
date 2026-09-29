@@ -136,6 +136,28 @@ func TestExecCommand_Timeout(t *testing.T) {
 	}
 }
 
+// exec.ts:75 starts a Node timer for any positive number. Node truncates a fractional delay to whole milliseconds and runs a delay
+// outside [1, 2^31-1] after one millisecond, so each of these kills the child promptly while an integer carrier truncates
+// 0.5 to no timer.
+func TestExecCommand_TimeoutIsAJavaScriptNumber(t *testing.T) {
+	for _, timeout := range []float64{0.5, 4294967296.5, 1e21} {
+		t.Run(strconv.FormatFloat(timeout, 'g', -1, 64), func(t *testing.T) {
+			command, args := helper(t, "sleep", "10000")
+			start := time.Now()
+			result, err := extension.ExecCommand(context.Background(), t.TempDir(), command, args, &extension.ExecOptions{Timeout: timeout})
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !result.Killed {
+				t.Errorf("expected killed=true for timeout %v; result = %+v", timeout, result)
+			}
+			if elapsed := time.Since(start); elapsed > 5*time.Second {
+				t.Errorf("timeout %v took %v", timeout, elapsed)
+			}
+		})
+	}
+}
+
 func TestExecCommand_ContextCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel() // cancel immediately

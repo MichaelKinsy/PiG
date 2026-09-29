@@ -8,9 +8,10 @@ package secretresolver
 import (
 	"context"
 	"fmt"
-	"regexp"
 	"strings"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // Resolver resolves one opaque identifier to secret bytes. Implementations must
@@ -20,7 +21,7 @@ type Resolver func(context.Context, string) ([]byte, error)
 var (
 	mu        sync.RWMutex
 	resolvers = map[string]Resolver{}
-	schemeRE  = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
+	schemeRE  = lazyregexp.New(`^[a-z][a-z0-9-]*$`)
 )
 
 // Register installs one namespaced resolver. Duplicate schemes fail so import

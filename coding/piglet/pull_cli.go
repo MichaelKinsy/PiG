@@ -10,7 +10,7 @@ import (
 	pigletrelease "github.com/MichaelKinsy/PiG/coding/piglet/release"
 )
 
-const pullUsage = "Usage: pig piglet pull <release-index-url|github:owner/repo@version> [--target os/arch] [--version version] [--accept-signer key-id] [--json] [--no-input]"
+const pullUsage = "Usage: pig piglet pull <release-index-url|github:owner/repo[/piglet]@version> [--target os/arch] [--version version] [--accept-signer key-id] [--json] [--no-input]"
 
 // pig additive (D18): pull is the stock, product-neutral installer for signed
 // Piglet Binary release assets.
@@ -51,6 +51,14 @@ func cmdPull(args []string, stdout, stderr io.Writer) int {
 }
 
 func parsePullArgs(args []string) (ref, target, version, accepted string, err error) {
+	return parseReleaseArgs(args, "pull")
+}
+
+func parseReleaseArgs(args []string, command string) (ref, target, version, accepted string, err error) {
+	label := "release reference"
+	if command == "update" {
+		label = "Piglet name"
+	}
 	for i := 0; i < len(args); i++ {
 		switch args[i] {
 		case "--json", "--no-input":
@@ -81,13 +89,13 @@ func parsePullArgs(args []string) (ref, target, version, accepted string, err er
 				return "", "", "", "", fmt.Errorf("unknown option %q", args[i])
 			}
 			if ref != "" {
-				return "", "", "", "", fmt.Errorf("pull accepts one release reference")
+				return "", "", "", "", fmt.Errorf("%s accepts one %s", command, label)
 			}
 			ref = args[i]
 		}
 	}
 	if ref == "" {
-		return "", "", "", "", fmt.Errorf("a release reference is required")
+		return "", "", "", "", fmt.Errorf("a %s is required", label)
 	}
 	return ref, target, version, accepted, nil
 }

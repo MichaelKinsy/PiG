@@ -49,7 +49,7 @@ func (d *FindDetails) ToolResultDetails() any {
 		Truncation:         toWireTruncation(d.Truncation),
 		ResultLimitReached: d.ResultLimitReached,
 	}
-	if out.Truncation == nil && out.ResultLimitReached == 0 {
+	if out.Truncation == nil && out.ResultLimitReached == nil {
 		return nil
 	}
 	return &out

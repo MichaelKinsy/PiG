@@ -111,8 +111,9 @@ func (r *Runner) emitUIPromptEvent(ctx context.Context, event any) {
 		return
 	}
 	dispatchCtx := r.dispatchContext(ctx)
-	for _, ext := range r.extensions {
-		for _, handler := range ext.EventHandlers(eventType) {
+	for _, snapshot := range snapshotEventHandlers(r.extensions, eventType) {
+		ext := snapshot.ext
+		for _, handler := range snapshot.handlers {
 			if _, err := callHandler(handler, event, dispatchCtx); err != nil {
 				r.recordHandlerError(ctx, ext.Path, eventType, err)
 			}

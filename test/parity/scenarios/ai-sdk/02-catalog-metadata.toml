@@ -1,0 +1,25 @@
+# Upstream oracle: installed Pi 0.87.1 compat.getModel and getSupportedThinkingLevels.
+# Inputs and assertions mirror supports-xhigh.test.ts:26,95, including every pricing tier.
+# The Go path uses GeneratedModel.ToModel, also called by provider compatibility helpers and the settings selector.
+# Mutation: restore ToModel's former two-field Capabilities literal; the program compiles but prices, context windows, and image support differ.
+name = "02-catalog-metadata"
+description = "Catalog models retain prices, context limits, image support, and thinking levels when lifted into runtime metadata."
+covers = ["packages/ai/src/compat.ts", "packages/ai/src/models.ts", "packages/ai/src/providers/anthropic.models.ts", "packages/ai/src/providers/openai.models.ts", "packages/ai/src/providers/openai-codex.models.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/catalog-metadata-pig"]
+pi_args = ["node", "./test/parity/testdata/catalog-metadata-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

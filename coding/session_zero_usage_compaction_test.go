@@ -37,7 +37,7 @@ func TestZeroUsageAutoCompactionUsesMessageEstimate(t *testing.T) {
 			sess.completer = completer
 			now := time.Now().UnixMilli()
 			user := agent.AgentMessage{User: &agent.UserMessage{
-				Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: tc.userText}}, Timestamp: now - 1,
+				Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: tc.userText}}, Timestamp: now - 1,
 			}}
 			assistant := &agent.AssistantMessage{
 				Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "response"}},

@@ -1,0 +1,68 @@
+package subprocess_test
+
+import (
+	"bytes"
+	"path/filepath"
+	"strings"
+	"testing"
+)
+
+// Configuration paths, the published-loader branch, SDK ownership imports, and private theme import edges change; every Session, Agent, resource, tool, and theme algorithm remains Pi's code.
+func checkCodingAgentVendor(t *testing.T, root, file string, got []byte) {
+	t.Helper()
+	if strings.HasPrefix(file, "sdk-bundle/") {
+		return // TestNodeSDKBundleRegeneratesExactly checks the compiler outputs.
+	}
+	if file == "dist/index.js" {
+		if string(got) != "export * from \"../../../pi-coding-agent.mjs\";\n" {
+			t.Fatalf("absolute SDK entry = %s", got)
+		}
+		return
+	}
+	parts := append([]string{"dist"}, strings.Split(file, "/")...)
+	if file == "package.json" || file == "README.md" || file == "CHANGELOG.md" || strings.HasPrefix(file, "docs/") || strings.HasPrefix(file, "examples/") {
+		parts = strings.Split(file, "/")
+	}
+	want := readPinned(t, parts...)
+	var replacements [][2]string
+	switch file {
+	case "index.js":
+		replacements = append(replacements, [2]string{`from "./core/sdk.js";`, `from "../../independent-session.mjs";`})
+	case "core/agent-session-services.js":
+		replacements = append(replacements, [2]string{`from "./sdk.js";`, `from "../../../independent-session.mjs";`})
+	case "core/extensions/virtual-modules.js":
+		replacements = append(replacements, [2]string{`from "../../index.js";`, `from "../../../../pi-coding-agent.mjs";`})
+	case "modes/interactive/theme/theme.js":
+		replacements = append(replacements,
+			[2]string{`import { getCapabilities, } from "@earendil-works/pi-tui";`, `import { getCapabilities, } from "../../../../pi-tui/terminal-image.js";`},
+			[2]string{`import { highlight, supportsLanguage } from "../../../utils/syntax-highlight.js";`, `import { highlight, supportsLanguage } from "../../../../../syntax-highlight.mjs";`},
+		)
+	case "config.js":
+		replacements = append(replacements,
+			[2]string{`export const isBundledNode = typeof PI_BUNDLED_NODE !== "undefined" && PI_BUNDLED_NODE;`, `export const isBundledNode = true;`},
+			[2]string{`export const APP_NAME = piConfigName || "pi";`, `export const APP_NAME = "pig"; // pig divergence (D2): host configuration identity.`},
+			[2]string{`export const CONFIG_DIR_NAME = pkg.piConfig?.configDir || ".pi";`, `export { CONFIG_DIR_NAME } from "../../pig-config.mjs"; // pig divergence (D2): selected host configuration tree.`},
+			[2]string{"export const ENV_AGENT_DIR = `${APP_NAME.toUpperCase()}_CODING_AGENT_DIR`;", `export { ENV_AGENT_DIR } from "../../pig-config.mjs";`},
+			[2]string{`const srcOrDist = existsSync(join(packageDir, "src")) ? "src" : "dist";`, `const srcOrDist = ".";`},
+			[2]string{`export function getAgentDir() {
+    const envDir = process.env[ENV_AGENT_DIR];
+    if (envDir) {
+        return expandTildePath(envDir);
+    }
+    return join(homedir(), CONFIG_DIR_NAME, "agent");
+}`, `// pig divergence (D2): independent SDK instances share the host's default config root.
+import { CONFIG_DIR_NAME, getAgentDir } from "../../pig-config.mjs";
+export { getAgentDir };`},
+		)
+	}
+	for _, replacement := range replacements {
+		if !bytes.Contains(want, []byte(replacement[0])) {
+			t.Fatalf("pinned %s no longer contains the declared seam %q", file, replacement[0])
+		}
+		want = bytes.ReplaceAll(want, []byte(replacement[0]), []byte(replacement[1]))
+	}
+	path := filepath.Join(root, "pi-coding-agent", filepath.FromSlash(file))
+	if !sameExceptBareImports(t, path, got, want) {
+		t.Errorf("%s differs from Pi beyond the declared module/configuration seams", path)
+	}
+}

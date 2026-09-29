@@ -15,6 +15,10 @@ import (
 // <agent-dir>/sessions/<encoded cwd> directory, as upstream's SessionManager
 // does. PiG used to pass an empty directory and failed with
 // "sessionmanager: mkdir: mkdir : no such file or directory".
+//
+// A clone of the fresh Session that new_session created fails as in Pi 0.87.1
+// (agent-session-runtime.ts fork): that Session has no assistant reply, so its
+// file does not exist yet, and the current Session stays in place.
 func TestRPCSessionReplacementUsesDefaultSessionDir(t *testing.T) {
 	home := t.TempDir()
 	agentDir := filepath.Join(home, "agent")
@@ -56,7 +60,7 @@ func TestRPCSessionReplacementUsesDefaultSessionDir(t *testing.T) {
 	}
 	sessionsRoot := filepath.Join(agentDir, "sessions") + string(filepath.Separator)
 	var files []string
-	for _, id := range []string{"new", "new-state", "clone", "clone-state"} {
+	for _, id := range []string{"new", "new-state", "clone-state"} {
 		response := responses[id]
 		if response == nil || response["success"] != true {
 			t.Fatalf("%s response = %v\nstderr:\n%s", id, response, stderr.String())
@@ -70,7 +74,11 @@ func TestRPCSessionReplacementUsesDefaultSessionDir(t *testing.T) {
 			files = append(files, file)
 		}
 	}
-	if files[0] == files[1] || filepath.Dir(files[0]) != filepath.Dir(files[1]) {
-		t.Fatalf("new and clone session files = %q; want distinct files in one cwd directory", files)
+	const unsaved = "This session has not been saved yet. Wait for the first assistant response before cloning or forking it."
+	if response := responses["clone"]; response == nil || response["success"] != false || response["error"] != unsaved {
+		t.Fatalf("clone of an unsaved Session = %v, want the Pi error %q", response, unsaved)
+	}
+	if files[0] != files[1] {
+		t.Fatalf("a failed clone changed the session file: %q", files)
 	}
 }

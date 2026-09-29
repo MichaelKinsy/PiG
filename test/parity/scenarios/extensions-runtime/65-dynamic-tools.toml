@@ -1,0 +1,25 @@
+# Pi 0.87.1 unmodified examples/extensions/dynamic-tools.ts, probed 2026-09-28.
+# loader.ts:273-284 refreshes immediately; agent-session.ts:3144-3235 activates newly admitted names.
+# Both drivers execute the example's session_start registration and /add-echo-tool command, then call the admitted tools through the Session's agent tool wrappers. PiG uses its real Node subprocess Host. Complete records compare active ordering and actual tool results without normalization.
+name = "65-dynamic-tools"
+description = "Tools registered in session_start and commands activate and execute without reload"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts", "packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/extensions/wrapper.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/dynamic-tools"]
+pi_args = ["node", "./test/parity/testdata/dynamic-tools-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['{"active":["echo_session"],"name":"echo_session","text":"[session] hello"}', '{"active":["echo_session","shout"],"name":"shout","text":"[shout] hello"}']
+runs = 3

@@ -1,0 +1,26 @@
+# Pi 0.87.1 interactive-mode.ts:4145-4157,4179-4185,4231-4261.
+# A positional extension command writes a readiness marker after initialization.
+# Close the PTY master (not a Ctrl+D byte) and compare the complete wait-status
+# record. The live SIGHUP control proves that a signal alone is not a dead tty.
+name = "10-terminal-disconnect-exit"
+description = "A dead terminal exits 129 while a live SIGHUP restores and exits 0"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+# The probe defaults to PIG_PARITY_PIG_BIN so it uses the verified harness build.
+pig_args = ["python3", "test/parity/testdata/session-wire.py", "--case", "disconnect", "--case", "live-hup"]
+pi_args = ["python3", "test/parity/testdata/session-wire.py", "--bin", "extensions/sdk-ts/node_modules/.bin/pi", "--case", "disconnect", "--case", "live-hup"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

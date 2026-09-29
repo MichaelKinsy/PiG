@@ -72,15 +72,21 @@ type currentPointer struct {
 	SignerKeyID string `json:"signerKeyId"`
 }
 
-// Pull verifies a signed release index and target binary before publishing any
-// managed file. The current pointer is the atomic commit point and also pins
-// the first accepted signer for subsequent pulls. Publication revalidates that
-// pin under a cross-process store lock and refuses symlinked managed paths.
+// Pull verifies a signed release index and target binary before publishing any managed file. The current pointer is the atomic commit point and pins the first accepted signer for subsequent pulls. Publication revalidates the signer and release identity under a cross-process store lock, refuses rollback, and refuses symlinked managed paths.
 func Pull(ctx context.Context, ref string, options Options) (Result, error) {
-	indexURL, refVersion, err := resolveIndexURL(ref, options.Version)
+	return pull(ctx, ref, options, "")
+}
+
+func pull(ctx context.Context, ref string, options Options, expectedPiglet string) (Result, error) {
+	reference, err := parseReleaseReference(ref, options.Version)
 	if err != nil {
 		return Result{}, err
 	}
+	// pig additive (D18): named updates also bind the installed Piglet when the repository uses unprefixed tags.
+	if expectedPiglet != "" {
+		reference.piglet = expectedPiglet
+	}
+	indexURL := reference.url
 	client := options.Client
 	if client == nil {
 		client = &http.Client{Timeout: pullTimeout}
@@ -94,8 +100,8 @@ func Pull(ctx context.Context, ref string, options Options) (Result, error) {
 		return Result{}, err
 	}
 	index := verified.Index
-	if refVersion != "" && refVersion != index.Version {
-		return Result{}, fmt.Errorf("Piglet release index is version %s, requested %s", index.Version, refVersion)
+	if err := reference.match(index); err != nil {
+		return Result{}, err
 	}
 	target := options.Target
 	if target == "" {
@@ -112,7 +118,7 @@ func Pull(ctx context.Context, ref string, options Options) (Result, error) {
 	if err := checkIndexTrust(verified, trust); err != nil {
 		return Result{}, err
 	}
-	if err := checkSignerContinuity(index.Piglet, index.Signer.KeyID, options.AcceptSigner); err != nil {
+	if err := checkReleaseContinuity(index, options.AcceptSigner); err != nil {
 		return Result{}, err
 	}
 	binaryURL, err := resolveBinaryURL(indexURL, binary.URL)
@@ -124,6 +130,9 @@ func Pull(ctx context.Context, ref string, options Options) (Result, error) {
 		return Result{}, err
 	}
 	defer func() { _ = os.Remove(stage) }()
+	if err := ctx.Err(); err != nil {
+		return Result{}, err
+	}
 	status, err := signature.Check(stage, signature.Policy{Trust: trust})
 	if err != nil {
 		return Result{}, fmt.Errorf("verify downloaded Piglet Binary: %w", err)
@@ -148,8 +157,11 @@ func Pull(ctx context.Context, ref string, options Options) (Result, error) {
 		return Result{}, err
 	}
 	defer func() { _ = lock.Close() }()
+	if err := ctx.Err(); err != nil {
+		return Result{}, err
+	}
 	// pig additive (D18): revalidate the signer under cross-process ownership immediately before publishing any release files.
-	if err := checkSignerContinuity(index.Piglet, index.Signer.KeyID, options.AcceptSigner); err != nil {
+	if err := checkReleaseContinuity(index, options.AcceptSigner); err != nil {
 		return Result{}, err
 	}
 	return commitPull(stage, indexURL, verified, status.Manifest, digest, size, target, now().UTC(), artifacts)
@@ -292,7 +304,7 @@ func doRequest(ctx context.Context, client *http.Client, rawURL string) (*http.R
 	if _, err := validateRemoteURL(rawURL); err != nil {
 		return nil, err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil) //nolint:gosec // G704: this CLI downloads the caller-selected release; URL policy is checked above and on every redirect.
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, rawURL, nil)
 	if err != nil {
 		return nil, requestFailure{cause: err}
 	}
@@ -313,7 +325,7 @@ func doRequest(ctx context.Context, client *http.Client, rawURL string) (*http.R
 		}
 		return nil
 	}
-	response, err := clone.Do(request) //nolint:gosec // G704: caller-selected distribution URLs are intentional CLI input, validated before requests and redirects.
+	response, err := clone.Do(request)
 	if err != nil {
 		if policy, ok := errors.AsType[urlPolicyError](err); ok {
 			return response, policy
@@ -342,37 +354,6 @@ func (e requestFailure) Error() string {
 }
 
 func (e requestFailure) Unwrap() error { return e.cause }
-
-func resolveIndexURL(ref, version string) (string, string, error) {
-	requestedVersion := strings.TrimPrefix(version, "v")
-	if strings.HasPrefix(ref, "https://") || strings.HasPrefix(ref, "http://") {
-		if _, err := validateRemoteURL(ref); err != nil {
-			return "", "", err
-		}
-		if requestedVersion != "" && !validReleaseVersion(requestedVersion) {
-			return "", "", fmt.Errorf("invalid Piglet release version %q", version)
-		}
-		return ref, requestedVersion, nil
-	}
-	github, ok := strings.CutPrefix(ref, "github:")
-	if !ok {
-		return "", "", fmt.Errorf("Piglet release has no recorded release index; use an HTTPS index URL or github:owner/repo@version")
-	}
-	repository, releaseVersion, ok := strings.Cut(github, "@")
-	if ok {
-		releaseVersion = strings.TrimPrefix(releaseVersion, "v")
-	} else {
-		releaseVersion = requestedVersion
-	}
-	owner, name, ok := strings.Cut(repository, "/")
-	if !ok || !validGitHubPart(owner) || !validGitHubPart(name) || !validReleaseVersion(releaseVersion) {
-		return "", "", fmt.Errorf("invalid GitHub Piglet release ref; want github:owner/repo@version")
-	}
-	if requestedVersion != "" && requestedVersion != releaseVersion {
-		return "", "", fmt.Errorf("GitHub release ref version %s does not match --version %s", releaseVersion, version)
-	}
-	return fmt.Sprintf("https://github.com/%s/%s/releases/download/v%s/piglet-release.json", owner, name, releaseVersion), releaseVersion, nil
-}
 
 func validGitHubPart(value string) bool {
 	if value == "" || value == "." || value == ".." {

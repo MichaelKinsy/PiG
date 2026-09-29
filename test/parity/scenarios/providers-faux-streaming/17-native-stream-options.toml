@@ -1,0 +1,21 @@
+# Pi 0.87.1 stream.test.ts exercises raw Anthropic enabled/budget/effort options and Bedrock requestMetadata.
+# Capture onPayload before network in both implementations. Raw Anthropic rules are api/anthropic-messages.ts:1160-1181; Bedrock inclusion is api/bedrock-converse-stream.ts:278.
+# Mutations disabling raw Anthropic configuration or dropping RequestMetadata compile and change these exact observations.
+name = "17-native-stream-options"
+description = "Native Anthropic thinking and Bedrock request metadata reach the payload hook without a live endpoint."
+covers = ["packages/ai/src/api/anthropic-messages.ts", "packages/ai/src/api/bedrock-converse-stream.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/native-stream-options-pig"]
+pi_args = ["node", "./test/parity/testdata/native-stream-options-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

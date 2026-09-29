@@ -1,3 +1,5 @@
+// Ports packages/coding-agent/src/core/system-prompt.ts.
+
 // Package prompts builds the default coding-agent system prompt.
 //
 // It mirrors upstream core/system-prompt.js as of Pi 0.87.1: an untagged
@@ -15,7 +17,9 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/agent/harness"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // Skill is the subset of a discovered skill that the prompt lists.
@@ -32,7 +36,7 @@ type Skill struct {
 type Options struct {
 	// Cwd is the working directory shown to the model.
 	Cwd string
-	// Tools are the selected tool names in the order the model sees them.
+	// Tools are the selected tool names in the order the model sees them. Nil selects read, bash, edit, and write; an empty slice selects none.
 	Tools []string
 	// ToolHints maps a tool name to its prompt snippet. Upstream lists only
 	// tools that have a snippet.
@@ -46,6 +50,8 @@ type Options struct {
 	Skills []Skill
 	// CustomPrompt is an agent definition's body. AppendMode decides its role.
 	CustomPrompt string
+	// ForceSystemPrompt replaces the full prompt without sections, including when it points to an empty string.
+	ForceSystemPrompt *string
 	// AppendSystemPrompt is appended as an addendum after the configured preamble.
 	AppendSystemPrompt string
 	// ContextFiles are the loaded AGENTS.md and CLAUDE.md files.
@@ -64,13 +70,24 @@ const preamble = "You are an expert coding assistant operating inside pig, a cod
 
 type section struct{ name, content string }
 
-// BuildDefaultPrompt renders the system prompt.
+// BuildDefaultPrompt renders the structured prompt or returns an exact forced replacement.
 func BuildDefaultPrompt(o Options) string {
-	return ai.GetCurrentSystemPrompt([]ai.Message{ai.SystemMessage{Content: ai.SystemText(""), Sections: BuildSystemPromptSections(o)}})
+	return ai.GetCurrentSystemPrompt([]ai.Message{BuildSystemPromptState(o)})
+}
+
+// BuildSystemPromptState returns opaque content for a forced prompt, or empty content with structured sections otherwise.
+func BuildSystemPromptState(o Options) ai.SystemMessage {
+	if o.ForceSystemPrompt != nil {
+		return ai.SystemMessage{Content: ai.SystemText(*o.ForceSystemPrompt)}
+	}
+	return ai.SystemMessage{Content: ai.SystemText(""), Sections: BuildSystemPromptSections(o)}
 }
 
 // BuildSystemPromptSections retains the ordered, independently replaceable prompt sections.
 func BuildSystemPromptSections(o Options) ai.OrderedSections {
+	if o.Tools == nil {
+		o.Tools = []string{"read", "bash", "edit", "write"}
+	}
 	head := preamble
 	var sections []section
 	if o.AppendMode == "replace" && o.CustomPrompt != "" {
@@ -167,7 +184,7 @@ func guidelinesFor(tools []string, toolGuidelines map[string][]string, promptGui
 	seen := map[string]bool{}
 	var out []string
 	add := func(rule string) {
-		rule = strings.TrimSpace(rule)
+		rule = widthx.JSTrim(rule)
 		if rule != "" && !seen[rule] {
 			seen[rule] = true
 			out = append(out, rule)
@@ -206,35 +223,16 @@ func skillReadTool(tools []string) string {
 	return ""
 }
 
-// formatSkills mirrors upstream formatSkillsForPrompt, trimmed as the section is.
+// formatSkills uses the shared XML listing with coding-agent read-tool wording.
 func formatSkills(skills []Skill, readTool string) string {
-	var visible []Skill
-	for _, s := range skills {
-		if !s.DisableModelInvocation {
-			visible = append(visible, s)
-		}
+	resources := make([]harness.Skill, 0, len(skills))
+	for _, skill := range skills {
+		resources = append(resources, harness.Skill{Name: skill.Name, Description: skill.Description, FilePath: skill.Path, DisableModelInvocation: skill.DisableModelInvocation})
 	}
-	if len(visible) == 0 {
-		return ""
-	}
+	listing := harness.FormatSkillsForSystemPrompt(resources)
 	load := "Use the read tool to load a skill's file when the task matches its description."
 	if readTool != "read" {
 		load = "Use bash to load a skill's file when the task matches its description."
 	}
-	lines := []string{
-		"The following skills provide specialized instructions for specific tasks.",
-		load,
-		"When a skill file references a relative path, resolve it against the skill directory (parent of SKILL.md / dirname of the path) and use that absolute path in tool commands.",
-		"",
-		"<available_skills>",
-	}
-	for _, s := range visible {
-		lines = append(lines, "  <skill>", "    <name>"+escapeXML(s.Name)+"</name>", "    <description>"+escapeXML(s.Description)+"</description>", "    <location>"+escapeXML(s.Path)+"</location>", "  </skill>")
-	}
-	lines = append(lines, "</available_skills>")
-	return strings.Join(lines, "\n")
+	return strings.Replace(listing, "Read the full skill file when the task matches its description.", load, 1)
 }
-
-var xmlEscaper = strings.NewReplacer("&", "&amp;", "<", "&lt;", ">", "&gt;", `"`, "&quot;", "'", "&apos;")
-
-func escapeXML(s string) string { return xmlEscaper.Replace(s) }

@@ -10,7 +10,7 @@ import (
 func TestAgentMessageJSONUserExactAndRoundTrip(t *testing.T) {
 	message := AgentMessage{User: &UserMessage{
 		Role: RoleUser,
-		Content: []ai.UserContentBlock{
+		Content: ai.UserContentBlocks{
 			ai.TextContent{Text: "hello"},
 			ai.ImageContent{Data: "QUJD", MimeType: "image/png"},
 		},
@@ -28,14 +28,18 @@ func TestAgentMessageJSONUserExactAndRoundTrip(t *testing.T) {
 	if err := json.Unmarshal(encoded, &decoded); err != nil {
 		t.Fatalf("Unmarshal: %v", err)
 	}
-	if decoded.User == nil || len(decoded.User.Content) != 2 {
+	if decoded.User == nil {
 		t.Fatalf("decoded user = %#v", decoded.User)
 	}
-	if text, ok := decoded.User.Content[0].(ai.TextContent); !ok || text.Text != "hello" {
-		t.Fatalf("decoded text block = %#v", decoded.User.Content[0])
+	blocks, ok := decoded.User.Content.(ai.UserContentBlocks)
+	if !ok || len(blocks) != 2 {
+		t.Fatalf("decoded user content = %#v", decoded.User.Content)
 	}
-	if image, ok := decoded.User.Content[1].(ai.ImageContent); !ok || image.MimeType != "image/png" {
-		t.Fatalf("decoded image block = %#v", decoded.User.Content[1])
+	if text, ok := blocks[0].(ai.TextContent); !ok || text.Text != "hello" {
+		t.Fatalf("decoded text block = %#v", blocks[0])
+	}
+	if image, ok := blocks[1].(ai.ImageContent); !ok || image.MimeType != "image/png" {
+		t.Fatalf("decoded image block = %#v", blocks[1])
 	}
 }
 

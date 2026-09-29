@@ -2,23 +2,35 @@ package tui
 
 import (
 	"math"
-	"regexp"
 	"strings"
+	"sync/atomic"
 	"unicode"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
-var listItemPattern = regexp.MustCompile(`^(\s*)([-*]|\d+\.)\s+(.*)$`)
+var listItemPattern = lazyregexp.New(`^( *)([-+*]|\d{1,9}[.)])(?:[ \t]+(.*)|$)`)
 
-var emailPattern = regexp.MustCompile(`^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$`)
+var emailPattern = lazyregexp.New(`^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$`)
 
-// Markdown renders markdown text to ANSI-annotated lines.
-// This is a lightweight port of pi-tui's markdown component.
+// Markdown renders themed text with terminal-cell wrapping, padding and cached display transforms.
+// Ports packages/tui/src/components/markdown.ts.
 type Markdown struct {
 	invalidatable
-	Content string
+	Content               string
+	paddingX, paddingY    int
+	theme                 *MarkdownTheme
+	defaultTextStyle      *DefaultTextStyle
+	options               MarkdownOptions
+	styleContext          *inlineStyleContext
+	styleOwner            *Markdown
+	suppressBlockSpacing  bool
+	defaultColorSet       bool
+	defaultStylePrefix    string
+	hasDefaultStylePrefix bool
 	// Transform is an optional display-only rewrite of Content applied at the
 	// render width before parsing, mirroring upstream MarkdownOptions.transform
 	// (markdown.ts). Used to replace Mermaid code blocks with rendered diagrams.
@@ -27,6 +39,10 @@ type Markdown struct {
 	Transform func(markdown string, width int) string
 	// TransformState reports external transform inputs so a retained Markdown component invalidates cached lines when those inputs change without a Content or width change.
 	TransformState func() string
+	// AsyncTransform rewrites off-loop and withholds new content until the complete rewrite is ready. During replacement it retains only a previously completed frame at the current width.
+	AsyncTransform *AsyncMarkdownTransform
+	asyncState     asyncMarkdownState
+	revision       atomic.Uint64
 	// defaultColor styles ordinary text tokens; explicit Markdown styles remain independent. Empty means the terminal-default foreground.
 	defaultColor  string
 	defaultItalic bool
@@ -37,36 +53,62 @@ type Markdown struct {
 	cachedLines          []string
 	cachedTransformState string
 	cachedTheme          *Theme
+	cachedRevision       uint64
+	cachedTransformed    string
 }
 
-func NewMarkdown(content string) *Markdown { return &Markdown{Content: content} }
+func NewMarkdown(content string) *Markdown {
+	return NewMarkdownWithOptions(content, 0, 0, nil, nil, nil)
+}
+
+// Invalidate reruns the display transform and parser on the next render, even when the source text is unchanged.
+func (m *Markdown) Invalidate() {
+	m.revision.Add(1)
+	m.invalidatable.Invalidate()
+}
+
+// Dispose revokes this component's pending publication and removes its queued transform.
+func (m *Markdown) Dispose() { m.asyncState.dispose() }
 
 // SetDefaultColor sets the ANSI foreground applied to ordinary Markdown text tokens. Headings, code, list markers and blockquotes retain their own theme styles. Passing an empty string restores terminal-default foreground and invalidates the cache.
 func (m *Markdown) SetDefaultColor(open string) {
-	if m.defaultColor == open {
+	if m.defaultColorSet && m.defaultColor == open {
 		return
 	}
 	m.defaultColor = open
-	m.cachedLines = nil
+	m.defaultColorSet = true
+	m.hasDefaultStylePrefix = false
+	m.Invalidate()
 }
 
 // applyDefaultStyle wraps text tokens, leaving code spans and other explicitly themed tokens independent.
 func (m *Markdown) applyDefaultStyle(s string) string {
-	if m.defaultColor != "" {
-		s = m.defaultColor + s + SGRFgReset
+	theme := m.markdownTheme()
+	style := m.defaultTextStyle
+	if m.defaultColorSet {
+		if m.defaultColor != "" {
+			s = m.defaultColor + s + SGRFgReset
+		}
+	} else if style != nil && style.Color != nil {
+		s = style.Color(s)
 	}
-	if m.defaultItalic {
-		s = ansiSpan("\x1b[3m", SGRItalicReset, s)
+	if style != nil && style.Bold {
+		s = theme.Bold(s)
+	}
+	if m.defaultItalic || (style != nil && style.Italic) {
+		s = theme.Italic(s)
+	}
+	if style != nil && style.Strikethrough {
+		s = theme.Strikethrough(s)
+	}
+	if style != nil && style.Underline {
+		s = theme.Underline(s)
 	}
 	return s
 }
 
 func (m *Markdown) inlineMarkdown(s string) string {
-	prefix := m.defaultColor
-	if m.defaultItalic {
-		prefix = "\x1b[3m" + prefix
-	}
-	return renderInlineMarkdown(s, inlineStyleContext{applyText: m.applyDefaultStyle, stylePrefix: prefix})
+	return m.renderInlineMarkdown(s, m.defaultInlineStyleContext())
 }
 
 func (m *Markdown) Render(width int) []string {
@@ -77,14 +119,62 @@ func (m *Markdown) Render(width int) []string {
 	if m.TransformState != nil {
 		transformState = m.TransformState()
 	}
+	contentWidth := max(1, width-m.paddingX*2)
+	content := m.Content
+	revision := m.revision.Load()
+	if m.AsyncTransform != nil {
+		var ready bool
+		content, ready = m.asyncState.resolve(m.AsyncTransform, markdownTransformInput{text: content, width: contentWidth, state: transformState, theme: ActiveTheme(), revision: revision})
+		if !ready {
+			if m.cachedWidth == width {
+				return m.cachedLines
+			}
+			return nil
+		}
+	}
 	if m.cachedLines != nil && m.cachedContent == m.Content && m.cachedWidth == width &&
-		m.cachedTransformState == transformState && m.cachedTheme == ActiveTheme() {
+		m.cachedTransformState == transformState && (m.theme != nil || m.cachedTheme == ActiveTheme()) && m.cachedRevision == revision &&
+		(m.AsyncTransform == nil || m.cachedTransformed == content) {
 		return m.cachedLines
 	}
-	content := m.Content
-	if m.Transform != nil {
-		content = m.Transform(content, width)
+	if m.Transform != nil && m.AsyncTransform == nil {
+		content = m.Transform(content, contentWidth)
 	}
+	out := []string{}
+	if widthx.JSTrim(content) != "" {
+		content = strings.ReplaceAll(strings.ReplaceAll(content, "\r\n", "\n"), "\r", "\n")
+		lines := wrapRenderedLines(m.renderContent(strings.ReplaceAll(content, "\t", "   "), contentWidth), contentWidth)
+		margin := strings.Repeat(" ", m.paddingX)
+		background := func(line string) string { return line }
+		if m.defaultTextStyle != nil && m.defaultTextStyle.BgColor != nil {
+			background = m.defaultTextStyle.BgColor
+		}
+		for _, line := range lines {
+			if widthx.IsImageLine(line) {
+				out = append(out, line)
+				continue
+			}
+			line = margin + line + margin
+			line += strings.Repeat(" ", max(0, width-widthx.VisibleWidth(line)))
+			out = append(out, background(line))
+		}
+		emptyLines := make([]string, m.paddingY)
+		for i := range emptyLines {
+			emptyLines[i] = background(strings.Repeat(" ", width))
+		}
+		padded := make([]string, 0, len(out))
+		padded = append(padded, emptyLines...)
+		padded = append(padded, out...)
+		padded = append(padded, emptyLines...)
+		out = padded
+	}
+	m.cachedContent, m.cachedWidth, m.cachedLines = m.Content, width, out
+	m.cachedTransformState, m.cachedTheme = transformState, ActiveTheme()
+	m.cachedRevision, m.cachedTransformed = revision, content
+	return out
+}
+
+func (m *Markdown) renderContent(content string, width int) []string {
 	lines := strings.Split(content, "\n")
 	out := make([]string, 0, len(lines))
 
@@ -94,19 +184,13 @@ func (m *Markdown) Render(width int) []string {
 		}
 		out = append(out, "")
 	}
-
-	// emit appends one logical line, wrapping at `width` (visual columns).
-	// Wrapping happens AFTER inline formatting so soft-wrapped continuations
-	// inherit the same ANSI styling. The continuation rows are NOT indented -
-	// matching upstream pi-tui's markdown renderer (indenting inside lists
-	// would still be wrong here because we don't track list nesting).
-	emit := func(line string) {
-		if lineDisplayWidth(line) <= width {
-			out = append(out, line)
-			return
-		}
-		out = append(out, wrapText(line, width)...)
+	emitSpace := emitBlank
+	if m.suppressBlockSpacing {
+		emitBlank = func() {}
 	}
+
+	// Block text wraps here; list rendering adds its own first-line and continuation prefixes.
+	emit := func(line string) { out = append(out, line) }
 
 	inCode := false
 	codeLang := ""
@@ -123,7 +207,7 @@ func (m *Markdown) Render(width int) []string {
 
 		if inCode {
 			if isMarkdownFenceClose(line, codeFence, codeFenceLen) {
-				out = append(out, renderCodeBlock(codeLang, codeLines, width)...)
+				out = append(out, m.renderCodeBlock(codeLang, codeLines)...)
 				if strings.TrimSpace(nextLine) != "" {
 					emitBlank()
 				}
@@ -169,7 +253,11 @@ func (m *Markdown) Render(width int) []string {
 		// upstream markdown.ts block latex extension precedence.
 		if blockLatexStart(line) {
 			if tok, ok := tokenizeBlockLatex(strings.Join(lines[i:], "\n")); ok {
-				for bl := range strings.SplitSeq(renderBlockLatex(tok), "\n") {
+				block := widthx.JSTrim(tok.raw)
+				if m.latexEnabled() {
+					block = renderBlockLatex(tok)
+				}
+				for bl := range strings.SplitSeq(block, "\n") {
 					emit(m.applyDefaultStyle(bl))
 				}
 				consumed := strings.Count(tok.raw, "\n")
@@ -184,39 +272,17 @@ func (m *Markdown) Render(width int) []string {
 			}
 		}
 
-		// Headings: use theme colors. Inline markdown (code, bold, etc.)
-		// inside headings is parsed via inlineMarkdown(), then resets are
-		// patched to re-apply the base heading style so subsequent text
-		// stays styled. Mirrors upstream markdown.ts heading inline
-		// rendering behavior (parity tests assert bold+cyan re-applied
-		// after inline `code` and underline re-applied for h1).
-		th := ActiveTheme()
-		headingColor := th.MDHeading
-		if headingColor == "" {
-			headingColor = "\033[1;33m"
-		}
+		theme := m.markdownTheme()
 		if depth, text, ok := parseATXHeading(line); ok {
-			if depth >= 3 {
-				text = strings.Repeat("#", depth) + " " + text
-			}
-			style := headingColor
-			if depth == 1 {
-				style = "\033[1;4m" + headingColor
-			}
-			emit(headingInline(text, style))
+			emit(m.headingInline(text, depth))
 			if strings.TrimSpace(nextLine) != "" {
 				emitBlank()
 			}
 			continue
 		}
 
-		// Horizontal rule
-		hrColor := th.MDHr
-		if hrColor == "" {
-			hrColor = "\033[2m"
-		}
 		if line == "---" || line == "***" || line == "___" {
-			out = append(out, hrColor+strings.Repeat("─", width)+SGRFgReset)
+			out = append(out, theme.Hr(strings.Repeat("─", min(width, 80))))
 			if strings.TrimSpace(nextLine) != "" {
 				emitBlank()
 			}
@@ -240,42 +306,56 @@ func (m *Markdown) Render(width int) []string {
 				j++
 			}
 		renderQuote:
-			quoteLines := NewMarkdown(strings.Join(quoted, "\n")).Render(max(1, width-2))
-			out = append(out, renderQuotedLines(quoteLines)...)
+			out = append(out, m.renderQuote(strings.Join(quoted, "\n"), width)...)
+			if j < len(lines) && widthx.JSTrim(lines[j]) != "" {
+				emitBlank()
+			}
 			i = j - 1
 			continue
 		}
 
-		// Lists with preserved source indentation and marker shape.
-		if indent, marker, body, ok := parseMarkdownListItem(line); ok {
-			out = append(out, m.renderMarkdownListItem(indent, marker, body, width)...)
+		// List items contain blocks as well as inline text; nested lists use depth-based indentation.
+		if indent, _, _, ok := parseMarkdownListItem(line); ok && len(indent) <= 3 {
+			list, next := parseMarkdownList(lines, i)
+			out = append(out, m.renderList(list, 0, width)...)
+			i = next - 1
 			continue
 		}
 
 		// Empty line → blank
 		if strings.TrimSpace(line) == "" {
-			emitBlank()
+			emitSpace()
 			continue
 		}
 
-		// Normal paragraph: apply inline formatting then wrap.
-		emit(m.inlineMarkdown(line))
+		// Keep soft line breaks inside the paragraph until styling and wrapping. A table starts a new block without requiring a source blank line.
+		j := i + 1
+		for j < len(lines) && isMarkdownParagraphContinuation(lines, j) {
+			if isTableHeaderLine(lines[j]) && j+1 < len(lines) && isTableSeparatorLine(lines[j+1]) {
+				break
+			}
+			j++
+		}
+		emit(m.inlineMarkdown(strings.Join(lines[i:j], "\n")))
+		if j+1 < len(lines) && isTableHeaderLine(lines[j]) && isTableSeparatorLine(lines[j+1]) {
+			emitBlank()
+		}
+		i = j - 1
 	}
 
 	// Unclosed code block
 	if inCode {
-		out = append(out, renderCodeBlock(codeLang, codeLines, width)...)
+		if len(codeLines) > 0 {
+			last := codeLines[len(codeLines)-1]
+			if len(last) > 0 && len(last) < codeFenceLen && last == strings.Repeat(string(codeFence), len(last)) {
+				codeLines = codeLines[:len(codeLines)-1]
+			}
+		}
+		out = append(out, m.renderCodeBlock(codeLang, codeLines)...)
 	}
 	for len(out) > 0 && out[len(out)-1] == "" {
 		out = out[:len(out)-1]
 	}
-	out = wrapRenderedLines(out, width)
-
-	m.cachedContent = m.Content
-	m.cachedWidth = width
-	m.cachedLines = out
-	m.cachedTransformState = transformState
-	m.cachedTheme = ActiveTheme()
 	return out
 }
 
@@ -286,12 +366,12 @@ func (m *Markdown) Render(width int) []string {
 // overflowing rows are touched.
 func wrapRenderedLines(lines []string, width int) []string {
 	for i, line := range lines {
-		if widthx.IsImageLine(line) || widthx.VisibleWidth(line) <= width {
+		if widthx.IsImageLine(line) || (!strings.ContainsAny(line, "\r\n") && widthx.VisibleWidth(line) <= width) {
 			continue
 		}
 		out := append([]string(nil), lines[:i]...)
 		for _, l := range lines[i:] {
-			if widthx.IsImageLine(l) || widthx.VisibleWidth(l) <= width {
+			if widthx.IsImageLine(l) || (!strings.ContainsAny(l, "\r\n") && widthx.VisibleWidth(l) <= width) {
 				out = append(out, l)
 				continue
 			}
@@ -567,12 +647,12 @@ func (m *Markdown) renderMarkdownTable(header []string, rows [][]string, align [
 	headerWrapped := make([][]string, numCols)
 	maxHeaderLines := 1
 	for i, cell := range header {
-		headerWrapped[i] = widthx.WrapTextWithAnsi(m.inlineMarkdown(cell), max(1, columnWidths[i]))
+		headerWrapped[i] = m.wrapCellText(m.inlineMarkdown(cell), columnWidths[i])
 		if len(headerWrapped[i]) > maxHeaderLines {
 			maxHeaderLines = len(headerWrapped[i])
 		}
 	}
-	th := ActiveTheme()
+	theme := m.markdownTheme()
 	for lineIdx := range maxHeaderLines {
 		parts := make([]string, numCols)
 		for col := range numCols {
@@ -580,7 +660,7 @@ func (m *Markdown) renderMarkdownTable(header []string, rows [][]string, align [
 			if lineIdx < len(headerWrapped[col]) {
 				text = headerWrapped[col][lineIdx]
 			}
-			parts[col] = "\033[1m" + alignTableCell(text, columnWidths[col], tableAlignLeft) + th.Reset
+			parts[col] = theme.Bold(alignTableCell(text, columnWidths[col], tableAlignLeft))
 		}
 		lines = append(lines, "│ "+strings.Join(parts, " │ ")+" │")
 	}
@@ -594,7 +674,7 @@ func (m *Markdown) renderMarkdownTable(header []string, rows [][]string, align [
 			if col < len(row) {
 				text = m.inlineMarkdown(row[col])
 			}
-			wrapped[col] = widthx.WrapTextWithAnsi(text, max(1, columnWidths[col]))
+			wrapped[col] = m.wrapCellText(text, columnWidths[col])
 			if len(wrapped[col]) > maxRowLines {
 				maxRowLines = len(wrapped[col])
 			}
@@ -623,6 +703,21 @@ func (m *Markdown) renderMarkdownTable(header []string, rows [][]string, align [
 	return lines
 }
 
+func (m *Markdown) wrapCellText(text string, width int) []string {
+	lines := widthx.WrapTextWithAnsi(text, max(1, width))
+	prefix := ""
+	if m.styleContext != nil {
+		prefix = m.styleContext.stylePrefix
+	}
+	for i := range lines {
+		if i < len(lines)-1 {
+			lines[i] += "\x1b[22;23;24;25;27;28;29;39m"
+		}
+		lines[i] += prefix
+	}
+	return lines
+}
+
 func parseMarkdownListItem(line string) (indent, marker, body string, ok bool) {
 	match := listItemPattern.FindStringSubmatch(line)
 	if match == nil {
@@ -634,7 +729,7 @@ func parseMarkdownListItem(line string) (indent, marker, body string, ok bool) {
 // listTaskPattern mirrors marked's GFM listIsTask/listReplaceTask rules: a
 // list item whose text starts with "[ ]", "[x]", or "[X]" plus a space is a
 // task item, and the checkbox with its trailing spaces leaves the item text.
-var listTaskPattern = regexp.MustCompile(`^\[([ xX])\] +`)
+var listTaskPattern = lazyregexp.New(`^\[([ xX])\] +`)
 
 // splitListTaskMarker returns the normalized task marker ("[x] " or "[ ] ")
 // and the remaining item text, as markdown.ts renderList builds taskMarker
@@ -648,30 +743,6 @@ func splitListTaskMarker(body string) (taskMarker, rest string) {
 		return "[ ] ", body[len(match[0]):]
 	}
 	return "[x] ", body[len(match[0]):]
-}
-
-func (m *Markdown) renderMarkdownListItem(indent, marker, body string, width int) []string {
-	th := ActiveTheme()
-	if indent != "" {
-		indent += " "
-	}
-	taskMarker, body := splitListTaskMarker(body)
-	marker += " " + taskMarker
-	styledMarker := marker
-	if th.MDListBullet != "" {
-		styledMarker = th.MDListBullet + marker + "\033[39m"
-	}
-	prefix := indent + styledMarker
-	continuation := strings.Repeat(" ", widthx.VisibleWidth(indent+marker))
-	wrapped := widthx.WrapTextWithAnsi(m.inlineMarkdown(body), max(1, width-widthx.VisibleWidth(indent+marker)))
-	if len(wrapped) == 0 {
-		return []string{prefix}
-	}
-	out := []string{prefix + wrapped[0]}
-	for _, line := range wrapped[1:] {
-		out = append(out, continuation+line)
-	}
-	return out
 }
 
 func isBlockquoteLine(line string) bool {
@@ -714,28 +785,6 @@ func isLazyBlockquoteContinuation(line string) bool {
 	return true
 }
 
-func renderQuotedLines(lines []string) []string {
-	th := ActiveTheme()
-	quoteColor := th.MDQuote
-	if quoteColor == "" {
-		quoteColor = "\033[2m"
-	}
-	quotePrefix := quoteColor + "\033[3m"
-	border := quoteColor + "│ "
-	out := make([]string, 0, len(lines))
-	for _, line := range lines {
-		if line == "" {
-			out = append(out, border+SGRFgReset)
-			continue
-		}
-		out = append(out, border+quotePrefix+line+SGRItalicReset+SGRFgReset)
-	}
-	for len(out) > 0 && out[len(out)-1] == border+SGRFgReset {
-		out = out[:len(out)-1]
-	}
-	return out
-}
-
 // lineDisplayWidth returns the visible column count of a line with ANSI
 // escape sequences stripped.
 func lineDisplayWidth(s string) int {
@@ -748,24 +797,19 @@ func lineDisplayWidth(s string) int {
 	return widthx.VisibleWidth(s)
 }
 
-// inlineMarkdown applies bold, italic, inline code, and strikethrough formatting.
-// headingInline renders `text` as a heading line: applies `baseStyle`,
-// then inline-parses bold/italic/code/links inside the text so each
-// nested SGR span ends with the relevant scoped reset. The line ends
-// by closing heading bold, underline, and foreground color without
-// clearing any active background.
-//
-// Mirrors upstream markdown.ts heading rendering, which composes the
-// heading SGR around inline-span SGRs and reapplies the heading style
-// after nested style resets so subsequent text stays styled.
-func headingInline(text, baseStyle string) string {
-	rendered := inlineMarkdown(text)
-	// Re-apply base style after scoped inline resets so heading color,
-	// boldness, and underline remain active after nested spans.
-	for _, close := range []string{SGRFgReset, SGRBoldDimReset, SGRItalicReset, SGRStrikeReset, SGRUnderlineReset, SGRInverseReset} {
-		rendered = strings.ReplaceAll(rendered, close, close+baseStyle)
+// headingInline uses a heading-specific context so inline token resets restore heading styles without leaking them into padding.
+func (m *Markdown) headingInline(text string, depth int) string {
+	theme := m.markdownTheme()
+	style := func(text string) string { return theme.Heading(theme.Bold(text)) }
+	if depth == 1 {
+		style = func(text string) string { return theme.Heading(theme.Bold(theme.Underline(text))) }
 	}
-	return baseStyle + rendered + SGRBoldDimReset + SGRUnderlineReset + SGRFgReset
+	context := inlineStyleContext{applyText: style, stylePrefix: markdownStylePrefix(style)}
+	result := m.renderInlineMarkdown(text, context)
+	if depth >= 3 {
+		result = style(strings.Repeat("#", depth)+" ") + result
+	}
+	return result
 }
 
 type inlineStyleContext struct {
@@ -775,19 +819,42 @@ type inlineStyleContext struct {
 
 // ansiSpan mirrors nested theme decorations: an inner closing code restores the outer span until its own close.
 func ansiSpan(open, close, text string) string {
-	return open + strings.ReplaceAll(text, close, open) + close
+	text = strings.ReplaceAll(text, close, close+open)
+	var out strings.Builder
+	out.WriteString(open)
+	for {
+		newline := strings.IndexByte(text, '\n')
+		if newline < 0 {
+			break
+		}
+		end := newline
+		if end > 0 && text[end-1] == '\r' {
+			end--
+		}
+		out.WriteString(text[:end])
+		out.WriteString(close)
+		out.WriteString(text[end : newline+1])
+		out.WriteString(open)
+		text = text[newline+1:]
+	}
+	out.WriteString(text)
+	out.WriteString(close)
+	return out.String()
 }
 
-func inlineMarkdown(s string) string {
-	return renderInlineMarkdown(s, inlineStyleContext{applyText: func(text string) string { return text }})
-}
-
-func renderInlineMarkdown(s string, style inlineStyleContext) string {
-	th := ActiveTheme()
+func (m *Markdown) renderInlineMarkdown(s string, style inlineStyleContext) string {
+	theme := m.markdownTheme()
 	var out, plain strings.Builder
+	applyText := func(text string) string {
+		parts := strings.Split(text, "\n")
+		for i := range parts {
+			parts[i] = style.applyText(parts[i])
+		}
+		return strings.Join(parts, "\n")
+	}
 	flushText := func() {
 		if plain.Len() > 0 {
-			out.WriteString(style.applyText(plain.String()))
+			out.WriteString(applyText(plain.String()))
 			plain.Reset()
 		}
 	}
@@ -798,29 +865,91 @@ func renderInlineMarkdown(s string, style inlineStyleContext) string {
 	}
 	i := 0
 	runes := []rune(s)
+	var autoLinks autoLinkScanner
 	for i < len(runes) {
+		if runes[i] == '\\' && i+1 < len(runes) && runes[i+1] == '\n' {
+			flushText()
+			out.WriteByte('\n')
+			i += 2
+			continue
+		}
+		if runes[i] == ' ' {
+			end := i + 1
+			for end < len(runes) && runes[end] == ' ' {
+				end++
+			}
+			if end-i >= 2 && end < len(runes) && runes[end] == '\n' {
+				flushText()
+				out.WriteByte('\n')
+				i = end + 1
+				continue
+			}
+		}
+		if runes[i] == '\\' && i+1 < len(runes) {
+			if runes[i+1] == '(' || runes[i+1] == '[' {
+				if tok, ok := tokenizeInlineLatex(string(runes[i:])); ok {
+					flushText()
+					text := tok.raw
+					if m.latexEnabled() {
+						text = renderInlineLatex(tok)
+					}
+					out.WriteString(applyText(text))
+					i += utf8.RuneCountInString(tok.raw)
+					continue
+				}
+			}
+			if strings.ContainsRune("!\"#$%&'()*+,-./:;<=>?@[\\]^_`{|}~", runes[i+1]) {
+				flushText()
+				text := string(runes[i+1])
+				if m.options.PreserveBackslashEscapes {
+					text = string(runes[i : i+2])
+				}
+				out.WriteString(style.applyText(text))
+				i += 2
+				continue
+			}
+		}
 		// Markdown link: [text](url)
 		if runes[i] == '[' {
 			if text, url, next, ok := parseMarkdownLink(runes, i); ok {
-				emitToken(styleMarkdownLink(renderInlineMarkdown(text, style), text, url, th))
+				emitToken(m.styleMarkdownLink(m.renderInlineMarkdown(text, style), text, url))
 				i = next
 				continue
 			}
 		}
-		// Inline code: `...`
+		// Code spans use an equal-length closing backtick run.
 		if runes[i] == '`' {
-			j := i + 1
-			for j < len(runes) && runes[j] != '`' {
-				j++
+			count := 1
+			for i+count < len(runes) && runes[i+count] == '`' {
+				count++
 			}
-			codeColor := th.MDCode
-			closeCode := SGRFgReset
-			if codeColor == "" {
-				codeColor = "\033[7m"
-				closeCode = SGRInverseReset
+			closing := -1
+			for j := i + count; j < len(runes); {
+				if runes[j] != '`' {
+					j++
+					continue
+				}
+				end := j + 1
+				for end < len(runes) && runes[end] == '`' {
+					end++
+				}
+				if end-j == count {
+					closing = j
+					break
+				}
+				j = end
 			}
-			emitToken(codeColor + string(runes[i+1:j]) + closeCode)
-			i = j + 1
+			if closing < 0 {
+				plain.WriteString(string(runes[i : i+count]))
+				i += count
+				continue
+			}
+			code := strings.ReplaceAll(string(runes[i+count:closing]), "\n", " ")
+			if strings.HasPrefix(code, " ") && strings.HasSuffix(code, " ") && strings.Trim(code, " ") != "" {
+				code = code[1 : len(code)-1]
+			}
+			emitToken(theme.Code(code))
+			i = closing + count
 			continue
 		}
 		// Bold: **...**
@@ -830,7 +959,7 @@ func renderInlineMarkdown(s string, style inlineStyleContext) string {
 				j++
 			}
 			if j+1 < len(runes) {
-				emitToken(ansiSpan("\033[1m", SGRBoldDimReset, renderInlineMarkdown(string(runes[i+2:j]), style)))
+				emitToken(theme.Bold(m.renderInlineMarkdown(string(runes[i+2:j]), style)))
 				i = j + 2
 				continue
 			}
@@ -842,7 +971,7 @@ func renderInlineMarkdown(s string, style inlineStyleContext) string {
 				j++
 			}
 			if j < len(runes) {
-				emitToken(ansiSpan("\033[3m", SGRItalicReset, renderInlineMarkdown(string(runes[i+1:j]), style)))
+				emitToken(theme.Italic(m.renderInlineMarkdown(string(runes[i+1:j]), style)))
 				i = j + 1
 				continue
 			}
@@ -854,14 +983,14 @@ func renderInlineMarkdown(s string, style inlineStyleContext) string {
 				j++
 			}
 			if j+1 < len(runes) {
-				emitToken(ansiSpan("\033[9m", SGRStrikeReset, renderInlineMarkdown(string(runes[i+2:j]), style)))
+				emitToken(theme.Strikethrough(m.renderInlineMarkdown(string(runes[i+2:j]), style)))
 				i = j + 2
 				continue
 			}
 		}
 		// Bare URLs and emails.
-		if text, url, next, ok := parseAutoLink(runes, i); ok {
-			emitToken(styleMarkdownLink(style.applyText(text), text, url, th))
+		if text, url, next, ok := autoLinks.parseAutoLink(runes, i); ok {
+			emitToken(m.styleMarkdownLink(style.applyText(text), text, url))
 			i = next
 			continue
 		}
@@ -869,7 +998,11 @@ func renderInlineMarkdown(s string, style inlineStyleContext) string {
 		if runes[i] == '$' || (runes[i] == '\\' && i+1 < len(runes) && (runes[i+1] == '(' || runes[i+1] == '[')) {
 			if tok, ok := tokenizeInlineLatex(string(runes[i:])); ok {
 				flushText()
-				out.WriteString(style.applyText(renderInlineLatex(tok)))
+				text := tok.raw
+				if m.latexEnabled() {
+					text = renderInlineLatex(tok)
+				}
+				out.WriteString(applyText(text))
 				i += utf8.RuneCountInString(tok.raw)
 				continue
 			}
@@ -915,38 +1048,70 @@ func autoLinkPrefix(runes []rune, start int) string {
 	return string(runes[start:min(start+len("https://"), len(runes))])
 }
 
-func parseAutoLink(runes []rune, start int) (text, url string, next int, ok bool) {
+// autoLinkScanner owns lookahead for one inline source. Word boundaries and the possible email suffix are scanned once, including when inline tokens skip over part of a word. No state survives the render or retains source text.
+type autoLinkScanner struct {
+	end        int
+	emailStart int
+	emailAt    int
+	emailEnd   int
+}
+
+func (s *autoLinkScanner) scanWord(runes []rune, start int) {
+	s.end = start
+	s.emailAt = -1
+	for s.end < len(runes) && !unicode.IsSpace(runes[s.end]) {
+		if runes[s.end] == '@' {
+			s.emailAt = s.end
+		}
+		s.end++
+	}
+	if s.emailAt < 0 {
+		return
+	}
+	s.emailStart = s.emailAt
+	for s.emailStart > start && isEmailLocalRune(runes[s.emailStart-1]) {
+		s.emailStart--
+	}
+	// Parentheses cannot belong to an email. At an email's start every trailing ')' is unmatched, irrespective of earlier text in this word.
+	s.emailEnd = s.end
+	for s.emailEnd > s.emailAt && strings.ContainsRune(".,;:!?)", runes[s.emailEnd-1]) {
+		s.emailEnd--
+	}
+	if s.emailStart == s.emailAt || !emailPattern.MatchString(string(runes[s.emailStart:s.emailEnd])) {
+		s.emailAt = -1
+	}
+}
+
+func isEmailLocalRune(r rune) bool {
+	return r >= 'a' && r <= 'z' || r >= 'A' && r <= 'Z' || r >= '0' && r <= '9' || strings.ContainsRune("._%+-", r)
+}
+
+func (s *autoLinkScanner) parseAutoLink(runes []rune, start int) (text, url string, next int, ok bool) {
+	if start >= s.end {
+		s.scanWord(runes, start)
+	}
 	remaining := autoLinkPrefix(runes, start)
 	if strings.HasPrefix(remaining, "https://") || strings.HasPrefix(remaining, "http://") {
-		end := start
-		for end < len(runes) && !unicode.IsSpace(runes[end]) {
-			end++
-		}
-		candidate := trimTrailingLinkPunctuation(string(runes[start:end]))
-		if candidate == "" {
-			return "", "", start, false
-		}
+		candidate := trimTrailingLinkPunctuation(string(runes[start:s.end]))
 		return candidate, candidate, start + runeLen(candidate), true
 	}
-	end := start
-	for end < len(runes) && !unicode.IsSpace(runes[end]) {
-		end++
-	}
-	candidate := trimTrailingLinkPunctuation(string(runes[start:end]))
-	if emailPattern.MatchString(candidate) {
-		return candidate, "mailto:" + candidate, start + runeLen(candidate), true
+	if start >= s.emailStart && start < s.emailAt {
+		candidate := string(runes[start:s.emailEnd])
+		return candidate, "mailto:" + candidate, s.emailEnd, true
 	}
 	return "", "", start, false
 }
 
 func trimTrailingLinkPunctuation(s string) string {
+	unmatchedClosing := strings.Count(s, ")") - strings.Count(s, "(")
 	for s != "" {
 		switch s[len(s)-1] {
 		case '.', ',', ';', ':', '!', '?':
 			s = s[:len(s)-1]
 		case ')':
-			if strings.Count(s, "(") < strings.Count(s, ")") {
+			if unmatchedClosing > 0 {
 				s = s[:len(s)-1]
+				unmatchedClosing--
 				continue
 			}
 			return s
@@ -957,12 +1122,9 @@ func trimTrailingLinkPunctuation(s string) string {
 	return s
 }
 
-func styleMarkdownLink(display, rawText, url string, th *Theme) string {
-	linkColor := th.MDLink
-	if linkColor == "" {
-		linkColor = "\033[34m"
-	}
-	styled := "\033[4m" + linkColor + display + SGRUnderlineReset + SGRFgReset
+func (m *Markdown) styleMarkdownLink(display, rawText, url string) string {
+	theme := m.markdownTheme()
+	styled := theme.Link(theme.Underline(display))
 	if GetCapabilities().Hyperlinks {
 		return Hyperlink(styled, url)
 	}
@@ -973,96 +1135,28 @@ func styleMarkdownLink(display, rawText, url string, th *Theme) string {
 	if rawText == url || rawText == hrefForComparison {
 		return styled
 	}
-	urlColor := th.MDLinkUrl
-	if urlColor == "" {
-		urlColor = th.Muted
-	}
-	return styled + urlColor + " (" + url + ")" + SGRFgReset
+	return styled + theme.LinkUrl(" ("+url+")")
 }
 
-// renderCodeBlock formats a fenced code block to match upstream
-// packages/tui/src/components/markdown.ts:333-350 (v0.69.0).
-//
-// Upstream format:
-//
-//	`bash            ← gray (mdCodeBlockBorder = #808080)
-//	  #!/bin/bash    ← syntax-highlighted via theme.highlightCode
-//	  ...
-//	```              ← gray
-//
-// When a recognized language is present, the body is rendered through
-// HighlightCode (chroma): mirroring upstream's theme.highlightCode
-// hook in markdown.ts:337-341. When no language is given the body
-// falls back to a single MDCodeBlock fg color (matches upstream's
-// no-language path).
-func renderCodeBlock(lang string, lines []string, width int) []string {
-	label := lang
-	if label == "" {
-		label = "code"
+// renderCodeBlock emits complete code rows; the final content-width wrapping pass handles prefixes and continuation rows.
+func (m *Markdown) renderCodeBlock(lang string, lines []string) []string {
+	theme := m.markdownTheme()
+	indent := "  "
+	if theme.CodeBlockIndent != nil {
+		indent = *theme.CodeBlockIndent
 	}
-
-	th := ActiveTheme()
-	borderColor := th.MDCodeBlockBorder
-	if borderColor == "" {
-		borderColor = "\033[38;2;128;128;128m" // #808080 fallback
-	}
-	contentColor := th.MDCodeBlock
-	if contentColor == "" {
-		contentColor = "\033[38;2;181;189;104m" // #b5bd68 fallback
-	}
-	const reset = SGRFgReset
-
-	out := make([]string, 0, len(lines)+2)
-	out = append(out, borderColor+widthx.TruncateToWidth("```"+label, max(1, width), "", false)+reset)
-
-	// Try syntax highlighting if we have a language hint. The
-	// HighlightCode helper guarantees one returned line per input
-	// line, so the indent/border alignment is preserved.
-	var bodyLines []string
-	if lang != "" {
-		joined := stringsJoinLines(lines)
-		hl := HighlightCode(joined, lang)
-		if len(hl) == len(lines) {
-			bodyLines = hl
+	out := []string{theme.CodeBlockBorder("```" + lang)}
+	text := strings.Join(lines, "\n")
+	if theme.HighlightCode != nil {
+		for _, line := range theme.HighlightCode(text, lang) {
+			out = append(out, indent+line)
+		}
+	} else {
+		for line := range strings.SplitSeq(text, "\n") {
+			out = append(out, indent+theme.CodeBlock(line))
 		}
 	}
-	if bodyLines == nil {
-		bodyLines = make([]string, len(lines))
-		for i, l := range lines {
-			bodyLines[i] = contentColor + l + reset
-		}
-	}
-	const codeIndent = "  "
-	bodyWidth := max(1, width-widthx.VisibleWidth(codeIndent))
-	for _, l := range bodyLines {
-		// pig divergence (D54): wrap fenced code instead of clipping or crashing.
-		for _, wrapped := range widthx.WrapTextWithAnsi(l, bodyWidth) {
-			out = append(out, codeIndent+wrapped)
-		}
-	}
-	out = append(out, borderColor+widthx.TruncateToWidth("```", max(1, width), "", false)+reset)
-	return out
-}
-
-// stringsJoinLines is strings.Join(lines, "\n") spelled out to avoid
-// touching the import block in this file (kept minimal for diff
-// hygiene; the rest of the file already uses strings via inlineMarkdown).
-func stringsJoinLines(lines []string) string {
-	if len(lines) == 0 {
-		return ""
-	}
-	n := len(lines) - 1
-	for _, l := range lines {
-		n += len(l)
-	}
-	out := make([]byte, 0, n)
-	for i, l := range lines {
-		if i > 0 {
-			out = append(out, '\n')
-		}
-		out = append(out, l...)
-	}
-	return string(out)
+	return append(out, theme.CodeBlockBorder("```"))
 }
 
 func runeLen(s string) int {

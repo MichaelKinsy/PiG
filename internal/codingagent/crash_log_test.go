@@ -335,12 +335,9 @@ func TestFatalSessionReplacementHandlersUseCrashPath(t *testing.T) {
 			return resumeHandler(sc)
 		}},
 		{name: "import", want: "Failed to import session", run: func(sc *SlashContext) error {
-			path := filepath.Join(t.TempDir(), "session.jsonl")
-			if err := os.WriteFile(path, nil, 0o644); err != nil {
-				t.Fatal(err)
-			}
-			sc.Args = path
-			sc.LoadSessionPath = func(string) error { return boom }
+			sc.Args = "session.jsonl"
+			sc.ShowExtensionSelector = func(string, []string, string) (string, bool) { return "Yes", true }
+			sc.ImportSession = func(string, string) (bool, error) { return false, boom }
 			return importHandler(sc)
 		}},
 	}

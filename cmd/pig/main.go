@@ -30,13 +30,14 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"runtime/debug"
 	"slices"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"golang.org/x/term"
 
@@ -46,7 +47,6 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/cellpack"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/fusepack"
-	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
@@ -54,15 +54,16 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/pigletbuild/binarypiglet"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/export"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/nativeplatform"
+	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/internal/pigdocs"
 	"github.com/MichaelKinsy/PiG/internal/profiling"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // PigVersion is pig's own release line. UpstreamVersion is the pi tag this
-// build targets. The literal lives in coding/pigversion/pigversion.go;
+// build targets. The literal lives in internal/coding/pigversion/pigversion.go;
 // coding/upstream.go aliases it, so the parity runner (and this constant)
 // can import it without depending on package main.
 const (
@@ -130,12 +131,12 @@ func detailedVersionString() string {
 
 // ─── Resource Loading ────────────────────────────────────────────────────────────
 
-// loadSkills loads every skill named via --skill. A missing skill is a
-// hard error because the user explicitly asked for it. Lookups go through
-// the pig config tree (~/.pig/skills): we never read ~/.pi/.
-func loadSkills(skillInputs []string, noSkills bool) ([]*codingagent.SkillDef, error) {
+// loadSkills loads ordered skill inputs, validates descriptions, and returns
+// first-wins definitions with collision diagnostics for the interactive listing.
+// A missing named skill remains an error; invalid discovered files are warned.
+func loadSkills(skillInputs []string, noSkills bool) ([]*codingagent.SkillDef, []extension.ResourceDiagnostic, error) {
 	if noSkills || len(skillInputs) == 0 {
-		return nil, nil
+		return nil, nil, nil
 	}
 	var skillDefs []*codingagent.SkillDef
 	for _, input := range skillInputs {
@@ -143,23 +144,19 @@ func loadSkills(skillInputs []string, noSkills bool) ([]*codingagent.SkillDef, e
 			continue
 		}
 		if _, err := os.Stat(input); err == nil {
-			defs, err := codingagent.LoadSkillsFromPath(input)
+			loaded, err := codingagent.LoadSkills(codingagent.LoadSkillsOptions{AgentDir: codingagent.DefaultAgentDir(), SkillPaths: []string{input}})
 			if err != nil {
-				fmt.Fprintf(os.Stderr, "warning: skill %s: %v\n", input, err)
+				return skillDefs, nil, err
 			}
-			for _, def := range defs {
-				for _, diagnostic := range codingagent.SkillDiagnostics(def) {
-					fmt.Fprintf(os.Stderr, "warning: %s: %s\n", def.Path, diagnostic)
-				}
-				if strings.TrimSpace(def.Description) != "" {
-					skillDefs = append(skillDefs, def)
-				}
+			for _, diagnostic := range loaded.Diagnostics {
+				fmt.Fprintf(os.Stderr, "warning: %s: %s\n", diagnostic.Path, diagnostic.Message)
 			}
+			skillDefs = append(skillDefs, loaded.Skills...)
 			continue
 		}
 		def, err := codingagent.LoadSkill(codingagent.DefaultSkillsDir(), input)
 		if err != nil {
-			return skillDefs, fmt.Errorf("--skill %q: %w", input, err)
+			return skillDefs, nil, fmt.Errorf("--skill %q: %w", input, err)
 		}
 		for _, diagnostic := range codingagent.SkillDiagnostics(def) {
 			fmt.Fprintf(os.Stderr, "warning: %s: %s\n", def.Path, diagnostic)
@@ -168,7 +165,8 @@ func loadSkills(skillInputs []string, noSkills bool) ([]*codingagent.SkillDef, e
 			skillDefs = append(skillDefs, def)
 		}
 	}
-	return codingagent.DeduplicateSkills(skillDefs), nil
+	defs, diagnostics := codingagent.DeduplicateSkillsWithDiagnostics(skillDefs)
+	return defs, diagnostics, nil
 }
 
 // ─── Initial Message ──────────────────────────────────────────────────────────
@@ -227,14 +225,14 @@ func buildInitialMessage(messages []string, fileText string, fileImages []ai.Ima
 	return strings.Join(parts, ""), images, slices.Clone(messages)
 }
 
-// prepareInitialMessage processes the @file arguments and builds the initial
-// prompt. Mirrors upstream main.ts prepareInitialMessage.
+// prepareInitialMessage processes @file arguments without resizing and builds the initial prompt. Session selects the resize profile after extension hooks select the request model.
 func prepareInitialMessage(cwd string, messages, fileArgs []string, stdinContent string) (string, []ai.ImageContent, []string, error) {
 	if len(fileArgs) == 0 {
 		initial, images, rest := buildInitialMessage(messages, "", nil, stdinContent)
 		return initial, images, rest, nil
 	}
-	processed, err := codingagent.ProcessCLIFileArguments(fileArgs, cwd)
+	// upstream: packages/coding-agent/src/main.ts:prepareInitialMessage
+	processed, err := codingagent.ProcessCLIFileArguments(fileArgs, cwd, codingagent.ProcessFileOptions{AutoResizeImages: new(false)})
 	if err != nil {
 		return "", nil, nil, err
 	}
@@ -480,10 +478,12 @@ func stageExtensionSDKsAtStartup(ctx context.Context, configRoot string, stderr 
 	}
 }
 
-func main() {
+// runStableCLI is the stable entry shared by the default and experimental executables.
+func runStableCLI() {
 	// PIG_PROFILE (internal/profiling) is read once here. Unset, it costs one lookup.
 	stopProfiles = profiling.Start()
 	defer stopProfiles()
+	defer nativeplatform.ShutdownClipboard()
 	defer exitOnRenderOverflow()
 
 	binaryPath := guardBinaryIdentity()
@@ -584,22 +584,17 @@ func main() {
 		exitProcess(1)
 	}
 
-	// Validate and normalize --name once; applied to whichever session is
-	// created (interactive or print). Mirrors upstream main.ts:574-580.
-	var sessionName string
-	if flags.Name != "" {
-		sessionName = strings.TrimSpace(flags.Name)
-		if sessionName == "" {
-			fmt.Fprintln(os.Stderr, "error: --name requires a non-empty value")
-			exitProcess(1)
-		}
+	// Pi routes version output before Session validation (main.ts:619-622).
+	if flags.Version {
+		fmt.Println(cliVersionString())
+		exitProcess(0)
 	}
 
 	// --session-id conflict check. Mirrors upstream main.ts:217-230 (v0.76.0).
 	if flags.SessionID != "" {
 		// Validate format. Mirrors upstream assertValidSessionId (session-manager.ts).
 		if !isValidSessionID(flags.SessionID) {
-			fmt.Fprintf(os.Stderr, "error: session id must be non-empty, contain only alphanumeric characters, '-', '_', and '.', and start and end with an alphanumeric character\n")
+			printCLIError("session id must be non-empty, contain only alphanumeric characters, '-', '_', and '.', and start and end with an alphanumeric character")
 			exitProcess(1)
 		}
 		var conflicts []string
@@ -613,19 +608,9 @@ func main() {
 			conflicts = append(conflicts, "--resume")
 		}
 		if len(conflicts) > 0 {
-			fmt.Fprintf(os.Stderr, "error: --session-id cannot be combined with %s\n", strings.Join(conflicts, ", "))
+			printCLIError("--session-id cannot be combined with %s", strings.Join(conflicts, ", "))
 			exitProcess(1)
 		}
-	}
-
-	if flags.Version {
-		fmt.Println(cliVersionString())
-		exitProcess(0)
-	}
-
-	if flags.Help {
-		printHelp(os.Stdout, term.IsTerminal(int(os.Stdout.Fd())))
-		exitProcess(0)
 	}
 
 	exportOfflineMode(flags.Offline)
@@ -643,11 +628,19 @@ func main() {
 		}
 		result, err := export.ExportFromFile(flags.Export, outputPath)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			printCLIError("%v", err)
 			exitProcess(1)
 		}
 		fmt.Fprintf(os.Stderr, "Exported to: %s\n", result)
 		exitProcess(0)
+	}
+
+	// Non-interactive startup reserves stdout except for plain runtime metadata (Pi main.ts:129-130,638-642).
+	if processAppMode(flags) != appModeInteractive && !isPlainRuntimeMetadataCommand(flags) {
+		if err := codingagent.TakeOverStdout(); err != nil {
+			printCLIError("%v", err)
+			exitProcess(1)
+		}
 	}
 
 	// Upstream main.ts runs validateForkFlags after --version and --export.
@@ -657,20 +650,20 @@ func main() {
 
 	initialCWD, err := os.Getwd()
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: get cwd: %v\n", err)
+		printCLIError("get cwd: %v", err)
 		exitProcess(1)
 	}
 
 	// Set up context with signal handling.
 	//
-	// SIGTERM cancels the process. Interactive SIGINT aborts the current
-	// operation; print mode installs its own SIGINT handler.
+	// SIGTERM and SIGHUP dispose the runtime before cancelling. Print/JSON
+	// leave SIGINT to the default process action; interactive mode owns D51.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGTERM)
-	if flags.Mode == "rpc" && runtime.GOOS != "windows" {
+	if runtime.GOOS != "windows" {
 		signal.Notify(sigCh, syscall.SIGHUP)
 	}
 	defer signal.Stop(sigCh)
@@ -727,51 +720,47 @@ func main() {
 	// Resolve directories.
 	// Working directory comes from os.Getwd() (no CLI override; matches upstream).
 	cwd := initialCWD
-	// Agent dir resolution: $PIG_CODING_AGENT_DIR env var, then default.
-	// Mirrors upstream's getAgentDir() using ENV_AGENT_DIR.
-	agentDir := os.Getenv(codingagent.ENV_AGENT_DIR)
-	if agentDir == "" {
-		agentDir = codingagent.DefaultAgentDir()
-	} else {
-		agentDir = codingagent.ExpandTildePath(agentDir)
-	}
+	agentDir := codingagent.AgentDir()
 	agentDirForModelOverride = agentDir
 
 	// Run one-shot config migrations before loading services/resources so
 	// renamed directories (e.g. commands/ → prompts/) are visible on the
 	// current startup path. Mirrors upstream startup ordering.
 	if _, _, err := codingagent.RunMigrations(cwd, agentDir); err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		printCLIError("%v", err)
 		exitProcess(1)
 	}
 
-	// Resolve the selected Session and its runtime cwd before constructing any
-	// cwd-bound settings, Packages, Resources, models, or extension hosts.
-	// Startup-project settings are used only for sessionDir selection here.
+	// Bootstrap global proxy settings before constructing any provider clients; Session-local settings are resolved after Session selection.
 	startupSettingsManager := codingagent.NewSettingsManager(cwd, agentDir)
+	if err := ai.ApplyHTTPProxySettings(startupSettingsManager.GetGlobalSettings().HTTPProxy); err != nil {
+		printCLIError("%v", err)
+		exitProcess(1)
+	}
 	startupSettingsDiagnostics := codingagent.CollectSettingsDiagnostics(startupSettingsManager)
 	sessionDir, err := resolveSessionDir(flags.SessionDir, startupSettingsManager)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		printCLIError("%v", err)
 		exitProcess(1)
 	}
-	startupUIOpts := codingagent.StartupUIOptions{
-		AgentDir:   agentDir,
-		Settings:   startupSettingsManager.GetGlobalSettings(),
-		ThemePaths: collectStartupThemePaths(initialCWD, agentDir, startupSettingsManager),
-	}
-	if flags.ResumeAny {
+	startupUIOpts := startupUIOptions(flags, processAppMode(flags) == appModeInteractive, initialCWD, agentDir, startupSettingsManager)
+	// Pi createSessionManager selects in-memory modes before considering the resume picker.
+	if flags.ResumeAny && !flags.NoSession && !flags.Help && flags.ListModels == "" && !flags.ListModelsAll {
 		if !term.IsTerminal(int(os.Stdin.Fd())) || !term.IsTerminal(int(os.Stdout.Fd())) {
 			exitProcess(0)
 		}
 		manager := newSessionManagerWithDir(initialCWD, sessionDir)
 		selected, ok, selectErr := codingagent.SelectStartupSession(
-			manager.ListCurrentSessions,
-			manager.ListAllSessions,
+			func(options codingagent.SessionListOptions) ([]codingagent.SessionInfo, error) {
+				return manager.ListCurrentSessions(options)
+			},
+			func(options codingagent.SessionListOptions) ([]codingagent.SessionInfo, error) {
+				return manager.ListAllSessions(options)
+			},
 			startupUIOpts,
 		)
 		if selectErr != nil {
-			fmt.Fprintf(os.Stderr, "error: select session: %v\n", selectErr)
+			printCLIError("select session: %v", selectErr)
 			exitProcess(1)
 		}
 		if !ok {
@@ -789,13 +778,21 @@ func main() {
 	}
 	startupSession, err := resolveStartupSessionSelection(flags, initialCWD, sessionDir)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		_, missing := errors.AsType[*sessionNotFoundError](err)
+		_, exists := errors.AsType[*sessionAlreadyExistsError](err)
+		_, fileURL := errors.AsType[*sessionPathURLError](err)
+		if missing || exists || fileURL {
+			color := chalkColorLevel(environMap(os.Environ()), os.Args[1:], term.IsTerminal(int(os.Stdout.Fd()))) > 0
+			fmt.Fprintln(os.Stderr, formatStartupSessionError(err, color))
+		} else {
+			printCLIError("%v", err)
+		}
 		exitProcess(1)
 	}
 	if crossProject := startupSession.crossProject; crossProject != nil {
 		confirmed, confirmErr := confirmCrossProjectSession(os.Stdin, os.Stdout, crossProject.cwd)
 		if confirmErr != nil {
-			fmt.Fprintf(os.Stderr, "error: confirm cross-project session: %v\n", confirmErr)
+			printCLIError("confirm cross-project session: %v", confirmErr)
 			exitProcess(1)
 		}
 		if !confirmed {
@@ -805,7 +802,7 @@ func main() {
 		manager := newSessionManagerWithDir(startupSession.runtimeCWD, sessionDir)
 		forked, forkErr := manager.ForkFromFile(crossProject.path)
 		if forkErr != nil {
-			fmt.Fprintf(os.Stderr, "error: fork session: %v\n", forkErr)
+			printCLIError("%v", forkErr)
 			exitProcess(1)
 		}
 		startupSession.forkPath = forked.Path()
@@ -822,7 +819,7 @@ func main() {
 			startupUIOpts,
 		)
 		if selectErr != nil {
-			fmt.Fprintf(os.Stderr, "error: select session cwd: %v\n", selectErr)
+			printCLIError("select session cwd: %v", selectErr)
 			exitProcess(1)
 		}
 		if !ok || selected != 0 {
@@ -830,6 +827,7 @@ func main() {
 		}
 		startupSession.runtimeCWD = issue.fallbackCWD
 		startupSession.missingCWD = nil
+		flags.sessionCwdOverride = new(startupSession.runtimeCWD)
 	}
 	if flags.Continue && startupSession.resumePath == "" {
 		manager := newSessionManagerWithDir(initialCWD, sessionDir)
@@ -837,166 +835,138 @@ func main() {
 	}
 	cwd = startupSession.runtimeCWD
 	sessionDir = startupSession.sessionDir
-	resourceFlags := resolveCLIResourceFlags(flags, initialCWD)
-	hasTrustResources := codingagent.HasTrustRequiringProjectResources(cwd)
-	projectTrusted := flags.ProjectTrustOverride != nil && *flags.ProjectTrustOverride
-	if flags.ProjectTrustOverride == nil && !hasTrustResources {
-		projectTrusted = true
-	}
-
-	// Construct the SDK Services container. Mirrors what library
-	// consumers of github.com/MichaelKinsy/PiG/coding will do;
-	// the binary uses the same path so SDK + CLI share the same
-	// startup semantics.
-	traceSDKLockWaits()
-	trace.Mark("pre-services")
-	services, err := coding.NewServices(coding.ServicesOptions{
-		CWD:            cwd,
-		AgentDir:       agentDir,
-		ProjectTrusted: new(projectTrusted),
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "pig: services init: %v\n", err)
+	// Session selection and its effects precede name normalization and validation (Pi main.ts:680-701).
+	sessionName, nameErr := sessionNameFromFlags(flags)
+	if nameErr != nil {
+		printCLIError("%v", nameErr)
 		exitProcess(1)
 	}
-	trace.Mark("services-created")
-	llamaHost := startBuiltInLlama(ctx, services)
-	settings := services.Settings()
-	// Mirrors upstream main.ts: --use-theme and --tui-mode apply to this run only.
-	if flags.UseTheme != "" {
-		settings.Theme = flags.UseTheme
+	if applied, nameErr := startupSession.applyName(sessionName); nameErr != nil {
+		printCLIError("set session name: %v", nameErr)
+		exitProcess(1)
+	} else if applied {
+		sessionName = ""
 	}
-	if flags.TuiMode != "" {
-		settings.TuiMode = flags.TuiMode
+	flags.Name = sessionName
+	// The builder is Pi's createRuntime closure: every mode builds its first Session
+	// and every replacement Session from the same process-fixed inputs.
+	builder := &cliRuntimeBuilder{
+		mode: processAppMode(flags), flags: flags, agentDir: agentDir, launchCWD: initialCWD,
+		activePiglet: activePiglet, activePigletBaked: activePigletBaked,
+		settingsManager: startupSettingsManager, settingsDiagnostics: startupSettingsDiagnostics,
+		startupUIOptions: startupUIOpts, trustStore: codingagent.NewProjectTrustStore(agentDir),
+		trustByCWD: map[string]bool{},
+		stageExtensionSDKs: func() {
+			// Stage the extension SDKs before the first extension load, including the
+			// pre-trust load, so out-of-tree `-e` builds and packed cells resolve
+			// them on a clean host with no PiG checkout.
+			//
+			// Stock Pig always stages its extension SDKs. Skipping the stage would leave
+			// extensions building against a stale copy on disk. A failure here is not
+			// fatal, but it must be visible: its symptom is an extension carrying a bug
+			// that was already fixed, which is otherwise untraceable from the running
+			// process.
+			stageExtensionSDKsAtStartup(ctx, codingagent.ConfigRoot(), os.Stderr, startupSDKLockTimeout)
+		},
 	}
-
-	trace.Mark("sdk-sync-start")
-	// Stage the extension SDKs before the first extension load, including the
-	// pre-trust load below, so out-of-tree `-e` builds and packed cells resolve
-	// them on a clean host with no PiG checkout.
-	//
-	// Stock Pig always stages its extension SDKs. Skipping the stage would leave
-	// extensions building against a stale copy on disk. A failure here is not
-	// fatal, but it must be visible: its symptom is an extension carrying a bug
-	// that was already fixed, which is otherwise untraceable from the running
-	// process.
-	stageExtensionSDKsAtStartup(ctx, codingagent.ConfigRoot(), os.Stderr, startupSDKLockTimeout)
-	trace.Mark("sdk-sync-done")
-
 	startupExtensions := &startupExtensionSet{}
-	startupSourceResolver := newStartupExtensionSourceResolver(nil)
 	stopStartupExtensions = startupExtensions.close
 	defer startupExtensions.close()
-	// Mirrors upstream loadFinalExtensionSet: pre-trust load errors are part of
-	// the final extension errors.
-	var preTrustExtensionDiagnostics []codingagent.AgentSessionRuntimeDiagnostic
-	if flags.ProjectTrustOverride == nil && hasTrustResources {
-		trace.Mark("trust-preload-start")
-		userScope := []string{"user"}
-		preTrustConfigs := collectExtensionConfigs(cwd, agentDir, services.SettingsManager(), resourceFlags, &userScope, startupSourceResolver.Resolve)
-		preTrustExts, _, preTrustBridge, preTrustLoadErrs := loadFinalSubprocessExtensions(
-			ctx,
-			cwd,
-			processAppMode(flags).extensionMode(),
-			services.Registry().ModelRegistry,
-			preTrustConfigs,
-			nil,
-			nil,
-			startupExtensions,
-		)
-		trace.Mark("trust-preload-done")
-		preTrustExtensionDiagnostics = extensionLoadDiagnostics(preTrustLoadErrs)
-		var trustRunner *inproc.Runner
-		if len(preTrustExts) > 0 {
-			trustRunner = inproc.NewRunner(preTrustExts, cwd)
-		}
-		trustUI := extension.NoopUIContext
-		interactiveTrust := processAppMode(flags) == appModeInteractive && !flags.Help && flags.ListModels == "" && !flags.ListModelsAll
-		if interactiveTrust {
-			trustUI = newStartupTrustUI(startupUIOpts)
-			if preTrustBridge != nil {
-				preTrustBridge.SetUIContext(trustUI)
-			}
-		}
-		globalDefaultTrust := startupSettingsManager.GetGlobalSettings().DefaultProjectTrust
-		if globalDefaultTrust == "" {
-			globalDefaultTrust = "ask"
-		}
-		projectTrusted, err = resolveProjectTrusted(ctx, projectTrustResolutionOptions{
-			CWD:     cwd,
-			Store:   codingagent.NewProjectTrustStore(agentDir),
-			Default: globalDefaultTrust,
-			Runner:  trustRunner,
-			UI:      trustUI,
-			OnExtensionError: func(message string) {
-				fmt.Fprintln(os.Stderr, "warning:", message)
-			},
-		})
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "error: resolve project trust: %v\n", err)
-			exitProcess(1)
-		}
-		services.SettingsManager().SetProjectTrusted(projectTrusted)
-		settings = services.Settings()
-		trace.Mark("trust-resolved")
-	}
-	// Mirrors upstream main.ts, which applies the terminal capability
-	// overrides once the runtime settings exist and before any mode runs.
-	tui.SetCapabilityOverrides(services.SettingsManager().GetTerminalCapabilityOverrides())
-	// Mirrors upstream main.ts: startup and runtime settings managers can
-	// report the same file error, so the combined list is deduplicated.
-	startupDiagnostics := codingagent.DeduplicateDiagnostics(append(startupSettingsDiagnostics, codingagent.CollectSettingsDiagnostics(services.SettingsManager())...))
-
-	// Wire --models CLI flag to settings.EnabledModels so the interactive
-	// mode's scopedModelIDs picks them up. Mirrors upstream main.ts
-	// resolveModelScope → session.scopedModels.
-	if len(flags.Models) > 0 {
-		settings.EnabledModels = flags.Models
-	}
-
-	// Reinstall any configured packages whose install directory is missing
-	// on disk. Mirrors upstream onMissing callback flow in
-	// DefaultPackageManager.resolve (package-manager.ts:839).
-	trace.Mark("packages-reinstall-start")
-	if reinstalled, missingPkgs := EnsureConfiguredPackagesInstalled(cwd, services.SettingsManager()); len(reinstalled)+len(missingPkgs) > 0 {
-		if len(reinstalled) > 0 {
-			fmt.Fprintf(os.Stderr, "[pig] Reinstalled missing packages: %s\n", strings.Join(reinstalled, ", "))
-		}
-		if len(missingPkgs) > 0 {
-			fmt.Fprintf(os.Stderr, "[pig] Could not install: %s (run `pig update` when online)\n", strings.Join(missingPkgs, ", "))
-		}
-	}
-	trace.Mark("packages-reinstall-done")
-
-	promptPaths := collectPromptPaths(cwd, agentDir, services.SettingsManager(), resourceFlags, projectTrusted, startupSourceResolver.Resolve)
-	themePaths := collectThemePaths(cwd, agentDir, services.SettingsManager(), resourceFlags, projectTrusted, startupSourceResolver.Resolve)
-	extensionScopes := pigletAmbientSources(activePiglet, "extensions")
-	skillScopes := pigletAmbientSources(activePiglet, "skills")
-	if !projectTrusted {
-		extensionScopes = trustedAmbientScopes(extensionScopes)
-		skillScopes = trustedAmbientScopes(skillScopes)
-	}
-	if activePigletBaked {
-		empty := []string{}
-		extensionScopes = &empty
-		skillScopes = &empty
-	}
-	if err := validateConfiguredPackagesForStartup(cwd, services.SettingsManager(), func(scope string) bool {
-		return !resourceFlags.NoExtensions && packageScopeEnabled(extensionScopes, scope)
-	}, startupSourceResolver.Resolve); err != nil {
-		fmt.Fprintf(os.Stderr, "pig: configured Package validation failed: %v\n", err)
+	_ = pigdocs.EnsureSynced(codingagent.ConfigRoot())
+	buildInput := cliBuildInput{CWD: cwd, Startup: true, StartupExtensions: startupExtensions}
+	build, err := builder.buildResources(ctx, buildInput)
+	if err != nil {
+		reportCLIStartupFailure(err)
 		exitProcess(1)
 	}
-	trace.Mark("packages-validated")
-	skillInputs := collectSkillInputs(cwd, agentDir, services.SettingsManager(), resourceFlags, skillScopes, startupSourceResolver.Resolve)
-	trace.Mark("extension-discovery-start")
-	extraExtConfigs := collectExtensionConfigs(cwd, agentDir, services.SettingsManager(), resourceFlags, extensionScopes, startupSourceResolver.Resolve)
-	trace.Mark("extension-discovery-done")
+	extensionDiagnostics := build.ExtensionDiagnostics
+	startupDiagnostics := slices.Concat(build.StartupDiagnostics, extensionDiagnostics)
 
-	// Apply the already-resolved Piglet before model and extension setup. The
-	// environment gate above has either entered its runtime or explicitly
-	// accepted the one-shot unsafe-host bypass.
-	applyPigletPreStart(activePiglet, &flags)
+	// Resolve model
+	// Piglet model acts as a fallback: --model flag > piglet.model > settings.defaultModel
+	if err := startupSession.loadSession(flags); err != nil {
+		printCLIError("open selected session: %v", err)
+		exitProcess(1)
+	}
+	buildInput.Manager = startupSession.manager
+	buildInput.Continuing = startupSession.resumePath != "" || startupSession.forkPath != ""
+	if err := builder.buildSession(ctx, build, buildInput); err != nil {
+		reportCLIStartupFailure(err)
+		exitProcess(1)
+	}
+	flags = build.Flags
+	selected, modelErr := build.Selected, build.ModelErr
+	// resolveModelScope reports immediately; buildSessionOptions diagnostics follow extension errors in the runtime's report.
+	for _, warning := range selected.ScopeWarnings {
+		printModelDiagnostic(warning)
+	}
+	for _, warning := range selected.Warnings {
+		startupDiagnostics = append(startupDiagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "warning", Message: warning})
+	}
+	for _, diagnosticErr := range selected.Errors {
+		startupDiagnostics = append(startupDiagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: "error", Message: diagnosticErr.Error()})
+	}
+	startupDiagnostics = codingagent.DeduplicateDiagnostics(startupDiagnostics)
+
+	// Metadata includes scope warnings and startup settings diagnostics, but suppresses runtime diagnostics and their failure status.
+	if flags.Help {
+		codingagent.ReportDiagnostics(startupSettingsDiagnostics)
+		printHelp(os.Stdout, term.IsTerminal(int(os.Stdout.Fd())), extensionHelpFlags(build.Extensions)...)
+		exitProcess(0)
+	}
+	if flags.ListModels != "" || flags.ListModelsAll {
+		codingagent.ReportDiagnostics(startupSettingsDiagnostics)
+		printModelList(build.Services.Registry().ModelRegistry, agentDir, flags.ListModels)
+		exitProcess(0)
+	}
+	// RPC owns stdin as JSONL. Other modes read piped input before runtime diagnostics, and metadata commands above never consume it.
+	var stdinContent string
+	if flags.Mode != "rpc" {
+		trace.Mark("stdin-read-start")
+		stdinContent, err = readPipedStdin(ctx)
+		if err != nil {
+			if sig := receivedTerminationSignal.Load(); sig != 0 {
+				exitProcess(128 + int(sig))
+			}
+			printCLIError("read stdin: %v", err)
+			exitProcess(1)
+		}
+		trace.Mark("stdin-read-done")
+	}
+	initialMessage, initialImages, extraMessages, messageErr := prepareInitialMessage(initialCWD, flags.Args, flags.FileArgs, stdinContent)
+	if messageErr != nil {
+		printCLIError("%v", messageErr)
+		exitProcess(1)
+	}
+	if len(extensionDiagnostics) > 0 || modelErr != nil {
+		if len(extensionDiagnostics) > 0 {
+			reportExtensionLoadFailures(startupDiagnostics)
+		} else {
+			codingagent.ReportDiagnostics(startupDiagnostics)
+		}
+		exitProcess(1)
+	}
+	stopModelServices = build.Services.Close
+	services := build.Services
+	settings := build.Settings
+	model, noModelWarning := build.Model, build.NoModelWarning
+	subprocHost, subprocBridge := build.Host, build.Bridge
+	llamaHost := build.Llama
+	projectTrusted := build.ProjectTrusted
+	skillDefs := build.skills()
+	slr := build.SkillLoad
+	promptPaths, themePaths, skillInputs := build.PromptPaths, build.ThemePaths, build.SkillInputs
+	skillScopes := build.SkillScopes
+	resourceFlags := build.ResourceFlags
+	startupSourceResolver := build.SourceResolver
+	reloadBuiltinExtensions, builtinExts := build.ReloadBuiltinExtensions, build.BuiltinExtensions
+	agentToolNames := build.AgentToolNames
+	allowed, activeBuiltin, excludedTools, skipBuiltinTools := build.Allowed, build.ActiveBuiltin, build.ExcludedTools, build.SkipBuiltinTools
+	projectCtxFiles, resolvedPrompts := build.ContextFiles, build.ResolvedPrompts
+	systemPrompt, systemPromptOptions := build.SystemPrompt, build.SystemPromptOptions
+	// No agent-defined beforeToolCall hooks: agent persona system is
+	// a pig-extension concern, not built into core.
+	var beforeToolCall []agent.BeforeToolCallHook
 
 	// Quiet startup banner so the user always knows which binary launched.
 	// Suppressed in --print mode and when settings.QuietStartup is true.
@@ -1011,368 +981,21 @@ func main() {
 		startupHints := codingagent.StartupKeybindHints(codingagent.NewKeybindingsManager(agentDir))
 		loginOperationalLines = append(loginOperationalLines, identityLine, "", startupHints)
 	}
+	_ = llamaHost
+	_ = resourceFlags
+	_ = slr
+	_ = skillInputs
 
-	trace.Mark("services-init")
-	_ = pigdocs.EnsureSynced(codingagent.ConfigRoot())
-	registry := services.Registry()
-
-	// Load extensions before resolving the model, matching upstream main.ts:
-	// createAgentSessionServices builds the extension-populated modelRuntime, and
-	// resolveModelScope / listModels then run against it. Extension-contributed
-	// model providers must be registered here so resolveModel and --list-models
-	// see them. Also early so --print mode has extension tools.
-	//
-	// Piglet-driven extension loading: if a piglet resolves extension origins
-	// to concrete paths, it becomes the sole authority for what loads and
-	// convention-directory scanning is suppressed. A scoping-only piglet
-	// resolves nothing and leaves -e/convention loading intact (see below).
-	if activePiglet != nil {
-		pigletExtConfigs := resolvePigletExtConfigs(activePiglet)
-		// An embedded Piglet is authoritative even though its extension
-		// origins were localized at build time. Embedded cells and fused configs
-		// supply the runnable extensions; convention discovery must stay off so
-		// local state cannot change the Piglet Binary.
-		if activePigletBaked && len(activePiglet.Extensions) > 0 {
-			flags.NoExtensions = true
-			extraExtConfigs = mergeExtConfigs(append(fusedConfigsForPiglet(activePiglet), extraExtConfigs...))
-		} else if len(pigletExtConfigs) > 0 {
-			// A piglet drives extension loading only when it actually resolves
-			// extensions to load (entries with an origin). A scoping-only piglet
-			// (entries with tools but no origin, e.g. agent-server's "load via -e,
-			// scope by name" pattern) resolves nothing; it must not suppress the
-			// -e/convention loading, or the extensions it means to scope never
-			// load. ScopeTools then filters the loaded set by name.
-			flags.NoExtensions = true
-			extraExtConfigs = mergeExtConfigs(append(pigletExtConfigs, extraExtConfigs...))
-		}
-	}
-
-	// RPC mode loads and owns its own extension host in runRPCMode (which
-	// receives only flags and reloads from -e). Loading here too would be a
-	// redundant double-load whose host leaks when os.Exit hands off to
-	// runRPCMode below, so skip it. Upstream loads once and passes the runtime
-	// to runRpcMode; this keeps pig's self-contained RPC path from double-loading.
-	var subprocExts []extension.Extension
-	var subprocHost *subprocess.Host
-	var subprocBridge *subprocess.UIBridge
-	var embeddedCells []subprocess.EmbeddedCell
-	if activePigletBaked {
-		embeddedCells = embeddedCellsFromCellpack(cellpack.LoadedCells())
-	}
-	reloadExtensionConfigs := func() []subprocess.ExtConfig {
-		configs := collectExtensionConfigs(cwd, agentDir, services.SettingsManager(), resourceFlags, extensionScopes)
-		if activePiglet != nil {
-			configs = append(resolvePigletExtConfigs(activePiglet), configs...)
-		}
-		return mergeExtConfigs(configs)
-	}
-	var extensionLoadErrs []error
-	if flags.Mode != "rpc" && (!flags.NoExtensions || len(extraExtConfigs) > 0 || len(embeddedCells) > 0) {
-		subprocExts, subprocHost, subprocBridge, extensionLoadErrs = loadFinalSubprocessExtensions(ctx, cwd, processAppMode(flags).extensionMode(), registry.ModelRegistry, extraExtConfigs, embeddedCells, reloadExtensionConfigs, startupExtensions)
-	}
-
-	// In-process builtins are upstream's inline-factory tier: they follow path
-	// extensions for dispatch and conflict ownership, and /reload invokes their
-	// factories again rather than retaining closure state.
-	var reloadBuiltinExtensions func() []extension.Extension
-	if activePiglet != nil {
-		reloadBuiltinExtensions = func() []extension.Extension {
-			return []extension.Extension{piglet.BuildExtensionWithPiglet(activePiglet)}
-		}
-	}
-	var builtinExts []extension.Extension
-	if reloadBuiltinExtensions != nil {
-		builtinExts = reloadBuiltinExtensions()
-	}
-	allExts := codingagent.ExtensionsInLoadOrder(subprocExts, builtinExts)
-
-	// Mirrors upstream main.ts: any extension load error ends startup in every
-	// mode after the diagnostics and the -ne hint. RPC mode loads its final
-	// set in runRPCMode, which reports these pre-trust errors with its own.
-	if extensionDiagnostics := slices.Concat(preTrustExtensionDiagnostics, extensionLoadDiagnostics(extensionLoadErrs), extensionConflictDiagnostics(codingagent.DetectExtensionConflicts(allExts))); flags.Mode != "rpc" && len(extensionDiagnostics) > 0 {
-		if subprocHost != nil {
-			subprocHost.Shutdown("extension load failure")
-		}
-		reportExtensionLoadFailures(append(startupDiagnostics, extensionDiagnostics...))
-		exitProcess(1)
-	}
-	trace.Mark("extensions-loaded")
-
-	// --list-models: print the model catalog (now including extension-contributed
-	// providers registered during the load above) and exit. Matches upstream,
-	// which lists after the extension-populated modelRuntime is built; runs before
-	// model resolution and the session UI.
-	if flags.ListModels != "" || flags.ListModelsAll {
-		codingagent.ReportDiagnostics(startupSettingsDiagnostics)
-		printModelList(registry.ModelRegistry, agentDir, flags.ListModels)
-		if subprocHost != nil {
-			subprocHost.Shutdown("list-models")
-		}
-		exitProcess(0)
-	}
-
-	// Resolve model
-	// Piglet model acts as a fallback: --model flag > piglet.model > settings.defaultModel
-	trace.Mark("pre-model")
-	modelFlag := flags.Model
-	if modelFlag == "" {
-		modelFlag = pigletModelSpec(activePiglet)
-	}
-	selected, err := selectStartupModel(ctx, startupModelOptions{
-		CLIProvider:   flags.Provider,
-		CLIModel:      modelFlag,
-		CLIThinking:   flags.Thinking,
-		ScopePatterns: settings.EnabledModels,
-		Continuing:    startupSession.resumePath != "" || startupSession.forkPath != "",
-		APIKey:        flags.APIKey,
-	}, settings, services)
-	// Surface model-resolution warnings (e.g. an unknown model under a known
-	// provider that fell back to the provider's default caps, or a scope
-	// pattern that matches nothing) the way upstream reportDiagnostics does:
-	// yellow "Warning: …" on stderr, before the TUI takes over.
-	for _, warning := range selected.Warnings {
-		printModelDiagnostic(warning)
-	}
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		exitProcess(1)
-	}
-	model, specThinking := selected.Model, selected.Thinking
-	// Mirror upstream main.ts: interactive mode tolerates a nil model and
-	// emits a "Warning: No models available." diagnostic that the TUI
-	// renders alongside the welcome banner. Print/JSON/RPC modes re-check
-	// at their call sites and fail.
-	noModelWarning := ""
-	if model == nil {
-		noModelWarning = codingagent.FormatNoModelsAvailableMessage()
-	}
-	// Thinking override cascade: --thinking flag > model-spec ":medium" > piglet.model.thinking
-	if specThinking != "" && flags.Thinking == "" {
-		flags.Thinking = specThinking
-	}
-	if flags.Thinking == "" && activePiglet != nil && activePiglet.Model != nil && activePiglet.Model.Thinking != "" {
-		flags.Thinking = activePiglet.Model.Thinking
-	}
-
-	trace.Mark("model-resolved")
-
-	// Load agent definition (if --agent) and skills (if --skill).
-
-	// Piglet-driven skill loading: if piglet skills are declared, use those
-	// instead of convention-directory discovery. An embedded Piglet may carry
-	// inline skill content so it does not depend on local ~/.pig/skills state.
-	// resolveAndLoadSkills encapsulates the resolve+load wiring (the site of a
-	// past bug where NoSkills was passed as loadSkills's kill-switch).
-	slr, err := resolveAndLoadSkills(activePiglet, skillInputs)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
-		exitProcess(1)
-	}
-	skillDefs := slr.Defs
-	skillInputs = slr.Paths
-
-	// Build the default system prompt. The tool list and hints
-	// reflect the actual tools we'll hand to the agent loop.
-	// registryToolNames is the full set of built-in tools that exist and can
-	// be activated via --tools. agentToolNames is the ACTIVE set advertised in
-	// the system prompt; it defaults to the upstream default-active set
-	// (read/bash/edit/write), with powershell/grep/find/ls registered but
-	// opt-in. Mirrors upstream allToolNames, defaultActiveToolNames
-	// (sdk.ts:244), and system-prompt.ts:90.
-	registryToolNames := tools.BuiltinToolNames()
-	agentToolNames := []string{"read", "bash", "edit", "write"}
-	// The defaultTools setting replaces the default active set, as upstream
-	// sdk.ts configuredDefaultToolNames does.
-	if settings.DefaultTools != nil {
-		agentToolNames = append([]string(nil), settings.DefaultTools...)
-	}
-	toolHints := prompts.DefaultToolSnippets()
-	// Collect per-tool prompt guidelines from tool schemas.
-	// Mirrors upstream agent-session.ts:2273-2276.
-	toolGuidelines := tools.DefaultToolGuidelines()
-	allowed := map[string]struct{}(nil)
-	// activeBuiltin, when non-nil, restricts which built-in tools are active
-	// without gating extension tools (AllowedTools gates everything). nil =
-	// all built-in tools. Used to apply the default-active set.
-	var activeBuiltin map[string]struct{}
-	skipBuiltinTools := flags.NoBuiltinTools
-	if flags.NoBuiltinTools {
-		agentToolNames = nil
-	}
-	// --no-tools disables all tools (empty allowlist).
-	// --tools <list> restricts to those names. Mirrors upstream args.ts:97-104.
-	switch {
-	case flags.NoTools:
-		allowed = make(map[string]struct{}) // empty = block all
-		agentToolNames = nil
-		skipBuiltinTools = false
-	case len(flags.Tools) > 0:
-		allowed = make(map[string]struct{}, len(flags.Tools))
-		for _, t := range flags.Tools {
-			allowed[t] = struct{}{}
-		}
-		if !flags.NoBuiltinTools {
-			// Advertise the requested built-in tools in registry order.
-			// AllowedTools does the real activation gating.
-			filtered := make([]string, 0, len(flags.Tools))
-			for _, n := range registryToolNames {
-				if _, ok := allowed[n]; ok {
-					filtered = append(filtered, n)
-				}
-			}
-			agentToolNames = filtered
-		}
-	default:
-		if !flags.NoBuiltinTools {
-			// Default active set excludes grep/find/ls (upstream sdk.ts:244).
-			// AllowedTools stays nil so extension tools remain active.
-			activeBuiltin = make(map[string]struct{}, len(agentToolNames))
-			for _, t := range agentToolNames {
-				activeBuiltin[t] = struct{}{}
-			}
-		}
-	}
-	// --exclude-tools / -xt: deny specific tools. The excluded set is both
-	// removed from the system-prompt advertisement (agentToolNames) and
-	// applied as a denylist at the agent loop (excludedTools), so an excluded
-	// tool is non-callable, not merely hidden. Gates built-in AND extension
-	// tools. Mirrors upstream excludedToolNames (sdk.ts:246) + isAllowedTool
-	// (agent-session.ts:2288).
-	var excludedTools map[string]struct{}
-	if len(flags.ExcludeTools) > 0 {
-		excludedTools = make(map[string]struct{}, len(flags.ExcludeTools))
-		for _, t := range flags.ExcludeTools {
-			excludedTools[t] = struct{}{}
-		}
-		filtered := agentToolNames[:0]
-		for _, n := range agentToolNames {
-			if _, ok := excludedTools[n]; !ok {
-				filtered = append(filtered, n)
-			}
-		}
-		agentToolNames = filtered
-	}
-	promptSkills := make([]prompts.Skill, 0, len(skillDefs))
-	for _, s := range skillDefs {
-		promptSkills = append(promptSkills, prompts.Skill{Name: s.Name, Description: s.Description, Path: s.Path, DisableModelInvocation: s.DisableModelInvocation})
-	}
-	trace.Mark("pre-system-prompt")
-	projectCtxFiles := loadContextFiles(cwd, agentDir, flags.NoContextFiles)
-	promptCtxFiles := toPromptContextFiles(projectCtxFiles)
-	resolvedPrompts := resolvePromptInputs(cwd, agentDir, flags, projectTrusted)
-	promptOptions := prompts.Options{
-		Cwd:            cwd,
-		Tools:          agentToolNames,
-		ToolHints:      toolHints,
-		ToolGuidelines: toolGuidelines,
-		Skills:         promptSkills,
-		PigDocsPath:    filepath.Join(codingagent.ConfigRoot(), "docs"),
-		AppendMode:     "append",
-		ContextFiles:   promptCtxFiles,
-	}
-
-	if resolvedPrompts.custom != "" {
-		promptOptions.CustomPrompt = resolvedPrompts.custom
-		promptOptions.AppendMode = "replace"
-	}
-	promptOptions.AppendSystemPrompt = resolvedPrompts.append
-
-	joinedAppend := resolvedPrompts.append
-
-	systemPromptSections := prompts.BuildSystemPromptSections(promptOptions)
-	systemPrompt := prompts.BuildDefaultPrompt(promptOptions)
-
-	// Build the structured BuildSystemPromptOptions for extensions
-	// receiving the before_agent_start event. Mirrors upstream
-	// agent-session.ts:_rebuildSystemPrompt which constructs the
-	// same options and exposes them on every before_agent_start.
-	extContextFiles := make([]extension.SystemPromptContextFile, 0, len(promptCtxFiles))
-	for _, cf := range promptCtxFiles {
-		extContextFiles = append(extContextFiles, extension.SystemPromptContextFile{
-			Path:    cf.Path,
-			Content: cf.Content,
-		})
-	}
-	extSkills := make([]extension.SystemPromptSkill, 0, len(skillDefs))
-	for _, s := range skillDefs {
-		extSkills = append(extSkills, extension.SystemPromptSkill{
-			Name:                   s.Name,
-			Description:            s.Description,
-			FilePath:               s.Path,
-			DisableModelInvocation: s.DisableModelInvocation,
-		})
-	}
-	var flatToolGuidelines []string
-	for _, n := range agentToolNames {
-		flatToolGuidelines = append(flatToolGuidelines, toolGuidelines[n]...)
-	}
-	systemPromptOptions := extension.BuildSystemPromptOptions{
-		CustomPrompt:       resolvedPrompts.custom,
-		SelectedTools:      append([]string(nil), agentToolNames...),
-		ToolSnippets:       toolHints,
-		PromptGuidelines:   flatToolGuidelines,
-		AppendSystemPrompt: joinedAppend,
-		Cwd:                cwd,
-		ContextFiles:       extContextFiles,
-		Skills:             extSkills,
-	}
-
-	// No agent-defined beforeToolCall hooks: agent persona system is
-	// a pig-extension concern, not built into core.
-	var beforeToolCall []agent.BeforeToolCallHook
-
-	// RPC mode: headless JSONL command/event loop.
-	// Takes over stdin/stdout; no interactive TUI.
-	// Must be dispatched BEFORE buildInitialMessage which reads piped
-	// stdin: consuming it would starve the RPC command reader.
-	// Mirrors upstream main.ts:633 which skips readPipedStdin when
-	// appMode === "rpc".
+	// RPC mode takes over protocol stdin/stdout with the already-loaded runtime.
 	if flags.Mode == "rpc" {
-		promptResult := codingagent.LoadPromptTemplates("", "", promptPaths...)
-		promptTemplates := promptResult.Templates
-		for _, diagnostic := range promptResult.Diagnostics {
-			startupDiagnostics = append(startupDiagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: diagnostic.Type, Message: diagnostic.Path + ": " + diagnostic.Message})
-		}
-		resourceInfo := resourceSourceInfoProvider(cwd, agentDir, services.SettingsManager(), resourceFlags, startupSourceResolver.Resolve)()
 		resumePath := startupSession.resumePath
 		if startupSession.forkPath != "" {
 			resumePath = startupSession.forkPath
 		}
-		rpcResources := rpcModeResources{
-			PromptTemplates:              promptTemplates,
-			Skills:                       rpcResolvedSkills(skillDefs, activePiglet),
-			SourceInfo:                   resourceInfo,
-			ExtensionConfigs:             rpcExtensionConfigs(extraExtConfigs, cwd, agentDir, resourceInfo),
-			EmbeddedCells:                embeddedCells,
-			ProjectTrusted:               projectTrusted,
-			ResumePath:                   resumePath,
-			StartupExtensions:            startupExtensions,
-			PreTrustExtensionDiagnostics: preTrustExtensionDiagnostics,
-			Services:                     services,
-		}
 		codingagent.ReportDiagnostics(startupDiagnostics)
-		exitProcess(runRPCMode(ctx, flags, activePiglet, rpcResources))
-	}
-
-	// Build the initial message from positional args and piped stdin.
-	// Mirrors upstream cli/initial-message.ts + cli/file-processor.ts.
-	trace.Mark("stdin-read-start")
-	stdinContent, err := readPipedStdin(ctx)
-	if err != nil {
-		// Upstream has no signal handler of its own while it reads stdin, so
-		// a termination signal ends the process with 128+signum. Main's
-		// handler cancelling ctx already stopped the extension processes.
-		if sig := receivedTerminationSignal.Load(); sig != 0 {
-			exitProcess(128 + int(sig))
-		}
-		fmt.Fprintf(os.Stderr, "Error: read stdin: %v\n", err)
-		exitProcess(1)
-	}
-	trace.Mark("stdin-read-done")
-	initialMessage, initialImages, extraMessages, err := prepareInitialMessage(initialCWD, flags.Args, flags.FileArgs, stdinContent)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		exitProcess(1)
+		exitProcess(runRPCMode(ctx, flags, activePiglet, rpcModeResources{
+			Builder: builder, Build: build, SessionManager: startupSession.manager, ResumePath: resumePath,
+		}))
 	}
 
 	// Startup session selection already ran before cwd-bound services. Headless
@@ -1386,21 +1009,10 @@ func main() {
 	// Mirrors upstream main.ts resolveAppMode: --print, --mode json, or a
 	// stdin or stdout that is not a terminal runs print mode.
 	if processAppMode(flags) != appModeInteractive {
-		// Print and JSON mode expand prompt templates as upstream
-		// AgentSession.prompt does, so they load them as RPC mode does.
-		promptResult := codingagent.LoadPromptTemplates("", "", promptPaths...)
-		for _, diagnostic := range promptResult.Diagnostics {
-			startupDiagnostics = append(startupDiagnostics, codingagent.AgentSessionRuntimeDiagnostic{Type: diagnostic.Type, Message: diagnostic.Path + ": " + diagnostic.Message})
-		}
 		codingagent.ReportDiagnostics(startupDiagnostics)
-		if model == nil {
-			fmt.Fprintln(os.Stderr, "error: no model specified. Use --model, run `pig login github-copilot`, or set OPENAI_API_KEY")
-			exitProcess(1)
-		}
 		if subprocHost != nil {
 			defer subprocHost.Shutdown("quit")
 		}
-		printExts := allExts
 		// The print/JSON prompt comes from positional args, @files, and stdin.
 		// --print is a bare boolean (upstream semantics); the prompt is in
 		// initialMessage, which may be empty (upstream then sends nothing).
@@ -1408,42 +1020,12 @@ func main() {
 		if processAppMode(flags) == appModeJSON {
 			mode = "json"
 		}
-		registryAllowed, registryExcluded := toolRegistryFilters(flags)
-		host := printModeRuntime{
-			Commands: headlessCommandCatalog{
-				promptTemplates: promptResult.Templates,
-				skills:          rpcResolvedSkills(skillDefs, activePiglet),
-				cwd:             cwd,
-				agentDir:        agentDir,
-				sourceInfo:      resourceSourceInfoProvider(cwd, agentDir, services.SettingsManager(), resourceFlags, startupSourceResolver.Resolve)(),
-				llama:           llamaHost,
-			},
-			ToolRegistryAllowed:  registryAllowed,
-			ToolRegistryExcluded: registryExcluded,
-			Services:             services,
-			Extensions:           printExts,
-			Bridge:               subprocBridge,
-			Session: coding.SessionStartOptions{
-				Model:                model,
-				SystemPrompt:         systemPrompt,
-				SystemPromptSections: systemPromptSections,
-				AllowedTools:         allowed,
-				ActiveBuiltinTools:   activeBuiltin,
-				ExcludedTools:        excludedTools,
-				SkipBuiltinTools:     skipBuiltinTools,
-				BeforeToolCall:       beforeToolCall,
-				NoSession:            flags.NoSession,
-				SessionID:            flags.SessionID,
-				SessionDir:           sessionDir,
-			},
-			ResumePath:  printResumePath,
-			SessionName: sessionName,
-		}
-		host.SystemPromptSections = func(skills []*codingagent.SkillDef) ai.OrderedSections {
-			options := promptOptions
-			options.Skills = promptSkillsFor(skills)
-			return prompts.BuildSystemPromptSections(options)
-		}
+		// Print and JSON mode expand prompt templates as upstream
+		// AgentSession.prompt does, so they load them as RPC mode does.
+		host := builder.printHost(build, &printStartup{
+			Manager: startupSession.manager, ResumePath: printResumePath, SessionName: sessionName,
+			SessionDir: sessionDir, NoSession: flags.NoSession, SessionID: flags.SessionID, CWDOverride: flags.sessionCwdOverride,
+		})
 		if err := runPrintMode(ctx, host, printModeOptions{Mode: mode, Messages: extraMessages, InitialMessage: initialMessage, InitialImages: initialImages}); err != nil {
 			// A run stopped by a termination signal reports 128+signum and
 			// stays quiet, matching upstream's print-mode signal handlers.
@@ -1451,7 +1033,7 @@ func main() {
 				exitProcess(signalErr.ExitCode())
 			}
 			if !errors.Is(err, errPrintModeHandled) {
-				fmt.Fprintf(os.Stderr, "error: %v\n", err)
+				printCLIError("%v", err)
 			}
 			exitProcess(1)
 		}
@@ -1463,72 +1045,49 @@ func main() {
 	resumePath := startupSession.resumePath
 	forkPath := startupSession.forkPath
 
-	// Build the SDK Runtime: same path any library consumer takes.
-	// Runtime owns the extension runner + context and produces
-	// *coding.Session values via New / Resume / Open / Continue.
-	// subprocBridge is wired into InteractiveMode via SubprocessUIBridge.
+	// The Session comes from the runtime factory, and /new, /resume, /fork,
+	// /clone and /import replace it through the same factory, as Pi's
+	// interactive mode does with runtimeHost.
 	trace.Mark("pre-runtime")
-
-	rt, err := coding.NewRuntime(coding.RuntimeOptions{
-		Services:      services,
-		NewExtensions: allExts,
-		AbortContext:  ctx,
-	})
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: construct runtime: %v\n", err)
-		exitProcess(1)
-	}
-	defer func() { _ = rt.Close() }()
-	// Upstream /reload rediscovers extensions even when none loaded at
-	// startup, so interactive mode keeps a reload-capable host.
-	subprocHost, subprocBridge = ensureReloadableExtensionHost(subprocHost, subprocBridge, flags.NoExtensions, cwd, registry.ModelRegistry, reloadExtensionConfigs)
-	if subprocHost != nil {
-		defer subprocHost.Shutdown("quit")
-	}
 
 	settingsManager := services.SettingsManager()
 	if err := configureHTTPDispatcherFromSettings(settingsManager); err != nil {
-		fmt.Fprintf(os.Stderr, "error: configure HTTP dispatcher: %v\n", err)
+		printCLIError("configure HTTP dispatcher: %v", err)
 		exitProcess(1)
 	}
 
-	// Create the session: choose method based on resume/fork/no-session flags.
-	startOpts := coding.SessionStartOptions{
-		Model:                model,
-		SystemPrompt:         systemPrompt,
-		SystemPromptSections: systemPromptSections,
-		AllowedTools:         allowed,
-		ActiveBuiltinTools:   activeBuiltin,
-		ExcludedTools:        excludedTools,
-		SkipBuiltinTools:     skipBuiltinTools,
-		BeforeToolCall:       beforeToolCall,
-		SessionDir:           sessionDir,
-		SessionID:            flags.SessionID,
-		NoSession:            flags.NoSession,
-	}
+	// Create or reopen the Session with the resolved CLI thinking override before binding interactive presentation.
+	startOpts := startupSession.startOptions(flags)
+	interactiveInputs := builder.interactiveInputs(build, startOpts)
+	sessionFactory := newCLISessionFactory(ctx, interactiveInputs, build, func(ctx context.Context, options coding.CreateAgentSessionRuntimeOptions) (cliSessionInputs, *cliBuild, error) {
+		next, err := builder.rebuild(ctx, options)
+		if err != nil {
+			return cliSessionInputs{}, nil, err
+		}
+		return builder.interactiveInputs(next, coding.SessionStartOptions{}), next, nil
+	})
+	defer sessionFactory.Close()
 	trace.Mark("pre-session")
-	var codingSess *coding.Session
-	switch {
-	case forkPath != "":
-		// forkPath is the NEW forked file created above (its header records
-		// parentSession). Open it to continue the fork.
-		codingSess, err = rt.Open(forkPath, startOpts)
-	case resumePath != "":
-		codingSess, err = rt.Open(resumePath, startOpts)
-	default:
-		codingSess, err = rt.New(startOpts)
-	}
+	startManager, err := coding.SessionManagerFor(services, interactiveInputs.Start)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: construct session: %v\n", err)
+		printCLIError("construct session: %v", err)
 		exitProcess(1)
 	}
+	rt, err := coding.CreateAgentSessionRuntime(ctx, sessionFactory.Factory(), coding.CreateAgentSessionRuntimeOptions{
+		CWD: cwd, AgentDir: agentDir, SessionManager: startManager,
+	})
+	if err != nil {
+		printCLIError("construct session: %v", err)
+		exitProcess(1)
+	}
+	defer func() { _ = rt.Close() }()
+	stopModelServices = func() { rt.Services().Close() }
+	codingSess := rt.Session()
 	trace.Mark("session-created")
-	defer func() { _ = codingSess.Close() }()
-	// Persist --name to session_info so the display name survives resume.
-	// Mirrors upstream sessionManager.appendSessionInfo(name) (main.ts:580).
+	// Initial metadata does not emit a runtime session_info_changed notification.
 	if sessionName != "" {
-		if err := codingSess.SetSessionName(sessionName); err != nil {
-			fmt.Fprintf(os.Stderr, "error: set session name: %v\n", err)
+		if _, err := codingSess.Inner().AppendSessionInfo(sessionName); err != nil {
+			printCLIError("set session name: %v", err)
 			exitProcess(1)
 		}
 	}
@@ -1541,13 +1100,13 @@ func main() {
 		AgentDir:    agentDir,
 	})
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "error: construct request auth runtime: %v\n", err)
+		printCLIError("construct request auth runtime: %v", err)
 		exitProcess(1)
 	}
 	interactiveRegistryAllowed, _ := toolRegistryFilters(flags)
 	iopts := codingagent.InteractiveOptions{
 		ContextUsage: func() (*int, int) {
-			usage := codingSess.ContextUsage()
+			usage := rt.Session().ContextUsage()
 			if usage == nil {
 				return nil, 0
 			}
@@ -1588,7 +1147,7 @@ func main() {
 		},
 		// pig divergence (D39): standalone-binary self-update notice at startup.
 		BinaryUpdateChecker: func() *codingagent.BinaryUpdate {
-			if IsOfflineModeEnabled() {
+			if packagemanager.IsOfflineModeEnabled() {
 				return nil
 			}
 			ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
@@ -1598,8 +1157,8 @@ func main() {
 		ResourceSourceInfoProvider: resourceSourceInfoProvider(cwd, agentDir, services.SettingsManager(), flags, startupSourceResolver.Resolve),
 		ReloadResourceProvider:     reloadResourceSnapshotProvider(cwd, agentDir, services.SettingsManager(), resourceFlags, skillScopes),
 		Verbose:                    flags.Verbose,
-		ThinkingLevel:              flags.Thinking,
 		Skills:                     skillDefs,
+		SkillDiagnostics:           slr.Diagnostics,
 		RebuildSystemPrompt:        systemPromptRebuilder(cwd, agentDir, projectTrusted, flags, agentToolNames),
 		BridgeExtensionTools:       coding.BridgeNewRunnerTools,
 		SkillPaths:                 skillInputs,
@@ -1611,16 +1170,27 @@ func main() {
 		ModelBuilder: func(spec string) (*ai.Model, error) {
 			return coding.BuildModel(spec, services)
 		},
+		DefaultModelPerProvider: codingagent.DefaultModelPerProvider(),
 		ModelLookup:             codingSess.ModelRuntime().GetModel,
 		ModelCatalog:            codingSess.ModelRuntime().GetModels,
 		RequestAuthRuntime:      requestAuthRuntime,
 		ModelRegistry:           services.Registry().ModelRegistry,
-		ExtensionRunner:         rt.NewExtensionRunner(),
+		ExtensionRunner:         codingSess.ExtensionRunner(),
 		ExtensionContext:        rt.ExtensionContext(),
+		Runtime:                 interactiveRuntime{rt},
+		ReplacementResources: func(session codingagent.InteractiveSessionHandle) codingagent.InteractiveReplacement {
+			current := session.(*coding.Session)
+			next, _ := sessionFactory.StateFor(current)
+			auth, err := codingagent.NewRequestAuthRuntime(ctx, codingagent.RequestAuthRuntimeOptions{Credentials: next.Services.Auth(), AgentDir: agentDir})
+			if err != nil {
+				auth = requestAuthRuntime
+			}
+			return builder.interactiveReplacement(next, current, auth)
+		},
 		BuiltinExtensions:       builtinExts,
 		ReloadBuiltinExtensions: reloadBuiltinExtensions,
 		Llama:                   llamaHost,
-		OfflineMode:             IsOfflineModeEnabled(),
+		OfflineMode:             packagemanager.IsOfflineModeEnabled(),
 		StartupMark:             trace.Mark,
 		LoginHeaderOptions: codingagent.LoginHeaderOptions{
 			OperationalLines: loginOperationalLines,
@@ -1645,6 +1215,9 @@ func main() {
 			return pigsdk.EnsureSynced(codingagent.ConfigRoot())
 		}
 	}
+	// Pi main.ts:943-944 forwards parsed.tuiMode and parsed.useTheme, including an empty theme name.
+	iopts.TuiMode = flags.TuiMode
+	iopts.InitialThemeSetting = flags.UseTheme
 	interactive := codingagent.NewInteractiveMode(iopts)
 	// SIGTERM must reach extensions before the root context is cancelled.
 	setTerminationShutdownHook(interactive.ShutdownFromSignal)
@@ -1655,7 +1228,7 @@ func main() {
 		if errors.Is(err, codingagent.ErrInteractiveCrashed) {
 			exitProcess(1)
 		}
-		fmt.Fprintf(os.Stderr, "error: %v\n", err)
+		printCLIError("%v", err)
 		exitProcess(1)
 	}
 }
@@ -1670,26 +1243,49 @@ func toPromptContextFiles(cfs []codingagent.ContextFile) []struct{ Path, Content
 	return out
 }
 
-func resolveCLIResourceFlags(flags CLIFlags, launchCWD string) CLIFlags {
-	resolve := func(paths []string) []string {
+// resolveCLIResourceFlags resolves local -e, --skill, --prompt-template and
+// --theme paths as main.ts:548-550 does: resolvePath(value, cwd) with no trim.
+// An invalid file: URL is an error, as fileURLToPath throws and startup fails.
+func resolveCLIResourceFlags(flags CLIFlags, launchCWD string) (CLIFlags, error) {
+	resolve := func(paths []string) ([]string, error) {
 		out := make([]string, len(paths))
 		for i, path := range paths {
-			out[i] = resolveSettingsPath(launchCWD, path)
+			out[i] = path
+			if codingagent.IsLocalPath(path) {
+				resolved, err := resolvepath.Resolve(path, launchCWD)
+				if err != nil {
+					return nil, err
+				}
+				out[i] = resolved
+			}
 		}
-		return out
+		return out, nil
 	}
-	flags.Extensions = resolve(flags.Extensions)
-	flags.Skills = resolve(flags.Skills)
-	flags.PromptTemplates = resolve(flags.PromptTemplates)
-	flags.Themes = resolve(flags.Themes)
-	return flags
+	var err error
+	if flags.Extensions, err = resolve(flags.Extensions); err != nil {
+		return flags, err
+	}
+	if flags.Skills, err = resolve(flags.Skills); err != nil {
+		return flags, err
+	}
+	if flags.PromptTemplates, err = resolve(flags.PromptTemplates); err != nil {
+		return flags, err
+	}
+	if flags.Themes, err = resolve(flags.Themes); err != nil {
+		return flags, err
+	}
+	return flags, nil
 }
 
 func resolveSessionDir(flagValue string, sm *codingagent.SettingsManager) (string, error) {
 	if flagValue != "" {
 		return flagValue, nil
 	}
-	if envValue := os.Getenv(codingagent.ENV_SESSION_DIR); envValue != "" {
+	envName := codingagent.ENV_SESSION_DIR
+	if codingagent.UsePiDirs() {
+		envName = "PI_CODING_AGENT_SESSION_DIR"
+	}
+	if envValue := os.Getenv(envName); envValue != "" {
 		return codingagent.ExpandTildePath(envValue), nil
 	}
 	if sm != nil {
@@ -1705,6 +1301,9 @@ func resolveSessionDir(flagValue string, sm *codingagent.SettingsManager) (strin
 func configureHTTPDispatcherFromSettings(sm *codingagent.SettingsManager) error {
 	if sm == nil {
 		return ai.ConfigureHTTPDispatcher(ai.DefaultHTTPIdleTimeoutMs)
+	}
+	if err := ai.ApplyHTTPProxySettings(sm.GetGlobalSettings().HTTPProxy); err != nil {
+		return err
 	}
 	// retry.provider.timeoutMs overrides httpIdleTimeoutMs when set
 	// (upstream sdk.ts:311).
@@ -1730,7 +1329,7 @@ func newSessionManagerWithDir(cwd, sessionDir string) *codingagent.SessionManage
 
 // isValidSessionID validates session ID format.
 // Mirrors upstream assertValidSessionId (session-manager.ts).
-var validSessionIDPattern = regexp.MustCompile(`^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$`)
+var validSessionIDPattern = lazyregexp.New(`^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$`)
 
 func isValidSessionID(id string) bool {
 	return validSessionIDPattern.MatchString(id)

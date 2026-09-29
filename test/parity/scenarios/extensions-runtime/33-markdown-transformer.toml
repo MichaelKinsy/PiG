@@ -1,0 +1,69 @@
+# Behavior family: extensions-runtime
+# Scenario: pi.registerMarkdownTransformer rewrites user and assistant
+# Markdown for display in the interactive transcript.
+#
+# Upstream evidence (Pi 0.87.1, tmux probe 2026-09-26): interactive-mode.ts
+# getMarkdownTransformers() returns the Mermaid transformer followed by each
+# extension's; UserMessageComponent applies them with messageType "user" and
+# AssistantMessageComponent with "assistant" and the block's streaming state:
+#
+#   pi --no-extensions -e test-faux-provider.ts -e markdown-transformer.mjs \
+#     --model test-faux/faux-1 --no-session
+#   send: "What is 20+22?" Enter
+#   the user message shows "What is twenty plus twenty-two?" and the reply
+#   "forty-two from the transformer" in bold.
+#
+# PiG lacked registerMarkdownTransformer, so pi-cc-extensions failed to load.
+# The host awaits the entire chain off-loop before publishing new content; TestMarkdownTransformFirstPaintWaitsForWholeChain additionally checks the first paint through the chat container, not only this settled crop.
+
+name = "33-markdown-transformer"
+description = "Extension Markdown transformers rewrite user and assistant Markdown in the transcript as Pi does"
+covers = [
+  "packages/coding-agent/src/core/extensions/runner.ts",
+  "packages/coding-agent/src/modes/interactive/components/assistant-message.ts",
+  "packages/coding-agent/src/modes/interactive/components/markdown-transform.ts",
+  "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--no-session"]
+pig_extensions = ["testdata/ext/markdown-transformer.mjs"]
+pi_args = ["--no-session"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/markdown-transformer.mjs",
+]
+
+[tmux]
+width = 80
+height = 30
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "What is"
+capture_end = "from the transformer"
+
+[[tmux.steps]]
+keys = ["What is 20+22?"]
+wait_contains = ["What is 20+22?"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["forty-two from the transformer"]
+wait_timeout_seconds = 30
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["What is twenty plus twenty-two?", "forty-two from the transformer"]
+both_not_contain = ["panic:"]
+output_normalized_equal = true
+escaped_output_equal = true
+runs = 3

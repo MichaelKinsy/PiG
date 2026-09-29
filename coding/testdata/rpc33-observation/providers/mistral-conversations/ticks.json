@@ -1,0 +1,5248 @@
+{
+  "piVersion": "0.87.1",
+  "node": "v24.19.0",
+  "scenarios": [
+    {
+      "name": "oneChunk",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiaG0g4pyTIn1dfV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6ImjDqWxsbyDinJMg8J+YgCJ9LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoibW9yZSJ9XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJ0b29sX2NhbGxzIjpbeyJpbmRleCI6MCwiaWQiOiJjYWxsLTEiLCJ0eXBlIjoiZnVuY3Rpb24iLCJmdW5jdGlvbiI6eyJuYW1lIjoicmVhZCIsImFyZ3VtZW50cyI6IntcInBhdGhcIjoifX1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InRvb2xfY2FsbHMiOlt7ImluZGV4IjowLCJmdW5jdGlvbiI6eyJuYW1lIjoiIiwiYXJndW1lbnRzIjoiXCJhLnR4dFwifSJ9fSx7ImluZGV4IjoxLCJpZCI6ImNhbGwtMiIsInR5cGUiOiJmdW5jdGlvbiIsImZ1bmN0aW9uIjp7Im5hbWUiOiJyZWFkIiwiYXJndW1lbnRzIjoie30ifX1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6InRvb2xfY2FsbHMifV0sInVzYWdlIjp7InByb21wdF90b2tlbnMiOjEwLCJjb21wbGV0aW9uX3Rva2VucyI6MywidG90YWxfdG9rZW5zIjoxM319CgpkYXRhOiBbRE9ORV0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:thinking_end",
+          7
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:text_delta",
+          9
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "push:text_end",
+          11
+        ],
+        [
+          "push:toolcall_start",
+          11
+        ],
+        [
+          "push:toolcall_delta",
+          11
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "push:toolcall_start",
+          13
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "deliver:thinking_end",
+          16
+        ],
+        [
+          "push:toolcall_end",
+          17
+        ],
+        [
+          "push:toolcall_end",
+          17
+        ],
+        [
+          "deliver:text_start",
+          18
+        ],
+        [
+          "push:done",
+          18
+        ],
+        [
+          "deliver:text_delta",
+          20
+        ],
+        [
+          "deliver:text_delta",
+          22
+        ],
+        [
+          "deliver:text_end",
+          24
+        ],
+        [
+          "deliver:toolcall_start",
+          26
+        ],
+        [
+          "deliver:toolcall_delta",
+          28
+        ],
+        [
+          "deliver:toolcall_delta",
+          30
+        ],
+        [
+          "deliver:toolcall_start",
+          32
+        ],
+        [
+          "deliver:toolcall_delta",
+          34
+        ],
+        [
+          "deliver:toolcall_end",
+          36
+        ],
+        [
+          "deliver:toolcall_end",
+          38
+        ],
+        [
+          "deliver:done",
+          40
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀more"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          },
+          {
+            "type": "toolCall",
+            "id": "call-2",
+            "name": "read",
+            "arguments": {}
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 10,
+          "output": 3,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 13,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1",
+        "rawStopReason": "tool_calls"
+      }
+    },
+    {
+      "name": "perRecord",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCg==",
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOlt7InR5cGUiOiJ0aGlua2luZyIsInRoaW5raW5nIjpbeyJ0eXBlIjoidGV4dCIsInRleHQiOiJobSDinJMifV19XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCg==",
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoK",
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6Im1vcmUifV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19Cgo=",
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InRvb2xfY2FsbHMiOlt7ImluZGV4IjowLCJpZCI6ImNhbGwtMSIsInR5cGUiOiJmdW5jdGlvbiIsImZ1bmN0aW9uIjp7Im5hbWUiOiJyZWFkIiwiYXJndW1lbnRzIjoie1wicGF0aFwiOiJ9fV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19Cgo=",
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InRvb2xfY2FsbHMiOlt7ImluZGV4IjowLCJmdW5jdGlvbiI6eyJuYW1lIjoiIiwiYXJndW1lbnRzIjoiXCJhLnR4dFwifSJ9fSx7ImluZGV4IjoxLCJpZCI6ImNhbGwtMiIsInR5cGUiOiJmdW5jdGlvbiIsImZ1bmN0aW9uIjp7Im5hbWUiOiJyZWFkIiwiYXJndW1lbnRzIjoie30ifX1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoK",
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6InRvb2xfY2FsbHMifV0sInVzYWdlIjp7InByb21wdF90b2tlbnMiOjEwLCJjb21wbGV0aW9uX3Rva2VucyI6MywidG90YWxfdG9rZW5zIjoxM319Cgo=",
+        "ZGF0YTogW0RPTkVdCgo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "read:2",
+          3
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:text_end",
+          6
+        ],
+        [
+          "push:thinking_start",
+          6
+        ],
+        [
+          "push:thinking_delta",
+          6
+        ],
+        [
+          "read:3",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:thinking_end",
+          9
+        ],
+        [
+          "push:text_start",
+          9
+        ],
+        [
+          "push:text_delta",
+          9
+        ],
+        [
+          "read:4",
+          9
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "push:text_delta",
+          12
+        ],
+        [
+          "read:5",
+          12
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "push:text_end",
+          15
+        ],
+        [
+          "push:toolcall_start",
+          15
+        ],
+        [
+          "push:toolcall_delta",
+          15
+        ],
+        [
+          "read:6",
+          15
+        ],
+        [
+          "deliver:thinking_end",
+          16
+        ],
+        [
+          "deliver:text_start",
+          18
+        ],
+        [
+          "push:toolcall_delta",
+          18
+        ],
+        [
+          "push:toolcall_start",
+          18
+        ],
+        [
+          "push:toolcall_delta",
+          18
+        ],
+        [
+          "read:7",
+          18
+        ],
+        [
+          "deliver:text_delta",
+          20
+        ],
+        [
+          "read:8",
+          21
+        ],
+        [
+          "deliver:text_delta",
+          22
+        ],
+        [
+          "deliver:text_end",
+          24
+        ],
+        [
+          "push:toolcall_end",
+          24
+        ],
+        [
+          "push:toolcall_end",
+          24
+        ],
+        [
+          "push:done",
+          25
+        ],
+        [
+          "deliver:toolcall_start",
+          26
+        ],
+        [
+          "deliver:toolcall_delta",
+          28
+        ],
+        [
+          "deliver:toolcall_delta",
+          30
+        ],
+        [
+          "deliver:toolcall_start",
+          32
+        ],
+        [
+          "deliver:toolcall_delta",
+          34
+        ],
+        [
+          "deliver:toolcall_end",
+          36
+        ],
+        [
+          "deliver:toolcall_end",
+          38
+        ],
+        [
+          "deliver:done",
+          40
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀more"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          },
+          {
+            "type": "toolCall",
+            "id": "call-2",
+            "name": "read",
+            "arguments": {}
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 10,
+          "output": 3,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 13,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1",
+        "rawStopReason": "tool_calls"
+      }
+    },
+    {
+      "name": "bytes7",
+      "chunks": [
+        "ZGF0YTogew==",
+        "ImlkIjoicg==",
+        "MSIsImNobw==",
+        "aWNlcyI6Ww==",
+        "eyJpbmRleA==",
+        "IjowLCJkZQ==",
+        "bHRhIjp7Ig==",
+        "cm9sZSI6Ig==",
+        "YXNzaXN0YQ==",
+        "bnQiLCJjbw==",
+        "bnRlbnQiOg==",
+        "IiJ9LCJmaQ==",
+        "bmlzaF9yZQ==",
+        "YXNvbiI6bg==",
+        "dWxsfV19Cg==",
+        "CmRhdGE6IA==",
+        "eyJpZCI6Ig==",
+        "cjEiLCJjaA==",
+        "b2ljZXMiOg==",
+        "W3siaW5kZQ==",
+        "eCI6MCwiZA==",
+        "ZWx0YSI6ew==",
+        "ImNvbnRlbg==",
+        "dCI6W3sidA==",
+        "eXBlIjoidA==",
+        "aGlua2luZw==",
+        "IiwidGhpbg==",
+        "a2luZyI6Ww==",
+        "eyJ0eXBlIg==",
+        "OiJ0ZXh0Ig==",
+        "LCJ0ZXh0Ig==",
+        "OiJobSDinA==",
+        "kyJ9XX1dfQ==",
+        "LCJmaW5pcw==",
+        "aF9yZWFzbw==",
+        "biI6bnVsbA==",
+        "fV19CgpkYQ==",
+        "dGE6IHsiaQ==",
+        "ZCI6InIxIg==",
+        "LCJjaG9pYw==",
+        "ZXMiOlt7Ig==",
+        "aW5kZXgiOg==",
+        "MCwiZGVsdA==",
+        "YSI6eyJjbw==",
+        "bnRlbnQiOg==",
+        "ImjDqWxsbw==",
+        "IOKckyDwnw==",
+        "mIAifSwiZg==",
+        "aW5pc2hfcg==",
+        "ZWFzb24iOg==",
+        "bnVsbH1dfQ==",
+        "CgpkYXRhOg==",
+        "IHsiaWQiOg==",
+        "InIxIiwiYw==",
+        "aG9pY2VzIg==",
+        "Olt7ImluZA==",
+        "ZXgiOjAsIg==",
+        "ZGVsdGEiOg==",
+        "eyJjb250ZQ==",
+        "bnQiOlt7Ig==",
+        "dHlwZSI6Ig==",
+        "dGV4dCIsIg==",
+        "dGV4dCI6Ig==",
+        "bW9yZSJ9XQ==",
+        "fSwiZmluaQ==",
+        "c2hfcmVhcw==",
+        "b24iOm51bA==",
+        "bH1dfQoKZA==",
+        "YXRhOiB7Ig==",
+        "aWQiOiJyMQ==",
+        "IiwiY2hvaQ==",
+        "Y2VzIjpbew==",
+        "ImluZGV4Ig==",
+        "OjAsImRlbA==",
+        "dGEiOnsidA==",
+        "b29sX2NhbA==",
+        "bHMiOlt7Ig==",
+        "aW5kZXgiOg==",
+        "MCwiaWQiOg==",
+        "ImNhbGwtMQ==",
+        "IiwidHlwZQ==",
+        "IjoiZnVuYw==",
+        "dGlvbiIsIg==",
+        "ZnVuY3Rpbw==",
+        "biI6eyJuYQ==",
+        "bWUiOiJyZQ==",
+        "YWQiLCJhcg==",
+        "Z3VtZW50cw==",
+        "Ijoie1wicA==",
+        "YXRoXCI6Ig==",
+        "fX1dfSwiZg==",
+        "aW5pc2hfcg==",
+        "ZWFzb24iOg==",
+        "bnVsbH1dfQ==",
+        "CgpkYXRhOg==",
+        "IHsiaWQiOg==",
+        "InIxIiwiYw==",
+        "aG9pY2VzIg==",
+        "Olt7ImluZA==",
+        "ZXgiOjAsIg==",
+        "ZGVsdGEiOg==",
+        "eyJ0b29sXw==",
+        "Y2FsbHMiOg==",
+        "W3siaW5kZQ==",
+        "eCI6MCwiZg==",
+        "dW5jdGlvbg==",
+        "Ijp7Im5hbQ==",
+        "ZSI6IiIsIg==",
+        "YXJndW1lbg==",
+        "dHMiOiJcIg==",
+        "YS50eHRcIg==",
+        "fSJ9fSx7Ig==",
+        "aW5kZXgiOg==",
+        "MSwiaWQiOg==",
+        "ImNhbGwtMg==",
+        "IiwidHlwZQ==",
+        "IjoiZnVuYw==",
+        "dGlvbiIsIg==",
+        "ZnVuY3Rpbw==",
+        "biI6eyJuYQ==",
+        "bWUiOiJyZQ==",
+        "YWQiLCJhcg==",
+        "Z3VtZW50cw==",
+        "Ijoie30ifQ==",
+        "fV19LCJmaQ==",
+        "bmlzaF9yZQ==",
+        "YXNvbiI6bg==",
+        "dWxsfV19Cg==",
+        "CmRhdGE6IA==",
+        "eyJpZCI6Ig==",
+        "cjEiLCJjaA==",
+        "b2ljZXMiOg==",
+        "W3siaW5kZQ==",
+        "eCI6MCwiZA==",
+        "ZWx0YSI6ew==",
+        "fSwiZmluaQ==",
+        "c2hfcmVhcw==",
+        "b24iOiJ0bw==",
+        "b2xfY2FsbA==",
+        "cyJ9XSwidQ==",
+        "c2FnZSI6ew==",
+        "InByb21wdA==",
+        "X3Rva2Vucw==",
+        "IjoxMCwiYw==",
+        "b21wbGV0aQ==",
+        "b25fdG9rZQ==",
+        "bnMiOjMsIg==",
+        "dG90YWxfdA==",
+        "b2tlbnMiOg==",
+        "MTN9fQoKZA==",
+        "YXRhOiBbRA==",
+        "T05FXQoK"
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "read:2",
+          1
+        ],
+        [
+          "read:3",
+          2
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "read:4",
+          3
+        ],
+        [
+          "read:5",
+          4
+        ],
+        [
+          "read:6",
+          5
+        ],
+        [
+          "read:7",
+          6
+        ],
+        [
+          "read:8",
+          7
+        ],
+        [
+          "read:9",
+          8
+        ],
+        [
+          "read:10",
+          9
+        ],
+        [
+          "read:11",
+          10
+        ],
+        [
+          "read:12",
+          11
+        ],
+        [
+          "read:13",
+          12
+        ],
+        [
+          "read:14",
+          13
+        ],
+        [
+          "read:15",
+          14
+        ],
+        [
+          "read:16",
+          15
+        ],
+        [
+          "push:text_start",
+          18
+        ],
+        [
+          "push:text_delta",
+          18
+        ],
+        [
+          "read:17",
+          18
+        ],
+        [
+          "read:18",
+          19
+        ],
+        [
+          "read:19",
+          20
+        ],
+        [
+          "deliver:text_start",
+          21
+        ],
+        [
+          "read:20",
+          21
+        ],
+        [
+          "read:21",
+          22
+        ],
+        [
+          "deliver:text_delta",
+          23
+        ],
+        [
+          "read:22",
+          23
+        ],
+        [
+          "read:23",
+          24
+        ],
+        [
+          "read:24",
+          25
+        ],
+        [
+          "read:25",
+          26
+        ],
+        [
+          "read:26",
+          27
+        ],
+        [
+          "read:27",
+          28
+        ],
+        [
+          "read:28",
+          29
+        ],
+        [
+          "read:29",
+          30
+        ],
+        [
+          "read:30",
+          31
+        ],
+        [
+          "read:31",
+          32
+        ],
+        [
+          "read:32",
+          33
+        ],
+        [
+          "read:33",
+          34
+        ],
+        [
+          "read:34",
+          35
+        ],
+        [
+          "read:35",
+          36
+        ],
+        [
+          "read:36",
+          37
+        ],
+        [
+          "read:37",
+          38
+        ],
+        [
+          "push:text_end",
+          41
+        ],
+        [
+          "push:thinking_start",
+          41
+        ],
+        [
+          "push:thinking_delta",
+          41
+        ],
+        [
+          "read:38",
+          41
+        ],
+        [
+          "read:39",
+          42
+        ],
+        [
+          "read:40",
+          43
+        ],
+        [
+          "deliver:text_end",
+          44
+        ],
+        [
+          "read:41",
+          44
+        ],
+        [
+          "read:42",
+          45
+        ],
+        [
+          "deliver:thinking_start",
+          46
+        ],
+        [
+          "read:43",
+          46
+        ],
+        [
+          "read:44",
+          47
+        ],
+        [
+          "deliver:thinking_delta",
+          48
+        ],
+        [
+          "read:45",
+          48
+        ],
+        [
+          "read:46",
+          49
+        ],
+        [
+          "read:47",
+          50
+        ],
+        [
+          "read:48",
+          51
+        ],
+        [
+          "read:49",
+          52
+        ],
+        [
+          "read:50",
+          53
+        ],
+        [
+          "read:51",
+          54
+        ],
+        [
+          "read:52",
+          55
+        ],
+        [
+          "push:thinking_end",
+          58
+        ],
+        [
+          "push:text_start",
+          58
+        ],
+        [
+          "push:text_delta",
+          58
+        ],
+        [
+          "read:53",
+          58
+        ],
+        [
+          "read:54",
+          59
+        ],
+        [
+          "read:55",
+          60
+        ],
+        [
+          "deliver:thinking_end",
+          61
+        ],
+        [
+          "read:56",
+          61
+        ],
+        [
+          "read:57",
+          62
+        ],
+        [
+          "deliver:text_start",
+          63
+        ],
+        [
+          "read:58",
+          63
+        ],
+        [
+          "read:59",
+          64
+        ],
+        [
+          "deliver:text_delta",
+          65
+        ],
+        [
+          "read:60",
+          65
+        ],
+        [
+          "read:61",
+          66
+        ],
+        [
+          "read:62",
+          67
+        ],
+        [
+          "read:63",
+          68
+        ],
+        [
+          "read:64",
+          69
+        ],
+        [
+          "read:65",
+          70
+        ],
+        [
+          "read:66",
+          71
+        ],
+        [
+          "read:67",
+          72
+        ],
+        [
+          "read:68",
+          73
+        ],
+        [
+          "push:text_delta",
+          76
+        ],
+        [
+          "read:69",
+          76
+        ],
+        [
+          "read:70",
+          77
+        ],
+        [
+          "read:71",
+          78
+        ],
+        [
+          "deliver:text_delta",
+          79
+        ],
+        [
+          "read:72",
+          79
+        ],
+        [
+          "read:73",
+          80
+        ],
+        [
+          "read:74",
+          81
+        ],
+        [
+          "read:75",
+          82
+        ],
+        [
+          "read:76",
+          83
+        ],
+        [
+          "read:77",
+          84
+        ],
+        [
+          "read:78",
+          85
+        ],
+        [
+          "read:79",
+          86
+        ],
+        [
+          "read:80",
+          87
+        ],
+        [
+          "read:81",
+          88
+        ],
+        [
+          "read:82",
+          89
+        ],
+        [
+          "read:83",
+          90
+        ],
+        [
+          "read:84",
+          91
+        ],
+        [
+          "read:85",
+          92
+        ],
+        [
+          "read:86",
+          93
+        ],
+        [
+          "read:87",
+          94
+        ],
+        [
+          "read:88",
+          95
+        ],
+        [
+          "read:89",
+          96
+        ],
+        [
+          "read:90",
+          97
+        ],
+        [
+          "read:91",
+          98
+        ],
+        [
+          "read:92",
+          99
+        ],
+        [
+          "read:93",
+          100
+        ],
+        [
+          "read:94",
+          101
+        ],
+        [
+          "read:95",
+          102
+        ],
+        [
+          "push:text_end",
+          105
+        ],
+        [
+          "push:toolcall_start",
+          105
+        ],
+        [
+          "push:toolcall_delta",
+          105
+        ],
+        [
+          "read:96",
+          105
+        ],
+        [
+          "read:97",
+          106
+        ],
+        [
+          "read:98",
+          107
+        ],
+        [
+          "deliver:text_end",
+          108
+        ],
+        [
+          "read:99",
+          108
+        ],
+        [
+          "read:100",
+          109
+        ],
+        [
+          "deliver:toolcall_start",
+          110
+        ],
+        [
+          "read:101",
+          110
+        ],
+        [
+          "read:102",
+          111
+        ],
+        [
+          "deliver:toolcall_delta",
+          112
+        ],
+        [
+          "read:103",
+          112
+        ],
+        [
+          "read:104",
+          113
+        ],
+        [
+          "read:105",
+          114
+        ],
+        [
+          "read:106",
+          115
+        ],
+        [
+          "read:107",
+          116
+        ],
+        [
+          "read:108",
+          117
+        ],
+        [
+          "read:109",
+          118
+        ],
+        [
+          "read:110",
+          119
+        ],
+        [
+          "read:111",
+          120
+        ],
+        [
+          "read:112",
+          121
+        ],
+        [
+          "read:113",
+          122
+        ],
+        [
+          "read:114",
+          123
+        ],
+        [
+          "read:115",
+          124
+        ],
+        [
+          "read:116",
+          125
+        ],
+        [
+          "read:117",
+          126
+        ],
+        [
+          "read:118",
+          127
+        ],
+        [
+          "read:119",
+          128
+        ],
+        [
+          "read:120",
+          129
+        ],
+        [
+          "read:121",
+          130
+        ],
+        [
+          "read:122",
+          131
+        ],
+        [
+          "read:123",
+          132
+        ],
+        [
+          "read:124",
+          133
+        ],
+        [
+          "read:125",
+          134
+        ],
+        [
+          "read:126",
+          135
+        ],
+        [
+          "read:127",
+          136
+        ],
+        [
+          "read:128",
+          137
+        ],
+        [
+          "read:129",
+          138
+        ],
+        [
+          "push:toolcall_delta",
+          141
+        ],
+        [
+          "push:toolcall_start",
+          141
+        ],
+        [
+          "push:toolcall_delta",
+          141
+        ],
+        [
+          "read:130",
+          141
+        ],
+        [
+          "read:131",
+          142
+        ],
+        [
+          "read:132",
+          143
+        ],
+        [
+          "deliver:toolcall_delta",
+          144
+        ],
+        [
+          "read:133",
+          144
+        ],
+        [
+          "read:134",
+          145
+        ],
+        [
+          "deliver:toolcall_start",
+          146
+        ],
+        [
+          "read:135",
+          146
+        ],
+        [
+          "read:136",
+          147
+        ],
+        [
+          "deliver:toolcall_delta",
+          148
+        ],
+        [
+          "read:137",
+          148
+        ],
+        [
+          "read:138",
+          149
+        ],
+        [
+          "read:139",
+          150
+        ],
+        [
+          "read:140",
+          151
+        ],
+        [
+          "read:141",
+          152
+        ],
+        [
+          "read:142",
+          153
+        ],
+        [
+          "read:143",
+          154
+        ],
+        [
+          "read:144",
+          155
+        ],
+        [
+          "read:145",
+          156
+        ],
+        [
+          "read:146",
+          157
+        ],
+        [
+          "read:147",
+          158
+        ],
+        [
+          "read:148",
+          159
+        ],
+        [
+          "read:149",
+          160
+        ],
+        [
+          "read:150",
+          161
+        ],
+        [
+          "read:151",
+          164
+        ],
+        [
+          "read:152",
+          165
+        ],
+        [
+          "push:toolcall_end",
+          168
+        ],
+        [
+          "push:toolcall_end",
+          168
+        ],
+        [
+          "push:done",
+          169
+        ],
+        [
+          "deliver:toolcall_end",
+          171
+        ],
+        [
+          "deliver:toolcall_end",
+          173
+        ],
+        [
+          "deliver:done",
+          175
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀more"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          },
+          {
+            "type": "toolCall",
+            "id": "call-2",
+            "name": "read",
+            "arguments": {}
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 10,
+          "output": 3,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 13,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1",
+        "rawStopReason": "tool_calls"
+      }
+    },
+    {
+      "name": "splitInsideEmoji",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiaG0g4pyTIn1dfV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6ImjDqWxsbyDinJMg8J8=",
+        "mIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6Im1vcmUifV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsidG9vbF9jYWxscyI6W3siaW5kZXgiOjAsImlkIjoiY2FsbC0xIiwidHlwZSI6ImZ1bmN0aW9uIiwiZnVuY3Rpb24iOnsibmFtZSI6InJlYWQiLCJhcmd1bWVudHMiOiJ7XCJwYXRoXCI6In19XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJ0b29sX2NhbGxzIjpbeyJpbmRleCI6MCwiZnVuY3Rpb24iOnsibmFtZSI6IiIsImFyZ3VtZW50cyI6IlwiYS50eHRcIn0ifX0seyJpbmRleCI6MSwiaWQiOiJjYWxsLTIiLCJ0eXBlIjoiZnVuY3Rpb24iLCJmdW5jdGlvbiI6eyJuYW1lIjoicmVhZCIsImFyZ3VtZW50cyI6Int9In19XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6e30sImZpbmlzaF9yZWFzb24iOiJ0b29sX2NhbGxzIn1dLCJ1c2FnZSI6eyJwcm9tcHRfdG9rZW5zIjoxMCwiY29tcGxldGlvbl90b2tlbnMiOjMsInRvdGFsX3Rva2VucyI6MTN9fQoKZGF0YTogW0RPTkVdCgo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "read:2",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:thinking_end",
+          8
+        ],
+        [
+          "push:text_start",
+          8
+        ],
+        [
+          "push:text_delta",
+          8
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "push:text_delta",
+          10
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "push:text_end",
+          12
+        ],
+        [
+          "push:toolcall_start",
+          12
+        ],
+        [
+          "push:toolcall_delta",
+          12
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "push:toolcall_delta",
+          14
+        ],
+        [
+          "push:toolcall_start",
+          14
+        ],
+        [
+          "push:toolcall_delta",
+          14
+        ],
+        [
+          "deliver:thinking_end",
+          16
+        ],
+        [
+          "deliver:text_start",
+          18
+        ],
+        [
+          "push:toolcall_end",
+          18
+        ],
+        [
+          "push:toolcall_end",
+          18
+        ],
+        [
+          "push:done",
+          19
+        ],
+        [
+          "deliver:text_delta",
+          20
+        ],
+        [
+          "deliver:text_delta",
+          22
+        ],
+        [
+          "deliver:text_end",
+          24
+        ],
+        [
+          "deliver:toolcall_start",
+          26
+        ],
+        [
+          "deliver:toolcall_delta",
+          28
+        ],
+        [
+          "deliver:toolcall_delta",
+          30
+        ],
+        [
+          "deliver:toolcall_start",
+          32
+        ],
+        [
+          "deliver:toolcall_delta",
+          34
+        ],
+        [
+          "deliver:toolcall_end",
+          36
+        ],
+        [
+          "deliver:toolcall_end",
+          38
+        ],
+        [
+          "deliver:done",
+          40
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀more"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          },
+          {
+            "type": "toolCall",
+            "id": "call-2",
+            "name": "read",
+            "arguments": {}
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 10,
+          "output": 3,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 13,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1",
+        "rawStopReason": "tool_calls"
+      }
+    },
+    {
+      "name": "crlf",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0NCg0KZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOlt7InR5cGUiOiJ0aGlua2luZyIsInRoaW5raW5nIjpbeyJ0eXBlIjoidGV4dCIsInRleHQiOiJobSDinJMifV19XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0NCg0KZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQ0KDQpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoibW9yZSJ9XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0NCg0KZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InRvb2xfY2FsbHMiOlt7ImluZGV4IjowLCJpZCI6ImNhbGwtMSIsInR5cGUiOiJmdW5jdGlvbiIsImZ1bmN0aW9uIjp7Im5hbWUiOiJyZWFkIiwiYXJndW1lbnRzIjoie1wicGF0aFwiOiJ9fV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19DQoNCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJ0b29sX2NhbGxzIjpbeyJpbmRleCI6MCwiZnVuY3Rpb24iOnsibmFtZSI6IiIsImFyZ3VtZW50cyI6IlwiYS50eHRcIn0ifX0seyJpbmRleCI6MSwiaWQiOiJjYWxsLTIiLCJ0eXBlIjoiZnVuY3Rpb24iLCJmdW5jdGlvbiI6eyJuYW1lIjoicmVhZCIsImFyZ3VtZW50cyI6Int9In19XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0NCg0KZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6InRvb2xfY2FsbHMifV0sInVzYWdlIjp7InByb21wdF90b2tlbnMiOjEwLCJjb21wbGV0aW9uX3Rva2VucyI6MywidG90YWxfdG9rZW5zIjoxM319DQoNCmRhdGE6IFtET05FXQ0KDQo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:thinking_end",
+          7
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:text_delta",
+          9
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "push:text_end",
+          11
+        ],
+        [
+          "push:toolcall_start",
+          11
+        ],
+        [
+          "push:toolcall_delta",
+          11
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "push:toolcall_start",
+          13
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "deliver:thinking_end",
+          16
+        ],
+        [
+          "push:toolcall_end",
+          17
+        ],
+        [
+          "push:toolcall_end",
+          17
+        ],
+        [
+          "deliver:text_start",
+          18
+        ],
+        [
+          "push:done",
+          18
+        ],
+        [
+          "deliver:text_delta",
+          20
+        ],
+        [
+          "deliver:text_delta",
+          22
+        ],
+        [
+          "deliver:text_end",
+          24
+        ],
+        [
+          "deliver:toolcall_start",
+          26
+        ],
+        [
+          "deliver:toolcall_delta",
+          28
+        ],
+        [
+          "deliver:toolcall_delta",
+          30
+        ],
+        [
+          "deliver:toolcall_start",
+          32
+        ],
+        [
+          "deliver:toolcall_delta",
+          34
+        ],
+        [
+          "deliver:toolcall_end",
+          36
+        ],
+        [
+          "deliver:toolcall_end",
+          38
+        ],
+        [
+          "deliver:done",
+          40
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀more"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          },
+          {
+            "type": "toolCall",
+            "id": "call-2",
+            "name": "read",
+            "arguments": {}
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 10,
+          "output": 3,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 13,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1",
+        "rawStopReason": "tool_calls"
+      }
+    },
+    {
+      "name": "crlfSplit",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0N",
+        "Cg0KZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOlt7InR5cGUiOiJ0aGlua2luZyIsInRoaW5raW5nIjpbeyJ0eXBlIjoidGV4dCIsInRleHQiOiJobSDinJMifV19XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0NCg0KZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQ0KDQo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "read:2",
+          1
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          4
+        ],
+        [
+          "push:text_delta",
+          4
+        ],
+        [
+          "push:text_end",
+          6
+        ],
+        [
+          "push:thinking_start",
+          6
+        ],
+        [
+          "push:thinking_delta",
+          6
+        ],
+        [
+          "deliver:text_start",
+          7
+        ],
+        [
+          "push:thinking_end",
+          8
+        ],
+        [
+          "push:text_start",
+          8
+        ],
+        [
+          "push:text_delta",
+          8
+        ],
+        [
+          "read:3",
+          8
+        ],
+        [
+          "deliver:text_delta",
+          9
+        ],
+        [
+          "deliver:text_end",
+          11
+        ],
+        [
+          "push:text_end",
+          11
+        ],
+        [
+          "push:error",
+          12
+        ],
+        [
+          "deliver:thinking_start",
+          13
+        ],
+        [
+          "deliver:thinking_delta",
+          15
+        ],
+        [
+          "deliver:thinking_end",
+          17
+        ],
+        [
+          "deliver:text_start",
+          19
+        ],
+        [
+          "deliver:text_delta",
+          21
+        ],
+        [
+          "deliver:text_end",
+          23
+        ],
+        [
+          "deliver:error",
+          25
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Mistral stream ended without a finish reason",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "responseId": "r1",
+        "errorMessage": "Mistral stream ended without a finish reason"
+      }
+    },
+    {
+      "name": "crOnly",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0NDWRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiaG0g4pyTIn1dfV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19DQ1kYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6ImjDqWxsbyDinJMg8J+YgCJ9LCJmaW5pc2hfcmVhc29uIjpudWxsfV19DQ1kYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoibW9yZSJ9XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0NDWRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJ0b29sX2NhbGxzIjpbeyJpbmRleCI6MCwiaWQiOiJjYWxsLTEiLCJ0eXBlIjoiZnVuY3Rpb24iLCJmdW5jdGlvbiI6eyJuYW1lIjoicmVhZCIsImFyZ3VtZW50cyI6IntcInBhdGhcIjoifX1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQ0NZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InRvb2xfY2FsbHMiOlt7ImluZGV4IjowLCJmdW5jdGlvbiI6eyJuYW1lIjoiIiwiYXJndW1lbnRzIjoiXCJhLnR4dFwifSJ9fSx7ImluZGV4IjoxLCJpZCI6ImNhbGwtMiIsInR5cGUiOiJmdW5jdGlvbiIsImZ1bmN0aW9uIjp7Im5hbWUiOiJyZWFkIiwiYXJndW1lbnRzIjoie30ifX1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQ0NZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6InRvb2xfY2FsbHMifV0sInVzYWdlIjp7InByb21wdF90b2tlbnMiOjEwLCJjb21wbGV0aW9uX3Rva2VucyI6MywidG90YWxfdG9rZW5zIjoxM319DQ1kYXRhOiBbRE9ORV0NDQ=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:thinking_end",
+          7
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:text_delta",
+          9
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "push:text_end",
+          11
+        ],
+        [
+          "push:toolcall_start",
+          11
+        ],
+        [
+          "push:toolcall_delta",
+          11
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "push:toolcall_start",
+          13
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "deliver:thinking_end",
+          16
+        ],
+        [
+          "push:toolcall_end",
+          17
+        ],
+        [
+          "push:toolcall_end",
+          17
+        ],
+        [
+          "deliver:text_start",
+          18
+        ],
+        [
+          "push:done",
+          18
+        ],
+        [
+          "deliver:text_delta",
+          20
+        ],
+        [
+          "deliver:text_delta",
+          22
+        ],
+        [
+          "deliver:text_end",
+          24
+        ],
+        [
+          "deliver:toolcall_start",
+          26
+        ],
+        [
+          "deliver:toolcall_delta",
+          28
+        ],
+        [
+          "deliver:toolcall_delta",
+          30
+        ],
+        [
+          "deliver:toolcall_start",
+          32
+        ],
+        [
+          "deliver:toolcall_delta",
+          34
+        ],
+        [
+          "deliver:toolcall_end",
+          36
+        ],
+        [
+          "deliver:toolcall_end",
+          38
+        ],
+        [
+          "deliver:done",
+          40
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀more"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          },
+          {
+            "type": "toolCall",
+            "id": "call-2",
+            "name": "read",
+            "arguments": {}
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 10,
+          "output": 3,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 13,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1",
+        "rawStopReason": "tool_calls"
+      }
+    },
+    {
+      "name": "mixedSeparators",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0NCgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6W3sidHlwZSI6InRoaW5raW5nIiwidGhpbmtpbmciOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6ImhtIOKckyJ9XX1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQ0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjoiaMOpbGxvIOKckyDwn5iAIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0NCgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoibW9yZSJ9XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0NCgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsidG9vbF9jYWxscyI6W3siaW5kZXgiOjAsImlkIjoiY2FsbC0xIiwidHlwZSI6ImZ1bmN0aW9uIiwiZnVuY3Rpb24iOnsibmFtZSI6InJlYWQiLCJhcmd1bWVudHMiOiJ7XCJwYXRoXCI6In19XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0NCgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsidG9vbF9jYWxscyI6W3siaW5kZXgiOjAsImZ1bmN0aW9uIjp7Im5hbWUiOiIiLCJhcmd1bWVudHMiOiJcImEudHh0XCJ9In19LHsiaW5kZXgiOjEsImlkIjoiY2FsbC0yIiwidHlwZSI6ImZ1bmN0aW9uIiwiZnVuY3Rpb24iOnsibmFtZSI6InJlYWQiLCJhcmd1bWVudHMiOiJ7fSJ9fV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19DQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6InRvb2xfY2FsbHMifV0sInVzYWdlIjp7InByb21wdF90b2tlbnMiOjEwLCJjb21wbGV0aW9uX3Rva2VucyI6MywidG90YWxfdG9rZW5zIjoxM319DQoKZGF0YTogW0RPTkVdDQoK"
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:thinking_end",
+          7
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:text_delta",
+          9
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "push:text_end",
+          11
+        ],
+        [
+          "push:toolcall_start",
+          11
+        ],
+        [
+          "push:toolcall_delta",
+          11
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "push:toolcall_start",
+          13
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "deliver:thinking_end",
+          16
+        ],
+        [
+          "push:toolcall_end",
+          17
+        ],
+        [
+          "push:toolcall_end",
+          17
+        ],
+        [
+          "deliver:text_start",
+          18
+        ],
+        [
+          "push:done",
+          18
+        ],
+        [
+          "deliver:text_delta",
+          20
+        ],
+        [
+          "deliver:text_delta",
+          22
+        ],
+        [
+          "deliver:text_end",
+          24
+        ],
+        [
+          "deliver:toolcall_start",
+          26
+        ],
+        [
+          "deliver:toolcall_delta",
+          28
+        ],
+        [
+          "deliver:toolcall_delta",
+          30
+        ],
+        [
+          "deliver:toolcall_start",
+          32
+        ],
+        [
+          "deliver:toolcall_delta",
+          34
+        ],
+        [
+          "deliver:toolcall_end",
+          36
+        ],
+        [
+          "deliver:toolcall_end",
+          38
+        ],
+        [
+          "deliver:done",
+          40
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀more"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          },
+          {
+            "type": "toolCall",
+            "id": "call-2",
+            "name": "read",
+            "arguments": {}
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 10,
+          "output": 3,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 13,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1",
+        "rawStopReason": "tool_calls"
+      }
+    },
+    {
+      "name": "bom",
+      "chunks": [
+        "77u/ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiaG0g4pyTIn1dfV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6ImjDqWxsbyDinJMg8J+YgCJ9LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoibW9yZSJ9XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJ0b29sX2NhbGxzIjpbeyJpbmRleCI6MCwiaWQiOiJjYWxsLTEiLCJ0eXBlIjoiZnVuY3Rpb24iLCJmdW5jdGlvbiI6eyJuYW1lIjoicmVhZCIsImFyZ3VtZW50cyI6IntcInBhdGhcIjoifX1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InRvb2xfY2FsbHMiOlt7ImluZGV4IjowLCJmdW5jdGlvbiI6eyJuYW1lIjoiIiwiYXJndW1lbnRzIjoiXCJhLnR4dFwifSJ9fSx7ImluZGV4IjoxLCJpZCI6ImNhbGwtMiIsInR5cGUiOiJmdW5jdGlvbiIsImZ1bmN0aW9uIjp7Im5hbWUiOiJyZWFkIiwiYXJndW1lbnRzIjoie30ifX1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6InRvb2xfY2FsbHMifV0sInVzYWdlIjp7InByb21wdF90b2tlbnMiOjEwLCJjb21wbGV0aW9uX3Rva2VucyI6MywidG90YWxfdG9rZW5zIjoxM319CgpkYXRhOiBbRE9ORV0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:thinking_end",
+          7
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:text_delta",
+          9
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "push:text_end",
+          11
+        ],
+        [
+          "push:toolcall_start",
+          11
+        ],
+        [
+          "push:toolcall_delta",
+          11
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "push:toolcall_start",
+          13
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "deliver:thinking_end",
+          16
+        ],
+        [
+          "push:toolcall_end",
+          17
+        ],
+        [
+          "push:toolcall_end",
+          17
+        ],
+        [
+          "deliver:text_start",
+          18
+        ],
+        [
+          "push:done",
+          18
+        ],
+        [
+          "deliver:text_delta",
+          20
+        ],
+        [
+          "deliver:text_delta",
+          22
+        ],
+        [
+          "deliver:text_end",
+          24
+        ],
+        [
+          "deliver:toolcall_start",
+          26
+        ],
+        [
+          "deliver:toolcall_delta",
+          28
+        ],
+        [
+          "deliver:toolcall_delta",
+          30
+        ],
+        [
+          "deliver:toolcall_start",
+          32
+        ],
+        [
+          "deliver:toolcall_delta",
+          34
+        ],
+        [
+          "deliver:toolcall_end",
+          36
+        ],
+        [
+          "deliver:toolcall_end",
+          38
+        ],
+        [
+          "deliver:done",
+          40
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀more"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          },
+          {
+            "type": "toolCall",
+            "id": "call-2",
+            "name": "read",
+            "arguments": {}
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 10,
+          "output": 3,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 13,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1",
+        "rawStopReason": "tool_calls"
+      }
+    },
+    {
+      "name": "bomSplit",
+      "chunks": [
+        "77s=",
+        "v2RhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJyb2xlIjoiYXNzaXN0YW50IiwiY29udGVudCI6IiJ9LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6W3sidHlwZSI6InRoaW5raW5nIiwidGhpbmtpbmciOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6ImhtIOKckyJ9XX1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6Im1vcmUifV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsidG9vbF9jYWxscyI6W3siaW5kZXgiOjAsImlkIjoiY2FsbC0xIiwidHlwZSI6ImZ1bmN0aW9uIiwiZnVuY3Rpb24iOnsibmFtZSI6InJlYWQiLCJhcmd1bWVudHMiOiJ7XCJwYXRoXCI6In19XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJ0b29sX2NhbGxzIjpbeyJpbmRleCI6MCwiZnVuY3Rpb24iOnsibmFtZSI6IiIsImFyZ3VtZW50cyI6IlwiYS50eHRcIn0ifX0seyJpbmRleCI6MSwiaWQiOiJjYWxsLTIiLCJ0eXBlIjoiZnVuY3Rpb24iLCJmdW5jdGlvbiI6eyJuYW1lIjoicmVhZCIsImFyZ3VtZW50cyI6Int9In19XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6e30sImZpbmlzaF9yZWFzb24iOiJ0b29sX2NhbGxzIn1dLCJ1c2FnZSI6eyJwcm9tcHRfdG9rZW5zIjoxMCwiY29tcGxldGlvbl90b2tlbnMiOjMsInRvdGFsX3Rva2VucyI6MTN9fQoKZGF0YTogW0RPTkVdCgo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "read:2",
+          1
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          4
+        ],
+        [
+          "push:text_delta",
+          4
+        ],
+        [
+          "push:text_end",
+          6
+        ],
+        [
+          "push:thinking_start",
+          6
+        ],
+        [
+          "push:thinking_delta",
+          6
+        ],
+        [
+          "deliver:text_start",
+          7
+        ],
+        [
+          "push:thinking_end",
+          8
+        ],
+        [
+          "push:text_start",
+          8
+        ],
+        [
+          "push:text_delta",
+          8
+        ],
+        [
+          "deliver:text_delta",
+          9
+        ],
+        [
+          "push:text_delta",
+          10
+        ],
+        [
+          "deliver:text_end",
+          11
+        ],
+        [
+          "push:text_end",
+          12
+        ],
+        [
+          "push:toolcall_start",
+          12
+        ],
+        [
+          "push:toolcall_delta",
+          12
+        ],
+        [
+          "deliver:thinking_start",
+          13
+        ],
+        [
+          "push:toolcall_delta",
+          14
+        ],
+        [
+          "push:toolcall_start",
+          14
+        ],
+        [
+          "push:toolcall_delta",
+          14
+        ],
+        [
+          "deliver:thinking_delta",
+          15
+        ],
+        [
+          "deliver:thinking_end",
+          17
+        ],
+        [
+          "push:toolcall_end",
+          18
+        ],
+        [
+          "push:toolcall_end",
+          18
+        ],
+        [
+          "deliver:text_start",
+          19
+        ],
+        [
+          "push:done",
+          19
+        ],
+        [
+          "deliver:text_delta",
+          21
+        ],
+        [
+          "deliver:text_delta",
+          23
+        ],
+        [
+          "deliver:text_end",
+          25
+        ],
+        [
+          "deliver:toolcall_start",
+          27
+        ],
+        [
+          "deliver:toolcall_delta",
+          29
+        ],
+        [
+          "deliver:toolcall_delta",
+          31
+        ],
+        [
+          "deliver:toolcall_start",
+          33
+        ],
+        [
+          "deliver:toolcall_delta",
+          35
+        ],
+        [
+          "deliver:toolcall_end",
+          37
+        ],
+        [
+          "deliver:toolcall_end",
+          39
+        ],
+        [
+          "deliver:done",
+          41
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀more"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          },
+          {
+            "type": "toolCall",
+            "id": "call-2",
+            "name": "read",
+            "arguments": {}
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 10,
+          "output": 3,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 13,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1",
+        "rawStopReason": "tool_calls"
+      }
+    },
+    {
+      "name": "invalidUTF8",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiaG0g4pyTIn1dfV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19Cgo=",
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siZGVsdGEiOnsiY29udGVudCI6ImH/4oJiIn19XX0KCg==",
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6InRvb2xfY2FsbHMifV0sInVzYWdlIjp7InByb21wdF90b2tlbnMiOjEwLCJjb21wbGV0aW9uX3Rva2VucyI6MywidG90YWxfdG9rZW5zIjoxM319Cgo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "read:2",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:thinking_end",
+          8
+        ],
+        [
+          "push:text_start",
+          8
+        ],
+        [
+          "push:text_delta",
+          8
+        ],
+        [
+          "read:3",
+          8
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "read:4",
+          11
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "push:text_end",
+          14
+        ],
+        [
+          "push:done",
+          15
+        ],
+        [
+          "deliver:thinking_end",
+          16
+        ],
+        [
+          "deliver:text_start",
+          18
+        ],
+        [
+          "deliver:text_delta",
+          20
+        ],
+        [
+          "deliver:text_end",
+          22
+        ],
+        [
+          "deliver:done",
+          24
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "a��b"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 10,
+          "output": 3,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 13,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1",
+        "rawStopReason": "tool_calls"
+      }
+    },
+    {
+      "name": "truncatedUTF8",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjoiaMOpbGxvIOKckyDwn5iAIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCg==",
+        "4oI="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_delta",
+          5
+        ],
+        [
+          "read:2",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "read:3",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:text_end",
+          9
+        ],
+        [
+          "deliver:text_delta",
+          10
+        ],
+        [
+          "push:error",
+          10
+        ],
+        [
+          "deliver:text_end",
+          12
+        ],
+        [
+          "deliver:error",
+          14
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Mistral stream ended without a finish reason",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "responseId": "r1",
+        "errorMessage": "Mistral stream ended without a finish reason"
+      }
+    },
+    {
+      "name": "finishError",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6ImVycm9yIn1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0IiwidGV4dCI6Im1vcmUifV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiBbRE9ORV0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:text_end",
+          9
+        ],
+        [
+          "deliver:text_delta",
+          10
+        ],
+        [
+          "push:error",
+          10
+        ],
+        [
+          "deliver:text_end",
+          12
+        ],
+        [
+          "deliver:error",
+          14
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Provider stopped with: error",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀more"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "responseId": "r1",
+        "rawStopReason": "error",
+        "errorMessage": "Provider stopped with: error"
+      }
+    },
+    {
+      "name": "finishUnknown",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6IndlaXJkIn1dfQoKZGF0YTogW0RPTkVdCgo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:text_end",
+          7
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:error",
+          8
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "deliver:error",
+          12
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Provider stopped with: weird",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "responseId": "r1",
+        "rawStopReason": "weird",
+        "errorMessage": "Provider stopped with: weird"
+      }
+    },
+    {
+      "name": "finishLength",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6Im1vZGVsX2xlbmd0aCJ9XSwidXNhZ2UiOnsicHJvbXB0X3Rva2VucyI6NCwiY29tcGxldGlvbl90b2tlbnMiOjIsInByb21wdF90b2tlbnNfZGV0YWlscyI6eyJjYWNoZWRfdG9rZW5zIjozfX19CgpkYXRhOiBbRE9ORV0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:text_end",
+          7
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:done",
+          8
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "deliver:done",
+          12
+        ]
+      ],
+      "stopReason": "length",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 3,
+          "cacheWrite": 0,
+          "totalTokens": 6,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "length",
+        "responseId": "r1",
+        "rawStopReason": "model_length"
+      }
+    },
+    {
+      "name": "noFinish",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiaG0g4pyTIn1dfV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6ImjDqWxsbyDinJMg8J+YgCJ9LCJmaW5pc2hfcmVhc29uIjpudWxsfV19Cgo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:thinking_end",
+          7
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "read:2",
+          7
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "push:text_end",
+          10
+        ],
+        [
+          "push:error",
+          11
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "deliver:thinking_end",
+          16
+        ],
+        [
+          "deliver:text_start",
+          18
+        ],
+        [
+          "deliver:text_delta",
+          20
+        ],
+        [
+          "deliver:text_end",
+          22
+        ],
+        [
+          "deliver:error",
+          24
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Mistral stream ended without a finish reason",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "responseId": "r1",
+        "errorMessage": "Mistral stream ended without a finish reason"
+      }
+    },
+    {
+      "name": "noDone",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiaG0g4pyTIn1dfV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6ImjDqWxsbyDinJMg8J+YgCJ9LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoibW9yZSJ9XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJ0b29sX2NhbGxzIjpbeyJpbmRleCI6MCwiaWQiOiJjYWxsLTEiLCJ0eXBlIjoiZnVuY3Rpb24iLCJmdW5jdGlvbiI6eyJuYW1lIjoicmVhZCIsImFyZ3VtZW50cyI6IntcInBhdGhcIjoifX1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InRvb2xfY2FsbHMiOlt7ImluZGV4IjowLCJmdW5jdGlvbiI6eyJuYW1lIjoiIiwiYXJndW1lbnRzIjoiXCJhLnR4dFwifSJ9fSx7ImluZGV4IjoxLCJpZCI6ImNhbGwtMiIsInR5cGUiOiJmdW5jdGlvbiIsImZ1bmN0aW9uIjp7Im5hbWUiOiJyZWFkIiwiYXJndW1lbnRzIjoie30ifX1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6InRvb2xfY2FsbHMifV0sInVzYWdlIjp7InByb21wdF90b2tlbnMiOjEwLCJjb21wbGV0aW9uX3Rva2VucyI6MywidG90YWxfdG9rZW5zIjoxM319Cgo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:thinking_end",
+          7
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:text_delta",
+          9
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "push:text_end",
+          11
+        ],
+        [
+          "push:toolcall_start",
+          11
+        ],
+        [
+          "push:toolcall_delta",
+          11
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "push:toolcall_start",
+          13
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "read:2",
+          15
+        ],
+        [
+          "deliver:thinking_end",
+          16
+        ],
+        [
+          "deliver:text_start",
+          18
+        ],
+        [
+          "push:toolcall_end",
+          18
+        ],
+        [
+          "push:toolcall_end",
+          18
+        ],
+        [
+          "push:done",
+          19
+        ],
+        [
+          "deliver:text_delta",
+          20
+        ],
+        [
+          "deliver:text_delta",
+          22
+        ],
+        [
+          "deliver:text_end",
+          24
+        ],
+        [
+          "deliver:toolcall_start",
+          26
+        ],
+        [
+          "deliver:toolcall_delta",
+          28
+        ],
+        [
+          "deliver:toolcall_delta",
+          30
+        ],
+        [
+          "deliver:toolcall_start",
+          32
+        ],
+        [
+          "deliver:toolcall_delta",
+          34
+        ],
+        [
+          "deliver:toolcall_end",
+          36
+        ],
+        [
+          "deliver:toolcall_end",
+          38
+        ],
+        [
+          "deliver:done",
+          40
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀more"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          },
+          {
+            "type": "toolCall",
+            "id": "call-2",
+            "name": "read",
+            "arguments": {}
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 10,
+          "output": 3,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 13,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1",
+        "rawStopReason": "tool_calls"
+      }
+    },
+    {
+      "name": "afterDone",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6InN0b3AifV19CgpkYXRhOiBbRE9ORV0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIsInRleHQiOiJtb3JlIn1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoK"
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:text_end",
+          7
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:done",
+          8
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "deliver:done",
+          12
+        ]
+      ],
+      "stopReason": "stop",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "stop",
+        "responseId": "r1",
+        "rawStopReason": "stop"
+      }
+    },
+    {
+      "name": "trailingRecord",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiaG0g4pyTIn1dfV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnt9LCJmaW5pc2hfcmVhc29uIjoidG9vbF9jYWxscyJ9XSwidXNhZ2UiOnsicHJvbXB0X3Rva2VucyI6MTAsImNvbXBsZXRpb25fdG9rZW5zIjozLCJ0b3RhbF90b2tlbnMiOjEzfX0="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "read:2",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "push:thinking_end",
+          10
+        ],
+        [
+          "push:done",
+          11
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "deliver:thinking_end",
+          16
+        ],
+        [
+          "deliver:done",
+          18
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 10,
+          "output": 3,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 13,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1",
+        "rawStopReason": "tool_calls"
+      }
+    },
+    {
+      "name": "trailingDone",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiaG0g4pyTIn1dfV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiBbRE9ORV0="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "read:2",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:thinking_end",
+          8
+        ],
+        [
+          "push:error",
+          9
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "deliver:thinking_end",
+          16
+        ],
+        [
+          "deliver:error",
+          18
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Mistral stream ended without a finish reason",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "responseId": "r1",
+        "errorMessage": "Mistral stream ended without a finish reason"
+      }
+    },
+    {
+      "name": "malformed",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiaG0g4pyTIn1dfV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbCgo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:error",
+          8
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "deliver:error",
+          16
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Unexpected end of JSON input",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "responseId": "r1",
+        "errorMessage": "Unexpected end of JSON input"
+      }
+    },
+    {
+      "name": "notJSON",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiaG0g4pyTIn1dfV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiBvb3BzCgo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:error",
+          8
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "deliver:error",
+          16
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "responseId": "r1",
+        "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON"
+      }
+    },
+    {
+      "name": "noChoices",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiaG0g4pyTIn1dfV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoieCJ9Cgo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:error",
+          8
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "deliver:error",
+          16
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Invalid Mistral streaming event",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "responseId": "r1",
+        "errorMessage": "Invalid Mistral streaming event"
+      }
+    },
+    {
+      "name": "emptyChoices",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIyIiwiY2hvaWNlcyI6W10sInVzYWdlIjp7InByb21wdF90b2tlbnMiOjEwLCJjb21wbGV0aW9uX3Rva2VucyI6MywidG90YWxfdG9rZW5zIjoxM319CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnt9LCJmaW5pc2hfcmVhc29uIjoic3RvcCJ9XX0KCmRhdGE6IFtET05FXQoK"
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:text_end",
+          9
+        ],
+        [
+          "push:done",
+          10
+        ],
+        [
+          "deliver:text_end",
+          12
+        ],
+        [
+          "deliver:done",
+          14
+        ]
+      ],
+      "stopReason": "stop",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 10,
+          "output": 3,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 13,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "stop",
+        "responseId": "r1",
+        "rawStopReason": "stop"
+      }
+    },
+    {
+      "name": "ignoredLines",
+      "chunks": [
+        "ZXZlbnQ6IHgKaWQ6IDEKZGF0YTogIHsiaWQiOiJyMSIsCmRhdGE6ICJjaG9pY2VzIjpbeyJkZWx0YSI6eyJjb250ZW50IjoiaGkifX1dfQoKOiBjb21tZW50CgpkYXRhOgoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6InN0b3AifV19CgpkYXRhOiBbRE9ORV0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:text_end",
+          7
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:done",
+          8
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "deliver:done",
+          12
+        ]
+      ],
+      "stopReason": "stop",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "hi"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "stop",
+        "responseId": "r1",
+        "rawStopReason": "stop"
+      }
+    },
+    {
+      "name": "emptyText",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiIifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOlt7InR5cGUiOiJ0ZXh0In1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOlt7InR5cGUiOiJ0aGlua2luZyIsInRoaW5raW5nIjpbXX1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6InN0b3AifV19CgpkYXRhOiBbRE9ORV0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_delta",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "deliver:text_delta",
+          10
+        ],
+        [
+          "push:text_end",
+          11
+        ],
+        [
+          "push:done",
+          12
+        ],
+        [
+          "deliver:text_end",
+          14
+        ],
+        [
+          "deliver:done",
+          16
+        ]
+      ],
+      "stopReason": "stop",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "stop",
+        "responseId": "r1",
+        "rawStopReason": "stop"
+      }
+    },
+    {
+      "name": "missingDelta",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3t9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIsInRleHQiOiJtb3JlIn1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoK"
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:error",
+          9
+        ],
+        [
+          "deliver:error",
+          12
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Cannot read properties of undefined (reading 'content')",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "responseId": "r1",
+        "errorMessage": "Cannot read properties of undefined (reading 'content')"
+      }
+    },
+    {
+      "name": "nullChoice",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W251bGxdfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7fSwiZmluaXNoX3JlYXNvbiI6InN0b3AifV19CgpkYXRhOiBbRE9ORV0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:text_end",
+          9
+        ],
+        [
+          "push:done",
+          10
+        ],
+        [
+          "deliver:text_end",
+          12
+        ],
+        [
+          "deliver:done",
+          14
+        ]
+      ],
+      "stopReason": "stop",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "stop",
+        "responseId": "r1",
+        "rawStopReason": "stop"
+      }
+    },
+    {
+      "name": "noFunction",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InRvb2xfY2FsbHMiOlt7ImluZGV4IjowLCJpZCI6IngifV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoibW9yZSJ9XX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:error",
+          9
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "deliver:error",
+          12
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Cannot read properties of undefined (reading 'name')",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "responseId": "r1",
+        "errorMessage": "Cannot read properties of undefined (reading 'name')"
+      }
+    },
+    {
+      "name": "nullContentItem",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoKZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7ImNvbnRlbnQiOltudWxsXX0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGV4dCIsInRleHQiOiJtb3JlIn1dfSwiZmluaXNoX3JlYXNvbiI6bnVsbH1dfQoK"
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "push:error",
+          9
+        ],
+        [
+          "deliver:error",
+          12
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Cannot read properties of null (reading 'type')",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "responseId": "r1",
+        "errorMessage": "Cannot read properties of null (reading 'type')"
+      }
+    },
+    {
+      "name": "readRejects",
+      "chunks": [
+        "ZGF0YTogeyJpZCI6InIxIiwiY2hvaWNlcyI6W3siaW5kZXgiOjAsImRlbHRhIjp7InJvbGUiOiJhc3Npc3RhbnQiLCJjb250ZW50IjoiIn0sImZpbmlzaF9yZWFzb24iOm51bGx9XX0KCmRhdGE6IHsiaWQiOiJyMSIsImNob2ljZXMiOlt7ImluZGV4IjowLCJkZWx0YSI6eyJjb250ZW50IjpbeyJ0eXBlIjoidGhpbmtpbmciLCJ0aGlua2luZyI6W3sidHlwZSI6InRleHQiLCJ0ZXh0IjoiaG0g4pyTIn1dfV19LCJmaW5pc2hfcmVhc29uIjpudWxsfV19CgpkYXRhOiB7ImlkIjoicjEiLCJjaG9pY2VzIjpbeyJpbmRleCI6MCwiZGVsdGEiOnsiY29udGVudCI6ImjDqWxsbyDinJMg8J+YgCJ9LCJmaW5pc2hfcmVhc29uIjpudWxsfV19Cgo="
+      ],
+      "end": "error",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:text_start",
+          3
+        ],
+        [
+          "push:text_delta",
+          3
+        ],
+        [
+          "push:text_end",
+          5
+        ],
+        [
+          "push:thinking_start",
+          5
+        ],
+        [
+          "push:thinking_delta",
+          5
+        ],
+        [
+          "deliver:text_start",
+          6
+        ],
+        [
+          "push:thinking_end",
+          7
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "read:2",
+          7
+        ],
+        [
+          "deliver:text_delta",
+          8
+        ],
+        [
+          "deliver:text_end",
+          10
+        ],
+        [
+          "push:error",
+          11
+        ],
+        [
+          "deliver:thinking_start",
+          12
+        ],
+        [
+          "deliver:thinking_delta",
+          14
+        ],
+        [
+          "deliver:thinking_end",
+          16
+        ],
+        [
+          "deliver:text_start",
+          18
+        ],
+        [
+          "deliver:text_delta",
+          20
+        ],
+        [
+          "deliver:error",
+          22
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "body failed",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          },
+          {
+            "type": "thinking",
+            "thinking": "hm ✓"
+          },
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          }
+        ],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "responseId": "r1",
+        "errorMessage": "body failed"
+      }
+    },
+    {
+      "name": "rejectsFirst",
+      "chunks": [],
+      "end": "error",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:error",
+          4
+        ],
+        [
+          "deliver:error",
+          7
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "body failed",
+      "result": {
+        "role": "assistant",
+        "content": [],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "errorMessage": "body failed"
+      }
+    },
+    {
+      "name": "emptyBody",
+      "chunks": [],
+      "end": "close",
+      "marks": [
+        [
+          "push:start",
+          0
+        ],
+        [
+          "read:1",
+          0
+        ],
+        [
+          "deliver:start",
+          2
+        ],
+        [
+          "push:error",
+          4
+        ],
+        [
+          "deliver:error",
+          7
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Mistral stream ended without a finish reason",
+      "result": {
+        "role": "assistant",
+        "content": [],
+        "api": "mistral-conversations",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "errorMessage": "Mistral stream ended without a finish reason"
+      }
+    }
+  ]
+}

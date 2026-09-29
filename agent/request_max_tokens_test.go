@@ -34,7 +34,7 @@ func TestClampIgnoresUsageOlderThanPrefix(t *testing.T) {
 	}
 	messages := []AgentMessage{
 		{Custom: map[string]any{"role": RoleCompactionSummary, "summary": "summary", "timestamp": now - 1000}},
-		{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "kept question"}}, Timestamp: now - 3000}},
+		{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "kept question"}}, Timestamp: now - 3000}},
 		{Assistant: kept},
 	}
 	if got := maxTokensRequested(t, 200_000, 64_000, messages); got != 64_000 {

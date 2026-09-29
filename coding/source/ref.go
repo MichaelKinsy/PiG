@@ -9,12 +9,15 @@ package source
 import (
 	"fmt"
 	"net/url"
-	"os"
 	pathpkg "path"
 	"path/filepath"
-	"regexp"
+	"runtime"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
 // Kind is the transport-independent source category.
@@ -27,9 +30,7 @@ const (
 	KindContributed Kind = "contributed"
 )
 
-// BarePolicy controls how a source without an explicit scheme/path marker is
-// interpreted at a boundary. Package install uses BareNPM for upstream parity;
-// piglets require explicit typed strings.
+// BarePolicy controls how a source without an explicit scheme/path marker is interpreted. Each caller selects local, npm, or rejection semantics.
 type BarePolicy uint8
 
 const (
@@ -66,12 +67,14 @@ type Ref struct {
 }
 
 var (
-	schemePattern  = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
-	npmSpecPattern = regexp.MustCompile(`^(@?[^@\s]+(?:/[^@\s]+)?)(?:@([^\s]+))?$`)
-	windowsPath    = regexp.MustCompile(`^[A-Za-z]:[\\/]`)
+	schemePattern = lazyregexp.New(`^[a-z][a-z0-9-]*$`)
+	// Selectors retain npm range whitespace; Pi's regexp dot excludes JavaScript line terminators.
+	// upstream: packages/coding-agent/src/core/package-manager.ts:parseNpmSpec
+	npmSpecPattern = lazyregexp.New(`^(@?[^@\s]+(?:/[^@\s]+)?)(?:@([^\r\n\x{2028}\x{2029}]+))?$`)
+	windowsPath    = lazyregexp.New(`^[A-Za-z]:[\\/]`)
 )
 
-// Parse validates and classifies input without materializing it.
+// Parse validates and classifies input without materializing it. npm selectors retain spaces and tabs used by comparator sets, hyphen ranges, and unions.
 func Parse(input string, opts Options) (Ref, error) {
 	raw := strings.TrimSpace(input)
 	if raw == "" {
@@ -94,6 +97,15 @@ func Parse(input string, opts Options) (Ref, error) {
 	}
 	if isGitInput(raw) {
 		return parseGit(raw)
+	}
+	// Pi package-manager.ts:1446-1470 treats bare SCP spelling as a local path, not a source scheme.
+	if opts.Bare == BareLocal && strings.HasPrefix(raw, "git@") {
+		return Ref{Raw: raw, Kind: KindLocal, Locator: raw}, nil
+	}
+
+	// Pi's isLocalPath (paths.ts:50-64) makes a file: source local; its path is the URL's file path.
+	if strings.HasPrefix(resolvepath.Trim(raw), "file:") {
+		return Ref{Raw: raw, Kind: KindLocal, Locator: raw}, nil
 	}
 
 	if scheme, locator, ok := strings.Cut(raw, ":"); ok {
@@ -142,28 +154,20 @@ func (r Ref) Identity(baseDir string) (string, error) {
 	case KindContributed:
 		return r.Scheme + ":" + r.Locator, nil
 	case KindLocal:
-		path := r.Locator
-		if rest, ok := homeRelative(path); ok {
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return "", fmt.Errorf("resolve source home: %w", err)
-			}
-			path = filepath.Join(home, rest)
-		}
-		if windowsPath.MatchString(path) {
+		path := resolvepath.Trim(r.Locator)
+		// Explicit foreign Windows paths retain their spelling on POSIX hosts.
+		if runtime.GOOS != "windows" && windowsPath.MatchString(path) {
 			return "local:" + filepath.Clean(path), nil
 		}
-		if !filepath.IsAbs(path) {
-			if baseDir == "" {
-				return "", fmt.Errorf("base directory is required for relative source %q", path)
-			}
-			path = filepath.Join(baseDir, path)
+		_, homePath := homeRelative(path)
+		if baseDir == "" && !filepath.IsAbs(path) && !windowsPath.MatchString(path) && path != "~" && !homePath && !strings.HasPrefix(path, "file://") {
+			return "", fmt.Errorf("base directory is required for relative source %q", path)
 		}
-		abs, err := filepath.Abs(path)
+		resolved, err := resolvepath.ResolvePackagePath(path, baseDir)
 		if err != nil {
 			return "", fmt.Errorf("resolve local source %q: %w", r.Locator, err)
 		}
-		return "local:" + filepath.Clean(abs), nil
+		return "local:" + resolved, nil
 	default:
 		return "", fmt.Errorf("unsupported source kind %q", r.Kind)
 	}

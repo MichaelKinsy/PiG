@@ -1,0 +1,61 @@
+# Pi 0.87.1 core/tools/read.ts:110,158-188 and write.ts:85-88 omit ordinary result details.
+# agent-loop.ts:870-894 keeps isError beside result and in persisted messages, never injected into result.
+# Full JSON records are compared: canonical_json only sorts keys; it keeps extra/missing fields, nulls, content whitespace and event order.
+name = "28-rpc-tool-result-wire"
+description = "Exact read/write tool events and persisted messages retain Pi's sparse result shape"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/agent/src/agent-loop.ts", "packages/coding-agent/src/core/tools/read.ts", "packages/coding-agent/src/core/tools/write.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+canonical_json = true
+cwd = "testdata/tool-wire"
+timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"read","type":"prompt","message":"Run: read parity-read-target.txt"}'
+wait_contains = ['"type":"agent_settled"']
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"write","type":"prompt","message":"Run: write parity-write-output.txt"}'
+wait_event = '{"type":"agent_settled"}'
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"abort","type":"abort"}'
+wait_contains = ['"command":"abort","success":true']
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"messages","type":"get_messages"}'
+wait_contains = ['"command":"get_messages","success":true']
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"entries","type":"get_entries"}'
+wait_contains = ['"command":"get_entries","success":true']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--offline", "--model", "test-faux/faux-1", "--system-prompt", "RPC wire probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--offline", "--model", "test-faux/faux-1", "--system-prompt", "RPC wire probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3
+both_contain = ['"toolName":"read"', '"toolName":"write"', '"role":"toolResult"']
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "D2: alias only the exact isolated cwd embedded in the system section; retain its tags, whitespace and suffix."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message and entry wall clocks vary; retain field presence, timestamp type and valid syntax."
+[[assert.json_aliases]]
+paths = ["/**/id", "/**/parentId", "/**/leafId"]
+kind = "id"
+group = "entry"
+pattern = '^[a-f0-9]{8,16}$'
+reason = "Generated entry keys vary per process. A bijection retains every parent and leaf reference; command and tool-call IDs stay literal."

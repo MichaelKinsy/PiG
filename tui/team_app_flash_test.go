@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-// Exact pinned-source bytes: node parity/testdata/next-evidence-app-b/oracle.mjs.
+// Exact pinned-source bytes: node test/parity/testdata/next-evidence-app-b/oracle.mjs.
 // In particular, truncation adds SGR 0 before the reverse-video closing SGR 27.
 func TestFlashExactRender(t *testing.T) {
 	t.Parallel()

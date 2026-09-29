@@ -1,0 +1,44 @@
+# Upstream evidence: Pi 0.87.1 session-picker.ts and session-selector-search.ts:117-203.
+# Real --resume pickers read the same five named JSONL sessions, then search delta.
+# Pi ranks delta four, alpha one, golf seven; the pre-fix fixed fuzzy score swaps the last two.
+# The shared search-cases.json DD1 row separately checks the reported two-result shape; the original WSL histories were not supplied.
+# Future message timestamps make the age column deterministically "now" in both products; no output normalization is applied.
+# The crop is the complete picker header, input and results through its closing border, excluding unrelated startup chrome.
+name = "21-session-search-resume-picker"
+description = "Real resume picker ranks delta matches and highlights the same session as Pi"
+covers = [
+  "packages/coding-agent/src/cli/session-picker.ts",
+  "packages/coding-agent/src/modes/interactive/components/session-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts",
+]
+tags = ["hermetic", "fast", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/search-cwd"
+ready_pattern_pig = "golf seven"
+ready_pattern_pi = "golf seven"
+ready_timeout_seconds = 25
+capture_start = "Resume Session (Current Folder)"
+capture_end_regex = "^─+$"
+
+[[tmux.steps]]
+keys = ["delta"]
+wait_visible_contains = ["> delta", "delta four", "alpha one", "golf seven"]
+wait_not_contains = ["bravo", "charlie"]
+wait_timeout_seconds = 5
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions", "--no-skills", "--resume", "--session-dir", "sessions"]
+pi_args = ["--no-extensions", "--no-skills", "--resume", "--session-dir", "sessions"]
+
+[assert]
+both_reach_ready = true
+escaped_output_equal = true
+both_contain = ["› delta four", "alpha one", "golf seven"]
+both_not_contain = ["bravo", "charlie"]
+runs = 3

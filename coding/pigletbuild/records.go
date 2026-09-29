@@ -11,11 +11,12 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"golang.org/x/mod/modfile"
 
@@ -29,7 +30,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
-var artifactNamePattern = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._+\-]*$`)
+var artifactNamePattern = lazyregexp.New(`^[A-Za-z0-9][A-Za-z0-9._+\-]*$`)
 
 type buildLock struct {
 	Piglet            string

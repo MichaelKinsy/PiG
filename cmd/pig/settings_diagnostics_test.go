@@ -41,9 +41,5 @@ func TestPrintModeReportsInvalidSettingsOnce(t *testing.T) {
 
 func buildPigBinaryForDiagnosticsTest(t *testing.T) string {
 	t.Helper()
-	out := testExecutable(filepath.Join(t.TempDir(), "pig-diagnostics-test"))
-	if data, err := exec.Command("go", "build", "-o", out, ".").CombinedOutput(); err != nil {
-		t.Fatalf("build pig: %v\n%s", err, data)
-	}
-	return out
+	return buildPigBinaryForSignalTest(t)
 }

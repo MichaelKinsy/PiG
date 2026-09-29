@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""Fail when PORT_MAP.md does not account for current upstream source files.
+"""Fail when docs/parity/PORT_MAP.md does not account for current upstream source files.
 
-PORT_MAP.md is the denominator for parity coverage. If upstream adds a source
+docs/parity/PORT_MAP.md is the denominator for parity coverage. If upstream adds a source
 file and the map omits it, coverage can overstate faithfulness. This check makes
 that impossible: every non-test upstream source file in the packages pig tracks
 must be represented, and every row, whatever its status, must point at a file
 that still exists in .upstream/current. A removed file has no behavior to port,
 defer, or rule out, so an n/a or ⏸ row for it only inflates those counts; the
-removal is recorded in parity/upstream-sync/v<version>.toml instead.
+removal is recorded in test/parity/upstream-sync/v<version>.toml instead.
 
 Explicit production comments claiming to port/mirror an upstream source also
 require a live mapping (partial is acceptable). This catches stale negative
 classifications without pretending code presence proves behavioral completeness.
+Explicitly mapped non-test sources outside the automatic src roots, such as model-generation scripts, are checked for physical existence rather than mistaken for removed source. Automatic root completeness remains unchanged.
 
 --reconcile prepares an upstream leap: it appends a ⬜ row for each new file to
 its package table and deletes each row whose file disappeared. It never marks
@@ -97,10 +98,10 @@ def status_token(status: str) -> str:
 
 
 def pinned_version(port_map: pathlib.Path) -> str:
-    source = (port_map.parent / "coding" / "pigversion" / "pigversion.go").read_text(encoding="utf-8")
+    source = (port_map.parents[2] / "internal" / "coding" / "pigversion" / "pigversion.go").read_text(encoding="utf-8")
     match = re.search(r'^const UpstreamVersion = "([^"]+)"', source, re.MULTILINE)
     if not match:
-        raise SystemExit("port-map-drift: cannot read UpstreamVersion from coding/pigversion/pigversion.go")
+        raise SystemExit("port-map-drift: cannot read UpstreamVersion from internal/coding/pigversion/pigversion.go")
     return match.group(1)
 
 
@@ -135,7 +136,7 @@ def implementation_conflicts(port_map: pathlib.Path, rows: dict[str, Row]) -> li
     claim = re.compile(r"\b(?:ports?|mirrors?)\s+`?(packages/[\w./-]+\.tsx?)\b", re.IGNORECASE)
     conflicts = []
     for directory in ("agent", "ai", "coding", "cmd", "internal", "tui"):
-        for source in sorted((port_map.parent / directory).rglob("*.go")):
+        for source in sorted((port_map.parents[2] / directory).rglob("*.go")):
             if source.is_symlink() or source.name.endswith("_test.go") or "testdata" in source.parts:
                 continue
             for line_no, line in enumerate(source.read_text(encoding="utf-8").splitlines(), 1):
@@ -144,7 +145,7 @@ def implementation_conflicts(port_map: pathlib.Path, rows: dict[str, Row]) -> li
                 for upstream in claim.findall(line):
                     row = rows.get(upstream)
                     if row is not None and status_token(row.status) in {"⬜", "n/a", "⏸"}:
-                        relative = source.relative_to(port_map.parent)
+                        relative = source.relative_to(port_map.parents[2])
                         conflicts.append(f"{relative}:{line_no}: implementation claim contradicts {upstream} [{row.status}]; review mapping/status (do not auto-promote)")
     return conflicts
 
@@ -152,7 +153,7 @@ def implementation_conflicts(port_map: pathlib.Path, rows: dict[str, Row]) -> li
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--upstream", default=".upstream/current", help="current upstream tree")
-    parser.add_argument("--port-map", default="PORT_MAP.md", help="PORT_MAP.md path")
+    parser.add_argument("--port-map", default="docs/parity/PORT_MAP.md", help="docs/parity/PORT_MAP.md path")
     parser.add_argument("--reconcile", action="store_true", help="add ⬜ rows for new files and retire rows for removed files, then recheck")
     args = parser.parse_args()
 
@@ -167,6 +168,17 @@ def main() -> int:
 
     upstream_files = discover_upstream(upstream_root)
     rows = parse_rows(port_map)
+    for upstream in rows:
+        relative = pathlib.PurePosixPath(upstream)
+        source = upstream_root / upstream
+        if (
+            ".." not in relative.parts
+            and source.suffix in {".ts", ".tsx"}
+            and not should_ignore_source(upstream)
+            and source.is_file()
+            and source.resolve().is_relative_to(upstream_root.resolve())
+        ):
+            upstream_files.add(upstream)
 
     missing = sorted(upstream_files - set(rows))
     stale: list[Row] = []
@@ -176,32 +188,32 @@ def main() -> int:
         if token not in PORTABLE_STATUSES | NON_LIVE_STATUSES:
             unknown_status.append(row)
             continue
-        if row.upstream not in upstream_files:
+        if not (upstream_root / row.upstream).is_file():
             stale.append(row)
 
     if args.reconcile and (missing or stale):
         reconcile(port_map, missing, stale)
-        print(f"port-map-drift: reconciled {len(missing)} new and {len(stale)} removed upstream files; review PORT_MAP.md")
+        print(f"port-map-drift: reconciled {len(missing)} new and {len(stale)} removed upstream files; review docs/parity/PORT_MAP.md")
         rows = parse_rows(port_map)
         missing = sorted(upstream_files - set(rows))
-        stale = [row for row in rows.values() if row.upstream not in upstream_files]
+        stale = [row for row in rows.values() if not (upstream_root / row.upstream).is_file()]
 
     conflicts = implementation_conflicts(port_map, rows)
     if not missing and not stale and not unknown_status and not conflicts:
-        print(f"port-map-drift: clean ({len(upstream_files)} upstream source files accounted for)")
+        print(f"port-map-drift: clean ({len(upstream_files | set(rows))} upstream source files accounted for)")
         return 0
 
     for conflict in conflicts:
         print(f"port-map-drift: {conflict}", file=sys.stderr)
     if missing:
-        print("port-map-drift: upstream files missing from PORT_MAP.md:", file=sys.stderr)
+        print("port-map-drift: upstream files missing from docs/parity/PORT_MAP.md:", file=sys.stderr)
         for rel in missing:
             print(f"  + {rel}", file=sys.stderr)
     if stale:
         print("port-map-drift: PORT_MAP rows whose upstream file no longer exists:", file=sys.stderr)
         for row in stale:
             print(f"  - line {row.line}: {row.upstream} [{row.status}]", file=sys.stderr)
-        print("    Delete them; parity/upstream-sync/v<version>.toml records removed files.", file=sys.stderr)
+        print("    Delete them; test/parity/upstream-sync/v<version>.toml records removed files.", file=sys.stderr)
     if unknown_status:
         print("port-map-drift: PORT_MAP rows with unknown status token:", file=sys.stderr)
         for row in unknown_status:

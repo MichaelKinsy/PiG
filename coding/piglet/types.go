@@ -16,10 +16,11 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
-	"regexp"
 	"slices"
 	"strings"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"golang.org/x/mod/semver"
 
@@ -411,11 +412,11 @@ func ParseBytes(data []byte) (*Piglet, error) {
 }
 
 var (
-	pigletNamePattern        = regexp.MustCompile(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
-	pigletTargetPartPattern  = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
-	pigletWindowsPathPattern = regexp.MustCompile(`^[A-Za-z]:[\\/]`)
-	environmentNamePattern   = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
-	secretResolverRefPattern = regexp.MustCompile(`^[a-z][a-z0-9-]*:[^[:space:]]+$`)
+	pigletNamePattern        = lazyregexp.New(`^[A-Za-z0-9][A-Za-z0-9._-]*$`)
+	pigletTargetPartPattern  = lazyregexp.New(`^[a-z0-9][a-z0-9_-]*$`)
+	pigletWindowsPathPattern = lazyregexp.New(`^[A-Za-z]:[\\/]`)
+	environmentNamePattern   = lazyregexp.New(`^[A-Za-z_][A-Za-z0-9_]*$`)
+	secretResolverRefPattern = lazyregexp.New(`^[a-z][a-z0-9-]*:[^[:space:]]+$`)
 )
 
 // Validate checks the piglet for schema violations.

@@ -9,13 +9,23 @@
 // on a clean host (findPythonSDKRoot's staged-source strategy).
 package pysdk
 
-import "embed"
+import (
+	"embed"
+	"io/fs"
+	"slices"
+)
 
-//go:embed LICENSE pig_sdk/__init__.py pyproject.toml
+//go:embed LICENSE pig_sdk/*.py pyproject.toml
 var Source embed.FS
 
 // BundledFiles lists the embedded files, relative to the SDK root, in a stable
 // order. Paths use forward slashes; a stager recreates subdirectories.
 func BundledFiles() []string {
-	return []string{"LICENSE", "pig_sdk/__init__.py", "pyproject.toml"}
+	files, err := fs.Glob(Source, "pig_sdk/*.py")
+	if err != nil {
+		panic(err)
+	}
+	files = append(files, "LICENSE", "pyproject.toml")
+	slices.Sort(files)
+	return files
 }

@@ -83,7 +83,7 @@ assert.deepEqual(errorInfo("plain"), { message: "plain" });
 	hostEnd, peer := net.Pipe()
 	conn := NewConn("thrower", hostEnd)
 	conn.Start(t.Context())
-	managed := &managedExt{config: ExtConfig{Name: "thrower"}, host: NewHost(t.TempDir()), conn: conn}
+	managed := withConn(&managedExt{config: ExtConfig{Name: "thrower"}, host: NewHost(t.TempDir())}, conn)
 	handler := managed.makeEventHandler("turn_start", 1)
 	done := make(chan error, 1)
 	go func() {

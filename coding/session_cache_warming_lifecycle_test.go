@@ -219,7 +219,7 @@ func BenchmarkSessionReplaceInnerCacheWarming(b *testing.B) {
 				for range sess.Events() {
 				}
 			})
-			message := agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: strings.Repeat("history ", 128)}}}}
+			message := agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: strings.Repeat("history ", 128)}}}}
 			b.ReportAllocs()
 			for b.Loop() {
 				inner := icodingagent.NewSession("replacement", sess.CWD())

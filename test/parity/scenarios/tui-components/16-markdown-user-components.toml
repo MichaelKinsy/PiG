@@ -1,0 +1,32 @@
+# Upstream evidence: Pi 0.87.1 markdown.test.ts and user-message.test.ts supply the vectors and callback contracts.
+# Both probes render real components with the same explicit Chalk level-3 test theme. FORCE_COLOR also keeps stock theme decorations deterministic in the user/assistant caller samples.
+# Every ANSI sequence and padding space is JSON-quoted and compared exactly. No normalization is applied.
+# The final observation drives InteractiveMode.newUserMessageBlock so a missing built-in transform call cannot pass a leaf-only component check.
+name = "16-markdown-user-components"
+description = "Markdown options, nested blocks, styles, streaming fences, caching, user zones and display-transform callers match Pi."
+covers = [
+ "packages/tui/src/components/markdown.ts",
+ "packages/coding-agent/src/modes/interactive/components/user-message.ts",
+ "packages/coding-agent/src/modes/interactive/components/markdown-transform.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig = ["FORCE_COLOR=3"]
+pi = ["FORCE_COLOR=3"]
+pig_args = ["node", "./test/parity/testdata/markdown-components-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/markdown-components-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"name":"transform-cache"', '"name":"user-invalidation"', '"name":"user-builtin-transform"']
+runs = 3

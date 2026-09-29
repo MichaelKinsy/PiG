@@ -85,4 +85,4 @@ Review this model when a change adds or changes:
 - telemetry; or
 - a new distributed artifact type.
 
-Report vulnerabilities through [`SECURITY.md`](../SECURITY.md).
+Report vulnerabilities through [`.github/SECURITY.md`](../.github/SECURITY.md).

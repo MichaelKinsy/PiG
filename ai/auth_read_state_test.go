@@ -116,7 +116,7 @@ func TestAuthStorageRereadsWhenRevisionChanges(t *testing.T) {
 }
 
 func TestAuthStorageSnapshotIsNotAliasedByCallers(t *testing.T) {
-	path := seedAuthFile(t, `{"custom":{"type":"api_key","key":"k","env":{"REGION":"eu"},"gatewayConfig":{"a":1}}}`)
+	path := seedAuthFile(t, `{"custom":{"type":"api_key","key":"k","env":{"REGION":"eu"},"gatewayConfig":{"a":1},"custom":{"value":1}}}`)
 	store, err := NewAuthStorage(path)
 	if err != nil {
 		t.Fatalf("new: %v", err)
@@ -126,9 +126,11 @@ func TestAuthStorageSnapshotIsNotAliasedByCallers(t *testing.T) {
 	creds, _ := store.Load()
 	creds["custom"].Env["REGION"] = "mutated"
 	creds["custom"].GatewayConfig[0] = 'X'
+	creds["custom"].Extra["custom"][9] = '9'
 	delete(creds, "custom")
 	raw, _, _ := store.GetRaw("custom")
 	raw.Env["REGION"] = "mutated"
+	delete(raw.Extra, "custom")
 
 	cred, ok, err := store.GetRaw("custom")
 	if err != nil || !ok {
@@ -136,6 +138,9 @@ func TestAuthStorageSnapshotIsNotAliasedByCallers(t *testing.T) {
 	}
 	if cred.Env["REGION"] != "eu" || string(cred.GatewayConfig) != `{"a":1}` {
 		t.Fatalf("snapshot aliased by callers: env=%v gateway=%s", cred.Env, cred.GatewayConfig)
+	}
+	if string(cred.Extra["custom"]) != `{"value":1}` {
+		t.Fatalf("snapshot provider fields aliased by callers: %v", cred.Extra)
 	}
 }
 

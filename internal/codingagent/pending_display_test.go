@@ -222,7 +222,7 @@ func TestPendingDisplay_ClearsSteeringOnInjectedUserMessage(t *testing.T) {
 
 	steer := agent.AgentMessage{User: &agent.UserMessage{
 		Role:    agent.RoleUser,
-		Content: []ai.UserContentBlock{ai.TextContent{Text: "steer now"}},
+		Content: ai.UserContentBlocks{ai.TextContent{Text: "steer now"}},
 	}}
 	m.agent.Steer(steer)
 	m.updatePendingMessagesDisplay()

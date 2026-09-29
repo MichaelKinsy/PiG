@@ -29,8 +29,8 @@ reviews:
     - "!**/go.sum"
     - "!**/Cargo.lock"
     - "!**/packages.lock"
-    - "!parity/interfaces/**"
-    - "!parity/coverage.md"
+    - "!test/parity/interfaces/**"
+    - "!test/parity/coverage.md"
     - "!.github/badges/**"
 chat:
   auto_reply: true

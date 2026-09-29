@@ -1,0 +1,54 @@
+# Pi 0.87.1 settings-selector.ts ThemeSubmenu keeps its Automatic Theme heading and explanations while SettingsList renders a nested branch picker.
+# The equal dark/dark pair is still automatic mode and keeps terminal appearance detection from changing the colors under test.
+# The credential-complete fixture model never sends a provider request.
+# Upstream evidence: exact pinned Pi 0.87.1 settings-selector.ts:318-323 (ThemeSubmenu.showAutomaticMenu)
+# renders the "Automatic Theme" heading and both explanations above its SettingsList; Enter on
+# "Light theme" opens createThemeSelect (settings-selector.ts:401-420, SelectSubmenu "Light Theme"),
+# which tui settings-list.ts:97-99 renders in place of the list while the heading stays in the
+# parent container. themeItems (settings-selector.ts:198-203) marks the configured "✓ dark", and
+# settings-submenu.ts:85-90 adds the "Enter to select · Esc to go back" hint.
+name = "12-settings-automatic-theme-child"
+description = "The automatic-theme child picker retains its parent heading and configured marker."
+covers = ["packages/coding-agent/src/modes/interactive/components/settings-selector.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "fixture/thinking-model"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 25
+capture_start = "Automatic Theme"
+capture_start_last = true
+capture_end = "Enter to select · Esc to go back"
+
+[[tmux.steps]]
+keys = ["/settings", "Enter"]
+wait_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Theme", "Enter"]
+wait_contains = ["Automatic Theme", "Light theme", "Dark theme"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Enter"]
+# The parent heading is retained, not newly rendered text. Its presence remains a strict final assertion.
+wait_contains = ["Light Theme", "→ ✓ dark", "Enter to select · Esc to go back"]
+wait_timeout_seconds = 5
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/automatic-theme-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/automatic-theme-agent"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+escaped_output_equal = true
+both_contain = ["Automatic Theme", "Choose themes for terminal light and dark appearance.", "Light/dark detection requires terminal support.", "Light Theme", "→ ✓ dark"]
+runs = 3

@@ -75,6 +75,7 @@ func TestOnSettingAppliedRebuildsSkillAutocomplete(t *testing.T) {
 	mode.buildSlashContext(t.Context()).OnSettingApplied("skill-commands", "false")
 
 	editor.SetText("/skill:")
+	editor.RefreshAutocomplete()
 	if got := strings.Join(editor.Render(80), "\n"); strings.Contains(got, "skill:review") {
 		t.Fatalf("disabled skill command remained in autocomplete:\n%s", got)
 	}
@@ -84,6 +85,7 @@ func TestOnSettingAppliedRebuildsSkillAutocomplete(t *testing.T) {
 	}
 	mode.buildSlashContext(t.Context()).OnSettingApplied("skill-commands", "true")
 	editor.SetText("/skill:")
+	editor.RefreshAutocomplete()
 	if got := strings.Join(editor.Render(80), "\n"); !strings.Contains(got, "skill:review") {
 		t.Fatalf("enabled skill command missing from autocomplete:\n%s", got)
 	}
@@ -167,7 +169,7 @@ func TestOnSettingAppliedUpdatesEditorAndOutputLayout(t *testing.T) {
 	}
 	block := mode.newAssistantMessageBlock()
 	block.SetTextDelta("hello")
-	if got := block.Render(20)[1]; !strings.HasPrefix(got, "hello") {
+	if got := block.Render(20)[1]; !strings.HasPrefix(got, "\x1b]133;B\x07\x1b]133;C\x07hello") {
 		t.Fatalf("new assistant block retained old padding: %q", got)
 	}
 }

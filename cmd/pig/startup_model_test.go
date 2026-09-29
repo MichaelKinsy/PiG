@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -161,7 +162,10 @@ func TestFindInitialModelMatchesUpstream(t *testing.T) {
 		{name: "no available model", models: []codingagent.RuntimeModel{savedDeepSeek}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			got := findInitialModel(mockStartupRuntime(tc.models, tc.authenticated...), tc.defaultProvider, tc.defaultModel)
+			got, err := findInitialModel(mockStartupRuntime(tc.models, tc.authenticated...), tc.defaultProvider, tc.defaultModel)
+			if err != nil {
+				t.Fatal(err)
+			}
 			ref := ""
 			if got != nil {
 				ref = modelRef(*got)
@@ -240,8 +244,8 @@ func TestSelectStartupModelMatchesUpstream(t *testing.T) {
 			if got := selected.Model.ProviderMeta.ProviderID + "/" + selected.Model.ID; got != tc.want || selected.Thinking != tc.thinking {
 				t.Fatalf("model = %s:%s, want %s:%s", got, selected.Thinking, tc.want, tc.thinking)
 			}
-			if tc.warnContains != "" && !slices.ContainsFunc(selected.Warnings, func(w string) bool { return strings.Contains(w, tc.warnContains) }) {
-				t.Fatalf("warnings = %q, want %q", selected.Warnings, tc.warnContains)
+			if tc.warnContains != "" && !slices.ContainsFunc(slices.Concat(selected.ScopeWarnings, selected.Warnings), func(w string) bool { return strings.Contains(w, tc.warnContains) }) {
+				t.Fatalf("warnings = %q / %q, want %q", selected.ScopeWarnings, selected.Warnings, tc.warnContains)
 			}
 		})
 	}
@@ -329,6 +333,39 @@ func TestSelectStartupModelAPIKey(t *testing.T) {
 			t.Fatalf("runtime key = %q, %v", key, ok)
 		}
 	})
+}
+
+// Pi main.ts:795-821 resolves the scope even with an explicit model and retains both model and --api-key errors. A scope model can still receive the runtime key after explicit model resolution fails.
+func TestSelectStartupModelCollectsDiagnostics(t *testing.T) {
+	for _, withScope := range []bool{false, true} {
+		t.Run(fmt.Sprintf("scope=%t", withScope), func(t *testing.T) {
+			dir := isolateProviderAuthEnv(t)
+			t.Setenv("ANTHROPIC_API_KEY", "fixture")
+			options := startupModelOptions{CLIModel: "missing-model-rv-rpc", APIKey: "runtime-key", ScopePatterns: []string{"missing-scope-rv-rpc"}}
+			wantErrors := []string{`Model "missing-model-rv-rpc" not found. Use --list-models to see available models.`}
+			if withScope {
+				options.ScopePatterns = append(options.ScopePatterns, "anthropic/claude-sonnet-4-5")
+			} else {
+				wantErrors = append(wantErrors, "--api-key requires a model to be specified via --model, --provider/--model, or --models")
+			}
+			services := testServices(t, dir)
+			selected, err := selectStartupModel(t.Context(), options, codingagent.Settings{}, services)
+			if err == nil || err.Error() != strings.Join(wantErrors, "\n") {
+				t.Fatalf("error = %v, want %q", err, wantErrors)
+			}
+			var gotErrors []string
+			for _, err := range selected.Errors {
+				gotErrors = append(gotErrors, err.Error())
+			}
+			if !slices.Equal(gotErrors, wantErrors) || !slices.Equal(selected.ScopeWarnings, []string{`No models match pattern "missing-scope-rv-rpc"`}) || len(selected.Warnings) != 0 {
+				t.Fatalf("diagnostics = %+v", selected)
+			}
+			key, set := services.Registry().RuntimeAPIKey("anthropic")
+			if set != withScope || withScope && key != options.APIKey {
+				t.Fatalf("runtime key set=%t, want %t", set, withScope)
+			}
+		})
+	}
 }
 
 // TestSelectStartupModelKeepsTestFaux keeps the uncatalogued test-only

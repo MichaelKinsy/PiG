@@ -1,0 +1,39 @@
+# Behavior family: cli-utils
+# Surface: package-manager install command for a local path source.
+#
+# Upstream evidence (Pi 0.87.1, monorepo-release probe):
+#   PI_HOME=<fresh-home> PI_CODING_AGENT_DIR=<fresh-home>/agent pi install ./testdata/local-package
+#   exact output:
+#     Installing ./testdata/local-package...
+#     Installed ./testdata/local-package
+# No ANSI, version, or temporary paths occur here; compare complete output without normalization.
+# This is the shared Package materializer boundary used by Piglet source add,
+# not a claim that Pi implements the additive Piglet commands (D18).
+#
+# Local package installs are the honest CLI path that exercise package-command
+# parsing plus local-path classification without network access.
+
+name = "04-package-install-local"
+description = "Installing a local package source succeeds with matching CLI output."
+covers = [
+  "packages/coding-agent/src/package-manager-cli.ts",
+  "packages/coding-agent/src/utils/paths.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_HOME=testdata/package-home"]
+pi = ["PI_HOME=testdata/package-home", "PI_CODING_AGENT_DIR=testdata/package-home/agent", "PI_SKIP_VERSION_CHECK=1"]
+override_base_args = true
+
+[cli]
+args = ["install", "./testdata/local-package"]
+cwd = "."
+timeout_seconds = 20
+
+[assert]
+exit_code = 0
+both_contain = ["Installed ./testdata/local-package"]
+output_equal = true
+runs = 3

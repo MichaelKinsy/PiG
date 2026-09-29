@@ -1,0 +1,27 @@
+# Pi 0.87.1 main.ts:619-622 returns --version before validating Session flags.
+# Probe: pi --name '   ' --session-id invalid/id --version prints 0.87.1 and exits 0.
+name = "13-cli-version-before-session-validation"
+description = "Version routing precedes invalid Session name and ID validation"
+covers = ["packages/coding-agent/src/main.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--name", "   ", "--session-id", "invalid/id", "--version"]
+timeout_seconds = 10
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3
+
+# normalize-rationale: D63 changes release identity, not output framing. Replace only one complete version line with its required LF; extra/missing whitespace or ANSI stays visible.
+[[assert.normalize_replace]]
+pattern = '^\d+\.\d+\.\d+(?:\+\d+\.\d+\.\d+)?\n$'
+with = '<version>'
+reason = "D63 changes release identity. Match only the complete version line including its LF; preserve all other bytes."
+
+[diverge]
+pig_contains = ["{{VERSION}}"]
+pi_contains = ["{{UPSTREAM_VERSION}}"]
+reason = "D63 SCRUTINIZED:approved. PiG prints its composite PiG+Pi version; Pi prints its upstream version. Session validation must not run first."

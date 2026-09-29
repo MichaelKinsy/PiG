@@ -159,9 +159,9 @@ func TestHostFinalExtensionSetOwnsUnselectedPreloadUntilShutdown(t *testing.T) {
 // dispatches tool_call in that same order. A blocking first handler must
 // therefore prevent every later handler at startup and after repeated reloads.
 func TestHostLoadAndReloadPreserveConfiguredGuardOrder(t *testing.T) {
+	// The Host has an explicit private config root; these factories read only their own marker files.
+	t.Parallel()
 	root := t.TempDir()
-	t.Setenv("HOME", filepath.Join(root, "home"))
-	t.Setenv("PIG_HOME", filepath.Join(root, "pig-home"))
 	marker := filepath.Join(root, "guard-order")
 	commandMarker := filepath.Join(root, "command-order")
 
@@ -249,69 +249,89 @@ export default function(pi) {
 	}
 }
 
-// Upstream resource-loader.ts clears the module cache before every reload.
-// The fresh factory has fresh module state even when the source did not change.
-func TestHostReloadRestartsUnchangedNodeExtension(t *testing.T) {
-	root := t.TempDir()
-	t.Setenv("HOME", filepath.Join(root, "home"))
-	t.Setenv("PIG_HOME", filepath.Join(root, "pig-home"))
-	marker := filepath.Join(root, "counter")
-	config := startupNodeFixture(t, root, "counter", fmt.Sprintf(`
+// Upstream resource-loader.ts clears the extension factory cache before every
+// reload and invokes each factory again in the same process. jiti
+// (moduleCache: false) re-evaluates a .ts module, so its module-level state is
+// fresh; a .mjs module stays in Node's ESM cache, so its module-level state and
+// its module-level constants survive. Both were probed on Pi 0.87.1.
+func TestHostReloadKeepsMjsModuleStateAndReevaluatesTsModules(t *testing.T) {
+	t.Parallel()
+	for _, fixture := range []struct {
+		file, declaration string
+		keepsModule       bool
+	}{
+		{"counter.mjs", "let count = 0;", true},
+		{"counter.ts", "let count: number = 0;", false},
+	} {
+		t.Run(fixture.file, func(t *testing.T) {
+			t.Parallel()
+			root := t.TempDir()
+			marker := filepath.Join(root, "counter")
+			path := filepath.Join(root, fixture.file)
+			body := fmt.Sprintf(`
 import { appendFileSync } from "node:fs";
 import { randomUUID } from "node:crypto";
 const factoryLoadedAt = randomUUID();
-let count = 0;
+%s
 export default function(pi) {
   pi.on("tool_call", () => {
     count++;
     appendFileSync(%q, factoryLoadedAt + ":" + count + "\n");
     return { block: false };
   });
-}`, marker))
+}`, fixture.declaration, marker)
+			if err := os.WriteFile(path, []byte(body), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			config := ExtConfig{Name: "counter", Source: path, Enabled: true}
+			host := NewHostWithConfigRoot(root, filepath.Join(root, "config"))
+			host.SetConfigLoader(func() ([]ExtConfig, error) { return []ExtConfig{config}, nil })
+			t.Cleanup(func() { host.Shutdown("test") })
+			loaded, errs := host.LoadAll(t.Context(), []ExtConfig{config})
+			if len(errs) != 0 || len(loaded) != 1 {
+				t.Fatalf("startup loaded=%v errors=%v", loaded, errs)
+			}
+			emit := func(exts []extension.Extension, id string) {
+				t.Helper()
+				runner := inproc.NewRunner(exts, root)
+				if _, err := runner.EmitToolCall(t.Context(), extension.CustomToolCallEvent{
+					ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: id},
+					ToolName:          "fixture",
+					Input:             map[string]any{},
+				}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			emit(loaded, "before-1")
+			emit(loaded, "before-2")
 
-	host := NewHostWithConfigRoot(root, filepath.Join(root, "config"))
-	host.SetConfigLoader(func() ([]ExtConfig, error) { return []ExtConfig{config}, nil })
-	t.Cleanup(func() { host.Shutdown("test") })
-	loaded, errs := host.LoadAll(t.Context(), []ExtConfig{config})
-	if len(errs) != 0 || len(loaded) != 1 {
-		t.Fatalf("startup loaded=%v errors=%v", loaded, errs)
-	}
-	emit := func(exts []extension.Extension, id string) {
-		t.Helper()
-		runner := inproc.NewRunner(exts, root)
-		if _, err := runner.EmitToolCall(t.Context(), extension.CustomToolCallEvent{
-			ToolCallEventBase: extension.ToolCallEventBase{Type: "tool_call", ToolCallID: id},
-			ToolName:          "fixture",
-			Input:             map[string]any{},
-		}); err != nil {
-			t.Fatal(err)
-		}
-	}
-	emit(loaded, "before-1")
-	emit(loaded, "before-2")
-
-	reloaded, err := host.Reload(t.Context())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(reloaded) != 1 {
-		t.Fatalf("reloaded extensions = %v", reloaded)
-	}
-	emit(reloaded, "after")
-	data, err := os.ReadFile(marker)
-	if err != nil {
-		t.Fatal(err)
-	}
-	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
-	if len(lines) != 3 {
-		t.Fatalf("counter output = %q", data)
-	}
-	firstID, firstCount, ok := strings.Cut(lines[0], ":")
-	if !ok || firstCount != "1" || lines[1] != firstID+":2" {
-		t.Fatalf("before reload output = %q, want one factory counts 1,2", lines[:2])
-	}
-	afterID, afterCount, ok := strings.Cut(lines[2], ":")
-	if !ok || afterCount != "1" || afterID == firstID {
-		t.Fatalf("after reload output = %q, want fresh factory id at count 1", lines[2])
+			reloaded, err := host.Reload(t.Context())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if len(reloaded) != 1 {
+				t.Fatalf("reloaded extensions = %v", reloaded)
+			}
+			emit(reloaded, "after")
+			data, err := os.ReadFile(marker)
+			if err != nil {
+				t.Fatal(err)
+			}
+			lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+			if len(lines) != 3 {
+				t.Fatalf("counter output = %q", data)
+			}
+			firstID, firstCount, ok := strings.Cut(lines[0], ":")
+			if !ok || firstCount != "1" || lines[1] != firstID+":2" {
+				t.Fatalf("before reload output = %q, want one factory counts 1,2", lines[:2])
+			}
+			afterID, afterCount, ok := strings.Cut(lines[2], ":")
+			if fixture.keepsModule && (!ok || afterID != firstID || afterCount != "3") {
+				t.Fatalf("after reload output = %q, want the same module (%s) at count 3", lines[2], firstID)
+			}
+			if !fixture.keepsModule && (!ok || afterCount != "1" || afterID == firstID) {
+				t.Fatalf("after reload output = %q, want a re-evaluated module at count 1", lines[2])
+			}
+		})
 	}
 }

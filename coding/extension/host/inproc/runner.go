@@ -15,6 +15,7 @@ import (
 	"sync"
 	"sync/atomic"
 
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 )
@@ -122,7 +123,7 @@ type Runner struct {
 
 	// staleMessage holds the invalidation reason as a *string; nil = active.
 	//
-	// pig translation rule (NOT a divergence: see DIVERGENCES.md
+	// pig translation rule (NOT a divergence: see docs/parity/DIVERGENCES.md
 	// "TS→Go translation rituals"): atomic.Pointer for thread-safe
 	// reads from any goroutine. Upstream runs single-threaded JS where
 	// a plain mutable property suffices.
@@ -136,6 +137,11 @@ type Runner struct {
 	// commandMu serializes command resolution and diagnostics. RPC clients may
 	// query command inventory while another goroutine invokes a command.
 	commandMu sync.Mutex
+
+	// activeCommands counts command handlers that have not returned. A host that retires this Runner's extension process waits for it to reach zero so the handler that requested a Session replacement can still receive its result.
+	activeCommandsMu   sync.Mutex
+	activeCommands     int
+	activeCommandsIdle sync.Cond
 
 	// commandDiagnostics accumulates collision warnings from the most
 	// recent Commands() call. Cleared at the start of every Commands().
@@ -174,6 +180,8 @@ type Runner struct {
 	//
 	// upstream: runner.ts:225 (`private uiContext: ExtensionUIContext`)
 	uiContext extension.UIContext
+	uiMu      sync.RWMutex
+	mode      extension.ExtensionMode
 
 	// uiPrompts tracks blocking extension UI prompts for ui_prompt_start
 	// and ui_prompt_end. See ui_prompt.go.
@@ -193,13 +201,9 @@ type Runner struct {
 	// getSystemPromptFn fields default to stubs).
 	contextActions extension.ContextActions
 
-	// extActions and providerActions retain the host callbacks supplied by
-	// BindCore, matching upstream's runtime action storage.
-	//
-	// upstream: runner.ts:245-264 (this.runtime.<field> = actions.<field>),
-	// runner.ts:295-330 (registerProvider / unregisterProvider).
-	extActions      extension.ExtensionActions
-	providerActions *extension.ProviderActions
+	// extActions retains the bound host actions; runtime shares provider registration state with the loader.
+	extActions extension.ExtensionActions
+	runtime    *extension.ExtensionRuntime
 
 	// commandActions holds command-specific callbacks (WaitForIdle,
 	// NewSession, Fork, NavigateTree, SwitchSession, Reload) that
@@ -208,16 +212,30 @@ type Runner struct {
 	//
 	// upstream: runner.ts:628-660 (createCommandContext consumes these)
 	commandActions extension.CommandActions
+	flagMu         sync.RWMutex
+	flagValues     map[string]any
 }
 
-// NewRunner constructs a Runner over the given pre-populated extensions.
+// NewRunner constructs a Runner over the given pre-populated extensions. Supply the loader's shared runtime to bind its pending provider registrations; otherwise the runner owns a fresh runtime.
 //
 // extensions is typically produced by a loader (compiled-in registration
 // or the subprocess transport adapter). cwd is captured for relative path
 // resolution by extension factories.
 //
 // upstream: runner.ts:233-242 (constructor)
-func NewRunner(extensions []extension.Extension, cwd string) *Runner {
+func NewRunner(extensions []extension.Extension, cwd string, sharedRuntime ...*extension.ExtensionRuntime) *Runner {
+	runtime := extension.CreateExtensionRuntime()
+	if len(sharedRuntime) != 0 && sharedRuntime[0] != nil {
+		runtime = sharedRuntime[0]
+	}
+	flagValues := make(map[string]any)
+	for _, ext := range extensions {
+		for name, flag := range ext.Flags {
+			if _, exists := flagValues[name]; !exists && flag.Default != nil {
+				flagValues[name] = flag.Default
+			}
+		}
+	}
 	for i := range extensions {
 		ext := &extensions[i]
 		ext.InitializeEventHandlers()
@@ -236,11 +254,18 @@ func NewRunner(extensions []extension.Extension, cwd string) *Runner {
 			}
 		}
 	}
-	return &Runner{
+	r := &Runner{
 		extensions: extensions,
+		runtime:    runtime,
 		cwd:        cwd,
 		uiContext:  extension.NoopUIContext,
+		flagValues: flagValues,
 	}
+	r.activeCommandsIdle.L = &r.activeCommandsMu
+	r.contextActions.GetFlagValue = r.flagValue
+	r.contextActions.GetUIContext = r.GetUIContext
+	r.contextActions.GetMode = r.getMode
+	return r
 }
 
 func defaultExtensionSourceInfo(ext extension.Extension, cwd string) extension.SourceInfo {
@@ -325,7 +350,9 @@ func (r *Runner) ExtensionCount() int { return len(r.extensions) }
 
 // Invalidate marks the runner as stale. After this returns, IsStale()
 // reports true and assertActive() (via every API method that checks it)
-// returns a *StaleError matching ErrStaleContext.
+// returns a *StaleError matching ErrStaleContext. Emit and EmitBoundary still
+// deliver events, as upstream emit and emitBoundary do; the ctx getters and
+// actions a handler uses report the stale runner.
 //
 // First-call-wins: subsequent Invalidate calls with different messages
 // are no-ops. This mirrors upstream runner.ts:461-466 (`if (!this.staleMessage)`).
@@ -362,9 +389,7 @@ func (r *Runner) Shutdown() {
 
 // BindCore installs the host-injected callbacks that back the
 // dynamic surfaces on extension.Context (Model, IsIdle, Shutdown,
-// etc.) plus the agent-loop and provider action sets. Mirrors
-// upstream `bindCore` (runner.ts:265-294) verbatim in argument
-// shape.
+// etc.) plus the agent-loop and provider action sets. It reports queued provider failures through error listeners without stopping the drain; subsequent registration calls use the registry immediately.
 //
 // Idempotent in spirit but NOT thread-safe relative to in-flight
 // dispatches: the host must call this during runtime construction,
@@ -378,12 +403,84 @@ func (r *Runner) BindCore(
 	providerActions *extension.ProviderActions,
 ) {
 	r.extActions = actions
+	if contextActions.GetScopedModels == nil {
+		contextActions.GetScopedModels = r.contextActions.GetScopedModels
+	}
 	r.contextActions = contextActions
+	r.contextActions.GetUIContext = r.GetUIContext
+	r.contextActions.GetMode = r.getMode
+	lookup := contextActions.GetFlagValue
+	r.contextActions.GetFlagValue = func(name string) any {
+		if lookup != nil {
+			if value := lookup(name); value != nil {
+				return value
+			}
+		}
+		return r.flagValue(name)
+	}
 	// Upstream's sendUserMessage lives on ExtensionAPI, which every handler
 	// receives. Pig delivers it through the per-extension Context, so the
 	// handler-facing bundle carries the same action the command path uses.
 	r.contextActions.SendUserMessage = actions.SendUserMessage
-	r.providerActions = providerActions
+	var providers extension.ProviderActions
+	if registry, ok := contextActions.ModelRegistry.(providerRegistry); ok {
+		providers.RegisterProvider = registry.RegisterProvider
+		providers.UnregisterProvider = registry.UnregisterProvider
+	}
+	if providerActions != nil {
+		if providerActions.RegisterProvider != nil {
+			providers.RegisterProvider = providerActions.RegisterProvider
+		}
+		if providerActions.UnregisterProvider != nil {
+			providers.UnregisterProvider = providerActions.UnregisterProvider
+		}
+	}
+	r.runtime.BindProviderActions(providers, r.emitError)
+}
+
+type providerRegistry interface {
+	RegisterProvider(string, extension.ProviderConfig) error
+	UnregisterProvider(string)
+}
+
+// BindAbort installs the active Session's non-blocking abort action without replacing the mode's other context actions. Call it before dispatching handlers.
+// upstream: packages/coding-agent/src/core/agent-session.ts:_bindExtensionCore
+func (r *Runner) BindAbort(abort func()) {
+	r.contextActions.Abort = abort
+}
+
+// BindSystemPromptOptions installs a live Session options source when the mode has not supplied one. Bind before handler dispatch.
+func (r *Runner) BindSystemPromptOptions(get func() *extension.BuildSystemPromptOptions) {
+	if r.contextActions.GetSystemPromptOptions == nil {
+		r.contextActions.GetSystemPromptOptions = get
+	}
+}
+
+// BindTools installs the Session's live tool/state views and message delivery action without replacing unrelated mode callbacks. Call it before dispatching handlers.
+// upstream: packages/coding-agent/src/core/agent-session.ts:_bindExtensionCore
+func (r *Runner) BindTools(actions extension.ContextActions) {
+	r.contextActions.GetAllTools = actions.GetAllTools
+	r.contextActions.GetActiveTools = actions.GetActiveTools
+	r.contextActions.SetActiveTools = actions.SetActiveTools
+	r.contextActions.GetSystemPrompt = actions.GetSystemPrompt
+	if actions.GetModel != nil {
+		r.contextActions.GetModel = actions.GetModel
+	}
+	if actions.SessionManager != nil {
+		r.contextActions.SessionManager = actions.SessionManager
+	}
+	if actions.ModelRegistry != nil {
+		r.contextActions.ModelRegistry = actions.ModelRegistry
+	}
+	if actions.IsIdle != nil {
+		r.contextActions.IsIdle = actions.IsIdle
+	}
+	if actions.HasPendingMessages != nil {
+		r.contextActions.HasPendingMessages = actions.HasPendingMessages
+	}
+	if actions.SendUserMessage != nil {
+		r.contextActions.SendUserMessage = actions.SendUserMessage
+	}
 }
 
 // BindCommandActions installs the command-specific actions used by
@@ -395,23 +492,23 @@ func (r *Runner) BindCore(
 // set during bindExtensions)
 func (r *Runner) BindCommandActions(actions extension.CommandActions) {
 	bound := &r.commandActions
-	if actions.WaitForIdle != nil {
-		bound.WaitForIdle = actions.WaitForIdle
+	if actions.WaitForIdle != nil || actions.WaitForIdleContext != nil {
+		bound.WaitForIdle, bound.WaitForIdleContext = actions.WaitForIdle, actions.WaitForIdleContext
 	}
-	if actions.NewSession != nil {
-		bound.NewSession = actions.NewSession
+	if actions.NewSession != nil || actions.NewSessionContext != nil {
+		bound.NewSession, bound.NewSessionContext = actions.NewSession, actions.NewSessionContext
 	}
-	if actions.Fork != nil {
-		bound.Fork = actions.Fork
+	if actions.Fork != nil || actions.ForkContext != nil {
+		bound.Fork, bound.ForkContext = actions.Fork, actions.ForkContext
 	}
-	if actions.NavigateTree != nil {
-		bound.NavigateTree = actions.NavigateTree
+	if actions.NavigateTree != nil || actions.NavigateTreeContext != nil {
+		bound.NavigateTree, bound.NavigateTreeContext = actions.NavigateTree, actions.NavigateTreeContext
 	}
-	if actions.SwitchSession != nil {
-		bound.SwitchSession = actions.SwitchSession
+	if actions.SwitchSession != nil || actions.SwitchSessionContext != nil {
+		bound.SwitchSession, bound.SwitchSessionContext = actions.SwitchSession, actions.SwitchSessionContext
 	}
-	if actions.Reload != nil {
-		bound.Reload = actions.Reload
+	if actions.Reload != nil || actions.ReloadContext != nil {
+		bound.Reload, bound.ReloadContext = actions.Reload, actions.ReloadContext
 	}
 }
 
@@ -422,24 +519,25 @@ func (r *Runner) BindCommandActions(actions extension.CommandActions) {
 //
 // upstream: runner.ts:628-660 (createCommandContext)
 func (r *Runner) CreateCommandContext() *extension.CommandContext {
-	base := extension.NewContext(r.cwd, r.uiContext, r.assertActive, r.contextActions)
+	base := extension.NewContext(r.cwd, nil, r.assertActive, r.contextActions)
 	return extension.NewCommandContext(base, r.commandActions)
 }
 
-// SetUIContext installs the per-mode UI surface (interactive TUI,
-// RPC surface, print no-op surface). nil normalizes to [extension.NoopUIContext]
-// matching upstream's nullish-coalescing default at runner.ts:353. A real
-// surface is wrapped so its blocking prompts report ui_prompt_start and
-// ui_prompt_end through this runner; the no-op surface is not, so print
-// mode reports no prompts.
-//
-// upstream: runner.ts:522-525 (setUIContext → wrapUIPromptContext)
-func (r *Runner) SetUIContext(uiContext extension.UIContext) {
-	if uiContext == nil || uiContext == extension.NoopUIContext {
-		r.uiContext = extension.NoopUIContext
-		return
+// SetUIContext replaces the UI binding and mode. An omitted mode means print. Nil UI means no UI, independently of the selected mode. Existing contexts read the new binding. Dialogs on a supplied UI report prompt start and end through this runner.
+// upstream: packages/coding-agent/src/core/extensions/runner.ts:setUIContext
+func (r *Runner) SetUIContext(uiContext extension.UIContext, mode ...extension.ExtensionMode) {
+	selected := extension.ModePrint
+	if len(mode) != 0 {
+		selected = mode[0]
 	}
-	r.uiContext = &uiPromptContext{UIContext: uiContext, runner: r}
+	ui := extension.NoopUIContext
+	if uiContext != nil {
+		ui = &uiPromptContext{UIContext: uiContext, runner: r}
+	}
+	r.uiMu.Lock()
+	r.uiContext = ui
+	r.mode = selected
+	r.uiMu.Unlock()
 }
 
 // GetUIContext returns the currently bound UI surface. Always
@@ -447,7 +545,15 @@ func (r *Runner) SetUIContext(uiContext extension.UIContext) {
 //
 // upstream: runner.ts:356-358
 func (r *Runner) GetUIContext() extension.UIContext {
+	r.uiMu.RLock()
+	defer r.uiMu.RUnlock()
 	return r.uiContext
+}
+
+func (r *Runner) getMode() extension.ExtensionMode {
+	r.uiMu.RLock()
+	defer r.uiMu.RUnlock()
+	return r.mode
 }
 
 // HasUI reports whether a non-noop UI context is bound. Mirrors
@@ -456,7 +562,7 @@ func (r *Runner) GetUIContext() extension.UIContext {
 //
 // upstream: runner.ts:359-362
 func (r *Runner) HasUI() bool {
-	return r.uiContext != extension.NoopUIContext
+	return r.GetUIContext() != extension.NoopUIContext
 }
 
 // IsStale reports whether Invalidate has been called.
@@ -501,16 +607,10 @@ func (r *Runner) assertActive() error {
 //
 // upstream: runner.ts:369-379 (getAllRegisteredTools)
 func (r *Runner) Tools() []extension.RegisteredTool {
-	// Pre-size: at most one tool per (extension, tool-name) pair, but
-	// dedup may shrink. Slight over-allocation is cheaper than rehashing.
-	total := 0
+	seen := make(map[string]struct{})
+	var out []extension.RegisteredTool
 	for _, ext := range r.extensions {
-		total += len(ext.Tools)
-	}
-	seen := make(map[string]struct{}, total)
-	out := make([]extension.RegisteredTool, 0, total)
-	for _, ext := range r.extensions {
-		for _, tool := range orderedTools(ext) {
+		for _, tool := range ext.RegisteredTools() {
 			name := tool.Definition.Name
 			if _, dup := seen[name]; dup {
 				continue
@@ -531,41 +631,11 @@ func (r *Runner) Tools() []extension.RegisteredTool {
 // upstream: runner.ts getAllRegisteredTools (RegisteredTool.sourceInfo)
 func (r *Runner) ToolSourceInfo(toolName string) (extension.SourceInfo, bool) {
 	for _, ext := range r.extensions {
-		if _, ok := ext.Tools[toolName]; ok {
+		if _, ok := ext.RegisteredTool(toolName); ok {
 			return ext.SourceInfo, true
 		}
 	}
 	return nil, false
-}
-
-// orderedTools returns ext's tools in registration order (ToolOrder), then
-// any tool the loader did not order, by name, so the result never depends on
-// map iteration.
-func orderedTools(ext extension.Extension) []extension.RegisteredTool {
-	out := make([]extension.RegisteredTool, 0, len(ext.Tools))
-	ordered := make(map[string]struct{}, len(ext.ToolOrder))
-	for _, name := range ext.ToolOrder {
-		tool, ok := ext.Tools[name]
-		if !ok {
-			continue
-		}
-		if _, dup := ordered[name]; dup {
-			continue
-		}
-		ordered[name] = struct{}{}
-		out = append(out, tool)
-	}
-	rest := make([]string, 0, len(ext.Tools)-len(ordered))
-	for name := range ext.Tools {
-		if _, ok := ordered[name]; !ok {
-			rest = append(rest, name)
-		}
-	}
-	slices.Sort(rest)
-	for _, name := range rest {
-		out = append(out, ext.Tools[name])
-	}
-	return out
 }
 
 // GetToolDefinition returns the definition for the named tool. The
@@ -575,7 +645,7 @@ func orderedTools(ext extension.Extension) []extension.RegisteredTool {
 // upstream: runner.ts:382-390 (getToolDefinition)
 func (r *Runner) GetToolDefinition(toolName string) (extension.ToolDefinition, bool) {
 	for _, ext := range r.extensions {
-		if tool, ok := ext.Tools[toolName]; ok {
+		if tool, ok := ext.RegisteredTool(toolName); ok {
 			return tool.Definition, true
 		}
 	}
@@ -629,10 +699,53 @@ func (r *Runner) ExecuteCommand(ctx context.Context, invocationName, args string
 	commandContext := r.CreateCommandContext()
 	callContext := extension.WithContext(ctx, commandContext.Context)
 	callContext = extension.WithCommandContext(callContext, commandContext)
+	r.beginCommand()
+	defer r.endCommand()
 	if err := command.Handler(callContext, args); err != nil {
 		r.recordHandlerError(ctx, "command:"+invocationName, "command", err)
 	}
 	return true
+}
+
+func (r *Runner) beginCommand() {
+	r.activeCommandsMu.Lock()
+	r.activeCommands++
+	r.activeCommandsMu.Unlock()
+}
+
+func (r *Runner) endCommand() {
+	r.activeCommandsMu.Lock()
+	r.activeCommands--
+	if r.activeCommands == 0 {
+		r.activeCommandsIdle.Broadcast()
+	}
+	r.activeCommandsMu.Unlock()
+}
+
+// ActiveCommands reports how many command handlers are running.
+func (r *Runner) ActiveCommands() int {
+	r.activeCommandsMu.Lock()
+	defer r.activeCommandsMu.Unlock()
+	return r.activeCommands
+}
+
+// WaitForCommands blocks until no command handler is running or ctx ends. A handler that awaits a Session replacement is still running while the replacement retires this Runner, so callers wait from a goroutine they own.
+func (r *Runner) WaitForCommands(ctx context.Context) error {
+	stop := context.AfterFunc(ctx, func() {
+		r.activeCommandsMu.Lock()
+		r.activeCommandsIdle.Broadcast()
+		r.activeCommandsMu.Unlock()
+	})
+	defer stop()
+	r.activeCommandsMu.Lock()
+	defer r.activeCommandsMu.Unlock()
+	for r.activeCommands > 0 {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		r.activeCommandsIdle.Wait()
+	}
+	return nil
 }
 
 // CommandDiagnostics returns the warnings/errors collected during the
@@ -714,16 +827,8 @@ func (r *Runner) resolveCommands() []extension.ResolvedCommand {
 	return out
 }
 
-// Flags returns the registered extension flag declarations across all
-// extensions, with first-wins-by-name dedup (matches the Tools dedup
-// rule: see runner.ts:392-402).
-//
-// Note: this returns the *declarations* (default values, types,
-// descriptions). Live user-supplied flag values (CLI overrides etc.)
-// will live on the host's ExtensionRuntime once that's wired in a
-// future sub-row; SetFlagValue/GetFlagValues defer until then.
-//
-// upstream: runner.ts:392-402 (getFlags)
+// Flags returns declarations from the first extension registering each name.
+// upstream: packages/coding-agent/src/core/extensions/runner.ts:getFlags
 func (r *Runner) Flags() map[string]extension.ExtensionFlag {
 	out := map[string]extension.ExtensionFlag{}
 	for _, ext := range r.extensions {
@@ -737,9 +842,32 @@ func (r *Runner) Flags() map[string]extension.ExtensionFlag {
 	return out
 }
 
+// SetFlagValue stores a runtime CLI override. Flag values are booleans or strings.
+// Ports packages/coding-agent/src/core/extensions/runner.ts
+// upstream: packages/coding-agent/src/core/extensions/runner.ts:setFlagValue
+func (r *Runner) SetFlagValue(name string, value any) {
+	r.flagMu.Lock()
+	defer r.flagMu.Unlock()
+	r.flagValues[name] = value
+}
+
+// GetFlagValues returns a copy of the runtime flags, including registered defaults.
+// upstream: packages/coding-agent/src/core/extensions/runner.ts:getFlagValues
+func (r *Runner) GetFlagValues() map[string]any {
+	r.flagMu.RLock()
+	defer r.flagMu.RUnlock()
+	return maps.Clone(r.flagValues)
+}
+
+func (r *Runner) flagValue(name string) any {
+	r.flagMu.RLock()
+	defer r.flagMu.RUnlock()
+	return r.flagValues[name]
+}
+
 // HasHandlers reports whether any extension declares a non-empty handler
 // list for the given event type. Used by the host to skip emit calls for
-// events nobody listens to (perf), and by tests/diagnostics to introspect
+// events nobody listens to (perf), and by test/diagnostics to introspect
 // runner state.
 //
 // upstream: runner.ts:485-493 (hasHandlers)
@@ -840,6 +968,20 @@ func (r *Runner) MessageRenderer(customType string) extension.MessageRenderer {
 	return nil
 }
 
+// GetMarkdownTransformers returns the Markdown transformers extensions
+// registered, in extension load order.
+//
+// upstream: runner.ts getMarkdownTransformers
+func (r *Runner) GetMarkdownTransformers() []extension.MarkdownTransformer {
+	var transformers []extension.MarkdownTransformer
+	for _, ext := range r.extensions {
+		if ext.MarkdownTransformer != nil {
+			transformers = append(transformers, ext.MarkdownTransformer)
+		}
+	}
+	return transformers
+}
+
 // EntryRenderer returns the renderer for the given custom entry type if any
 // extension registered one. First match across extensions wins (load order).
 //
@@ -920,8 +1062,26 @@ func (r *Runner) DispatchContext(ctx context.Context) context.Context {
 // The attached Context exposes the actions bound to this Runner. Unbound
 // optional actions retain their documented zero-value behavior.
 func (r *Runner) dispatchContext(ctx context.Context) context.Context {
-	extCtx := extension.NewContext(r.cwd, r.uiContext, r.assertActive, r.contextActions)
+	extCtx := extension.NewContext(r.cwd, nil, r.assertActive, r.contextActions)
 	return extension.WithContext(ctx, extCtx)
+}
+
+type eventHandlerSnapshot struct {
+	ext      *extension.Extension
+	handlers []extension.HandlerFn
+}
+
+// snapshotEventHandlers captures every extension before the first callback runs. Registration changes affect only a subsequent or nested dispatch.
+// upstream: packages/coding-agent/src/core/extensions/runner.ts:snapshotEventHandlers
+func snapshotEventHandlers(extensions []extension.Extension, event string) []eventHandlerSnapshot {
+	snapshots := make([]eventHandlerSnapshot, 0, len(extensions))
+	for i := range extensions {
+		ext := &extensions[i]
+		if handlers := ext.EventHandlers(event); len(handlers) != 0 {
+			snapshots = append(snapshots, eventHandlerSnapshot{ext: ext, handlers: handlers})
+		}
+	}
+	return snapshots
 }
 
 // EmitProjectTrust dispatches project_trust in extension and registration
@@ -934,12 +1094,13 @@ func EmitProjectTrust(r *Runner, ctx context.Context, event extension.ProjectTru
 	}
 	dispatchCtx := r.dispatchContext(ctx)
 	errors := make([]extension.ExtensionError, 0)
-	for _, ext := range r.extensions {
-		for _, handler := range ext.EventHandlers("project_trust") {
+	for _, snapshot := range snapshotEventHandlers(r.extensions, "project_trust") {
+		ext := snapshot.ext
+		for _, handler := range snapshot.handlers {
 			result, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
 				errors = append(errors, extension.ExtensionError{
-					ExtensionPath: extensionPath(ext),
+					ExtensionPath: extensionPath(*ext),
 					Event:         "project_trust",
 					Error:         err.Error(),
 					Stack:         extension.ErrorStack(err),
@@ -948,7 +1109,7 @@ func EmitProjectTrust(r *Runner, ctx context.Context, event extension.ProjectTru
 			}
 			if result == nil {
 				errors = append(errors, extension.ExtensionError{
-					ExtensionPath: extensionPath(ext),
+					ExtensionPath: extensionPath(*ext),
 					Event:         "project_trust",
 					Error:         "project_trust handler returned no result",
 				})
@@ -957,7 +1118,7 @@ func EmitProjectTrust(r *Runner, ctx context.Context, event extension.ProjectTru
 			coerced, ok := coerceResult[extension.ProjectTrustEventResult](result)
 			if !ok {
 				errors = append(errors, extension.ExtensionError{
-					ExtensionPath: extensionPath(ext),
+					ExtensionPath: extensionPath(*ext),
 					Event:         "project_trust",
 					Error:         fmt.Sprintf("project_trust handler returned %T", result),
 				})
@@ -988,8 +1149,7 @@ func extensionPath(ext extension.Extension) string {
 // A call the host cut short is not reported: the error is the dispatch
 // context's own cancellation, or the transport marks it
 // [extension.ErrHandlerStopped] because the host stopped the extension.
-// Failures whose diagnostic the subprocess lifecycle handler owns are not
-// reported either.
+// Failures whose diagnostic the subprocess lifecycle handler owns are not reported either.
 func (r *Runner) recordHandlerError(ctx context.Context, extPath, eventType string, err error) {
 	if err == nil || errors.Is(err, extension.ErrHandlerStopped) || (ctx.Err() != nil && errors.Is(err, ctx.Err())) {
 		return
@@ -1025,11 +1185,13 @@ type BoundaryDispatchResult struct {
 // invalid drafts are reported and may be repaired by a later handler.
 func (r *Runner) EmitBoundary(
 	ctx context.Context,
-	eventType string,
-	outcome extension.AgentActivityOutcome,
+	baseEvent extension.BoundaryBaseEvent,
 	buildContext func([]extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error),
 ) (BoundaryDispatchResult, error) {
-	if err := r.assertActive(); err != nil {
+	// Upstream emitBoundary delivers after invalidation; only the ctx getters
+	// and actions a handler uses report the stale runner (runner.ts:809-888).
+	eventType, outcome, err := boundaryBaseFields(baseEvent)
+	if err != nil {
 		return BoundaryDispatchResult{}, err
 	}
 	entries := []extension.SessionBoundaryDraft{}
@@ -1040,16 +1202,12 @@ func (r *Runner) EmitBoundary(
 	}
 	valid := true
 	dispatchCtx := r.dispatchContext(ctx)
-	for _, ext := range r.extensions {
-		for _, handler := range ext.EventHandlers(eventType) {
-			event := &extension.AgentBeforeSettleEvent{
-				Type: eventType,
-				BoundaryState: extension.BoundaryState{
-					Entries: entries, Continue: shouldContinue, Context: preview, Outcome: outcome,
-				},
-			}
+	for _, snapshot := range snapshotEventHandlers(r.extensions, eventType) {
+		ext := snapshot.ext
+		for _, handler := range snapshot.handlers {
+			event, state := withBoundaryState(baseEvent, extension.BoundaryState{Entries: entries, Continue: shouldContinue, Context: preview, Outcome: outcome})
 			handlerResult, handlerErr := callHandler(handler, event, dispatchCtx)
-			entries = event.Entries
+			entries = state.Entries
 			if handlerErr != nil {
 				r.recordHandlerError(ctx, ext.Path, eventType, handlerErr)
 			} else if handlerResult != nil {
@@ -1074,7 +1232,7 @@ func (r *Runner) EmitBoundary(
 			if projectErr != nil {
 				valid = false
 				r.emitError(&extension.ExtensionError{
-					ExtensionPath: extensionPath(ext),
+					ExtensionPath: extensionPath(*ext),
 					Event:         eventType,
 					Error:         "Invalid boundary entries: " + projectErr.Error(),
 				})
@@ -1088,6 +1246,32 @@ func (r *Runner) EmitBoundary(
 		return BoundaryDispatchResult{Context: preview}, nil
 	}
 	return BoundaryDispatchResult{Entries: entries, Continue: shouldContinue, Context: preview, Valid: true}, nil
+}
+
+func boundaryBaseFields(event extension.BoundaryBaseEvent) (string, extension.AgentActivityOutcome, error) {
+	switch event := event.(type) {
+	case extension.TurnEndEvent:
+		if event.BoundaryState != nil {
+			return event.Type, event.Outcome, nil
+		}
+	case *extension.AgentBeforeSettleEvent:
+		if event != nil {
+			return event.Type, event.Outcome, nil
+		}
+	}
+	return "", "", errors.New("boundary event has no activity outcome")
+}
+
+func withBoundaryState(base extension.BoundaryBaseEvent, state extension.BoundaryState) (any, *extension.BoundaryState) {
+	switch event := base.(type) {
+	case extension.TurnEndEvent:
+		event.BoundaryState = &state
+		return event, &state
+	case *extension.AgentBeforeSettleEvent:
+		current := &extension.AgentBeforeSettleEvent{Type: event.Type, BoundaryState: state}
+		return current, &current.BoundaryState
+	}
+	panic("invalid boundary event")
 }
 
 // EmitToolCall dispatches a ToolCallEvent to each handler in load order.
@@ -1104,8 +1288,8 @@ func (r *Runner) EmitToolCall(ctx context.Context, event extension.ToolCallEvent
 	dispatchCtx := r.dispatchContext(ctx)
 	var result *extension.ToolCallEventResult
 
-	for _, ext := range r.extensions {
-		handlers := ext.EventHandlers("tool_call")
+	for _, snapshot := range snapshotEventHandlers(r.extensions, "tool_call") {
+		ext, handlers := snapshot.ext, snapshot.handlers
 		if len(handlers) == 0 {
 			continue
 		}
@@ -1162,8 +1346,8 @@ func (r *Runner) EmitToolResult(ctx context.Context, event extension.ToolResultE
 	curContent, curDetails, curIsError, curUsage := extractToolResultFields(event)
 	modified := false
 
-	for _, ext := range r.extensions {
-		handlers := ext.EventHandlers("tool_result")
+	for _, snapshot := range snapshotEventHandlers(r.extensions, "tool_result") {
+		ext, handlers := snapshot.ext, snapshot.handlers
 		if len(handlers) == 0 {
 			continue
 		}
@@ -1247,8 +1431,8 @@ func (r *Runner) EmitInput(ctx context.Context, text string, images []extension.
 	currentImages := images
 	imagesChanged := false // pig: explicit flag instead of upstream's reference-equality.
 
-	for _, ext := range r.extensions {
-		handlers := ext.EventHandlers("input")
+	for _, snapshot := range snapshotEventHandlers(r.extensions, "input") {
+		ext, handlers := snapshot.ext, snapshot.handlers
 		if len(handlers) == 0 {
 			continue
 		}
@@ -1408,8 +1592,8 @@ func (r *Runner) EmitContextTracked(ctx context.Context, messages []extension.Ag
 	current := cloneAgentMessages(messages)
 	replaced := false
 
-	for _, ext := range r.extensions {
-		handlers := ext.EventHandlers("context")
+	for _, snapshot := range snapshotEventHandlers(r.extensions, "context") {
+		ext, handlers := snapshot.ext, snapshot.handlers
 		if len(handlers) == 0 {
 			continue
 		}
@@ -1575,8 +1759,9 @@ func (r *Runner) EmitContextWithSystem(ctx context.Context, messages []extension
 	// Handlers may edit messages in place; the transform is request-only
 	// (upstream structuredClone before both phases), so they get a copy.
 	current := cloneAgentMessages(messages)
-	for _, ext := range r.extensions {
-		for _, handler := range ext.EventHandlers("context_with_system") {
+	for _, snapshot := range snapshotEventHandlers(r.extensions, "context_with_system") {
+		ext := snapshot.ext
+		for _, handler := range snapshot.handlers {
 			if err := ctx.Err(); err != nil {
 				return nil, err
 			}
@@ -1633,8 +1818,8 @@ func (r *Runner) EmitBeforeProviderRequest(ctx context.Context, payload any) (an
 	dispatchCtx := r.dispatchContext(ctx)
 	current := payload
 
-	for _, ext := range r.extensions {
-		handlers := ext.EventHandlers("before_provider_request")
+	for _, snapshot := range snapshotEventHandlers(r.extensions, "before_provider_request") {
+		ext, handlers := snapshot.ext, snapshot.handlers
 		if len(handlers) == 0 {
 			continue
 		}
@@ -1673,8 +1858,9 @@ func (r *Runner) EmitMessageEnd(ctx context.Context, message extension.AgentMess
 	dispatchCtx := r.dispatchContext(ctx)
 	current := message
 	modified := false
-	for _, ext := range r.extensions {
-		for _, handler := range ext.EventHandlers("message_end") {
+	for _, snapshot := range snapshotEventHandlers(r.extensions, "message_end") {
+		ext := snapshot.ext
+		for _, handler := range snapshot.handlers {
 			event := extension.MessageEndEvent{Type: "message_end", Message: current}
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
@@ -1733,8 +1919,9 @@ func (r *Runner) EmitBeforeProviderHeaders(ctx context.Context, headers extensio
 		headers = extension.ProviderHeaders{}
 	}
 	dispatchCtx := r.dispatchContext(ctx)
-	for _, ext := range r.extensions {
-		for _, handler := range ext.EventHandlers("before_provider_headers") {
+	for _, snapshot := range snapshotEventHandlers(r.extensions, "before_provider_headers") {
+		ext := snapshot.ext
+		for _, handler := range snapshot.handlers {
 			event := extension.BeforeProviderHeadersEvent{Type: "before_provider_headers", Headers: headers}
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
@@ -1775,8 +1962,9 @@ func (r *Runner) EmitUserBash(ctx context.Context, event extension.UserBashEvent
 
 	dispatchCtx := r.dispatchContext(ctx)
 
-	for _, ext := range r.extensions {
-		for _, handler := range ext.EventHandlers("user_bash") {
+	for _, snapshot := range snapshotEventHandlers(r.extensions, "user_bash") {
+		ext := snapshot.ext
+		for _, handler := range snapshot.handlers {
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err == nil && isUndefinedHandlerResult(handlerResult) {
 				continue
@@ -1784,7 +1972,7 @@ func (r *Runner) EmitUserBash(ctx context.Context, event extension.UserBashEvent
 			var typed *extension.UserBashEventResult
 			if err == nil {
 				var ok bool
-				typed, ok = coerceResult[*extension.UserBashEventResult](handlerResult)
+				typed, ok = coerceUserBashEventResult(handlerResult)
 				if !ok || !isUserBashEventResult(typed) {
 					err = errInvalidUserBashResult
 				}
@@ -1817,12 +2005,59 @@ func isUndefinedHandlerResult(result any) bool {
 	return false
 }
 
-// isUserBashEventResult mirrors upstream isUserBashEventResult: exactly one of
-// operations and result, operations exposing an exec function (a Go value
-// implementing extension.BashOperations; JSON from a subprocess extension
-// cannot carry one), and a result with a string output, a number or absent
-// exitCode, boolean cancelled and truncated, and a string or absent
-// fullOutputPath.
+// coerceUserBashEventResult preserves property presence before decoding optional Go fields.
+// Ports packages/coding-agent/src/core/extensions/runner.ts (isUserBashEventResult).
+func coerceUserBashEventResult(value any) (*extension.UserBashEventResult, bool) {
+	var raw json.RawMessage
+	switch v := value.(type) {
+	case json.RawMessage:
+		raw = v
+	case *json.RawMessage:
+		if v != nil {
+			raw = *v
+		}
+	}
+	if len(raw) > 0 {
+		var fields map[string]json.RawMessage
+		if err := json.Unmarshal(raw, &fields); err != nil {
+			return nil, false
+		}
+		_, hasOperations := fields["operations"]
+		_, hasResult := fields["result"]
+		if hasOperations == hasResult {
+			return nil, false
+		}
+		if hasResult {
+			var result map[string]any
+			if err := json.Unmarshal(fields["result"], &result); err != nil || result == nil {
+				return nil, false
+			}
+			exitCode, present := result["exitCode"]
+			var undefined bool
+			if marker, ok := fields["_pigUserBashExitCodeUndefined"]; ok {
+				if err := json.Unmarshal(marker, &undefined); err != nil {
+					return nil, false
+				}
+			}
+			if undefined {
+				if present {
+					return nil, false
+				}
+				result["exitCode"] = nil
+			} else if !present || exitCode == nil {
+				return nil, false
+			}
+			if path, present := result["fullOutputPath"]; present && path == nil {
+				return nil, false
+			}
+			return &extension.UserBashEventResult{Result: result}, true
+		}
+	}
+	return coerceResult[*extension.UserBashEventResult](value)
+}
+
+// isUserBashEventResult requires exactly one executable operations or complete result object. A present nil native exit code represents the required number-or-undefined property. Raw JSON null remains invalid; the SDK marks undefined before serialization loses property presence.
+// upstream: packages/coding-agent/src/core/extensions/runner.ts:isUserBashEventResult
 func isUserBashEventResult(result *extension.UserBashEventResult) bool {
 	if result == nil || (result.Operations == nil) == (result.Result == nil) {
 		return false
@@ -1843,10 +2078,8 @@ func isUserBashEventResult(result *extension.UserBashEventResult) bool {
 	if _, ok := record["output"].(string); !ok {
 		return false
 	}
-	if exitCode, present := record["exitCode"]; present && exitCode != nil {
-		if _, ok := exitCode.(float64); !ok {
-			return false
-		}
+	if exitCode, present := record["exitCode"]; !present || (exitCode != nil && !isUserBashNumber(exitCode)) {
+		return false
 	}
 	if _, ok := record["cancelled"].(bool); !ok {
 		return false
@@ -1860,6 +2093,21 @@ func isUserBashEventResult(result *extension.UserBashEventResult) bool {
 		}
 	}
 	return true
+}
+
+func isUserBashNumber(value any) bool {
+	if number, ok := value.(json.Number); ok {
+		_, err := number.Float64()
+		return err == nil
+	}
+	switch reflect.ValueOf(value).Kind() {
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64,
+		reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64,
+		reflect.Float32, reflect.Float64:
+		return true
+	default:
+		return false
+	}
 }
 
 // EmitBeforeAgentStart dispatches a before_agent_start event to every
@@ -1876,6 +2124,10 @@ func isUserBashEventResult(result *extension.UserBashEventResult) bool {
 //
 // The event and Context getter both expose the latest system prompt. Each
 // handler's override becomes the input observed by the next handler.
+//
+// Every handler receives the same per-run copy of systemPromptOptions. Its
+// section and selectedTools edits reach later handlers and the result, and
+// they persist when the handler then fails.
 //
 // Returns (nil, *StaleError) if the runner has been invalidated.
 //
@@ -1894,25 +2146,30 @@ func (r *Runner) EmitBeforeAgentStart(
 	}
 
 	currentSystemPrompt := systemPrompt
+	// runner.ts:1317 normalizeBuildSystemPromptOptions: handlers share one copy of the caller's options, so no edit reaches the caller's base object.
+	currentOptions := clonePromptOptions(systemPromptOptions)
+	hadSections := len(*currentOptions.Sections) > 0
+	selectedBefore := slices.Clone(currentOptions.SelectedTools)
+	promptCtx := extension.WithBeforeAgentStartOptions(ctx, currentOptions)
 	var messages []extension.CustomMessageRef
 	systemPromptModified := false
 
-	for _, ext := range r.extensions {
-		handlers := ext.EventHandlers("before_agent_start")
+	for _, snapshot := range snapshotEventHandlers(r.extensions, "before_agent_start") {
+		ext, handlers := snapshot.ext, snapshot.handlers
 		if len(handlers) == 0 {
 			continue
 		}
 		for _, handler := range handlers {
 			actions := r.contextActions
 			actions.GetSystemPrompt = func() string { return currentSystemPrompt }
-			extCtx := extension.NewContext(r.cwd, r.uiContext, r.assertActive, actions)
-			dispatchCtx := extension.WithContext(ctx, extCtx)
+			extCtx := extension.NewContext(r.cwd, nil, r.assertActive, actions)
+			dispatchCtx := extension.WithContext(promptCtx, extCtx)
 			event := extension.BeforeAgentStartEvent{
 				Type:                "before_agent_start",
 				Prompt:              prompt,
 				Images:              images,
 				SystemPrompt:        currentSystemPrompt,
-				SystemPromptOptions: systemPromptOptions,
+				SystemPromptOptions: *currentOptions,
 			}
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
@@ -1937,15 +2194,29 @@ func (r *Runner) EmitBeforeAgentStart(
 			// upstream: `if (result.systemPrompt !== undefined)`.
 			if typed.SystemPrompt != nil {
 				currentSystemPrompt = *typed.SystemPrompt
+				currentOptions.ForceSystemPrompt = new(*typed.SystemPrompt)
 				systemPromptModified = true
 			}
 		}
 	}
 
-	if len(messages) == 0 && !systemPromptModified {
+	// A handler may edit or replace selectedTools; the Session decides whether the edit replaces the live loadout.
+	selected, selectedEdited, err := extension.ResolveBeforeAgentStartSelectedTools(promptCtx, selectedBefore)
+	if err != nil {
+		return nil, err
+	}
+	currentOptions.SelectedTools = selected
+	if currentOptions.Sections == nil {
+		currentOptions.Sections = &ai.OrderedSections{}
+	}
+	hasSections := hadSections || len(*currentOptions.Sections) > 0
+	if len(messages) == 0 && !systemPromptModified && !hasSections && !selectedEdited {
 		return nil, nil
 	}
-	combined := &extension.BeforeAgentStartCombinedResult{}
+	combined := &extension.BeforeAgentStartCombinedResult{SelectedToolsEdited: selectedEdited}
+	if hasSections || selectedEdited {
+		combined.SystemPromptOptions = currentOptions
+	}
 	if len(messages) > 0 {
 		combined.Messages = messages
 	}
@@ -1953,6 +2224,11 @@ func (r *Runner) EmitBeforeAgentStart(
 		combined.SystemPrompt = &currentSystemPrompt
 	}
 	return combined, nil
+}
+
+// clonePromptOptions copies every collection that a handler can edit, as upstream normalizeBuildSystemPromptOptions does. Sections is always a distinct non-nil collection.
+func clonePromptOptions(options extension.BuildSystemPromptOptions) *extension.BuildSystemPromptOptions {
+	return new(extension.NormalizeBuildSystemPromptOptions(options))
 }
 
 // EmitResourcesDiscover dispatches a resources_discover event to every
@@ -1982,8 +2258,8 @@ func (r *Runner) EmitResourcesDiscover(
 		ThemePaths:  []extension.AttributedResourcePath{},
 	}
 
-	for _, ext := range r.extensions {
-		handlers := ext.EventHandlers("resources_discover")
+	for _, snapshot := range snapshotEventHandlers(r.extensions, "resources_discover") {
+		ext, handlers := snapshot.ext, snapshot.handlers
 		if len(handlers) == 0 {
 			continue
 		}
@@ -2163,12 +2439,13 @@ func typedDetails[T any](details any) (*T, bool) {
 //     type-assert against the appropriate *SessionBefore*Result.
 //   - For all other events: returns nil after running all handlers.
 //
-// Returns (nil, *StaleError) if the runner has been invalidated.
+// An invalidated runner still delivers the event, as upstream emit does; the
+// ctx getters and actions a handler uses report the stale runner.
 //
 // Handler errors are routed via emitError and the chain continues
-// (matches upstream's try/catch at runner.ts:691-699).
+// (matches upstream's try/catch at runner.ts:691-699). An invocation acknowledgment marks the first handler's return or runtime suspension; Emit itself still awaits the entire chain.
 //
-// upstream: runner.ts:673-705 (emit<TEvent>)
+// upstream: runner.ts:988-1017 (emit<TEvent>)
 //
 // pig note: upstream uses TS conditional types (`RunnerEmitResult<TEvent>`)
 // for type-narrowing the result based on the input event type. Go's type
@@ -2176,9 +2453,6 @@ func typedDetails[T any](details any) (*T, bool) {
 // type-assert. The 4 SessionBefore* event types are documented as the
 // only types whose result is non-nil in the godoc above.
 func (r *Runner) Emit(ctx context.Context, event any) (any, error) {
-	if err := r.assertActive(); err != nil {
-		return nil, err
-	}
 	if event == nil {
 		return nil, nil
 	}
@@ -2192,8 +2466,8 @@ func (r *Runner) Emit(ctx context.Context, event any) (any, error) {
 	isSessionBefore := isSessionBeforeEvent(event)
 	var result any
 
-	for _, ext := range r.extensions {
-		handlers := ext.EventHandlers(eventType)
+	for _, snapshot := range snapshotEventHandlers(r.extensions, eventType) {
+		ext, handlers := snapshot.ext, snapshot.handlers
 		if len(handlers) == 0 {
 			continue
 		}
@@ -2201,8 +2475,11 @@ func (r *Runner) Emit(ctx context.Context, event any) (any, error) {
 			handlerResult, err := callHandler(handler, event, dispatchCtx)
 			if err != nil {
 				r.recordHandlerError(ctx, ext.Path, eventType, err)
+				invocation.Acknowledge(dispatchCtx)
 				continue
 			}
+			// Upstream runner.ts:emit suspends at await handler even when the handler returns synchronously.
+			invocation.Acknowledge(dispatchCtx)
 			if handlerResult == nil {
 				continue
 			}

@@ -26,8 +26,7 @@ func newCellSizeTestTUI(out *bytes.Buffer) *TUI {
 	return tui
 }
 
-// Ported from tui-cell-size-input.test.ts "forwards bare escape even when a
-// cell size query was sent at startup".
+// Parser-level guard for the upstream bare-Escape case. TestUpstreamTUICellSizeInput also asserts the real startup and focused-input path.
 func TestCellSizeQueryForwardsBareEscape(t *testing.T) {
 	withImageTerminal(t)
 	var out bytes.Buffer
@@ -43,8 +42,7 @@ func TestCellSizeQueryForwardsBareEscape(t *testing.T) {
 	}
 }
 
-// Ported from tui-cell-size-input.test.ts "consumes cell size responses and
-// still forwards later user input".
+// Parser-level guard for response consumption and later input. TestUpstreamTUICellSizeInput also observes the focused component's exact input list.
 func TestCellSizeResponseConsumedAndLaterInputForwarded(t *testing.T) {
 	withImageTerminal(t)
 	SetCellDimensions(CellDimensions{WidthPx: 9, HeightPx: 18})
@@ -187,7 +185,7 @@ func TestQueryCellSizeCapabilityCacheIsRaceSafe(t *testing.T) {
 	renderer := newCellSizeTestTUI(&out)
 	done := make(chan struct{})
 	go func() {
-		_ = kittyImagesActive()
+		_ = GetCapabilities()
 		close(done)
 	}()
 	renderer.QueryCellSize()

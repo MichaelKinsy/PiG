@@ -33,24 +33,33 @@ func TestExtensionCommandArgumentCompletionAcceptsWithoutSubmitting(t *testing.T
 		Commands:     map[string]extension.RegisteredCommand{"mcp": command},
 		CommandOrder: []string{"mcp"},
 	}}, "")
-	answered := make(chan struct{}, 4)
-	m.commandArgumentCompletions = &commandArgumentCompletions{refresh: func() { answered <- struct{}{} }}
-	m.argumentCompletionsOnce.Do(func() {})
+	ctx, cancel := context.WithCancel(t.Context())
+	input := []string{"/", "m", "c", "p", " "}
+	tasks := make(chan func(), len(input)+1)
+	m.editor.SetAsyncApply(func(fn func()) {
+		select {
+		case tasks <- fn:
+		case <-ctx.Done():
+		}
+	})
+	m.editor.SetAutocompleteTaskOwner(ctx, m.backgroundTasks.Go, func(err error) { t.Error(err) })
+	t.Cleanup(func() { cancel(); m.backgroundTasks.Wait(); m.abortFn() })
 	m.editor.SetAutocomplete(m.buildAutocompleteProvider())
 
-	for _, key := range []string{"/", "m", "c", "p", " "} {
+	for _, key := range input {
 		if err := m.dispatchKey(context.Background(), key); err != nil {
 			t.Fatal(err)
 		}
 	}
-	select {
-	case <-answered:
-	case <-time.After(5 * time.Second):
-		t.Fatal("the command's argument completions never arrived")
-	}
-	m.editor.RefreshAutocomplete()
-	if !m.editor.AutocompleteOpen() {
-		t.Fatal("argument completions did not open the popup")
+	deadline := time.NewTimer(5 * time.Second)
+	defer deadline.Stop()
+	for !m.editor.AutocompleteOpen() {
+		select {
+		case task := <-tasks:
+			task()
+		case <-deadline.C:
+			t.Fatal("the command's argument completions never arrived")
+		}
 	}
 	if err := m.dispatchKey(context.Background(), "\r"); err != nil {
 		t.Fatal(err)

@@ -10,10 +10,10 @@ package compaction
 
 import (
 	"encoding/json"
-	"slices"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	harnesscompaction "github.com/MichaelKinsy/PiG/agent/harness/compaction"
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
@@ -21,116 +21,24 @@ import (
 
 // FileOperations tracks files read/written/edited during a session segment.
 // Mirrors upstream FileOperations (utils.ts).
-type FileOperations struct {
-	Read    map[string]struct{}
-	Written map[string]struct{}
-	Edited  map[string]struct{}
-}
+type FileOperations = harnesscompaction.FileOperations
 
-// MarshalJSON writes upstream's three Sets as sorted string arrays, the
-// subprocess wire form of session_before_compact preparation.fileOps.
-func (ops FileOperations) MarshalJSON() ([]byte, error) {
-	sorted := func(set map[string]struct{}) []string {
-		out := make([]string, 0, len(set))
-		for path := range set {
-			out = append(out, path)
-		}
-		slices.Sort(out)
-		return out
-	}
-	return json.Marshal(struct {
-		Read    []string `json:"read"`
-		Written []string `json:"written"`
-		Edited  []string `json:"edited"`
-	}{sorted(ops.Read), sorted(ops.Written), sorted(ops.Edited)})
-}
+// NewFileOps initializes the shared file-operation accumulator.
+func NewFileOps() FileOperations { return harnesscompaction.CreateFileOps() }
 
-// NewFileOps returns a zero-valued FileOperations with all maps initialised.
-func NewFileOps() FileOperations {
-	return FileOperations{
-		Read:    make(map[string]struct{}),
-		Written: make(map[string]struct{}),
-		Edited:  make(map[string]struct{}),
-	}
-}
-
-// ExtractFileOpsFromMessage inspects assistant tool calls in msg and records
-// file paths into ops. Non-assistant messages are a no-op.
-//
-// Mirrors upstream extractFileOpsFromMessage (utils.ts).
+// ExtractFileOpsFromMessage records read/write/edit tool calls.
 func ExtractFileOpsFromMessage(msg agent.AgentMessage, ops *FileOperations) {
-	if msg.Assistant == nil {
-		return
-	}
-	for _, blk := range msg.Assistant.Content {
-		call, ok := blk.(ai.ToolCall)
-		if !ok {
-			continue
-		}
-		path, _ := call.Arguments["path"].(string)
-		if path == "" {
-			continue
-		}
-		switch call.Name {
-		case "read":
-			ops.Read[path] = struct{}{}
-		case "write":
-			ops.Written[path] = struct{}{}
-		case "edit":
-			ops.Edited[path] = struct{}{}
-		}
-	}
+	harnesscompaction.ExtractFileOpsFromMessage(msg, ops)
 }
 
-// ComputeFileLists derives two sorted lists from ops:
-//   - modifiedFiles = union of Written ∪ Edited, sorted
-//   - readFiles = Read ∖ modifiedFiles, sorted
-//
-// Mirrors upstream computeFileLists (utils.ts).
+// ComputeFileLists returns read-only and modified paths in JavaScript sort order.
 func ComputeFileLists(ops FileOperations) (readFiles, modifiedFiles []string) {
-	modified := make(map[string]struct{}, len(ops.Written)+len(ops.Edited))
-	for p := range ops.Written {
-		modified[p] = struct{}{}
-	}
-	for p := range ops.Edited {
-		modified[p] = struct{}{}
-	}
-
-	modifiedFiles = make([]string, 0, len(modified))
-	for p := range modified {
-		modifiedFiles = append(modifiedFiles, p)
-	}
-	slices.Sort(modifiedFiles)
-
-	readFiles = make([]string, 0, len(ops.Read))
-	for p := range ops.Read {
-		if _, inMod := modified[p]; !inMod {
-			readFiles = append(readFiles, p)
-		}
-	}
-	slices.Sort(readFiles)
-
-	return readFiles, modifiedFiles
+	return harnesscompaction.ComputeFileLists(ops)
 }
 
-// FormatFileOperations renders file lists as XML tags for inclusion in
-// summarization prompts. Returns "" when both slices are empty.
-//
-// Output format (mirrors upstream formatFileOperations in utils.ts):
-//
-//	\n\n<read-files>\npath1\npath2\n</read-files>\n\n<modified-files>\npath3\n</modified-files>
+// FormatFileOperations renders the shared summary metadata tags.
 func FormatFileOperations(readFiles, modifiedFiles []string) string {
-	var sections []string
-	if len(readFiles) > 0 {
-		sections = append(sections, "<read-files>\n"+strings.Join(readFiles, "\n")+"\n</read-files>")
-	}
-	if len(modifiedFiles) > 0 {
-		sections = append(sections, "<modified-files>\n"+strings.Join(modifiedFiles, "\n")+"\n</modified-files>")
-	}
-	if len(sections) == 0 {
-		return ""
-	}
-	return "\n\n" + strings.Join(sections, "\n\n")
+	return harnesscompaction.FormatFileOperations(readFiles, modifiedFiles)
 }
 
 // ─── Message Serialization ────────────────────────────────────────────────────

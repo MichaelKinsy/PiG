@@ -9,15 +9,17 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	"unicode/utf16"
 	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
-var pasteMarkerRegex = regexp.MustCompile(`\[paste #(\d+)( (\+\d+ lines|\d+ chars))?\]`)
-var pasteMarkerSingle = regexp.MustCompile(`^\[paste #(\d+)( (\+\d+ lines|\d+ chars))?\]$`)
-var pasteCtrlCSIU = regexp.MustCompile(`\x1b\[(\d+);5u`)
+var pasteMarkerRegex = lazyregexp.New(`\[paste #(\d+)( (\+\d+ lines|\d+ chars))?\]`)
+var pasteMarkerSingle = lazyregexp.New(`^\[paste #(\d+)( (\+\d+ lines|\d+ chars))?\]$`)
+var pasteCtrlCSIU = lazyregexp.New(`\x1b\[(\d+);5u`)
 
 const attachmentAutocompleteDebounce = 20 * time.Millisecond
 
@@ -27,19 +29,16 @@ type Editor struct {
 	// EmbedWorkingStatus opts into the coding-agent status border.
 	EmbedWorkingStatus     bool
 	workingStatusIndicator *StatusIndicator
-	// Focused mirrors upstream components/editor.ts Focusable support.
-	// When true, Render emits widthx.CursorMarker at the cursor position so
-	// TUI can place the hardware cursor for IME candidate windows.
+	// BorderColor colors a complete border after layout and truncation. Nil selects the application-derived default.
+	BorderColor func(string) string
+	// Focused emits widthx.CursorMarker so the TUI can position the hardware cursor for IME candidate windows.
 	Focused    bool
 	lines      []string
-	cursor     [2]int // [line, col]
+	cursor     [2]int // [logical line, UTF-16 column]
 	jumpMode   string // "forward" | "backward" | ""
 	history    []editorState
-	histIdx    int
 	killRing   KillRing
-	lastAction string // "kill" | "yank" | "": tracks consecutive ops for accumulate/yank-pop
-	yankStart  [2]int // cursor position where last yank was inserted [line, col]
-	yankLen    int    // byte length of the last yanked text (single-line yanks only)
+	lastAction string // "kill" | "yank" | "type-word" | ""
 
 	preferredVisualCol   *int
 	snappedFromCursorCol *int
@@ -47,21 +46,17 @@ type Editor struct {
 	// Slash-command autocomplete suggestions.
 	// Mirrors upstream `editor.ts` autocomplete state
 	// (autocompleteProvider / autocompleteList / autocompletePrefix).
-	autocomplete      AutocompleteProvider
-	autocompleteItems []AutocompleteItem
-	// ─── Async / remote autocomplete (extension-supplied) ───────────────
-	// asyncSources are remote autocomplete providers installed via the
-	// extension API. Each refreshAutocomplete cancels the in-flight
-	// query and kicks off a fresh one. When the goroutine returns with
-	// items, the result is posted via scheduleAsyncApply to run on the
-	// host's main loop, which mutates editor state and renders. The worker
-	// never touches the lock-free editor state itself.
-	//
-	// Mirrors upstream addAutocompleteProvider chain semantics, but
-	// runs providers in parallel rather than as a folded chain. This is
-	// a documented divergence: chain semantics would need synchronous
-	// IPC inside refreshAutocomplete which is unacceptable latency.
-	asyncSources                  []AsyncSuggestionSource
+	autocomplete                  AutocompleteProvider
+	autocompleteItems             []AutocompleteItem
+	autocompleteTriggerCharacters []rune
+	// Complete provider callbacks run on owned workers and publish only on the editor loop.
+	asyncAutocomplete             *AsyncAutocompleteProvider
+	autocompleteLifetime          context.Context
+	startAutocompleteTask         func(func())
+	startAutocompleteInput        func(AutocompleteWork)
+	autocompleteError             func(error)
+	autocompleteTaskDone          <-chan struct{}
+	autocompleteChanged           func(AutocompleteProvider)
 	asyncCancel                   context.CancelFunc
 	asyncSeq                      uint64
 	scheduleAsyncApply            func(func())
@@ -80,6 +75,8 @@ type Editor struct {
 	// that arrives after the buffer moved on treats the popup as stale
 	// instead of splicing the suggestion's full value into the wrong offset.
 	autocompleteQueryCursor [2]int
+	autocompleteForced      bool
+	autocompleteFromAwaited bool
 	autocompleteMax         int // max visible rows (default 5)
 	paddingX                int
 
@@ -126,9 +123,10 @@ type Editor struct {
 	// grapheme segmentation + wrapping dominates editor render cost on large
 	// pasted buffers, where it otherwise runs over the whole buffer twice per
 	// render (layoutText + buildVisualLineMap).
-	wrapCacheWidth  int
-	wrapCacheLines  []string
-	wrapCacheChunks [][]textChunk
+	wrapCacheWidth    int
+	wrapCacheLines    []string
+	wrapCacheChunks   [][]textChunk
+	wrapCachePasteIDs map[int]bool
 
 	// Scroll offset + visible-line cap. Mirrors upstream editor.ts
 	// scrollOffset / maxVisibleLines. When the visual layout exceeds
@@ -144,13 +142,9 @@ type Editor struct {
 	OnChange      func(string)
 	DisableSubmit bool
 
-	// The subprocess bridge applies editor decoration state but does not replace the editor with an extension component.
-	extModeLabel       string // current label text from modeLabelProvider
-	extModeLabelPrefix string // ANSI prefix (color/style) applied to the label
-	extModeLabelSuffix string // ANSI suffix (reset)
-	extBorderPrefix    string // ANSI prefix applied to the entire border
-	extBorderSuffix    string // ANSI suffix
-	extBorderLocked    bool   // true once lockBorderColor() is invoked
+	// remote is an extension's editor component standing in for this
+	// editor (editor_remote.go), or nil.
+	remote *editorRemoteState
 }
 
 type editorState struct {
@@ -186,9 +180,7 @@ type layoutLine struct {
 }
 
 func NewEditor() *Editor {
-	e := &Editor{lines: []string{""}, inputHistIdx: -1, maxVisibleLines: 5, renderWidth: 80, wrapCacheWidth: -1}
-	e.saveHistory()
-	return e
+	return &Editor{lines: []string{""}, inputHistIdx: -1, maxVisibleLines: 5, renderWidth: 80, wrapCacheWidth: -1}
 }
 
 // SetMaxVisibleLines updates the editor's maximum visible visual-line
@@ -211,6 +203,14 @@ func (e *Editor) MaxVisibleLines() int { return e.maxVisibleLines }
 // PaddingX returns the editor's horizontal content padding.
 func (e *Editor) PaddingX() int { return e.paddingX }
 
+// SetFocused records whether the editor holds TUI focus; only a focused editor emits the hardware-cursor marker.
+func (e *Editor) SetFocused(focused bool) {
+	if e.Focused != focused {
+		e.Focused = focused
+		e.Invalidate()
+	}
+}
+
 // SetPaddingX changes the editor's horizontal content padding.
 func (e *Editor) SetPaddingX(padding int) {
 	padding = max(0, padding)
@@ -219,6 +219,9 @@ func (e *Editor) SetPaddingX(padding int) {
 	}
 	e.paddingX = padding
 	e.Invalidate()
+	if e.remote != nil {
+		e.remote.remote.StateChanged()
+	}
 }
 
 // AutocompleteMaxVisible returns the maximum number of autocomplete rows.
@@ -238,18 +241,33 @@ func (e *Editor) SetAutocompleteMaxVisible(maxVisible int) {
 	e.autocompleteMax = maxVisible
 	e.refreshAutocomplete()
 	e.Invalidate()
+	if e.remote != nil {
+		e.remote.remote.StateChanged()
+	}
 }
 
 // Text returns the editor content as a single string.
 func (e *Editor) Text() string { return strings.Join(e.lines, "\n") }
 
-// SetText replaces the editor content.
+// SetText normalizes and replaces the document, resets paste/typing state, records a changed document for undo, and cancels completion without querying.
 func (e *Editor) SetText(text string) {
+	if e.remote != nil {
+		e.remoteSetText(text)
+		return
+	}
+	e.AutocompleteCancel()
+	e.lastAction = ""
 	e.inputHistIdx = -1
 	e.inputHistSaved = nil
-	e.lines = strings.Split(text, "\n")
-	e.cursor = [2]int{len(e.lines) - 1, len(e.lines[len(e.lines)-1])}
-	e.refreshAutocomplete()
+	normalized := normalizeEditorText(text)
+	if e.Text() != normalized {
+		e.saveHistory()
+	}
+	e.pastes = nil
+	e.pasteCounter = 0
+	e.lines = strings.Split(normalized, "\n")
+	e.cursor[0] = len(e.lines) - 1
+	e.setCursorCol(jsstring.Length(e.lines[e.cursor[0]]))
 	e.Invalidate()
 	if e.OnChange != nil {
 		e.OnChange(e.Text())
@@ -258,7 +276,14 @@ func (e *Editor) SetText(text string) {
 
 // Clear resets the editor.
 func (e *Editor) Clear() {
-	e.saveHistory()
+	if e.remote != nil {
+		e.remoteSetText("")
+		return
+	}
+	if e.Text() != "" {
+		e.saveHistory()
+	}
+	e.lastAction = ""
 	e.lines = []string{""}
 	e.cursor = [2]int{0, 0}
 	e.jumpMode = ""
@@ -281,6 +306,9 @@ func (e *Editor) Clear() {
 // to their stored content. Mirrors upstream editor.ts::getExpandedText
 // (.upstream/v0.69.0/packages/tui/src/components/editor.ts:929).
 func (e *Editor) GetExpandedText() string {
+	if e.remote != nil {
+		return e.remoteExpandedText()
+	}
 	return e.expandPasteMarkers(e.Text())
 }
 
@@ -308,11 +336,13 @@ func (e *Editor) ClearPastes() {
 	e.pasteCounter = 0
 }
 
-// AddToHistory adds a submitted text to the input history for Up/Down
-// navigation. Mirrors upstream editor.ts::addToHistory (line 341-350).
-// Skips empty strings and consecutive duplicates. Capped at 100 entries.
+// AddToHistory trims JavaScript whitespace and adds a submitted prompt for Up/Down navigation. It skips empty strings and consecutive duplicates and retains at most 100 entries.
 func (e *Editor) AddToHistory(text string) {
-	trimmed := strings.TrimSpace(text)
+	if e.remote != nil {
+		e.remote.remote.AddToHistory(text)
+		return
+	}
+	trimmed := widthx.JSTrim(text)
 	if trimmed == "" {
 		return
 	}
@@ -323,54 +353,6 @@ func (e *Editor) AddToHistory(text string) {
 	if len(e.inputHistory) > 100 {
 		e.inputHistory = e.inputHistory[:100]
 	}
-}
-
-// SetExtensionModeLabel installs (or clears) the mode-label decoration
-// from a subprocess extension. The prefix/suffix sandwiches the label
-// text so themed color tokens captured on the Node side render
-// correctly inside the pig top border.
-//
-// pig-specific: no upstream equivalent. Upstream extensions extend
-// CustomEditor; pig's subprocess shim captures the mode label here
-// instead of routing per-keystroke input across the socket.
-func (e *Editor) SetExtensionModeLabel(label, ansiPrefix, ansiSuffix string) {
-	e.extModeLabel = label
-	e.extModeLabelPrefix = ansiPrefix
-	e.extModeLabelSuffix = ansiSuffix
-	e.Invalidate()
-}
-
-// SetExtensionBorderColor installs (or clears) the border-color
-// decoration from a subprocess extension. Subsequent calls are
-// honored unless LockExtensionBorderColor() has been invoked, which
-// mirrors prompt-editor's lockBorderColor() semantic.
-func (e *Editor) SetExtensionBorderColor(ansiPrefix, ansiSuffix string) {
-	if e.extBorderLocked && (e.extBorderPrefix != "" || e.extBorderSuffix != "") {
-		// Already locked to a previous value; ignore further updates
-		// just like prompt-editor's locked accessor.
-		return
-	}
-	e.extBorderPrefix = ansiPrefix
-	e.extBorderSuffix = ansiSuffix
-	e.Invalidate()
-}
-
-// LockExtensionBorderColor freezes the current border-color decoration.
-// Mirrors upstream prompt-editor's lockBorderColor() behavior.
-func (e *Editor) LockExtensionBorderColor() {
-	e.extBorderLocked = true
-}
-
-// ClearExtensionDecorations drops all extension-supplied decoration
-// state. Called when an extension is unloaded or reload happens.
-func (e *Editor) ClearExtensionDecorations() {
-	e.extModeLabel = ""
-	e.extModeLabelPrefix = ""
-	e.extModeLabelSuffix = ""
-	e.extBorderPrefix = ""
-	e.extBorderSuffix = ""
-	e.extBorderLocked = false
-	e.Invalidate()
 }
 
 // navigateHistory moves through input history.
@@ -387,6 +369,7 @@ func (e *Editor) navigateHistory(direction int) {
 	}
 	entering := e.inputHistIdx == -1 && newIdx >= 0
 	if entering {
+		e.saveHistory()
 		// Capture current editor state before entering browse mode.
 		e.inputHistSaved = &editorHistoryDraft{lines: append([]string(nil), e.lines...), cursor: e.cursor}
 	}
@@ -408,13 +391,6 @@ func (e *Editor) navigateHistory(direction int) {
 		return
 	}
 	e.setTextNoHistReset(e.inputHistory[e.inputHistIdx], direction == -1)
-	if entering {
-		// Upstream pushes an undo snapshot of the draft on entering browse
-		// mode. This undo stack records post-edit states, so recording the
-		// first browsed entry makes one undo return to the draft, however
-		// far the browse went.
-		e.saveHistory()
-	}
 	e.notifyChange()
 }
 
@@ -434,9 +410,11 @@ func (e *Editor) setTextNoHistReset(text string, cursorAtStart bool) {
 		e.lines = []string{""}
 	}
 	if cursorAtStart {
-		e.cursor = [2]int{0, 0}
+		e.cursor[0] = 0
+		e.setCursorCol(0)
 	} else {
-		e.cursor = [2]int{len(e.lines) - 1, len(e.lines[len(e.lines)-1])}
+		e.cursor[0] = len(e.lines) - 1
+		e.setCursorCol(jsstring.Length(e.lines[e.cursor[0]]))
 	}
 	e.scrollOffset = 0
 	e.Invalidate()
@@ -460,90 +438,40 @@ func (e *Editor) validPasteIDs() map[int]bool {
 	return ids
 }
 
-func (e *Editor) segmentLine(text string) []graphemeSegment {
-	validIDs := e.validPasteIDs()
-	if len(validIDs) == 0 || !strings.Contains(text, "[paste #") {
-		return graphemeSegments(text)
-	}
-
-	type markerSpan struct{ start, end int }
-	var markers []markerSpan
-	for _, m := range pasteMarkerRegex.FindAllStringSubmatchIndex(text, -1) {
-		if len(m) < 4 {
-			continue
-		}
-		idText := text[m[2]:m[3]]
-		id := 0
-		for _, r := range idText {
-			id = id*10 + int(r-'0')
-		}
-		if validIDs[id] {
-			markers = append(markers, markerSpan{start: m[0], end: m[1]})
-		}
-	}
-	if len(markers) == 0 {
-		return graphemeSegments(text)
-	}
-
-	base := graphemeSegments(text)
-	result := make([]graphemeSegment, 0, len(base))
-	markerIdx := 0
-	for _, seg := range base {
-		for markerIdx < len(markers) && markers[markerIdx].end <= seg.Start {
-			markerIdx++
-		}
-		var marker *markerSpan
-		if markerIdx < len(markers) {
-			marker = &markers[markerIdx]
-		}
-		if marker != nil && seg.Start >= marker.start && seg.Start < marker.end {
-			if seg.Start == marker.start {
-				markerText := text[marker.start:marker.end]
-				result = append(result, graphemeSegment{Text: markerText, Start: marker.start, End: marker.end, Width: widthx.VisibleWidth(markerText)})
-			}
-			continue
-		}
-		result = append(result, seg)
-	}
-	return result
-}
-
-func wordWrapLine(line string, maxWidth int, preSegmented []graphemeSegment) []textChunk {
+func wordWrapLine(line string, maxWidth int, preSegmented []editorSegment) []textChunk {
 	if line == "" || maxWidth <= 0 {
 		return []textChunk{{text: "", startIndex: 0, endIndex: 0}}
 	}
+	length := jsstring.Length(line)
 	if widthx.VisibleWidth(line) <= maxWidth {
-		return []textChunk{{text: line, startIndex: 0, endIndex: len(line)}}
+		return []textChunk{{text: line, startIndex: 0, endIndex: length}}
 	}
-
 	segments := preSegmented
 	if segments == nil {
-		segments = graphemeSegments(line)
+		segments = editorSegments(graphemeSegmentData(line))
+	}
+	// Decode once: wrapping many chunks must not repeatedly scan the entire logical line.
+	units := jsstring.ToUTF16(line)
+	chunk := func(start, end int) textChunk {
+		return textChunk{text: jsstring.FromUTF16(units[start:end]), startIndex: start, endIndex: end}
 	}
 	chunks := make([]textChunk, 0, len(segments))
-	currentWidth := 0
-	chunkStart := 0
-	wrapOppIndex := -1
-	wrapOppWidth := 0
-
+	currentWidth, chunkStart := 0, 0
+	wrapOppIndex, wrapOppWidth := -1, 0
 	for i, seg := range segments {
-		gWidth := seg.Width
-		charIndex := seg.Start
-		isWs := !isPasteMarker(seg.Text) && isWhitespaceGrapheme(seg.Text)
-
+		gWidth, charIndex := seg.Width, seg.Start
+		isWs := !isPasteMarker(seg.Text) && isWhitespaceChar(seg.Text)
 		if currentWidth+gWidth > maxWidth {
 			if wrapOppIndex >= 0 && currentWidth-wrapOppWidth+gWidth <= maxWidth {
-				chunks = append(chunks, textChunk{text: line[chunkStart:wrapOppIndex], startIndex: chunkStart, endIndex: wrapOppIndex})
+				chunks = append(chunks, chunk(chunkStart, wrapOppIndex))
 				chunkStart = wrapOppIndex
 				currentWidth -= wrapOppWidth
 			} else if chunkStart < charIndex {
-				chunks = append(chunks, textChunk{text: line[chunkStart:charIndex], startIndex: chunkStart, endIndex: charIndex})
-				chunkStart = charIndex
-				currentWidth = 0
+				chunks = append(chunks, chunk(chunkStart, charIndex))
+				chunkStart, currentWidth = charIndex, 0
 			}
 			wrapOppIndex = -1
 		}
-
 		if gWidth > maxWidth {
 			subChunks := wordWrapLine(seg.Text, maxWidth, nil)
 			for j := range len(subChunks) - 1 {
@@ -556,19 +484,21 @@ func wordWrapLine(line string, maxWidth int, preSegmented []graphemeSegment) []t
 			wrapOppIndex = -1
 			continue
 		}
-
 		currentWidth += gWidth
 		if i+1 < len(segments) {
 			next := segments[i+1]
-			if isWs && (isPasteMarker(next.Text) || !isWhitespaceGrapheme(next.Text)) {
-				wrapOppIndex = next.Start
-				wrapOppWidth = currentWidth
+			if isWs && (isPasteMarker(next.Text) || !isWhitespaceChar(next.Text)) {
+				wrapOppIndex, wrapOppWidth = next.Start, currentWidth
+			} else if !isWs && !isWhitespaceChar(next.Text) {
+				isCJK := !isPasteMarker(seg.Text) && widthx.IsCJKBreak(seg.Text)
+				nextIsCJK := !isPasteMarker(next.Text) && widthx.IsCJKBreak(next.Text)
+				if isCJK || nextIsCJK {
+					wrapOppIndex, wrapOppWidth = next.Start, currentWidth
+				}
 			}
 		}
 	}
-
-	chunks = append(chunks, textChunk{text: line[chunkStart:], startIndex: chunkStart, endIndex: len(line)})
-	return chunks
+	return append(chunks, chunk(chunkStart, length))
 }
 
 // isEditorEmpty returns true when the editor contains only a single empty line.
@@ -584,11 +514,7 @@ func (e *Editor) saveHistory() {
 		pasteCounter: e.pasteCounter,
 	}
 	copy(state.lines, e.lines)
-	if e.histIdx < len(e.history) {
-		e.history = e.history[:e.histIdx]
-	}
 	e.history = append(e.history, state)
-	e.histIdx = len(e.history)
 }
 
 // clonePastes returns a shallow copy of a paste registry so an undo snapshot
@@ -626,7 +552,7 @@ func thinkingBorderSGR(level string) string {
 
 // wrappedChunks returns the word-wrapped textChunk list for every logical line
 // at the given width, memoizing per line. A line whose content is unchanged
-// from the previous call at the same width reuses its cached chunks instead of
+// from the previous call at the same width and with the same valid paste IDs reuses its cached chunks instead of
 // re-running wordWrapLine (grapheme segmentation + wrapping). Output is
 // identical to calling wordWrapLine(line, width, e.segmentLine(line)) for each
 // line; the reuse is invisible. The comparison is by content, so SetText
@@ -635,7 +561,15 @@ func (e *Editor) wrappedChunks(width int) [][]textChunk {
 	if width < 1 {
 		width = 1
 	}
-	reuse := e.wrapCacheWidth == width
+	reuse := e.wrapCacheWidth == width && len(e.wrapCachePasteIDs) == len(e.pastes)
+	if reuse {
+		for id := range e.wrapCachePasteIDs {
+			if _, ok := e.pastes[id]; !ok {
+				reuse = false
+				break
+			}
+		}
+	}
 	out := make([][]textChunk, len(e.lines))
 	for i, line := range e.lines {
 		if reuse && i < len(e.wrapCacheLines) && e.wrapCacheLines[i] == line {
@@ -649,6 +583,9 @@ func (e *Editor) wrappedChunks(width int) [][]textChunk {
 	e.wrapCacheWidth = width
 	e.wrapCacheLines = snap
 	e.wrapCacheChunks = out
+	if !reuse {
+		e.wrapCachePasteIDs = e.validPasteIDs()
+	}
 	return out
 }
 
@@ -680,7 +617,7 @@ func (e *Editor) layoutText(contentWidth int) []layoutLine {
 				} else {
 					hasCursorInChunk = cursorPos >= chunk.startIndex && cursorPos < chunk.endIndex
 					if hasCursorInChunk {
-						adjustedCursorPos = min(cursorPos-chunk.startIndex, len(chunk.text))
+						adjustedCursorPos = min(cursorPos-chunk.startIndex, jsstring.Length(chunk.text))
 					}
 				}
 			}
@@ -706,7 +643,7 @@ func (e *Editor) buildVisualLines(width, rowWidth int) []string {
 		// highlighted space even when the row has no cell left for it, which
 		// happens only at width 1 without padding. PiG highlights the final
 		// grapheme there instead of emitting a row wider than the terminal.
-		if line.cursorPos == len(line.text) && widthx.VisibleWidth(line.text) >= rowWidth && len(line.text) > 0 {
+		if line.cursorPos == jsstring.Length(line.text) && widthx.VisibleWidth(line.text) >= rowWidth && len(line.text) > 0 {
 			segments := graphemeSegments(line.text)
 			last := segments[len(segments)-1]
 			marker := ""
@@ -716,7 +653,7 @@ func (e *Editor) buildVisualLines(width, rowWidth int) []string {
 			out = append(out, line.text[:last.Start]+marker+"\033[7m"+last.Text+"\033[0m")
 			continue
 		}
-		out = append(out, renderCursorAt(line.text, line.cursorPos, emitCursorMarker))
+		out = append(out, e.renderCursorAt(line.text, line.cursorPos, emitCursorMarker))
 	}
 	return out
 }
@@ -731,7 +668,7 @@ func (e *Editor) buildVisualLineMap(width int) []editorVisualLine {
 	var out []editorVisualLine
 	for i, chunks := range e.wrappedChunks(width) {
 		for _, chunk := range chunks {
-			out = append(out, editorVisualLine{logicalLine: i, startCol: chunk.startIndex, length: len(chunk.text)})
+			out = append(out, editorVisualLine{logicalLine: i, startCol: chunk.startIndex, length: jsstring.Length(chunk.text)})
 		}
 	}
 	if len(out) == 0 {
@@ -781,9 +718,7 @@ func (e *Editor) findCursorVisualLine(visual []string) int {
 	return idx
 }
 
-// borderSGR returns the active border-color SGR (or "" + reset) used by
-// scrollIndicatorBorder so the indicator inherits bash / thinking-level /
-// extension coloring without leaking attributes past the end of the row.
+// borderSGR returns the application-derived default border foreground.
 func (e *Editor) borderSGR() string {
 	if e.IsBashMode() {
 		return bashHeaderColor()
@@ -791,105 +726,58 @@ func (e *Editor) borderSGR() string {
 	if sgr := thinkingBorderSGR(e.ThinkingLevel); sgr != "" {
 		return sgr
 	}
-	if e.extBorderPrefix != "" {
-		return e.extBorderPrefix
-	}
 	return ActiveTheme().BorderMuted
 }
 
-// scrollIndicatorBorder builds a single border row reading
-// "─── arrow N more " followed by enough horizontal rule to fill width.
-// Mirrors upstream editor.ts:451-465 / 540-560.
-func scrollIndicatorBorder(arrow string, n, width int, plainBorder, sgr string) string {
-	indicator := fmt.Sprintf("─── %s %d more ", arrow, n)
-	indicatorWidth := widthx.VisibleWidth(indicator)
-	if indicatorWidth >= width {
-		// Indicator would overflow; fall back to the plain border to
-		// avoid soft-wrap. Upstream uses truncateToWidth here; for the
-		// width-too-small edge case the plain border is acceptable.
-		return plainBorder
+func createScrollBorder(arrow string, n, width int) string {
+	width = max(0, width)
+	label := fmt.Sprintf(" %s %d more ", arrow, n)
+	labelWidth := widthx.VisibleWidth(label)
+	if labelWidth+2 <= width {
+		left := (width - labelWidth) / 2
+		return strings.Repeat("─", left) + label + strings.Repeat("─", width-left-labelWidth)
 	}
-	remaining := strings.Repeat("\u2500", width-indicatorWidth)
-	reset := "\033[0m"
-	return sgr + indicator + remaining + reset
+	indicator := fmt.Sprintf("─── %s %d more ", arrow, n)
+	remaining := width - widthx.VisibleWidth(indicator)
+	if remaining >= 0 {
+		return indicator + strings.Repeat("─", remaining)
+	}
+	ellipsis := "..."[:min(3, width)]
+	return widthx.SliceByColumn(indicator, 0, width-len(ellipsis), true) + ellipsis
+}
+
+func (e *Editor) colorEditorBorder(text string) string {
+	if e.BorderColor != nil {
+		return e.BorderColor(text)
+	}
+	reset := SGRFgReset
+	if e.IsBashMode() || thinkingBorderSGR(e.ThinkingLevel) != "" {
+		reset = "\x1b[0m"
+	}
+	return e.borderSGR() + text + reset
+}
+
+func (e *Editor) renderTopBorder(width, hidden int) string {
+	if hidden > 0 {
+		return e.colorEditorBorder(createScrollBorder("↑", hidden, width))
+	}
+	return e.colorEditorBorder(strings.Repeat("─", width))
+}
+
+func (e *Editor) renderBottomBorder(width, hidden int) string {
+	if hidden > 0 {
+		return e.colorEditorBorder(createScrollBorder("↓", hidden, width))
+	}
+	return e.colorEditorBorder(strings.Repeat("─", width))
 }
 
 func (e *Editor) Render(width int) []string {
 	if width < 1 {
 		width = 1
 	}
-	// Top + bottom dashed dividers around
-	// the editor content, mirroring upstream pi-tui's editor.ts which
-	// emits `horizontal.repeat(width)` rows above and below the
-	// content (see .upstream/current/packages/tui/src/components/
-	// editor.ts::render lines 451–465 + 540–560 for the bottom
-	// border). The editor owns these rows because they are part of the upstream
-	// visual rather than layout-level spacing.
-	border := strings.Repeat("\u2500", width)
-	// Bash-mode border (when buffer starts with `!`).
-	// Mirrors upstream `editor.ts::updateEditorBorderColor` which
-	// switches `borderColor` between borderMuted and `bashMode`
-	// (orange) based on the leading character. Color matches the
-	// `bashHeaderColor` used by `BashExecutionBlock` so the visual
-	// link from typing to executed block is obvious.
-	// Thinking level border color overrides borderMuted when not
-	// in bash mode. Maps "low"/"medium"/"high" to per-level fg colors
-	// (upstream getThinkingBorderColor). Bash mode takes precedence.
-	dimBorder := ActiveTheme().BorderMuted + border + SGRFgReset
-	if e.IsBashMode() {
-		dimBorder = bashHeaderColor() + border + "\033[0m"
-	} else if sgr := thinkingBorderSGR(e.ThinkingLevel); sgr != "" {
-		dimBorder = sgr + border + "\033[0m"
-	} else if e.extBorderPrefix != "" {
-		// Extension-supplied border decoration. Applied only when no
-		// other higher-priority colorer (bash mode / thinking level)
-		// already styled the border. Mirrors prompt-editor's
-		// behavior of falling back to bash-mode color when the buffer
-		// starts with `!`.
-		suffix := e.extBorderSuffix
-		if suffix == "" {
-			suffix = "\033[0m"
-		}
-		dimBorder = e.extBorderPrefix + border + suffix
+	if e.remote != nil {
+		return e.renderRemote(width)
 	}
-	// Inject an extension-supplied mode label into the top border,
-	// mirroring upstream prompt-editor's "── label ──" rendering on the
-	// editor's first border row. The label sits ~3 columns from the
-	// left to leave room for upstream's scroll-indicator prefix.
-	topBorder := dimBorder
-	if label := e.extModeLabel; label != "" {
-		prefix := e.extModeLabelPrefix
-		suffix := e.extModeLabelSuffix
-		if suffix == "" {
-			suffix = "\033[0m"
-		}
-		// Build the styled label chunk (with leading and trailing space).
-		labelChunk := " " + label + " "
-		labelCols := widthx.VisibleWidth(labelChunk)
-		const leftPad = 2 // "──" prefix before the label
-		const minRight = 1
-		if labelCols+leftPad+minRight <= width {
-			// Build a fresh top border that visibly places the label.
-			borderPrefix := strings.Repeat("\u2500", leftPad)
-			borderRight := strings.Repeat("\u2500", width-leftPad-labelCols)
-			borderSGR := ActiveTheme().BorderMuted
-			borderClose := SGRFgReset
-			if e.IsBashMode() {
-				borderSGR = bashHeaderColor()
-			} else if sgr := thinkingBorderSGR(e.ThinkingLevel); sgr != "" {
-				borderSGR = sgr
-			} else if e.extBorderPrefix != "" {
-				borderSGR = e.extBorderPrefix
-				if e.extBorderSuffix != "" {
-					borderClose = e.extBorderSuffix
-				}
-			}
-			topBorder = borderSGR + borderPrefix + borderClose + prefix + labelChunk + suffix + borderSGR + borderRight + borderClose
-		}
-	}
-	// One blank row above the top border so the editor frame doesn't
-	// sit flush against the last chat line. Mirrors upstream's gap
-	// between chatContainer and editorContainer.
 	// Build the full visual layout first (all chunks of all logical
 	// lines, with cursor decoration applied), then scroll/window it
 	// per upstream editor.ts scrollOffset + maxVisibleLines logic.
@@ -946,21 +834,14 @@ func (e *Editor) Render(width int) []string {
 
 	// Render top border (with "↑ N more" indicator if scrolled down).
 	// Mirrors editor.ts:451-465.
-	top := topBorder
-	if e.scrollOffset > 0 {
-		top = scrollIndicatorBorder("↑", e.scrollOffset, width, dimBorder, e.borderSGR())
-	}
+	top := e.renderTopBorder(width, e.scrollOffset)
 	top = e.renderStatusBorder(width, e.scrollOffset, top)
-	out := []string{"", top}
+	out := []string{top}
 	out = append(out, visible...)
 
 	// Bottom border (with "↓ N more" indicator if more content below).
-	bot := dimBorder
 	linesBelow := len(visual) - end
-	if linesBelow > 0 {
-		bot = scrollIndicatorBorder("↓", linesBelow, width, dimBorder, e.borderSGR())
-	}
-	out = append(out, bot)
+	out = append(out, e.renderBottomBorder(width, linesBelow))
 
 	// Render slash-autocomplete popup as additional rows
 	// below the editor frame. Mirrors upstream editor.ts:521-528 which
@@ -983,7 +864,10 @@ func (e *Editor) Render(width int) []string {
 // alternate-screen renderer can own text selection. Mirrors upstream
 // Editor.handleMouse. Autocomplete clicks retain the pressed item across scrolling.
 func (e *Editor) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
-	autocompleteStartRow := e.renderedVisibleLineCount + 3
+	if e.remote != nil {
+		return e.remoteMouse(event)
+	}
+	autocompleteStartRow := e.renderedVisibleLineCount + 2
 	if len(e.autocompleteItems) > 0 && event.Y >= autocompleteStartRow && event.Y < autocompleteStartRow+e.renderedAutocompleteHeight {
 		if event.Type == MouseWheel {
 			if event.WheelDelta == 0 {
@@ -994,7 +878,8 @@ func (e *Editor) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 			if event.WheelDelta < 0 {
 				delta = -1
 			}
-			e.AutocompleteMove(delta)
+			target := max(0, min(e.autocompleteCursor+delta, len(e.autocompleteItems)-1))
+			e.AutocompleteMove(target - e.autocompleteCursor)
 			changed := e.autocompleteCursor != previous
 			return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true, Render: new(changed)}}
 		}
@@ -1032,7 +917,7 @@ func (e *Editor) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 	if event.Type != MouseClick || event.Button != MouseButtonLeft {
 		return nil
 	}
-	contentStartRow := 2 // One spacing row and the top border precede content.
+	contentStartRow := 1 // The top border precedes content.
 	if event.Y < contentStartRow || event.Y >= contentStartRow+e.renderedVisibleLineCount {
 		return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true, Focus: true}}
 	}
@@ -1044,14 +929,14 @@ func (e *Editor) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 	}
 	visualLine := visualLines[visualLineIndex]
 	logicalLine := e.lines[visualLine.logicalLine]
-	chunkEnd := min(len(logicalLine), visualLine.startCol+visualLine.length)
-	chunk := logicalLine[visualLine.startCol:chunkEnd]
+	chunkEnd := min(jsstring.Length(logicalLine), visualLine.startCol+visualLine.length)
+	chunk := jsstring.Slice(logicalLine, visualLine.startCol, chunkEnd)
 	paddingX := min(e.paddingX, max(0, (event.Width-1)/2))
 	targetColumn := max(0, event.X-paddingX)
 	visibleColumn := 0
-	targetIndex := len(chunk)
+	targetIndex := jsstring.Length(chunk)
 	lastGraphemeIndex := 0
-	for _, grapheme := range graphemeSegments(chunk) {
+	for _, grapheme := range e.segmentLine(chunk) {
 		nextColumn := visibleColumn + grapheme.Width
 		lastGraphemeIndex = grapheme.Start
 		if targetColumn < nextColumn {
@@ -1061,7 +946,7 @@ func (e *Editor) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 		visibleColumn = nextColumn
 	}
 	isLastSegment := visualLineIndex == len(visualLines)-1 || visualLines[visualLineIndex+1].logicalLine != visualLine.logicalLine
-	if !isLastSegment && targetIndex == len(chunk) && len(chunk) > 0 {
+	if !isLastSegment && targetIndex == jsstring.Length(chunk) && len(chunk) > 0 {
 		targetIndex = lastGraphemeIndex
 	}
 
@@ -1083,14 +968,7 @@ func (e *Editor) autocompleteVisibleRange() (start, end int) {
 	if maxVisible <= 0 {
 		maxVisible = 5
 	}
-	if n > maxVisible {
-		if e.autocompleteCursor >= maxVisible {
-			start = e.autocompleteCursor - maxVisible + 1
-		}
-		if start+maxVisible > n {
-			start = n - maxVisible
-		}
-	}
+	start = max(0, min(e.autocompleteCursor-maxVisible/2, n-maxVisible))
 	end = min(start+maxVisible, n)
 	return start, end
 }
@@ -1106,166 +984,25 @@ func (e *Editor) IsBashMode() bool {
 	return strings.HasPrefix(trimmed, "!")
 }
 
-// runeWidth returns the terminal column width of s (widthx.VisibleWidth).
-// Matches upstream's visibleWidth for the label/description inputs
-// used by autocomplete (no ANSI sequences, but may contain emoji or
-// wide chars from extension-provided commands).
-func runeWidth(s string) int { return widthx.VisibleWidth(s) }
-
-// truncateRunes shortens s to at most maxWidth terminal columns. When
-// truncated, appends the upstream-style single-character ellipsis '…'
-// (1 column wide). Uses widthx so wide chars are measured
-// correctly: a rune-count approach overestimates the budget for emoji.
-func truncateRunes(s string, maxWidth int) string {
-	if maxWidth <= 0 {
-		return ""
-	}
-	if widthx.VisibleWidth(s) <= maxWidth {
-		return s
-	}
-	// Plain-text ellipsis truncation measured by widthx (no SGR resets
-	// inserted, so the caller's surrounding style also covers the ellipsis).
-	return widthx.SliceByColumn(s, 0, maxWidth-1, true) + "\u2026"
-}
-
-// renderAutocomplete produces the popup rows. Matches upstream select-list
-// styling: the selected row uses an accent-colored `→ ` prefix + row text,
-// while unselected descriptions render in muted color.
+// renderAutocomplete uses the shared SelectList layout, including its centered window and optional per-item descriptions.
 func (e *Editor) renderAutocomplete(width int) []string {
-	n := len(e.autocompleteItems)
-	if n == 0 {
+	if len(e.autocompleteItems) == 0 {
 		return nil
 	}
-	if width < 1 {
-		width = 1
+	list := &FilterableList{
+		Labels:       make([]string, len(e.autocompleteItems)),
+		Descriptions: make([]string, len(e.autocompleteItems)),
+		filtered:     make([]int, len(e.autocompleteItems)),
+		cursor:       e.autocompleteCursor,
+		MaxVisible:   e.AutocompleteMaxVisible(),
 	}
-	maxVisible := e.autocompleteMax
-	if maxVisible <= 0 {
-		maxVisible = 5
+	for i, item := range e.autocompleteItems {
+		list.Labels[i], list.Descriptions[i], list.filtered[i] = item.Label, item.Description, i
 	}
-	start := 0
-	if n > maxVisible {
-		if e.autocompleteCursor >= maxVisible {
-			start = e.autocompleteCursor - maxVisible + 1
-		}
-		if start+maxVisible > n {
-			start = n - maxVisible
-		}
+	if strings.HasPrefix(e.autocompletePrefix, "/") {
+		list.MinPrimaryColumnWidth, list.MaxPrimaryColumnWidth = 12, 32
 	}
-	end := min(start+maxVisible, n)
-
-	const (
-		selectedPrefix = "→ "
-		noCursor       = "  "
-		prefixWidth    = 2
-		primaryGap     = 2
-		minDescWidth   = 10
-		widthThreshold = 40 // upstream: tui/src/components/select-list.ts:descriptionSingleLine
-	)
-	th := ActiveTheme()
-	accent := th.Accent
-	if accent == "" {
-		accent = "\x1b[38;2;138;190;183m"
-	}
-	muted := th.Muted
-	if muted == "" {
-		muted = "\x1b[38;2;128;128;128m"
-	}
-
-	primaryColumnWidth := 0
-	for _, it := range e.autocompleteItems {
-		if l := runeWidth(it.Label) + primaryGap; l > primaryColumnWidth {
-			primaryColumnWidth = l
-		}
-	}
-	if primaryColumnWidth < 12 {
-		primaryColumnWidth = 12
-	}
-	if primaryColumnWidth > 32 {
-		primaryColumnWidth = 32
-	}
-	effLabelW := primaryColumnWidth
-	if cap := width - prefixWidth - 4; cap < effLabelW {
-		effLabelW = cap
-	}
-	if effLabelW < 1 {
-		effLabelW = 1
-	}
-	descColStart := prefixWidth + effLabelW + primaryGap
-	descBudget := width - descColStart - 1
-	// Upstream only uses the 2-column description layout for slash-command
-	// autocomplete. File/path completion uses the default select-list layout,
-	// which renders labels only even when items carry descriptions.
-	showDesc := strings.HasPrefix(e.autocompletePrefix, "/") && width > widthThreshold && descBudget >= minDescWidth
-
-	lines := make([]string, 0, end-start)
-	for i := start; i < end; i++ {
-		it := e.autocompleteItems[i]
-		isCursor := i == e.autocompleteCursor
-		prefix := noCursor
-		if isCursor {
-			prefix = selectedPrefix
-		}
-
-		if !showDesc {
-			label := widthx.TruncateToWidth(it.Label, max(width-prefixWidth-2, 1), "", false)
-			row := prefix + label
-			if isCursor {
-				lines = append(lines, padOrTrunc(accent+row+"\x1b[39m", width))
-			} else {
-				lines = append(lines, padOrTrunc(row, width))
-			}
-			continue
-		}
-
-		maxPrimaryWidth := max(1, effLabelW-primaryGap)
-		label := widthx.TruncateToWidth(it.Label, maxPrimaryWidth, "", false)
-		if label == "" {
-			label = it.Label
-		}
-		labelPad := max(effLabelW-runeWidth(label), 1)
-		desc := widthx.TruncateToWidth(normalizeToSingleLine(it.Description), descBudget, "", false)
-		spacing := strings.Repeat(" ", labelPad)
-		if isCursor {
-			row := prefix + label + spacing + desc
-			lines = append(lines, padOrTrunc(accent+row+"\x1b[39m", width))
-			continue
-		}
-		row := prefix + label + muted + spacing + desc + "\x1b[39m"
-		lines = append(lines, padOrTrunc(row, width))
-	}
-	// Scroll-position counter: mirrors upstream
-	// `select-list.ts:106-110`. Only emitted when the popup is
-	// scrolled (some items off-screen): `  (idx+1/total)` in dim.
-	// Hidden when everything fits in `max` so unfiltered short lists
-	// (e.g. `/he` filtered to 3 items, max=5) don't get a noisy line.
-	if start > 0 || end < n {
-		// Upstream: truncateToWidth(scrollText, width - 2, ""), which is
-		// empty when width - 2 <= 0.
-		counter := widthx.TruncateToWidth(fmt.Sprintf("  (%d/%d)", e.autocompleteCursor+1, n), width-2, "", false)
-		muted := ActiveTheme().Muted
-		if muted == "" {
-			muted = "\x1b[38;2;128;128;128m"
-		}
-		lines = append(lines, muted+counter+"\x1b[39m")
-	}
-	return lines
-}
-
-// AsyncSuggestionSource is a remote / async autocomplete provider
-// installed via the extension API. Implementations send the buffer to
-// some out-of-process source (subprocess shim, network, etc.) and
-// return suggestions or nil. The supplied context is cancelled when
-// the editor's buffer mutates so implementations should abort
-// in-flight RPCs to avoid wasting work.
-//
-// pig-specific: upstream extensions install AutocompleteProvider
-// objects directly into the in-process chain. pig can't run a
-// per-keystroke synchronous chain across the subprocess boundary, so
-// the bridge layer adapts the upstream factory pattern to this
-// out-of-band source interface.
-type AsyncSuggestionSource interface {
-	Suggest(ctx context.Context, lines []string, cursorLine, cursorCol int) *AutocompleteSuggestions
+	return list.Render(width)
 }
 
 // AsyncFileSearcher is an optional capability of the local autocomplete
@@ -1285,32 +1022,28 @@ type AsyncFileSearcher interface {
 // applied inline on the worker (single-threaded callers / tests only).
 func (e *Editor) SetAsyncApply(schedule func(func())) { e.scheduleAsyncApply = schedule }
 
-// AddAsyncSuggestionSource appends a remote autocomplete provider.
-// Multiple sources are queried in parallel and their results merged
-// after the local provider's output.
-func (e *Editor) AddAsyncSuggestionSource(s AsyncSuggestionSource) {
-	if s == nil {
+// SetAutocomplete replaces the provider and cancels pending completion without querying. The host rebuilds extension wrappers through its change callback.
+func (e *Editor) SetAutocomplete(p AutocompleteProvider) {
+	e.AutocompleteCancel()
+	e.autocomplete = p
+	if e.autocompleteChanged != nil {
+		e.AutocompleteCancel()
+		e.autocompleteChanged(p)
 		return
 	}
-	e.asyncSources = append(e.asyncSources, s)
-}
-
-// ClearAsyncSuggestionSources drops all installed async providers.
-func (e *Editor) ClearAsyncSuggestionSources() {
-	if e.asyncCancel != nil {
-		e.asyncCancel()
-		e.asyncCancel = nil
+	e.autocompleteTriggerCharacters = []rune{'@', '#'}
+	if provider, ok := p.(interface{ TriggerCharacters() []string }); ok {
+		for _, character := range provider.TriggerCharacters() {
+			r, size := jsstring.DecodeRuneInString(character)
+			if size == 0 || len(character) != size || jsstring.Length(character) != 1 || r == '/' || widthx.IsJSSpace(r) || slices.Contains(e.autocompleteTriggerCharacters, r) {
+				continue
+			}
+			e.autocompleteTriggerCharacters = append(e.autocompleteTriggerCharacters, r)
+		}
 	}
-	e.asyncSources = nil
-}
-
-// SetAutocomplete attaches an AutocompleteProvider. Pass nil to detach.
-func (e *Editor) SetAutocomplete(p AutocompleteProvider) {
-	e.autocomplete = p
 	if e.autocompleteMax == 0 {
 		e.autocompleteMax = 5
 	}
-	e.refreshAutocomplete()
 }
 
 // RefreshAutocomplete queries the provider again for the current buffer,
@@ -1324,10 +1057,12 @@ func (e *Editor) RefreshAutocomplete() {
 
 // AutocompleteOpen reports whether the popup is currently visible.
 // Used by the host (interactive.go) to gate Esc/Enter handling.
-func (e *Editor) AutocompleteOpen() bool { return len(e.autocompleteItems) > 0 }
+func (e *Editor) AutocompleteOpen() bool { return e.remote == nil && len(e.autocompleteItems) > 0 }
 
 // AutocompleteCancel dismisses the popup without applying.
 func (e *Editor) AutocompleteCancel() {
+	e.autocompleteForced = false
+	e.autocompleteFromAwaited = false
 	e.autocompleteMousePressedIndex = nil
 	e.autocompleteRequestID++
 	e.asyncSeq++
@@ -1349,30 +1084,17 @@ func (e *Editor) AutocompleteCancel() {
 // (mirrors upstream editor.ts:644: Enter on a slash-name prefix
 // inserts and falls through to submit).
 func (e *Editor) AutocompleteAccept() (submit bool) {
+	if e.asyncAutocomplete != nil {
+		e.acceptAsyncAutocomplete(nil)
+		return false
+	}
 	e.autocompleteMousePressedIndex = nil
 	if len(e.autocompleteItems) == 0 || e.autocomplete == nil {
 		return false
 	}
-	// The cached popup (autocompleteItems/autocompletePrefix) is filled by a
-	// SetAsyncApply callback posted from refreshAutocomplete so a popup
-	// repaint can't grow the viewport mid-keystroke (see the comment there),
-	// which defers the actual update onto the host's main loop instead of
-	// setting it synchronously with the keystroke that triggered it. A fast
-	// typed sequence (e.g. a whole slash command name delivered in one
-	// burst) can race ahead of that deferred apply and leave the cache
-	// pinned to an earlier, shorter prefix than what the buffer actually
-	// holds. Upstream never observes this because the awaited
-	// local-suggestion promise is always a resolved microtask before the
-	// next keypress event is dispatched.
-	//
-	// The local provider's own answer is always available synchronously
-	// (GetSuggestions never itself defers), so when no async suggestion
-	// source is installed, re-resolve it against the buffer as it stands
-	// right now before accepting -- this recovers exactly what upstream's
-	// synchronous-by-the-time-of-Enter guarantee would have produced,
-	// including completing a still-partial prefix to its best match.
-	if len(e.asyncSources) == 0 {
-		res := e.autocomplete.GetSuggestions(e.lines, e.cursor[0], e.cursor[1])
+	// Accept the published menu without re-querying; only a moved cursor needs a synchronous refresh or rejection of an awaited result.
+	if !e.autocompleteFromAwaited && e.cursor != e.autocompleteQueryCursor {
+		res := e.getAutocompleteSuggestions(e.autocompleteForced)
 		if res == nil || len(res.Items) == 0 {
 			e.autocompleteItems = nil
 			e.autocompleteCursor = 0
@@ -1383,23 +1105,9 @@ func (e *Editor) AutocompleteAccept() (submit bool) {
 		e.autocompleteItems = res.Items
 		e.autocompletePrefix = res.Prefix
 		e.autocompleteQueryCursor = e.cursor
-		if e.autocompleteCursor >= len(res.Items) {
-			e.autocompleteCursor = 0
-		}
+		e.autocompleteCursor = bestAutocompleteMatchIndex(res.Items, res.Prefix)
 	} else if e.cursor != e.autocompleteQueryCursor {
-		// An async source is installed, so its contributions can't be
-		// recomputed synchronously here. The buffer moved since
-		// items/prefix were last computed and a fast keystroke burst let
-		// Enter run ahead of the queued refresh. Accepting anyway would
-		// splice the suggestion's full value in at an offset computed from
-		// the stale, shorter prefix length (ApplyCompletion's
-		// `beforePrefix := line[:cursorCol-len(prefix)]`), leaving a
-		// correctly-typed leading fragment behind the pasted-in value --
-		// e.g. typing "/settings" then Enter renders "/setsettings" or
-		// "/settisettings" depending on which keystroke's apply lost the
-		// race. Treat it as no suggestion to accept instead: the editor
-		// already holds exactly what the user typed, so falling through to
-		// an ordinary submit is correct.
+		// An awaited command result cannot be recomputed on the input loop. Reject a popup whose cursor belongs to older text.
 		e.autocompleteItems = nil
 		e.autocompleteCursor = 0
 		e.autocompletePrefix = ""
@@ -1408,34 +1116,31 @@ func (e *Editor) AutocompleteAccept() (submit bool) {
 	}
 	item := e.autocompleteItems[e.autocompleteCursor]
 	prefix := e.autocompletePrefix
-	newLines, nl, nc := e.autocomplete.ApplyCompletion(e.lines, e.cursor[0], e.cursor[1], item, prefix)
-	e.lines = newLines
-	e.cursor = [2]int{nl, nc}
 	e.saveHistory()
+	e.lastAction = ""
+	lines, row, byteCol := e.autocompleteView()
+	newLines, nl, nc := e.autocomplete.ApplyCompletion(lines, row, byteCol, item, prefix)
+	e.applyAutocompleteState(newLines, nl, nc)
 	// A prefix that starts with "/" falls through to submit; anything else
 	// (an argument completion) does not (upstream editor.ts
 	// tui.select.confirm).
 	isSlashName := strings.HasPrefix(prefix, "/")
-	e.autocompleteItems = nil
-	e.autocompleteCursor = 0
-	e.autocompletePrefix = ""
-	e.Invalidate()
+	e.AutocompleteCancel()
 	if !isSlashName && e.OnChange != nil {
 		e.OnChange(e.Text())
 	}
 	return isSlashName
 }
 
-// AutocompleteMove shifts the popup cursor by delta (clamped). No-op
-// when the popup is closed.
+// AutocompleteMove moves the selection with keyboard-style wraparound. Mouse callers clamp their target before invoking it.
 func (e *Editor) AutocompleteMove(delta int) {
 	n := len(e.autocompleteItems)
 	if n == 0 {
 		return
 	}
-	c := max(e.autocompleteCursor+delta, 0)
-	if c >= n {
-		c = n - 1
+	c := (e.autocompleteCursor + delta) % n
+	if c < 0 {
+		c += n
 	}
 	if c != e.autocompleteCursor {
 		e.autocompleteCursor = c
@@ -1449,80 +1154,141 @@ func (e *Editor) AutocompleteMove(delta int) {
 // forceFileAutocomplete → requestAutocomplete({force: true})
 // (.upstream/current/packages/tui/src/components/editor.ts:2102).
 func (e *Editor) forceFileAutocomplete() bool {
+	if e.asyncAutocomplete != nil {
+		before := jsstring.Slice(e.lines[e.cursor[0]], 0, e.cursor[1])
+		force := !strings.HasPrefix(strings.TrimLeft(before, " \t"), "/") || strings.Contains(strings.TrimLeft(before, " \t"), " ")
+		e.requestAsyncAutocomplete(force, true)
+		return true
+	}
 	if e.autocomplete == nil || e.IsBashMode() {
 		return false
 	}
-	// Don't force-complete inside a slash-command-name token: typing
-	// `/he` + Tab should accept the current popup selection, which is
-	// already handled by the open-popup branch above. When the popup is
-	// closed for `/...`, the slash provider already returns nothing, so
-	// we let the keystroke fall through to the regular Tab dispatch.
-	line := e.lines[e.cursor[0]]
-	col := min(e.cursor[1], len(line))
-	before := line[:col]
-	trimmed := strings.TrimLeft(before, " \t")
-	if strings.HasPrefix(trimmed, "/") && !strings.Contains(trimmed, " ") {
+	lines, row, byteCol := e.autocompleteView()
+	if provider, ok := e.autocomplete.(interface{ ShouldTriggerFileCompletion([]string, int, int) bool }); ok && !provider.ShouldTriggerFileCompletion(lines, row, byteCol) {
 		return false
 	}
-	fp, ok := e.autocomplete.(ForcefulAutocompleteProvider)
-	if !ok {
-		return false
+	if e.startAutocompleteTask != nil {
+		e.autocompleteRequestID++
+		e.requestNativeAutocomplete(true, true)
+		return true
 	}
-	res := fp.GetSuggestionsForce(e.lines, e.cursor[0], e.cursor[1])
+	res := e.getAutocompleteSuggestions(true)
 	if res == nil || len(res.Items) == 0 {
 		return false
 	}
 	if len(res.Items) == 1 {
-		item := res.Items[0]
-		newLines, nl, nc := e.autocomplete.ApplyCompletion(e.lines, e.cursor[0], e.cursor[1], item, res.Prefix)
-		e.lines = newLines
-		e.cursor = [2]int{nl, nc}
-		e.saveHistory()
-		e.autocompleteItems = nil
-		e.autocompleteCursor = 0
-		e.autocompletePrefix = ""
-		e.Invalidate()
-		if e.OnChange != nil {
-			e.OnChange(e.Text())
-		}
+		e.applySingleForcedCompletion(res.Items[0], res.Prefix)
 		return true
 	}
+	e.autocompleteForced = true
 	e.autocompleteItems = res.Items
 	e.autocompletePrefix = res.Prefix
 	e.autocompleteQueryCursor = e.cursor
-	e.autocompleteCursor = 0
+	e.autocompleteCursor = bestAutocompleteMatchIndex(res.Items, res.Prefix)
 	e.Invalidate()
 	return true
 }
 
-// refreshAutocomplete re-queries the provider after a mutation. Called
-// from insert / backspace / word-delete / SetText paths. Closes the
-// popup when the provider returns nil.
+func (e *Editor) getAutocompleteSuggestions(force bool) *AutocompleteSuggestions {
+	lines, row, byteCol := e.autocompleteView()
+	if force {
+		if provider, ok := e.autocomplete.(ForcefulAutocompleteProvider); ok {
+			return provider.GetSuggestionsForce(lines, row, byteCol)
+		}
+	}
+	return e.autocomplete.GetSuggestions(lines, row, byteCol)
+}
+
+func (e *Editor) applySingleForcedCompletion(item AutocompleteItem, prefix string) {
+	e.saveHistory()
+	e.lastAction = ""
+	lines, row, byteCol := e.autocompleteView()
+	newLines, row, col := e.autocomplete.ApplyCompletion(lines, row, byteCol, item, prefix)
+	e.applyAutocompleteState(newLines, row, col)
+	e.autocompleteForced = false
+	e.autocompleteItems = nil
+	e.autocompleteCursor = 0
+	e.autocompletePrefix = ""
+	e.Invalidate()
+	if e.OnChange != nil {
+		e.OnChange(e.Text())
+	}
+}
+
+// naturalAutocompleteContext follows editor.ts buildTriggerPattern and isInSlashCommandContext. Provider path matching is broader than the contexts that automatically open the editor menu.
+func (e *Editor) naturalAutocompleteContext() bool {
+	if e.cursor[0] < 0 || e.cursor[0] >= len(e.lines) {
+		return false
+	}
+	line := e.lines[e.cursor[0]]
+	before := jsstring.Slice(line, 0, e.cursor[1])
+	if e.cursor[0] == 0 && strings.HasPrefix(widthx.JSTrim(before), "/") {
+		return true
+	}
+	for index := 0; index < len(before); {
+		start := index
+		r, size := jsstring.DecodeRuneInString(before[index:])
+		index += size
+		if !slices.Contains(e.autocompleteTriggerCharacters, r) {
+			continue
+		}
+		if start > 0 {
+			previous, _ := utf8.DecodeLastRuneInString(before[:start])
+			if !autocompleteSeparator(previous) {
+				continue
+			}
+		}
+		rest := before[index:]
+		if r == '@' && strings.HasPrefix(rest, `"`) && !strings.Contains(rest[1:], `"`) {
+			return true
+		}
+		if !strings.ContainsFunc(rest, autocompleteSeparator) {
+			return true
+		}
+	}
+	return false
+}
+
+// refreshAutocomplete re-queries an open popup or an eligible natural trigger context after a mutation.
 func (e *Editor) refreshAutocomplete() {
 	e.autocompleteMousePressedIndex = nil
 	e.autocompleteRequestID++
+	if e.asyncAutocomplete != nil {
+		if natural, _ := e.naturalAsyncAutocomplete(); !natural {
+			e.AutocompleteCancel()
+			return
+		}
+		e.requestAsyncAutocomplete(e.autocompleteForced, false)
+		return
+	}
 	// Always cancel any in-flight async query so its late delivery
 	// can't overwrite items belonging to a newer buffer state.
 	if e.asyncCancel != nil {
 		e.asyncCancel()
 		e.asyncCancel = nil
 	}
+	if !e.AutocompleteOpen() && !e.naturalAutocompleteContext() {
+		return
+	}
+	if e.autocomplete == nil {
+		return
+	}
+	force := e.AutocompleteOpen() && e.autocompleteForced
+	if e.startAutocompleteTask != nil {
+		e.requestNativeAutocomplete(force, false)
+		return
+	}
 	// Resolve any deferred fd-backed @-file search up front so a deep tree
 	// walk runs off the input thread instead of blocking keystrokes.
 	var fileTask func(context.Context) []AutocompleteItem
 	var filePrefix string
 	if afs, ok := e.autocomplete.(AsyncFileSearcher); ok && !e.IsBashMode() {
-		if pfx, run, ok := afs.FileSearchTask(e.lines, e.cursor[0], e.cursor[1]); ok {
+		lines, row, byteCol := e.autocompleteView()
+		if pfx, run, ok := afs.FileSearchTask(lines, row, byteCol); ok {
 			fileTask, filePrefix = run, pfx
 		}
 	}
 	if e.autocomplete == nil {
-		// Even with no local provider, async sources should still
-		// fire. This matches upstream where the slash provider may
-		// return nil and a wrapper provides domain-specific items.
-		if !e.IsBashMode() {
-			e.kickAsyncAutocomplete(nil, fileTask, filePrefix)
-		}
 		return
 	}
 	// Never show the slash-autocomplete popup while the
@@ -1538,7 +1304,7 @@ func (e *Editor) refreshAutocomplete() {
 		}
 		return
 	}
-	res := e.autocomplete.GetSuggestions(e.lines, e.cursor[0], e.cursor[1])
+	res := e.getAutocompleteSuggestions(force)
 	if res == nil || len(res.Items) == 0 {
 		// Only clear synchronously when no async fd search is pending;
 		// otherwise keep the prior popup until fd returns to avoid flicker.
@@ -1548,9 +1314,8 @@ func (e *Editor) refreshAutocomplete() {
 			e.autocompletePrefix = ""
 			e.Invalidate()
 		}
-		// Local provider returned nothing: kick async sources to
-		// see if any of them have suggestions for this buffer.
-		e.kickAsyncAutocomplete(nil, fileTask, filePrefix)
+		// Complete a deferred filesystem answer if the local provider has one.
+		e.kickFileAutocomplete(nil, fileTask, filePrefix)
 		return
 	}
 	requestID, text, cursor := e.autocompleteRequestID, e.Text(), e.cursor
@@ -1562,9 +1327,8 @@ func (e *Editor) refreshAutocomplete() {
 		e.autocompleteItems = res.Items
 		e.autocompletePrefix = res.Prefix
 		e.autocompleteQueryCursor = cursor
-		if e.autocompleteCursor >= len(res.Items) {
-			e.autocompleteCursor = 0
-		}
+		e.autocompleteCursor = bestAutocompleteMatchIndex(res.Items, res.Prefix)
+		e.autocompleteForced = force
 		e.Invalidate()
 	}
 	// Upstream awaits even local suggestions. Paint the input before a popup
@@ -1574,41 +1338,26 @@ func (e *Editor) refreshAutocomplete() {
 	} else {
 		apply()
 	}
-	// Even when local hits, kick async to allow extension providers
-	// to append additional items (e.g. /<command> + extension-supplied
-	// argument completions).
-	e.kickAsyncAutocomplete(res, fileTask, filePrefix)
+	e.kickFileAutocomplete(res, fileTask, filePrefix)
 }
 
-// kickAsyncAutocomplete fires off all installed async sources for the
-// current buffer state. baseRes is the local provider's result (or nil
-// if it returned nothing): async items are appended after it.
-//
-// pig-specific: upstream chains providers as a fold; pig runs them
-// in parallel because the subprocess RPC chain folds would serialise
-// per provider per keystroke. The user-visible difference is that
-// upstream wrappers can FILTER the chain's items, while pig async
-// providers can only ADD. None of the in-tree extension examples rely
-// on filtering, so this is acceptable.
-func (e *Editor) kickAsyncAutocomplete(baseRes *AutocompleteSuggestions, fileTask func(context.Context) []AutocompleteItem, filePrefix string) {
-	if len(e.asyncSources) == 0 && fileTask == nil {
+// kickFileAutocomplete completes a deferred local filesystem query without running the search on the input loop.
+func (e *Editor) kickFileAutocomplete(baseRes *AutocompleteSuggestions, fileTask func(context.Context) []AutocompleteItem, filePrefix string) {
+	if fileTask == nil {
 		return
 	}
 	e.asyncSeq++
-	mySeq := e.asyncSeq
-	ctx, cancel := context.WithCancel(context.Background())
+	sequence := e.asyncSeq
+	lifetime := e.autocompleteLifetime
+	if lifetime == nil {
+		lifetime = context.Background()
+	}
+	ctx, cancel := context.WithCancel(lifetime)
 	e.asyncCancel = cancel
-	// Snapshot buffer state so the goroutine queries a stable shape.
-	linesCopy := make([]string, len(e.lines))
-	copy(linesCopy, e.lines)
-	cursorLine := e.cursor[0]
-	cursorCol := e.cursor[1]
-	sources := append([]AsyncSuggestionSource(nil), e.asyncSources...)
-	go func() {
-		// Upstream debounces natural attachment completion for 20 ms. Waiting
-		// inside the owned worker lets a superseding keystroke cancel before fd
-		// starts, without a timer goroutine mutating editor state.
-		if fileTask != nil && strings.HasPrefix(filePrefix, "@") {
+	lines, cursor, request := slices.Clone(e.lines), e.cursor, e.autocompleteRequestID
+	work := func() {
+		defer cancel()
+		if strings.HasPrefix(filePrefix, "@") {
 			timer := time.NewTimer(attachmentAutocompleteDebounce)
 			defer timer.Stop()
 			select {
@@ -1617,73 +1366,25 @@ func (e *Editor) kickAsyncAutocomplete(baseRes *AutocompleteSuggestions, fileTas
 				return
 			}
 		}
-		// Run the deferred fd-backed @-file search (if any) under ctx so the
-		// next keystroke aborts it. Its results are the primary suggestions.
-		var fileItems []AutocompleteItem
-		if fileTask != nil {
-			fileItems = fileTask(ctx)
-		}
-		// Fan-out across all sources; collect their results.
-		type srcResult struct {
-			items  []AutocompleteItem
-			prefix string
-		}
-		results := make(chan srcResult, len(sources))
-		for _, s := range sources {
-			go func() {
-				out := s.Suggest(ctx, linesCopy, cursorLine, cursorCol)
-				if out == nil {
-					results <- srcResult{}
-					return
-				}
-				results <- srcResult{items: out.Items, prefix: out.Prefix}
-			}()
-		}
-		merged := []AutocompleteItem{}
-		mergedPrefix := ""
-		for range sources {
-			r := <-results
-			merged = append(merged, r.items...)
-			if mergedPrefix == "" && r.prefix != "" {
-				mergedPrefix = r.prefix
-			}
-		}
+		items := fileTask(ctx)
 		if ctx.Err() != nil {
-			return // cancelled by next mutation
+			return
 		}
-		// When a file search ran, always apply its result (including empty,
-		// which clears a stale popup). Otherwise keep the old behavior of
-		// leaving the popup untouched when nothing was found.
-		if fileTask == nil && len(merged) == 0 && baseRes == nil {
-			return // nothing to show, leave popup closed
-		}
-		// Merge: local items first, then file items, then async items.
-		final := []AutocompleteItem(nil)
-		finalPrefix := ""
+		var final []AutocompleteItem
+		prefix := filePrefix
 		if baseRes != nil {
 			final = append(final, baseRes.Items...)
-			finalPrefix = baseRes.Prefix
+			prefix = baseRes.Prefix
 		}
-		final = append(final, fileItems...)
-		if finalPrefix == "" {
-			finalPrefix = filePrefix
-		}
-		final = append(final, merged...)
-		if finalPrefix == "" {
-			finalPrefix = mergedPrefix
-		}
-		// Apply on the host's main loop, single-threaded with keystroke
-		// handling, so this worker never mutates the lock-free editor state.
-		// The seq re-check runs there too (asyncSeq is written only on the
-		// main loop), discarding results superseded by a newer keystroke.
+		final = append(final, items...)
 		apply := func() {
-			if ctx.Err() != nil || mySeq != e.asyncSeq || e.cursor != [2]int{cursorLine, cursorCol} || !slices.Equal(e.lines, linesCopy) {
+			if lifetime.Err() != nil || request != e.autocompleteRequestID || sequence != e.asyncSeq || e.cursor != cursor || !slices.Equal(e.lines, lines) {
 				return
 			}
 			e.autocompleteMousePressedIndex = nil
 			e.autocompleteItems = final
-			e.autocompletePrefix = finalPrefix
-			e.autocompleteQueryCursor = [2]int{cursorLine, cursorCol}
+			e.autocompletePrefix = prefix
+			e.autocompleteQueryCursor = cursor
 			if e.autocompleteCursor >= len(final) {
 				e.autocompleteCursor = 0
 			}
@@ -1694,76 +1395,25 @@ func (e *Editor) kickAsyncAutocomplete(baseRes *AutocompleteSuggestions, fileTas
 		} else {
 			apply()
 		}
-	}()
+	}
+	if e.startAutocompleteTask != nil {
+		e.startAutocompleteTask(work)
+	} else {
+		go work()
+	}
 }
 
-// renderCursorAt splices an inverted-video cursor cell into `line` at the
-// given byte offset. If the offset is at end-of-line a synthetic space
-// is appended so the cursor still has somewhere to render.
-func renderCursorAt(line string, col int, emitMarker bool) string {
+// renderCursorAt highlights the marker-aware grapheme at a UTF-16 offset. At end of line it appends a highlighted space.
+func (e *Editor) renderCursorAt(line string, col int, emitMarker bool) string {
 	marker := ""
 	if emitMarker {
 		marker = widthx.CursorMarker
 	}
-	if col >= len(line) {
+	if col >= jsstring.Length(line) {
 		return line + marker + "\033[7m \033[0m"
 	}
-	end := nextGraphemeEnd(line, col)
-	return line[:col] + marker + "\033[7m" + line[col:end] + "\033[0m" + line[end:]
-}
-
-// chunkByWidth splits s into column-aligned chunks of at most `width`
-// terminal columns each, returning each chunk's text plus its byte
-// offset in the original string. Empty input returns one empty chunk
-// at offset 0 so the editor still has a row to land the cursor on.
-//
-// Uses graphemeSegments widths (see graphemes.go) so emoji and CJK wide characters
-// (each 2 terminal columns, 1 rune) are measured correctly. A prior
-// rune-count implementation caused wide-char lines to overflow the
-// terminal width, producing soft-wrap ghost rows in the TUI.
-func chunkByWidth(s string, width int) ([]string, []int) {
-	if s == "" {
-		return []string{""}, []int{0}
-	}
-	var chunks []string
-	var starts []int
-	cols := 0
-	chunkStart := 0
-	for _, seg := range graphemeSegments(s) {
-		if cols == 0 {
-			chunkStart = seg.Start
-		}
-		if cols+seg.Width > width {
-			if cols > 0 {
-				chunks = append(chunks, s[chunkStart:seg.Start])
-				starts = append(starts, chunkStart)
-				chunkStart = seg.Start
-				cols = 0
-			}
-			if seg.Width > width {
-				chunks = append(chunks, s[seg.Start:seg.End])
-				starts = append(starts, seg.Start)
-				chunkStart = seg.End
-				cols = 0
-				continue
-			}
-		}
-		cols += seg.Width
-		if cols == width {
-			chunks = append(chunks, s[chunkStart:seg.End])
-			starts = append(starts, chunkStart)
-			chunkStart = seg.End
-			cols = 0
-		}
-	}
-	if cols > 0 {
-		chunks = append(chunks, s[chunkStart:])
-		starts = append(starts, chunkStart)
-	}
-	if len(chunks) == 0 {
-		return []string{""}, []int{0}
-	}
-	return chunks, starts
+	end := e.nextSegmentEnd(line, col)
+	return jsstring.Slice(line, 0, col) + marker + "\033[7m" + jsstring.Slice(line, col, end) + "\033[0m" + jsstring.Slice(line, end)
 }
 
 // pasteMarkerRegexp returns the regexp matching the marker
@@ -1786,6 +1436,10 @@ func (e *Editor) handlePasteFlush(buf string) {
 	// path that never triggers it, so a paste never leaves a popup open that
 	// would swallow the following Enter.
 	e.AutocompleteCancel()
+	e.inputHistIdx = -1
+	e.inputHistSaved = nil
+	e.lastAction = ""
+	e.saveHistory()
 	// Some terminals re-encode control bytes inside bracketed paste as
 	// CSI-u Ctrl+<letter> sequences (ESC [ <codepoint> ; 5 u). Decode
 	// those back to their literal byte before normalization so Ctrl+J
@@ -1810,26 +1464,24 @@ func (e *Editor) handlePasteFlush(buf string) {
 	})
 	// Normalize line endings and tabs the same way upstream
 	// normalizeText does (\r\n / \r → \n, tab → 4 spaces).
-	clean := strings.ReplaceAll(decoded, "\r\n", "\n")
-	clean = strings.ReplaceAll(clean, "\r", "\n")
-	clean = strings.ReplaceAll(clean, "\t", "    ")
-	// Filter non-printable except newline.
-	var filtered strings.Builder
-	filtered.Grow(len(clean))
-	for _, r := range clean {
-		if r == '\n' || r >= 32 {
-			filtered.WriteRune(r)
+	clean := normalizeEditorText(decoded)
+	// Filter JavaScript code units so lone surrogates survive paste cleaning.
+	units := jsstring.ToUTF16(clean)
+	filtered := units[:0]
+	for _, unit := range units {
+		if unit == '\n' || unit >= 32 {
+			filtered = append(filtered, unit)
 		}
 	}
-	text := filtered.String()
+	text := jsstring.FromUTF16(filtered)
 	if text == "" {
 		return
 	}
 	if strings.ContainsRune("/~.", rune(text[0])) && e.cursor[0] >= 0 && e.cursor[0] < len(e.lines) {
 		line := e.lines[e.cursor[0]]
-		cursor := min(max(e.cursor[1], 0), len(line))
+		cursor := min(max(e.cursor[1], 0), jsstring.Length(line))
 		if cursor > 0 {
-			before, _ := utf8.DecodeLastRuneInString(line[:cursor])
+			before, _ := jsstring.DecodeRuneInString(jsstring.Slice(line, cursor-1, cursor))
 			if isJSWordChar(before) {
 				text = " " + text
 			}
@@ -1850,30 +1502,27 @@ func (e *Editor) handlePasteFlush(buf string) {
 		} else {
 			marker = fmt.Sprintf("[paste #%d %d chars]", id, charCount)
 		}
-		e.saveHistory()
 		e.insert(marker)
 		return
 	}
-	e.saveHistory()
 	e.insert(text)
 }
 
-func jsStringLength(text string) int {
-	length := 0
-	for _, r := range text {
-		length += utf16.RuneLen(r)
-	}
-	return length
-}
+func jsStringLength(text string) int { return jsstring.Length(text) }
 
 func isJSWordChar(r rune) bool {
 	return r == '_' || r >= '0' && r <= '9' || r >= 'A' && r <= 'Z' || r >= 'a' && r <= 'z'
 }
 
 func (e *Editor) HandleInput(data string) {
+	if e.remote != nil {
+		e.remote.remote.Input(data)
+		return
+	}
 	beforeText := e.Text()
+	notifyChange := true
 	defer func() {
-		if e.OnChange != nil && e.Text() != beforeText {
+		if notifyChange && e.OnChange != nil && e.Text() != beforeText {
 			e.OnChange(e.Text())
 		}
 	}()
@@ -1925,35 +1574,35 @@ func (e *Editor) HandleInput(data string) {
 		return
 	}
 
-	// ─── Autocomplete navigation ─────────────────────────────────────────
-	// When the autocomplete popup is open, ↑/↓/Ctrl+P/Ctrl+N
-	// navigate the popup and Tab accepts the selection. Esc and Enter
-	// are handled by the host (interactive.go) before reaching us.
-	//
-	// Routed through the TUI keybinding registry so user overrides in
-	// ~/.pig/keybindings.json (e.g. swapping select up/down) take effect
-	// here too. Mirrors upstream editor.ts handleInput autocomplete path
-	// (.upstream/current/packages/tui/src/components/editor.ts:602-628).
+	// Completion selection precedes ordinary editing. Async application remains owned by the host's input ticket.
 	kb := GetTUIKeybindings()
 	if len(e.autocompleteItems) > 0 {
 		switch {
-		case kb.Matches(data, KBSelectUp), data == "\x10": // up / Ctrl+P (legacy)
+		case kb.Matches(data, KBSelectUp):
 			e.AutocompleteMove(-1)
 			return
-		case kb.Matches(data, KBSelectDown), data == "\x0e": // down / Ctrl+N (legacy)
+		case kb.Matches(data, KBSelectDown):
 			e.AutocompleteMove(1)
 			return
-		case kb.Matches(data, KBInputTab): // Tab: accept (no submit; submit is reserved for Enter)
-			e.AutocompleteAccept()
+		case kb.Matches(data, KBSelectCancel):
+			e.AutocompleteCancel()
+			return
+		case kb.Matches(data, KBInputTab):
+			notifyChange = e.AutocompleteAccept()
+			return
+		case kb.Matches(data, KBSelectConfirm):
+			if !e.AutocompleteAccept() {
+				notifyChange = false
+				return
+			}
+		}
+	} else if kb.Matches(data, KBInputTab) {
+		line := e.lines[e.cursor[0]]
+		before := jsstring.Slice(line, 0, e.cursor[1])
+		if e.cursor[0] == 0 && strings.HasPrefix(widthx.JSTrim(before), "/") && !strings.Contains(strings.TrimLeftFunc(before, widthx.IsJSSpace), " ") {
 			e.refreshAutocomplete()
 			return
 		}
-	} else if kb.Matches(data, KBInputTab) {
-		// Popup closed: Tab triggers a forced file-completion request,
-		// mirroring upstream editor.ts handleTabCompletion +
-		// forceFileAutocomplete (.upstream/current/packages/tui/src/
-		// components/editor.ts:2086-2104). Only fires when the editor
-		// is not in a slash-command-name context.
 		if e.forceFileAutocomplete() {
 			return
 		}
@@ -1999,7 +1648,7 @@ func (e *Editor) HandleInput(data string) {
 			e.navigateHistory(1)
 		case e.isOnLastVisualLine():
 			e.lastAction = ""
-			e.setCursorCol(len(e.lines[e.cursor[0]]))
+			e.setCursorCol(jsstring.Length(e.lines[e.cursor[0]]))
 			e.Invalidate()
 		default:
 			e.moveCursor(1, 0)
@@ -2029,7 +1678,7 @@ func (e *Editor) HandleInput(data string) {
 			return
 		}
 		line := e.lines[e.cursor[0]]
-		if e.cursor[1] > 0 && line[e.cursor[1]-1] == '\\' {
+		if e.cursor[1] > 0 && jsstring.Slice(line, e.cursor[1]-1, e.cursor[1]) == "\\" {
 			e.backspace()
 			e.insertNewline()
 			e.refreshAutocomplete()
@@ -2059,12 +1708,12 @@ func (e *Editor) HandleInput(data string) {
 	case kb.Matches(data, KBEditorCursorLineStart):
 		// Home / Ctrl+A: start of line
 		e.lastAction = ""
-		e.cursor[1] = 0
+		e.setCursorCol(0)
 		e.Invalidate()
 	case kb.Matches(data, KBEditorCursorLineEnd):
 		// End / Ctrl+E: end of line
 		e.lastAction = ""
-		e.cursor[1] = len(e.lines[e.cursor[0]])
+		e.setCursorCol(jsstring.Length(e.lines[e.cursor[0]]))
 		e.Invalidate()
 	case kb.Matches(data, KBEditorDeleteToLineStart):
 		// Ctrl+U: kill to line start
@@ -2082,8 +1731,6 @@ func (e *Editor) HandleInput(data string) {
 		if e.killRing.Len() > 0 {
 			e.saveHistory()
 			text := e.killRing.Peek()
-			e.yankStart = e.cursor
-			e.yankLen = len(text)
 			e.insert(text)
 			e.lastAction = "yank"
 		}
@@ -2098,8 +1745,6 @@ func (e *Editor) HandleInput(data string) {
 			e.killRing.Rotate()
 			// Re-insert the new top.
 			text := e.killRing.Peek()
-			e.yankStart = e.cursor
-			e.yankLen = len(text)
 			e.insert(text)
 			e.lastAction = "yank"
 		}
@@ -2119,15 +1764,10 @@ func (e *Editor) HandleInput(data string) {
 		e.jumpMode = "backward"
 	default:
 		if len(data) > 0 && data[0] >= 0x20 {
-			e.lastAction = ""
-			e.insert(data)
+			e.insertCharacter(data)
 			e.refreshAutocomplete()
 		} else if ch, ok := DecodePrintableKey(data); ok {
-			// Kitty keyboard mode and xterm modifyOtherKeys report Shift+<letter>
-			// as an escape sequence. Decode it to the actual character so capital
-			// letters are not silently dropped. Same helper TextInput uses.
-			e.lastAction = ""
-			e.insert(ch)
+			e.insertCharacter(ch)
 			e.refreshAutocomplete()
 		}
 	}
@@ -2171,12 +1811,12 @@ func (e *Editor) shouldSubmitOnBackslashEnter(data string, kb *TUIKeybindingsMan
 		return false
 	}
 	line := e.lines[e.cursor[0]]
-	return e.cursor[1] > 0 && line[e.cursor[1]-1] == '\\'
+	return e.cursor[1] > 0 && jsstring.Slice(line, e.cursor[1]-1, e.cursor[1]) == "\\"
 }
 
 func (e *Editor) submitValue() {
 	e.AutocompleteCancel()
-	result := strings.TrimSpace(e.GetExpandedText())
+	result := widthx.JSTrim(e.GetExpandedText())
 	e.lines = []string{""}
 	e.cursor = [2]int{0, 0}
 	e.jumpMode = ""
@@ -2188,15 +1828,31 @@ func (e *Editor) submitValue() {
 	e.pasteCounter = 0
 	e.lastAction = ""
 	e.history = nil
-	e.histIdx = 0
-	e.saveHistory()
+	e.inputHistSaved = nil
 	e.Invalidate()
 	if e.OnSubmit != nil {
 		e.OnSubmit(result)
 	}
 }
 
+func (e *Editor) insertCharacter(char string) {
+	if isWhitespaceChar(char) || e.lastAction != "type-word" {
+		e.saveHistory()
+	}
+	e.lastAction = "type-word"
+	e.insert(char)
+}
+
+func normalizeEditorText(text string) string {
+	text = strings.ReplaceAll(text, "\r\n", "\n")
+	text = strings.ReplaceAll(text, "\r", "\n")
+	return jsstring.Canonical(strings.ReplaceAll(text, "\t", "    "))
+}
+
 func (e *Editor) insert(s string) {
+	if s == "" {
+		return
+	}
 	// Handle multi-line inserts (e.g. from paste or programmatic API).
 	if strings.Contains(s, "\n") {
 		e.insertMultiLine(s)
@@ -2205,50 +1861,42 @@ func (e *Editor) insert(s string) {
 	l := e.cursor[0]
 	c := e.cursor[1]
 	line := e.lines[l]
-	e.lines[l] = line[:c] + s + line[c:]
-	e.cursor[1] += len(s)
+	e.lines[l] = jsstring.Splice(line, c, c, s)
+	e.setCursorCol(c + jsstring.Length(s))
 	e.inputHistIdx = -1 // typing exits history-browse mode
-	e.saveHistory()
+	e.inputHistSaved = nil
 	e.Invalidate()
 }
 
 // insertMultiLine inserts text that may contain newlines.
 func (e *Editor) insertMultiLine(s string) {
 	parts := strings.Split(s, "\n")
-	l := e.cursor[0]
-	c := e.cursor[1]
+	l, c := e.cursor[0], e.cursor[1]
 	line := e.lines[l]
-	before := line[:c]
-	after := line[c:]
-
-	// First part joins with content before cursor.
-	e.lines[l] = before + parts[0]
-
-	// Middle parts become new lines.
-	for i := 1; i < len(parts)-1; i++ {
-		e.lines = append(e.lines[:l+i], append([]string{parts[i]}, e.lines[l+i:]...)...)
-	}
-
-	// Last part gets the content after the cursor.
-	lastIdx := l + len(parts) - 1
-	if len(parts) > 1 {
-		e.lines = append(e.lines[:lastIdx], append([]string{parts[len(parts)-1] + after}, e.lines[lastIdx:]...)...)
-	} else {
-		e.lines[l] += after
-	}
-
-	e.cursor[0] = lastIdx
-	e.cursor[1] = len(parts[len(parts)-1])
+	before, after := jsstring.Slice(line, 0, c), jsstring.Slice(line, c)
+	lastCol := jsstring.Length(parts[len(parts)-1])
+	parts[0] = jsstring.Canonical(before + parts[0])
+	parts[len(parts)-1] = jsstring.Canonical(parts[len(parts)-1] + after)
+	e.lines = slices.Concat(e.lines[:l], parts, e.lines[l+1:])
+	e.cursor[0] = l + len(parts) - 1
+	e.setCursorCol(lastCol)
 	e.inputHistIdx = -1
-	e.saveHistory()
+	e.inputHistSaved = nil
 	e.Invalidate()
 }
 
-// InsertTextAtCursor is the public API for programmatic text insertion.
-// Mirrors upstream editor.ts::insertTextAtCursor. Handles multi-line text.
+// InsertTextAtCursor inserts normalized single- or multi-line text as one undoable edit.
 func (e *Editor) InsertTextAtCursor(text string) {
+	if e.remote != nil {
+		e.remote.remote.InsertTextAtCursor(text)
+		return
+	}
+	if text == "" {
+		return
+	}
 	e.saveHistory()
-	e.insert(text)
+	e.lastAction = ""
+	e.insert(normalizeEditorText(text))
 	e.refreshAutocomplete()
 	if e.OnChange != nil {
 		e.OnChange(e.Text())
@@ -2256,30 +1904,39 @@ func (e *Editor) InsertTextAtCursor(text string) {
 }
 
 func (e *Editor) insertNewline() {
+	e.saveHistory()
+	e.lastAction = ""
+	e.inputHistIdx = -1
+	e.inputHistSaved = nil
 	l := e.cursor[0]
 	c := e.cursor[1]
 	line := e.lines[l]
-	before := line[:c]
-	after := line[c:]
+	before := jsstring.Slice(line, 0, c)
+	after := jsstring.Slice(line, c)
 	e.lines = append(e.lines[:l+1], append([]string{after}, e.lines[l+1:]...)...)
 	e.lines[l] = before
 	e.cursor[0]++
-	e.cursor[1] = 0
-	e.saveHistory()
+	e.setCursorCol(0)
 	e.Invalidate()
 }
 
 func (e *Editor) backspace() {
+	e.lastAction = ""
+	e.inputHistIdx = -1
+	e.inputHistSaved = nil
 	l := e.cursor[0]
 	c := e.cursor[1]
+	if c > 0 || l > 0 {
+		e.saveHistory()
+	}
 	if c > 0 {
 		line := e.lines[l]
 		// If the segment immediately before the cursor is a paste marker,
 		// delete the whole marker atomically and compact the paste registry,
 		// mirroring upstream editor.ts backspace. Otherwise delete one grapheme.
-		if segs := e.segmentLine(line[:c]); len(segs) > 0 && isPasteMarker(segs[len(segs)-1].Text) {
+		if segs := e.segmentLine(jsstring.Slice(line, 0, c)); len(segs) > 0 && isPasteMarker(segs[len(segs)-1].Text) {
 			marker := segs[len(segs)-1]
-			e.lines[l] = line[:marker.Start] + line[c:]
+			e.lines[l] = jsstring.Splice(line, marker.Start, c, "")
 			e.cursor[1] = marker.Start
 			if m := pasteMarkerSingle.FindStringSubmatch(marker.Text); m != nil {
 				if targetID, err := strconv.Atoi(m[1]); err == nil {
@@ -2287,18 +1944,20 @@ func (e *Editor) backspace() {
 				}
 			}
 		} else {
-			start := previousGraphemeStart(line, c)
-			e.lines[l] = line[:start] + line[c:]
+			start := e.previousSegmentStart(line, c)
+			e.lines[l] = jsstring.Splice(line, start, c, "")
 			e.cursor[1] = start
 		}
 	} else if l > 0 {
 		prev := e.lines[l-1]
-		e.cursor[1] = len(prev)
-		e.lines[l-1] = prev + e.lines[l]
+		e.cursor[1] = jsstring.Length(prev)
+		e.lines[l-1] = jsstring.Canonical(prev + e.lines[l])
 		e.lines = append(e.lines[:l], e.lines[l+1:]...)
 		e.cursor[0]--
 	}
-	e.saveHistory()
+	if c > 0 || l > 0 {
+		e.setCursorCol(e.cursor[1])
+	}
 	e.Invalidate()
 }
 
@@ -2341,82 +2000,24 @@ func (e *Editor) removePasteFromRegistry(targetID int) {
 // forwardDelete deletes the character at the cursor (Delete key / Ctrl+D).
 // Mirrors upstream editor.ts::forwardDelete.
 func (e *Editor) forwardDelete() {
+	e.lastAction = ""
+	e.inputHistIdx = -1
+	e.inputHistSaved = nil
 	l := e.cursor[0]
 	c := e.cursor[1]
 	line := e.lines[l]
-	if c < len(line) {
-		end := nextGraphemeEnd(line, c)
-		e.lines[l] = line[:c] + line[end:]
+	if c < jsstring.Length(line) || l < len(e.lines)-1 {
+		e.saveHistory()
+	}
+	if c < jsstring.Length(line) {
+		end := e.nextSegmentEnd(line, c)
+		e.lines[l] = jsstring.Splice(line, c, end, "")
 	} else if l < len(e.lines)-1 {
 		// Join with next line.
-		e.lines[l] = line + e.lines[l+1]
+		e.lines[l] = jsstring.Canonical(line + e.lines[l+1])
 		e.lines = append(e.lines[:l+1], e.lines[l+2:]...)
 	}
-	e.saveHistory()
 	e.Invalidate()
-}
-
-// moveVisualLine moves the cursor up (dir=-1) or down (dir=1) by one visual
-// (wrapped) line. Mirrors upstream editor.ts visual-line cursor movement.
-// When the current line wraps to multiple visual lines, cursor stays within
-// that logical line but moves to the previous/next visual chunk.
-func (e *Editor) moveVisualLine(dir int) {
-	width := e.renderWidth
-	if width < 2 {
-		// Fallback: simple logical line movement.
-		e.moveLogicalLine(dir)
-		return
-	}
-
-	l := e.cursor[0]
-	c := e.cursor[1]
-	line := e.lines[l]
-
-	// Find which visual chunk the cursor is in.
-	_, starts := chunkByWidth(line, width)
-	chunkIdx := 0
-	for i, s := range starts {
-		if c >= s {
-			chunkIdx = i
-		}
-	}
-
-	if dir == -1 {
-		if chunkIdx > 0 {
-			// Move up within the same logical line.
-			prevStart := starts[chunkIdx-1]
-			targetCol := c - starts[chunkIdx]
-			e.cursor[1] = e.byteOffsetForColumn(line[prevStart:], targetCol) + prevStart
-			e.Invalidate()
-		} else if l > 0 {
-			// Move to the last visual chunk of the previous logical line.
-			prevLine := e.lines[l-1]
-			_, prevStarts := chunkByWidth(prevLine, width)
-			lastChunkStart := prevStarts[len(prevStarts)-1]
-			targetCol := c - starts[0]
-			e.cursor[0] = l - 1
-			newOff := min(e.byteOffsetForColumn(prevLine[lastChunkStart:], targetCol)+lastChunkStart, len(prevLine))
-			e.cursor[1] = newOff
-			e.Invalidate()
-		}
-	} else { // dir == 1
-		if chunkIdx < len(starts)-1 {
-			// Move down within the same logical line.
-			nextStart := starts[chunkIdx+1]
-			targetCol := c - starts[chunkIdx]
-			newOff := min(e.byteOffsetForColumn(line[nextStart:], targetCol)+nextStart, len(line))
-			e.cursor[1] = newOff
-			e.Invalidate()
-		} else if l < len(e.lines)-1 {
-			// Move to the first visual chunk of the next logical line.
-			nextLine := e.lines[l+1]
-			targetCol := c - starts[chunkIdx]
-			e.cursor[0] = l + 1
-			newOff := min(e.byteOffsetForColumn(nextLine, targetCol), len(nextLine))
-			e.cursor[1] = newOff
-			e.Invalidate()
-		}
-	}
 }
 
 func (e *Editor) moveToVisualLine(visual []editorVisualLine, currentVisualLine, targetVisualLine int) {
@@ -2446,7 +2047,31 @@ func (e *Editor) moveToVisualLine(visual []editorVisualLine, currentVisualLine, 
 	moveToVisualCol := e.computeVerticalMoveColumn(currentVisualCol, sourceMaxVisualCol, targetMaxVisualCol)
 	e.cursor[0] = targetVL.logicalLine
 	targetCol := targetVL.startCol + moveToVisualCol
-	e.cursor[1] = min(targetCol, len(e.lines[targetVL.logicalLine]))
+	e.cursor[1] = min(targetCol, jsstring.Length(e.lines[targetVL.logicalLine]))
+	for _, segment := range e.segmentLine(e.lines[targetVL.logicalLine]) {
+		if segment.Start > e.cursor[1] {
+			break
+		}
+		if segment.End-segment.Start <= 1 {
+			continue
+		}
+		if e.cursor[1] < segment.End {
+			if segment.Start < targetVL.startCol && targetVisualLine > currentVisualLine {
+				next := targetVisualLine + 1
+				for next < len(visual) && visual[next].logicalLine == targetVL.logicalLine && visual[next].startCol < segment.End {
+					next++
+				}
+				if next < len(visual) {
+					e.moveToVisualLine(visual, currentVisualLine, next)
+					return
+				}
+			}
+			e.snappedFromCursorCol = new(e.cursor[1])
+			e.cursor[1] = segment.Start
+			e.Invalidate()
+			return
+		}
+	}
 	e.snappedFromCursorCol = nil
 	e.Invalidate()
 }
@@ -2476,6 +2101,11 @@ func (e *Editor) computeVerticalMoveColumn(currentVisualCol, sourceMaxVisualCol,
 }
 
 func (e *Editor) moveCursor(deltaLine, deltaCol int) {
+	defer func() {
+		if e.AutocompleteOpen() {
+			e.refreshAutocomplete()
+		}
+	}()
 	e.lastAction = ""
 	visual := e.buildVisualLineMap(e.renderWidth)
 	currentVisualLine := e.findCurrentVisualLine(visual)
@@ -2493,8 +2123,8 @@ func (e *Editor) moveCursor(deltaLine, deltaCol int) {
 	currentLine := e.lines[e.cursor[0]]
 	if deltaCol > 0 {
 		switch {
-		case e.cursor[1] < len(currentLine):
-			e.setCursorCol(nextGraphemeEnd(currentLine, e.cursor[1]))
+		case e.cursor[1] < jsstring.Length(currentLine):
+			e.setCursorCol(e.nextSegmentEnd(currentLine, e.cursor[1]))
 		case e.cursor[0] < len(e.lines)-1:
 			e.cursor[0]++
 			e.setCursorCol(0)
@@ -2505,10 +2135,10 @@ func (e *Editor) moveCursor(deltaLine, deltaCol int) {
 	} else {
 		switch {
 		case e.cursor[1] > 0:
-			e.setCursorCol(previousGraphemeStart(currentLine, e.cursor[1]))
+			e.setCursorCol(e.previousSegmentStart(currentLine, e.cursor[1]))
 		case e.cursor[0] > 0:
 			e.cursor[0]--
-			e.setCursorCol(len(e.lines[e.cursor[0]]))
+			e.setCursorCol(jsstring.Length(e.lines[e.cursor[0]]))
 		}
 	}
 	e.Invalidate()
@@ -2527,236 +2157,147 @@ func (e *Editor) pageScroll(direction int) {
 func (e *Editor) jumpToChar(char, direction string) {
 	e.lastAction = ""
 	forward := direction == "forward"
-	end := -1
-	step := -1
+	end, step := -1, -1
 	if forward {
-		end = len(e.lines)
-		step = 1
+		end, step = len(e.lines), 1
 	}
-	for lineIdx := e.cursor[0]; lineIdx != end; lineIdx += step {
-		line := e.lines[lineIdx]
-		searchFrom := 0
+	for row := e.cursor[0]; row != end; row += step {
+		line := e.lines[row]
+		from := jsstring.Length(line)
 		if forward {
-			if lineIdx == e.cursor[0] {
-				searchFrom = min(e.cursor[1]+1, len(line))
-			}
-		} else {
-			searchFrom = len(line) - 1
-			if lineIdx == e.cursor[0] {
-				searchFrom = e.cursor[1] - 1
+			from = 0
+		}
+		if row == e.cursor[0] {
+			from = e.cursor[1] - 1
+			if forward {
+				from = e.cursor[1] + 1
 			}
 		}
-		var idx int
+		var index int
 		if forward {
-			idx = strings.Index(line[searchFrom:], char)
-			if idx >= 0 {
-				idx += searchFrom
-			}
+			index = jsstring.IndexOf(line, char, from)
 		} else {
-			if searchFrom < 0 {
-				continue
-			}
-			idx = strings.LastIndex(line[:searchFrom+1], char)
+			index = jsstring.LastIndexOf(line, char, from)
 		}
-		if idx >= 0 {
-			e.cursor[0] = lineIdx
-			e.setCursorCol(idx)
+		if index >= 0 {
+			e.cursor[0] = row
+			e.setCursorCol(index)
 			e.Invalidate()
 			return
 		}
 	}
-}
-
-// moveLogicalLine moves cursor to prev/next logical line (simple fallback).
-func (e *Editor) moveLogicalLine(dir int) {
-	if dir == -1 && e.cursor[0] > 0 {
-		e.cursor[0]--
-		if e.cursor[1] > len(e.lines[e.cursor[0]]) {
-			e.cursor[1] = len(e.lines[e.cursor[0]])
-		}
-		e.Invalidate()
-	} else if dir == 1 && e.cursor[0] < len(e.lines)-1 {
-		e.cursor[0]++
-		if e.cursor[1] > len(e.lines[e.cursor[0]]) {
-			e.cursor[1] = len(e.lines[e.cursor[0]])
-		}
-		e.Invalidate()
-	}
-}
-
-// byteOffsetForColumn returns the byte offset in s that corresponds to
-// the given target display column (0-based). Used for visual-line cursor alignment.
-func (e *Editor) byteOffsetForColumn(s string, targetCol int) int {
-	return byteOffsetForColumnGrapheme(s, targetCol)
 }
 
 func (e *Editor) undo() {
 	// Undo leaves history browsing, as upstream undo calls exitHistoryBrowsing.
 	e.inputHistIdx = -1
 	e.inputHistSaved = nil
-	if e.histIdx > 1 {
-		e.histIdx--
-		state := e.history[e.histIdx-1]
-		e.lines = make([]string, len(state.lines))
-		copy(e.lines, state.lines)
-		e.cursor = state.cursor
-		e.pastes = clonePastes(state.pastes)
-		e.pasteCounter = state.pasteCounter
-		e.Invalidate()
+	if len(e.history) == 0 {
+		return
 	}
-}
-
-// ─── Word-boundary navigation + deletion ─────────────────────────
-//
-// Word boundary semantics mirror upstream editor.ts moveWordBackwards /
-// moveWordForwards: skip whitespace, then consume one punctuation run OR one
-// non-whitespace/non-punctuation word run. Unlike the earlier approximation,
-// these operations may cross line boundaries by deleting or traversing a
-// newline at line start/end.
-
-// pig divergence (D27): grapheme-class word nav (whitespace/ASCII-punct/word),
-// not Intl.Segmenter UAX#29 segments: ASCII parity, CJK word-nav gap.
-func prevWordStart(line string, c int) int {
-	if c <= 0 {
-		return 0
-	}
-	segs := graphemeSegments(line[:c])
-	newCol := c
-	for len(segs) > 0 && isWhitespaceGrapheme(segs[len(segs)-1].Text) {
-		newCol -= len(segs[len(segs)-1].Text)
-		segs = segs[:len(segs)-1]
-	}
-	if len(segs) == 0 {
-		return newCol
-	}
-	if isPunctuationGrapheme(segs[len(segs)-1].Text) {
-		for len(segs) > 0 && isPunctuationGrapheme(segs[len(segs)-1].Text) {
-			newCol -= len(segs[len(segs)-1].Text)
-			segs = segs[:len(segs)-1]
-		}
-		return newCol
-	}
-	for len(segs) > 0 && !isWhitespaceGrapheme(segs[len(segs)-1].Text) && !isPunctuationGrapheme(segs[len(segs)-1].Text) {
-		newCol -= len(segs[len(segs)-1].Text)
-		segs = segs[:len(segs)-1]
-	}
-	return newCol
-}
-
-// pig divergence (D27): grapheme-class word nav (see prevWordStart).
-func nextWordEnd(line string, c int) int {
-	n := len(line)
-	if c >= n {
-		return n
-	}
-	newCol := c
-	segs := graphemeSegments(line[c:])
-	for len(segs) > 0 && isWhitespaceGrapheme(segs[0].Text) {
-		newCol += len(segs[0].Text)
-		segs = segs[1:]
-	}
-	if len(segs) == 0 {
-		return newCol
-	}
-	if isPunctuationGrapheme(segs[0].Text) {
-		for len(segs) > 0 && isPunctuationGrapheme(segs[0].Text) {
-			newCol += len(segs[0].Text)
-			segs = segs[1:]
-		}
-		return newCol
-	}
-	for len(segs) > 0 && !isWhitespaceGrapheme(segs[0].Text) && !isPunctuationGrapheme(segs[0].Text) {
-		newCol += len(segs[0].Text)
-		segs = segs[1:]
-	}
-	return newCol
+	last := len(e.history) - 1
+	state := e.history[last]
+	e.history[last] = editorState{}
+	e.history = e.history[:last]
+	e.lines = state.lines
+	e.cursor = state.cursor
+	e.pastes = state.pastes
+	e.pasteCounter = state.pasteCounter
+	e.lastAction = ""
+	e.preferredVisualCol = nil
+	e.Invalidate()
 }
 
 func (e *Editor) cursorWordBackward() {
-	l := e.cursor[0]
-	c := e.cursor[1]
+	e.lastAction = ""
+	l, c := e.cursor[0], e.cursor[1]
 	if c == 0 {
 		if l > 0 {
 			e.cursor[0]--
-			e.cursor[1] = len(e.lines[e.cursor[0]])
+			e.setCursorCol(jsstring.Length(e.lines[e.cursor[0]]))
 			e.Invalidate()
 		}
 		return
 	}
-	e.cursor[1] = prevWordStart(e.lines[l], c)
+	e.setCursorCol(e.prevWordStart(e.lines[l], c))
 	e.Invalidate()
 }
 
 func (e *Editor) cursorWordForward() {
-	l := e.cursor[0]
-	c := e.cursor[1]
-	if c >= len(e.lines[l]) {
+	e.lastAction = ""
+	l, c := e.cursor[0], e.cursor[1]
+	if c >= jsstring.Length(e.lines[l]) {
 		if l < len(e.lines)-1 {
 			e.cursor[0]++
-			e.cursor[1] = 0
+			e.setCursorCol(0)
 			e.Invalidate()
 		}
 		return
 	}
-	e.cursor[1] = nextWordEnd(e.lines[l], c)
+	e.setCursorCol(e.nextWordEnd(e.lines[l], c))
 	e.Invalidate()
 }
 
 func (e *Editor) deleteWordBackward() {
+	e.inputHistIdx = -1
+	e.inputHistSaved = nil
 	l := e.cursor[0]
 	c := e.cursor[1]
 	if c == 0 {
 		if l == 0 {
 			return
 		}
+		e.saveHistory()
 		wasKill := e.lastAction == "kill"
 		e.killRing.Push("\n", true, wasKill)
 		prev := e.lines[l-1]
 		e.cursor[0] = l - 1
-		e.cursor[1] = len(prev)
-		e.lines[l-1] = prev + e.lines[l]
+		e.setCursorCol(jsstring.Length(prev))
+		e.lines[l-1] = jsstring.Canonical(prev + e.lines[l])
 		e.lines = append(e.lines[:l], e.lines[l+1:]...)
 		e.lastAction = "kill"
-		e.saveHistory()
 		e.Invalidate()
 		return
 	}
+	e.saveHistory()
 	line := e.lines[l]
-	start := prevWordStart(line, c)
-	killed := line[start:c]
+	start := e.prevWordStart(line, c)
+	killed := jsstring.Slice(line, start, c)
 	wasKill := e.lastAction == "kill"
 	e.killRing.Push(killed, true, wasKill)
 	e.lastAction = "kill"
-	e.lines[l] = line[:start] + line[c:]
-	e.cursor[1] = start
-	e.saveHistory()
+	e.lines[l] = jsstring.Splice(line, start, c, "")
+	e.setCursorCol(start)
 	e.Invalidate()
 }
 
 func (e *Editor) deleteWordForward() {
+	e.inputHistIdx = -1
+	e.inputHistSaved = nil
 	l := e.cursor[0]
 	c := e.cursor[1]
 	line := e.lines[l]
-	if c >= len(line) {
+	if c >= jsstring.Length(line) {
 		if l >= len(e.lines)-1 {
 			return
 		}
+		e.saveHistory()
 		wasKill := e.lastAction == "kill"
 		e.killRing.Push("\n", false, wasKill)
-		e.lines[l] = line + e.lines[l+1]
+		e.lines[l] = jsstring.Canonical(line + e.lines[l+1])
 		e.lines = append(e.lines[:l+1], e.lines[l+2:]...)
 		e.lastAction = "kill"
-		e.saveHistory()
 		e.Invalidate()
 		return
 	}
-	end := nextWordEnd(line, c)
-	killed := line[c:end]
+	e.saveHistory()
+	end := e.nextWordEnd(line, c)
+	e.setCursorCol(c)
+	killed := jsstring.Slice(line, c, end)
 	wasKill := e.lastAction == "kill"
 	e.killRing.Push(killed, false, wasKill)
 	e.lastAction = "kill"
-	e.lines[l] = line[:c] + line[end:]
-	e.saveHistory()
+	e.lines[l] = jsstring.Splice(line, c, end, "")
 	e.Invalidate()
 }
 
@@ -2765,23 +2306,24 @@ func (e *Editor) deleteWordForward() {
 // kills the newline (joining with next line).
 // Mirrors upstream editor.ts::deleteToEndOfLine.
 func (e *Editor) deleteToLineEnd() {
+	e.inputHistIdx = -1
+	e.inputHistSaved = nil
 	l := e.cursor[0]
 	c := e.cursor[1]
 	wasKill := e.lastAction == "kill"
-	if c < len(e.lines[l]) {
-		killed := e.lines[l][c:]
-		e.killRing.Push(killed, false, wasKill)
-		e.lines[l] = e.lines[l][:c]
-		e.lastAction = "kill"
+	if c < jsstring.Length(e.lines[l]) {
 		e.saveHistory()
+		killed := jsstring.Slice(e.lines[l], c)
+		e.killRing.Push(killed, false, wasKill)
+		e.lines[l] = jsstring.Slice(e.lines[l], 0, c)
+		e.lastAction = "kill"
 		e.Invalidate()
 	} else if l < len(e.lines)-1 {
-		// At end-of-line but not last line: kill the newline.
+		e.saveHistory()
 		e.killRing.Push("\n", false, wasKill)
-		e.lines[l] += e.lines[l+1]
+		e.lines[l] = jsstring.Canonical(e.lines[l] + e.lines[l+1])
 		e.lines = append(e.lines[:l+1], e.lines[l+2:]...)
 		e.lastAction = "kill"
-		e.saveHistory()
 		e.Invalidate()
 	}
 }
@@ -2790,44 +2332,50 @@ func (e *Editor) deleteToLineEnd() {
 // If cursor is at col 0 and not on first line, kills the newline.
 // Mirrors upstream editor.ts::deleteToStartOfLine.
 func (e *Editor) deleteToLineStart() {
+	e.inputHistIdx = -1
+	e.inputHistSaved = nil
 	l := e.cursor[0]
 	c := e.cursor[1]
 	wasKill := e.lastAction == "kill"
 	if c > 0 {
-		killed := e.lines[l][:c]
-		e.killRing.Push(killed, true, wasKill)
-		e.lines[l] = e.lines[l][c:]
-		e.cursor[1] = 0
-		e.lastAction = "kill"
 		e.saveHistory()
+		killed := jsstring.Slice(e.lines[l], 0, c)
+		e.killRing.Push(killed, true, wasKill)
+		e.lines[l] = jsstring.Slice(e.lines[l], c)
+		e.setCursorCol(0)
+		e.lastAction = "kill"
 		e.Invalidate()
 	} else if l > 0 {
-		// At col 0 but not first line: kill the newline.
+		e.saveHistory()
 		e.killRing.Push("\n", true, wasKill)
 		prev := e.lines[l-1]
-		e.cursor[1] = len(prev)
-		e.lines[l-1] = prev + e.lines[l]
+		e.setCursorCol(jsstring.Length(prev))
+		e.lines[l-1] = jsstring.Canonical(prev + e.lines[l])
 		e.lines = append(e.lines[:l], e.lines[l+1:]...)
 		e.cursor[0]--
 		e.lastAction = "kill"
-		e.saveHistory()
 		e.Invalidate()
 	}
 }
 
-// deleteYankedText removes the previously yanked text (used by yank-pop).
-// Deletes e.yankLen bytes ending at current cursor position on the current line.
-// Only handles single-line yanks; multi-line yank-pop is deferred (uncommon).
+// deleteYankedText removes the most recent ring entry immediately before the cursor, including its line breaks.
 func (e *Editor) deleteYankedText() {
-	l := e.cursor[0]
-	c := e.cursor[1]
-	if e.yankLen <= 0 || c < e.yankLen {
+	text := e.killRing.Peek()
+	if text == "" {
 		return
 	}
-	line := e.lines[l]
-	e.lines[l] = line[:c-e.yankLen] + line[c:]
-	e.cursor[1] = c - e.yankLen
-	e.yankLen = 0
+	parts := strings.Split(text, "\n")
+	l, c := e.cursor[0], e.cursor[1]
+	startLine := l - len(parts) + 1
+	startCol := c - jsstring.Length(text)
+	if len(parts) > 1 {
+		startCol = jsstring.Length(e.lines[startLine]) - jsstring.Length(parts[0])
+	}
+	before := jsstring.Slice(e.lines[startLine], 0, startCol)
+	after := jsstring.Slice(e.lines[l], c)
+	e.lines = slices.Concat(e.lines[:startLine], []string{jsstring.Canonical(before + after)}, e.lines[l+1:])
+	e.cursor[0] = startLine
+	e.setCursorCol(startCol)
 	e.Invalidate()
 }
 

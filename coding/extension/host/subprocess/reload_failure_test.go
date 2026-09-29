@@ -78,6 +78,7 @@ func TestReload_MixedCellFailureIsolatesFailingExtension(t *testing.T) {
 }
 
 func TestReloadReturnsConfiguredOrderForMixedPackedAndIsolatedCells(t *testing.T) {
+	keepGoBuildCaches(t)
 	root := t.TempDir()
 	t.Setenv("HOME", filepath.Join(root, "home"))
 	t.Setenv("PIG_HOME", filepath.Join(root, "pig-home"))

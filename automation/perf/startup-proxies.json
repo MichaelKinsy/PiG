@@ -1,0 +1,86 @@
+{
+  "./ai": [
+    "TestListModelsAllocatesOnlyFilteredCatalog",
+    "TestCloneCompatAvoidsScalarJSONRoundTrip",
+    "TestCloneCompatPreservesSerializedCopy",
+    "TestToModelCatalogAllocationBudget",
+    "TestToCapabilitiesMatchesSupportedThinkingLevelSelection"
+  ],
+  "./cmd/pig": [
+    "TestLinkedPackagesCompileNoRegexpAtInit",
+    "TestLazyRegexpPatternsAllCompile",
+    "TestPackageInitWorkBudget"
+  ],
+  "./coding/extension": [
+    "TestModelInfoScalarCompatibilityCopyAvoidsJSON",
+    "TestModelInfoCyclesReachJSONError",
+    "TestModelInfoSharedSubgraphsKeepCopySemantics"
+  ],
+  "./coding/extension/host/subprocess": [
+    "TestNodeRuntimeArchiveMatchesSources",
+    "TestNodeRuntimeArchiveSizeBudget",
+    "TestNodeRuntimeDigestDoesNotOpenArchive",
+    "TestNodeRuntimeMaterializesOncePerContentHash",
+    "TestNodeRuntimeCacheParticipatesInGC",
+    "TestNodePackedCellIdentityIncludesRuntimeVersion",
+    "TestNodePackedCellsShareRuntimeMaterialization",
+    "TestBuildNodePackedCellConcurrentColdBuildsDoNotCorrupt",
+    "TestNodeStartupDefersPresentationDependencies",
+    "TestNodeJitiCachePersistsWithoutStaleSource",
+    "TestNodeProviderSocketFrameCopyIsLinear",
+    "TestNodeFrameBufferPreservesEveryFragmentBoundary",
+    "TestNodeProviderSocketRejectsBadFrameBeforeNextEnvelope",
+    "TestNodeProviderSocketDrainsPendingEnvelopesBeforeWorkerExit",
+    "TestNodeLibraryBundlesKeepSharedIdentitiesWithoutRawCatalogLoads",
+    "TestNodeLibraryImportDefersUnusedNativeSegmenters",
+    "TestNodeEmojiWidthLoadsTheOriginalExpressionOnlyWhenNeeded",
+    "TestNodeCompileCacheStartsAtLibraryImportAndChecksSourceBytes",
+    "TestNodeReadyPublishesNativeCompileCache",
+    "TestNodeLibraryBundlesRegenerateExactly",
+    "TestNodeSDKBundleRegeneratesExactly",
+    "TestNodeVendorManifestIncludesPinnedNativeAssets",
+    "TestVendoredPiDistMatchesThePinnedPackage",
+    "TestModelCatalogFramesPreserveBytesAndOrder",
+    "TestModelCatalogFrameAvoidsSecondJSONPass",
+    "TestEncodedCatalogFrameKeepsSizeAndClosedChecks",
+    "TestModelCatalogEncoderRetainsGetterAndReplacement"
+  ],
+  "./coding/extension/pigsdk": [
+    "TestSyncSwapsCompleteTreeAndRemovesStagingLeftovers",
+    "TestSyncedTreeHoldsExactlyTheBundleWithDocumentedModes",
+    "TestSyncFailureKeepsPreviousTreeAndCleansStaging",
+    "TestPruneWithoutCacheEntriesDoesNotFingerprintStagedSDKs",
+    "TestBundleHashStreamsTheWholeFileDigest"
+  ],
+  "./coding": [
+    "TestRuntimeOpenUsesTheValidatedSessionSnapshot",
+    "TestRestoreSessionRuntimeStateDoesNotProjectMessages"
+  ],
+  "./internal/codingagent": [
+    "TestCachePriceBindingWithoutMissesDoesNotReparseHistory",
+    "TestGetSessionContextSettingsBoundaries",
+    "TestExtensionCatalogEncodingCurrentContentAndOrder",
+    "TestExtensionCatalogEncodingNestedMutationAndEmpty",
+    "TestExtensionCatalogEncodingDoesNotEvaluateUserMarshalers",
+    "TestCatalogCacheEligibilityHandlesCyclesAndSharedData",
+    "TestCatalogCyclesReachJSONError",
+    "TestCatalogSnapshotPreservesSignedZeroAndRawJSON",
+    "TestCatalogCacheHitDoesNotAllocatePerModel",
+    "TestCatalogCacheHitIgnoresOnlyRuntimeProvider",
+    "TestCatalogSnapshotAvoidsMetadataSerialization",
+    "TestCloneCatalogInputDoesNotAllocateInlineStructs",
+    "TestModelCatalogBindingReusesFirstEncoding",
+    "TestModelCatalogBindingKeepsPublicationBytesAndCalls",
+    "TestModelCatalogBindingKeepsRegistrationOrdering"
+  ],
+  "./internal/pigdocs": [
+    "TestSyncIntoMissingDirMatchesSyncIntoExistingDir",
+    "TestSyncCreatesMissingConfigRoot"
+  ],
+  "./internal/lazyregexp": [
+    "TestNewDoesNotCompileUntilFirstUse",
+    "TestMethodsMatchRegexp",
+    "TestInvalidPatternPanicsLikeMustCompileOnFirstUse",
+    "TestConcurrentFirstUseCompilesOnce"
+  ]
+}

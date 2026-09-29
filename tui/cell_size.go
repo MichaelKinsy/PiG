@@ -2,15 +2,16 @@ package tui
 
 import (
 	"fmt"
-	"regexp"
 	"strconv"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // cellSizeQuery asks the terminal for its cell size in pixels (CSI 16 t). The
 // response is CSI 6 ; height ; width t.
 const cellSizeQuery = "\x1b[16t"
 
-var cellSizeResponsePattern = regexp.MustCompile(`^\x1b\[6;(\d+);(\d+)t$`)
+var cellSizeResponsePattern = lazyregexp.New(`^\x1b\[6;(\d+);(\d+)t$`)
 
 // QueryCellSize writes the cell-size query when the terminal supports images,
 // since only image rendering uses the cell size. Mirrors upstream tui.ts

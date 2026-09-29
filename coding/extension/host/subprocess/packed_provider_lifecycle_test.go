@@ -61,10 +61,11 @@ func TestPackedCell_ProviderLifecycle(t *testing.T) {
 	)
 	h := NewHost(t.TempDir())
 	h.SetProviderCallbacks(
-		func(name string, cfg extension.ProviderConfig) {
+		func(name string, cfg extension.ProviderConfig) error {
 			mu.Lock()
 			defer mu.Unlock()
 			registered[name] = cfg
+			return nil
 		},
 		func(name string) {
 			mu.Lock()

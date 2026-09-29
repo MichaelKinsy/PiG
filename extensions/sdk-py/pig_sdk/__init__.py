@@ -10,7 +10,9 @@ returned extension over a host-provided subprocess socket.
 
 from __future__ import annotations
 
+import decimal
 import json
+import math
 import os
 import queue
 import socket
@@ -19,8 +21,21 @@ import threading
 import time
 import weakref
 from collections import deque
+from contextvars import ContextVar
 from dataclasses import dataclass, field
 from typing import Any, Callable, Literal, NotRequired, Protocol, TypeAlias, TypedDict
+from .autocomplete import AutocompleteProvider as AutocompleteProvider, AutocompleteProviderFactory, _AutocompleteRegistry
+from .session_manager import SessionManager
+from .provider import (
+    Provider, ProviderSignal,
+    ProviderAuth as ProviderAuth, APIKeyAuth as APIKeyAuth, OAuthAuth as OAuthAuth,
+    AuthContext as AuthContext, APIKeyAuthInput as APIKeyAuthInput, AuthResult as AuthResult,
+    AuthCheck as AuthCheck, AuthInteraction as AuthInteraction,
+    ModelsPublication as ModelsPublication, RefreshModelsContext as RefreshModelsContext,
+    ProviderStreamOptions as ProviderStreamOptions,
+    register_native as _register_native, remote_provider as _remote_provider,
+    dispatch_provider as _dispatch_provider, dispatch_callback as _dispatch_provider_callback,
+)
 
 # Maximum frame size (128 MB). Bounds a single length-prefixed frame to guard
 # against unbounded allocation while allowing large host responses such as
@@ -83,6 +98,48 @@ def _connect_winsock_unix(sock_path: str) -> socket.socket:
         ws2.closesocket(handle)
         raise
 
+# Upstream extension event names, for Extension.on_event.
+EVENT_PROJECT_TRUST = "project_trust"
+EVENT_RESOURCES_DISCOVER = "resources_discover"
+EVENT_SESSION_START = "session_start"
+EVENT_SESSION_INFO_CHANGED = "session_info_changed"
+EVENT_SESSION_BEFORE_SWITCH = "session_before_switch"
+EVENT_SESSION_BEFORE_FORK = "session_before_fork"
+EVENT_SESSION_BEFORE_COMPACT = "session_before_compact"
+EVENT_SESSION_COMPACT = "session_compact"
+EVENT_SESSION_COMPACT_FAILED = "session_compact_failed"
+EVENT_SESSION_SHUTDOWN = "session_shutdown"
+EVENT_SESSION_BEFORE_TREE = "session_before_tree"
+EVENT_SESSION_TREE = "session_tree"
+EVENT_CONTEXT = "context"
+EVENT_CONTEXT_WITH_SYSTEM = "context_with_system"
+EVENT_CACHE_WARMING_DECISION = "cache_warming_decision"
+EVENT_BEFORE_PROVIDER_REQUEST = "before_provider_request"
+EVENT_BEFORE_PROVIDER_HEADERS = "before_provider_headers"
+EVENT_AFTER_PROVIDER_RESPONSE = "after_provider_response"
+EVENT_BEFORE_AGENT_START = "before_agent_start"
+EVENT_AGENT_START = "agent_start"
+EVENT_AGENT_END = "agent_end"
+EVENT_AGENT_BEFORE_SETTLE = "agent_before_settle"
+EVENT_AGENT_SETTLED = "agent_settled"
+EVENT_UI_PROMPT_START = "ui_prompt_start"
+EVENT_UI_PROMPT_END = "ui_prompt_end"
+EVENT_TURN_START = "turn_start"
+EVENT_TURN_END = "turn_end"
+EVENT_MESSAGE_START = "message_start"
+EVENT_MESSAGE_UPDATE = "message_update"
+EVENT_MESSAGE_END = "message_end"
+EVENT_TOOL_EXECUTION_START = "tool_execution_start"
+EVENT_TOOL_EXECUTION_UPDATE = "tool_execution_update"
+EVENT_TOOL_EXECUTION_END = "tool_execution_end"
+EVENT_MODEL_SELECT = "model_select"
+EVENT_THINKING_LEVEL_SELECT = "thinking_level_select"
+EVENT_TOOL_CALL = "tool_call"
+EVENT_TOOL_RESULT = "tool_result"
+EVENT_USER_BASH = "user_bash"
+EVENT_INPUT = "input"
+
+
 Schema: TypeAlias = dict[str, Any]
 ToolPrepareArguments: TypeAlias = Callable[[dict[str, Any]], dict[str, Any]]
 ToolHandler: TypeAlias = Callable[["Context", dict[str, Any]], Any]
@@ -137,6 +194,34 @@ ToolRenderResultHandler: TypeAlias = Callable[["Context", dict[str, Any], dict[s
 Factory: TypeAlias = Callable[[], "Extension"]
 
 
+@dataclass(kw_only=True)
+class ToolDefinition:
+    """Upstream ToolDefinition, the argument of :meth:`Extension.register_tool`.
+
+    Fields are keyword-only, as upstream's are object-literal keys.
+    ``execute`` is this SDK's tool handler ``(ctx, params) -> result``: the
+    tool call id, cancellation and ``onUpdate`` of upstream's
+    ``execute(toolCallId, params, signal, onUpdate, ctx)`` are
+    ``ctx.tool_call_id``, ``ctx.is_cancelled()`` and ``ctx.on_update()``.
+    ``render_call`` and ``render_result`` are the line renderers
+    :meth:`Extension.tool_renderers` takes.
+    """
+
+    name: str
+    label: str
+    description: str
+    prompt_snippet: str | None = None
+    prompt_guidelines: list[str] | None = None
+    parameters: Schema
+    constrained_sampling: dict[str, Any] | Literal[False] | None = None
+    render_shell: Literal["default", "self"] = "default"
+    prepare_arguments: ToolPrepareArguments | None = None
+    execution_mode: Literal["sequential", "parallel"] | None = None
+    execute: ToolHandler
+    render_call: ToolRenderCallHandler | None = None
+    render_result: ToolRenderResultHandler | None = None
+
+
 # pig additive (D60): Python extensions provide typed data for Pig's native
 # login template instead of Pi's in-process TUI component factory.
 @dataclass(frozen=True)
@@ -170,6 +255,8 @@ class ExecResult:
     stdout: str = ""
     stderr: str = ""
     exit_code: int = 0
+    # Upstream ExecResult.killed: the process was killed (timeout or abort).
+    killed: bool = False
 
 
 def message_role(data: dict[str, Any]) -> str:
@@ -223,6 +310,7 @@ class SessionMirror:
         # copy of it resident. Set before the subscribe call, since the host
         # starts sending the log as soon as it registers the subscription.
         self.subscribed: bool = False
+        self._session_id: str = ""
         self._entries: list[dict[str, Any]] = []
         self._leaf_id: str = ""
         self._index: dict[str, tuple[int, str]] = {}  # id -> (pos, parent_id)
@@ -235,6 +323,15 @@ class SessionMirror:
         entry_count = session.get("entryCount", 0)
         expected_base = entry_count - len(appended)
         changed = False
+        session_id = session.get("sessionId", "")
+        if session_id and session_id != self._session_id:
+            self._session_id = session_id
+            self._entries = []
+            self._index = {}
+            self._leaf_id = ""
+            self._branch_cache = None
+            self._branch_cache_for = ""
+            changed = True
 
         # The leaf is small and always tracked. The log itself is applied only
         # once subscribed, and never from a push carrying no entries and a zero
@@ -247,7 +344,7 @@ class SessionMirror:
                 self._branch_cache = None
                 self._branch_cache_for = ""
                 return True
-            return False
+            return changed
 
         if expected_base != len(self._entries):
             self._entries = []
@@ -446,12 +543,33 @@ def _terminal_input_verdict(verdict: Any) -> tuple[bool, str | None]:
     return False, None
 
 
+_model_stream_transport = ContextVar("model_stream_transport", default=None)
+
+
+def _forward_model_stream(stream, stopped, emit):
+    # pig additive (D19): only SDK-owned waits observe transport shutdown; user iterator overrides remain callable.
+    token = _model_stream_transport.set((stream, stopped))
+    try:
+        for event in stream.events():
+            emit(event)
+    finally:
+        _model_stream_transport.reset(token)
+
+
 class ModelEventStream:
     def __init__(self) -> None:
         self._condition = threading.Condition()
         self._events: deque[dict[str, Any]] = deque()
         self._terminal = False
         self._result: dict[str, Any] | None = None
+        self._started = threading.Event()
+        self._start_error = None
+
+    def mark_started(self, error=None):
+        with self._condition:
+            if not self._started.is_set():
+                self._start_error = error
+                self._started.set()
 
     def push(self, event: dict[str, Any]) -> None:
         with self._condition:
@@ -463,16 +581,45 @@ class ModelEventStream:
                 self._result = event.get("message") if event.get("type") == "done" else event.get("error")
             self._condition.notify_all()
 
+    def end(self, result: dict[str, Any] | None) -> None:
+        with self._condition:
+            if self._terminal:
+                return
+            self._terminal = True
+            self._result = result
+            self._condition.notify_all()
+
     def events(self):
-        while True:
-            with self._condition:
-                while not self._events and not self._terminal:
-                    self._condition.wait()
-                if self._events:
-                    event = self._events.popleft()
-                else:
-                    return
-            yield event
+        """Yield ordered events; transport shutdown releases only the SDK forwarding wait."""
+        scope = _model_stream_transport.get()
+        stopped = scope[1] if scope is not None and scope[0] is self else None
+        return self._events_until(stopped)
+
+    def _events_until(self, stopped):
+        unsubscribe = stopped.subscribe(self._wake_transport) if stopped is not None else lambda: None
+        try:
+            while True:
+                with self._condition:
+                    while not self._events and not self._terminal:
+                        self._check_transport(stopped)
+                        self._condition.wait()
+                    self._check_transport(stopped)
+                    if self._events:
+                        event = self._events.popleft()
+                    else:
+                        return
+                yield event
+        finally:
+            unsubscribe()
+
+    @staticmethod
+    def _check_transport(stopped):
+        if stopped is not None and stopped.is_set():
+            raise RuntimeError("Provider connection closed")
+
+    def _wake_transport(self):
+        with self._condition:
+            self._condition.notify_all()
 
     def result(self) -> dict[str, Any] | None:
         with self._condition:
@@ -503,6 +650,91 @@ class ModelRegistry:
     def __init__(self, context: "Context") -> None:
         self._context = context
 
+    def _state(self) -> dict[str, Any]:
+        return self._context._call("getModelRegistryState").get("result")
+
+    def get_all(self) -> list[dict[str, Any]]:
+        return self._state()["models"]
+
+    def get_available(self) -> list[dict[str, Any]]:
+        state = self._state()
+        return [model for model in state["models"] if state["providers"].get(model["provider"], {}).get("configured", False) and ("availableModelIds" not in state["providers"][model["provider"]] or model["id"] in state["providers"][model["provider"]]["availableModelIds"])]
+
+    def get_error(self) -> str | None:
+        return self._state().get("error")
+
+    def has_configured_auth(self, model: dict[str, Any]) -> bool:
+        return self._state()["providers"].get(model["provider"], {}).get("configured", False)
+
+    def is_using_oauth(self, model: dict[str, Any]) -> bool:
+        return self._state()["providers"].get(model["provider"], {}).get("usingOAuth", False)
+
+    def get_provider_auth_status(self, provider: str) -> dict[str, Any]:
+        return self._state()["providers"].get(provider, {}).get("authStatus", {"configured": False})
+
+    def get_provider_display_name(self, provider: str) -> str:
+        return self._state()["providers"].get(provider, {}).get("name", provider)
+
+    def get_provider_auth(self, provider: str) -> dict[str, Any] | None:
+        return self._context._call("getProviderAuth", {"provider": provider}).get("result")
+
+    def get_api_key_for_provider(self, provider: str) -> str | None:
+        try:
+            auth = self.get_provider_auth(provider)
+            return auth["auth"].get("apiKey") if auth else None
+        except Exception:
+            # Pi's getApiKeyForProvider deliberately catches auth resolution failures.
+            return None
+
+    def get_registered_provider_ids(self) -> list[str]:
+        return [entry["name"] for entry in self._state()["registered"]]
+
+    def get_registered_provider_config(self, provider: str) -> dict[str, Any] | None:
+        return next((entry.get("config") for entry in self._state()["registered"] if entry["name"] == provider), None)
+
+    def get_registered_native_provider(self, provider: str) -> Provider | None:
+        for entry in self._state()["registered"]:
+            if entry["name"] != provider or not entry.get("native"):
+                continue
+            declaration = entry["native"]
+            extension = self._context.extension
+            with extension._provider_lock:
+                local = extension._native_providers.get(declaration["key"])
+                if local is not None:
+                    return local
+                key = declaration["id"]
+                cached = extension._remote_providers.get(key)
+                if cached is None or cached._provider_handle != declaration["handle"]:
+                    extension._remote_providers[key] = _remote_provider(self._context, declaration)
+                return extension._remote_providers[key]
+        return None
+
+    # pig divergence (D78): builtin/composed Provider methods still need a native SDK carrier.
+    def get_provider(self, provider: str) -> Provider | None:
+        native = self.get_registered_native_provider(provider)
+        if native is not None:
+            return native
+        if provider in self._state().get("providers", {}):
+            raise RuntimeError("builtin/composed Provider object carrier is unavailable (D78)")
+        return None
+
+    def register_native_provider(self, provider: Provider) -> None:
+        declaration = _register_native(self._context.extension, provider)
+        self._context._call("registerProvider", {"name": provider.id, "config": {}, "native": declaration})
+
+    def register_provider(self, name: str | Provider, config: dict[str, Any] | None = None) -> None:
+        if isinstance(name, Provider):
+            self.register_native_provider(name)
+        else:
+            self._context._call("registerProvider", {"name": name, "config": config})
+
+    def unregister_provider(self, name: str) -> None:
+        self._context._call("unregisterProvider", {"name": name})
+
+    def refresh(self, options: dict[str, Any] | None = None) -> dict[str, Any]:
+        result = self._context._call("refreshModelRegistry", options or {}).get("result")
+        return {"aborted": result["aborted"], "errors": result["errors"]}
+
     def find(self, provider_id: str, model_id: str) -> dict[str, Any] | None:
         model = self._context._call("getModel", {"provider": provider_id, "modelId": model_id}).get("result")
         return model if isinstance(model, dict) else None
@@ -515,6 +747,9 @@ class ModelRegistry:
         return self._context._call("getModelAuth", {"provider": provider, "modelId": model_id}).get("result") or {}
 
     def stream(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None = None) -> ModelEventStream:
+        return self._stream(model, request, options, False)
+
+    def _stream(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None, simple: bool) -> ModelEventStream:
         stream = ModelEventStream()
         extension = self._context.extension
         with extension._model_stream_lock:
@@ -526,7 +761,7 @@ class ModelRegistry:
 
         def run() -> None:
             try:
-                self._context._call("modelStream", {"streamId": stream_id, "model": model, "request": payload})
+                self._context._call("modelStream", {"streamId": stream_id, "model": model, "request": payload, "simple": simple})
             except Exception as exc:  # noqa: BLE001 - transport failure becomes terminal model error
                 stream.push(_model_stream_error_event(exc, model))
             finally:
@@ -537,10 +772,122 @@ class ModelRegistry:
         return stream
 
     def stream_simple(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None = None) -> ModelEventStream:
-        return self.stream(model, request, options)
+        return self._stream(model, request, options, True)
 
     def complete(self, model: dict[str, Any], request: dict[str, Any], options: dict[str, Any] | None = None) -> dict[str, Any] | None:
         return self.stream(model, request, options).result()
+
+
+_THINKING_BORDER_TOKENS = {
+    "off": "thinkingOff",
+    "minimal": "thinkingMinimal",
+    "low": "thinkingLow",
+    "medium": "thinkingMedium",
+    "high": "thinkingHigh",
+    "xhigh": "thinkingXhigh",
+    "max": "thinkingMax",
+}
+
+
+def _theme_text(text: Any) -> str:
+    return "" if text is None else str(text)
+
+
+class Theme:
+    """Upstream Theme (``ctx.ui.theme``) over the host's active palette.
+
+    The host replicates its active theme with the state snapshot and pushes
+    ``theme_change`` when it changes; one instance per extension follows
+    those updates, so a held reference stays current. Its semantics are the
+    Node runtime's ThemeShim: a token the palette lacks leaves ``fg``/``bg``
+    text unstyled, and ``bold`` and the other modifiers draw only when the
+    host's styles do (upstream's chalk drops them without color support).
+    """
+
+    name: str | None
+    source_path: str | None
+
+    def __init__(self) -> None:
+        self.name = None
+        self.source_path = None
+        self._foregrounds: dict[str, str] = {}
+        self._backgrounds: dict[str, str] = {}
+        self._modifiers = True
+        self._mode: str | None = None
+
+    def _set_palette(self, palette: Any) -> None:
+        palette = palette if isinstance(palette, dict) else {}
+        foregrounds = palette.get("foregrounds")
+        backgrounds = palette.get("backgrounds")
+        self._foregrounds = dict(foregrounds) if isinstance(foregrounds, dict) else {}
+        self._backgrounds = dict(backgrounds) if isinstance(backgrounds, dict) else {}
+        self._modifiers = palette.get("modifiers") is not False
+        name = palette.get("name")
+        self.name = name if isinstance(name, str) else None
+        source_path = palette.get("sourcePath")
+        self.source_path = source_path if isinstance(source_path, str) and source_path != "" else None
+        self._mode = "256color" if palette.get("mode") == "256color" else "truecolor"
+
+    def _style(self, open_seq: str, close_seq: str, text: Any) -> str:
+        value = _theme_text(text)
+        return f"{open_seq}{value}{close_seq}" if self._modifiers else value
+
+    def fg(self, token: str, text: Any) -> str:
+        value = _theme_text(text)
+        open_seq = self._foregrounds.get(token) or ""
+        return f"{open_seq}{value}\x1b[39m" if open_seq else value
+
+    def bg(self, token: str, text: Any) -> str:
+        value = _theme_text(text)
+        open_seq = self._backgrounds.get(token) or ""
+        return f"{open_seq}{value}\x1b[49m" if open_seq else value
+
+    def bold(self, text: Any) -> str:
+        return self._style("\x1b[1m", "\x1b[22m", text)
+
+    def italic(self, text: Any) -> str:
+        return self._style("\x1b[3m", "\x1b[23m", text)
+
+    def underline(self, text: Any) -> str:
+        return self._style("\x1b[4m", "\x1b[24m", text)
+
+    def inverse(self, text: Any) -> str:
+        return self._style("\x1b[7m", "\x1b[27m", text)
+
+    def strikethrough(self, text: Any) -> str:
+        return self._style("\x1b[9m", "\x1b[29m", text)
+
+    def get_fg_ansi(self, token: str) -> str:
+        ansi = self._foregrounds.get(token)
+        if not ansi:
+            raise ValueError(f"Unknown theme color: {token}")
+        return ansi
+
+    def get_bg_ansi(self, token: str) -> str:
+        ansi = self._backgrounds.get(token)
+        if not ansi:
+            raise ValueError(f"Unknown theme background color: {token}")
+        return ansi
+
+    def get_color_mode(self) -> str:
+        """``"truecolor"`` or ``"256color"``."""
+        return self._mode or "truecolor"
+
+    def get_thinking_border_color(self, level: str) -> Callable[[Any], str]:
+        token = _THINKING_BORDER_TOKENS.get(level, "thinkingOff")
+        return lambda text: self.fg(token, text)
+
+    def get_bash_mode_border_color(self) -> Callable[[Any], str]:
+        return lambda text: self.fg("bashMode", text)
+
+
+# pig additive (D19): normal completion retires the request parent while retained Contexts keep the same socket generation.
+@dataclass
+class _RequestParent:
+    request_id: str
+    socket: Any
+    state: str = "active"
+    finished: bool = False
 
 
 @dataclass
@@ -551,12 +898,21 @@ class Context:
     _cancelled: threading.Event | None = None
     _cancel_reason: str | None = None
     _reason_provider: Callable[[], str | None] | None = None
+    _parent: _RequestParent | None = None
+
+    @property
+    def session_manager(self) -> "SessionManager":
+        return SessionManager(self)
 
     @property
     def model_registry(self) -> ModelRegistry:
         return ModelRegistry(self)
 
     def is_cancelled(self) -> bool:
+        if self._parent is not None:
+            with self.extension._state_lock:
+                if self._parent.state == "completed":
+                    return self.extension._shutdown.is_set() or self._parent.socket is not self.extension._sock
         return bool(self._cancelled and self._cancelled.is_set())
 
     def on_update(self, partial: Any) -> None:
@@ -582,18 +938,27 @@ class Context:
 
     # Low-level escape hatch -------------------------------------------------
 
+    def _report_request_state(self, state: str, reason: str | None = None) -> None:
+        self.extension._request_state(self.request_id, state, reason, self._parent)
+
     def _call(self, method: str, args: Any = None) -> dict[str, Any]:
         if method not in {"ui.select", "ui.confirm", "ui.input", "ui.editor", "ui.custom"} and self.request_id:
-            self.extension._request_state(self.request_id, "blocked", "host_call")
+            self._report_request_state("blocked", "host_call")
         try:
+            if self._parent is not None:
+                return self.extension._call(method, args, self.request_id, self._parent)
             return self.extension._call(method, args, self.request_id)
         finally:
             if self.request_id:
-                self.extension._request_state(self.request_id, "progress")
+                self._report_request_state("progress")
 
     def _block_for_user(self) -> None:
         if self.request_id:
-            self.extension._request_state(self.request_id, "blocked", "user")
+            self._report_request_state("blocked", "user")
+
+    def register_tool(self, definition: ToolDefinition) -> None:
+        """Register a model-callable tool and wait for the host registry refresh."""
+        self.extension.register_tool(definition)
 
     def call_host(self, method: str, args: Any = None) -> Any:
         return self._call(method, args).get("result")
@@ -623,19 +988,31 @@ class Context:
 
     # User interaction -------------------------------------------------------
 
-    def select(self, title: str, options: list[str]) -> tuple[str, bool]:
+    # ``timeout`` is upstream ExtensionUIDialogOptions.timeout: milliseconds
+    # after which the dialog dismisses itself, answering as a cancel does.
+
+    @staticmethod
+    def _dialog_args(args: dict[str, Any], timeout: float | None) -> dict[str, Any]:
+        if timeout is not None:
+            args["opts"] = {"timeout": timeout}
+        return args
+
+    def select(self, title: str, options: list[str], *, timeout: float | None = None) -> tuple[str, bool]:
         self._block_for_user()
-        result = self._call("ui.select", {"title": title, "options": options}).get("result") or {}
+        args = self._dialog_args({"title": title, "options": options}, timeout)
+        result = self._call("ui.select", args).get("result") or {}
         return str(result.get("selected") or ""), bool(result.get("ok"))
 
-    def confirm(self, title: str, message: str) -> bool:
+    def confirm(self, title: str, message: str, *, timeout: float | None = None) -> bool:
         self._block_for_user()
-        result = self._call("ui.confirm", {"title": title, "message": message}).get("result") or {}
+        args = self._dialog_args({"title": title, "message": message}, timeout)
+        result = self._call("ui.confirm", args).get("result") or {}
         return bool(result.get("confirmed"))
 
-    def input(self, title: str, placeholder: str = "") -> tuple[str, bool]:
+    def input(self, title: str, placeholder: str = "", *, timeout: float | None = None) -> tuple[str, bool]:
         self._block_for_user()
-        result = self._call("ui.input", {"title": title, "placeholder": placeholder}).get("result") or {}
+        args = self._dialog_args({"title": title, "placeholder": placeholder}, timeout)
+        result = self._call("ui.input", args).get("result") or {}
         return str(result.get("text") or ""), bool(result.get("ok"))
 
     def editor(self, title: str, prefill: str = "") -> tuple[str, bool]:
@@ -645,20 +1022,31 @@ class Context:
 
     # Message injection ------------------------------------------------------
 
-    def send_message(self, custom_type: str, content: Any, display: bool = True, trigger_turn: bool | None = None, deliver_as: str | None = None) -> None:
-        """Inject a custom message. ``trigger_turn`` and ``deliver_as`` are
+    def send_message(self, custom_type: str, content: Any, display: bool = True, trigger_turn: bool | None = None, deliver_as: str | None = None, *, details: Any = None) -> None:
+        """Inject a custom message. ``content`` is a string or a list of
+        text/image content blocks. ``trigger_turn`` and ``deliver_as`` are
         optional, as upstream's are: None is sent as unset and the host applies
-        upstream's default for the session's state."""
+        upstream's default for the session's state. ``details`` is upstream's
+        message ``details``, extension data kept with the message and not sent
+        to the model; None leaves it unset."""
         options: dict[str, Any] = {}
         if trigger_turn is not None:
             options["triggerTurn"] = trigger_turn
         if deliver_as:
             options["deliverAs"] = deliver_as
-        self._call("sendMessage", {"message": {"customType": custom_type, "content": content, "display": display}, "options": options})
+        message: dict[str, Any] = {"customType": custom_type, "content": content, "display": display}
+        if details is not None:
+            _ensure_jsonable(details, "send_message details")
+            message["details"] = details
+        self._call("sendMessage", {"message": message, "options": options})
 
     def send_user_message(self, content: str | list[dict[str, Any]], deliver_as: str = "followUp") -> None:
         """Send text or a list of text/image content blocks as a user message."""
         self._call("sendUserMessage", {"content": content, "options": {"deliverAs": deliver_as}})
+
+    def scoped_models(self) -> list[dict[str, Any]]:
+        """Return the resolved session scope in selection order."""
+        return self._call("getScopedModels", {}).get("result") or []
 
     def append_entry(self, custom_type: str, data: Any) -> None:
         self._call("appendEntry", {"customType": custom_type, "data": data})
@@ -705,8 +1093,22 @@ class Context:
     def config_home(self) -> str:
         return os.environ.get("PIG_HOME") or os.path.join(os.path.expanduser("~"), ".pig")
 
+    def _reply_field(self, method: str, field: str, args: Any = None) -> Any:
+        """One field every reply of ``method`` carries; a host failure raises and a missing field is a protocol error, never an empty value."""
+        result = self._call(method, args).get("result")
+        value = result.get(field) if isinstance(result, dict) else None
+        if value is None:
+            raise HostCallError(f"host reply to {method} has no {field!r}", "invalid_reply")
+        return value
+
+    def _optional_string_field(self, method: str, field: str) -> str | None:
+        """Pi's ``string | undefined`` getters carry an empty string for absent state on the wire."""
+        result = self._call(method).get("result")
+        value = result.get(field) if isinstance(result, dict) else None
+        return value if isinstance(value, str) and value else None
+
     def get_editor_text(self) -> str:
-        return str((self._call("ui.getEditorText").get("result") or {}).get("text") or "")
+        return self._reply_field("ui.getEditorText", "text")
 
     def set_editor_text(self, text: str) -> None:
         self._call("ui.setEditorText", {"text": text})
@@ -714,8 +1116,9 @@ class Context:
     def paste_to_editor(self, text: str) -> None:
         self._call("ui.pasteToEditor", {"text": text})
 
-    def get_session_name(self) -> str:
-        return str((self._call("getSessionName").get("result") or {}).get("name") or "")
+    def get_session_name(self) -> str | None:
+        """The session name, or None when the session has no name (Pi's ``string | undefined``)."""
+        return self._optional_string_field("getSessionName", "name")
 
     def set_session_name(self, name: str) -> None:
         self._call("setSessionName", {"name": name})
@@ -724,13 +1127,14 @@ class Context:
         self._call("setLabel", {"entryId": entry_id, "label": label})
 
     def get_flag(self, name: str) -> Any:
+        """Read the host value or first registered default, preserving falsy overrides."""
         result = self._call("getFlag", {"name": name}).get("result") or {}
-        if "value" in result:
+        if result.get("value") is not None:
             return result["value"]
         return self.extension._flag_defaults.get(name)
 
     def get_thinking_level(self) -> str:
-        return str((self._call("getThinkingLevel").get("result") or {}).get("level") or "")
+        return self._reply_field("getThinkingLevel", "level")
 
     def set_thinking_level(self, level: str) -> None:
         self._call("setThinkingLevel", {"level": level})
@@ -742,14 +1146,14 @@ class Context:
     # Tools/commands/context -------------------------------------------------
 
     def get_active_tools(self) -> list[str]:
-        return list((self._call("getActiveTools").get("result") or {}).get("tools") or [])
+        return list(self._reply_field("getActiveTools", "tools"))
 
     def get_all_tools(self) -> list[dict[str, Any]]:
         """Every tool in the session's registry, active or not, as upstream's
         ``pi.getAllTools()`` returns them: ``ToolInfo`` dicts with ``name``,
         ``description``, ``parameters``, ``promptGuidelines`` (when set) and
         ``sourceInfo``. Built-in tools come first."""
-        return list((self._call("getAllTools").get("result") or {}).get("tools") or [])
+        return list(self._reply_field("getAllTools", "tools"))
 
     def set_active_tools(self, tools: list[str]) -> None:
         self._call("setActiveTools", {"tools": tools})
@@ -762,14 +1166,14 @@ class Context:
         upstream's ``pi.getCommands()`` returns them: ``SlashCommandInfo``
         dicts with ``name``, ``description`` (when set), ``source`` and
         ``sourceInfo``."""
-        return list((self._call("getCommands").get("result") or {}).get("commands") or [])
+        return list(self._reply_field("getCommands", "commands"))
 
     def get_context_usage(self) -> dict[str, Any] | None:
         result = self._call("getContextUsage").get("result")
         return result if isinstance(result, dict) and result else None
 
     def get_system_prompt(self) -> str:
-        return str((self._call("getSystemPrompt").get("result") or {}).get("prompt") or "")
+        return self._reply_field("getSystemPrompt", "prompt")
 
     def get_system_prompt_options(self) -> dict[str, Any]:
         """Base inputs pi currently uses to build the system prompt
@@ -778,7 +1182,9 @@ class Context:
         base inputs only, not per-turn before_agent_start changes. May
         include full context-file contents; treat as sensitive."""
         result = self._call("getSystemPromptOptions").get("result")
-        return result if isinstance(result, dict) else {}
+        if not isinstance(result, dict):
+            raise HostCallError("host reply to getSystemPromptOptions is not an object", "invalid_reply")
+        return result
 
     def get_model_info(self) -> dict[str, Any] | None:
         result = self._call("getModelInfo").get("result")
@@ -800,8 +1206,18 @@ class Context:
 
     # Theme/widgets/advanced UI ---------------------------------------------
 
+    @property
+    def theme(self) -> Theme:
+        """Upstream ``ctx.ui.theme``: the host's active theme, kept current."""
+        return self.extension._theme
+
+    def has_ui(self) -> bool:
+        """Whether the host binds a UI context: interactive and RPC, not print/JSON."""
+        with self.extension._state_lock:
+            return self.extension._has_ui
+
     def get_all_themes(self) -> list[dict[str, Any]]:
-        return list((self._call("ui.getAllThemes").get("result") or {}).get("themes") or [])
+        return list(self._reply_field("ui.getAllThemes", "themes"))
 
     def get_theme(self, name: str) -> Any:
         return (self._call("ui.getTheme", {"name": name}).get("result") or {}).get("theme")
@@ -816,6 +1232,17 @@ class Context:
             return
         self._call("ui.setWidget", {"key": key, "content": content, "options": options or {}})
 
+    def set_footer(self, lines: list[str] | None) -> None:
+        """Replace the footer with pre-rendered lines, or clear it for None.
+
+        Upstream's component factory cannot cross the subprocess boundary,
+        so the lines are static: re-push them from :meth:`on_width_change`.
+        """
+        if lines is None:
+            self.clear_footer()
+            return
+        self._call("ui.setFooter", {"lines": [str(line) for line in lines]})
+
     def clear_footer(self) -> None:
         self._call("ui.setFooter", {"clear": True})
 
@@ -826,6 +1253,16 @@ class Context:
         :class:`HostCallError` and leaves the current header unchanged.
         """
         self._call("ui.setLogin", definition._to_wire())
+
+    def set_header(self, lines: list[str] | None) -> None:
+        """Replace the header with pre-rendered lines, or clear it for None.
+
+        As with :meth:`set_footer`, the lines are static.
+        """
+        if lines is None:
+            self.clear_header()
+            return
+        self._call("ui.setHeader", {"lines": [str(line) for line in lines]})
 
     def clear_header(self) -> None:
         self._call("ui.setHeader", {"clear": True})
@@ -838,22 +1275,25 @@ class Context:
         component: RemoteComponent | dict[str, Any] | None = None,
         options: dict[str, Any] | None = None,
     ) -> Any:
-        """Open a focused subprocess component.
+        """Open a focused subprocess component, or return None without callbacks when no UI is bound.
 
         Passing the legacy options-only shape retains the host's explicit
         unsupported response because it has no serializable component.
         """
+        if not self.has_ui():
+            return None
         self._block_for_user()
         if component is None or isinstance(component, dict):
             raw_options = component if isinstance(component, dict) else options
             return self._call("ui.custom", raw_options or {}).get("result")
-        result = self.extension._run_remote_component(component, options or {}, self.request_id)
+        result = self.extension._run_remote_component(component, options or {}, self.request_id, self._parent)
         if self.request_id:
             self.extension._request_state(self.request_id, "progress")
         return result
 
-    def add_autocomplete_provider(self) -> None:
-        self._call("ui.addAutocompleteProvider", {})
+    def add_autocomplete_provider(self, factory: AutocompleteProviderFactory | None = None) -> None:
+        """Append a retained factory and wait for the rebuilt provider chain. Headless contexts ignore it."""
+        self.extension._autocomplete.add(self, factory)
 
     def on_terminal_input(
         self, handler: "Callable[[str], TerminalInputResult | dict[str, Any] | None]"
@@ -862,9 +1302,11 @@ class Context:
 
         The host is told to start forwarding only on the first subscription and
         to stop on the last, so an extension that never subscribes costs the
-        input loop nothing. The host blocks on each verdict, so a handler must
+        input loop nothing. With no UI, no subscription is retained. The host blocks on each verdict, so a handler must
         return promptly. Returns an idempotent unsubscribe callable.
         """
+        if not self.has_ui():
+            return lambda: None
         if not callable(handler):
             raise TypeError("on_terminal_input requires a callable handler")
         return self.extension._add_terminal_input_handler(handler)
@@ -887,7 +1329,7 @@ class Context:
         return self.extension._add_width_change_handler(handler)
 
     def get_tools_expanded(self) -> bool:
-        return bool((self._call("ui.getToolsExpanded").get("result") or {}).get("expanded"))
+        return bool(self._reply_field("ui.getToolsExpanded", "expanded"))
 
     def set_tools_expanded(self, expanded: bool) -> None:
         self._call("ui.setToolsExpanded", {"expanded": expanded})
@@ -895,36 +1337,43 @@ class Context:
     # Session identity -------------------------------------------------------
 
     def get_session_id(self) -> str:
-        """The current session's id, or "" when the host does not answer."""
-        return str((self._call("getSessionID").get("result") or {}).get("id") or "")
+        """The current session's id, including in-memory sessions."""
+        return self._reply_field("getSessionID", "sessionId")
 
-    def get_session_file(self) -> str:
-        """Path to the current session's file, or "" when unavailable."""
-        if self.extension._session_file:
-            return self.extension._session_file
-        return str((self._call("getSessionFile").get("result") or {}).get("path") or "")
+    def get_session_file(self) -> str | None:
+        """The current session file path, or None for an in-memory session (Pi's ``string | undefined``)."""
+        return self._optional_string_field("getSessionFile", "sessionFile")
 
-    def get_leaf_id(self) -> str:
-        """Id of the current branch leaf entry, or "" when unavailable."""
-        return str((self._call("getLeafID").get("result") or {}).get("id") or "")
+    def get_leaf_id(self) -> str | None:
+        """The current leaf entry id, or None for an empty session (Pi's ``string | null``)."""
+        return self._optional_string_field("getLeafID", "leafId")
 
     # Shell ------------------------------------------------------------------
 
-    def exec(self, command: str, args: list[str] | None = None) -> ExecResult:
+    def exec(self, command: str, args: list[str] | None = None, *, timeout: float | None = None, cwd: str | None = None) -> ExecResult:
         """Run a command through the host's executor.
 
-        Raises RuntimeError when the host reports a failure, so a caller sees
-        the reason rather than an exit code of zero it never produced.
+        ``timeout`` (milliseconds) and ``cwd`` are upstream ExecOptions; a
+        command the timeout kills reports ``killed``. Raises HostCallError, a
+        RuntimeError whose message is the host's, when the host reports a
+        failure, such as "spawn EINVAL" for a batch file on Windows, so a
+        caller sees the reason rather than an exit code of zero it never
+        produced.
         """
-        response = self._call("exec", {"command": command, "args": args or []})
-        error = response.get("error")
-        if error:
-            raise RuntimeError(f"{error.get('code')}: {error.get('message')}")
-        result = response.get("result") or {}
+        call_args: dict[str, Any] = {"command": command, "args": args or []}
+        options: dict[str, Any] = {}
+        if timeout is not None:
+            options["timeout"] = timeout
+        if cwd is not None:
+            options["cwd"] = cwd
+        if options:
+            call_args["options"] = options
+        result = self._call("exec", call_args).get("result") or {}
         return ExecResult(
             stdout=str(result.get("stdout") or ""),
             stderr=str(result.get("stderr") or ""),
             exit_code=int(result.get("code") or 0),
+            killed=bool(result.get("killed")),
         )
 
     # Agent/session control --------------------------------------------------
@@ -933,25 +1382,58 @@ class Context:
         """Whether the current project is trusted.
 
         Untrusted projects have project-scoped settings and hooks disabled.
-        Defaults to trusted when the host does not answer, matching the
-        upstream runner.
+        A host failure raises rather than assuming trust.
         """
-        return bool((self._call("isProjectTrusted").get("result") or {}).get("trusted", True))
+        return bool(self._reply_field("isProjectTrusted", "trusted"))
 
     def is_idle(self) -> bool:
-        return bool((self._call("isIdle").get("result") or {}).get("idle", True))
+        return bool(self._reply_field("isIdle", "idle"))
 
     def abort(self) -> None:
         self._call("abort")
 
     def has_pending_messages(self) -> bool:
-        return bool((self._call("hasPendingMessages").get("result") or {}).get("pending"))
+        return bool(self._reply_field("hasPendingMessages", "pending"))
 
     def shutdown(self) -> None:
         self._call("shutdown")
 
-    def compact(self, opts: dict[str, Any] | None = None) -> None:
-        self._call("compact", opts or {})
+    def compact(
+        self,
+        opts: dict[str, Any] | None = None,
+        *,
+        custom_instructions: str | None = None,
+        on_complete: Callable[[dict[str, Any]], None] | None = None,
+        on_error: Callable[[Exception], None] | None = None,
+    ) -> None:
+        """Start compacting the session, as upstream ``ctx.compact`` does.
+
+        ``custom_instructions`` is upstream's ``customInstructions``. With
+        ``on_complete`` or ``on_error``, this returns at once and a background
+        thread waits for the outcome: ``on_complete`` receives upstream's
+        CompactionResult, ``on_error`` the failure. That wait belongs to the
+        extension, not to the calling handler, so it outlives the handler.
+        """
+        args = dict(opts or {})
+        if custom_instructions is not None:
+            args["customInstructions"] = custom_instructions
+        if on_complete is None and on_error is None:
+            self._call("compact", args)
+            return
+        args["awaitCompletion"] = True
+        extension = self.extension
+
+        def run() -> None:
+            try:
+                result = extension._call("compact", args).get("result")
+            except Exception as exc:  # noqa: BLE001 - the failure goes to on_error
+                if on_error is not None:
+                    on_error(exc)
+                return
+            if on_complete is not None:
+                on_complete(result if isinstance(result, dict) else {})
+
+        threading.Thread(target=run, name="pig-compact", daemon=True).start()
 
     def wait_for_idle(self) -> None:
         self._call("waitForIdle")
@@ -992,28 +1474,82 @@ _OAUTH_METHODS = frozenset(
 
 @dataclass
 class OAuthCredentials:
-    """A set of OAuth credentials. Serializes to the wire shape shared with the host."""
+    """Pi's OAuth token object (``packages/ai/src/auth/types.ts`` ``OAuthCredentials``).
+
+    ``expires`` holds Pi's exact value: an int or a float, including a fraction. A value that Pi's
+    declared number type excludes round-trips unchanged. ``extra`` retains every other provider-owned
+    key, including a present empty or ``None`` value of a named optional field. Use ``clear_expires``
+    for a credential without an ``expires`` property.
+    """
 
     refresh: str = ""
     access: str = ""
-    expires: int = 0
+    expires: Any = 0
     project_id: str = ""
+    account_id: str = ""
+    scope: str = ""
+    extra: dict[str, Any] = field(default_factory=dict)
+    _expires_absent: bool = field(default=False, repr=False)
+
+    def has_expires(self) -> bool:
+        """Whether the credential carries an ``expires`` property. An absent value applies only while ``expires`` is still the integer 0, so assigning an expiry restores the property."""
+        return not (self._expires_absent and type(self.expires) is int and self.expires == 0)
+
+    def clear_expires(self) -> None:
+        """Remove the ``expires`` property."""
+        self.expires = 0
+        self._expires_absent = True
 
     def _to_wire(self) -> dict[str, Any]:
-        wire: dict[str, Any] = {"refresh": self.refresh, "access": self.access, "expires": self.expires}
-        if self.project_id:
-            wire["projectId"] = self.project_id
+        wire: dict[str, Any] = {**self.extra, "refresh": self.refresh, "access": self.access}
+        wire.pop("expires", None)
+        if self.has_expires():
+            wire["expires"] = _js_number_wire(self.expires)
+        for key, value in (("projectId", self.project_id), ("accountId", self.account_id), ("scope", self.scope)):
+            if value:
+                wire[key] = value
         return wire
 
     @staticmethod
     def _from_wire(data: dict[str, Any] | None) -> "OAuthCredentials":
-        data = data or {}
-        return OAuthCredentials(
-            refresh=data.get("refresh", ""),
-            access=data.get("access", ""),
-            expires=int(data.get("expires", 0) or 0),
-            project_id=data.get("projectId", ""),
-        )
+        data = dict(data or {})
+        creds = OAuthCredentials(refresh=data.pop("refresh", ""), access=data.pop("access", ""))
+        if "expires" in data:
+            creds.expires = _js_number_read(data.pop("expires"))
+        else:
+            creds._expires_absent = True
+        for key, name in (("projectId", "project_id"), ("accountId", "account_id"), ("scope", "scope")):
+            value = data.get(key)
+            if isinstance(value, str) and value:
+                setattr(creds, name, data.pop(key))
+        creds.extra = data
+        return creds
+
+
+_MAX_SAFE_INTEGER = 2**53
+
+
+def _js_number_read(value: Any) -> Any:
+    """JSON.parse of a number: an integer beyond 2**53 is the nearest double, as the Go SDK projects it."""
+    if type(value) is int and abs(value) > _MAX_SAFE_INTEGER:
+        try:
+            return float(value)
+        except OverflowError:
+            return math.inf if value > 0 else -math.inf
+    return value
+
+
+def _js_number_wire(value: Any) -> Any:
+    """JSON.stringify of a JavaScript number: non-finite values are null, -0 is 0, and a double beyond 2**53 below 1e21 is written with Number::toString's digits (2**60 is 1152921504606847000)."""
+    value = _js_number_read(value)
+    if isinstance(value, float):
+        if math.isnan(value) or math.isinf(value):
+            return None
+        if value == 0:
+            return 0
+        if value.is_integer() and abs(value) < 1e21:
+            return int(decimal.Decimal(repr(value))) if abs(value) > _MAX_SAFE_INTEGER else int(value)
+    return value
 
 
 @dataclass
@@ -1149,10 +1685,25 @@ class OAuthLoginCallbacks:
         return payload.get("value", "")
 
 
+def _user_bash_event_result(value: Any) -> Any:
+    """Preserve a present number-or-undefined exit code (None) across JSON."""
+    if not isinstance(value, dict) or not isinstance(value.get("result"), dict):
+        return value
+    result = dict(value["result"])
+    undefined = "exitCode" in result and result["exitCode"] is None
+    if undefined:
+        del result["exitCode"]
+    if "fullOutputPath" in result and result["fullOutputPath"] is None:
+        del result["fullOutputPath"]
+    return {**value, "result": result, "_pigUserBashExitCodeUndefined": undefined}
+
+
 class Extension:
     def __init__(self, name: str):
         self._name = name
         self._tools: list[dict[str, Any]] = []
+        self._tool_registration_lock = threading.RLock()
+        self._tools_live = False
         # Raw terminal-input handlers, consulted synchronously while the host
         # holds the user's keystroke. Empty means the host never round-trips.
         self._term_input: list[tuple[int, Any]] = []
@@ -1163,9 +1714,18 @@ class Extension:
         self._shortcuts: list[dict[str, Any]] = []
         self._handlers: list[dict[str, Any]] = []
         self._flags: list[dict[str, Any]] = []
+        self._autocomplete = _AutocompleteRegistry()
         self._providers: list[dict[str, Any]] = []
+        self._provider_lock = threading.RLock()
+        self._native_providers = {}
+        self._provider_callbacks = {}
+        self._provider_updates = {}
+        self._remote_providers = {}
+        self._provider_streams: dict[str, Callable] = {}
+        self._provider_active: dict[str, ModelEventStream] = {}
         self._renderers: list[dict[str, Any]] = []
         self._entry_renderers: list[dict[str, Any]] = []
+        self._markdown_transformer: Callable[[str, dict[str, Any]], Any] | None = None
         self._oauth_providers: dict[str, OAuthProvider] = {}
         self._tool_handlers: dict[str, ToolHandler] = {}
         self._tool_prepare_handlers: dict[str, ToolPrepareArguments] = {}
@@ -1188,6 +1748,8 @@ class Extension:
         self._width: int = 0
         self._height: int = 0
         self._model: str = ""
+        self._has_ui: bool = False
+        self._theme = Theme()
         self._sock: socket.socket | None = None
         self._write_lock = threading.Lock()
         self._state_lock = threading.Lock()
@@ -1195,12 +1757,14 @@ class Extension:
         # Serializes the one-time session-log subscribe so concurrent first
         # readers make a single host call.
         self._session_sub_lock = threading.Lock()
+        self._session_sub_error: Exception | None = None
         self._pending: dict[str, threading.Event] = {}
         self._pending_results: dict[str, dict[str, Any]] = {}
         self._pending_parents: dict[str, str] = {}
         self._cancelled_calls: set[str] = set()
         self._call_id = 0
         self._active: dict[str, tuple[threading.Event, str | None]] = {}
+        self._request_parents: dict[str, _RequestParent] = {}
         self._request_threads: set[threading.Thread] = set()
         self._request_threads_lock = threading.Lock()
         self._overlay_seq = 0
@@ -1209,26 +1773,67 @@ class Extension:
         self._model_stream_lock = threading.Lock()
         self._overlays: dict[str, _RemoteOverlayState] = {}
         self._overlay_lock = threading.Lock()
-        self._shutdown = threading.Event()
+        self._shutdown = ProviderSignal()
 
     @property
     def name(self) -> str:
         return self._name
 
-    def tool(self, name: str, description: str, schema: Schema, handler: ToolHandler, *, prompt_guidelines: list[str] | None = None, source: str | None = None, constrained_sampling: dict | None = None, prepare_arguments: ToolPrepareArguments | None = None) -> None:
+    def tool(self, name: str, description: str, schema: Schema, handler: ToolHandler, *, prompt_snippet: str | None = None, prompt_guidelines: list[str] | None = None, source: str | None = None, constrained_sampling: dict[str, Any] | Literal[False] | None = None, prepare_arguments: ToolPrepareArguments | None = None) -> None:
+        """Register a tool. Reject a non-object schema before changing registration state."""
+        if not isinstance(schema, dict):
+            raise ValueError(f'Tool "{name}" registered by extension "{self._name}" must define an object parameter schema.')
         _ensure_jsonable(schema, f"tool schema for {name}")
         td: dict = {"name": name, "description": description, "parameters": schema}
         if constrained_sampling is not None:
             _ensure_jsonable(constrained_sampling, f"constrained_sampling for {name}")
             td["constrained_sampling"] = constrained_sampling
+        if prompt_snippet is not None:
+            td["prompt_snippet"] = prompt_snippet
         if prompt_guidelines:
             td["prompt_guidelines"] = prompt_guidelines
         if source:
             td["source"] = source
-        self._tools.append(td)
-        self._tool_handlers[name] = handler
-        if prepare_arguments is not None:
-            self._tool_prepare_handlers[name] = prepare_arguments
+        self._register_tool(td, handler, prepare_arguments)
+
+    def _register_tool(self, declaration, handler, prepare=None, render_call=None, render_result=None):
+        name = declaration["name"]
+        with self._tool_registration_lock:
+            index = next((i for i, tool in enumerate(self._tools) if tool["name"] == name), None)
+            if index is None:
+                self._tools.append(declaration)
+            else:
+                self._tools[index] = declaration
+            self._tool_handlers[name] = handler
+            for handlers, callback in ((self._tool_prepare_handlers, prepare), (self._tool_call_renderers, render_call), (self._tool_result_renderers, render_result)):
+                if callback is None:
+                    handlers.pop(name, None)
+                else:
+                    handlers[name] = callback
+            if self._tools_live:
+                self._call("registerTool", declaration)
+
+    def register_tool(self, definition: ToolDefinition) -> None:
+        """Replace a tool in place and refresh a running Session before returning."""
+        name = definition.name
+        if not name:
+            raise ValueError("register_tool requires a definition with name")
+        if not isinstance(definition.parameters, dict):
+            raise ValueError(f'Tool "{name}" registered by extension "{self._name}" must define an object parameter schema.')
+        if definition.render_shell not in {"default", "self"}:
+            raise ValueError("render_shell must be 'default' or 'self'")
+        if definition.execution_mode not in {None, "sequential", "parallel"}:
+            raise ValueError("execution_mode must be 'sequential' or 'parallel'")
+        declaration = {
+            "name": name, "label": definition.label, "description": definition.description,
+            "parameters": definition.parameters, "prompt_snippet": definition.prompt_snippet,
+            "prompt_guidelines": definition.prompt_guidelines, "execution_mode": definition.execution_mode,
+            "constrained_sampling": definition.constrained_sampling, "render_shell": definition.render_shell,
+            "renders_call": definition.render_call is not None, "renders_result": definition.render_result is not None,
+        }
+        declaration = {key: value for key, value in declaration.items() if value is not None}
+        _ensure_jsonable(declaration, f"tool definition for {name}")
+        self._register_tool(declaration, definition.execute, definition.prepare_arguments, definition.render_call, definition.render_result)
 
     def command(self, name: str, description: str, handler: CommandHandler, *, get_argument_completions: ArgumentCompletionsHandler | None = None) -> None:
         """Register a slash command, as upstream ``pi.registerCommand`` does.
@@ -1254,13 +1859,32 @@ class Extension:
         if default is not None:
             decl["default"] = default
         self._flags.append(decl)
-        self._flag_defaults[name] = default
+        if name not in self._flag_defaults or self._flag_defaults[name] is None:
+            self._flag_defaults[name] = default
 
-    def register_provider(self, name: str, config: dict[str, Any]) -> None:
+    def register_native_provider(self, provider: Provider) -> None:
+        declaration = _register_native(self, provider)
+        self.unregister_provider(provider.id)
+        self._providers.append({"name": provider.id, "config": {}, "native": declaration})
+
+    def register_provider(self, name: str | Provider, config: dict[str, Any] | None = None) -> None:
+        if isinstance(name, Provider):
+            self.register_native_provider(name)
+            return
+        config = dict(config)
+        callback = config.pop("streamSimple", None)
+        if callback is not None:
+            if not callable(callback):
+                raise TypeError("streamSimple must be callable")
+            self._provider_streams[name] = callback
         _ensure_jsonable(config, f"provider config for {name}")
-        self._providers.append({"name": name, "config": config})
+        declaration = {"name": name, "config": config}
+        if callback is not None:
+            declaration["stream_simple"] = True
+        self._providers.append(declaration)
 
     def unregister_provider(self, name: str) -> None:
+        self._provider_streams.pop(name, None)
         self._providers = [provider for provider in self._providers if provider.get("name") != name]
 
     def register_oauth_provider(self, name: str, config: dict[str, Any], provider: OAuthProvider) -> None:
@@ -1285,24 +1909,19 @@ class Extension:
         self._oauth_providers[name] = provider
 
     def tool_renderers(self, name: str, *, render_call: ToolRenderCallHandler | None = None, render_result: ToolRenderResultHandler | None = None, render_shell: str = "default") -> None:
-        """Set upstream renderShell, renderCall and renderResult of the registered tool ``name``.
-
-        A renderer that raises draws upstream's fallback in its place.
-        """
+        """Set tool renderers and publish the updated definition in a running Session."""
         if render_shell not in {"default", "self"}:
             raise ValueError("render_shell must be 'default' or 'self'")
-        for tool in self._tools:
-            if tool.get("name") != name:
-                continue
-            tool.pop("render_shell", None)
-            if render_shell == "self":
-                tool["render_shell"] = "self"
-            tool["renders_call"] = render_call is not None
-            tool["renders_result"] = render_result is not None
-        if render_call is not None:
-            self._tool_call_renderers[name] = render_call
-        if render_result is not None:
-            self._tool_result_renderers[name] = render_result
+        with self._tool_registration_lock:
+            for tool in self._tools:
+                if tool.get("name") != name:
+                    continue
+                declaration = dict(tool)
+                declaration["render_shell"] = render_shell
+                declaration["renders_call"] = render_call is not None
+                declaration["renders_result"] = render_result is not None
+                self._register_tool(declaration, self._tool_handlers[name], self._tool_prepare_handlers.get(name), render_call, render_result)
+                break
 
     def _render_tool(self, ctx: "Context", name: str, args: dict[str, Any]) -> list[str]:
         card_id = str(args.get("card") or "")
@@ -1343,6 +1962,16 @@ class Extension:
         self._entry_renderers.append({"custom_type": custom_type})
         self._entry_renderer_handlers[custom_type] = handler
 
+    def markdown_transformer(self, transformer: Callable[[str, dict[str, Any]], Any]) -> None:
+        """Register the extension's display-only Markdown transform (Pi's
+        pi.registerMarkdownTransformer). The host applies it to user and
+        assistant Markdown in the interactive transcript, after its own
+        transformers; a later registration replaces an earlier one. It receives
+        the Markdown and Pi's MarkdownTransformContext (messageType,
+        isStreaming, availableWidth); anything but a str return, or a raise,
+        keeps the input."""
+        self._markdown_transformer = transformer
+
     def on_project_trust(self, handler: ProjectTrustHandler) -> None:
         """Register an awaited pre-runtime project_trust handler."""
         self.on_event("project_trust", handler)
@@ -1360,10 +1989,22 @@ class Extension:
 
     def run_with_socket(self, sock_path: str) -> None:
         self._sock = _connect_unix(sock_path)
-        self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers}})
-        ready = self._read()
-        if ready.get("type") != "ready":
-            raise RuntimeError(f"expected ready, got {ready.get('type')}")
+        try:
+            self._serve()
+        finally:
+            # The host's Retire waits for this close while the process lives on for later factory generations (Go's RunWithConn closes on return).
+            try:
+                self._sock.close()
+            except OSError:
+                pass
+
+    def _serve(self) -> None:
+        with self._tool_registration_lock:
+            self._send({"type": "register", "register": {"name": self._name, "tools": self._tools, "commands": self._commands, "shortcuts": self._shortcuts, "handlers": self._handlers, "flags": self._flags, "providers": self._providers, "message_renderers": self._renderers, "entry_renderers": self._entry_renderers, **({"markdown_transformer": True} if self._markdown_transformer is not None else {})}})
+            ready = self._read()
+            if ready.get("type") != "ready":
+                raise RuntimeError(f"expected ready, got {ready.get('type')}")
+            self._tools_live = True
         ready_data = ready.get("ready") or {}
         self._session_name = ready_data.get("session_name", "")
         self._cwd = ready_data.get("cwd", "")
@@ -1373,6 +2014,8 @@ class Extension:
         self._model = ready_data.get("model", "")
         # Initialize session mirror from the ready payload state.
         initial_state = ready_data.get("state") or {}
+        with self._state_lock:
+            self._apply_ui_state(initial_state)
         initial_session = initial_state.get("session")
         if initial_session:
             self._session_file = str(initial_session.get("sessionFile") or "")
@@ -1400,10 +2043,11 @@ class Extension:
             if env.get("type") == "notify":
                 self._handle_notify(env)
             elif env.get("type") == "request":
+                ctx = self._arm_request(env)
                 self._request_state(env.get("id", ""), "started")
                 worker = threading.Thread(
                     target=self._handle_request_thread,
-                    args=(env,),
+                    args=(env, ctx),
                     name=f"pig-request-{env.get('id', '')}",
                     daemon=True,
                 )
@@ -1427,16 +2071,13 @@ class Extension:
                     active = self._active.get(req_id)
                     if active:
                         self._active[req_id] = (active[0], reason)
-                    cancelled_calls = []
-                    for call_id, parent_id in list(self._pending_parents.items()):
-                        if parent_id != req_id:
-                            continue
-                        event = self._pending.pop(call_id, None)
-                        self._pending_parents.pop(call_id, None)
-                        self._pending_results.pop(call_id, None)
-                        self._cancelled_calls.add(call_id)
-                        if event:
-                            cancelled_calls.append(event)
+                        stream = self._provider_active.get(req_id)
+                        if stream is not None:
+                            stream.end(None)
+                    parent = self._request_parents.get(req_id)
+                    if parent is not None:
+                        parent.state = "cancelled"
+                    cancelled_calls = self._cancel_parent_calls_locked(req_id)
                 if active:
                     active[0].set()
                 for event in cancelled_calls:
@@ -1450,6 +2091,7 @@ class Extension:
         with self._state_lock:
             pending = list(self._pending.values())
             active = list(self._active.values())
+            provider_streams = list(self._provider_active.values())
         with self._overlay_lock:
             overlays = list(self._overlays.values())
         for overlay in overlays:
@@ -1458,11 +2100,14 @@ class Extension:
             event.set()
         for cancel, _ in active:
             cancel.set()
+        for stream in provider_streams:
+            stream.end(None)
         deadline = time.monotonic() + 2.0
         while True:
             with self._request_threads_lock:
                 threads = [thread for thread in self._request_threads if thread is not threading.current_thread()]
             if not threads:
+                self._autocomplete.clear()
                 return
             remaining = deadline - time.monotonic()
             if remaining <= 0:
@@ -1470,9 +2115,9 @@ class Extension:
             for thread in threads:
                 thread.join(timeout=max(0.0, deadline - time.monotonic()))
 
-    def _handle_request_thread(self, env: dict[str, Any]) -> None:
+    def _handle_request_thread(self, env: dict[str, Any], ctx: Context) -> None:
         try:
-            self._handle_request(env)
+            self._handle_request(env, ctx)
         finally:
             with self._request_threads_lock:
                 self._request_threads.discard(threading.current_thread())
@@ -1481,16 +2126,26 @@ class Extension:
         notify = env.get("notify") or {}
         method = notify.get("method", "")
         args = notify.get("args") or {}
+        if method == "autocomplete.release":
+            self._autocomplete.release(args.get("id"))
+            return
         if method == "tool_render_release":
             with self._tool_render_lock:
                 self._tool_render_cards.pop(str(args.get("card") or ""), None)
+            return
+        if method == "provider_release":
+            with self._provider_lock:
+                self._native_providers.pop(args.get("key"), None)
             return
         if method == "model_stream_event":
             stream_id = str(args.get("streamId") or "")
             with self._model_stream_lock:
                 stream = self._model_streams.get(stream_id)
             if stream is not None:
-                stream.push(args.get("event") or {})
+                if args.get("started"):
+                    stream.mark_started()
+                else:
+                    stream.push(args.get("event") or {})
             return
         if method == "ui.custom.input":
             key = str(args.get("key") or "")
@@ -1518,6 +2173,15 @@ class Extension:
                 name = model.get("name") or model.get("id") or ""
                 if name:
                     self._model = name
+                self._apply_ui_state(state)
+            elif method == "theme_change":
+                palette = notify.get("args")
+                if isinstance(palette, str):
+                    try:
+                        palette = json.loads(palette)
+                    except ValueError:
+                        palette = {}
+                self._theme._set_palette(palette or {})
             elif method == "width_change":
                 w = args.get("width", 0)
                 if w > 0:
@@ -1539,25 +2203,71 @@ class Extension:
             for overlay in overlays:
                 overlay.request_render()
 
-    def _handle_request(self, env: dict[str, Any]) -> None:
+    def _apply_ui_state(self, state: dict[str, Any]) -> None:
+        """Record the snapshot's hasUI and theme. Caller holds _state_lock."""
+        has_ui = state.get("hasUI")
+        if isinstance(has_ui, bool):
+            self._has_ui = has_ui
+        theme = state.get("theme")
+        if isinstance(theme, dict):
+            self._theme._set_palette(theme)
+
+    def _arm_request(self, env: dict[str, Any]) -> Context:
         req_id = env.get("id", "")
         req = env.get("request") or {}
-        cancel = threading.Event()
+        cancel = ProviderSignal()
+        parent = _RequestParent(req_id, self._sock)
         with self._state_lock:
             self._active[req_id] = (cancel, None)
-        ctx = Context(self, req.get("tool_call_id"), req_id, cancel)
+            self._request_parents[req_id] = parent
+        ctx = Context(self, req.get("tool_call_id"), req_id, cancel, _parent=parent)
         ctx._reason_provider = lambda: self._active.get(req_id, (None, None))[1]
+        return ctx
+
+    def _handle_request(self, env: dict[str, Any], ctx: Context | None = None) -> None:
+        req_id = env.get("id", "")
+        req = env.get("request") or {}
+        if ctx is None:
+            ctx = self._arm_request(env)
+        cancel = ctx._cancelled
         try:
             method = req.get("method")
-            if method == "tool_call":
+            if method in {"autocomplete.sync", "autocomplete.suggest"}:
+                self._respond(req_id, self._autocomplete.dispatch(ctx, req.get("args") or {}), None)
+            elif method in {"provider_call", "provider_stream", "provider_sync"}:
+                self._respond(req_id, _dispatch_provider(self, ctx, req), None)
+            elif method in {"provider_object_callback", "provider_object_callback_sync"}:
+                self._respond(req_id, _dispatch_provider_callback(self, req), None)
+            elif method == "provider_stream_simple":
+                cancel = ctx._cancelled
+                args = req.get("args") or {}
+                stream = self._provider_streams[req.get("tool", "")](ctx, args["model"], args["context"], args["options"])
+                with self._state_lock:
+                    self._provider_active[req_id] = stream
+                    if cancel.is_set():
+                        stream.end(None)
+                try:
+                    for event in stream.events():
+                        if cancel.is_set():
+                            raise RuntimeError("provider stream aborted")
+                        self._notify("provider_stream_event", {"request_id": req_id, "result": event})
+                    if cancel.is_set():
+                        raise RuntimeError("provider stream aborted")
+                    self._respond(req_id, stream.result(), None)
+                finally:
+                    with self._state_lock:
+                        self._provider_active.pop(req_id, None)
+            elif method == "tool_call":
                 name = req.get("tool", "")
                 params = req.get("args") or {}
-                prepare = self._tool_prepare_handlers.get(name)
+                with self._tool_registration_lock:
+                    prepare = self._tool_prepare_handlers.get(name)
+                    handler = self._tool_handlers[name]
                 if prepare is not None:
                     params = prepare(params)
                     if not isinstance(params, dict):
                         raise TypeError("prepare_arguments must return a mapping")
-                result = self._tool_handlers[name](ctx, params)
+                result = handler(ctx, params)
                 payload = result if isinstance(result, dict) else {"content": str(result)}
                 self._respond(req_id, payload, None)
             elif method == "command":
@@ -1597,7 +2307,8 @@ class Extension:
                 if handler is None:
                     raise RuntimeError(f"unknown event handler {handler_id} for {req.get('event', '')}")
                 data = req.get("args") or {}
-                if req.get("event") == "agent_before_settle":
+                # pig additive (D19): preserve boundary mutations alongside handler errors.
+                if req.get("event") in ("agent_before_settle", "turn_end"):
                     entries = data.get("entries", [])
                     result = None
                     error = None
@@ -1607,9 +2318,27 @@ class Extension:
                         error = {"message": str(exc)}
                     self._respond(req_id, {"_pigBoundaryEntries": entries, "_pigBoundaryResult": result}, error)
                     return
+                if req.get("event") == "before_agent_start":
+                    options = data["systemPromptOptions"]
+                    # Pi's normalized options always carry a selectedTools list; the host omits an empty one.
+                    options.setdefault("selectedTools", [])
+                    result = None
+                    error = None
+                    try:
+                        result = handler(ctx, data)
+                    except Exception as exc:  # noqa: BLE001 - Preserve section mutations before reporting the handler error.
+                        error = {"message": str(exc)}
+                    self._respond(
+                        req_id,
+                        {"_pigPromptSections": options["sections"], "_pigPromptSelectedTools": options.get("selectedTools"), "_pigPromptResult": result},
+                        error,
+                    )
+                    return
                 messages = data.get("messages")
                 snapshot = list(messages) if isinstance(messages, list) else None
                 result = handler(ctx, data)
+                if req.get("event") == "user_bash":
+                    result = _user_bash_event_result(result)
                 if req.get("event") in {"context", "context_with_system"} and snapshot is not None:
                     returned = result.get("messages") if isinstance(result, dict) else None
                     if returned is None:
@@ -1628,6 +2357,16 @@ class Extension:
             elif method == "render_tool":
                 lines = self._render_tool(ctx, req.get("tool", ""), req.get("args") or {})
                 self._respond(req_id, {"lines": lines}, None)
+            elif method == "markdown_transform":
+                args = req.get("args") or {}
+                transformed = None
+                if self._markdown_transformer is not None:
+                    try:
+                        result = self._markdown_transformer(str(args.get("markdown") or ""), args.get("context") or {})
+                        transformed = result if isinstance(result, str) else None
+                    except Exception:  # noqa: BLE001 - Pi keeps the Markdown when a transformer throws.
+                        transformed = None
+                self._respond(req_id, transformed, None)
             elif method == "render_entry":
                 custom_type = req.get("tool", "")
                 args = req.get("args") or {}
@@ -1642,6 +2381,7 @@ class Extension:
         finally:
             with self._state_lock:
                 self._active.pop(req_id, None)
+                self._request_parents.pop(req_id, None)
 
     def _dispatch_oauth(self, req_id: str, req: dict[str, Any]) -> None:
         name = req.get("tool", "")
@@ -1721,68 +2461,89 @@ class Extension:
         """
         with self._session_sub_lock:
             if self._session_mirror.subscribed:
+                if self._session_sub_error is not None:
+                    raise self._session_sub_error
                 return
             # Set before the call: the host starts sending the log as soon as
             # it registers the subscription, and those pushes must be applied.
             self._session_mirror.subscribed = True
-            entries = self._read_session_entries(self._session_file)
-            cursor = len(entries)
-            leaf_id = ""
-            while True:
-                requested_cursor = cursor
-                result = self._call("watchSessionLog", {"cursor": cursor}).get("result")
-                if not isinstance(result, dict):
-                    return
-                page = result.get("entries")
-                page_entries = page if isinstance(page, list) else []
-                next_cursor = int(result.get("entryCount", cursor))
-                if next_cursor - len(page_entries) != requested_cursor:
-                    entries = []
-                entries.extend(page_entries)
-                cursor = next_cursor
-                leaf_id = result.get("leafId", leaf_id) or leaf_id
-                if not result.get("hasMore", False):
-                    break
-            self._session_mirror.seed(entries, leaf_id)
+            try:
+                self._subscribe_session_log()
+            except Exception as error:  # a failed attempt is not retried, so every read reports it
+                self._session_sub_error = error
+                raise
 
-            while True:
-                result = self._call(
-                    "watchSessionLog", {"cursor": cursor, "complete": True}
-                ).get("result")
-                if not isinstance(result, dict):
-                    return
-                page = result.get("entries")
-                page_entries = page if isinstance(page, list) else []
-                cursor = int(result.get("entryCount", cursor))
-                leaf_id = result.get("leafId", leaf_id) or leaf_id
-                self._session_mirror.apply_update(
-                    {
-                        "entriesAppended": page_entries,
-                        "entryCount": cursor,
-                        "leafId": leaf_id,
-                    }
-                )
-                if not result.get("hasMore", False) and not page_entries:
-                    return
+    def _subscribe_session_log(self) -> None:
+        """Install the session log; raises on a host failure."""
+        entries = self._read_session_entries(self._session_file)
+        cursor = len(entries)
+        leaf_id = ""
+        while True:
+            requested_cursor = cursor
+            result = self._call("watchSessionLog", {"cursor": cursor}).get("result")
+            if not isinstance(result, dict):
+                raise HostCallError("host reply to watchSessionLog is not an object", "invalid_reply")
+            page = result.get("entries")
+            page_entries = page if isinstance(page, list) else []
+            next_cursor = int(result.get("entryCount", cursor))
+            if next_cursor - len(page_entries) != requested_cursor:
+                entries = []
+            entries.extend(page_entries)
+            cursor = next_cursor
+            leaf_id = result.get("leafId", leaf_id) or leaf_id
+            if not result.get("hasMore", False):
+                break
+        self._session_mirror.seed(entries, leaf_id)
 
-    def _call(self, method: str, args: Any = None, parent_request_id: str = "") -> dict[str, Any]:
-        call_id, event = self._begin_call(method, args, parent_request_id)
+        while True:
+            result = self._call(
+                "watchSessionLog", {"cursor": cursor, "complete": True}
+            ).get("result")
+            if not isinstance(result, dict):
+                raise HostCallError("host reply to watchSessionLog is not an object", "invalid_reply")
+            page = result.get("entries")
+            page_entries = page if isinstance(page, list) else []
+            cursor = int(result.get("entryCount", cursor))
+            leaf_id = result.get("leafId", leaf_id) or leaf_id
+            self._session_mirror.apply_update(
+                {
+                    "entriesAppended": page_entries,
+                    "entryCount": cursor,
+                    "leafId": leaf_id,
+                }
+            )
+            if not result.get("hasMore", False) and not page_entries:
+                return
+
+    def _call(self, method: str, args: Any = None, parent_request_id: str = "", parent: _RequestParent | None = None) -> dict[str, Any]:
+        call_id, event = self._begin_call(method, args, parent_request_id, parent)
         return self._wait_call(call_id, event, method)
 
-    def _begin_call(self, method: str, args: Any = None, parent_request_id: str = "") -> tuple[str, threading.Event]:
-        if self._shutdown.is_set():
-            raise RuntimeError("extension is shutting down")
+    def _begin_call(self, method: str, args: Any = None, parent_request_id: str = "", parent: _RequestParent | None = None) -> tuple[str, threading.Event]:
         event = threading.Event()
-        with self._state_lock:
-            self._call_id += 1
-            call_id = f"c{self._call_id}"
-            self._pending[call_id] = event
+        with self._write_lock:
+            with self._state_lock:
+                if self._shutdown.is_set() or (parent is not None and parent.socket is not self._sock):
+                    raise RuntimeError("extension connection is closed or replaced")
+                if parent is not None:
+                    if parent.state == "cancelled":
+                        raise RuntimeError("host call cancelled with its parent request")
+                    parent_request_id = "" if parent.state == "completed" else parent.request_id
+                self._call_id += 1
+                call_id = f"c{self._call_id}"
+                self._pending[call_id] = event
+                if parent_request_id:
+                    self._pending_parents[call_id] = parent_request_id
+            call = {"method": method, "args": args}
             if parent_request_id:
-                self._pending_parents[call_id] = parent_request_id
-        call = {"method": method, "args": args}
-        if parent_request_id:
-            call["parent_request_id"] = parent_request_id
-        self._send({"type": "call", "id": call_id, "call": call})
+                call["parent_request_id"] = parent_request_id
+            try:
+                self._send_locked({"type": "call", "id": call_id, "call": call})
+            except Exception:
+                with self._state_lock:
+                    self._pending.pop(call_id, None)
+                    self._pending_parents.pop(call_id, None)
+                raise
         return call_id, event
 
     def _wait_call(self, call_id: str, event: threading.Event, method: str) -> dict[str, Any]:
@@ -1843,7 +2604,7 @@ class Extension:
                     pass
                 return
 
-    def _run_remote_component(self, component: RemoteComponent, options: dict[str, Any], parent_request_id: str = "") -> Any:
+    def _run_remote_component(self, component: RemoteComponent, options: dict[str, Any], parent_request_id: str = "", parent: _RequestParent | None = None) -> Any:
         args = dict(options)
         with self._overlay_lock:
             self._overlay_seq += 1
@@ -1852,7 +2613,7 @@ class Extension:
             self._overlays[key] = overlay
         args["key"] = key
         try:
-            call_id, event = self._begin_call("ui.custom", args, parent_request_id)
+            call_id, event = self._begin_call("ui.custom", args, parent_request_id, parent)
         except Exception:
             with self._overlay_lock:
                 self._overlays.pop(key, None)
@@ -1972,25 +2733,57 @@ class Extension:
 
         return unsubscribe
 
-    def _respond(self, req_id: str, result: Any, error: dict[str, Any] | None) -> None:
-        self._request_state(req_id, "completed")
-        self._send({"type": "response", "id": req_id, "response": {"result": result, "error": error}})
+    def _cancel_parent_calls_locked(self, req_id: str) -> list[threading.Event]:
+        events = []
+        for call_id, parent_id in list(self._pending_parents.items()):
+            if parent_id != req_id:
+                continue
+            event = self._pending.pop(call_id, None)
+            self._pending_parents.pop(call_id, None)
+            self._pending_results.pop(call_id, None)
+            self._cancelled_calls.add(call_id)
+            if event is not None:
+                events.append(event)
+        return events
 
-    def _request_state(self, req_id: str, state: str, reason: str | None = None) -> None:
+    def _respond(self, req_id: str, result: Any, error: dict[str, Any] | None) -> None:
+        with self._write_lock:
+            with self._state_lock:
+                parent = self._request_parents.pop(req_id, None)
+                self._active.pop(req_id, None)
+                if parent is not None:
+                    parent.finished = True
+                    if parent.state == "active":
+                        parent.state = "completed"
+                cancelled_calls = self._cancel_parent_calls_locked(req_id)
+            for event in cancelled_calls:
+                event.set()
+            self._send_locked({"type": "request_state", "request_state": {"request_id": req_id, "state": "completed"}})
+            self._send_locked({"type": "response", "id": req_id, "response": {"result": result, "error": error}})
+
+    def _request_state(self, req_id: str, state: str, reason: str | None = None, parent: _RequestParent | None = None) -> None:
         payload = {"request_id": req_id, "state": state}
         if reason:
             payload["reason"] = reason
-        self._send({"type": "request_state", "request_state": payload})
+        with self._write_lock:
+            if parent is not None:
+                with self._state_lock:
+                    if parent.finished or (parent.state == "cancelled" and state != "progress") or parent.socket is not self._sock:
+                        return
+            self._send_locked({"type": "request_state", "request_state": payload})
 
     def _send(self, env: dict[str, Any]) -> None:
+        with self._write_lock:
+            self._send_locked(env)
+
+    def _send_locked(self, env: dict[str, Any]) -> None:
         if self._sock is None:
             raise RuntimeError("extension socket is not connected")
         data = json.dumps(env, separators=(",", ":")).encode()
         if len(data) > MAX_FRAME_SIZE:
             raise RuntimeError(f"frame too large: {len(data)} bytes exceeds {MAX_FRAME_SIZE}")
-        with self._write_lock:
-            self._sock.sendall(struct.pack(">I", len(data)))
-            self._sock.sendall(data)
+        self._sock.sendall(struct.pack(">I", len(data)))
+        self._sock.sendall(data)
 
     def _read(self) -> dict[str, Any]:
         if self._sock is None:

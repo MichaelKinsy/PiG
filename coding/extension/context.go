@@ -25,14 +25,8 @@ type Context struct {
 	// Mirrors upstream `get cwd()` (runner.ts:581).
 	cwd string
 
-	// uiContext is the per-mode UI context, captured at
-	// createContext time. Mirrors upstream's `runner.uiContext`
-	// access pattern (runner.ts:572-575). Default value is
-	// [NoopUIContext] so callers never need a nil check.
-	//
-	// **Identity contract:** Context.HasUI() reports true iff
-	// `uiContext != NoopUIContext` (pointer identity, runner.ts:361).
-	uiContext UIContext
+	// uiContext reads the current UI binding. Runner contexts stay live across setUIContext calls.
+	uiContext func() UIContext
 
 	// assertActive is the runner's assertActive function, captured at
 	// createContext time. Every getter/method on Context calls this
@@ -74,7 +68,7 @@ func (c *Context) UI() (UIContext, error) {
 	if err := c.assertActive(); err != nil {
 		return nil, err
 	}
-	return c.uiContext, nil
+	return c.uiContext(), nil
 }
 
 // HasUI reports whether the runner has a real (non-noop) UI context
@@ -88,7 +82,7 @@ func (c *Context) HasUI() (bool, error) {
 	if err := c.assertActive(); err != nil {
 		return false, err
 	}
-	return c.uiContext != NoopUIContext, nil
+	return c.uiContext() != NoopUIContext, nil
 }
 
 // SessionManager returns the per-runtime SessionManager. Returns an
@@ -272,18 +266,16 @@ func (c *Context) Compact(opts *CompactOptions) error {
 	return nil
 }
 
-// Mode returns the run mode pi is operating in (tui/rpc/json/print).
-// Extensions guard terminal-only UI on mode == ModeTUI. The empty
-// (unset) value normalizes to ModePrint, matching upstream's Runner
-// default. Returns an error if the runner has been invalidated.
-//
-// upstream: runner.ts:586-588 (`get mode() { ... return runner.mode; }`),
-// types.ts:304
+// Mode returns the current run mode (tui/rpc/json/print), including changes made after this context was created. An unbound getter returns print. Stale contexts return an error.
+// upstream: packages/coding-agent/src/core/extensions/runner.ts:createContext
 func (c *Context) Mode() (ExtensionMode, error) {
 	if err := c.assertActive(); err != nil {
 		return "", err
 	}
-	return c.actions.Mode.normalize(), nil
+	if c.actions.GetMode == nil {
+		return ModePrint, nil
+	}
+	return c.actions.GetMode().normalize(), nil
 }
 
 // pig additive (D23): these methods support Piglet tool scoping.
@@ -399,9 +391,13 @@ func NewContext(cwd string, uiContext UIContext, assertActive func() error, acti
 	if uiContext == nil {
 		uiContext = NoopUIContext
 	}
+	getUI := actions.GetUIContext
+	if getUI == nil {
+		getUI = func() UIContext { return uiContext }
+	}
 	return &Context{
 		cwd:          cwd,
-		uiContext:    uiContext,
+		uiContext:    getUI,
 		assertActive: assertActive,
 		actions:      actions,
 	}
@@ -433,7 +429,8 @@ func (c *Context) SendUserMessage(content any, opts *SendUserMessageOptions) err
 // upstream: runner.ts:736-772 (createCommandContext)
 type CommandContext struct {
 	*Context
-	cmdActions CommandActions
+	cmdActions     CommandActions
+	requestContext context.Context
 }
 
 // NewCommandContext constructs a CommandContext from the base context
@@ -451,6 +448,9 @@ func (c *CommandContext) WaitForIdle() error {
 	if err := c.assertActive(); err != nil {
 		return err
 	}
+	if c.cmdActions.WaitForIdleContext != nil {
+		return c.cmdActions.WaitForIdleContext(c.operationContext())
+	}
 	if c.cmdActions.WaitForIdle == nil {
 		return nil
 	}
@@ -461,6 +461,9 @@ func (c *CommandContext) WaitForIdle() error {
 func (c *CommandContext) NewSession(opts *NewSessionOptions) (CancelledResult, error) {
 	if err := c.assertActive(); err != nil {
 		return CancelledResult{Cancelled: true}, err
+	}
+	if c.cmdActions.NewSessionContext != nil {
+		return c.cmdActions.NewSessionContext(c.operationContext(), opts)
 	}
 	if c.cmdActions.NewSession == nil {
 		return CancelledResult{Cancelled: true}, nil
@@ -473,6 +476,9 @@ func (c *CommandContext) Fork(entryID string, opts *ForkOptions) (CancelledResul
 	if err := c.assertActive(); err != nil {
 		return CancelledResult{Cancelled: true}, err
 	}
+	if c.cmdActions.ForkContext != nil {
+		return c.cmdActions.ForkContext(c.operationContext(), entryID, opts)
+	}
 	if c.cmdActions.Fork == nil {
 		return CancelledResult{Cancelled: true}, nil
 	}
@@ -483,6 +489,9 @@ func (c *CommandContext) Fork(entryID string, opts *ForkOptions) (CancelledResul
 func (c *CommandContext) NavigateTree(targetID string, opts *NavigateTreeOptions) (CancelledResult, error) {
 	if err := c.assertActive(); err != nil {
 		return CancelledResult{Cancelled: true}, err
+	}
+	if c.cmdActions.NavigateTreeContext != nil {
+		return c.cmdActions.NavigateTreeContext(c.operationContext(), targetID, opts)
 	}
 	if c.cmdActions.NavigateTree == nil {
 		return CancelledResult{Cancelled: true}, nil
@@ -495,6 +504,9 @@ func (c *CommandContext) SwitchSession(sessionPath string, opts *SwitchSessionOp
 	if err := c.assertActive(); err != nil {
 		return CancelledResult{Cancelled: true}, err
 	}
+	if c.cmdActions.SwitchSessionContext != nil {
+		return c.cmdActions.SwitchSessionContext(c.operationContext(), sessionPath, opts)
+	}
 	if c.cmdActions.SwitchSession == nil {
 		return CancelledResult{Cancelled: true}, nil
 	}
@@ -505,6 +517,9 @@ func (c *CommandContext) SwitchSession(sessionPath string, opts *SwitchSessionOp
 func (c *CommandContext) Reload() error {
 	if err := c.assertActive(); err != nil {
 		return err
+	}
+	if c.cmdActions.ReloadContext != nil {
+		return c.cmdActions.ReloadContext(c.operationContext())
 	}
 	if c.cmdActions.Reload == nil {
 		return nil
@@ -525,14 +540,21 @@ func (c *CommandContext) Reload() error {
 //
 // upstream: runner.ts:653-656 (createCommandContext getSystemPromptOptions),
 // types.ts:339
-func (c *CommandContext) GetSystemPromptOptions() (BuildSystemPromptOptions, error) {
+func (c *CommandContext) GetSystemPromptOptions() (*BuildSystemPromptOptions, error) {
 	if err := c.assertActive(); err != nil {
-		return BuildSystemPromptOptions{}, err
+		return nil, err
 	}
 	if c.actions.GetSystemPromptOptions == nil {
-		return BuildSystemPromptOptions{Cwd: c.cwd}, nil
+		return &BuildSystemPromptOptions{Cwd: c.cwd}, nil
 	}
 	return c.actions.GetSystemPromptOptions(), nil
+}
+
+func (c *CommandContext) operationContext() context.Context {
+	if c.requestContext != nil {
+		return c.requestContext
+	}
+	return context.Background()
 }
 
 // ─── CommandContext key ───────────────────────────────────────────────────────
@@ -541,6 +563,7 @@ type cmdCtxKey struct{}
 
 // WithCommandContext attaches a [CommandContext] to a context.Context.
 func WithCommandContext(ctx context.Context, cc *CommandContext) context.Context {
+	cc.requestContext = ctx
 	return context.WithValue(ctx, cmdCtxKey{}, cc)
 }
 

@@ -1,0 +1,6 @@
+[
+  ["messageStart", {"role":"assistant"}],
+  ["contentBlockDelta", {"contentBlockIndex":0,"delta":{"reasoningContent":{"redactedContent":"cnNuXzVaVg=="}}}],
+  ["contentBlockDelta", {"contentBlockIndex":0,"delta":{"reasoningContent":{"redactedContent":"cmlmNEowYlhJcW1XZGxlZGo3UUlGZU5pa1JRYkU="}}}],
+  ["messageStop", {"stopReason":"end_turn"}]
+]

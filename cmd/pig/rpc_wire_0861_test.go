@@ -88,7 +88,7 @@ func TestRPCMessageUpdateRejectsInvalidMessageAndToolStart(t *testing.T) {
 	}
 }
 
-func TestRPCToolCallStartExactIdentityAndMarshalFailure(t *testing.T) {
+func TestRPCToolCallStartExactIdentityWithoutPartialTraversal(t *testing.T) {
 	call := ai.ToolCall{ID: "call-1", Name: "read", Arguments: ai.JsonObject{"path": "main.go"}}
 	partial := &ai.AssistantMessage{Content: []ai.AssistantContentBlock{call}}
 	events, err := rpcAgentEvent(agent.MessageUpdateEvent{
@@ -106,12 +106,19 @@ func TestRPCToolCallStartExactIdentityAndMarshalFailure(t *testing.T) {
 		t.Fatalf("tool start leaked partial: %#v", wire)
 	}
 
+	// Pi json-event.ts:23-29 reads only the selected tool's type/id/name. Arguments inside the discarded partial must not be marshaled.
 	bad := &ai.AssistantMessage{Content: []ai.AssistantContentBlock{ai.ToolCall{ID: "bad", Name: "bad", Arguments: ai.JsonObject{"unsupported": func() {}}}}}
-	if _, err := rpcAgentEvent(agent.MessageUpdateEvent{
+	events, err = rpcAgentEvent(agent.MessageUpdateEvent{
 		Message:               agent.AgentMessage{Assistant: &agent.AssistantMessage{}},
 		AssistantMessageEvent: ai.ToolCallStartEvent{ContentIndex: 0, Partial: bad},
-	}); err == nil || !strings.Contains(err.Error(), "marshal message_update") {
-		t.Fatalf("marshal error = %v", err)
+	})
+	if err != nil {
+		t.Fatalf("discarded partial raised a marshal error: %v", err)
+	}
+	wire = decodeRPCEvent(t, events[0])["assistantMessageEvent"].(map[string]any)
+	want := map[string]any{"type": "toolcall_start", "contentIndex": float64(0), "id": "bad", "toolName": "bad"}
+	if !reflect.DeepEqual(wire, want) {
+		t.Fatalf("tool identity = %#v, want %#v", wire, want)
 	}
 }
 

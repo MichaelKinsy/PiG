@@ -3,11 +3,12 @@ package tui
 import (
 	"math"
 	"os"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -29,7 +30,7 @@ const (
 )
 
 // altSgrMousePattern matches an SGR mouse report: \x1b[<button;x;yM|m.
-var altSgrMousePattern = regexp.MustCompile(`^\x1b\[<(\d+);(\d+);(\d+)([Mm])$`)
+var altSgrMousePattern = lazyregexp.New(`^\x1b\[<(\d+);(\d+);(\d+)([Mm])$`)
 
 // pointerXY is a screen pointer position.
 type pointerXY struct{ x, y int }

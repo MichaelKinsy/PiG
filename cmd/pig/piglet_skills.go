@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
@@ -16,7 +17,8 @@ type skillLoadResult struct {
 	Defs []*codingagent.SkillDef
 	// Paths are the source paths from which Defs were loaded (for the
 	// SkillPaths interactive-mode option and hot-reload).
-	Paths []string
+	Paths       []string
+	Diagnostics []extension.ResourceDiagnostic
 }
 
 // resolveAndLoadSkills resolves and loads every skill for the session.
@@ -40,8 +42,8 @@ type skillLoadResult struct {
 func resolveAndLoadSkills(p *piglet.Piglet, collectedSkillInputs []string) (*skillLoadResult, error) {
 	if p == nil || len(p.Skills) == 0 {
 		// No piglet skills: just load whatever collectSkillInputs gathered.
-		defs, err := loadSkills(collectedSkillInputs, false)
-		return &skillLoadResult{Defs: defs, Paths: collectedSkillInputs}, err
+		defs, diagnostics, err := loadSkills(collectedSkillInputs, false)
+		return &skillLoadResult{Defs: defs, Paths: collectedSkillInputs, Diagnostics: diagnostics}, err
 	}
 
 	// Piglet declares skills: resolve origins and build the piglet skill
@@ -71,11 +73,11 @@ func resolveAndLoadSkills(p *piglet.Piglet, collectedSkillInputs []string) (*ski
 	// top. Deduplicate by NAME (not path) so the piglet version wins for
 	// overlaps. Load each set separately so ambient first-wins collision
 	// handling does not suppress an explicit Piglet selection.
-	marketDefs, err := loadSkills(collectedSkillInputs, false)
+	marketDefs, diagnostics, err := loadSkills(collectedSkillInputs, false)
 	if err != nil {
 		return nil, err
 	}
-	pigletDefs, err := loadSkills(pigletSkillInputs, false)
+	pigletDefs, pigletDiagnostics, err := loadSkills(pigletSkillInputs, false)
 	if err != nil {
 		return nil, err
 	}
@@ -116,5 +118,5 @@ func resolveAndLoadSkills(p *piglet.Piglet, collectedSkillInputs []string) (*ski
 	// SkillPaths: union of marketplace + piglet paths, for /reload.
 	allPaths := dedupStrings(append(append([]string{}, pigletSkillInputs...), collectedSkillInputs...))
 
-	return &skillLoadResult{Defs: defs, Paths: allPaths}, nil
+	return &skillLoadResult{Defs: defs, Paths: allPaths, Diagnostics: append(diagnostics, pigletDiagnostics...)}, nil
 }

@@ -1,0 +1,25 @@
+# Pi 0.87.1 tool-result-images.ts:30-65 preserves surrounding blocks and inserts each hint directly after its image. agent-session.ts:558-578 awaits normalization after tool_result hooks and before tool-execution end/history.
+# The real CLI/Node extension returns the original 58-byte BMP and 2400x100 grayscale PNG fixtures, with surrounding and empty text. The artifact compares every block at hook, execution-end, provider-context and Session-history boundaries. Images project MIME/dimensions because upstream's original tests assert geometry, not encoder-specific compressed bytes. No text, block, whitespace or field is removed by normalization.
+name = "10-ordered-tool-result-images"
+description = "Tool images retain block order through hooks, normalization, events, provider context and history"
+covers = ["packages/coding-agent/src/utils/tool-result-images.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--print", "Run: extension echo hello"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/ordered.json"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PARITY_ORDER_DIR={{TEMP}}"]
+pi = ["PI_SKIP_VERSION_CHECK=1", "PARITY_ORDER_DIR={{TEMP}}"]
+pig_extensions = ["../../testdata/ordered-tool-images/observe.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../../testdata/ordered-tool-images/observe.mjs"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+artifact_equal = true
+artifact_both_contain = ['"type":"text","text":""', '"dimensions":[2000,83]', '[Image converted from image/bmp to image/png.]', '"details":{"marker":"retained"}']

@@ -32,7 +32,7 @@ Reviewers compare scanner output with these authoritative inputs:
 - Python project metadata and resolved distributions;
 - Rust crates in every `Cargo.toml` and `Cargo.lock` pair;
 - embedded JavaScript, fonts, images, schemas, and generated tables;
-- copied or translated upstream source identified by `NOTICE`, SPDX metadata, and `PORT_MAP.md`;
+- copied or translated upstream source identified by `NOTICE`, SPDX metadata, and `docs/parity/PORT_MAP.md`;
 - files included in each source or binary archive;
 - operating-system packages in each published OCI image.
 

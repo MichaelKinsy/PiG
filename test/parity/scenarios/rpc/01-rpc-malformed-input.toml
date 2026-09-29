@@ -1,0 +1,33 @@
+# Pi 0.87.1 rpc-mode.ts:755-771 forwards JSON.parse diagnostics unchanged, including object EOF and UTF-16 positions.
+# Probed with Node 24.19.0 and the real Pi RPC process; no diagnostic fields are normalized.
+name = "01-rpc-malformed-input"
+description = "Malformed JSON produces complete Pi parse diagnostics and the next command still runs"
+covers = ["packages/coding-agent/src/modes/rpc/jsonl.ts", "packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+[[rpc.steps]]
+line = '''
+not-json
+{
+{"x"
+{"x":1
+[1,]
+{"😀":1,}
+{"id":"done","type":"hello"}'''
+wait_event = '{"type":"response","id":"done","command":"hello"}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--offline", "--model", "test-faux/echo", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3

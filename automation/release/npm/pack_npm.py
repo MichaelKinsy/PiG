@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import pathlib
 import re
 import shutil
@@ -41,7 +42,7 @@ BUGS = "https://github.com/MichaelKinsy/PiG/issues"
 LICENSE = "MIT"
 NOTICE_FILES = ("LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md")
 HERE = pathlib.Path(__file__).resolve().parent
-PIGVERSION_GO = HERE.parents[2] / "coding" / "pigversion" / "pigversion.go"
+PIGVERSION_GO = HERE.parents[2] / "internal" / "coding" / "pigversion" / "pigversion.go"
 
 # (goos, goarch) in release archive names -> (npm os, npm cpu).
 TARGETS = {
@@ -271,9 +272,14 @@ def generate(archives: pathlib.Path, release_version: str, out: pathlib.Path, pi
 
 
 def npm_pack(pkg_dir: pathlib.Path, out: pathlib.Path) -> pathlib.Path:
+    # npm.cmd needs a shell on Windows. Keep that command constant; npm reads
+    # the destination as environment data, never as cmd.exe source.
+    env = os.environ.copy()
+    env["npm_config_pack_destination"] = str(out.resolve())
     result = subprocess.run(
-        ["npm", "pack", "--json", "--pack-destination", str(out.resolve())],
+        ["npm", "pack", "--json"],
         cwd=pkg_dir,
+        env=env,
         check=True,
         capture_output=True,
         text=True,
@@ -288,7 +294,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--archives", required=True, type=pathlib.Path, help="directory with SHA256SUMS and the six archives")
     parser.add_argument("--version", required=True, help="PiG release version, e.g. 0.2.0")
     parser.add_argument("--out", required=True, type=pathlib.Path, help="output directory")
-    parser.add_argument("--pi-base", default=None, help="Pi base version for descriptions (default: coding/pigversion)")
+    parser.add_argument("--pi-base", default=None, help="Pi base version for descriptions (default: internal/coding/pigversion)")
     parser.add_argument("--no-pack", action="store_true", help="generate directories only")
     args = parser.parse_args(argv)
     pi_base = args.pi_base or upstream_version()

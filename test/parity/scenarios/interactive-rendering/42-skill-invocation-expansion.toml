@@ -1,0 +1,39 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:4401-4415 visits every mounted expandable child, including the SkillInvocationMessageComponent created while resuming this fixture. The 100x35 Pi probe shows the skill body after Ctrl+O; three escaped-output pairs match after the source fix, and a compiling tracking-list mutation leaves PiG collapsed. The collapsed sibling scenario remains separate because it proves the initial resume state.
+name = "42-skill-invocation-expansion"
+description = "Ctrl+O expands a resumed skill invocation through the mounted transcript child."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "testdata/skill-cwd"
+capture_start = "[skill]"
+capture_end = "Run the test"
+
+[[tmux.steps]]
+keys = ["C-o"]
+wait_contains = ["This is the test skill body content.", "Tool output: expanded"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["[skill]", "testskill", "This is the test skill body content.", "Run the test"]
+both_not_contain = ["ctrl+o to expand", "panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

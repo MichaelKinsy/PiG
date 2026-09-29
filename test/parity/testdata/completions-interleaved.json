@@ -1,0 +1,207 @@
+[
+  {
+    "name": "coalesces tool call deltas by stable index when provider mutates ids mid-stream",
+    "chunks": [
+      {
+        "id": "chatcmpl-kimi-bad-stream",
+        "choices": [
+          {
+            "delta": {
+              "tool_calls": [
+                {
+                  "index": 0,
+                  "id": "functions.read:0",
+                  "type": "function",
+                  "function": {
+                    "name": "read",
+                    "arguments": ""
+                  }
+                }
+              ]
+            },
+            "finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-kimi-bad-stream",
+        "choices": [
+          {
+            "delta": {
+              "tool_calls": [
+                {
+                  "index": 0,
+                  "id": "chatcmpl-tool-a",
+                  "type": "function",
+                  "function": {
+                    "name": null,
+                    "arguments": "{\"path\":\"README"
+                  }
+                }
+              ]
+            },
+            "finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-kimi-bad-stream",
+        "choices": [
+          {
+            "delta": {
+              "tool_calls": [
+                {
+                  "index": 0,
+                  "id": "chatcmpl-tool-b",
+                  "type": "function",
+                  "function": {
+                    "name": null,
+                    "arguments": ".md\"}"
+                  }
+                }
+              ]
+            },
+            "finish_reason": "tool_calls"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 10,
+          "completion_tokens": 5,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 0
+          }
+        }
+      }
+    ]
+  },
+  {
+    "name": "accumulates mixed content, reasoning, and parallel tool call deltas independently",
+    "chunks": [
+      {
+        "id": "chatcmpl-mixed-deltas",
+        "choices": [
+          {
+            "delta": {
+              "content": "answer 1",
+              "reasoning_content": "think 1",
+              "tool_calls": [
+                {
+                  "index": 0,
+                  "id": "tc_read_initial",
+                  "type": "function",
+                  "function": {
+                    "name": "read",
+                    "arguments": "{\"path\":\"README"
+                  }
+                },
+                {
+                  "index": 1,
+                  "id": "tc_grep_initial",
+                  "type": "function",
+                  "function": {
+                    "name": "grep",
+                    "arguments": "{\"pattern\":\"TODO"
+                  }
+                },
+                {
+                  "id": "tc_list_no_index",
+                  "type": "function",
+                  "function": {
+                    "name": "list",
+                    "arguments": "{\"path\":\"packages"
+                  }
+                },
+                {
+                  "id": "tc_write_no_index",
+                  "type": "function",
+                  "function": {
+                    "name": "write",
+                    "arguments": "{\"path\":\"out"
+                  }
+                }
+              ]
+            },
+            "finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-mixed-deltas",
+        "choices": [
+          {
+            "delta": {
+              "content": " answer 2",
+              "tool_calls": [
+                {
+                  "index": 1,
+                  "id": "tc_grep_changed",
+                  "type": "function",
+                  "function": {
+                    "arguments": "\",\"path\":\"src"
+                  }
+                },
+                {
+                  "id": "tc_write_no_index",
+                  "type": "function",
+                  "function": {
+                    "arguments": ".txt\",\"content\":\"ok\"}"
+                  }
+                },
+                {
+                  "id": "tc_list_no_index",
+                  "type": "function",
+                  "function": {
+                    "arguments": "/ai\"}"
+                  }
+                }
+              ]
+            },
+            "finish_reason": null
+          }
+        ]
+      },
+      {
+        "id": "chatcmpl-mixed-deltas",
+        "choices": [
+          {
+            "delta": {
+              "content": "\n",
+              "reasoning_content": " think 2",
+              "tool_calls": [
+                {
+                  "index": 0,
+                  "id": "tc_read_changed",
+                  "type": "function",
+                  "function": {
+                    "arguments": ".md\"}"
+                  }
+                },
+                {
+                  "index": 1,
+                  "type": "function",
+                  "function": {
+                    "arguments": "\"}"
+                  }
+                }
+              ]
+            },
+            "finish_reason": "tool_calls"
+          }
+        ],
+        "usage": {
+          "prompt_tokens": 10,
+          "completion_tokens": 8,
+          "prompt_tokens_details": {
+            "cached_tokens": 0
+          },
+          "completion_tokens_details": {
+            "reasoning_tokens": 2
+          }
+        }
+      }
+    ]
+  }
+]

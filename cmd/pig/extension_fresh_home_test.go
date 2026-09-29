@@ -6,10 +6,9 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
-
-	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
 // A released pig binary carries its extension SDKs embedded and stages them
@@ -21,6 +20,7 @@ func TestFreshHomeLoadsScaffoldedExtensionsWithoutCheckout(t *testing.T) {
 	toolchainEnv := freshHomeToolchainEnv(t)
 	for _, lang := range []string{"go", "rust", "python"} {
 		t.Run(lang, func(t *testing.T) {
+			t.Parallel()
 			work := t.TempDir()
 			name := "fresh" + lang
 			source := filepath.Join(work, name)
@@ -29,7 +29,7 @@ func TestFreshHomeLoadsScaffoldedExtensionsWithoutCheckout(t *testing.T) {
 
 			project := trustProjectFixture(t)
 			loadHome := t.TempDir()
-			output := runFreshHomePig(t, binary, append(toolchainEnv, "PIG_STARTUP_TRACE=1"), loadHome, project, "-ne", "-e", source, "--list-models")
+			output := runFreshHomePig(t, binary, append(slices.Clone(toolchainEnv), "PIG_STARTUP_TRACE=1"), loadHome, project, "-ne", "-e", source, "--list-models")
 			if strings.Contains(output, "cannot locate") || strings.Contains(output, "warning:") {
 				t.Fatalf("fresh HOME load reported an SDK failure:\n%s", output)
 			}
@@ -79,14 +79,9 @@ func TestFreshHomeLoginListInspectsScaffoldedExtension(t *testing.T) {
 // paths, and no VCS stamp, so nothing in the binary points back at this tree.
 func buildReleasePigBinary(t *testing.T) string {
 	t.Helper()
-	out := filepath.Join(t.TempDir(), "pig")
-	if runtime.GOOS == "windows" {
-		out += ".exe"
-	}
-	cmd := exec.CommandContext(testbudget.Context(t), "go", "build", "-trimpath", "-buildvcs=false", "-o", out, ".")
-	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
-	if data, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build release pig: %v\n%s", err, data)
+	out, err := releaseTestBinary()
+	if err != nil {
+		t.Fatal(err)
 	}
 	return out
 }
@@ -101,7 +96,7 @@ func freshHomeToolchainEnv(t *testing.T) []string {
 		t.Fatal(err)
 	}
 	env := []string{"PATH=" + os.Getenv("PATH"), "TERM=dumb"}
-	keep := []string{"TMPDIR", "GOPATH", "GOPROXY", "GOSUMDB", "GOTOOLCHAIN", "GOFLAGS", "UV_CACHE_DIR", "UV_PYTHON_INSTALL_DIR", "SSL_CERT_FILE"}
+	keep := []string{"TMPDIR", "GOPATH", "GOPROXY", "GOSUMDB", "GOTOOLCHAIN", "GOFLAGS", "UV_CACHE_DIR", "UV_PYTHON_INSTALL_DIR", "SSL_CERT_FILE", "CARGO_TARGET_DIR"}
 	if runtime.GOOS == "windows" {
 		// Every Windows session has these. Without TEMP and TMP a process's
 		// temporary directory is the Windows directory, which a user cannot

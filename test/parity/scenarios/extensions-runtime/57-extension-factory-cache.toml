@@ -1,0 +1,24 @@
+# Original extension-factory-cache.test.ts:69,83,95,115. Installed Pi0.87.1 produces module/factory counts1/2,2/2,2/2,2/3 and distinct cached-load extension/runtime identities.
+# The tests import private loader modules. Drivers map their compiled paths (Pi dist/core, PiG core in the shipped Node graph); this is harness file navigation, not package-root import-layout coverage. Complete result records are compared without normalization.
+name = "57-extension-factory-cache"
+description = "Cached Node modules rerun factories with fresh runtimes, while direct loads, reload and cwd changes reimport"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts", "packages/coding-agent/src/core/resource-loader.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/factory-cache"]
+pi_args = ["node", "./test/parity/testdata/factory-cache-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['same-cwd:{"moduleLoads":1,"factoryRuns":2,"freshExtension":true,"freshRuntime":true}', 'direct:{"moduleLoads":2,"factoryRuns":2}', 'reload:{"moduleLoads":2,"factoryRuns":2}', 'cross-cwd:{"moduleLoads":2,"factoryRuns":3}']
+runs = 3

@@ -1,0 +1,26 @@
+# Pi 0.87.1 abort.test.ts:56-99 requires immediate cancellation to produce an aborted result and permit a subsequent request with that result in history.
+# Oracle probe: registerFauxProvider + compat.complete on an already-aborted signal returns aborted/empty; the next factory observes that history.
+# It also drains a paced midstream cancellation and requires the provider's partial content to survive the runtime forwarding boundary.
+# Go ModelRuntime previously changed the setup cancellation into a generic error and canceled event forwarding before receiving the provider's terminal result.
+name = "14-provider-immediate-abort"
+description = "Immediate request cancellation is aborted rather than error and does not poison the next request."
+covers = ["packages/ai/src/models.ts", "packages/ai/src/providers/faux.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/provider-abort/pig"]
+pi_args = ["node", "./test/parity/testdata/provider-abort/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"aborted":"aborted"', '"followUp":"stop"', '"midAborted":"aborted"', '"midContent":true', '"text":"4"']
+runs = 3

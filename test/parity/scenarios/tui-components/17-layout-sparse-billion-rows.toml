@@ -1,0 +1,25 @@
+# Upstream evidence: Pi 0.87.1 packages/tui/test/layout.test.ts:51-68 uses a sparse array with one billion logical rows and four populated tail entries.
+# The Go fixture reserves a sparse file-backed mapping outside the Go heap, preserving the original length and zero-valued holes without a dense allocation.
+# Both probes run the real layout engine and compare raw visible rows, scroll position and content geometry exactly.
+name = "17-layout-sparse-billion-rows"
+description = "Viewport layout clips the exact billion-row sparse transcript to its final three rows."
+covers = ["packages/tui/src/layout.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/layout-sparse-pig.mjs"]
+pi_args = ["node", "./test/parity/testdata/layout-sparse-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"scrollTop":999999997', '"contentHeight":1000000000', 'visible 1', 'visible 3']
+runs = 3

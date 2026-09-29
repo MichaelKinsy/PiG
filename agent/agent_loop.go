@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -65,34 +66,49 @@ type loopRun struct {
 	toolResultsEndRun bool
 }
 
+// Ports packages/agent/src/agent-loop.ts.
+// runAgentLoopContinue validates a low-level continuation before emitting events.
+func (a *Agent) runAgentLoopContinue(ctx context.Context, cfg agentLoopConfig) ([]AgentMessage, error) {
+	if len(a.messages) == 0 {
+		return a.messages, errors.New("Cannot continue: no messages in context")
+	}
+	if a.messages[len(a.messages)-1].Assistant != nil {
+		return a.messages, errors.New("Cannot continue from message role: assistant")
+	}
+	return a.runLoop(ctx, cfg, nil)
+}
+
 // runLoop is the main agent loop shared by Send and Continue. Mirrors upstream
-// runAgentLoop/runAgentLoopContinue plus runLoop (packages/agent/src/agent-loop.ts):
-// the messages appended at runStart are replayed as the prompt's lifecycle
-// events before the loop starts.
-func (a *Agent) runLoop(ctx context.Context, cfg agentLoopConfig, runStart int) ([]AgentMessage, error) {
+// runAgentLoop/runAgentLoopContinue plus runLoop (packages/agent/src/agent-loop.ts).
+// The prompt batch enters provider context immediately and public state only
+// when each message_end is emitted.
+func (a *Agent) runLoop(ctx context.Context, cfg agentLoopConfig, prompts []AgentMessage) ([]AgentMessage, error) {
 	// Defense for every runLoop entry (Send and Continue): never stream, emit
 	// lifecycle events, or dereference the model when none is usable.
 	if err := a.ensureModel(); err != nil {
 		return a.messages, err
 	}
-	a.stateMu.RLock()
+	a.stateMu.Lock()
+	if !cfg.agentStarted {
+		a.errorMessage = ""
+	}
 	run := &loopRun{
 		a:             a,
 		ctx:           ctx,
 		cfg:           cfg,
-		context:       slices.Clone(a.messages),
-		newMessages:   slices.Clone(a.messages[runStart:]),
+		context:       slices.Concat(a.messages, prompts),
+		newMessages:   slices.Clone(prompts),
 		model:         a.opts.Model,
 		thinking:      a.opts.ThinkingLevel,
 		stateRevision: a.stateRevision,
 	}
-	a.stateMu.RUnlock()
+	a.stateMu.Unlock()
 	err, failure := catchRunFailure(func() error {
 		if !cfg.agentStarted {
 			a.emit(AgentStartEvent{})
 		}
 		a.emit(TurnStartEvent{TurnIndex: 0, Timestamp: time.Now()})
-		for _, msg := range a.messages[runStart:] {
+		for _, msg := range prompts {
 			// message_start carries its own copy: a message_end replacement is
 			// applied in place to the message the transcript and message_end share.
 			a.emit(MessageStartEvent{Message: startEventMessage(msg)})
@@ -100,10 +116,14 @@ func (a *Agent) runLoop(ctx context.Context, cfg agentLoopConfig, runStart int) 
 		}
 		return run.loop()
 	})
-	// A handler fails only at message_end on this goroutine, after the
-	// response or tool batch it records has finished, so no work is in flight.
+	// Awaited callback failures enter the same failed-turn lifecycle as persistence and provider-preparation failures.
 	if failure != nil {
 		return a.messages, a.handleRunFailure(failure, ctx.Err() != nil, run.model)
+	}
+	// Agent.abort settles its prompt after recording the aborted response.
+	// Caller-owned context cancellation still returns its error to Go callers.
+	if signal, ok := ctx.(*runDeadlineContext); ok && signal.parent.Err() == nil && errors.Is(err, context.Canceled) {
+		err = nil
 	}
 	return a.messages, run.checkRunEnd(err)
 }
@@ -146,7 +166,16 @@ func (r *loopRun) loop() error {
 			r.refreshModel()
 			var preparedMessages []AgentMessage
 			if lastCompletedTurn != nil {
-				preparedMessages = r.prepareNextTurn(*lastCompletedTurn)
+				var err error
+				preparedMessages, err = r.prepareNextTurn(*lastCompletedTurn)
+				if err != nil {
+					// Agent.runWithLifecycle handles a rejected preparation as a failed assistant turn.
+					failure := r.requestError(err)
+					r.appendAssistant(failure)
+					r.emitTurnEnd(failure, nil)
+					r.a.emit(AgentEndEvent{Messages: []AgentMessage{{Assistant: failure}}})
+					return nil
+				}
 				// Preparation can be long-running (for example, compaction). Pick
 				// up steering queued while it ran, but only when the earlier poll
 				// returned nothing, so one-at-a-time mode delivers one message.
@@ -278,21 +307,25 @@ func (r *loopRun) finishTurn(turn AgentTurnContext) *AgentTurnDecision {
 	if r.cfg.finishTurn == nil {
 		return nil
 	}
-	return r.cfg.finishTurn(r.ctx, turn)
+	decision, err := r.cfg.finishTurn(r.ctx, turn)
+	if err != nil {
+		panic(runFailure{err: err})
+	}
+	return decision
 }
 
 // prepareNextTurn applies PrepareNextTurn's replacement state and returns the
 // messages it asks to append before the next request.
-func (r *loopRun) prepareNextTurn(turn AgentTurnContext) []AgentMessage {
+func (r *loopRun) prepareNextTurn(turn AgentTurnContext) ([]AgentMessage, error) {
 	if r.cfg.prepareNextTurn == nil {
-		return nil
+		return nil, nil
 	}
-	update := r.cfg.prepareNextTurn(r.ctx, turn)
-	if update == nil {
-		return nil
+	update, err := r.cfg.prepareNextTurn(r.ctx, turn)
+	if err != nil || update == nil {
+		return nil, err
 	}
 	r.applyUpdate(update.Context, update.Model, update.ThinkingLevel)
-	return update.Messages
+	return update.Messages, nil
 }
 
 // prepareRequest runs PrepareRequest immediately before the provider request.
@@ -304,11 +337,14 @@ func (r *loopRun) prepareRequest() {
 	if thinking == "" {
 		thinking = ai.ThinkingOff
 	}
-	update := r.cfg.prepareRequest(r.ctx, PrepareRequestContext{
+	update, err := r.cfg.prepareRequest(r.ctx, PrepareRequestContext{
 		Context:       slices.Clone(r.context),
 		Model:         r.model,
 		ThinkingLevel: thinking,
 	})
+	if err != nil {
+		panic(runFailure{err: err})
+	}
 	if update != nil {
 		r.applyUpdate(update.Context, update.Model, update.ThinkingLevel)
 	}
@@ -330,7 +366,6 @@ func (r *loopRun) applyUpdate(context []AgentMessage, model *ai.Model, thinking 
 // loop context, and the run's new messages.
 func (r *loopRun) appendMessage(msg AgentMessage) {
 	r.a.emit(MessageStartEvent{Message: startEventMessage(msg)})
-	r.a.appendMessages(msg)
 	r.context = append(r.context, msg)
 	r.newMessages = append(r.newMessages, msg)
 	r.a.emit(MessageEndEvent{Message: msg})
@@ -360,20 +395,17 @@ func startEventMessage(msg AgentMessage) AgentMessage {
 // emitted its lifecycle events.
 func (r *loopRun) appendAssistant(assistant *AssistantMessage) {
 	msg := AgentMessage{Assistant: assistant}
-	r.a.appendMessages(msg)
 	r.context = append(r.context, msg)
 	r.newMessages = append(r.newMessages, msg)
 }
 
 func (r *loopRun) emitTurnEnd(assistant *AssistantMessage, toolResults []ToolResultMessage) {
-	turnDur := r.a.timings.EndTurn()
+	r.a.timings.EndTurn()
 	r.a.emit(TurnEndEvent{TurnIndex: r.turnIndex, Message: AgentMessage{Assistant: assistant}, ToolResults: toolResults})
-	r.a.emit(TimingEvent{Kind: "turn", Duration: turnDur, Snapshot: r.a.timings.Snapshot()})
 	r.turnIndex++
 }
 
 func (r *loopRun) endRun() {
-	r.a.emit(TimingEvent{Kind: "session_end", Snapshot: r.a.timings.Snapshot()})
 	r.a.emit(AgentEndEvent{Messages: slices.Clone(r.newMessages)})
 }
 
@@ -398,7 +430,16 @@ func (r *loopRun) streamAssistantResponse() (*AssistantMessage, []pendingToolCal
 			return message, nil, err
 		}
 	}
-	llmMsgs := ConvertToLLM(contextMsgs, r.model)
+	var llmMsgs []ai.Message
+	if convert := a.opts.ConvertToLlm; convert != nil {
+		var err error
+		llmMsgs, err = convert(contextMsgs)
+		if err != nil {
+			panic(runFailure{err: err})
+		}
+	} else {
+		llmMsgs = ConvertToLLM(contextMsgs, r.model)
+	}
 	if transform := a.opts.TransformLLMMessages; transform != nil {
 		llmMsgs = transform(llmMsgs)
 	}
@@ -423,11 +464,30 @@ func (r *loopRun) streamAssistantResponse() (*AssistantMessage, []pendingToolCal
 		streamOpts.MaxTokens = ai.ClampMaxTokensToContext(r.model, transcript, limit)
 	}
 
+	a.stateMu.RLock()
 	streamFn := a.opts.StreamFn
+	if streamFn == nil {
+		streamFn = a.opts.DefaultStreamFn
+	}
+	a.stateMu.RUnlock()
 	if streamFn == nil {
 		streamFn = streamWithProvider
 	}
+	var message *AssistantMessage
+	var calls []pendingToolCall
+	err := ai.RunStreamContinuation(r.ctx, func(observation *ai.StreamObservation) error {
+		var err error
+		message, calls, err = r.requestStream(observation, streamFn, transcript, streamOpts)
+		return err
+	})
+	return message, calls, err
+}
+
+// upstream: packages/agent/src/agent-loop.ts:402-413 keeps stream creation and iterator adoption on one continuation, including the await of a synchronously returned stream.
+func (r *loopRun) requestStream(observation *ai.StreamObservation, streamFn StreamFn, transcript ai.TranscriptContext, streamOpts ai.StreamOptions) (*AssistantMessage, []pendingToolCall, error) {
+	a := r.a
 	stream, err := streamFn(r.ctx, r.model, transcript, streamOpts)
+	observation.Yield()
 	if err != nil {
 		// Synthesize an error assistant message so the session-level retry
 		// loop can classify the error (rate limit, network, etc.) and retry.
@@ -438,13 +498,17 @@ func (r *loopRun) streamAssistantResponse() (*AssistantMessage, []pendingToolCal
 		if r.ctx.Err() != nil {
 			stopReason = ai.StopReasonAborted
 		}
+		providerID := r.model.ProviderMeta.ProviderID
+		if r.model.Provider != nil {
+			providerID = r.model.Provider.ID()
+		}
 		errorAssistant := &AssistantMessage{
 			Role:         RoleAssistant,
 			Content:      []ai.AssistantContentBlock{ai.TextContent{Text: ""}},
 			StopReason:   stopReason,
 			ErrorMessage: err.Error(),
 			Timestamp:    time.Now().UnixMilli(),
-			Provider:     r.model.Provider.ID(),
+			Provider:     providerID,
 			ModelID:      r.model.ID,
 		}
 		a.emit(MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(errorAssistant)}})
@@ -463,9 +527,14 @@ func (r *loopRun) requestError(err error) *AssistantMessage {
 	if r.ctx.Err() != nil {
 		reason = ai.StopReasonAborted
 	}
+	providerID := r.model.ProviderMeta.ProviderID
+	if r.model.Provider != nil {
+		providerID = r.model.Provider.ID()
+	}
 	message := &AssistantMessage{
 		Role: RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: ""}}, StopReason: reason,
-		ErrorMessage: err.Error(), Timestamp: time.Now().UnixMilli(), Provider: r.model.Provider.ID(), ModelID: r.model.ID,
+		API: r.model.ProviderMeta.API, Usage: &ai.Usage{},
+		ErrorMessage: err.Error(), Timestamp: time.Now().UnixMilli(), Provider: providerID, ModelID: r.model.ID,
 	}
 	r.a.emit(MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(message)}})
 	r.a.emit(MessageEndEvent{Message: AgentMessage{Assistant: message}})

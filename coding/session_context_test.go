@@ -56,7 +56,8 @@ func TestSessionContextTransformReachesProviderAndTracksRunnerReplacement(t *tes
 	if ai.GetCurrentSystemPrompt(request.Messages()) != "request only" || len(ai.GetCurrentTools(request.Messages())) != 0 {
 		t.Fatalf("request=%+v", request)
 	}
-	if len(request.Messages()) != 2 || request.Messages()[1].(ai.UserMessage).Content.(ai.UserContentBlocks)[0].(ai.TextContent).Text != "replacement" {
+	// Pi core/messages.ts:185 passes user messages through, including string content.
+	if len(request.Messages()) != 2 || request.Messages()[1].(ai.UserMessage).Content != ai.UserText("replacement") {
 		t.Fatalf("messages=%+v", request.Messages())
 	}
 	if session.Agent().SystemPrompt() != "original" {

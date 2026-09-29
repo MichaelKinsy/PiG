@@ -7,6 +7,36 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
+// copySelectedTreeMessage owns the clipboard write off-loop and reports completion on the UI loop.
+func (m *InteractiveMode) copySelectedTreeMessage(text *string) {
+	if text == nil || *text == "" {
+		m.showError("Selected entry has no text to copy")
+		return
+	}
+	value := *text
+	copyClipboard := m.effectiveCopyClipboard()
+	ctx := m.backgroundCtx
+	if ctx == nil {
+		ctx = m.runCtx
+	}
+	m.backgroundTasks.Go(func() {
+		if ctx != nil && ctx.Err() != nil {
+			return
+		}
+		err := copyClipboard(value)
+		m.runOnMain(ctx, func() {
+			if ctx != nil && ctx.Err() != nil {
+				return
+			}
+			if err != nil {
+				m.showError(err.Error())
+				return
+			}
+			m.showStatus("Copied selected message to clipboard")
+		})
+	})
+}
+
 // navigateTree awaits the Session off the input loop while the owner continues
 // dispatching editor input, events, and renders. Its cancellation belongs to the
 // navigation, not the agent turn, including while a retry replaces the status.
@@ -70,7 +100,14 @@ func (m *InteractiveMode) navigateTree(ctx context.Context, targetID string, sum
 	var inputErr error
 	cancelled := navCtx.Done()
 	for {
+		if m.requestExit.Load() {
+			cancel()
+		}
 		select {
+		case err := <-m.inputErrCh:
+			inputErr = err
+			cancel()
+			inputCh = nil
 		case outcome := <-done:
 			if inputErr != nil {
 				return outcome.result, inputErr

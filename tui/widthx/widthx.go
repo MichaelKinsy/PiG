@@ -1,18 +1,12 @@
-// Package widthx implements upstream pi-tui's visibleWidth + ANSI escape
-// extraction with byte-level fidelity to the TypeScript algorithm.
-//
-// Mirrors: .upstream/current/packages/tui/src/utils.ts
-//   - extractAnsiCode (line 261)
-//   - visibleWidth     (line 199)
-//
-// This package exists so the parity sweep can swap call sites one at a time
-// without breaking the existing tui/tui.go stripANSI / runewidth
-// surfaces. Once τ.2 lands, tui will delegate to this package.
+// Package widthx implements Pi's terminal width, grapheme and ANSI operations with JavaScript UTF-16 semantics.
+// Ports packages/tui/src/utils.ts
 package widthx
 
 import (
 	"strings"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // ExtractAnsi returns the byte length of the ANSI escape starting at byte
@@ -111,12 +105,15 @@ func asciiVisibleWidth(s string) (width int, ok bool) {
 	return width, true
 }
 
-// NormalizeTerminalOutput rewrites Thai/Lao AM vowels to compatibility
+// NormalizeTerminalOutput encodes unpaired UTF-16 units like Node's UTF-8 terminal writes, then rewrites Thai/Lao AM vowels to compatibility
 // decompositions that preserve logical content while avoiding stale-cell
 // artifacts in some terminal differential repaints. Visible tabs are expanded
 // to the fixed layout width (3 spaces, matching VisibleWidth) so terminal tab
 // stops cannot wrap a logical line; tabs inside ANSI sequences stay untouched.
 func NormalizeTerminalOutput(s string) string {
+	if !utf8.ValidString(s) {
+		s = string(jsstring.ToUTF8(s))
+	}
 	if containsThaiLaoAM(s) {
 		s = strings.ReplaceAll(s, "\u0e33", "\u0e4d\u0e32")
 		s = strings.ReplaceAll(s, "\u0eb3", "\u0ecd\u0eb2")

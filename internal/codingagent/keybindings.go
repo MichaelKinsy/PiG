@@ -529,69 +529,22 @@ func (km *KeybindingsManager) Conflicts() []KeybindingConflict {
 	return out
 }
 
-func (km *KeybindingsManager) HotkeyLines() []string {
-	lines := make([]string, 0, len(km.ordered)+12)
-	for _, action := range km.ordered {
-		def := km.definitions[action]
-		keys := km.Get(action)
-		if len(keys) == 0 {
-			continue
+// ExtensionKeybindingTable supplies the platform definitions and user overrides used by extension editor and UI factories.
+func (km *KeybindingsManager) ExtensionKeybindingTable() map[string]any {
+	if km == nil {
+		return nil
+	}
+	definitions := map[string]any{}
+	for id, def := range keybindingDefinitionsFor(km.platform) {
+		keys := def.DefaultKeys
+		if keys == nil {
+			keys = []string{}
 		}
-		lines = append(lines, fmt.Sprintf("%-18s: %s", prettyKeys(keys), def.Description))
+		definitions[id] = map[string]any{"defaultKeys": keys, "description": def.Description}
 	}
-	lines = append(lines,
-		"Enter             : submit",
-		"Shift+Enter       : insert newline",
-		"Up/Down           : history navigation (empty editor)",
-		"Ctrl+A            : move to start of line",
-		"Ctrl+E            : move to end of line",
-		"Alt+B             : word backward",
-		"Alt+F             : word forward",
-		"Alt+Bksp, Ctrl+W  : delete word backward",
-		"Alt+D, Alt+Del    : delete word forward",
-		"Ctrl+U            : kill to line start",
-		"Ctrl+K            : kill to line end",
-		"Ctrl+Y / Alt+Y    : yank / yank-pop",
-		"Ctrl+/            : undo",
-	)
-	return lines
-}
-
-func prettyKeys(keys []KeyID) string {
-	parts := make([]string, 0, len(keys))
-	for _, key := range keys {
-		parts = append(parts, prettyKey(key))
+	userBindings := make(map[string][]KeyID, len(km.userBindings))
+	for action, keys := range km.userBindings {
+		userBindings[action] = slices.Clone(keys)
 	}
-	return strings.Join(parts, ", ")
-}
-
-func prettyKey(key KeyID) string {
-	parts := strings.Split(string(key), "+")
-	for i, part := range parts {
-		switch strings.ToLower(part) {
-		case "ctrl":
-			parts[i] = "Ctrl"
-		case "shift":
-			parts[i] = "Shift"
-		case "alt":
-			parts[i] = "Alt"
-		case "escape":
-			parts[i] = "Esc"
-		case "enter":
-			parts[i] = "Enter"
-		case "backspace":
-			parts[i] = "Bksp"
-		case "pageup":
-			parts[i] = "PgUp"
-		case "pagedown":
-			parts[i] = "PgDn"
-		default:
-			if len(part) == 1 {
-				parts[i] = strings.ToUpper(part)
-			} else {
-				parts[i] = strings.ToUpper(part[:1]) + part[1:]
-			}
-		}
-	}
-	return strings.Join(parts, "+")
+	return map[string]any{"definitions": definitions, "userBindings": userBindings}
 }

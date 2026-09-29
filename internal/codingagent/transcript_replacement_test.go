@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/internal/tui/termsim"
 	"github.com/MichaelKinsy/PiG/tui"
-	"github.com/MichaelKinsy/PiG/tui/termsim"
 )
 
 func TestCompactionReplacesPhysicalTranscript(t *testing.T) {
@@ -101,7 +101,8 @@ func TestCompactionReplacesPhysicalTranscript(t *testing.T) {
 	retainedAt := strings.Index(physicalTranscript, retainedHeading)
 	summaryAt := strings.Index(physicalTranscript, summaryMarker)
 	tailAt := strings.Index(physicalTranscript, tailHeading)
-	if retainedAt < 0 || summaryAt <= retainedAt || tailAt <= summaryAt {
-		t.Errorf("retained transcript order = retained:%d summary:%d tail:%d, want retained < summary < tail", retainedAt, summaryAt, tailAt)
+	// Pi interactive-mode.ts compaction_end renders retained entries first and appends the newest summary at the bottom.
+	if retainedAt < 0 || tailAt <= retainedAt || summaryAt <= tailAt {
+		t.Errorf("retained transcript order = retained:%d tail:%d summary:%d, want retained < tail < summary", retainedAt, tailAt, summaryAt)
 	}
 }

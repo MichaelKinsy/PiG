@@ -5,7 +5,7 @@
 //
 // Upstream source: .upstream/v0.87.1/packages/chord/src/{types,api}.ts and
 // services/{state,provider,consumer,instances,wire,errors,loopback}.ts.
-// packages/chord is outside PORT_MAP package scope (see PORT_MAP.md); this
+// packages/chord is outside PORT_MAP package scope (see docs/parity/PORT_MAP.md); this
 // package exists so experimental service lanes share one concrete runtime
 // instead of consumer-owned stand-ins.
 //
@@ -44,14 +44,7 @@
 //   - Mutate callbacks receive a detached decoded copy of the state rather
 //     than upstream's revocable copy-on-write Draft proxy.
 //
-// Ported: replicated state and replicas, provider (singleton and keyed,
-// provide/withdraw/replace/spawn/invoke/subscribe/dispose), endpoint
-// control calls, loopback and JSON-copy transports, binding
-// (use/observe/ready/rebind/dispose), facet host (setup validation,
-// dependency-ordered activation, reload cutover, external service sources,
-// disposal) and facet loaders.
-//
-// Not ported: services/state-codec.ts per-subscription, per-instance/member path dictionaries, interned or omitted paths, and dictionary resets. Plain Op tuples are valid WireOps to emit, but this runtime cannot consume upstream compressed streams. The wire.ts parse* validators are also unported: JSON decoding does not validate the full Chord wire grammar. Bundler/Node bundle loading and the separate pi-client/pi-server framed transports are unported. The in-memory JSON-copy transport does not establish framed interoperability.
+// ServiceStateEncoder and ServiceStateDecoder maintain independent path dictionaries per subscription, instance, and state member. ParseService* and ParseWireService* validate their distinct tuple grammars before conversion. The JSON-copy transport remains local; framed routing supplies a separate transport boundary.
 package chord
 
 import (
@@ -197,6 +190,34 @@ func remoteError(code RemoteServiceErrorCode, format string, args ...any) error 
 func IsRemoteServiceErrorCode(err error, code RemoteServiceErrorCode) bool {
 	var remote *RemoteServiceError
 	return errors.As(err, &remote) && remote.Code == code
+}
+
+// AggregateError retains every failure while exposing the upstream aggregate message, as JavaScript's AggregateError(errors, message) does: Error() is the message alone and the causes are reachable through Unwrap.
+type AggregateError struct {
+	Message string
+	Errors  []any
+}
+
+func (err *AggregateError) Error() string { return err.Message }
+
+// Unwrap exposes each cause that is an error to errors.Is and errors.As.
+func (err *AggregateError) Unwrap() []error {
+	var causes []error
+	for _, value := range err.Errors {
+		if cause, ok := value.(error); ok {
+			causes = append(causes, cause)
+		}
+	}
+	return causes
+}
+
+// NewAggregateError builds an AggregateError over failures in order.
+func NewAggregateError(message string, failures []error) *AggregateError {
+	values := make([]any, len(failures))
+	for i, failure := range failures {
+		values[i] = failure
+	}
+	return &AggregateError{Message: message, Errors: values}
 }
 
 // joinErrors mirrors upstream's single-error / AggregateError collection.

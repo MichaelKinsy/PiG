@@ -2,11 +2,11 @@ package codingagent
 
 // session_export.go ports upstream core/session-export.ts: the current branch
 // serialized as a standalone JSONL session, with optional export-only entries
-// appended after it (the pi.share presentation entry).
+// appended after it (the pi.share presentation entry). It also holds the
+// session-level HTML export of core/export-html/index.ts.
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -14,6 +14,10 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/codingagent/export"
 )
 
 // TrailingEntries builds export-only entries appended after the branch. It
@@ -89,7 +93,10 @@ func ExportSessionToJsonl(session *Session, outputPath string, createTrailingEnt
 	if err != nil {
 		return "", err
 	}
-	filePath := resolveExportPath(outputPath, cwd)
+	filePath, err := resolveExportPath(outputPath, cwd)
+	if err != nil {
+		return "", err
+	}
 	if err := os.MkdirAll(filepath.Dir(filePath), 0o755); err != nil {
 		return "", err
 	}
@@ -103,9 +110,29 @@ func ExportSessionToJsonl(session *Session, outputPath string, createTrailingEnt
 	return filePath, nil
 }
 
+// ExportSessionToHTML writes the session file as HTML the way upstream
+// exportSessionToHtml does and returns the path written. An in-memory session
+// (empty sessionFile) and a session whose file is not written yet fail with
+// upstream's messages. outputPath is normalized as upstream normalizePath does
+// and written relative to the process working directory without creating its
+// parent; an empty outputPath becomes pig-session-<session basename>.html.
+func ExportSessionToHTML(sessionFile, outputPath string, tools []extension.RegisteredTool, cwd string) (string, error) {
+	if sessionFile == "" {
+		return "", errors.New("Cannot export in-memory session to HTML")
+	}
+	if _, err := os.Stat(sessionFile); err != nil {
+		return "", errors.New("Nothing to export yet - start a conversation first")
+	}
+	outputPath, err := normalizeSettingsPath(outputPath)
+	if err != nil {
+		return "", err
+	}
+	return export.ExportFromFileWithTools(sessionFile, outputPath, tools, cwd)
+}
+
 // resolveExportPath mirrors upstream resolvePath(input, baseDir): expand a
 // leading ~, accept a file:// URL, then resolve against baseDir.
-func resolveExportPath(input, baseDir string) string {
+func resolveExportPath(input, baseDir string) (string, error) {
 	normalized := ExpandTildePath(input)
 	if strings.HasPrefix(normalized, "file://") {
 		if parsed, err := url.Parse(normalized); err == nil {
@@ -119,6 +146,10 @@ func resolveExportPath(input, baseDir string) string {
 // existing member is replaced in place and a missing one is appended, as a
 // JavaScript object spread does. The result is compact.
 func replaceJSONField(raw json.RawMessage, field string, value any) ([]byte, error) {
+	return rewriteJSONField(raw, field, value, false)
+}
+
+func rewriteJSONField(raw json.RawMessage, field string, value any, remove bool) ([]byte, error) {
 	decoder := json.NewDecoder(bytes.NewReader(raw))
 	decoder.UseNumber()
 	token, err := decoder.Token()
@@ -146,6 +177,10 @@ func replaceJSONField(raw json.RawMessage, field string, value any) ([]byte, err
 		if err := decoder.Decode(&member); err != nil {
 			return nil, err
 		}
+		if key == field && remove {
+			replaced = true
+			continue
+		}
 		if !first {
 			out.WriteByte(',')
 		}
@@ -162,7 +197,7 @@ func replaceJSONField(raw json.RawMessage, field string, value any) ([]byte, err
 			return nil, err
 		}
 	}
-	if !replaced {
+	if !replaced && !remove {
 		if !first {
 			out.WriteByte(',')
 		}

@@ -190,7 +190,9 @@ func TestLoadErrorCarriesExtensionProcessCause(t *testing.T) {
 	}
 	dir := t.TempDir()
 	cases := map[string]struct{ source, want string }{
-		"syntax.ts":  {"export default function (pi) {\n  pi.registerCommand(\"x\", { handler: async () => { foo(, ) } });\n}\n", "SyntaxError"},
+		// jiti, which Pi and PiG load extensions with, reports Babel's
+		// parse error.
+		"syntax.ts":  {"export default function (pi) {\n  pi.registerCommand(\"x\", { handler: async () => { foo(, ) } });\n}\n", "Unexpected token"},
 		"throws.mjs": {"export default function () { throw new Error(\"register boom\"); }\n", "register boom"},
 	}
 	for name, tc := range cases {

@@ -16,9 +16,11 @@ type modelRequestCaptureHandle struct {
 	model   *ai.Model
 	request ai.Context
 	options ai.StreamOptions
+	ctx     context.Context
 }
 
-func (handle *modelRequestCaptureHandle) StreamModel(_ context.Context, model *ai.Model, request ai.Context, options ai.StreamOptions) *ai.AssistantMessageEventStream {
+func (handle *modelRequestCaptureHandle) StreamModel(ctx context.Context, model *ai.Model, request ai.Context, options ai.StreamOptions) *ai.AssistantMessageEventStream {
+	handle.ctx = ctx
 	handle.model = model
 	handle.request = request
 	handle.options = options
@@ -51,7 +53,7 @@ func TestStreamForSubprocessPreservesFieldRichContextAndOptions(t *testing.T) {
 		"maxTokens": float64(2048), "temperature": 0.7,
 		"samplingParams":  map[string]any{"topP": 0.8},
 		"thinkingBudgets": map[string]any{"minimal": float64(101), "low": float64(202), "medium": float64(303), "high": float64(404)},
-		"thinking":        "high", "isReasoning": true,
+		"reasoning":       "high", "reasoningEffort": "medium", "isReasoning": true,
 		"env":       map[string]any{"WIRE_ENV": "env-value", "SECOND_ENV": "distinct-value"},
 		"headers":   map[string]any{"X-Wire": "header-value", "X-Remove": nil},
 		"sessionId": "session-value", "transport": "sse",
@@ -96,7 +98,7 @@ func TestStreamForSubprocessPreservesFieldRichContextAndOptions(t *testing.T) {
 	if result.Timestamp != 15 || result.Details == nil || result.Usage == nil || !result.IsError || len(result.Content) != 2 {
 		t.Fatalf("tool result = %#v", result)
 	}
-	wantOptions := ai.StreamOptions{MaxTokens: 2048, Temperature: 0.7, TemperatureSet: true, SamplingParams: map[string]any{"topP": 0.8}, ThinkingBudgets: &ai.ThinkingBudgets{Minimal: 101, Low: 202, Medium: 303, High: 404}, Thinking: ai.ThinkingHigh, IsReasoning: true, Env: ai.ProviderEnv{"WIRE_ENV": "env-value", "SECOND_ENV": "distinct-value"}, Headers: ai.ProviderHeaders{"X-Wire": new("header-value"), "X-Remove": nil}, SessionID: "session-value", Transport: ai.TransportSSE}
+	wantOptions := ai.StreamOptions{MaxTokens: 2048, Temperature: 0.7, TemperatureSet: true, SamplingParams: map[string]any{"topP": 0.8}, ThinkingBudgets: &ai.ThinkingBudgets{Minimal: 101, Low: 202, Medium: 303, High: 404}, Thinking: ai.ThinkingHigh, ReasoningEffort: "medium", IsReasoning: true, Env: ai.ProviderEnv{"WIRE_ENV": "env-value", "SECOND_ENV": "distinct-value"}, Headers: ai.ProviderHeaders{"X-Wire": new("header-value"), "X-Remove": nil}, SessionID: "session-value", Transport: ai.TransportSSE}
 	if !reflect.DeepEqual(handle.options, wantOptions) {
 		t.Fatalf("options = %#v, want %#v", handle.options, wantOptions)
 	}

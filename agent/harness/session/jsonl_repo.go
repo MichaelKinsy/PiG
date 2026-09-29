@@ -162,7 +162,7 @@ func (repo *JsonlSessionRepo) Create(ctx context.Context, options SessionCreateO
 	}
 	created := repo.now()
 	id := options.ID
-	if id == "" {
+	if id == "" && !options.HasID {
 		id, err = UUIDv7(&created)
 		if err != nil {
 			return nil, err
@@ -418,7 +418,7 @@ func (repo *JsonlSessionRepo) Fork(ctx context.Context, source SessionMetadata, 
 	}
 	created := repo.now()
 	id := options.ID
-	if id == "" {
+	if id == "" && !options.HasID {
 		id, err = UUIDv7(&created)
 		if err != nil {
 			return nil, err

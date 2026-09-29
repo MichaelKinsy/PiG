@@ -1,0 +1,23 @@
+# Pi 0.87.1 session-manager.ts:277-284 checks the complete index before accepting a short ID.
+# Both probes supply seed/duplicate/fresh entropy to the real Session entry producer. Compare IDs, parent links and retained indexed content; no clock or path is under this probe's claim.
+name = "11-session-entry-collision"
+description = "A generated entry collision retries without replacing indexed history or creating a self-parent"
+covers = ["packages/coding-agent/src/core/session-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "test/parity/testdata/session-collision-pig.sh"]
+pi_args = ["node", "test/parity/testdata/session-collision-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

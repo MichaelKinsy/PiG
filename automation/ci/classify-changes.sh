@@ -18,8 +18,8 @@ if [ "$event" = pull_request ]; then
   product=false
   while IFS= read -r path; do
     case "$path" in
-      README.md | CHANGELOG.md | CONTRIBUTING.md | CODE_OF_CONDUCT.md | GOVERNANCE.md | MAINTAINERS.md | SECURITY.md | SUPPORT.md | CITATION.cff) ;;
-      media/* | .github/ISSUE_TEMPLATE/* | .github/pull_request_template.md | .github/CODEOWNERS) ;;
+      README.md | CHANGELOG.md | .github/CONTRIBUTING.md | .github/CODE_OF_CONDUCT.md | docs/project/GOVERNANCE.md | docs/project/MAINTAINERS.md | .github/SECURITY.md | .github/SUPPORT.md | CITATION.cff) ;;
+      docs/media/* | .github/ISSUE_TEMPLATE/* | .github/pull_request_template.md | .github/CODEOWNERS) ;;
       .github/dependabot.yml | .github/security-insights.yml | .coderabbit.yaml) ;;
       *)
         product=true

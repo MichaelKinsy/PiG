@@ -72,6 +72,18 @@ func TestFormatReportedDiagnostic(t *testing.T) {
 	}
 }
 
+// Ports packages/coding-agent/test/suite/regressions/7829-invalid-settings-warning.test.ts:15.
+func TestInvalidSettingsWarningRendersStartupDiagnosticsInsideTranscript(t *testing.T) {
+	t.Setenv("PI_OFFLINE", "1")
+	mode, _ := newExtensionDialogProbe(t)
+	mode.opts.StartupDiagnostics = []AgentSessionRuntimeDiagnostic{{Type: "warning", Message: "Invalid settings file /tmp/settings.json: malformed JSON"}}
+	mode.showStartupDiagnostics()
+	transcript := stripANSITest(strings.Join(mode.chatContainer.Render(120), "\n"))
+	if !strings.Contains(transcript, "Warning: Invalid settings file /tmp/settings.json: malformed JSON") {
+		t.Fatalf("transcript missing warning: %q", transcript)
+	}
+}
+
 // Upstream InteractiveMode.init routes each startup diagnostic by type.
 func TestShowStartupDiagnosticsRendersEachType(t *testing.T) {
 	m, _ := newExtensionDialogProbe(t)

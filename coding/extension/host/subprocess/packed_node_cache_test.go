@@ -2,6 +2,8 @@ package subprocess
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"sync"
@@ -96,5 +98,47 @@ func TestBuildNodePackedCellConcurrentColdBuildsDoNotCorrupt(t *testing.T) {
 	}
 	if reused.BinaryPath != want || !reused.Cached {
 		t.Fatalf("reuse = %+v, want Cached=true BinaryPath=%q", reused, want)
+	}
+}
+
+func TestNodePackedCellsShareRuntimeMaterialization(t *testing.T) {
+	root := t.TempDir()
+	var files []os.FileInfo
+	for _, name := range []string{"first", "second"} {
+		cell, err := buildNodePackedCell(t.Context(), root, name, []nodeExtension{{Name: name, Entry: "/source/" + name + ".mjs"}})
+		if err != nil {
+			t.Fatal(err)
+		}
+		info, err := os.Stat(filepath.Join(filepath.Dir(cell.BinaryPath), "runtime", "runtime.mjs"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		files = append(files, info)
+	}
+	if !os.SameFile(files[0], files[1]) {
+		t.Fatal("different cells materialized separate copies of the same runtime")
+	}
+}
+
+func TestNodePackedCellIdentityIncludesRuntimeVersion(t *testing.T) {
+	exts := []nodeExtension{{Name: "probe", Entry: "/x/probe.ts"}}
+	input := append([]byte{}, nodeRuntimeDigest()...)
+	input = append(input, []byte(nodeRuntimeVersion+"\x00"+nodeLauncherFormat+"\x00cell\x00probe\x00/x/probe.ts\x00")...)
+	want := sha256.Sum256(input)
+	got, _ := nodePackedCellHash("cell", exts)
+	if got != hex.EncodeToString(want[:]) {
+		t.Fatal("packed runtime identity omits its version or content")
+	}
+}
+
+// A cell cached by a PiG with different runtime contents must not be reused.
+func TestNodePackedCellKeyCoversTheEmbeddedRuntime(t *testing.T) {
+	exts := []nodeExtension{{Name: "probe", Entry: "/x/probe.ts", Hash: "/x/probe.ts"}}
+	current, _ := nodePackedCellHash("cell", exts)
+	saved := nodeRuntimeDigest
+	t.Cleanup(func() { nodeRuntimeDigest = saved })
+	nodeRuntimeDigest = func() []byte { return []byte("another runtime") }
+	if other, _ := nodePackedCellHash("cell", exts); other == current {
+		t.Fatal("the Node cell key does not change with the embedded runtime")
 	}
 }

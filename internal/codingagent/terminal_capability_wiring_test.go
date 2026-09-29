@@ -67,7 +67,9 @@ func TestReloadAppliesTerminalCapabilitySettings(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(agentDir, "settings.json"), []byte(`{"terminal": {"hyperlinks": false, "images": "iterm2"}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	m.buildSlashContext(t.Context()).Reload()
+	if err := m.buildSlashContext(t.Context()).Reload(); err != nil {
+		t.Fatal(err)
+	}
 	if got := tui.GetCapabilities(); got.Hyperlinks || got.Images != tui.ImageProtocolITerm2 {
 		t.Fatalf("capabilities after /reload = %+v, want hyperlinks off and iterm2 images", got)
 	}
@@ -127,7 +129,11 @@ func TestInteractiveInputPumpNormalizesNativeShiftEnter(t *testing.T) {
 	errCh := make(chan error, 1)
 	ctx, cancel := context.WithCancel(t.Context())
 	defer cancel()
-	go m.pumpTerminalInput(ctx, &chunkReader{chunks: [][]byte{[]byte("a\r")}}, readCh, errCh)
+	go func() {
+		if err := m.pumpTerminalInput(ctx, &chunkReader{chunks: [][]byte{[]byte("a\r")}}, readCh, errCh); err != nil {
+			t.Error(err)
+		}
+	}()
 	var got []string
 	for chunk := range readCh {
 		got = append(got, string(chunk.data))
@@ -141,7 +147,8 @@ func TestInteractiveInputPumpNormalizesNativeShiftEnter(t *testing.T) {
 	}
 }
 
-func TestStartupPromptNormalizesNativeShiftEnter(t *testing.T) {
+// ProcessTerminal normalizes before calling startup UI. The real reader boundary is guarded by tui.TestForwardTerminalNormalizesNativeShiftEnterAfterFraming.
+func TestStartupPromptUsesAlreadyNormalizedTerminalInput(t *testing.T) {
 	restoreStartupTheme(t)
 	seen := recordInputNormalization(t)
 	terminal := &fakeStartupTerminal{}
@@ -157,8 +164,10 @@ func TestStartupPromptNormalizesNativeShiftEnter(t *testing.T) {
 	if err := <-done; err != nil {
 		t.Fatal(err)
 	}
-	calls := seen()
-	if len(calls) == 0 || calls[0] != "x" {
-		t.Fatalf("normalized sequences = %q, want the startup input", calls)
+	if calls := seen(); len(calls) != 0 {
+		t.Fatalf("startup re-normalized terminal events: %q", calls)
+	}
+	if got := input.Text(); got != "x" {
+		t.Fatalf("startup input = %q, want x", got)
 	}
 }

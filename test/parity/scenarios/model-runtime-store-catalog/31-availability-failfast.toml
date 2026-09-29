@@ -1,0 +1,21 @@
+# Pi model-runtime.ts:286-299,323-329 settles Promise.all rejection and GetError
+# before an unrelated credential list finishes. Both fixtures hold that list behind an explicit barrier.
+name = "31-availability-failfast"
+description = "Availability failure is returned and published without awaiting an unrelated stalled credential list."
+covers = ["packages/coding-agent/src/core/model-runtime.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/availability-failfast-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/availability-failfast-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"returned":true', '"listPending":true', '"visibleError":"Availability refresh: availability failed"']
+runs = 3

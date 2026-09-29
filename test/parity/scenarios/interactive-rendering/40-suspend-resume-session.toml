@@ -1,0 +1,27 @@
+# Pi 0.87.1 handleCtrlZ stops the TUI and restarts on SIGCONT. A completed faux response is the startup barrier, not an early footer.
+# A private parity-* tmux session and bash job control provide a real foreground process group. The probe verifies stopped process state before resuming only that job with fg.
+# Pi's temporary SIGINT listener races SIGCONT removal when both signals are pending. Scenario43 exercises both dispatch orders with real signals and acknowledgements; this scenario asserts native job stop/resume, not a guaranteed SIGINT outcome.
+# A preserved editor draft is submitted after resume. The complete escaped response row proves that input, Session execution and terminal rendering restarted.
+# The cli-mode probe owns its tmux session because the stock interactive-tmux driver launches a non-job-control shell; it cannot supply fg for a stopped application.
+# POSIX job control requires SIGTSTP/SIGCONT and a foreground shell job. The Windows status-only branch is covered by the upstream unit cases.
+name = "40-suspend-resume-session"
+description = "Real job-control suspension preserves the draft and resumes the Session/TUI."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui", "posix-signals"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["bash", "./test/parity/testdata/suspend-session-native.sh", "pig"]
+pi_args = ["bash", "./test/parity/testdata/suspend-session-native.sh", "pi"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 100
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SUSPEND_NATIVE", "RESUMED_SOURCE_PROOF", "\"stopped\":true", "\"aliveAfterResume\":true"]
+runs = 3

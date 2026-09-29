@@ -1,0 +1,9 @@
+[
+  {"payload":{},"strict":true},
+  {"payload":{"data":[]},"strict":true},
+  {"payload":{"data":"invalid"},"strict":true},
+  {"payload":{"data":[{"id":"example/image-model","name":"Example Image Model","architecture":{"input_modalities":["text"],"output_modalities":["text"]}}]},"strict":true},
+  {"payload":{"data":[{"id":"example/image-model","name":"Example Image Model","architecture":{"input_modalities":["text","image"],"output_modalities":["image"]},"pricing":{"prompt":"0.000001","completion":"0.000002"}}]},"strict":true},
+  {"payload":{},"strict":false},
+  {"payload":{"data":[{"id":"fallback","name":"Fallback","architecture":{"input_modalities":["audio"],"output_modalities":["image","image","text","video"]},"pricing":{"prompt":" 1e-6 USD","input_cache_read":".000003","input_cache_write":"4e-6"}}]},"strict":true}
+]

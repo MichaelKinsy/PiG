@@ -1,0 +1,21 @@
+# Pi 0.87.1 api/google-generative-ai.ts:402-412 keeps enabled, explicit zero budget, and level precedence distinct.
+# Go drives ModelRuntime with the same JSON option shapes; Pi replaces global fetch because Google's adapter rejects a separate fetch implementation.
+# Mutation: ignore GoogleThinking in the Go request builder; enabled and budget/level rows become disabled and the exact comparator fails.
+name = "16-google-native-thinking"
+description = "Native Google thinking options retain presence and level-over-budget precedence."
+covers = ["packages/ai/src/api/google-generative-ai.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/google-options-pig"]
+pi_args = ["node", "./test/parity/testdata/google-options-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

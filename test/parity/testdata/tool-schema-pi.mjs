@@ -1,0 +1,13 @@
+import { resolve } from "node:path";
+import { pathToFileURL } from "node:url";
+const root = resolve("extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent/dist/core");
+const { ExtensionRunner } = await import(pathToFileURL(resolve(root, "extensions/runner.js")));
+const { loadExtensions } = await import(pathToFileURL(resolve(root, "extensions/loader.js")));
+const { SessionManager } = await import(pathToFileURL(resolve(root, "session-manager.js")));
+const entry = resolve("test/parity/scenarios/extensions-runtime/testdata/ext/tool-schema.mjs");
+const loaded = await loadExtensions([entry], process.cwd());
+if (loaded.errors.length || loaded.extensions.length !== 1) throw new Error(JSON.stringify(loaded.errors));
+const runner = new ExtensionRunner(loaded.extensions, loaded.runtime, process.cwd(), SessionManager.inMemory(), {});
+runner.setUIContext({ notify: message => console.log(message) });
+await runner.getCommand("schema-report").handler("", runner.createCommandContext());
+console.log(JSON.stringify(runner.getToolDefinition("noop").parameters));

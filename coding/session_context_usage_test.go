@@ -40,7 +40,7 @@ func TestSessionContextUsageCompactionUnknownUntilValidProjectedUsage(t *testing
 	if usage := h.session.ContextUsage(); usage == nil || usage.Tokens == nil || *usage.Tokens != 77 {
 		t.Fatalf("new usage %#v", usage)
 	}
-	if _, err := h.session.Inner().AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "abcd"}}}}); err != nil {
+	if _, err := h.session.Inner().AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "abcd"}}}}); err != nil {
 		t.Fatal(err)
 	}
 	if usage := h.session.ContextUsage(); usage == nil || usage.Tokens == nil || *usage.Tokens != 78 {

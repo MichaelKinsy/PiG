@@ -220,8 +220,9 @@ func immediateToolCall(call pendingToolCall, result AgentToolResult) finalizedTo
 	return finalizedToolCall{call: call, result: result, isError: true}
 }
 
+// errorToolResult mirrors Pi's thrown-tool result, including its present empty details object.
 func errorToolResult(message string) AgentToolResult {
-	return AgentToolResult{Content: message, IsError: true}
+	return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true}
 }
 
 func (a *Agent) findTool(name string) AgentTool {
@@ -258,9 +259,14 @@ func (a *Agent) prepareToolCall(ctx context.Context, call pendingToolCall) (outc
 			args = prepared
 		}
 	}
-	// Mirrors upstream validateToolArguments (validation.ts).
-	if err := validateToolArgs(call.name, tool.Schema().Parameters, args); err != nil {
-		return immediateOutcome(call, errorToolResult(err.Error()))
+	var validationErr error
+	if schemaTool, ok := tool.(interface{ ArgumentSchema() json.RawMessage }); ok {
+		args, validationErr = validateToolArgsSchema(call.name, schemaTool.ArgumentSchema(), args)
+	} else {
+		args, validationErr = validateToolArgs(call.name, tool.Schema().Parameters, args)
+	}
+	if validationErr != nil {
+		return immediateOutcome(call, errorToolResult(validationErr.Error()))
 	}
 	for _, hook := range a.opts.BeforeToolCall {
 		hookResult := hook(ctx, call.id, call.name, args)
@@ -372,10 +378,7 @@ func (a *Agent) finalizeExecutedToolCall(ctx context.Context, prepared preparedT
 			break
 		}
 		if override.Content != nil {
-			result.Content = *override.Content
-		}
-		if override.Images != nil {
-			result.Images = append([]ai.ImageContent(nil), (*override.Images)...)
+			result.Content = override.Content
 		}
 		if override.Details != nil {
 			result.Details = override.Details
@@ -411,9 +414,6 @@ func (a *Agent) emitToolExecutionEnd(finalized finalizedToolCall) {
 	result := finalized.result
 	result.IsError = finalized.isError
 	a.emit(ToolExecutionEndEvent{ToolCallID: finalized.call.id, ToolName: finalized.call.name, Result: result, Duration: finalized.duration})
-	if finalized.executed {
-		a.emit(TimingEvent{Kind: "tool", Name: finalized.call.name, Duration: finalized.duration, Snapshot: a.timings.Snapshot()})
-	}
 }
 
 // appendToolResult emits a finalized call's tool-result message and records it.
@@ -425,12 +425,9 @@ func (r *loopRun) appendToolResult(finalized finalizedToolCall) ToolResultMessag
 
 func createToolResultMessage(finalized finalizedToolCall, timestamp int64) ToolResultMessage {
 	result := finalized.result
-	content := make([]ai.ToolResultMessageContent, 0, 1+len(result.Images))
-	if result.Content != "" {
-		content = append(content, ai.TextContent{Text: result.Content})
-	}
-	for _, image := range result.Images {
-		content = append(content, image)
+	content := result.Content
+	if content == nil {
+		content = []ai.ToolResultMessageContent{}
 	}
 	return ToolResultMessage{
 		Role:       RoleToolResult,

@@ -40,12 +40,18 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/gofrs/flock"
 )
 
 //go:embed content/*.md
 var content embed.FS
 
 const (
+	// stagingPrefix names the private trees a first sync builds beside the docs directory.
+	stagingPrefix = ".docs-stage-"
+	// stagingLockFile serializes those trees with their leftover sweep. It does not match stagingPrefix.
+	stagingLockFile = ".docs-stage.lock"
 	// SubDir is the docs directory name under the pig config root.
 	SubDir = "docs"
 	// markerFile records the digest of the embedded bundle that owns the
@@ -119,12 +125,21 @@ func Sync(configRoot string) ([]string, error) {
 		return nil, err
 	}
 	dir := DocsDir(configRoot)
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, fmt.Errorf("pig docs: mkdir %s: %w", dir, err)
-	}
 	entries, err := fs.ReadDir(content, "content")
 	if err != nil {
 		return nil, fmt.Errorf("pig docs: read embed: %w", err)
+	}
+	release, staging := sweepStaging(filepath.Dir(dir))
+	defer release()
+	// Without the lock another sync may own the staging trees, so this one writes the directory in place.
+	if _, err := os.Lstat(dir); staging && errors.Is(err, fs.ErrNotExist) {
+		if written, err := syncFresh(dir, digest, entries); err == nil {
+			return written, nil
+		}
+		// A racing process created the directory or staging failed; the per-file path below reports the real error.
+	}
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return nil, fmt.Errorf("pig docs: mkdir %s: %w", dir, err)
 	}
 	written := make([]string, 0, len(entries))
 	managed := make(map[string]struct{}, len(entries))
@@ -166,6 +181,83 @@ func Sync(configRoot string) ([]string, error) {
 	}
 	sort.Strings(written)
 	return written, nil
+}
+
+// sweepStaging tries once to take the docs staging lock beside dir's parent and, when it does, removes staging trees that earlier syncs stranded by dying before their rename. The operating system releases the lock when its holder dies, so a tree found under the lock has no live owner. It never waits: a holder is a live sync, and startup must not stall behind it. The returned function releases the lock, and locked reports whether this call holds it. Without the lock nothing is removed and the caller must not build a staging tree.
+func sweepStaging(parent string) (release func(), locked bool) {
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		return func() {}, false
+	}
+	lock := flock.New(filepath.Join(parent, stagingLockFile))
+	if held, err := lock.TryLock(); err != nil || !held {
+		return func() {}, false
+	}
+	leftovers, _ := filepath.Glob(filepath.Join(parent, stagingPrefix+"*"))
+	for _, leftover := range leftovers {
+		_ = os.RemoveAll(leftover)
+	}
+	return func() { _ = lock.Unlock() }, true
+}
+
+// syncFresh materializes the bundle in a directory that does not exist yet. It writes the complete tree, marker last, beside dir and renames it into place, so a reader sees no docs or all of them, and it skips the temp-file-and-rename step each doc needs when it replaces an existing file. The rename fails if a racing process created dir first.
+func syncFresh(dir, digest string, entries []fs.DirEntry) ([]string, error) {
+	parent := filepath.Dir(dir)
+	if err := os.MkdirAll(parent, 0o755); err != nil {
+		return nil, err
+	}
+	staging, err := os.MkdirTemp(parent, stagingPrefix)
+	if err != nil {
+		return nil, err
+	}
+	renamed := false
+	defer func() {
+		if !renamed {
+			_ = os.RemoveAll(staging)
+		}
+	}()
+	if err := os.Chmod(staging, 0o755); err != nil {
+		return nil, err
+	}
+	written := make([]string, 0, len(entries))
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".md") {
+			continue
+		}
+		data, err := content.ReadFile("content/" + e.Name())
+		if err != nil {
+			return nil, err
+		}
+		if err := writeNewFile(filepath.Join(staging, e.Name()), data, 0o644); err != nil {
+			return nil, err
+		}
+		written = append(written, e.Name())
+	}
+	if err := writeNewFile(filepath.Join(staging, markerFile), []byte(digest+"\n"), 0o644); err != nil {
+		return nil, err
+	}
+	if err := os.Rename(staging, dir); err != nil {
+		return nil, err
+	}
+	renamed = true
+	sort.Strings(written)
+	return written, nil
+}
+
+// writeNewFile creates path with exactly mode and fails if it exists.
+func writeNewFile(path string, data []byte, mode os.FileMode) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
+	if err != nil {
+		return err
+	}
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
+		return err
+	}
+	if err := f.Chmod(mode); err != nil {
+		_ = f.Close()
+		return err
+	}
+	return f.Close()
 }
 
 // EnsureSynced is the idempotent startup helper. It writes embedded docs only

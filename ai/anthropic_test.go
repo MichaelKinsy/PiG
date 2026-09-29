@@ -433,15 +433,13 @@ func TestAnthropicSSE_ErrorResponse(t *testing.T) {
 		BaseURL: srv.URL,
 	})
 
-	_, err := p.Stream(context.Background(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hi")}}}), StreamOptions{MaxTokens: 1024})
-	if err == nil {
-		t.Fatal("expected error for 529 response")
+	stream, err := p.Stream(context.Background(), NormalizeContext(Context{Messages: []Message{UserMessage{Content: UserText("Hi")}}}), StreamOptions{MaxTokens: 1024})
+	result := requireAnthropicSetupError(t, stream, err)
+	if !strings.Contains(result.ErrorMessage, "overloaded_error") {
+		t.Errorf("error = %q, want to contain 'overloaded_error'", result.ErrorMessage)
 	}
-	if !strings.Contains(err.Error(), "overloaded_error") {
-		t.Errorf("error = %q, want to contain 'overloaded_error'", err.Error())
-	}
-	if !strings.Contains(err.Error(), "Overloaded") {
-		t.Errorf("error = %q, want to contain 'Overloaded'", err.Error())
+	if !strings.Contains(result.ErrorMessage, "Overloaded") {
+		t.Errorf("error = %q, want to contain 'Overloaded'", result.ErrorMessage)
 	}
 }
 
@@ -1385,22 +1383,23 @@ func TestAnthToolResultContent_OnlyImagesGetsPlaceholder(t *testing.T) {
 	}
 }
 
-// TestAnthropicStreamProviderScopedCacheRetention proves PI_CACHE_RETENTION is
-// read from the provider-scoped cfg.Env in preference to the process env: a
-// scoped "none" disables the x-session-affinity header even when the process
-// env sets "short" (which would otherwise send it). Mirrors upstream
-// anthropic.ts resolveCacheRetention(options?.env) / getProviderEnvValue.
+// Provider-scoped env=none overrides ambient long with the upstream short default, retaining session affinity without a long-cache TTL.
 func TestAnthropicStreamProviderScopedCacheRetention(t *testing.T) {
-	var gotHeader string
+	var gotHeader, gotBody string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotHeader = r.Header.Get("x-session-affinity")
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Error(err)
+		}
+		gotBody = string(body)
 		w.Header().Set("Content-Type", "text/event-stream")
 		_, _ = io.WriteString(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg\",\"usage\":{\"input_tokens\":1,\"output_tokens\":0}}}\n\nevent: message_stop\ndata: {\"type\":\"message_stop\"}\n\n")
 	}))
 	defer srv.Close()
 
-	// Process env would send the affinity header; the scoped "none" must win.
-	t.Setenv("PI_CACHE_RETENTION", "short")
+	// .upstream/v0.87.1/packages/ai/src/api/anthropic-messages.ts:60-84.
+	t.Setenv("PI_CACHE_RETENTION", "long")
 	sendAffinity := true
 	p := NewAnthropicProvider(AnthropicConfig{
 		APIKey:     "test-key",
@@ -1416,8 +1415,11 @@ func TestAnthropicStreamProviderScopedCacheRetention(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = stream.Result()
-	if gotHeader != "" {
-		t.Fatalf("scoped PI_CACHE_RETENTION=none must omit x-session-affinity, got %q", gotHeader)
+	if gotHeader != "sess-xyz" {
+		t.Fatalf("scoped PI_CACHE_RETENTION=none must retain x-session-affinity, got %q", gotHeader)
+	}
+	if !strings.Contains(gotBody, `"cache_control":{"type":"ephemeral"}`) || strings.Contains(gotBody, `"ttl"`) {
+		t.Fatalf("scoped none must select short caching over ambient long: %s", gotBody)
 	}
 }
 
@@ -1469,7 +1471,8 @@ data: {"type":"message_stop"}
 
 	messages := []Message{
 		UserMessage{Content: UserText("hi")},
-		AssistantMessage{Provider: "github-copilot", Model: "claude-opus-4.8", Content: []AssistantContentBlock{
+		// Same API/provider/model identity is required for signed replay before the D37 rejection retry.
+		AssistantMessage{API: APIAnthropicMessages, Provider: "github-copilot", Model: "claude-opus-4.8", Content: []AssistantContentBlock{
 			ThinkingContent{Thinking: "let me reason about this", ThinkingSignature: "STALE_SIG_ABC"},
 			TextContent{Text: "answer"},
 		}},

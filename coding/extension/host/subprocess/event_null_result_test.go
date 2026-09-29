@@ -14,7 +14,7 @@ func TestEventHandlerNullResultIsNoResult(t *testing.T) {
 		hostEnd, peer := net.Pipe()
 		conn := NewConn("observe", hostEnd)
 		conn.Start(t.Context())
-		managed := &managedExt{config: ExtConfig{Name: "observe"}, host: NewHost(t.TempDir()), conn: conn}
+		managed := withConn(&managedExt{config: ExtConfig{Name: "observe"}, host: NewHost(t.TempDir())}, conn)
 		handler := managed.makeEventHandler("tool_call", 1)
 		type outcome struct {
 			result any

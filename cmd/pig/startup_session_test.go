@@ -12,12 +12,15 @@ import (
 func TestResolveCLIResourceFlagsAnchorsPathsToLaunchCWD(t *testing.T) {
 	launchCWD := t.TempDir()
 	absolute := filepath.Join(t.TempDir(), "absolute")
-	got := resolveCLIResourceFlags(CLIFlags{
+	got, err := resolveCLIResourceFlags(CLIFlags{
 		Extensions:      []string{"./ext", absolute},
 		Skills:          []string{"skills/demo"},
 		PromptTemplates: []string{"prompts/demo.md"},
 		Themes:          []string{"themes/demo.json"},
 	}, launchCWD)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got.Extensions[0] != filepath.Join(launchCWD, "ext") || got.Extensions[1] != absolute {
 		t.Fatalf("Extensions = %v", got.Extensions)
 	}

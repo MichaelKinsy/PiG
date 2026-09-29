@@ -99,7 +99,7 @@ func TestPullRejectsManagedSymlinkAncestors(t *testing.T) {
 			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			testenv.Symlink(t, outside, path)
+			testenv.RequireDirectoryLink(t, outside, path)
 			key := newKey(t)
 			server, ref := releaseServer(t, key, releaseSpec{piglet: "porter", version: "1.0.0", target: testTarget, pigVersion: "pig-test", binary: signedBinary(t, key, "porter", "1.0.0", testTarget, "pig-test")})
 			defer server.Close()
@@ -130,7 +130,15 @@ func TestInventoryRejectsManagedSymlinkAncestors(t *testing.T) {
 			if err := os.Rename(path, moved); err != nil {
 				t.Fatal(err)
 			}
-			testenv.Symlink(t, moved, path)
+			info, err := os.Stat(moved)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if info.IsDir() {
+				testenv.RequireDirectoryLink(t, moved, path)
+			} else {
+				testenv.Symlink(t, moved, path)
+			}
 			if installed, errs := ListInstalled(); len(installed) != 0 || len(errs) == 0 {
 				t.Fatalf("accepted symlink: installed=%v errors=%v", installed, errs)
 			}

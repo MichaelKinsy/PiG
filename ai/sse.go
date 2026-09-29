@@ -16,13 +16,20 @@ type serverSentEvent struct {
 	Raw   []string
 }
 
+type providerSSEDecoder interface {
+	Next() bool
+	Event() serverSentEvent
+	Err() error
+}
+
 type sseDecoder struct {
-	scanner *bufio.Scanner
-	event   string
-	data    []string
-	raw     []string
-	current serverSentEvent
-	flushed bool
+	beforeNext func()
+	scanner    *bufio.Scanner
+	event      string
+	data       []string
+	raw        []string
+	current    serverSentEvent
+	flushed    bool
 }
 
 func newSSEDecoder(reader io.Reader) *sseDecoder {
@@ -33,6 +40,9 @@ func newSSEDecoder(reader io.Reader) *sseDecoder {
 }
 
 func (decoder *sseDecoder) Next() bool {
+	if decoder.beforeNext != nil {
+		decoder.beforeNext()
+	}
 	for decoder.scanner.Scan() {
 		line := decoder.scanner.Text()
 		if line == "" {

@@ -1,0 +1,39 @@
+# Behavior family: rpc
+# Surface: export_html on a persisted Session whose file is not written yet.
+#
+# Upstream evidence (Pi 0.87.1, native Windows 2026-09-28): a new Session file is
+# created only when the first assistant message arrives. Before that,
+# export-html/index.ts exportSessionToHtml throws "Nothing to export yet - start a
+# conversation first", and rpc-mode.ts returns that message as the error response.
+
+name = "39-rpc-export-html-before-first-write"
+description = "RPC export_html before the first exchange fails with Pi's nothing-to-export error."
+covers = [
+  "packages/coding-agent/src/core/export-html/index.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+
+[[rpc.steps]]
+line = '{"id":"export","type":"export_html","outputPath":"{{TEMP}}/unwritten.html"}'
+wait_contains = ['"id":"export","type":"response","command":"export_html"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-home/agent"]
+pig_args = ["--offline", "--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--offline", "--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = [
+  '{"id":"export","type":"response","command":"export_html","success":false,"error":"Nothing to export yet - start a conversation first"}',
+]
+json_output_equal = true
+stderr_equal = true
+runs = 3

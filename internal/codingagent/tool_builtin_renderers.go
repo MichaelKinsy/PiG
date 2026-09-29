@@ -6,6 +6,7 @@ package codingagent
 // one renderer draws the built-in renderer in the other half.
 
 import (
+	"context"
 	"encoding/json"
 	"strconv"
 	"strings"
@@ -52,6 +53,9 @@ func (linesComponent) Invalidate()                 {}
 // loop, so it has its own lock.
 type builtInRenderState struct {
 	mu        sync.Mutex
+	lifetime  context.Context
+	closed    bool
+	tasks     sync.WaitGroup
 	startedAt time.Time
 	endedAt   time.Time
 	stopTick  chan struct{}
@@ -157,16 +161,22 @@ func shellRenderCall(prompt string) extension.ToolRenderCallFunc {
 func shellRenderResult(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
 	state := builtInState(context)
 	state.mu.Lock()
-	if !state.startedAt.IsZero() && options.IsPartial && state.stopTick == nil {
+	if !state.closed && !state.startedAt.IsZero() && options.IsPartial && state.stopTick == nil {
 		stop := make(chan struct{})
 		state.stopTick = stop
+		var cancelled <-chan struct{}
+		if state.lifetime != nil {
+			cancelled = state.lifetime.Done()
+		}
 		invalidate := context.Invalidate
-		go func() {
+		state.tasks.Go(func() {
 			ticker := time.NewTicker(shellElapsedTickEvery)
 			defer ticker.Stop()
 			for {
 				select {
 				case <-stop:
+					return
+				case <-cancelled:
 					return
 				case <-ticker.C:
 					if invalidate != nil {
@@ -174,7 +184,7 @@ func shellRenderResult(result extension.AgentToolResult, options extension.ToolR
 					}
 				}
 			}
-		}()
+		})
 	}
 	if !options.IsPartial || context.IsError {
 		if state.endedAt.IsZero() {
@@ -203,7 +213,7 @@ func shellRenderResult(result extension.AgentToolResult, options extension.ToolR
 		footer = themeFg(tui.ActiveTheme().Muted, label+" "+tui.FormatToolDuration(end.Sub(startedAt)))
 	}
 	return linesComponent{render: func(width int) []string {
-		lines := shellResultLines(value.Content, details, options.IsPartial, options.Expanded, width)
+		lines := shellResultLines(value.Text(), details, options.IsPartial, options.Expanded, width)
 		if footer != "" {
 			lines = append(lines, tui.NewPaddedText("\n"+footer, 0, 0, nil).Render(width)...)
 		}
@@ -246,7 +256,7 @@ func readRenderResult(result extension.AgentToolResult, options extension.ToolRe
 	theme := tui.ActiveTheme()
 	value := renderResultValue(result)
 	rawPath, _ := stringArg(context.Args, "file_path", "path")
-	output := shellTextOutput(value.Content)
+	output := shellTextOutput(value.Text())
 	lang := ""
 	if !context.IsError && rawPath != "" {
 		lang = tui.LanguageFromPath(rawPath)
@@ -326,7 +336,7 @@ func readTruncation(details any) *tools.TruncationResult {
 func listRenderResult(name string) extension.ToolRenderResultFunc {
 	return func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, _ extension.ToolRenderContext) extension.Component {
 		value := renderResultValue(result)
-		body := makeListBodyRenderer(name, value.Content, value.Details)
+		body := makeListBodyRenderer(name, value.Text(), value.Details)
 		return linesComponent{render: func(width int) []string {
 			lines := body(width, options.Expanded)
 			if len(lines) == 0 {
@@ -384,7 +394,7 @@ func writeRenderCall(args json.RawMessage, _ extension.Theme, context extension.
 // writeRenderResult is upstream write.ts renderResult: the error text of a
 // failed write, else nothing.
 func writeRenderResult(result extension.AgentToolResult, _ extension.ToolRenderResultOptions, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
-	output := renderResultValue(result).Content
+	output := renderResultValue(result).Text()
 	if !context.IsError || output == "" {
 		return tui.NewPaddedText("", 0, 0, nil)
 	}
@@ -476,13 +486,19 @@ func editRenderCall(args json.RawMessage, _ extension.Theme, context extension.T
 		state.editPending = false
 		state.editSettledE = false
 	}
-	if context.ArgsComplete && ok && state.editPreview == nil && !state.editPending {
+	if !state.closed && context.ArgsComplete && ok && state.editPreview == nil && !state.editPending {
 		state.editPending = true
 		cwd, invalidate := context.Cwd, context.Invalidate
-		go func() {
+		state.tasks.Go(func() {
+			state.mu.Lock()
+			cancelled := state.closed || (state.lifetime != nil && state.lifetime.Err() != nil)
+			state.mu.Unlock()
+			if cancelled {
+				return
+			}
 			preview := tools.ComputeEditsDiff(path, edits, cwd)
 			state.mu.Lock()
-			current := state.editArgsKey == key
+			current := !state.closed && (state.lifetime == nil || state.lifetime.Err() == nil) && state.editArgsKey == key
 			if current {
 				state.editPreview = &preview
 				state.editPending = false
@@ -491,7 +507,7 @@ func editRenderCall(args json.RawMessage, _ extension.Theme, context extension.T
 			if current && invalidate != nil {
 				invalidate()
 			}
-		}()
+		})
 	}
 	state.mu.Unlock()
 	header := tui.FormatEditHeader(args, context.Cwd)
@@ -579,10 +595,10 @@ func editRenderResult(result extension.AgentToolResult, _ extension.ToolRenderRe
 	}
 	empty := linesComponent{render: func(int) []string { return nil }}
 	if context.IsError {
-		if value.Content == "" || value.Content == previewError {
+		if value.Text() == "" || value.Text() == previewError {
 			return empty
 		}
-		output := themeFg(tui.ActiveTheme().Error, value.Content)
+		output := themeFg(tui.ActiveTheme().Error, value.Text())
 		return linesComponent{render: func(width int) []string {
 			return append([]string{""}, tui.NewPaddedText(output, 1, 0, nil).Render(width)...)
 		}}

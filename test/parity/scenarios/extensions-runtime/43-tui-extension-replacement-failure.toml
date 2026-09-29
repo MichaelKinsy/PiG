@@ -1,0 +1,37 @@
+# Upstream evidence: Pi 0.87.1 agent-session-runtime.ts:275-280 rejects a
+# missing fork entry. interactive-mode.ts:1929-1940 routes an extension-command
+# fork failure to handleFatalRuntimeError, unlike the built-in /fork command.
+# A real Pi probe exits 1 without painting its queued error redraw:
+# handleFatalRuntimeError (:2047-2059) stops the TUI before process.exit(1).
+# lint-known-gap: this scenario compares the exact exit status, not text. Pi
+# does not flush the error frame; startup text is not the error contract.
+# TestInteractiveExtensionReplacementFailureUsesFatalPath checks the recorded
+# error and owner-loop state. A compiling nonfatal-adapter mutation stays alive
+# and fails this scenario after the same registered command runs.
+name = "43-tui-extension-replacement-failure"
+description = "An extension fork failure takes the interactive fatal-runtime path"
+covers = ["packages/coding-agent/src/core/agent-session-runtime.ts", "packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-session"]
+pi_args = ["--no-session"]
+pig_extensions = ["testdata/ext/session-replacement.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/session-replacement.mjs"]
+
+[tmux]
+width = 160
+height = 60
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+steps = [{keys = ["/replace-probe invalid trace.jsonl", "Enter"]}]
+
+[assert]
+both_reach_ready = true
+exit_code = 1
+runs = 3

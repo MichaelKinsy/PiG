@@ -91,7 +91,8 @@ type overlayInputSnapshot struct {
 	eligible  bool
 }
 
-func (m *overlayModel) prepareInput(blockerMounted bool) {
+// Ports packages/tui/src/tui.ts (handleTerminalInput).
+func (m *overlayModel) prepareInput() {
 	restore := m.visibleFocusRestore()
 	switch restore.kind {
 	case overlayFocusEligible:
@@ -102,7 +103,7 @@ func (m *overlayModel) prepareInput(blockerMounted bool) {
 			}
 		}
 	case overlayFocusBlocked:
-		if m.focusTarget != restore.blockedBy || !blockerMounted {
+		if m.focusTarget != restore.blockedBy {
 			target, id := m.resolveBlockedFocus(restore)
 			m.focused = id
 			m.focusTarget = target

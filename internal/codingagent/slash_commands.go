@@ -116,9 +116,13 @@ type SlashContext struct {
 	// Output sinks: must be non-nil when Dispatch is called.
 	Append     func(string) // append markdown to chat (Markdown component, 1px padding)
 	AppendText func(string) // append plain ANSI text to chat (Text component, 1px padding)
-	Clear      func()       // clear the chat transcript
-	Quit       func()       // request session exit
-	Reset      func()       // /new: keep transcript visible but reset agent messages
+	// AppendBlock appends Spacer(1) and Text(text, 1, 1), the confirmation
+	// block upstream handlers such as handleDebugCommand add. The text is not
+	// Markdown, so paths keep their backslashes.
+	AppendBlock func(string)
+	Clear       func() // clear the chat transcript
+	Quit        func() // request session exit
+	Reset       func() // /new: keep transcript visible but reset agent messages
 	// NewSession creates a fresh session file and resets agent state.
 	// Mirrors upstream runtimeHost.newSession(). May be nil in test contexts.
 	NewSession func() error
@@ -147,7 +151,8 @@ type SlashContext struct {
 	LastAssistant func() string
 	CopyClipboard func(text string) error
 	CostSummary   func() string
-	HotkeyLines   func() []string
+	ShowHotkeys   func()
+	ShowChangelog func()
 
 	// All registered commands: set by Dispatch before calling Handler
 	// so /help can enumerate the live set.
@@ -198,6 +203,12 @@ type SlashContext struct {
 	// label=="" clears any existing label (upstream: undefined→delete).
 	AppendLabelChange func(targetID, label string) error
 	LoadSessionPath   func(path string) error
+	// ResumeStatus, when set, returns the status /resume shows after LoadSessionPath succeeds. The default is "Resumed session".
+	ResumeStatus func() string
+	// ImportSession imports a session JSONL file through the Session and
+	// reports whether session_before_switch cancelled the switch. Mirrors
+	// upstream runtimeHost.importFromJsonl.
+	ImportSession func(inputPath, cwdOverride string) (cancelled bool, err error)
 
 	// Manual context compaction.
 	// CompactSession triggers a manual compact on the current session.
@@ -211,6 +222,8 @@ type SlashContext struct {
 	// ("", false) on cancel (Esc). Mirrors upstream showExtensionSelector()
 	// and ExtensionSelectorOptions.description.
 	ShowExtensionSelector func(title string, options []string, description string) (string, bool)
+	// ShowTrustSelector invokes OnSelect before restoring the editor so persistence precedes closing the selector.
+	ShowTrustSelector func(TrustSelectorOptions) (TrustSelection, bool)
 	// ShowExtensionEditor presents a text prompt with an optional description
 	// and prefill; returns the text and true, or ("", false) on cancel (Esc).
 	// Mirrors upstream showExtensionEditor() and
@@ -229,10 +242,19 @@ type SlashContext struct {
 	SummarizeForBugReport func(modelName, hint string) (summary string, aborted bool, err error)
 	// UpstreamVersion returns the pinned Pi version. May be nil.
 	UpstreamVersion func() string
-	// ShowSettingsList presents the dedicated two-column settings selector.
-	// Blocks until the user cycles a value (returns id, newValue, true) or
-	// cancels (returns "", "", false). Mirrors upstream SettingsSelectorComponent.
-	ShowSettingsList func(items []tui.SettingItem) (changedID, changedValue string, ok bool)
+	// CurrentTuiMode returns the running renderer's mode, independent of the saved default. Nil outside the interactive UI.
+	CurrentTuiMode func() string
+	// SwitchTuiMode switches the running renderer before the settings list saves a TUI mode, and returns false when the switch is refused. Nil outside the interactive UI.
+	SwitchTuiMode func(mode string) bool
+	// ShowSettingsList presents the dedicated two-column settings selector and
+	// blocks until the user cancels. Each change calls onChange while the list
+	// stays open with its selection and search, as upstream SettingsList's
+	// onChange does; the row then shows the value onChange returns.
+	ShowSettingsList func(items []tui.SettingItem, onChange func(id, value string) string)
+	// ShowSettingsSubmenu is ShowSettingsList for a nested settings menu:
+	// upstream builds those lists with Math.min(items.length, 10) rows and no
+	// search.
+	ShowSettingsSubmenu func(items []tui.SettingItem, onChange func(id, value string) string)
 	// ShowSelectList presents a non-search submenu selector with optional
 	// description column. Used by /settings for upstream-style submenus like
 	// thinking level. Returns the chosen value or ("", false) on cancel.
@@ -276,7 +298,7 @@ type SlashContext struct {
 
 	// Reload triggers a reload of settings and prompt templates.
 	// Called by the /reload command. May be nil in headless contexts.
-	Reload func()
+	Reload func() error
 
 	// ReloadDiagnostics returns resource counts after a reload.
 	// Mirrors upstream showLoadedResources with showDiagnosticsWhenQuiet.
@@ -307,31 +329,20 @@ type SlashContext struct {
 	ProbeOAuthAnthropic    func() (string, error)
 	ProbeOAuthCodex        func() (string, error)
 
-	// Login runs the interactive OAuth login flow for the given provider.
-	// ShowOAuthSelector opens the OAuth provider picker overlay.
-	// mode is "login" or "logout". Returns provider ID and true, or
-	// "", false if cancelled. nil in headless/test contexts.
-	ShowOAuthSelector func(mode string) (providerID string, ok bool)
-	ShowLoginAuthType func() (authType string, ok bool)
+	// Provider metadata and modal callbacks for /login and /logout.
+	LoginProviders     func() []tui.OAuthProvider
+	LogoutProviders    func() ([]tui.OAuthProvider, error)
+	SelectAuthProvider func(mode string, providers []tui.OAuthProvider, initialSearch string) (tui.OAuthProvider, bool)
+	SelectAuthMethod   func(providers []tui.OAuthProvider) (authType string, ok bool)
+	StartProviderLogin func(provider tui.OAuthProvider) error
 
-	// Mirrors upstream showLoginDialog (interactive-mode.ts:4325-4444).
-	// May be nil in headless/test contexts; handlers must guard.
-	Login     func(ctx context.Context, provider string) error
-	SetAPIKey func(provider, value string) error
-	// ShowAPIKeyInput requests the standard API-key auth method's secret value.
-	ShowAPIKeyInput func(provider string) (string, bool)
-	// LoginAPIKeyProvider runs a provider's own api-key login flow and
-	// reports whether the provider has one (llama.cpp prompts for its server
-	// URL and optional key instead of a bare key).
-	LoginAPIKeyProvider func(provider string) bool
 	// RunLlama runs the built-in /llama command.
 	RunLlama func() error
 
 	// Logout removes stored credentials for the given provider.
 	// Mirrors upstream showOAuthSelector logout branch (interactive-mode.ts:4299).
 	// May be nil in headless/test contexts; handlers must guard.
-	Logout             func(provider string) error
-	LogoutProviderName func(provider string) string
+	Logout func(provider string) error
 
 	// ExtRunner is the extension runner for emitting events from slash commands.
 	// May be nil in headless/test contexts; handlers must guard.
@@ -433,6 +444,18 @@ func (r *SlashRegistry) Resolve(name string) (string, bool) {
 		return name, true
 	}
 	return "", false
+}
+
+// IsBuiltin reports whether name (or an alias) is a built-in command, the
+// commands upstream's onSubmit handles in its builtin chain.
+func (r *SlashRegistry) IsBuiltin(name string) bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	if _, ok := r.builtins[name]; ok {
+		return true
+	}
+	_, ok := r.aliases[name]
+	return ok
 }
 
 // All returns a sorted list of every command (builtin + extension) for
@@ -588,9 +611,6 @@ func defaultBuiltins() []BuiltinSlashCommand {
 	}
 	return cmds
 }
-
-// pig divergence (D35): omit Pi's animated /arminsayshi and
-// /dementedelves commands.
 
 // llamaHandler runs the command upstream's built-in hidden llama.cpp inline
 // extension registers (extensions/llama/index.ts).
@@ -773,7 +793,6 @@ func modelHandler(sc *SlashContext) error {
 		if sc.PickModel != nil && sc.SwitchModel != nil {
 			spec, ok := sc.PickModel("")
 			if !ok {
-				sc.Append("Model switch cancelled.")
 				return nil
 			}
 			if err := sc.SwitchModel(spec); err != nil {
@@ -846,87 +865,22 @@ func scopedModelsHandler(sc *SlashContext) error {
 	return nil
 }
 
-// loginHandler implements /login: interactive OAuth login.
-// Mirrors upstream interactive-mode.ts:2452-2453 → showOAuthSelector("login").
+// loginHandler configures provider authentication, using an optional provider ID or display name.
 func loginHandler(sc *SlashContext) error {
-	if sc.ShowOAuthSelector == nil {
-		sc.Append("OAuth login is not available in this context.")
+	if sc.LoginProviders == nil || sc.StartProviderLogin == nil {
+		sc.Append("Provider login is not available in this context.")
 		return nil
 	}
-
-	providerID := ""
-	if sc.ShowLoginAuthType != nil {
-		authType, ok := sc.ShowLoginAuthType()
-		if !ok {
-			return nil
-		}
-		if authType == "api_key" {
-			if sc.ShowOAuthSelector == nil || sc.SetAPIKey == nil || sc.ShowAPIKeyInput == nil {
-				sc.Append("API key login is not available in this context.")
-				return nil
-			}
-			picked, ok := sc.ShowOAuthSelector("login-api-key")
-			if !ok {
-				return nil
-			}
-			if sc.LoginAPIKeyProvider != nil && sc.LoginAPIKeyProvider(picked) {
-				return nil
-			}
-			value, ok := sc.ShowAPIKeyInput(picked)
-			if !ok {
-				return nil
-			}
-			if err := sc.SetAPIKey(picked, strings.TrimSpace(value)); err != nil {
-				message := fmt.Sprintf("Login failed: %v", err)
-				// pig divergence (D80): authentication diagnostics must not echo masked input.
-				if sc.SettingsManager == nil || sc.SettingsManager.Get().GetMaskSecretInput() {
-					message = tui.RedactSecretInput(message, value)
-				}
-				sc.Append(message)
-			}
-			return nil
-		}
-	}
-
-	if sc.Login == nil {
-		sc.Append("OAuth login is not available in this context.")
-		return nil
-	}
-
-	picked, ok := sc.ShowOAuthSelector("login-oauth")
-	if !ok {
-		return nil
-	}
-	providerID = picked
-
-	ctx := context.Background()
-	if err := sc.Login(ctx, providerID); err != nil {
-		sc.Append(fmt.Sprintf("Login failed: %v", err))
-	}
-	return nil
+	return handleLoginCommand(sc)
 }
 
-// logoutHandler implements /logout: remove stored OAuth credentials.
-// Mirrors upstream interactive-mode.ts:2457-2458 → showOAuthSelector("logout").
+// logoutHandler removes a stored credential without changing environment or models.json configuration.
 func logoutHandler(sc *SlashContext) error {
-	if sc.Logout == nil || sc.ShowOAuthSelector == nil {
-		sc.Append("OAuth logout is not available in this context.")
+	if sc.LogoutProviders == nil || sc.Logout == nil {
+		sc.Append("Provider logout is not available in this context.")
 		return nil
 	}
-
-	providerID, ok := sc.ShowOAuthSelector("logout")
-	if !ok {
-		return nil
-	}
-
-	if err := sc.Logout(providerID); err != nil {
-		sc.Append(fmt.Sprintf("Logout failed: %v", err))
-		return nil
-	}
-	if sc.LogoutProviderName != nil {
-		showStatusOrAppend(sc, fmt.Sprintf("Logged out of %s", sc.LogoutProviderName(providerID)))
-	}
-	return nil
+	return handleLogoutCommand(sc)
 }
 
 func copyHandler(sc *SlashContext) error {
@@ -1090,59 +1044,19 @@ func formatNumber(n int) string {
 }
 
 func hotkeysHandler(sc *SlashContext) error {
-	var lines []string
-	if sc.HotkeyLines != nil {
-		lines = sc.HotkeyLines()
+	if sc.ShowHotkeys != nil {
+		sc.ShowHotkeys()
+	} else {
+		sc.Append(hotkeysMarkdown())
 	}
-	if len(lines) == 0 {
-		// Fallback for headless/test contexts where the interactive keybindings
-		// manager is not wired.
-		lines = []string{
-			"Enter       : submit",
-			"Ctrl+J      : newline",
-			"Shift+Enter : newline (kitty/iTerm)",
-			"Alt+Enter   : follow-up (while working) / submit (idle)",
-			"Alt+Up      : dequeue follow-up messages",
-			"Esc         : abort (while working) / cancel",
-			"Esc Esc     : open /tree (500ms window)",
-			"Ctrl+C      : abort (working) / clear editor (idle)",
-			"Ctrl+D      : exit pig",
-			"Ctrl+O      : toggle all tool details",
-			"Ctrl+G      : open external editor ($VISUAL / $EDITOR)",
-			"Ctrl+L      : model picker",
-			"Ctrl+P      : cycle model forward",
-			"Shift+Ctrl+P: cycle model backward",
-			"Ctrl+T      : toggle thinking block visibility",
-			"Ctrl+V      : paste image from clipboard",
-			"Ctrl+Z      : suspend (resume with fg)",
-			"Shift+Tab   : cycle thinking level",
-			"Ctrl+U      : kill line (cut to start)",
-			"Ctrl+K      : kill to end of line",
-			"Ctrl+Y      : yank (paste from kill ring)",
-			"Alt+Y       : cycle yank ring",
-			"Ctrl+/      : undo",
-			"Ctrl+A      : move to start of line",
-			"Ctrl+E      : move to end of line",
-			"Alt+B       : word backward",
-			"Alt+F       : word forward",
-			"Alt+Bksp    : delete word backward",
-			"Alt+D       : delete word forward",
-			"Ctrl+Del    : delete forward",
-			"Up/Down     : history navigation (empty editor)",
-		}
-	}
-	var b strings.Builder
-	b.WriteString("**Hotkeys**\n\n")
-	for _, l := range lines {
-		fmt.Fprintf(&b, "  %s\n", l)
-	}
-	sc.Append(b.String())
 	return nil
 }
 
 func newHandler(sc *SlashContext) error {
 	// Upstream: /new calls runtimeHost.newSession() which creates a fresh
 	// JSONL file + resets agent messages + emits session lifecycle events.
+	// NewSession also shows "✓ New session started" in the cleared
+	// transcript, as upstream handleClearCommand does.
 	if sc.NewSession != nil {
 		if err := sc.NewSession(); err != nil {
 			if sc.FatalRuntimeError != nil {
@@ -1150,7 +1064,6 @@ func newHandler(sc *SlashContext) error {
 			}
 			return fmt.Errorf("/new: %w", err)
 		}
-		sc.Append("✓ New session started")
 		return nil
 	}
 	// Fallback for test contexts where NewSession is not wired.

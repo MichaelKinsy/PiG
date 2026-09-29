@@ -1,0 +1,27 @@
+# Behavior family: tui-components
+# Upstream evidence: Pi 0.87.1 terminal.test.ts:132-237 defines the negotiation cases. The probe also records batch callback/flag ordering, late-prefix completion and rejection, paste bypass, oversized numeric flags, and timer disposal.
+# The observation starts after decoder setup/query and ends before terminal teardown. It does not claim query/stop output coverage; those writes are asserted by the original unit cases.
+# Node's --disable-warning=ExperimentalWarning suppresses the node:test MockTimers diagnostic used by this fixture. No terminal bytes are normalized.
+name = "14-terminal-negotiation-framing"
+description = "Post-framing protocol deadlines, ordered callbacks, negotiated flags and progress clear match Pi"
+covers = ["packages/tui/src/terminal.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/terminal-protocol-pig"]
+pi_args = ["node", "--disable-warning=ExperimentalWarning", "./test/parity/testdata/terminal-protocol-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_contain = ['input:a;kitty=false', 'framing-timeout', 'closed-timer=true', 'large-flags', 'write:\u001b]9;4;0\u0007']
+both_not_contain = ["panic:", "ERR_MODULE_NOT_FOUND"]

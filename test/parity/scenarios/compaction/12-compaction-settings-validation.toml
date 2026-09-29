@@ -1,0 +1,29 @@
+# Pi 0.87.1 settings-manager.ts:getCompactionTokenSetting rejects ordinary
+# values before model fallbacks and validates only the selected override.
+# Every malformed/non-finite table row from settings-manager-compaction.test.ts
+# is compared against the unchanged installed Pi with exact diagnostic bytes.
+# The Node resolution flag loads unchanged Pi dependencies for its test harness.
+# Caller probes also assert manual admission cleanup and a rejected next-turn
+# preparation: no second provider request and a persisted failed assistant.
+name = "12-compaction-settings-validation"
+description = "Lazy compaction setting validation and exact JavaScript value diagnostics"
+covers = ["packages/coding-agent/src/core/settings-manager.ts", "packages/coding-agent/src/core/agent-session.ts", "packages/agent/src/agent-loop.ts", "packages/agent/src/agent.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/compaction-settings-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/compaction-settings-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["setting: null. Expected a non-negative safe integer.", "setting: NaN. Expected a non-negative safe integer.", "setting: 9007199254740992."]
+runs = 3

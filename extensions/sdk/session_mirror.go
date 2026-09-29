@@ -27,13 +27,16 @@ type sessionMirror struct {
 	// connection's reader goroutine may wait on it: subscribed is atomic
 	// precisely so applySessionUpdate can test it while a subscribe is in
 	// flight instead of deadlocking against the response it is waiting for.
-	subMu      sync.Mutex
+	subMu sync.Mutex
+	// subErr is the outcome of the one subscription attempt; a failed attempt is not retried, so every read reports it.
+	subErr     error
 	subscribed atomic.Bool
 
-	mu      sync.RWMutex
-	entries []json.RawMessage // full local log, append-only within a session
-	leafID  string
-	index   map[string]entryMeta // id → {position, parentId}
+	mu        sync.RWMutex
+	sessionID string
+	entries   []json.RawMessage // full local log, append-only within a session
+	leafID    string
+	index     map[string]entryMeta // id → {position, parentId}
 
 	// Branch cache, invalidated on append or leaf change.
 	// revision increments on every change to entries or leaf. Both caches key
@@ -66,6 +69,7 @@ func (m *sessionMirror) applySessionUpdate(session json.RawMessage) bool {
 		return false
 	}
 	var s struct {
+		SessionID       string            `json:"sessionId"`
 		LeafID          string            `json:"leafId"`
 		EntriesAppended []json.RawMessage `json:"entriesAppended"`
 		EntryCount      int               `json:"entryCount"`
@@ -80,6 +84,13 @@ func (m *sessionMirror) applySessionUpdate(session json.RawMessage) bool {
 	defer m.mu.Unlock()
 
 	changed := false
+	if s.SessionID != "" && s.SessionID != m.sessionID {
+		m.sessionID = s.SessionID
+		m.entries, m.index = nil, nil
+		m.branchCache, m.branchDecoded = nil, nil
+		m.leafID = ""
+		changed = true
+	}
 
 	// Leaf tracking is cheap and always current; the log itself is only
 	// applied once this extension has subscribed. Until then the host sends

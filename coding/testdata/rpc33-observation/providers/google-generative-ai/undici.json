@@ -1,0 +1,32 @@
+{
+ "node": "v24.19.0",
+ "results": [
+  {
+   "delivery": "buffered",
+   "fetchResolvedRound": 7,
+   "firstRead": {
+    "from": "issue",
+    "rounds": 2
+   }
+  },
+  {
+   "delivery": "pending",
+   "fetchResolvedRound": 7,
+   "firstRead": {
+    "from": "socket-data",
+    "rounds": 3
+   }
+  },
+  {
+   "delivery": "split",
+   "fetchResolvedRound": 7,
+   "firstRead": {
+    "from": "issue",
+    "rounds": 2
+   }
+  },
+  {
+   "json": 2
+  }
+ ]
+}

@@ -57,6 +57,8 @@ Use `/compact` to compact now, before the window fills. This is useful when you
 finish one task and start another in the same session: the summary keeps the
 outcome and drops the intermediate steps.
 
+An empty or small session reports `Error: Compaction failed: Nothing to compact (session too small)`. Compaction errors remain in the transcript, with the same one-column padding as other error notices.
+
 ## What you lose
 
 A summary is smaller than what it replaces. Exact wording, full file contents and

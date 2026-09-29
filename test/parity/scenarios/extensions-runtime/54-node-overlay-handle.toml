@@ -1,0 +1,41 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:2918-2920 publishes onHandle after mounting.
+# tui.ts:715-769 controls visibility/focus without constructing another overlay.
+# pi-btw@0.6.1 uses the same handle and process.stdout geometry paths.
+name = "54-node-overlay-handle"
+description = "Mounted Node overlay handles preserve synchronous control state and terminal geometry"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/tui/src/tui.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/overlay-handle.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/overlay-handle.mjs"]
+
+[tmux]
+width = 120
+height = 40
+ready_pattern_pig = "NODE HANDLE READY"
+ready_pattern_pi = "NODE HANDLE READY"
+ready_timeout_seconds = 25
+capture_start = "NODE-HANDLE"
+capture_end = "keys=1"
+
+[[tmux.steps]]
+keys = ["/node-handle", "Enter"]
+wait_contains = ["NODE-HANDLE focus=true hidden=false geometry=120x40 trace=false,true,false,true keys=0"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["k"]
+wait_contains = ["keys=1"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+escaped_output_equal = true
+both_contain = ["NODE-HANDLE focus=true hidden=false geometry=120x40 trace=false,true,false,true keys=1"]
+runs = 3

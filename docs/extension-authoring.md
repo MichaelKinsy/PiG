@@ -7,11 +7,11 @@ separate APIs.
 Read these files before adding or changing extension behavior:
 
 1. `docs/extension-api-parity.md`: parity boundary and SDK coverage matrix.
-2. `DIVERGENCES.md`: numbered intentional differences from upstream pi.
+2. `docs/parity/DIVERGENCES.md`: numbered intentional differences from upstream pi.
 3. `coding/extension/host/subprocess/protocol.go`: canonical wire protocol.
 4. `extensions/sdk/`, `extensions/sdk-rs/`, `extensions/sdk-py/`: SDK bridges.
 5. `extensions/sdk-ts/`: declarations for Pi-compatible TypeScript extensions and PiG-only additions.
-6. `tests/extension-conformance/conformance_test.go`: cross-SDK behavior gate.
+6. `test/extension-conformance/conformance_test.go`: cross-SDK behavior gate.
 
 ## Hard rules
 
@@ -26,7 +26,7 @@ Read these files before adding or changing extension behavior:
   chooses it. Packed cells currently use the current subprocess wire with one socket per
   contained extension.
 - If a behavior differs from upstream pi, either fix it or add a numbered
-  `D<N>` entry to `DIVERGENCES.md` with call-site markers and tests.
+  `D<N>` entry to `docs/parity/DIVERGENCES.md` with call-site markers and tests.
 
 ## Translating TypeScript behavior to Go
 
@@ -82,6 +82,38 @@ Blocking inside the handler preserves upstream `await`: the host receives the
 response only when the callback completes. Wrapping the body in another
 `go func()` and returning `nil` early changes ordering, drops the returned error,
 and cancels the handler-scoped `sdk.Context` as soon as the handler returns.
+
+### Per-run prompt sections
+
+`before_agent_start` handlers can edit `event.systemPromptOptions.sections`. PiG preserves authored section order, validates XML tag names, records section deltas in the Session, and removes a per-run section when the next unmodified run starts. The host awaits the handler and retains section mutations before it reports an error. These mutations do not change the Session's base options.
+
+The Go SDK supplies `*sdk.SystemPromptSections` rather than a Go map because map iteration cannot retain insertion order. Use `Set` and `Delete` on that collection:
+
+```go
+ext.OnEvent("before_agent_start", func(_ sdk.Context, data map[string]any) (any, error) {
+    options := data["systemPromptOptions"].(map[string]any)
+    options["sections"].(*sdk.SystemPromptSections).Set("plan_mode", "Plan only.")
+    return nil, nil
+})
+```
+
+Node and Python handlers edit the section object or dictionary. Rust handlers edit the ordered JSON value and can use `on_event_result` to return an error. Native Go reference handlers use `extension.BeforeAgentStartOptions(ctx)` to access the shared per-run options and mutate its `Sections`, an `*ai.OrderedSections`. `BeforeAgentStartEvent.SystemPromptOptions` remains a value for source compatibility; assign collection replacements through the accessor. This transport carries section values, not cross-process object aliases.
+
+### Per-run tool loadout
+
+`before_agent_start` handlers can also edit or replace `event.systemPromptOptions.selectedTools`. When the final list differs from the list the handlers received, it becomes the executable and provider tool loadout, as Pi's `agent-session.ts` does, and it stays active after the run. An unchanged list keeps the live loadout, so a `setActiveTools` call inside the handler stays in effect. The run's prompt lists the resulting tools in print, RPC and interactive modes. Later handlers see the edit. The edit survives a handler error. The Session's base options do not change.
+
+Every SDK presents the list as a list, and an empty loadout arrives as an empty list. The Go SDK uses `[]any`, so assign the result of `append`:
+
+```go
+ext.OnEvent("before_agent_start", func(_ sdk.Context, data map[string]any) (any, error) {
+    options := data["systemPromptOptions"].(map[string]any)
+    options["selectedTools"] = append(options["selectedTools"].([]any), "my_tool")
+    return nil, nil
+})
+```
+
+Node handlers use the array (`event.systemPromptOptions.selectedTools.push("my_tool")`), Python handlers the list, and Rust handlers the JSON array. Native Go reference handlers assign `extension.BeforeAgentStartOptions(ctx).SelectedTools`. Duplicate names are removed in first-seen order before admission. Non-string entries cannot select registered tools. A final `null` list rejects the prompt after the handler chain; a later handler can repair it. An invalid section name also rejects the prompt, but only after the deduplicated loadout is admitted, so the loadout stays active as in Pi. Rejection emits no `agent_start` or `agent_settled`. The idle system prompt returns to the base options even though the edited loadout stays active.
 
 ### Parallel work: start together, then join
 
@@ -363,15 +395,17 @@ paths. During a source build, Pig resolves an un-replaced Go requirement on
 dependency to the SDK staged by the running binary under the active config
 root. The build uses a temporary Go modfile or Cargo patch and never edits the
 authored `go.mod` or `Cargo.toml`. An explicit valid author replacement or path
-wins. If staged material is missing, run `pig sdk sync`.
+wins. If staged material is missing, run `pig reload`.
 
 Pig 0.84 Go factories import the SDK as
-`github.com/mainstai/pig/extensions/sdk`. Pig still loads them. The generated
-runner resolves that legacy path to a copy of the running binary's SDK and
-ignores the extension's own replacement for it. Legacy factories share cells
+`github.com/mainstai/pig/extensions/sdk`. Pig still loads these factories and exact standalones. The builder resolves that legacy path to a private copy of the running binary's complete SDK module, rewrites SDK self-imports under the alias, and ignores the extension's own replacement for it. Authored sources and module files remain unchanged. Legacy factories share cells
 only with other legacy factories. They are never fused into a Piglet Binary,
 because their `*sdk.Extension` is a distinct Go type. Change the import path and
 the `go.mod` requirement to fuse one.
+
+## Go SDK nullable values
+
+Keep `ContextUsage.Tokens` and `Percent` as pointers. Nil means unknown after compaction; a pointer to zero means known zero. `GetContextUsage()` can itself return nil when no usable model window exists. Check presence before arithmetic or select an explicit fallback with `TokensOr` / `PercentOr`. `sdk.Bool(true)` and `sdk.Bool(false)` construct optional booleans; nil leaves the option unset. See `extensions/sdk/README.md` for the 0.3.0 breaking-change migration examples. These helpers do not change the wire or any callback lifetime.
 
 ## Factory contracts
 
@@ -496,6 +530,16 @@ go run ./cmd/pig install --validate-only --json ./ext-a ./ext-b
 A conventional Go, Rust, or Python factory is packable. A Node factory and
 every standalone stay isolated.
 
+## Autocomplete provider factories
+
+`AddAutocompleteProvider` / `add_autocomplete_provider` appends a factory. PiG rebuilds the ordered chain over a fresh base and completes the call after installation. A factory receives the real current provider. Keep per-query state on the returned provider, not on a newly created query wrapper. Node uses Pi's factory signature. Go, Rust and Python callbacks receive their current SDK context explicitly.
+
+Go uses `sdk.AutocompleteProviderFactory` and `sdk.AutocompleteProvider`. Rust uses `AutocompleteProviderFactory` and `Arc<AutocompleteProvider>`. Python accepts a callable that returns an object with `get_suggestions` and `apply_completion`. Each provider can declare trigger characters and an optional file-trigger callback. Cursor columns count UTF-16 code units in every SDK.
+
+Delegate methods that the wrapper does not change. For example, a Go wrapper can return `ApplyCompletion: current.ApplyCompletion` and `ShouldTriggerFileCompletion: current.ShouldTriggerFileCompletion`, then implement `GetSuggestions` to await `current.GetSuggestions(ctx, lines, cursorLine, cursorCol, force)` and filter its returned items. Use the callback's current context for cancellation and host calls.
+
+The host runs queries off the TUI loop. New input cancels stale requests. A forced query does not hold typing while it awaits suggestions. Synchronous completion and trigger callbacks preserve input order through the owner loop. A real query failure reaches Pi's uncaught-error path; cancellation is not a failure. Reload and disconnect release owned factories and captured provider references. Headless and RPC no-op UI contexts do not execute factories.
+
 ## Adding a new extension API surface
 
 1. Read upstream pi behavior in `docs/extensions.md` or upstream source.
@@ -503,6 +547,6 @@ every standalone stay isolated.
 3. Wire host behavior in `coding/extension/host/subprocess/`.
 4. Add matching Go, Rust, and Python SDK behavior (`extensions/sdk`, `extensions/sdk-rs`, `extensions/sdk-py`).
 5. Update the Node compatibility runtime and `extensions/sdk-ts` declarations when the surface is available to Node extensions.
-6. Add or extend `tests/extension-conformance` so every runtime matches the in-process reference.
+6. Add or extend `test/extension-conformance` so every runtime matches the in-process reference.
 7. Update `docs/extension-api-parity.md`.
 8. Add a numbered divergence only when parity is impossible or intentionally rejected.

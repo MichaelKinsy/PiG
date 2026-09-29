@@ -104,3 +104,43 @@ func TestRGBTo256MatchesTheXtermPalette(t *testing.T) {
 		}
 	}
 }
+
+// SupportsTrueColor reads the environment on every call, matches COLORTERM
+// without regard to case, treats any non-empty WT_SESSION as support, and
+// allocates nothing (Windows os.Getenv allocates; this is the per-frame read).
+func TestSupportsTrueColorReadsTheEnvironmentPerCall(t *testing.T) {
+	cases := []struct {
+		colorTerm, session string
+		want               bool
+	}{
+		{"", "", false},
+		{"truecolor", "", true},
+		{"TrueColor", "", true},
+		{"24BIT", "", true},
+		{"24bİt", "", true}, // U+0130 lowercases to "i", as strings.ToLower does
+		{"truecolor ", "", false},
+		{"true", "", false},
+		{"256color", "", false},
+		{"truecolortruecolortruecolor", "", false},
+		{"", "abc", true},
+		{"", "a-very-long-windows-terminal-session-identifier-0123456789", true},
+		{"256color", "abc", true},
+	}
+	for _, tc := range cases {
+		t.Setenv("COLORTERM", tc.colorTerm)
+		t.Setenv("WT_SESSION", tc.session)
+		if got := SupportsTrueColor(); got != tc.want {
+			t.Errorf("COLORTERM=%q WT_SESSION=%q: SupportsTrueColor() = %v, want %v", tc.colorTerm, tc.session, got, tc.want)
+		}
+	}
+	t.Setenv("COLORTERM", "TRUECOLOR")
+	t.Setenv("WT_SESSION", "")
+	if allocs := testing.AllocsPerRun(50, func() { _ = SupportsTrueColor() }); allocs != 0 {
+		t.Fatalf("SupportsTrueColor allocates %.1f times, want 0", allocs)
+	}
+	t.Setenv("COLORTERM", "")
+	t.Setenv("WT_SESSION", "abc")
+	if allocs := testing.AllocsPerRun(50, func() { _ = SupportsTrueColor() }); allocs != 0 {
+		t.Fatalf("SupportsTrueColor allocates %.1f times with WT_SESSION set, want 0", allocs)
+	}
+}

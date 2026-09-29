@@ -111,6 +111,21 @@ Publish identifies each file in `--artifacts` by its signed manifest. Every file
 
 PiG runs the GitHub CLI (`gh release view` and `gh release create`) with your existing `gh` authentication and never handles a GitHub token. It refuses a release that already exists, because a published release is immutable. A SemVer prerelease version, such as `2.0.0-rc.1`, publishes as a GitHub prerelease. `--commit <sha>` creates a missing release tag at that commit. The index records the Piglet source as `git:github.com/<owner>/<repo>@<commit or tag>` unless `--source-ref` names another npm or Git source. Publication contacts GitHub only through `gh`, and it never contacts pi.dev or a PiG service.
 
+### Publish from a monorepo
+
+Use an explicit Piglet-name namespace when several Piglets share a repository (D18). For `pig-with-batteries` in `MichaelKinsy/pigpen`, use the following shape. Replace `<version>` with a published release version:
+
+```bash
+pig piglet publish ./piglets/pig-with-batteries/piglet.yaml \
+  --to github --repo MichaelKinsy/pigpen --tag-prefix pig-with-batteries/ \
+  --sign-key ./pig-with-batteries-signing.key --artifacts ./dist/pig-with-batteries --yes
+pig piglet pull 'github:MichaelKinsy/pigpen/pig-with-batteries@<version>'
+```
+
+`--tag-prefix` must be `<manifest-name>/`. It produces `pig-with-batteries/v1.2.3` while `release.version` stays `1.2.3`. Omitting the option keeps `v1.2.3`. PiG does not infer a namespace by scanning a checkout, so adding another Piglet cannot change existing release names. Dry runs, existing-release checks, uploads, default Git source refs, and download URLs use the same namespace. URLs escape the slash as `%2F`.
+
+The signed index records the GitHub repository and tag prefix independently of the source ref. A named pull rejects a different Piglet name, version, repository, or prefix. Its receipt retains that signed identity. For independently addable monorepo source, provide `--source-ref 'git:https://github.com/MichaelKinsy/pigpen.git@<full-commit-sha>#subdirectory=piglets%2Fpig-with-batteries'`. Without `--source-ref`, the source ref identifies the repository's commit or namespaced tag, not a selected subdirectory.
+
 The reusable workflow [`docs/examples/piglet-release.yml`](https://github.com/MichaelKinsy/PiG/blob/main/docs/examples/piglet-release.yml) builds each target on a native GitHub runner, attests the build provenance of each Binary, and publishes the release with `--artifacts`. Copy it to `.github/workflows/piglet-release.yml` in the Piglet's repository. Its header shows the workflow that calls it.
 
 ## Pull a published Binary
@@ -130,6 +145,17 @@ pig piglet pull github:acme/reviewer@1.2.3 --target linux/amd64
 PiG verifies the release-index DSSE signature, the complete asset size and SHA-256, the Binary signature trailer, and the Piglet, release, target, and PiG identities before it installs any file. The first successful pull pins the signer key for that Piglet. A later signer change is refused unless you name the new key exactly with `--accept-signer ed25519:<key-id>`. Local revocation and `trust require on` apply to pulled releases.
 
 Pulled Binaries live under `~/.pig/artifacts/piglets/`, and their signed receipts live under `~/.pig/receipts/piglets/`. `pig piglet list` and `show` report them as Binary facets. Pull requests only the supplied index and the asset URL signed into that index; it performs no automatic catalog or PiG service request.
+
+### Update an installed GitHub Binary
+
+```bash
+pig piglet update pig-with-batteries
+pig piglet update pig-with-batteries --version 2.0.0-rc.1
+```
+
+Update reads the repository and tag namespace from the current signed receipt. It enumerates GitHub's public release API and selects the highest stable SemVer in that namespace. It never uses repository-wide `latest`, even for unprefixed releases. Drafts, prereleases, unrelated prefixes, and invalid versions do not enter automatic selection. Use `--version` to request a prerelease explicitly. Discovery fails if the bounded release inventory is incomplete.
+
+Update preserves the installed target unless `--target os/arch` selects another. It refuses rollback, repository or namespace changes, revoked keys, and unapproved signer changes. `--accept-signer ed25519:<key-id>` explicitly authorizes a new signer. The same checksum, size, signature, and manifest checks as pull apply before the current pointer changes. An already-current release is a no-op. An index without signed GitHub identity cannot supply automatic updates. Update does not refresh registered source Piglets or query a catalog. `PIG_OFFLINE` and `PI_OFFLINE` prevent update requests.
 
 ### Sigstore keyless provenance
 

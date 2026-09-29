@@ -1,0 +1,43 @@
+# Behavior family: rpc
+# Pi 0.87.1 agent-session.ts:3559 emits the sanitized name before the setter returns.
+# session-manager.ts:1302 replaces each CR/LF run with one space before trimming.
+# The extension command and direct RPC command must each emit exactly one event.
+# No model call or random Session field enters the output.
+name = "28-rpc-session-name-newlines"
+description = "Direct and extension Session names sanitize newlines and publish exactly one ordered event"
+covers = [
+  "packages/coding-agent/src/core/agent-session.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"extension","type":"prompt","message":"/newline-name"}'
+wait_contains = ['"id":"extension","type":"response","command":"prompt","success":true']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"direct","type":"set_session_name","name":"hello\nworld\r\nagain"}'
+wait_contains = ['"id":"direct","type":"response","command":"set_session_name","success":true']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/session-name-newlines.mjs"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["testdata/session-name-newlines.mjs", "../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = [
+  '"type":"session_info_changed","name":"from extension"',
+  '"type":"session_info_changed","name":"hello world again"',
+]
+both_not_contain = ['"success":false', 'extension_error']
+runs = 3

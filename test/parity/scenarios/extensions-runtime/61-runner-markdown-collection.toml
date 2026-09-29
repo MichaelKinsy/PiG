@@ -1,0 +1,24 @@
+# Pi0.87.1 extensions-runner.test.ts:708 creates two source identity transformers. runner.ts:725-733 collects each defined callback in load order without executing it.
+# Probe: node test/parity/testdata/runner-markdown-pi.mjs returns identity:2:x, ordered:2:B(A(x)), reversed:2:A(B(x)). Compare the complete callback results; this does not claim terminal display/lifecycle closure.
+name = "61-runner-markdown-collection"
+description = "The native runner collects both source transformers and preserves extension load order"
+covers = ["packages/coding-agent/src/core/extensions/runner.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/runner-markdown"]
+pi_args = ["node", "./test/parity/testdata/runner-markdown-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["identity:2:x", "ordered:2:B(A(x))", "reversed:2:A(B(x))"]
+runs = 3

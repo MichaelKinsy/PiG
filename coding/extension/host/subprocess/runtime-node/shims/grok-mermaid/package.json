@@ -1,0 +1,49 @@
+{
+  "name": "grok-mermaid",
+  "version": "0.2.3",
+  "description": "Render Mermaid diagrams as Unicode box-drawing art for terminals",
+  "keywords": [
+    "mermaid",
+    "terminal",
+    "tui",
+    "ascii",
+    "unicode",
+    "diagram"
+  ],
+  "license": "Apache-2.0",
+  "author": "Alexey Zaytsev <alexey.zaytsev@gmail.com>",
+  "repository": "github:xl0/grok-mermaid",
+  "type": "module",
+  "sideEffects": false,
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "dist",
+    "src",
+    "CHANGELOG.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "scripts": {
+    "build": "tsgo -p tsconfig.build.json",
+    "typecheck": "tsgo --noEmit",
+    "check": "biome check .",
+    "fix": "biome check --write .",
+    "test": "bun test",
+    "gen:width": "bun run scripts/gen-width-data.ts",
+    "gen:demo": "bun run scripts/gen-demo-svg.ts",
+    "prepublishOnly": "bun run check && bun run typecheck && bun test && bun run build",
+    "release": "bun run scripts/release.ts",
+    "differential": "bun run tools/differential/run.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.5.5",
+    "@types/bun": "latest",
+    "@typescript/native-preview": "latest"
+  }
+}

@@ -1,0 +1,26 @@
+# Pi azure-openai-responses.ts:81-88 keeps model.id in the response while
+# buildParams (:302) sends the selected deployment. The logical model drives
+# shared replay/image capabilities, even when the deployment name is unknown
+# to the model catalog. Both probes perform the same two HTTP requests.
+name = "17-azure-deployment-image-replay"
+description = "Azure deployment aliases do not replace logical model identity or disable tool-result image replay."
+covers = ["packages/ai/src/api/azure-openai-responses.ts", "packages/ai/src/api/openai-responses-shared.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/azure-deployment-images-pig"]
+pi_args = ["node", "./test/parity/testdata/azure-deployment-images-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["logical=gpt-4o-mini api=azure-openai-responses requests=image-deployment,image-deployment images=1"]
+runs = 3

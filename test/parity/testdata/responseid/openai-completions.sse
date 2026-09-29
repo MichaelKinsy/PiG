@@ -1,0 +1,8 @@
+data: {"id":"first","model":"requested","choices":[]}
+
+data: {"id":"second","model":"resolved","choices":[{"delta":{"content":"response id test"},"finish_reason":"stop"}]}
+
+data: {"id":"third","model":"ignored","choices":[]}
+
+data: [DONE]
+

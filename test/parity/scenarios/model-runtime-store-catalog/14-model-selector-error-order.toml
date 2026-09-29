@@ -1,0 +1,26 @@
+# Pi 0.87.1 model-selector.test.ts:91 inserts openai then anthropic errors.
+# The Go fixture drives real concurrent catalog refreshes with deterministic
+# completion barriers and renders their diagnostic. Its wrapper removes only
+# Go's test-runner framing; the computed diagnostic text is preserved exactly.
+# The Pi fixture renders the published selector with that ordered error Map.
+name = "14-model-selector-error-order"
+description = "Every failed catalog appears in refresh completion order in the selector diagnostic."
+covers = ["packages/coding-agent/src/modes/interactive/components/model-selector.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/model-selector-errors.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/model-selector-errors.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

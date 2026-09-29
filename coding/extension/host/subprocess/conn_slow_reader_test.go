@@ -7,15 +7,17 @@ import (
 	"net"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
 // A healthy peer that reads a large frame slowly keeps its connection: bytes
 // it accepts prove liveness, so no fixed write deadline kills it mid-frame.
 func TestSlowReaderKeepsConnectionWhileDrainingLargeFrame(t *testing.T) {
-	if testing.Short() {
-		t.Skip("drains one frame over several seconds of wall time")
-	}
+	synctest.Test(t, testSlowReaderKeepsConnectionWhileDrainingLargeFrame)
+}
+
+func testSlowReaderKeepsConnectionWhileDrainingLargeFrame(t *testing.T) {
 	host, peer := net.Pipe()
 	defer func() { _ = peer.Close() }()
 	conn := NewConn("slow-reader", host)

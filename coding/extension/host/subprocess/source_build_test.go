@@ -7,6 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // TestHost_Integration_SourceBuild proves the full source→build→load→execute
@@ -60,18 +62,20 @@ func TestHost_Integration_SourceBuild(t *testing.T) {
 
 	// Verify result.
 	resultJSON, _ := json.Marshal(result)
-	// ToolResult has Content field: the extension sends {"content":"Hello, Builder!"}
+	// The host expands the SDK's string shorthand into one text block.
 	resultStr := string(resultJSON)
 	if resultStr == "{}" || resultStr == "null" {
 		t.Errorf("result is empty: %s", resultStr)
 	}
 	// The tool execute returns ToolResult which has Content.
 	type toolRes struct {
-		Content string `json:"content"`
+		Content []ai.TextContent `json:"content"`
 	}
 	var res toolRes
-	_ = json.Unmarshal(resultJSON, &res)
-	if res.Content != "Hello, Builder!" {
+	if err := json.Unmarshal(resultJSON, &res); err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Content) != 1 || res.Content[0].Text != "Hello, Builder!" {
 		t.Errorf("content = %q, want Hello, Builder! (raw: %s)", res.Content, resultStr)
 	}
 

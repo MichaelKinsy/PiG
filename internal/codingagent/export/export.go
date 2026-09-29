@@ -1,7 +1,6 @@
 // Package export provides HTML session export.
 //
-// Ports upstream export-html/ (index.ts + templates + vendor assets) using
-// embedded upstream template files and pig session-data serialization.
+// Ports packages/coding-agent/src/core/export-html/index.ts using embedded pinned templates and vendor assets.
 package export
 
 import (
@@ -15,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/rpcclient"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -96,7 +96,7 @@ func generateThemeVars() string {
 	return strings.Join(lines, "\n      ")
 }
 
-// ToHTML converts session data to the upstream-style self-contained SPA HTML.
+// ToHTML converts session data to Pi's self-contained HTML, with a base64 JSON.stringify payload and first-match template substitution.
 func ToHTML(data SessionData) string {
 	template := mustReadAsset("assets/template.html")
 	css := mustReadAsset("assets/template.css")
@@ -117,13 +117,16 @@ func ToHTML(data SessionData) string {
 			infoBg = th.ExportInfoBg
 		}
 	}
-	css = strings.ReplaceAll(css, "{{THEME_VARS}}", generateThemeVars())
-	css = strings.ReplaceAll(css, "{{BODY_BG}}", bodyBg)
-	css = strings.ReplaceAll(css, "{{CONTAINER_BG}}", containerBg)
-	css = strings.ReplaceAll(css, "{{INFO_BG}}", infoBg)
+	css = jsReplace(css, "{{THEME_VARS}}", generateThemeVars())
+	css = jsReplace(css, "{{BODY_BG}}", bodyBg)
+	css = jsReplace(css, "{{CONTAINER_BG}}", containerBg)
+	css = jsReplace(css, "{{INFO_BG}}", infoBg)
 
-	payload, _ := json.Marshal(data)
-	sessionDataBase64 := base64.StdEncoding.EncodeToString(payload)
+	if data.Entries == nil {
+		data.Entries = []json.RawMessage{}
+	}
+	payload, _ := rpcclient.SerializeJsonLine(data)
+	sessionDataBase64 := base64.StdEncoding.EncodeToString([]byte(strings.TrimSuffix(string(payload), "\n")))
 
 	// Upstream uses JavaScript's String.replace(search, replacement) which
 	// interprets $& (→ matched substring) and $$ (→ literal "$") in the
@@ -164,7 +167,7 @@ func jsReplace(s, search, replacement string) string {
 	}
 	// Only process $ patterns in the replacement if $ is present.
 	if !strings.Contains(replacement, "$") {
-		return strings.ReplaceAll(s, search, replacement)
+		return before + replacement + after
 	}
 	// Process $ patterns in the replacement string.
 	var b strings.Builder
@@ -194,8 +197,7 @@ func jsReplace(s, search, replacement string) string {
 		}
 		b.WriteByte(replacement[i])
 	}
-	processed := b.String()
-	return strings.ReplaceAll(s, search, processed)
+	return before + b.String() + after
 }
 
 // FromJSONL converts raw session JSONL bytes into export SessionData.

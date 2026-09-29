@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"net"
+	"runtime"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -28,6 +30,7 @@ type mockUIContext struct {
 	toolsExpanded      bool
 	footerCleared      bool
 	footerValue        any
+	footerCalls        []any
 	headerCleared      bool
 	headerCalls        []any
 	loginCalls         []extension.LoginDefinition
@@ -75,6 +78,7 @@ func (m *mockUIContext) SetEditorText(text string) {
 func (m *mockUIContext) GetEditorText() string { return m.editorText }
 func (m *mockUIContext) SetFooter(factory any) {
 	m.footerValue = factory
+	m.footerCalls = append(m.footerCalls, factory)
 	if factory == nil {
 		m.footerCleared = true
 	}
@@ -124,10 +128,12 @@ func (m *mockUIContext) GetTheme(name string) (extension.Theme, error) {
 	}
 	return m.namedTheme, nil
 }
-func (m *mockUIContext) SetWidget(string, any, extension.ExtensionWidgetOptions)       {}
-func (m *mockUIContext) OnTerminalInput(extension.TerminalInputHandler) func()         { return func() {} }
-func (m *mockUIContext) Custom(context.Context, any, any) (any, error)                 { return nil, nil }
-func (m *mockUIContext) AddAutocompleteProvider(extension.AutocompleteProviderFactory) {}
+func (m *mockUIContext) SetWidget(string, any, extension.ExtensionWidgetOptions) {}
+func (m *mockUIContext) OnTerminalInput(extension.TerminalInputHandler) func()   { return func() {} }
+func (m *mockUIContext) Custom(context.Context, any, any) (any, error)           { return nil, nil }
+func (m *mockUIContext) AddAutocompleteProvider(extension.AutocompleteProviderFactory) error {
+	return nil
+}
 
 func newTestBridge(ui extension.UIContext) *UIBridge {
 	b := NewUIBridge(func() {})
@@ -199,7 +205,7 @@ func TestUIBridge_HandleCall_SetStatus(t *testing.T) {
 // it only re-renders when the host pushes a fresh state_update. Before the
 // fix, ui.setStatus never notified the host to push one, so a footer
 // composed from getExtensionStatuses() (as in
-// parity/scenarios/extensions-runtime/testdata/ext/footer-status.mjs) could
+// test/parity/scenarios/extensions-runtime/testdata/ext/footer-status.mjs) could
 // go stale forever after the initial render, most visibly across /reload
 // (scenario 15-footer-status-reload-composition) where no other state
 // transition happens to trigger an incidental re-render.
@@ -404,6 +410,7 @@ func TestUIBridge_HandleCall_PasteToEditor(t *testing.T) {
 func TestUIBridge_HandleWidgetPush_ViaCall(t *testing.T) {
 	invalidated := false
 	b := NewUIBridge(func() { invalidated = true })
+	b.SetUIContext(&mockUIContext{})
 
 	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "w1", Lines: []string{"line1", "line2"}})
 
@@ -420,12 +427,11 @@ func TestUIBridge_HandleWidgetPush_ViaCall(t *testing.T) {
 	}
 }
 
-// A widget pushed before the interactive TUI wires its render callback (an
-// extension that sets a widget while loading) must request renders through the
-// live callback on later pushes. Otherwise a widget an extension updates from a
-// timer stays frozen until something else repaints.
+// A widget pushed before replacing the interactive render callback uses the
+// live callback on later pushes, rather than retaining the previous callback.
 func TestUIBridge_WidgetPushedBeforeSetInvalidateUsesLiveCallback(t *testing.T) {
 	b := NewUIBridge(func() {})
+	b.SetUIContext(&mockUIContext{})
 	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "clock", Lines: []string{"12:00"}})
 
 	var renders atomic.Int32
@@ -442,6 +448,7 @@ func TestUIBridge_WidgetPushedBeforeSetInvalidateUsesLiveCallback(t *testing.T) 
 
 func TestUIBridge_ClearExtension_AllKeys(t *testing.T) {
 	b := NewUIBridge(func() {})
+	b.SetUIContext(&mockUIContext{})
 	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "a", Lines: []string{"x"}})
 	b.HandleWidgetPush("ext1", &WidgetPushPayload{Key: "b", Lines: []string{"y"}})
 	b.HandleWidgetPush("ext2", &WidgetPushPayload{Key: "c", Lines: []string{"z"}})
@@ -562,6 +569,8 @@ func TestUIBridge_HandleCall_SetWidget_RequestObserverPreservesPlacement(t *test
 	var key string
 	var lines []string
 	var placement string
+	var cachedUpdates int
+	b.SetWidgetSyncFunc(func(map[string]*PushProxy) { cachedUpdates++ })
 	b.SetWidgetRequestFunc(func(_ string, gotKey string, gotLines []string, opts extension.ExtensionWidgetOptions) {
 		key = gotKey
 		lines = gotLines
@@ -577,6 +586,9 @@ func TestUIBridge_HandleCall_SetWidget_RequestObserverPreservesPlacement(t *test
 	}
 	if key != "w" || !slices.Equal(lines, []string{"a", "b"}) || placement != "belowEditor" {
 		t.Fatalf("widget request = key:%q lines:%v placement:%q", key, lines, placement)
+	}
+	if cachedUpdates != 0 || b.GetWidget("test-ext", "w") != nil {
+		t.Fatal("serialized RPC widget request must not also publish a cached TUI widget")
 	}
 }
 
@@ -649,7 +661,7 @@ func TestUIBridge_HandleCall_AppendEntry(t *testing.T) {
 	var gotType string
 	var gotData any
 	b.SetActions(&HostCallbacks{
-		AppendEntry: func(customType string, data any) error {
+		AppendEntry: func(customType string, data any, _ *DirectEntryAppend) error {
 			gotType = customType
 			gotData = data
 			return nil
@@ -735,7 +747,7 @@ func TestFocusedInputDeliveryFailureClosesOverlay(t *testing.T) {
 	target := &recordingRemoteOverlayHandle{closed: make(chan struct{})}
 	proxy.SetTarget(target)
 
-	bridge.sendCustomInput("ext", nil, "focused", "x")
+	bridge.sendCustomInput(t.Context(), "ext", nil, "focused", "x")
 	select {
 	case <-target.closed:
 	case <-time.After(time.Second):
@@ -1195,6 +1207,7 @@ func (h *recordingRemoteOverlayHandle) Close(result any) {
 
 func TestUIBridgeClearExtensionRemovesWidgetsFromMountedSet(t *testing.T) {
 	bridge := NewUIBridge(func() {})
+	bridge.SetUIContext(&mockUIContext{})
 	counts := make(chan int, 2)
 	bridge.SetWidgetSyncFunc(func(widgets map[string]*PushProxy) { counts <- len(widgets) })
 	bridge.HandleWidgetPush("ext", &WidgetPushPayload{Key: "status", Lines: []string{"ready"}})
@@ -1224,8 +1237,9 @@ func TestUIBridge_HandleCall_SetFooter_Clear(t *testing.T) {
 	}
 }
 
-func TestUIBridgeReplaysPreTUIStatusAndFooter(t *testing.T) {
+func TestUIBridgeReplaysBoundStatusAndFooterOnRebind(t *testing.T) {
 	bridge := NewUIBridge(func() {})
+	bridge.SetUIContext(&mockUIContext{})
 	if _, err := call(bridge, "ui.setStatus", `{"key":"startup","text":"ready"}`); err != nil {
 		t.Fatal(err)
 	}
@@ -1245,6 +1259,7 @@ func TestUIBridgeReplaysPreTUIStatusAndFooter(t *testing.T) {
 
 func TestUIBridge_AllWidgets(t *testing.T) {
 	b := NewUIBridge(func() {})
+	b.SetUIContext(&mockUIContext{})
 	b.HandleWidgetPush("e1", &WidgetPushPayload{Key: "a", Lines: []string{"1"}})
 	b.HandleWidgetPush("e2", &WidgetPushPayload{Key: "b", Lines: []string{"2"}})
 
@@ -1669,5 +1684,134 @@ func TestUIBridge_BindCommandActionsNavigateTree(t *testing.T) {
 	}
 	if gotTarget != "entry-1" || gotOptions == nil || !gotOptions.Summarize || gotOptions.CustomInstructions != "focus" {
 		t.Fatalf("bound action got %q %+v", gotTarget, gotOptions)
+	}
+}
+
+// waitNewerBlockedOrDone returns once the newer call has either completed or parked on a mutex inside fn (a function name in its stack). A correct bridge parks it behind the admitted older call, so the test never proceeds on a wall-clock guess that the newer call has reached the bridge. The deadline only bounds a hung test.
+func waitNewerBlockedOrDone(t *testing.T, done <-chan struct{}, fn string) {
+	t.Helper()
+	deadline := time.Now().Add(30 * time.Second)
+	buf := make([]byte, 1<<20)
+	for time.Now().Before(deadline) {
+		select {
+		case <-done:
+			return
+		default:
+		}
+		for g := range strings.SplitSeq(string(buf[:runtime.Stack(buf, true)]), "\n\n") {
+			header, _, _ := strings.Cut(g, "\n")
+			if strings.Contains(header, "Mutex.Lock") && strings.Contains(g, fn) {
+				return
+			}
+		}
+		time.Sleep(time.Millisecond)
+	}
+	t.Fatalf("newer call neither completed nor blocked in %s", fn)
+}
+
+// blockingFooterUI holds the STALE footer inside SetFooter so a newer footer call can run while the older one is still applying.
+type blockingFooterUI struct {
+	*mockUIContext
+	mu      sync.Mutex
+	entered chan struct{}
+	release chan struct{}
+	applied []string
+}
+
+func (u *blockingFooterUI) SetFooter(factory any) {
+	lines, _ := factory.([]string)
+	if len(lines) == 1 && lines[0] == "STALE" {
+		close(u.entered)
+		<-u.release
+	}
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	u.applied = append(u.applied, lines...)
+}
+
+// An admitted footer call must finish applying before a newer one applies, or the older call replaces the newer footer after it was admitted (53-extension-header-spacers race, footer slot).
+func TestUIBridgeFooterAdmissionAndApplyAreAtomic(t *testing.T) {
+	bridge := NewUIBridge(func() {})
+	ui := &blockingFooterUI{mockUIContext: &mockUIContext{}, entered: make(chan struct{}), release: make(chan struct{})}
+	bridge.SetUIContext(ui)
+	call := func(text string) {
+		args := json.RawMessage(`{"lines":["` + text + `"]}`)
+		if _, err := bridge.handleCall(context.Background(), "test-ext", nil, &CallPayload{Method: "ui.setFooter", Args: args}); err != nil {
+			t.Error(err)
+		}
+	}
+	var calls sync.WaitGroup
+	calls.Go(func() { call("STALE") })
+	<-ui.entered
+	newer := make(chan struct{})
+	calls.Go(func() { call("NEWER"); close(newer) })
+	// The newer call must wait for the admitted older call. If it completes first, the older call is about to overwrite it.
+	waitNewerBlockedOrDone(t, newer, "handleSetFooter")
+	close(ui.release)
+	calls.Wait()
+	ui.mu.Lock()
+	applied := slices.Clone(ui.applied)
+	ui.mu.Unlock()
+	if len(applied) == 0 || applied[len(applied)-1] != "NEWER" {
+		t.Fatalf("footer applications = %v, want NEWER last", applied)
+	}
+}
+
+// blockingReplayUI holds the replay of a pending STALE header or footer inside SetUIContext so a newer live call can run while the replay is still applying.
+type blockingReplayUI struct {
+	*mockUIContext
+	mu      sync.Mutex
+	entered chan struct{}
+	release chan struct{}
+	applied map[string][]string
+}
+
+func (u *blockingReplayUI) apply(slot string, factory any) {
+	lines, _ := factory.([]string)
+	if len(lines) == 1 && lines[0] == "STALE" {
+		close(u.entered)
+		<-u.release
+	}
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	u.applied[slot] = append(u.applied[slot], lines...)
+}
+
+func (u *blockingReplayUI) SetFooter(factory any) { u.apply("footer", factory) }
+func (u *blockingReplayUI) SetHeader(factory any) { u.apply("header", factory) }
+
+// SetUIContext replays the header and footer onto a rebound UI. A live call that arrives during the replay must apply after it, or the replayed older value replaces the newer one (Pi applies setHeader/setFooter in program order, interactive-mode.ts:2427-2488).
+func TestUIBridgeSlotReplayAndLiveCallAreAtomic(t *testing.T) {
+	for _, tc := range []struct{ slot, method string }{
+		{"footer", "ui.setFooter"},
+		{"header", "ui.setHeader"},
+	} {
+		t.Run(tc.slot, func(t *testing.T) {
+			bridge := NewUIBridge(func() {})
+			call := func(text string) {
+				args := json.RawMessage(`{"lines":["` + text + `"]}`)
+				if _, err := bridge.handleCall(context.Background(), "test-ext", nil, &CallPayload{Method: tc.method, Args: args}); err != nil {
+					t.Error(err)
+				}
+			}
+			bridge.SetUIContext(&mockUIContext{})
+			call("STALE")
+			ui := &blockingReplayUI{mockUIContext: &mockUIContext{}, entered: make(chan struct{}), release: make(chan struct{}), applied: map[string][]string{}}
+			var calls sync.WaitGroup
+			calls.Go(func() { bridge.SetUIContext(ui) })
+			<-ui.entered
+			newer := make(chan struct{})
+			calls.Go(func() { call("NEWER"); close(newer) })
+			// The live call must wait for the replay. If it completes first, the replay is about to overwrite it.
+			waitNewerBlockedOrDone(t, newer, "handleSet"+strings.ToUpper(tc.slot[:1])+tc.slot[1:])
+			close(ui.release)
+			calls.Wait()
+			ui.mu.Lock()
+			applied := slices.Clone(ui.applied[tc.slot])
+			ui.mu.Unlock()
+			if len(applied) == 0 || applied[len(applied)-1] != "NEWER" {
+				t.Fatalf("%s applications = %v, want NEWER last", tc.slot, applied)
+			}
+		})
 	}
 }

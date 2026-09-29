@@ -4,10 +4,38 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
-// ResolvedPath pairs a candidate input path with the canonical path it
-// resolves to via filepath.EvalSymlinks. Returned by DedupBySymlink.
+// NormalizeExtensionPaths resolves extension-discovered file URLs and local paths against the session cwd, without changing the extension attribution. Invalid URLs fail before callers update resource state, with Node's own error as Pi's bindExtensions throws it.
+// Ports packages/coding-agent/src/core/resource-loader.ts
+func NormalizeExtensionPaths(cwd string, paths *extension.ResourcesDiscoverAggregateResult) (*extension.ResourcesDiscoverAggregateResult, error) {
+	if paths == nil {
+		return nil, nil
+	}
+	result := &extension.ResourcesDiscoverAggregateResult{}
+	for _, group := range []struct {
+		input  []extension.AttributedResourcePath
+		output *[]extension.AttributedResourcePath
+	}{
+		{paths.SkillPaths, &result.SkillPaths},
+		{paths.PromptPaths, &result.PromptPaths},
+		{paths.ThemePaths, &result.ThemePaths},
+	} {
+		for _, entry := range group.input {
+			path, err := ResolvePath(jsTrim(entry.Path), cwd)
+			if err != nil {
+				// Pi surfaces fileURLToPath's own error, with no path context.
+				return nil, err
+			}
+			*group.output = append(*group.output, extension.AttributedResourcePath{Path: path, ExtensionPath: entry.ExtensionPath})
+		}
+	}
+	return result, nil
+}
+
+// ResolvedPath pairs a candidate input path with its canonical path. Returned by DedupBySymlink.
 type ResolvedPath struct {
 	Original  string
 	Canonical string
@@ -23,31 +51,13 @@ func firstNonEmpty(vals ...string) string {
 	return ""
 }
 
-// DedupBySymlink walks the input paths, resolves each via
-// filepath.EvalSymlinks, and returns one entry per distinct canonical
-// path (in input order). Duplicates produced by symlinks pointing at
-// the same target are silently dropped.
-//
-// On EvalSymlinks error (broken symlink, permission denied, loop), the
-// raw path is treated as its own canonical and kept. This mirrors
-// upstream package-manager.ts:2280-2320 which falls back to the raw
-// path on realpathSync failure (try/catch).
-//
-// Loop guard: filepath.EvalSymlinks already returns an error after Go's
-// internal max-link traversal limit, so we just trust the stdlib.
-//
-// Reference: .upstream/current/packages/coding-agent/src/core/package-manager.ts
+// DedupBySymlink returns the first input for each distinct canonical path, in input order. It follows symlinks and drive junctions but preserves Windows volume mount points as directories, as Node's realpathSync does. On resolution failure it keeps the raw path as its own canonical identity.
+// Ports packages/coding-agent/src/core/package-manager.ts.
 func DedupBySymlink(paths []string) []ResolvedPath {
 	seen := make(map[string]struct{}, len(paths))
 	out := make([]ResolvedPath, 0, len(paths))
 	for _, p := range paths {
-		canonical, err := filepath.EvalSymlinks(p)
-		if err != nil {
-			// Fallback to raw path. Two distinct broken symlinks
-			// pointing nowhere are kept as two entries (matches
-			// upstream's per-entry try/catch fallback).
-			canonical = p
-		}
+		canonical := CanonicalizePath(p)
 		if _, dup := seen[canonical]; dup {
 			continue
 		}

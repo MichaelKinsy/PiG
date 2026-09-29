@@ -69,7 +69,7 @@ func (h *Host) SyncRegistration(ctx context.Context) {
 			API:           ai.API(model.API),
 			Reasoning:     model.Reasoning,
 			Input:         model.Input,
-			Cost:          extension.ProviderModelCost(model.Cost),
+			Cost:          extension.ProviderModelCost{Input: model.Cost.Input, Output: model.Cost.Output, CacheRead: model.Cost.CacheRead, CacheWrite: model.Cost.CacheWrite},
 			ContextWindow: model.ContextWindow,
 			MaxTokens:     model.MaxTokens,
 			Compat:        model.Compat,

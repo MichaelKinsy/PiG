@@ -34,7 +34,7 @@ func (p *probeTool) Execute(_ context.Context, _ string, params json.RawMessage,
 	p.mu.Lock()
 	defer p.mu.Unlock()
 	p.calls = append(p.calls, string(params))
-	return agent.AgentToolResult{Content: "probed"}, nil
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "probed"}}}, nil
 }
 
 func (p *probeTool) executions() []string {
@@ -735,7 +735,7 @@ func TestContextTransformsDoNotMutateTranscript(t *testing.T) {
 					}
 					for _, message := range messages {
 						if m, ok := message.(agent.AgentMessage); ok && m.User != nil {
-							m.User.Content = []ai.UserContentBlock{ai.TextContent{Text: "REQUEST-ONLY"}}
+							m.User.Content = ai.UserContentBlocks{ai.TextContent{Text: "REQUEST-ONLY"}}
 						}
 					}
 					return nil, nil

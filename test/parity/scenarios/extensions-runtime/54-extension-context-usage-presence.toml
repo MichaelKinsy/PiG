@@ -1,0 +1,32 @@
+# Upstream evidence: Pi 0.87.1 agent-session.ts:3858-3900 returns undefined for a zero model window and null tokens/percent after compaction.
+# The retained compacted history has no valid post-compaction assistant usage. Switching models must replace, not merge, the usage snapshot.
+# The footer provider reports null outside a Git repository (footer-data-provider.ts:127-128), not an empty string or undefined.
+name = "54-extension-context-usage-presence"
+description = "Extension usage distinguishes absent model window from unknown post-compaction counts"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/coding-agent/src/core/extensions/runner.ts", "packages/coding-agent/src/core/footer-data-provider.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "usage-probe/0"
+
+[env]
+pig_args = ["--no-extensions", "--fork", "registry-session.jsonl"]
+pi_args = ["--fork", "registry-session.jsonl"]
+pig_extensions = ["testdata/ext/usage-state.mjs"]
+pi_extensions = ["testdata/ext/usage-state.mjs"]
+
+[tmux]
+cwd = "../testdata"
+width = 200
+height = 40
+ready_pattern_pig = "USAGE READY"
+ready_pattern_pi = "USAGE READY"
+ready_timeout_seconds = 30
+capture_start = "USAGE TRACE"
+capture_end = "END USAGE"
+steps = [{keys = ["/usage-state", "Enter"], wait_contains = ["END USAGE"], wait_timeout_seconds = 20, settle_seconds = 1}]
+
+[assert]
+both_reach_ready = true
+both_contain = ['USAGE TRACE [null,{"tokens":null,"contextWindow":128000,"percent":null},null,{"tokens":null,"contextWindow":128000,"percent":null}] branch=null END USAGE']
+escaped_output_equal = true
+runs = 3

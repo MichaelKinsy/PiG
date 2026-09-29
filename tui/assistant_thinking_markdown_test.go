@@ -44,11 +44,14 @@ func TestAssistantThinkingMarkdownUsesTokenStyles(t *testing.T) {
 	style := "\x1b[3m" + th.ThinkingText
 	closeStyle := SGRFgReset + SGRItalicReset
 	want := []string{
-		"",
+		"\x1b]133;A\x07",
 		" \x1b[1m" + style + "Resumed bold" + closeStyle + SGRBoldDimReset + style + style + " and " + closeStyle + th.MDCode + "code" + SGRFgReset,
 		" ",
 		" " + th.MDListBullet + "- " + SGRFgReset + style + "first" + closeStyle,
-		" " + th.MDListBullet + "- " + SGRFgReset + style + "second" + closeStyle,
+		"\x1b]133;B\x07\x1b]133;C\x07 " + th.MDListBullet + "- " + SGRFgReset + style + "second" + closeStyle,
+	}
+	for i := 1; i < len(want); i++ {
+		want[i] += strings.Repeat(" ", 80-lineDisplayWidth(want[i]))
 	}
 	if got := b.Render(80); !slices.Equal(got, want) {
 		t.Fatalf("thinking token styles = %q, want %q", got, want)
@@ -60,6 +63,7 @@ func TestMarkdownDefaultColorAppliesToListTextNotCode(t *testing.T) {
 	m := NewMarkdown("- first `code` tail")
 	m.SetDefaultColor(th.ThinkingText)
 	want := []string{th.MDListBullet + "- " + SGRFgReset + th.ThinkingText + "first " + SGRFgReset + th.MDCode + "code" + SGRFgReset + th.ThinkingText + th.ThinkingText + " tail" + SGRFgReset}
+	want[0] += strings.Repeat(" ", 80-lineDisplayWidth(want[0]))
 	if got := m.Render(80); !slices.Equal(got, want) {
 		t.Fatalf("default color list = %q, want %q", got, want)
 	}

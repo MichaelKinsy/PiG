@@ -1,0 +1,10 @@
+Divergence IDs are global across docs/parity/DIVERGENCES.md and docs/additive-features.md.
+IDs through D78 remain allocated or reserved by the existing ledgers.
+D78: remaining SDK Provider surface and cross-process registered-config identity updated in place; known gaps approved by owner Michael Kinsy 2026-09-28.
+D79: user-package metadata lookups ignore the invoking project's npm configuration; sec-npmcommand-trust; approved by owner Michael Kinsy 2026-09-27.
+D80: configurable secret-input privacy; fix-post-login-model; approved by owner decision 2026-09-27.
+D81: additive helper download coalescing in docs/additive-features.md; not a divergence reservation.
+D82: cross-process partial-message observation (RPC33); ledger-030; known gap approved by owner Michael Kinsy 2026-09-28.
+D83: cross-process event-bus payload identity; ledger-030; known gap approved by owner Michael Kinsy 2026-09-28.
+D84: direct Go provider registration refreshes availability on the next awaited call; fx-provider2; approved by owner Michael Kinsy 2026-09-29.
+Next free ID: D85.

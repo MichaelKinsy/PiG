@@ -1,0 +1,2356 @@
+{
+  "piVersion": "0.87.1",
+  "node": "v24.19.0",
+  "scenarios": [
+    {
+      "name": "oneChunk",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoKZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0KCmRhdGE6IHsidHlwZSI6InRleHRfZGVsdGEiLCJjb250ZW50SW5kZXgiOjAsImRlbHRhIjoiaMOpbGxvIOKckyDwn5iAIn0KCmRhdGE6IHsidHlwZSI6InRleHRfZW5kIiwiY29udGVudEluZGV4IjowLCJjb250ZW50IjoiaMOpbGxvIOKckyDwn5iAIn0KCmRhdGE6IHsidHlwZSI6InRvb2xjYWxsX3N0YXJ0IiwiY29udGVudEluZGV4IjoxLCJpZCI6ImNhbGwtMSIsInRvb2xOYW1lIjoicmVhZCJ9CgpkYXRhOiB7InR5cGUiOiJ0b29sY2FsbF9kZWx0YSIsImNvbnRlbnRJbmRleCI6MSwiZGVsdGEiOiJ7XCJwYXRoXCI6XCJhLnR4dFwifSJ9CgpkYXRhOiB7InR5cGUiOiJ0b29sY2FsbF9lbmQiLCJjb250ZW50SW5kZXgiOjEsInRvb2xDYWxsIjp7InR5cGUiOiJ0b29sQ2FsbCIsImlkIjoiY2FsbC0xIiwibmFtZSI6InJlYWQiLCJhcmd1bWVudHMiOnsicGF0aCI6ImEudHh0In19fQoKZGF0YTogeyJ0eXBlIjoiZG9uZSIsInJlYXNvbiI6InRvb2xVc2UiLCJ1c2FnZSI6eyJpbnB1dCI6MSwib3V0cHV0IjoyLCJjYWNoZVJlYWQiOjAsImNhY2hlV3JpdGUiOjAsInRvdGFsVG9rZW5zIjozLCJjb3N0Ijp7ImlucHV0IjowLCJvdXRwdXQiOjAsImNhY2hlUmVhZCI6MCwiY2FjaGVXcml0ZSI6MCwidG90YWwiOjB9fSwicmVzcG9uc2VJZCI6InIxIn0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "push:text_end",
+          9
+        ],
+        [
+          "deliver:text_delta",
+          10
+        ],
+        [
+          "push:toolcall_start",
+          11
+        ],
+        [
+          "deliver:text_end",
+          12
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "deliver:toolcall_start",
+          14
+        ],
+        [
+          "push:toolcall_end",
+          15
+        ],
+        [
+          "deliver:toolcall_delta",
+          16
+        ],
+        [
+          "push:done",
+          17
+        ],
+        [
+          "deliver:toolcall_end",
+          18
+        ],
+        [
+          "deliver:done",
+          20
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          }
+        ],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 3,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1"
+      }
+    },
+    {
+      "name": "perRecord",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoK",
+        "ZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0KCg==",
+        "ZGF0YTogeyJ0eXBlIjoidGV4dF9kZWx0YSIsImNvbnRlbnRJbmRleCI6MCwiZGVsdGEiOiJow6lsbG8g4pyTIPCfmIAifQoK",
+        "ZGF0YTogeyJ0eXBlIjoidGV4dF9lbmQiLCJjb250ZW50SW5kZXgiOjAsImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifQoK",
+        "ZGF0YTogeyJ0eXBlIjoidG9vbGNhbGxfc3RhcnQiLCJjb250ZW50SW5kZXgiOjEsImlkIjoiY2FsbC0xIiwidG9vbE5hbWUiOiJyZWFkIn0KCg==",
+        "ZGF0YTogeyJ0eXBlIjoidG9vbGNhbGxfZGVsdGEiLCJjb250ZW50SW5kZXgiOjEsImRlbHRhIjoie1wicGF0aFwiOlwiYS50eHRcIn0ifQoK",
+        "ZGF0YTogeyJ0eXBlIjoidG9vbGNhbGxfZW5kIiwiY29udGVudEluZGV4IjoxLCJ0b29sQ2FsbCI6eyJ0eXBlIjoidG9vbENhbGwiLCJpZCI6ImNhbGwtMSIsIm5hbWUiOiJyZWFkIiwiYXJndW1lbnRzIjp7InBhdGgiOiJhLnR4dCJ9fX0KCg==",
+        "ZGF0YTogeyJ0eXBlIjoiZG9uZSIsInJlYXNvbiI6InRvb2xVc2UiLCJ1c2FnZSI6eyJpbnB1dCI6MSwib3V0cHV0IjoyLCJjYWNoZVJlYWQiOjAsImNhY2hlV3JpdGUiOjAsInRvdGFsVG9rZW5zIjozLCJjb3N0Ijp7ImlucHV0IjowLCJvdXRwdXQiOjAsImNhY2hlUmVhZCI6MCwiY2FjaGVXcml0ZSI6MCwidG90YWwiOjB9fSwicmVzcG9uc2VJZCI6InIxIn0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "read:2",
+          3
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "push:text_start",
+          6
+        ],
+        [
+          "read:3",
+          6
+        ],
+        [
+          "deliver:text_start",
+          9
+        ],
+        [
+          "push:text_delta",
+          9
+        ],
+        [
+          "read:4",
+          9
+        ],
+        [
+          "deliver:text_delta",
+          12
+        ],
+        [
+          "push:text_end",
+          12
+        ],
+        [
+          "read:5",
+          12
+        ],
+        [
+          "deliver:text_end",
+          15
+        ],
+        [
+          "push:toolcall_start",
+          15
+        ],
+        [
+          "read:6",
+          15
+        ],
+        [
+          "deliver:toolcall_start",
+          18
+        ],
+        [
+          "push:toolcall_delta",
+          18
+        ],
+        [
+          "read:7",
+          18
+        ],
+        [
+          "deliver:toolcall_delta",
+          21
+        ],
+        [
+          "push:toolcall_end",
+          21
+        ],
+        [
+          "read:8",
+          21
+        ],
+        [
+          "deliver:toolcall_end",
+          24
+        ],
+        [
+          "push:done",
+          24
+        ],
+        [
+          "deliver:done",
+          27
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          }
+        ],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 3,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1"
+      }
+    },
+    {
+      "name": "bytes7",
+      "chunks": [
+        "ZGF0YTogew==",
+        "InR5cGUiOg==",
+        "InN0YXJ0Ig==",
+        "fQoKZGF0YQ==",
+        "OiB7InR5cA==",
+        "ZSI6InRleA==",
+        "dF9zdGFydA==",
+        "IiwiY29udA==",
+        "ZW50SW5kZQ==",
+        "eCI6MH0KCg==",
+        "ZGF0YTogew==",
+        "InR5cGUiOg==",
+        "InRleHRfZA==",
+        "ZWx0YSIsIg==",
+        "Y29udGVudA==",
+        "SW5kZXgiOg==",
+        "MCwiZGVsdA==",
+        "YSI6ImjDqQ==",
+        "bGxvIOKckw==",
+        "IPCfmIAifQ==",
+        "CgpkYXRhOg==",
+        "IHsidHlwZQ==",
+        "IjoidGV4dA==",
+        "X2VuZCIsIg==",
+        "Y29udGVudA==",
+        "SW5kZXgiOg==",
+        "MCwiY29udA==",
+        "ZW50IjoiaA==",
+        "w6lsbG8g4g==",
+        "nJMg8J+YgA==",
+        "In0KCmRhdA==",
+        "YTogeyJ0eQ==",
+        "cGUiOiJ0bw==",
+        "b2xjYWxsXw==",
+        "c3RhcnQiLA==",
+        "ImNvbnRlbg==",
+        "dEluZGV4Ig==",
+        "OjEsImlkIg==",
+        "OiJjYWxsLQ==",
+        "MSIsInRvbw==",
+        "bE5hbWUiOg==",
+        "InJlYWQifQ==",
+        "CgpkYXRhOg==",
+        "IHsidHlwZQ==",
+        "IjoidG9vbA==",
+        "Y2FsbF9kZQ==",
+        "bHRhIiwiYw==",
+        "b250ZW50SQ==",
+        "bmRleCI6MQ==",
+        "LCJkZWx0YQ==",
+        "Ijoie1wicA==",
+        "YXRoXCI6XA==",
+        "ImEudHh0XA==",
+        "In0ifQoKZA==",
+        "YXRhOiB7Ig==",
+        "dHlwZSI6Ig==",
+        "dG9vbGNhbA==",
+        "bF9lbmQiLA==",
+        "ImNvbnRlbg==",
+        "dEluZGV4Ig==",
+        "OjEsInRvbw==",
+        "bENhbGwiOg==",
+        "eyJ0eXBlIg==",
+        "OiJ0b29sQw==",
+        "YWxsIiwiaQ==",
+        "ZCI6ImNhbA==",
+        "bC0xIiwibg==",
+        "YW1lIjoicg==",
+        "ZWFkIiwiYQ==",
+        "cmd1bWVudA==",
+        "cyI6eyJwYQ==",
+        "dGgiOiJhLg==",
+        "dHh0In19fQ==",
+        "CgpkYXRhOg==",
+        "IHsidHlwZQ==",
+        "IjoiZG9uZQ==",
+        "IiwicmVhcw==",
+        "b24iOiJ0bw==",
+        "b2xVc2UiLA==",
+        "InVzYWdlIg==",
+        "OnsiaW5wdQ==",
+        "dCI6MSwibw==",
+        "dXRwdXQiOg==",
+        "MiwiY2FjaA==",
+        "ZVJlYWQiOg==",
+        "MCwiY2FjaA==",
+        "ZVdyaXRlIg==",
+        "OjAsInRvdA==",
+        "YWxUb2tlbg==",
+        "cyI6MywiYw==",
+        "b3N0Ijp7Ig==",
+        "aW5wdXQiOg==",
+        "MCwib3V0cA==",
+        "dXQiOjAsIg==",
+        "Y2FjaGVSZQ==",
+        "YWQiOjAsIg==",
+        "Y2FjaGVXcg==",
+        "aXRlIjowLA==",
+        "InRvdGFsIg==",
+        "OjB9fSwicg==",
+        "ZXNwb25zZQ==",
+        "SWQiOiJyMQ==",
+        "In0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "read:2",
+          1
+        ],
+        [
+          "read:3",
+          2
+        ],
+        [
+          "read:4",
+          3
+        ],
+        [
+          "push:start",
+          6
+        ],
+        [
+          "read:5",
+          6
+        ],
+        [
+          "read:6",
+          7
+        ],
+        [
+          "read:7",
+          8
+        ],
+        [
+          "deliver:start",
+          9
+        ],
+        [
+          "read:8",
+          9
+        ],
+        [
+          "read:9",
+          10
+        ],
+        [
+          "read:10",
+          11
+        ],
+        [
+          "push:text_start",
+          14
+        ],
+        [
+          "read:11",
+          14
+        ],
+        [
+          "read:12",
+          15
+        ],
+        [
+          "read:13",
+          16
+        ],
+        [
+          "deliver:text_start",
+          17
+        ],
+        [
+          "read:14",
+          17
+        ],
+        [
+          "read:15",
+          18
+        ],
+        [
+          "read:16",
+          19
+        ],
+        [
+          "read:17",
+          20
+        ],
+        [
+          "read:18",
+          21
+        ],
+        [
+          "read:19",
+          22
+        ],
+        [
+          "read:20",
+          23
+        ],
+        [
+          "read:21",
+          24
+        ],
+        [
+          "push:text_delta",
+          27
+        ],
+        [
+          "read:22",
+          27
+        ],
+        [
+          "read:23",
+          28
+        ],
+        [
+          "read:24",
+          29
+        ],
+        [
+          "deliver:text_delta",
+          30
+        ],
+        [
+          "read:25",
+          30
+        ],
+        [
+          "read:26",
+          31
+        ],
+        [
+          "read:27",
+          32
+        ],
+        [
+          "read:28",
+          33
+        ],
+        [
+          "read:29",
+          34
+        ],
+        [
+          "read:30",
+          35
+        ],
+        [
+          "read:31",
+          36
+        ],
+        [
+          "push:text_end",
+          39
+        ],
+        [
+          "read:32",
+          39
+        ],
+        [
+          "read:33",
+          40
+        ],
+        [
+          "read:34",
+          41
+        ],
+        [
+          "deliver:text_end",
+          42
+        ],
+        [
+          "read:35",
+          42
+        ],
+        [
+          "read:36",
+          43
+        ],
+        [
+          "read:37",
+          44
+        ],
+        [
+          "read:38",
+          45
+        ],
+        [
+          "read:39",
+          46
+        ],
+        [
+          "read:40",
+          47
+        ],
+        [
+          "read:41",
+          48
+        ],
+        [
+          "read:42",
+          49
+        ],
+        [
+          "read:43",
+          50
+        ],
+        [
+          "push:toolcall_start",
+          53
+        ],
+        [
+          "read:44",
+          53
+        ],
+        [
+          "read:45",
+          54
+        ],
+        [
+          "read:46",
+          55
+        ],
+        [
+          "deliver:toolcall_start",
+          56
+        ],
+        [
+          "read:47",
+          56
+        ],
+        [
+          "read:48",
+          57
+        ],
+        [
+          "read:49",
+          58
+        ],
+        [
+          "read:50",
+          59
+        ],
+        [
+          "read:51",
+          60
+        ],
+        [
+          "read:52",
+          61
+        ],
+        [
+          "read:53",
+          62
+        ],
+        [
+          "read:54",
+          63
+        ],
+        [
+          "push:toolcall_delta",
+          66
+        ],
+        [
+          "read:55",
+          66
+        ],
+        [
+          "read:56",
+          67
+        ],
+        [
+          "read:57",
+          68
+        ],
+        [
+          "deliver:toolcall_delta",
+          69
+        ],
+        [
+          "read:58",
+          69
+        ],
+        [
+          "read:59",
+          70
+        ],
+        [
+          "read:60",
+          71
+        ],
+        [
+          "read:61",
+          72
+        ],
+        [
+          "read:62",
+          73
+        ],
+        [
+          "read:63",
+          74
+        ],
+        [
+          "read:64",
+          75
+        ],
+        [
+          "read:65",
+          76
+        ],
+        [
+          "read:66",
+          77
+        ],
+        [
+          "read:67",
+          78
+        ],
+        [
+          "read:68",
+          79
+        ],
+        [
+          "read:69",
+          80
+        ],
+        [
+          "read:70",
+          81
+        ],
+        [
+          "read:71",
+          82
+        ],
+        [
+          "read:72",
+          83
+        ],
+        [
+          "read:73",
+          84
+        ],
+        [
+          "read:74",
+          85
+        ],
+        [
+          "push:toolcall_end",
+          88
+        ],
+        [
+          "read:75",
+          88
+        ],
+        [
+          "read:76",
+          89
+        ],
+        [
+          "read:77",
+          90
+        ],
+        [
+          "deliver:toolcall_end",
+          91
+        ],
+        [
+          "read:78",
+          91
+        ],
+        [
+          "read:79",
+          92
+        ],
+        [
+          "read:80",
+          93
+        ],
+        [
+          "read:81",
+          94
+        ],
+        [
+          "read:82",
+          95
+        ],
+        [
+          "read:83",
+          96
+        ],
+        [
+          "read:84",
+          97
+        ],
+        [
+          "read:85",
+          98
+        ],
+        [
+          "read:86",
+          99
+        ],
+        [
+          "read:87",
+          100
+        ],
+        [
+          "read:88",
+          101
+        ],
+        [
+          "read:89",
+          102
+        ],
+        [
+          "read:90",
+          103
+        ],
+        [
+          "read:91",
+          104
+        ],
+        [
+          "read:92",
+          105
+        ],
+        [
+          "read:93",
+          106
+        ],
+        [
+          "read:94",
+          107
+        ],
+        [
+          "read:95",
+          108
+        ],
+        [
+          "read:96",
+          109
+        ],
+        [
+          "read:97",
+          110
+        ],
+        [
+          "read:98",
+          111
+        ],
+        [
+          "read:99",
+          112
+        ],
+        [
+          "read:100",
+          113
+        ],
+        [
+          "read:101",
+          114
+        ],
+        [
+          "read:102",
+          115
+        ],
+        [
+          "read:103",
+          116
+        ],
+        [
+          "push:done",
+          119
+        ],
+        [
+          "deliver:done",
+          122
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          }
+        ],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 3,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1"
+      }
+    },
+    {
+      "name": "splitInsideEmoji",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoKZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0KCmRhdGE6IHsidHlwZSI6InRleHRfZGVsdGEiLCJjb250ZW50SW5kZXgiOjAsImRlbHRhIjoiaMOpbGxvIOKckyDwnw==",
+        "mIAifQoKZGF0YTogeyJ0eXBlIjoidGV4dF9lbmQiLCJjb250ZW50SW5kZXgiOjAsImNvbnRlbnQiOiJow6lsbG8g4pyTIPCfmIAifQoKZGF0YTogeyJ0eXBlIjoidG9vbGNhbGxfc3RhcnQiLCJjb250ZW50SW5kZXgiOjEsImlkIjoiY2FsbC0xIiwidG9vbE5hbWUiOiJyZWFkIn0KCmRhdGE6IHsidHlwZSI6InRvb2xjYWxsX2RlbHRhIiwiY29udGVudEluZGV4IjoxLCJkZWx0YSI6IntcInBhdGhcIjpcImEudHh0XCJ9In0KCmRhdGE6IHsidHlwZSI6InRvb2xjYWxsX2VuZCIsImNvbnRlbnRJbmRleCI6MSwidG9vbENhbGwiOnsidHlwZSI6InRvb2xDYWxsIiwiaWQiOiJjYWxsLTEiLCJuYW1lIjoicmVhZCIsImFyZ3VtZW50cyI6eyJwYXRoIjoiYS50eHQifX19CgpkYXRhOiB7InR5cGUiOiJkb25lIiwicmVhc29uIjoidG9vbFVzZSIsInVzYWdlIjp7ImlucHV0IjoxLCJvdXRwdXQiOjIsImNhY2hlUmVhZCI6MCwiY2FjaGVXcml0ZSI6MCwidG90YWxUb2tlbnMiOjMsImNvc3QiOnsiaW5wdXQiOjAsIm91dHB1dCI6MCwiY2FjaGVSZWFkIjowLCJjYWNoZVdyaXRlIjowLCJ0b3RhbCI6MH19LCJyZXNwb25zZUlkIjoicjEifQoK"
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "read:2",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "push:text_delta",
+          8
+        ],
+        [
+          "push:text_end",
+          10
+        ],
+        [
+          "deliver:text_delta",
+          11
+        ],
+        [
+          "push:toolcall_start",
+          12
+        ],
+        [
+          "deliver:text_end",
+          13
+        ],
+        [
+          "push:toolcall_delta",
+          14
+        ],
+        [
+          "deliver:toolcall_start",
+          15
+        ],
+        [
+          "push:toolcall_end",
+          16
+        ],
+        [
+          "deliver:toolcall_delta",
+          17
+        ],
+        [
+          "push:done",
+          18
+        ],
+        [
+          "deliver:toolcall_end",
+          19
+        ],
+        [
+          "deliver:done",
+          21
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          }
+        ],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 3,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1"
+      }
+    },
+    {
+      "name": "crlf",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQ0KDQpkYXRhOiB7InR5cGUiOiJ0ZXh0X3N0YXJ0IiwiY29udGVudEluZGV4IjowfQ0KDQpkYXRhOiB7InR5cGUiOiJ0ZXh0X2RlbHRhIiwiY29udGVudEluZGV4IjowLCJkZWx0YSI6ImjDqWxsbyDinJMg8J+YgCJ9DQoNCmRhdGE6IHsidHlwZSI6InRleHRfZW5kIiwiY29udGVudEluZGV4IjowLCJjb250ZW50IjoiaMOpbGxvIOKckyDwn5iAIn0NCg0KZGF0YTogeyJ0eXBlIjoidG9vbGNhbGxfc3RhcnQiLCJjb250ZW50SW5kZXgiOjEsImlkIjoiY2FsbC0xIiwidG9vbE5hbWUiOiJyZWFkIn0NCg0KZGF0YTogeyJ0eXBlIjoidG9vbGNhbGxfZGVsdGEiLCJjb250ZW50SW5kZXgiOjEsImRlbHRhIjoie1wicGF0aFwiOlwiYS50eHRcIn0ifQ0KDQpkYXRhOiB7InR5cGUiOiJ0b29sY2FsbF9lbmQiLCJjb250ZW50SW5kZXgiOjEsInRvb2xDYWxsIjp7InR5cGUiOiJ0b29sQ2FsbCIsImlkIjoiY2FsbC0xIiwibmFtZSI6InJlYWQiLCJhcmd1bWVudHMiOnsicGF0aCI6ImEudHh0In19fQ0KDQpkYXRhOiB7InR5cGUiOiJkb25lIiwicmVhc29uIjoidG9vbFVzZSIsInVzYWdlIjp7ImlucHV0IjoxLCJvdXRwdXQiOjIsImNhY2hlUmVhZCI6MCwiY2FjaGVXcml0ZSI6MCwidG90YWxUb2tlbnMiOjMsImNvc3QiOnsiaW5wdXQiOjAsIm91dHB1dCI6MCwiY2FjaGVSZWFkIjowLCJjYWNoZVdyaXRlIjowLCJ0b3RhbCI6MH19LCJyZXNwb25zZUlkIjoicjEifQ0KDQo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "push:text_end",
+          9
+        ],
+        [
+          "deliver:text_delta",
+          10
+        ],
+        [
+          "push:toolcall_start",
+          11
+        ],
+        [
+          "deliver:text_end",
+          12
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "deliver:toolcall_start",
+          14
+        ],
+        [
+          "push:toolcall_end",
+          15
+        ],
+        [
+          "deliver:toolcall_delta",
+          16
+        ],
+        [
+          "push:done",
+          17
+        ],
+        [
+          "deliver:toolcall_end",
+          18
+        ],
+        [
+          "deliver:done",
+          20
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          }
+        ],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 3,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1"
+      }
+    },
+    {
+      "name": "crlfSplit",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQ0=",
+        "Cg0KZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0NCg0KZGF0YTogeyJ0eXBlIjoidGV4dF9kZWx0YSIsImNvbnRlbnRJbmRleCI6MCwiZGVsdGEiOiJow6lsbG8g4pyTIPCfmIAifQ0KDQo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "read:2",
+          1
+        ],
+        [
+          "push:start",
+          4
+        ],
+        [
+          "push:text_start",
+          6
+        ],
+        [
+          "deliver:start",
+          7
+        ],
+        [
+          "push:text_delta",
+          8
+        ],
+        [
+          "read:3",
+          8
+        ],
+        [
+          "deliver:text_start",
+          9
+        ],
+        [
+          "push:error",
+          10
+        ],
+        [
+          "deliver:text_delta",
+          11
+        ],
+        [
+          "deliver:error",
+          13
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "p stream ended without a terminal event",
+      "result": {
+        "role": "assistant",
+        "content": [],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "errorMessage": "p stream ended without a terminal event"
+      }
+    },
+    {
+      "name": "bom",
+      "chunks": [
+        "77u/ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoKZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0KCmRhdGE6IHsidHlwZSI6InRleHRfZGVsdGEiLCJjb250ZW50SW5kZXgiOjAsImRlbHRhIjoiaMOpbGxvIOKckyDwn5iAIn0KCmRhdGE6IHsidHlwZSI6InRleHRfZW5kIiwiY29udGVudEluZGV4IjowLCJjb250ZW50IjoiaMOpbGxvIOKckyDwn5iAIn0KCmRhdGE6IHsidHlwZSI6InRvb2xjYWxsX3N0YXJ0IiwiY29udGVudEluZGV4IjoxLCJpZCI6ImNhbGwtMSIsInRvb2xOYW1lIjoicmVhZCJ9CgpkYXRhOiB7InR5cGUiOiJ0b29sY2FsbF9kZWx0YSIsImNvbnRlbnRJbmRleCI6MSwiZGVsdGEiOiJ7XCJwYXRoXCI6XCJhLnR4dFwifSJ9CgpkYXRhOiB7InR5cGUiOiJ0b29sY2FsbF9lbmQiLCJjb250ZW50SW5kZXgiOjEsInRvb2xDYWxsIjp7InR5cGUiOiJ0b29sQ2FsbCIsImlkIjoiY2FsbC0xIiwibmFtZSI6InJlYWQiLCJhcmd1bWVudHMiOnsicGF0aCI6ImEudHh0In19fQoKZGF0YTogeyJ0eXBlIjoiZG9uZSIsInJlYXNvbiI6InRvb2xVc2UiLCJ1c2FnZSI6eyJpbnB1dCI6MSwib3V0cHV0IjoyLCJjYWNoZVJlYWQiOjAsImNhY2hlV3JpdGUiOjAsInRvdGFsVG9rZW5zIjozLCJjb3N0Ijp7ImlucHV0IjowLCJvdXRwdXQiOjAsImNhY2hlUmVhZCI6MCwiY2FjaGVXcml0ZSI6MCwidG90YWwiOjB9fSwicmVzcG9uc2VJZCI6InIxIn0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "push:text_end",
+          9
+        ],
+        [
+          "deliver:text_delta",
+          10
+        ],
+        [
+          "push:toolcall_start",
+          11
+        ],
+        [
+          "deliver:text_end",
+          12
+        ],
+        [
+          "push:toolcall_delta",
+          13
+        ],
+        [
+          "deliver:toolcall_start",
+          14
+        ],
+        [
+          "push:toolcall_end",
+          15
+        ],
+        [
+          "deliver:toolcall_delta",
+          16
+        ],
+        [
+          "push:done",
+          17
+        ],
+        [
+          "deliver:toolcall_end",
+          18
+        ],
+        [
+          "deliver:done",
+          20
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          }
+        ],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 3,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1"
+      }
+    },
+    {
+      "name": "bomSplit",
+      "chunks": [
+        "",
+        "77s=",
+        "v2RhdGE6IHsidHlwZSI6InN0YXJ0In0KCmRhdGE6IHsidHlwZSI6InRleHRfc3RhcnQiLCJjb250ZW50SW5kZXgiOjB9CgpkYXRhOiB7InR5cGUiOiJ0ZXh0X2RlbHRhIiwiY29udGVudEluZGV4IjowLCJkZWx0YSI6ImjDqWxsbyDinJMg8J+YgCJ9CgpkYXRhOiB7InR5cGUiOiJ0ZXh0X2VuZCIsImNvbnRlbnRJbmRleCI6MCwiY29udGVudCI6ImjDqWxsbyDinJMg8J+YgCJ9CgpkYXRhOiB7InR5cGUiOiJ0b29sY2FsbF9zdGFydCIsImNvbnRlbnRJbmRleCI6MSwiaWQiOiJjYWxsLTEiLCJ0b29sTmFtZSI6InJlYWQifQoKZGF0YTogeyJ0eXBlIjoidG9vbGNhbGxfZGVsdGEiLCJjb250ZW50SW5kZXgiOjEsImRlbHRhIjoie1wicGF0aFwiOlwiYS50eHRcIn0ifQoKZGF0YTogeyJ0eXBlIjoidG9vbGNhbGxfZW5kIiwiY29udGVudEluZGV4IjoxLCJ0b29sQ2FsbCI6eyJ0eXBlIjoidG9vbENhbGwiLCJpZCI6ImNhbGwtMSIsIm5hbWUiOiJyZWFkIiwiYXJndW1lbnRzIjp7InBhdGgiOiJhLnR4dCJ9fX0KCmRhdGE6IHsidHlwZSI6ImRvbmUiLCJyZWFzb24iOiJ0b29sVXNlIiwidXNhZ2UiOnsiaW5wdXQiOjEsIm91dHB1dCI6MiwiY2FjaGVSZWFkIjowLCJjYWNoZVdyaXRlIjowLCJ0b3RhbFRva2VucyI6MywiY29zdCI6eyJpbnB1dCI6MCwib3V0cHV0IjowLCJjYWNoZVJlYWQiOjAsImNhY2hlV3JpdGUiOjAsInRvdGFsIjowfX0sInJlc3BvbnNlSWQiOiJyMSJ9Cgo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "read:2",
+          1
+        ],
+        [
+          "read:3",
+          2
+        ],
+        [
+          "push:start",
+          5
+        ],
+        [
+          "push:text_start",
+          7
+        ],
+        [
+          "deliver:start",
+          8
+        ],
+        [
+          "push:text_delta",
+          9
+        ],
+        [
+          "deliver:text_start",
+          10
+        ],
+        [
+          "push:text_end",
+          11
+        ],
+        [
+          "deliver:text_delta",
+          12
+        ],
+        [
+          "push:toolcall_start",
+          13
+        ],
+        [
+          "deliver:text_end",
+          14
+        ],
+        [
+          "push:toolcall_delta",
+          15
+        ],
+        [
+          "deliver:toolcall_start",
+          16
+        ],
+        [
+          "push:toolcall_end",
+          17
+        ],
+        [
+          "deliver:toolcall_delta",
+          18
+        ],
+        [
+          "push:done",
+          19
+        ],
+        [
+          "deliver:toolcall_end",
+          20
+        ],
+        [
+          "deliver:done",
+          22
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "héllo ✓ 😀"
+          },
+          {
+            "type": "toolCall",
+            "id": "call-1",
+            "name": "read",
+            "arguments": {
+              "path": "a.txt"
+            }
+          }
+        ],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 3,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1"
+      }
+    },
+    {
+      "name": "invalidUTF8",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoKZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0KCg==",
+        "ZGF0YTogeyJ0eXBlIjoidGV4dF9kZWx0YSIsImNvbnRlbnRJbmRleCI6MCwiZGVsdGEiOiJh/+KCYiJ9Cgo=",
+        "ZGF0YTogeyJ0eXBlIjoiZG9uZSIsInJlYXNvbiI6InRvb2xVc2UiLCJ1c2FnZSI6eyJpbnB1dCI6MSwib3V0cHV0IjoyLCJjYWNoZVJlYWQiOjAsImNhY2hlV3JpdGUiOjAsInRvdGFsVG9rZW5zIjozLCJjb3N0Ijp7ImlucHV0IjowLCJvdXRwdXQiOjAsImNhY2hlUmVhZCI6MCwiY2FjaGVXcml0ZSI6MCwidG90YWwiOjB9fSwicmVzcG9uc2VJZCI6InIxIn0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "read:2",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "push:text_delta",
+          8
+        ],
+        [
+          "read:3",
+          8
+        ],
+        [
+          "deliver:text_delta",
+          11
+        ],
+        [
+          "push:done",
+          11
+        ],
+        [
+          "deliver:done",
+          14
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": "a��b"
+          }
+        ],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 3,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1"
+      }
+    },
+    {
+      "name": "truncatedUTF8",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoKZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0KCg==",
+        "ZGF0YTogeyJ0eXBlIjoidGV4dF9kZWx0YSIsImNvbnRlbnRJbmRleCI6MCwiZGVsdGEiOiJ4In0KCg==",
+        "4oI="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "read:2",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "push:text_delta",
+          8
+        ],
+        [
+          "read:3",
+          8
+        ],
+        [
+          "read:4",
+          9
+        ],
+        [
+          "deliver:text_delta",
+          11
+        ],
+        [
+          "push:error",
+          11
+        ],
+        [
+          "deliver:error",
+          14
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "p stream ended without a terminal event",
+      "result": {
+        "role": "assistant",
+        "content": [],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "errorMessage": "p stream ended without a terminal event"
+      }
+    },
+    {
+      "name": "truncatedRecordUTF8",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoKZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0KCmRhdGE6IHsidHlwZSI6InRleHRfZGVsdGEiLCJkZWx0YSI6ImE=",
+        "4oI="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "read:2",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "read:3",
+          6
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "push:error",
+          8
+        ],
+        [
+          "deliver:error",
+          11
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Unterminated string in JSON at position 32 (line 1 column 33)",
+      "result": {
+        "role": "assistant",
+        "content": [],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "errorMessage": "Unterminated string in JSON at position 32 (line 1 column 33)"
+      }
+    },
+    {
+      "name": "errorTerminal",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoKZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0KCmRhdGE6IHsidHlwZSI6ImVycm9yIiwicmVhc29uIjoiZXJyb3IiLCJ1c2FnZSI6eyJpbnB1dCI6MSwib3V0cHV0IjoyLCJjYWNoZVJlYWQiOjAsImNhY2hlV3JpdGUiOjAsInRvdGFsVG9rZW5zIjozLCJjb3N0Ijp7ImlucHV0IjowLCJvdXRwdXQiOjAsImNhY2hlUmVhZCI6MCwiY2FjaGVXcml0ZSI6MCwidG90YWwiOjB9fSwiZXJyb3JNZXNzYWdlIjoiYmFja2VuZCBmYWlsZWQiLCJyZXNwb25zZUlkIjoicjIifQoK"
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "push:error",
+          7
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "deliver:error",
+          10
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "backend failed",
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          }
+        ],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 3,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "errorMessage": "backend failed",
+        "responseId": "r2"
+      }
+    },
+    {
+      "name": "noTerminal",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoKZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0KCmRhdGE6IHsidHlwZSI6InRleHRfZGVsdGEiLCJjb250ZW50SW5kZXgiOjAsImRlbHRhIjoiaMOpbGxvIOKckyDwn5iAIn0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "read:2",
+          7
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "push:error",
+          9
+        ],
+        [
+          "deliver:text_delta",
+          10
+        ],
+        [
+          "deliver:error",
+          12
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "p stream ended without a terminal event",
+      "result": {
+        "role": "assistant",
+        "content": [],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "errorMessage": "p stream ended without a terminal event"
+      }
+    },
+    {
+      "name": "trailingRecord",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoKZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0KCmRhdGE6IHsidHlwZSI6ImRvbmUiLCJyZWFzb24iOiJ0b29sVXNlIiwidXNhZ2UiOnsiaW5wdXQiOjEsIm91dHB1dCI6MiwiY2FjaGVSZWFkIjowLCJjYWNoZVdyaXRlIjowLCJ0b3RhbFRva2VucyI6MywiY29zdCI6eyJpbnB1dCI6MCwib3V0cHV0IjowLCJjYWNoZVJlYWQiOjAsImNhY2hlV3JpdGUiOjAsInRvdGFsIjowfX0sInJlc3BvbnNlSWQiOiJyMSJ9"
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "read:2",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "push:done",
+          8
+        ],
+        [
+          "deliver:done",
+          11
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          }
+        ],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 3,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1"
+      }
+    },
+    {
+      "name": "malformed",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoKZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0KCmRhdGE6IHsidHlwZSI6InRleHRfZGVsdGEiCgo="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "push:error",
+          6
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "deliver:error",
+          10
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Expected ',' or '}' after property value in JSON at position 20 (line 1 column 21)",
+      "result": {
+        "role": "assistant",
+        "content": [],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "errorMessage": "Expected ',' or '}' after property value in JSON at position 20 (line 1 column 21)"
+      }
+    },
+    {
+      "name": "notJSON",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoKZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0KCmRhdGE6IG9vcHMKCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "push:error",
+          6
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "deliver:error",
+          10
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON",
+      "result": {
+        "role": "assistant",
+        "content": [],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "errorMessage": "Unexpected token 'o', \"oops\" is not valid JSON"
+      }
+    },
+    {
+      "name": "falsyRecords",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoKZGF0YTogbnVsbAoKZGF0YTogMAoKZGF0YTogZmFsc2UKCmRhdGE6ICIiCgpkYXRhOiBbRE9ORV0KCmRhdGE6Cgo6IGNvbW1lbnQKCmRhdGE6IHsidHlwZSI6InRleHRfc3RhcnQiLCJjb250ZW50SW5kZXgiOjB9CgpkYXRhOiB7InR5cGUiOiJkb25lIiwicmVhc29uIjoidG9vbFVzZSIsInVzYWdlIjp7ImlucHV0IjoxLCJvdXRwdXQiOjIsImNhY2hlUmVhZCI6MCwiY2FjaGVXcml0ZSI6MCwidG90YWxUb2tlbnMiOjMsImNvc3QiOnsiaW5wdXQiOjAsIm91dHB1dCI6MCwiY2FjaGVSZWFkIjowLCJjYWNoZVdyaXRlIjowLCJ0b3RhbCI6MH19LCJyZXNwb25zZUlkIjoicjEifQoK"
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "push:done",
+          7
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "deliver:done",
+          10
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [
+          {
+            "type": "text",
+            "text": ""
+          }
+        ],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 3,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1"
+      }
+    },
+    {
+      "name": "eventLines",
+      "chunks": [
+        "ZXZlbnQ6IHgKaWQ6IDEKZGF0YTogeyJ0eXBlIjoic3RhcnQifQpkYXRhOiB7InR5cGUiOiJkb25lIiwicmVhc29uIjoic3RvcCIsInVzYWdlIjp7ImlucHV0IjoxLCJvdXRwdXQiOjIsImNhY2hlUmVhZCI6MCwiY2FjaGVXcml0ZSI6MCwidG90YWxUb2tlbnMiOjMsImNvc3QiOnsiaW5wdXQiOjAsIm91dHB1dCI6MCwiY2FjaGVSZWFkIjowLCJjYWNoZVdyaXRlIjowLCJ0b3RhbCI6MH19fQoKZGF0YTogeyJ0eXBlIjoiZG9uZSIsInJlYXNvbiI6InRvb2xVc2UiLCJ1c2FnZSI6eyJpbnB1dCI6MSwib3V0cHV0IjoyLCJjYWNoZVJlYWQiOjAsImNhY2hlV3JpdGUiOjAsInRvdGFsVG9rZW5zIjozLCJjb3N0Ijp7ImlucHV0IjowLCJvdXRwdXQiOjAsImNhY2hlUmVhZCI6MCwiY2FjaGVXcml0ZSI6MCwidG90YWwiOjB9fSwicmVzcG9uc2VJZCI6InIxIn0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:done",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "deliver:done",
+          8
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 3,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1"
+      }
+    },
+    {
+      "name": "readRejects",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoic3RhcnQifQoKZGF0YTogeyJ0eXBlIjoidGV4dF9zdGFydCIsImNvbnRlbnRJbmRleCI6MH0KCmRhdGE6IHsidHlwZSI6InRleHRfZGVsdGEiLCJjb250ZW50SW5kZXgiOjAsImRlbHRhIjoiaMOpbGxvIOKckyDwn5iAIn0KCg=="
+      ],
+      "end": "error",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:start",
+          3
+        ],
+        [
+          "push:text_start",
+          5
+        ],
+        [
+          "deliver:start",
+          6
+        ],
+        [
+          "push:text_delta",
+          7
+        ],
+        [
+          "read:2",
+          7
+        ],
+        [
+          "deliver:text_start",
+          8
+        ],
+        [
+          "push:error",
+          9
+        ],
+        [
+          "deliver:text_delta",
+          10
+        ],
+        [
+          "deliver:error",
+          12
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "body failed",
+      "result": {
+        "role": "assistant",
+        "content": [],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "errorMessage": "body failed"
+      }
+    },
+    {
+      "name": "rejectsFirst",
+      "chunks": [],
+      "end": "error",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:error",
+          2
+        ],
+        [
+          "deliver:error",
+          5
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "body failed",
+      "result": {
+        "role": "assistant",
+        "content": [],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "errorMessage": "body failed"
+      }
+    },
+    {
+      "name": "emptyBody",
+      "chunks": [],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:error",
+          2
+        ],
+        [
+          "deliver:error",
+          5
+        ]
+      ],
+      "stopReason": "error",
+      "errorMessage": "p stream ended without a terminal event",
+      "result": {
+        "role": "assistant",
+        "content": [],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 0,
+          "output": 0,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 0,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "error",
+        "errorMessage": "p stream ended without a terminal event"
+      }
+    },
+    {
+      "name": "doneWithoutStart",
+      "chunks": [
+        "ZGF0YTogeyJ0eXBlIjoiZG9uZSIsInJlYXNvbiI6InRvb2xVc2UiLCJ1c2FnZSI6eyJpbnB1dCI6MSwib3V0cHV0IjoyLCJjYWNoZVJlYWQiOjAsImNhY2hlV3JpdGUiOjAsInRvdGFsVG9rZW5zIjozLCJjb3N0Ijp7ImlucHV0IjowLCJvdXRwdXQiOjAsImNhY2hlUmVhZCI6MCwiY2FjaGVXcml0ZSI6MCwidG90YWwiOjB9fSwicmVzcG9uc2VJZCI6InIxIn0KCg=="
+      ],
+      "end": "close",
+      "marks": [
+        [
+          "read:1",
+          0
+        ],
+        [
+          "push:done",
+          3
+        ],
+        [
+          "deliver:done",
+          6
+        ]
+      ],
+      "stopReason": "toolUse",
+      "errorMessage": null,
+      "result": {
+        "role": "assistant",
+        "content": [],
+        "api": "pi-messages",
+        "provider": "p",
+        "model": "strict",
+        "usage": {
+          "input": 1,
+          "output": 2,
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "totalTokens": 3,
+          "cost": {
+            "input": 0,
+            "output": 0,
+            "cacheRead": 0,
+            "cacheWrite": 0,
+            "total": 0
+          }
+        },
+        "stopReason": "toolUse",
+        "responseId": "r1"
+      }
+    }
+  ]
+}

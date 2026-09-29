@@ -15,19 +15,20 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gofrs/flock"
 	"github.com/google/uuid"
 
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
-	"github.com/MichaelKinsy/PiG/internal/nodeurl"
+	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 	"github.com/MichaelKinsy/PiG/internal/text"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // PackageSource mirrors upstream settings-manager.ts PackageSource.
-// JSON accepts either a bare string source or an object with resource filters.
+// JSON accepts either a bare string source or an object with resource filters and optional autoload selection.
 type PackageSource struct {
 	Source     string   `json:"source,omitempty"`
+	Autoload   *bool    `json:"autoload,omitempty"`
 	Extensions []string `json:"extensions,omitempty"`
 	Skills     []string `json:"skills,omitempty"`
 	Prompts    []string `json:"prompts,omitempty"`
@@ -43,7 +44,7 @@ type PackageSource struct {
 // Upstream: `filtered: typeof pkg === "object"`: any object form is filtered.
 // For programmatically constructed sources, filter fields also signal filtering.
 func (p PackageSource) Filtered() bool {
-	return p.WasObject || p.Extensions != nil || p.Skills != nil || p.Prompts != nil || p.Themes != nil
+	return p.WasObject || p.Autoload != nil || p.Extensions != nil || p.Skills != nil || p.Prompts != nil || p.Themes != nil
 }
 
 // MarshalJSON preserves upstream's string-or-object wire shape.
@@ -52,6 +53,9 @@ func (p PackageSource) MarshalJSON() ([]byte, error) {
 		return json.Marshal(p.Source)
 	}
 	obj := map[string]any{"source": p.Source}
+	if p.Autoload != nil {
+		obj["autoload"] = *p.Autoload
+	}
 	if p.Extensions != nil {
 		obj["extensions"] = p.Extensions
 	}
@@ -120,20 +124,22 @@ type branchSummaryWire struct {
 // absent vs. explicitly-false.
 type CompactionSettingsJSON struct {
 	Enabled *bool `json:"enabled,omitempty"`
-	// ReserveTokens and KeepRecentTokens are pointers so an explicit 0 is
-	// kept, as upstream's `?? default` does.
-	ReserveTokens    *int `json:"reserveTokens,omitempty"`
-	KeepRecentTokens *int `json:"keepRecentTokens,omitempty"`
+	// ReserveTokens and KeepRecentTokens retain JavaScript numbers until getter validation, including zero, fractions, and non-finite runtime overrides.
+	ReserveTokens    *float64 `json:"reserveTokens,omitempty"`
+	KeepRecentTokens *float64 `json:"keepRecentTokens,omitempty"`
 	// ModelOverrides maps exact "provider/modelId" keys to token settings
 	// that take precedence for that model.
 	ModelOverrides map[string]CompactionModelOverride `json:"modelOverrides,omitempty"`
+	extra          map[string]json.RawMessage
 }
 
 // CompactionModelOverride mirrors upstream CompactionModelOverride. Pointers
 // keep an explicit zero, as upstream's `override ?? ordinary` does.
 type CompactionModelOverride struct {
-	ReserveTokens    *int `json:"reserveTokens,omitempty"`
-	KeepRecentTokens *int `json:"keepRecentTokens,omitempty"`
+	ReserveTokens    *float64 `json:"reserveTokens,omitempty"`
+	KeepRecentTokens *float64 `json:"keepRecentTokens,omitempty"`
+	extra            map[string]json.RawMessage
+	invalidEntry     json.RawMessage
 }
 
 // ProviderRetrySettings mirrors upstream retry.provider settings.
@@ -245,7 +251,7 @@ type settingsWire struct {
 	FullscreenScrollbar    string                   `json:"fullscreenScrollbar,omitempty"`
 	FullscreenCopyOnSelect *bool                    `json:"fullscreenCopyOnSelect,omitempty"`
 	MaskSecretInput        *bool                    `json:"maskSecretInput,omitempty"`
-	Theme                  string                   `json:"theme,omitempty"`
+	Theme                  *string                  `json:"theme,omitempty"`
 	Compaction             *CompactionSettingsJSON  `json:"compaction,omitempty"`
 	BranchSummary          *branchSummaryWire       `json:"branchSummary,omitempty"`
 	Retry                  *RetrySettingsJSON       `json:"retry,omitempty"`
@@ -254,17 +260,17 @@ type settingsWire struct {
 	QuietStartup           *bool                    `json:"quietStartup,omitempty"`
 	ShellCommandPrefix     string                   `json:"shellCommandPrefix,omitempty"`
 	LegacyCommandPrefix    string                   `json:"commandPrefix,omitempty"`
-	NpmCommand             []string                 `json:"npmCommand,omitempty"`
+	NpmCommand             []string                 `json:"npmCommand,omitzero"`
 	CollapseChangelog      *bool                    `json:"collapseChangelog,omitempty"`
 	ShowCacheMissNotices   *bool                    `json:"showCacheMissNotices,omitempty"`
 	EnableInstallTelemetry *bool                    `json:"enableInstallTelemetry,omitempty"`
 	EnableAnalytics        *bool                    `json:"enableAnalytics,omitempty"`
 	TrackingID             string                   `json:"trackingId,omitempty"`
-	Packages               []PackageSource          `json:"packages,omitempty"`
-	Extensions             []string                 `json:"extensions,omitempty"`
-	Skills                 []string                 `json:"skills,omitempty"`
-	Prompts                []string                 `json:"prompts,omitempty"`
-	Themes                 []string                 `json:"themes,omitempty"`
+	Packages               []PackageSource          `json:"packages,omitzero"`
+	Extensions             []string                 `json:"extensions,omitzero"`
+	Skills                 []string                 `json:"skills,omitzero"`
+	Prompts                []string                 `json:"prompts,omitzero"`
+	Themes                 []string                 `json:"themes,omitzero"`
 	EnableSkillCommands    *bool                    `json:"enableSkillCommands,omitempty"`
 	Terminal               *terminalSettingsWire    `json:"terminal,omitempty"`
 	Images                 *imageSettingsWire       `json:"images,omitempty"`
@@ -273,8 +279,8 @@ type settingsWire struct {
 	LegacyClearOnShrink    *bool                    `json:"clearOnShrink,omitempty"`
 	LegacyImageAutoResize  *bool                    `json:"imageAutoResize,omitempty"`
 	LegacyBlockImages      *bool                    `json:"blockImages,omitempty"`
-	EnabledModels          []string                 `json:"enabledModels,omitempty"`
-	DefaultTools           []string                 `json:"defaultTools,omitempty"`
+	EnabledModels          []string                 `json:"enabledModels,omitzero"`
+	DefaultTools           []string                 `json:"defaultTools,omitzero"`
 	ModelThinkingLevels    map[string]string        `json:"modelThinkingLevels,omitempty"`
 	DoubleEscapeAction     string                   `json:"doubleEscapeAction,omitempty"`
 	TreeFilterMode         string                   `json:"treeFilterMode,omitempty"`
@@ -290,8 +296,10 @@ type settingsWire struct {
 	SessionDir             string                   `json:"sessionDir,omitempty"`
 	// HTTPIdleTimeoutMs keeps the raw JSON value: upstream accepts numbers,
 	// numeric strings and "disabled".
-	HTTPIdleTimeoutMs any              `json:"httpIdleTimeoutMs,omitempty"`
-	CacheWarming      CacheWarmingMode `json:"cacheWarming,omitempty"`
+	HTTPProxy                 string           `json:"httpProxy,omitempty"`
+	WebSocketConnectTimeoutMs any              `json:"websocketConnectTimeoutMs,omitempty"`
+	HTTPIdleTimeoutMs         any              `json:"httpIdleTimeoutMs,omitempty"`
+	CacheWarming              CacheWarmingMode `json:"cacheWarming,omitempty"`
 }
 
 const defaultHTTPIdleTimeoutMs = 300_000
@@ -349,23 +357,31 @@ type Settings struct {
 	// (settings-manager.ts:77). When true, thinking blocks show as
 	// "Thinking..." stubs instead of the full reasoning trace. Toggled
 	// by Ctrl+T; persisted so the preference survives sessions.
-	HideThinkingBlock    bool   `json:"hideThinkingBlock,omitempty"`
-	hideThinkingBlockSet bool   `json:"-"`
-	Theme                string `json:"theme,omitempty"`
-	ShellPath            string `json:"shellPath,omitempty"`
+	HideThinkingBlock    bool `json:"hideThinkingBlock,omitempty"`
+	hideThinkingBlockSet bool `json:"-"`
+	// Theme is the configured name. JSON and SettingsManager.SetTheme preserve explicitly empty values.
+	Theme      string `json:"theme,omitempty"`
+	themeEmpty bool   `json:"-"`
+	// themeNonString records a theme key whose JSON value is not a string, such as null. It replaces a lower layer's theme and reads as unset.
+	themeNonString bool   `json:"-"`
+	ShellPath      string `json:"shellPath,omitempty"`
 	// CommandPrefix prepended to every bash tool invocation as a
 	// separate first line (e.g. "set -e\n" or "export PATH=...\n").
-	CommandPrefix     string          `json:"commandPrefix,omitempty"`
-	QuietStartup      bool            `json:"quietStartup,omitempty"`
-	quietStartupSet   bool            `json:"-"`
-	Packages          []PackageSource `json:"packages,omitempty"`
-	Extensions        []string        `json:"extensions,omitempty"`
-	Skills            []string        `json:"skills,omitempty"`
-	Prompts           []string        `json:"prompts,omitempty"`
-	Themes            []string        `json:"themes,omitempty"`
-	SessionDir        string          `json:"sessionDir,omitempty"`
-	HTTPIdleTimeoutMs *int            `json:"httpIdleTimeoutMs,omitempty"`
-	EnabledModels     []string        `json:"enabledModels,omitempty"`
+	CommandPrefix                  string          `json:"commandPrefix,omitempty"`
+	QuietStartup                   bool            `json:"quietStartup,omitempty"`
+	quietStartupSet                bool            `json:"-"`
+	Packages                       []PackageSource `json:"packages,omitzero"`
+	Extensions                     []string        `json:"extensions,omitempty"`
+	Skills                         []string        `json:"skills,omitempty"`
+	Prompts                        []string        `json:"prompts,omitempty"`
+	Themes                         []string        `json:"themes,omitempty"`
+	SessionDir                     string          `json:"sessionDir,omitempty"`
+	HTTPProxy                      string          `json:"httpProxy,omitempty"`
+	WebSocketConnectTimeoutMs      *int            `json:"websocketConnectTimeoutMs,omitempty"`
+	webSocketConnectTimeoutInvalid any
+	webSocketConnectTimeoutNull    bool
+	HTTPIdleTimeoutMs              *int     `json:"httpIdleTimeoutMs,omitempty"`
+	EnabledModels                  []string `json:"enabledModels,omitempty"`
 	// DefaultTools is the initial built-in tool selection; nil means the
 	// upstream default read, bash, edit and write.
 	DefaultTools []string `json:"defaultTools,omitempty"`
@@ -442,9 +458,7 @@ type Settings struct {
 	// MaskSecretInput controls configurable login-input privacy. Nil means true; false restores Pi's plain-text prompts.
 	MaskSecretInput *bool `json:"maskSecretInput,omitempty"`
 
-	// CollapseChangelog, when true, shows a condensed "Updated to vX.Y.Z"
-	// summary instead of the full changelog on /changelog.
-	// Mirrors upstream settings.collapseChangelog (settings-manager.ts:82).
+	// CollapseChangelog shows condensed startup update notices. The /changelog command always shows every released entry.
 	CollapseChangelog    bool `json:"collapseChangelog,omitempty"`
 	collapseChangelogSet bool `json:"-"`
 
@@ -579,21 +593,30 @@ func cloneBoolPtr(v *bool) *bool {
 	return &x
 }
 
+func cloneFloatPtr(v *float64) *float64 {
+	if v == nil {
+		return nil
+	}
+	return new(*v)
+}
+
 func cloneCompactionSettings(v *CompactionSettingsJSON) *CompactionSettingsJSON {
 	if v == nil {
 		return nil
 	}
 	out := &CompactionSettingsJSON{
 		Enabled:          cloneBoolPtr(v.Enabled),
-		ReserveTokens:    cloneIntPtr(v.ReserveTokens),
-		KeepRecentTokens: cloneIntPtr(v.KeepRecentTokens),
+		extra:            maps.Clone(v.extra),
+		ReserveTokens:    cloneFloatPtr(v.ReserveTokens),
+		KeepRecentTokens: cloneFloatPtr(v.KeepRecentTokens),
 	}
 	if v.ModelOverrides != nil {
 		out.ModelOverrides = make(map[string]CompactionModelOverride, len(v.ModelOverrides))
 		for key, override := range v.ModelOverrides {
 			out.ModelOverrides[key] = CompactionModelOverride{
-				ReserveTokens:    cloneIntPtr(override.ReserveTokens),
-				KeepRecentTokens: cloneIntPtr(override.KeepRecentTokens),
+				extra: maps.Clone(override.extra), invalidEntry: bytes.Clone(override.invalidEntry),
+				ReserveTokens:    cloneFloatPtr(override.ReserveTokens),
+				KeepRecentTokens: cloneFloatPtr(override.KeepRecentTokens),
 			}
 		}
 	}
@@ -611,12 +634,15 @@ func mergeCompactionModelOverrides(merged *CompactionSettingsJSON, project map[s
 	}
 	for key, override := range project {
 		current := merged.ModelOverrides[key]
-		if override.ReserveTokens != nil {
-			current.ReserveTokens = cloneIntPtr(override.ReserveTokens)
+		if override.invalidEntry != nil || current.invalidEntry != nil {
+			current = CompactionModelOverride{invalidEntry: bytes.Clone(override.invalidEntry)}
 		}
-		if override.KeepRecentTokens != nil {
-			current.KeepRecentTokens = cloneIntPtr(override.KeepRecentTokens)
+		if current.extra == nil {
+			current.extra = make(map[string]json.RawMessage)
 		}
+		maps.Copy(current.extra, override.extra)
+		mergeCompactionNumber(&current.ReserveTokens, current.extra, "reserveTokens", override.ReserveTokens, override.extra)
+		mergeCompactionNumber(&current.KeepRecentTokens, current.extra, "keepRecentTokens", override.KeepRecentTokens, override.extra)
 		merged.ModelOverrides[key] = current
 	}
 }
@@ -695,10 +721,11 @@ func clonePackageSources(src []PackageSource) []PackageSource {
 	for i, pkg := range src {
 		out[i] = PackageSource{
 			Source:     pkg.Source,
-			Extensions: append([]string(nil), pkg.Extensions...),
-			Skills:     append([]string(nil), pkg.Skills...),
-			Prompts:    append([]string(nil), pkg.Prompts...),
-			Themes:     append([]string(nil), pkg.Themes...),
+			Autoload:   cloneBoolPtr(pkg.Autoload),
+			Extensions: slices.Clone(pkg.Extensions),
+			Skills:     slices.Clone(pkg.Skills),
+			Prompts:    slices.Clone(pkg.Prompts),
+			Themes:     slices.Clone(pkg.Themes),
 			WasObject:  pkg.WasObject,
 		}
 	}
@@ -707,120 +734,135 @@ func clonePackageSources(src []PackageSource) []PackageSource {
 
 func cloneSettings(s Settings) Settings {
 	return Settings{
-		DefaultProvider:         s.DefaultProvider,
-		DefaultModel:            s.DefaultModel,
-		DefaultThinkingLevel:    s.DefaultThinkingLevel,
-		HideThinkingBlock:       s.HideThinkingBlock,
-		hideThinkingBlockSet:    s.hideThinkingBlockSet,
-		Theme:                   s.Theme,
-		ShellPath:               s.ShellPath,
-		CommandPrefix:           s.CommandPrefix,
-		QuietStartup:            s.QuietStartup,
-		quietStartupSet:         s.quietStartupSet,
-		Packages:                clonePackageSources(s.Packages),
-		Extensions:              append([]string(nil), s.Extensions...),
-		Skills:                  append([]string(nil), s.Skills...),
-		Prompts:                 append([]string(nil), s.Prompts...),
-		Themes:                  append([]string(nil), s.Themes...),
-		SessionDir:              s.SessionDir,
-		HTTPIdleTimeoutMs:       cloneIntPtr(s.HTTPIdleTimeoutMs),
-		httpIdleTimeoutInvalid:  s.httpIdleTimeoutInvalid,
-		CacheWarming:            s.CacheWarming,
-		EnabledModels:           append([]string(nil), s.EnabledModels...),
-		DefaultTools:            slices.Clone(s.DefaultTools),
-		ModelThinkingLevels:     maps.Clone(s.ModelThinkingLevels),
-		LastChangelogVersion:    s.LastChangelogVersion,
-		Compaction:              cloneCompactionSettings(s.Compaction),
-		BranchSummary:           cloneBranchSummary(s.BranchSummary),
-		DoubleEscapeAction:      s.DoubleEscapeAction,
-		TreeFilterMode:          s.TreeFilterMode,
-		DefaultProjectTrust:     s.DefaultProjectTrust,
-		SteeringMode:            s.SteeringMode,
-		FollowUpMode:            s.FollowUpMode,
-		TuiMode:                 s.TuiMode,
-		FullscreenExitOutput:    s.FullscreenExitOutput,
-		FullscreenScrollbar:     s.FullscreenScrollbar,
-		FullscreenCopyOnSelect:  cloneBoolPtr(s.FullscreenCopyOnSelect),
-		MaskSecretInput:         cloneBoolPtr(s.MaskSecretInput),
-		CollapseChangelog:       s.CollapseChangelog,
-		collapseChangelogSet:    s.collapseChangelogSet,
-		ShowCacheMissNotices:    s.ShowCacheMissNotices,
-		showCacheMissNoticesSet: s.showCacheMissNoticesSet,
-		EnableSkillCommands:     cloneBoolPtr(s.EnableSkillCommands),
-		EnableInstallTelemetry:  cloneBoolPtr(s.EnableInstallTelemetry),
-		EnableAnalytics:         cloneBoolPtr(s.EnableAnalytics),
-		TrackingID:              s.TrackingID,
-		Retry:                   cloneRetrySettings(s.Retry),
-		ShowImages:              cloneBoolPtr(s.ShowImages),
-		ImageWidthCells:         s.ImageWidthCells,
-		BlockImages:             s.BlockImages,
-		blockImagesSet:          s.blockImagesSet,
-		ImageAutoResize:         cloneBoolPtr(s.ImageAutoResize),
-		Transport:               s.Transport,
-		ShowHardwareCursor:      cloneBoolPtr(s.ShowHardwareCursor),
-		EditorPaddingX:          cloneIntPtr(s.EditorPaddingX),
-		OutputPad:               cloneIntPtr(s.OutputPad),
-		ExternalEditor:          s.ExternalEditor,
-		AutocompleteMaxVisible:  cloneIntPtr(s.AutocompleteMaxVisible),
-		ClearOnShrink:           cloneBoolPtr(s.ClearOnShrink),
-		ShowTerminalProgress:    cloneBoolPtr(s.ShowTerminalProgress),
-		terminalHyperlinks:      slices.Clone(s.terminalHyperlinks),
-		terminalImages:          slices.Clone(s.terminalImages),
-		terminalTrueColor:       slices.Clone(s.terminalTrueColor),
-		ThinkingBudgets:         cloneThinkingBudgets(s.ThinkingBudgets),
-		NpmCommand:              append([]string(nil), s.NpmCommand...),
-		Markdown:                cloneMarkdownSettings(s.Markdown),
-		Warnings:                cloneWarningSettings(s.Warnings),
+		DefaultProvider:                s.DefaultProvider,
+		DefaultModel:                   s.DefaultModel,
+		DefaultThinkingLevel:           s.DefaultThinkingLevel,
+		HideThinkingBlock:              s.HideThinkingBlock,
+		hideThinkingBlockSet:           s.hideThinkingBlockSet,
+		Theme:                          s.Theme,
+		themeEmpty:                     s.themeEmpty,
+		themeNonString:                 s.themeNonString,
+		ShellPath:                      s.ShellPath,
+		CommandPrefix:                  s.CommandPrefix,
+		QuietStartup:                   s.QuietStartup,
+		quietStartupSet:                s.quietStartupSet,
+		Packages:                       clonePackageSources(s.Packages),
+		Extensions:                     slices.Clone(s.Extensions),
+		Skills:                         slices.Clone(s.Skills),
+		Prompts:                        slices.Clone(s.Prompts),
+		Themes:                         slices.Clone(s.Themes),
+		SessionDir:                     s.SessionDir,
+		HTTPProxy:                      s.HTTPProxy,
+		WebSocketConnectTimeoutMs:      cloneIntPtr(s.WebSocketConnectTimeoutMs),
+		webSocketConnectTimeoutNull:    s.webSocketConnectTimeoutNull,
+		webSocketConnectTimeoutInvalid: s.webSocketConnectTimeoutInvalid,
+		HTTPIdleTimeoutMs:              cloneIntPtr(s.HTTPIdleTimeoutMs),
+		httpIdleTimeoutInvalid:         s.httpIdleTimeoutInvalid,
+		CacheWarming:                   s.CacheWarming,
+		EnabledModels:                  slices.Clone(s.EnabledModels),
+		DefaultTools:                   slices.Clone(s.DefaultTools),
+		ModelThinkingLevels:            maps.Clone(s.ModelThinkingLevels),
+		LastChangelogVersion:           s.LastChangelogVersion,
+		Compaction:                     cloneCompactionSettings(s.Compaction),
+		BranchSummary:                  cloneBranchSummary(s.BranchSummary),
+		DoubleEscapeAction:             s.DoubleEscapeAction,
+		TreeFilterMode:                 s.TreeFilterMode,
+		DefaultProjectTrust:            s.DefaultProjectTrust,
+		SteeringMode:                   s.SteeringMode,
+		FollowUpMode:                   s.FollowUpMode,
+		TuiMode:                        s.TuiMode,
+		FullscreenExitOutput:           s.FullscreenExitOutput,
+		FullscreenScrollbar:            s.FullscreenScrollbar,
+		FullscreenCopyOnSelect:         cloneBoolPtr(s.FullscreenCopyOnSelect),
+		MaskSecretInput:                cloneBoolPtr(s.MaskSecretInput),
+		CollapseChangelog:              s.CollapseChangelog,
+		collapseChangelogSet:           s.collapseChangelogSet,
+		ShowCacheMissNotices:           s.ShowCacheMissNotices,
+		showCacheMissNoticesSet:        s.showCacheMissNoticesSet,
+		EnableSkillCommands:            cloneBoolPtr(s.EnableSkillCommands),
+		EnableInstallTelemetry:         cloneBoolPtr(s.EnableInstallTelemetry),
+		EnableAnalytics:                cloneBoolPtr(s.EnableAnalytics),
+		TrackingID:                     s.TrackingID,
+		Retry:                          cloneRetrySettings(s.Retry),
+		ShowImages:                     cloneBoolPtr(s.ShowImages),
+		ImageWidthCells:                s.ImageWidthCells,
+		BlockImages:                    s.BlockImages,
+		blockImagesSet:                 s.blockImagesSet,
+		ImageAutoResize:                cloneBoolPtr(s.ImageAutoResize),
+		Transport:                      s.Transport,
+		ShowHardwareCursor:             cloneBoolPtr(s.ShowHardwareCursor),
+		EditorPaddingX:                 cloneIntPtr(s.EditorPaddingX),
+		OutputPad:                      cloneIntPtr(s.OutputPad),
+		ExternalEditor:                 s.ExternalEditor,
+		AutocompleteMaxVisible:         cloneIntPtr(s.AutocompleteMaxVisible),
+		ClearOnShrink:                  cloneBoolPtr(s.ClearOnShrink),
+		ShowTerminalProgress:           cloneBoolPtr(s.ShowTerminalProgress),
+		terminalHyperlinks:             slices.Clone(s.terminalHyperlinks),
+		terminalImages:                 slices.Clone(s.terminalImages),
+		terminalTrueColor:              slices.Clone(s.terminalTrueColor),
+		ThinkingBudgets:                cloneThinkingBudgets(s.ThinkingBudgets),
+		NpmCommand:                     slices.Clone(s.NpmCommand),
+		Markdown:                       cloneMarkdownSettings(s.Markdown),
+		Warnings:                       cloneWarningSettings(s.Warnings),
 	}
+}
+
+func (s Settings) themeSetting() *string {
+	if s.Theme == "" && !s.themeEmpty {
+		return nil
+	}
+	return new(s.Theme)
 }
 
 // MarshalJSON emits upstream's settings wire shape while preserving pig's
 // internal flattened representation.
 func (s Settings) MarshalJSON() ([]byte, error) {
 	w := settingsWire{
-		LastChangelogVersion:   s.LastChangelogVersion,
-		DefaultProvider:        s.DefaultProvider,
-		DefaultModel:           s.DefaultModel,
-		DefaultThinkingLevel:   s.DefaultThinkingLevel,
-		Transport:              s.Transport,
-		SteeringMode:           s.SteeringMode,
-		FollowUpMode:           s.FollowUpMode,
-		TuiMode:                s.TuiMode,
-		FullscreenExitOutput:   s.FullscreenExitOutput,
-		FullscreenScrollbar:    s.FullscreenScrollbar,
-		FullscreenCopyOnSelect: s.FullscreenCopyOnSelect,
-		MaskSecretInput:        s.MaskSecretInput,
-		Theme:                  s.Theme,
-		Compaction:             s.Compaction,
-		Retry:                  s.Retry,
-		ShellPath:              s.ShellPath,
-		NpmCommand:             s.NpmCommand,
-		EnableInstallTelemetry: s.EnableInstallTelemetry,
-		EnableAnalytics:        s.EnableAnalytics,
-		TrackingID:             s.TrackingID,
-		Packages:               s.Packages,
-		Extensions:             s.Extensions,
-		Skills:                 s.Skills,
-		Prompts:                s.Prompts,
-		Themes:                 s.Themes,
-		EnableSkillCommands:    s.EnableSkillCommands,
-		EnabledModels:          s.EnabledModels,
-		DefaultTools:           s.DefaultTools,
-		ModelThinkingLevels:    s.ModelThinkingLevels,
-		DoubleEscapeAction:     s.DoubleEscapeAction,
-		TreeFilterMode:         s.TreeFilterMode,
-		DefaultProjectTrust:    s.DefaultProjectTrust,
-		ThinkingBudgets:        s.ThinkingBudgets,
-		EditorPaddingX:         s.EditorPaddingX,
-		OutputPad:              s.OutputPad,
-		ExternalEditor:         s.ExternalEditor,
-		AutocompleteMaxVisible: s.AutocompleteMaxVisible,
-		ShowHardwareCursor:     s.ShowHardwareCursor,
-		Markdown:               s.Markdown,
-		Warnings:               s.Warnings,
-		SessionDir:             s.SessionDir,
-		HTTPIdleTimeoutMs:      httpIdleTimeoutWire(s),
-		CacheWarming:           s.CacheWarming,
+		LastChangelogVersion:      s.LastChangelogVersion,
+		DefaultProvider:           s.DefaultProvider,
+		DefaultModel:              s.DefaultModel,
+		DefaultThinkingLevel:      s.DefaultThinkingLevel,
+		Transport:                 s.Transport,
+		SteeringMode:              s.SteeringMode,
+		FollowUpMode:              s.FollowUpMode,
+		TuiMode:                   s.TuiMode,
+		FullscreenExitOutput:      s.FullscreenExitOutput,
+		FullscreenScrollbar:       s.FullscreenScrollbar,
+		FullscreenCopyOnSelect:    s.FullscreenCopyOnSelect,
+		MaskSecretInput:           s.MaskSecretInput,
+		Theme:                     s.themeSetting(),
+		Compaction:                s.Compaction,
+		Retry:                     s.Retry,
+		ShellPath:                 s.ShellPath,
+		NpmCommand:                s.NpmCommand,
+		EnableInstallTelemetry:    s.EnableInstallTelemetry,
+		EnableAnalytics:           s.EnableAnalytics,
+		TrackingID:                s.TrackingID,
+		Packages:                  s.Packages,
+		Extensions:                s.Extensions,
+		Skills:                    s.Skills,
+		Prompts:                   s.Prompts,
+		Themes:                    s.Themes,
+		EnableSkillCommands:       s.EnableSkillCommands,
+		EnabledModels:             s.EnabledModels,
+		DefaultTools:              s.DefaultTools,
+		ModelThinkingLevels:       s.ModelThinkingLevels,
+		DoubleEscapeAction:        s.DoubleEscapeAction,
+		TreeFilterMode:            s.TreeFilterMode,
+		DefaultProjectTrust:       s.DefaultProjectTrust,
+		ThinkingBudgets:           s.ThinkingBudgets,
+		EditorPaddingX:            s.EditorPaddingX,
+		OutputPad:                 s.OutputPad,
+		ExternalEditor:            s.ExternalEditor,
+		AutocompleteMaxVisible:    s.AutocompleteMaxVisible,
+		ShowHardwareCursor:        s.ShowHardwareCursor,
+		Markdown:                  s.Markdown,
+		Warnings:                  s.Warnings,
+		SessionDir:                s.SessionDir,
+		HTTPProxy:                 s.HTTPProxy,
+		WebSocketConnectTimeoutMs: webSocketConnectTimeoutWire(s),
+		HTTPIdleTimeoutMs:         httpIdleTimeoutWire(s),
+		CacheWarming:              s.CacheWarming,
 	}
 	if s.hideThinkingBlockSet {
 		v := s.HideThinkingBlock
@@ -919,6 +961,9 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 			delete(rawRetry, "maxDelayMs")
 		}
 	}
+	// Decoding drops a mistyped theme, so record its presence first.
+	rawTheme, themePresent := legacy["theme"]
+	_, themeIsString := rawTheme.(string)
 	w, err := decodeSettingsWire(legacy)
 	if err != nil {
 		return err
@@ -935,7 +980,12 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 	s.FullscreenScrollbar = w.FullscreenScrollbar
 	s.FullscreenCopyOnSelect = w.FullscreenCopyOnSelect
 	s.MaskSecretInput = w.MaskSecretInput
-	s.Theme = w.Theme
+	s.Theme = ""
+	s.themeEmpty = w.Theme != nil && *w.Theme == ""
+	s.themeNonString = themePresent && !themeIsString
+	if w.Theme != nil {
+		s.Theme = *w.Theme
+	}
 	s.Compaction = w.Compaction
 	if w.BranchSummary != nil {
 		s.BranchSummary = &BranchSummaryConfig{}
@@ -1025,6 +1075,19 @@ func (s *Settings) UnmarshalJSON(data []byte) error {
 	s.Markdown = w.Markdown
 	s.Warnings = w.Warnings
 	s.SessionDir = w.SessionDir
+	s.HTTPProxy = w.HTTPProxy
+	s.webSocketConnectTimeoutNull = false
+	if value, present := legacy["websocketConnectTimeoutMs"]; present && value == nil {
+		s.webSocketConnectTimeoutNull = true
+	}
+	s.WebSocketConnectTimeoutMs, s.webSocketConnectTimeoutInvalid = nil, nil
+	if w.WebSocketConnectTimeoutMs != nil {
+		if timeout, ok := parseHTTPIdleTimeoutMs(w.WebSocketConnectTimeoutMs); ok {
+			s.WebSocketConnectTimeoutMs = &timeout
+		} else {
+			s.webSocketConnectTimeoutInvalid = w.WebSocketConnectTimeoutMs
+		}
+	}
 	s.HTTPIdleTimeoutMs, s.httpIdleTimeoutInvalid = nil, nil
 	if w.HTTPIdleTimeoutMs != nil {
 		if timeoutMs, ok := parseHTTPIdleTimeoutMs(w.HTTPIdleTimeoutMs); ok {
@@ -1172,12 +1235,12 @@ func (s Settings) GetEditorPaddingX() int {
 	return *s.EditorPaddingX
 }
 
-// GetOutputPad returns horizontal output padding. Range: 0-1. Default: 1.
+// GetOutputPad returns zero only for an explicit zero setting, and one otherwise.
 func (s Settings) GetOutputPad() int {
-	if s.OutputPad == nil {
-		return 1
+	if s.OutputPad != nil && *s.OutputPad == 0 {
+		return 0
 	}
-	return max(0, min(1, *s.OutputPad))
+	return 1
 }
 
 // GetAutocompleteMaxVisible returns max autocomplete items. Default: 5.
@@ -1285,6 +1348,22 @@ type SettingsManager struct {
 	globalLoadErr  error
 	projectLoadErr error
 	errors         []SettingsError
+	memory         *memorySettingsStorage
+}
+
+type memorySettingsStorage struct {
+	global  Settings
+	project Settings
+}
+
+// NewInMemorySettingsManager creates an independent settings manager without file I/O.
+// Ports packages/coding-agent/src/core/settings-manager.ts:403-410.
+func NewInMemorySettingsManager(settings Settings) *SettingsManager {
+	initial := cloneSettings(settings)
+	return &SettingsManager{
+		global: cloneSettings(initial), merged: cloneSettings(initial), projectTrusted: true,
+		memory: &memorySettingsStorage{global: initial},
+	}
 }
 
 // SettingsError mirrors upstream settings-manager.ts load/write diagnostics.
@@ -1309,51 +1388,69 @@ func NewSettingsManagerWithProjectTrust(cwd, agentDir string, projectTrusted boo
 	return sm
 }
 
-// DefaultAgentDir returns the default <ConfigRoot>/agent directory.
+// DefaultAgentDir returns Pi's configured agent directory in shared mode, or <ConfigRoot>/agent otherwise.
 func DefaultAgentDir() string {
+	if UsePiDirs() {
+		if configured := os.Getenv("PI_CODING_AGENT_DIR"); configured != "" {
+			return ExpandTildePath(configured)
+		}
+		home, _ := os.UserHomeDir()
+		return filepath.Join(home, ".pi", "agent")
+	}
 	return filepath.Join(ConfigRoot(), "agent")
 }
 
 // AgentDir returns the global settings directory backing this manager.
 func (sm *SettingsManager) AgentDir() string {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
 	return sm.agentDir
 }
 
 // CWD returns the project directory backing this manager.
 func (sm *SettingsManager) CWD() string {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
 	return sm.cwd
 }
 
-// Load reads settings from disk.
-// Errors recorded earlier stay until DrainErrors, as upstream reload keeps
-// them.
+// Load reloads the backing settings layers and discards transient overrides. Previously recorded errors remain until DrainErrors.
 func (sm *SettingsManager) Load() {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
-	globalPath := filepath.Join(sm.agentDir, "settings.json")
-	if global, err := loadSettingsFile(globalPath); err == nil {
-		sm.global = global
-		sm.globalLoadErr = nil
-	} else {
-		sm.globalLoadErr = err
-		if !errors.Is(err, os.ErrNotExist) {
-			sm.errors = append(sm.errors, SettingsError{Scope: "global", Path: globalPath, Error: err})
-		}
-	}
-	if !sm.projectTrusted {
+	// upstream: packages/coding-agent/src/core/settings-manager.ts:reload
+	if sm.memory != nil {
+		sm.global = cloneSettings(sm.memory.global)
 		sm.project = Settings{}
-		sm.projectLoadErr = nil
-		sm.merged = cloneSettings(sm.global)
-		return
-	}
-	projectPath := filepath.Join(sm.cwd, CONFIG_DIR_NAME, "settings.json")
-	if project, err := loadSettingsFile(projectPath); err == nil {
-		sm.project = project
-		sm.projectLoadErr = nil
+		if sm.projectTrusted {
+			sm.project = cloneSettings(sm.memory.project)
+		}
 	} else {
-		sm.projectLoadErr = err
-		if !errors.Is(err, os.ErrNotExist) {
-			sm.errors = append(sm.errors, SettingsError{Scope: "project", Path: projectPath, Error: err})
+		globalPath := filepath.Join(sm.agentDir, "settings.json")
+		if global, err := loadSettingsFile(globalPath); err == nil {
+			sm.global = global
+			sm.globalLoadErr = nil
+		} else {
+			sm.globalLoadErr = err
+			if !errors.Is(err, os.ErrNotExist) {
+				sm.errors = append(sm.errors, SettingsError{Scope: "global", Path: globalPath, Error: err})
+			}
+		}
+		if !sm.projectTrusted {
+			sm.project = Settings{}
+			sm.projectLoadErr = nil
+			sm.merged = cloneSettings(sm.global)
+			return
+		}
+		projectPath := filepath.Join(ProjectConfigDir(sm.cwd), "settings.json")
+		if project, err := loadSettingsFile(projectPath); err == nil {
+			sm.project = project
+			sm.projectLoadErr = nil
+		} else {
+			sm.projectLoadErr = err
+			if !errors.Is(err, os.ErrNotExist) {
+				sm.errors = append(sm.errors, SettingsError{Scope: "project", Path: projectPath, Error: err})
+			}
 		}
 	}
 	sm.merged = mergeSettings(sm.global, sm.project)
@@ -1366,17 +1463,15 @@ func (sm *SettingsManager) Get() Settings {
 	return cloneSettings(sm.merged)
 }
 
-// Reload re-reads settings from disk. Call after the user edits settings
-// externally, or after UpdateGlobal to refresh the in-memory view.
-// Mirrors upstream SettingsManager reload semantics.
+// Reload refreshes the merged view from file or memory storage after earlier writes finish.
 func (sm *SettingsManager) Reload() { sm.Load() }
 
-// DrainErrors returns accumulated load/write diagnostics and clears them.
+// DrainErrors returns accumulated load/write diagnostics, or an empty list, and clears them.
 func (sm *SettingsManager) DrainErrors() []SettingsError {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
 	if len(sm.errors) == 0 {
-		return nil
+		return []SettingsError{}
 	}
 	out := append([]SettingsError(nil), sm.errors...)
 	sm.errors = nil
@@ -1404,12 +1499,30 @@ func (sm *SettingsManager) IsProjectTrusted() bool {
 	return sm.projectTrusted
 }
 
-// SetProjectTrusted changes project-settings access and reloads both layers.
+// SetProjectTrusted changes project-settings access without reloading global settings. Unchanged trust preserves the current merged view.
+// Ports packages/coding-agent/src/core/settings-manager.ts:515-537.
 func (sm *SettingsManager) SetProjectTrusted(trusted bool) {
 	sm.mu.Lock()
+	defer sm.mu.Unlock()
+	if sm.projectTrusted == trusted {
+		return
+	}
 	sm.projectTrusted = trusted
-	sm.mu.Unlock()
-	sm.Load()
+	sm.project = Settings{}
+	sm.projectLoadErr = nil
+	if trusted {
+		if sm.memory != nil {
+			sm.project = cloneSettings(sm.memory.project)
+		} else {
+			path := filepath.Join(ProjectConfigDir(sm.cwd), "settings.json")
+			project, err := loadSettingsFile(path)
+			sm.project, sm.projectLoadErr = project, err
+			if err != nil {
+				sm.errors = append(sm.errors, SettingsError{Scope: "project", Path: path, Error: err})
+			}
+		}
+	}
+	sm.merged = mergeSettings(sm.global, sm.project)
 }
 
 // ApplyOverrides applies non-persistent overrides on top of the merged settings.
@@ -1420,63 +1533,67 @@ func (sm *SettingsManager) ApplyOverrides(overrides Settings) {
 	sm.merged = mergeSettings(sm.merged, overrides)
 }
 
+// ThemeOverride returns ApplyOverrides input that selects theme, as Pi's applyOverrides({theme}). An empty name is a selection, not an omitted key.
+func ThemeOverride(theme string) Settings {
+	return Settings{Theme: theme, themeEmpty: theme == ""}
+}
+
 // Flush waits for queued writes. pig writes settings synchronously, so this is a no-op.
 // Mirrors upstream SettingsManager.flush() API for parity.
 func (sm *SettingsManager) Flush() error { return nil }
 
-// GetCompactionSettings returns compaction settings without a model
-// override. Mirrors upstream SettingsManager.getCompactionSettings() called
-// without a model.
-func (sm *SettingsManager) GetCompactionSettings() CompactionConfig {
+// GetCompactionSettings resolves ordinary settings and rejects invalid authored token values.
+func (sm *SettingsManager) GetCompactionSettings() (CompactionConfig, error) {
 	return sm.GetModelCompactionSettings("", "")
 }
 
-// GetModelCompactionSettings returns compaction settings for one model. Each
-// token setting resolves through compaction.modelOverrides["provider/modelID"],
-// then the ordinary setting, then the built-in default. Empty provider and
-// modelID select no override. Mirrors upstream
-// SettingsManager.getCompactionSettings(model).
-func (sm *SettingsManager) GetModelCompactionSettings(provider, modelID string) CompactionConfig {
-	s := sm.Get()
-	result := defaultCompactionConfig
-	if s.Compaction != nil {
-		if s.Compaction.Enabled != nil {
-			result.Enabled = *s.Compaction.Enabled
-		}
-		if s.Compaction.ReserveTokens != nil {
-			result.ReserveTokens = *s.Compaction.ReserveTokens
-		}
-		if s.Compaction.KeepRecentTokens != nil {
-			result.KeepRecentTokens = *s.Compaction.KeepRecentTokens
-		}
+// GetModelCompactionSettings resolves each token field through the exact model override, ordinary setting, and built-in default. Ordinary values are validated before their overrides.
+func (sm *SettingsManager) GetModelCompactionSettings(provider, modelID string) (CompactionConfig, error) {
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	settings := sm.merged.Compaction
+	reserve, err := getCompactionTokenSetting(settings, "reserveTokens", provider, modelID)
+	if err != nil {
+		return CompactionConfig{}, err
 	}
-	if s.Compaction == nil || (provider == "" && modelID == "") {
-		return result
+	recent, err := getCompactionTokenSetting(settings, "keepRecentTokens", provider, modelID)
+	if err != nil {
+		return CompactionConfig{}, err
 	}
-	if override, ok := s.Compaction.ModelOverrides[provider+"/"+modelID]; ok {
-		if override.ReserveTokens != nil {
-			result.ReserveTokens = *override.ReserveTokens
-		}
-		if override.KeepRecentTokens != nil {
-			result.KeepRecentTokens = *override.KeepRecentTokens
-		}
-	}
-	return result
+	return CompactionConfig{Enabled: compactionEnabled(settings), ReserveTokens: reserve, KeepRecentTokens: recent}, nil
 }
 
-// GetCompactionEnabled returns whether auto-compaction is enabled.
+// GetCompactionEnabled returns the global compaction toggle independently of model token validation.
 func (sm *SettingsManager) GetCompactionEnabled() bool {
-	return sm.GetCompactionSettings().Enabled
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	return compactionEnabled(sm.merged.Compaction)
 }
 
-// GetCompactionReserveTokens returns the compaction reserve token count.
-func (sm *SettingsManager) GetCompactionReserveTokens() int {
-	return sm.GetCompactionSettings().ReserveTokens
+func compactionEnabled(s *CompactionSettingsJSON) bool {
+	return s == nil || s.Enabled == nil || *s.Enabled
 }
 
-// GetCompactionKeepRecentTokens returns the recent-token retention count.
-func (sm *SettingsManager) GetCompactionKeepRecentTokens() int {
-	return sm.GetCompactionSettings().KeepRecentTokens
+// GetCompactionReserveTokens resolves and validates the reserve token setting. The optional model is a provider/model-ID pair.
+func (sm *SettingsManager) GetCompactionReserveTokens(model ...string) (int, error) {
+	provider, id := "", ""
+	if len(model) == 2 {
+		provider, id = model[0], model[1]
+	}
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	return getCompactionTokenSetting(sm.merged.Compaction, "reserveTokens", provider, id)
+}
+
+// GetCompactionKeepRecentTokens resolves and validates the retention setting. The optional model is a provider/model-ID pair.
+func (sm *SettingsManager) GetCompactionKeepRecentTokens(model ...string) (int, error) {
+	provider, id := "", ""
+	if len(model) == 2 {
+		provider, id = model[0], model[1]
+	}
+	sm.mu.RLock()
+	defer sm.mu.RUnlock()
+	return getCompactionTokenSetting(sm.merged.Compaction, "keepRecentTokens", provider, id)
 }
 
 // GetBranchSummarySettings returns branch summary settings, applying any
@@ -1706,6 +1823,34 @@ func (sm *SettingsManager) GetProviderRetrySettings() ProviderRetryConfig {
 // GetRetryEnabled returns whether automatic retries are enabled.
 func (sm *SettingsManager) GetRetryEnabled() bool { return sm.GetRetrySettings().Enabled }
 
+// GetWebSocketConnectTimeoutMs returns the optional opening-handshake timeout; zero disables it.
+func (sm *SettingsManager) GetWebSocketConnectTimeoutMs() (*int, error) {
+	s := sm.Get()
+	if s.webSocketConnectTimeoutNull {
+		return nil, fmt.Errorf("Invalid websocketConnectTimeoutMs setting: null")
+	}
+	if s.webSocketConnectTimeoutInvalid != nil {
+		return nil, fmt.Errorf("Invalid websocketConnectTimeoutMs setting: %v", s.webSocketConnectTimeoutInvalid)
+	}
+	if s.WebSocketConnectTimeoutMs == nil {
+		return nil, nil
+	}
+	if *s.WebSocketConnectTimeoutMs < 0 {
+		return nil, fmt.Errorf("Invalid websocketConnectTimeoutMs setting: %v", *s.WebSocketConnectTimeoutMs)
+	}
+	return cloneIntPtr(s.WebSocketConnectTimeoutMs), nil
+}
+
+func webSocketConnectTimeoutWire(s Settings) any {
+	if s.webSocketConnectTimeoutNull {
+		return json.RawMessage("null")
+	}
+	if s.WebSocketConnectTimeoutMs != nil {
+		return *s.WebSocketConnectTimeoutMs
+	}
+	return s.webSocketConnectTimeoutInvalid
+}
+
 // GetHttpIdleTimeoutMs returns the HTTP header/body idle timeout in milliseconds.
 // Default: 300000 (5 minutes). Zero disables the timeout.
 // An unparseable value is an error, as upstream parseTimeoutSetting throws.
@@ -1758,28 +1903,7 @@ func (sm *SettingsManager) GetSessionDir() (string, error) {
 // file:// URL becomes its path through Node's fileURLToPath, whose errors it
 // returns. An empty path stays empty.
 func normalizeSettingsPath(path string) (string, error) {
-	if path == "" {
-		return "", nil
-	}
-	windows := runtime.GOOS == "windows"
-	if windows {
-		path = tools.NormalizeWindowsShellPath(path)
-	}
-	if home, err := os.UserHomeDir(); err == nil && home != "" {
-		if path == "~" {
-			return home, nil
-		}
-		if after, ok := strings.CutPrefix(path, "~/"); ok {
-			return filepath.Join(home, after), nil
-		}
-		if after, ok := strings.CutPrefix(path, `~\`); ok && windows {
-			return filepath.Join(home, after), nil
-		}
-	}
-	if strings.HasPrefix(path, "file://") {
-		return nodeurl.FileURLToPath(path, windows)
-	}
-	return path, nil
+	return resolvepath.Normalize(path)
 }
 
 // GetDefaultProvider returns the configured default provider, or "".
@@ -1788,8 +1912,17 @@ func (sm *SettingsManager) GetDefaultProvider() string { return sm.Get().Default
 // GetDefaultModel returns the configured default model, or "".
 func (sm *SettingsManager) GetDefaultModel() string { return sm.Get().DefaultModel }
 
-// GetTheme returns the configured theme name, or "".
-func (sm *SettingsManager) GetTheme() string { return sm.Get().Theme }
+// GetThemeSetting returns the selected setting, preserving an omitted value separately from an explicitly empty name.
+func (sm *SettingsManager) GetThemeSetting() *string { return sm.Get().themeSetting() }
+
+// GetTheme returns the configured fixed theme name, or "" for an automatic slash-separated theme setting.
+func (sm *SettingsManager) GetTheme() string {
+	theme := sm.GetThemeSetting()
+	if theme == nil || strings.Contains(*theme, "/") {
+		return ""
+	}
+	return *theme
+}
 
 // GetDefaultThinkingLevel returns the configured thinking level, or "".
 func (sm *SettingsManager) GetDefaultThinkingLevel() string { return sm.Get().DefaultThinkingLevel }
@@ -1887,20 +2020,50 @@ func isTruthyTelemetryEnvFlag(value string) bool {
 	}
 }
 
-// GetPackages returns the configured package sources.
-func (sm *SettingsManager) GetPackages() []PackageSource { return sm.Get().Packages }
+// GetPackages returns the configured package sources, or an empty list.
+func (sm *SettingsManager) GetPackages() []PackageSource {
+	packages := sm.Get().Packages
+	if packages == nil {
+		return []PackageSource{}
+	}
+	return packages
+}
 
-// GetExtensionPaths returns the configured extension paths (from settings).
-func (sm *SettingsManager) GetExtensionPaths() []string { return sm.Get().Extensions }
+// GetExtensionPaths returns the configured extension paths, or an empty list.
+func (sm *SettingsManager) GetExtensionPaths() []string {
+	paths := sm.Get().Extensions
+	if paths == nil {
+		return []string{}
+	}
+	return paths
+}
 
-// GetSkillPaths returns the configured skill paths (from settings).
-func (sm *SettingsManager) GetSkillPaths() []string { return sm.Get().Skills }
+// GetSkillPaths returns the configured skill paths, or an empty list.
+func (sm *SettingsManager) GetSkillPaths() []string {
+	paths := sm.Get().Skills
+	if paths == nil {
+		return []string{}
+	}
+	return paths
+}
 
-// GetPromptTemplatePaths returns the configured prompt template paths (from settings).
-func (sm *SettingsManager) GetPromptTemplatePaths() []string { return sm.Get().Prompts }
+// GetPromptTemplatePaths returns the configured prompt template paths, or an empty list.
+func (sm *SettingsManager) GetPromptTemplatePaths() []string {
+	paths := sm.Get().Prompts
+	if paths == nil {
+		return []string{}
+	}
+	return paths
+}
 
-// GetThemePaths returns the configured theme paths (from settings).
-func (sm *SettingsManager) GetThemePaths() []string { return sm.Get().Themes }
+// GetThemePaths returns the configured theme paths, or an empty list.
+func (sm *SettingsManager) GetThemePaths() []string {
+	paths := sm.Get().Themes
+	if paths == nil {
+		return []string{}
+	}
+	return paths
+}
 
 // GetThinkingBudgets returns custom thinking budgets, or nil.
 func (sm *SettingsManager) GetThinkingBudgets() *ThinkingBudgetsSettings {
@@ -1978,8 +2141,27 @@ func (sm *SettingsManager) GetEditorPaddingX() int { return sm.Get().GetEditorPa
 // GetOutputPad returns horizontal chat output padding.
 func (sm *SettingsManager) GetOutputPad() int { return sm.Get().GetOutputPad() }
 
-// GetExternalEditorCommand returns the configured external editor command.
-func (sm *SettingsManager) GetExternalEditorCommand() string { return sm.Get().ExternalEditor }
+// GetExternalEditorCommand resolves a nonblank configured command, VISUAL, EDITOR, then the platform default, without trimming the selected command.
+func (sm *SettingsManager) GetExternalEditorCommand() string {
+	return resolveExternalEditorCommand(sm.Get().ExternalEditor, os.Getenv("VISUAL"), os.Getenv("EDITOR"), runtime.GOOS)
+}
+
+// upstream: packages/coding-agent/src/core/settings-manager.ts:getExternalEditorCommand
+func resolveExternalEditorCommand(configured, visual, editor, goos string) string {
+	if jsTrim(configured) != "" {
+		return configured
+	}
+	if visual != "" {
+		return visual
+	}
+	if editor != "" {
+		return editor
+	}
+	if goos == "windows" {
+		return "notepad"
+	}
+	return "nano"
+}
 
 // GetAutocompleteMaxVisible returns max autocomplete items visible.
 func (sm *SettingsManager) GetAutocompleteMaxVisible() int {
@@ -2028,7 +2210,7 @@ func (sm *SettingsManager) SetFollowUpMode(mode string) error {
 	return sm.UpdateGlobal(func(s *Settings) { s.FollowUpMode = mode })
 }
 
-// SetTheme sets the default theme.
+// SetTuiMode sets the terminal UI mode.
 func (sm *SettingsManager) SetTuiMode(mode string) error {
 	return sm.UpdateGlobal(func(s *Settings) { s.TuiMode = mode })
 }
@@ -2054,8 +2236,13 @@ func (sm *SettingsManager) SetMermaidRenderingMode(mode string) error {
 	})
 }
 
+// SetTheme stores an explicit default theme; an empty name is not an omitted setting.
 func (sm *SettingsManager) SetTheme(theme string) error {
-	return sm.UpdateGlobal(func(s *Settings) { s.Theme = theme })
+	return sm.UpdateGlobal(func(s *Settings) {
+		s.Theme = theme
+		s.themeEmpty = theme == ""
+		s.themeNonString = false
+	})
 }
 
 // SetDefaultThinkingLevel sets the default thinking level.
@@ -2236,14 +2423,15 @@ func (sm *SettingsManager) SetWarnings(warnings WarningSettings) error {
 	return sm.UpdateGlobal(func(s *Settings) { s.Warnings = &warnings })
 }
 
-// GlobalPath returns the global settings file path.
+// GlobalPath returns the global settings file path, or empty for memory storage.
 func (sm *SettingsManager) GlobalPath() string {
+	if sm.memory != nil {
+		return ""
+	}
 	return filepath.Join(sm.agentDir, "settings.json")
 }
 
-// UpdateGlobal applies fn to the global settings, persists the result to
-// <agentDir>/settings.json, and reloads the merged view.
-// Mirrors upstream SettingsManager.updateSettings (settings-manager.ts).
+// UpdateGlobal applies fn, saves to the selected backing storage, and refreshes the merged view.
 func (sm *SettingsManager) UpdateGlobal(fn func(*Settings)) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -2252,6 +2440,11 @@ func (sm *SettingsManager) UpdateGlobal(fn func(*Settings)) error {
 	}
 	before := cloneSettings(sm.global)
 	fn(&sm.global)
+	if sm.memory != nil {
+		sm.memory.global = cloneSettings(sm.global)
+		sm.merged = mergeSettings(sm.global, sm.project)
+		return nil
+	}
 	path := filepath.Join(sm.agentDir, "settings.json")
 	if err := saveSettingsPatch(path, before, sm.global); err != nil {
 		sm.errors = append(sm.errors, SettingsError{Scope: "global", Path: path, Error: err})
@@ -2261,8 +2454,7 @@ func (sm *SettingsManager) UpdateGlobal(fn func(*Settings)) error {
 	return nil
 }
 
-// UpdateProject applies fn to the project settings, persists the result to
-// <cwd>/.pig/settings.json, and reloads the merged view.
+// UpdateProject applies fn to trusted project settings, saves to the selected storage, and refreshes the merged view.
 func (sm *SettingsManager) UpdateProject(fn func(*Settings)) error {
 	sm.mu.Lock()
 	defer sm.mu.Unlock()
@@ -2274,7 +2466,12 @@ func (sm *SettingsManager) UpdateProject(fn func(*Settings)) error {
 	}
 	before := cloneSettings(sm.project)
 	fn(&sm.project)
-	path := filepath.Join(sm.cwd, CONFIG_DIR_NAME, "settings.json")
+	if sm.memory != nil {
+		sm.memory.project = cloneSettings(sm.project)
+		sm.merged = mergeSettings(sm.global, sm.project)
+		return nil
+	}
+	path := filepath.Join(ProjectConfigDir(sm.cwd), "settings.json")
 	if err := saveSettingsPatch(path, before, sm.project); err != nil {
 		sm.errors = append(sm.errors, SettingsError{Scope: "project", Path: path, Error: err})
 		return err
@@ -2283,14 +2480,14 @@ func (sm *SettingsManager) UpdateProject(fn func(*Settings)) error {
 	return nil
 }
 
-// SetPackages persists the global package source list.
+// SetPackages persists the global package source list, including an explicitly empty array.
 func (sm *SettingsManager) SetPackages(pkgs []PackageSource) error {
 	return sm.UpdateGlobal(func(s *Settings) {
 		s.Packages = pkgs
 	})
 }
 
-// SetProjectPackages persists the project package source list.
+// SetProjectPackages persists the project package source list, including an explicitly empty array.
 func (sm *SettingsManager) SetProjectPackages(pkgs []PackageSource) error {
 	return sm.UpdateProject(func(s *Settings) {
 		s.Packages = pkgs
@@ -2329,12 +2526,23 @@ func (sm *SettingsManager) SetProjectThemePaths(paths []string) error {
 	return sm.UpdateProject(func(s *Settings) { s.Themes = paths })
 }
 
-// GlobalSettingsPath returns the path to the global settings file.
-func (sm *SettingsManager) GlobalSettingsPath() string {
-	return filepath.Join(sm.agentDir, "settings.json")
-}
+// GlobalSettingsPath returns the global settings file path, or empty for memory storage.
+func (sm *SettingsManager) GlobalSettingsPath() string { return sm.GlobalPath() }
 
-func loadSettingsFile(path string) (Settings, error) {
+func loadSettingsFile(path string) (result Settings, err error) {
+	if _, err := os.Stat(path); errors.Is(err, os.ErrNotExist) {
+		return Settings{}, nil
+	} else if err != nil {
+		return Settings{}, err
+	}
+	release, locked, err := acquireSyncLockWithRetry(path)
+	if err != nil {
+		return Settings{}, err
+	}
+	if !locked {
+		return Settings{}, errors.New("failed to acquire settings lock")
+	}
+	defer func() { err = errors.Join(err, release()) }()
 	data, err := os.ReadFile(path)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -2342,8 +2550,42 @@ func loadSettingsFile(path string) (Settings, error) {
 		}
 		return Settings{}, err
 	}
+	if len(data) == 0 {
+		return Settings{}, nil
+	}
+	return parseSettingsJSON(text.StripBomBytes(data))
+}
+
+// parseSettingsJSON applies JSON.parse and migrateSettings to settings file content: a syntax error carries V8's
+// JSON.parse message, an array reads as no settings, and any other non-object value fails migrateSettings' first
+// `in` test.
+func parseSettingsJSON(data []byte) (Settings, error) {
+	if err := jsonparse.Validate(data); err != nil {
+		return Settings{}, err
+	}
+	switch trimmed := bytes.TrimLeft(data, " \t\r\n"); {
+	case len(trimmed) > 0 && trimmed[0] == '[':
+		return Settings{}, nil
+	case len(trimmed) > 0 && trimmed[0] != '{':
+		var value any
+		if err := json.Unmarshal(data, &value); err != nil {
+			return Settings{}, err
+		}
+		operand := "null"
+		switch v := value.(type) {
+		case float64:
+			if v == 0 {
+				operand = "0"
+			} else {
+				operand = tools.FormatJSNumber(v)
+			}
+		case string, bool:
+			operand = jsStringValue(v)
+		}
+		return Settings{}, fmt.Errorf("Cannot use 'in' operator to search for 'queueMode' in %s", operand)
+	}
 	var s Settings
-	if err := json.Unmarshal(text.StripBomBytes(data), &s); err != nil {
+	if err := json.Unmarshal(data, &s); err != nil {
 		return Settings{}, err
 	}
 	return s, nil
@@ -2353,8 +2595,7 @@ func saveSettingsPatch(path string, before, after Settings) (err error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return err
 	}
-	lock := flock.New(path + ".lock")
-	locked, err := acquireSyncLockWithRetry(lock)
+	release, locked, err := acquireSyncLockWithRetry(path)
 	if err != nil {
 		return fmt.Errorf("acquire settings lock: %w", err)
 	}
@@ -2362,7 +2603,7 @@ func saveSettingsPatch(path string, before, after Settings) (err error) {
 		return errors.New("failed to acquire settings lock")
 	}
 	defer func() {
-		if unlockErr := lock.Unlock(); unlockErr != nil {
+		if unlockErr := release(); unlockErr != nil {
 			err = errors.Join(err, fmt.Errorf("release settings lock: %w", unlockErr))
 		}
 	}()
@@ -2391,7 +2632,7 @@ func saveSettingsPatch(path string, before, after Settings) (err error) {
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(path, append(encoded, '\n'), 0o644)
+	return os.WriteFile(path, encoded, 0o644)
 }
 
 func settingsJSONMap(settings Settings) (map[string]json.RawMessage, error) {
@@ -2473,8 +2714,10 @@ func mergeSettings(global, project Settings) Settings {
 	if project.DefaultThinkingLevel != "" {
 		m.DefaultThinkingLevel = project.DefaultThinkingLevel
 	}
-	if project.Theme != "" {
+	if project.Theme != "" || project.themeEmpty || project.themeNonString {
 		m.Theme = project.Theme
+		m.themeEmpty = project.themeEmpty
+		m.themeNonString = project.themeNonString
 	}
 	if project.ShellPath != "" {
 		m.ShellPath = project.ShellPath
@@ -2487,6 +2730,11 @@ func mergeSettings(global, project Settings) Settings {
 	}
 	if project.SessionDir != "" {
 		m.SessionDir = project.SessionDir
+	}
+	if project.WebSocketConnectTimeoutMs != nil || project.webSocketConnectTimeoutInvalid != nil || project.webSocketConnectTimeoutNull {
+		m.webSocketConnectTimeoutNull = project.webSocketConnectTimeoutNull
+		m.WebSocketConnectTimeoutMs = cloneIntPtr(project.WebSocketConnectTimeoutMs)
+		m.webSocketConnectTimeoutInvalid = project.webSocketConnectTimeoutInvalid
 	}
 	if project.HTTPIdleTimeoutMs != nil || project.httpIdleTimeoutInvalid != nil {
 		m.httpIdleTimeoutInvalid = project.httpIdleTimeoutInvalid
@@ -2545,12 +2793,12 @@ func mergeSettings(global, project Settings) Settings {
 		if project.Compaction.Enabled != nil {
 			m.Compaction.Enabled = cloneBoolPtr(project.Compaction.Enabled)
 		}
-		if project.Compaction.ReserveTokens != nil {
-			m.Compaction.ReserveTokens = cloneIntPtr(project.Compaction.ReserveTokens)
+		if m.Compaction.extra == nil {
+			m.Compaction.extra = make(map[string]json.RawMessage)
 		}
-		if project.Compaction.KeepRecentTokens != nil {
-			m.Compaction.KeepRecentTokens = cloneIntPtr(project.Compaction.KeepRecentTokens)
-		}
+		maps.Copy(m.Compaction.extra, project.Compaction.extra)
+		mergeCompactionNumber(&m.Compaction.ReserveTokens, m.Compaction.extra, "reserveTokens", project.Compaction.ReserveTokens, project.Compaction.extra)
+		mergeCompactionNumber(&m.Compaction.KeepRecentTokens, m.Compaction.extra, "keepRecentTokens", project.Compaction.KeepRecentTokens, project.Compaction.extra)
 		mergeCompactionModelOverrides(m.Compaction, project.Compaction.ModelOverrides)
 	}
 	if project.Retry != nil {

@@ -9,21 +9,7 @@ import (
 	"github.com/alecthomas/chroma/v2/lexers"
 )
 
-// HighlightCode highlights a code string using the given language hint and
-// returns the result split on newlines. Each returned line has the language's
-// syntax tokens wrapped in the theme's syntax* foreground colors.
-//
-// Mirrors upstream
-// .upstream/current/packages/coding-agent/src/modes/interactive/theme/theme.ts::highlightCode
-// (1099-1118 in v0.69.0). Upstream uses cli-highlight (a Node binding to
-// highlight.js); pig uses chroma (pure-Go lexer set covering 200+
-// languages). The behaviour contract is the same: return one styled line
-// per source line, or fall back to a single-color render when no lexer is
-// available.
-//
-// When lang is empty or unrecognized, returns each line wrapped in
-// SyntaxComment-ish "code block" colour (matches upstream's mdCodeBlock
-// fallback path).
+// HighlightCode highlights code with the language's syntax, diff, and metadata theme colors and returns one styled line per source line. An empty or unrecognized language uses the code-block color.
 func HighlightCode(code, lang string) []string {
 	t := ActiveTheme()
 	key := hlKey{lang: lang, code: code}
@@ -95,16 +81,12 @@ func highlightCodeUncached(code, lang string, t *Theme) []string {
 	}
 
 	var buf strings.Builder
-	for tok := it(); tok != chroma.EOF; tok = it() {
-		fg := syntaxColorFor(tok.Type, t)
-		v := tok.Value
+	// emit writes v in fg; a token spanning lines resets the color at each line break so a multi-line string doesn't bleed into the next line's gutter / surrounding chrome.
+	emit := func(fg, v string) {
 		if fg == "" {
 			buf.WriteString(v)
-			continue
+			return
 		}
-		// Tokens may span multiple lines; we still want each line to
-		// reset color at the line break so a multi-line string doesn't
-		// bleed into the next line's gutter / surrounding chrome.
 		segs := strings.Split(v, "\n")
 		for i, seg := range segs {
 			if seg != "" {
@@ -117,20 +99,68 @@ func highlightCodeUncached(code, lang string, t *Theme) []string {
 			}
 		}
 	}
-	return strings.Split(buf.String(), "\n")
+	// A string interpolation is an unmapped nested scope: its unstyled tokens inherit the string color as one segment, and a styled token (number, keyword) ends that segment.
+	// upstream: packages/coding-agent/src/utils/syntax-highlight.ts:renderHighlightedHtml
+	depth := 0
+	var subst strings.Builder
+	flushSubst := func() {
+		if subst.Len() > 0 {
+			emit(t.SyntaxString, subst.String())
+			subst.Reset()
+		}
+	}
+	for tok := it(); tok != chroma.EOF; tok = it() {
+		fg := syntaxColorFor(tok.Type, t)
+		v := tok.Value
+		if tok.Type == chroma.LiteralStringInterpol && (depth > 0 || strings.HasSuffix(v, "{") || strings.HasSuffix(v, `\(`)) {
+			// Coalesce merges adjacent delimiters ("}${", "}}", ")\(") and some lexers fold a conversion into the closer ("!r}", "=}"), so count every delimiter in the value.
+			for _, r := range v {
+				switch r {
+				case '{', '(':
+					depth++
+				case '}', ')':
+					if depth > 0 {
+						depth--
+					}
+				}
+			}
+			subst.WriteString(v)
+			if depth == 0 {
+				flushSubst()
+			}
+			continue
+		}
+		if depth > 0 {
+			if fg == "" {
+				subst.WriteString(v)
+				continue
+			}
+			flushSubst()
+		}
+		emit(fg, v)
+	}
+	flushSubst()
+	highlighted := buf.String()
+	// Chroma's EnsureNL lexers may emit their synthetic final newline. It is lexer input, not a source line for the caller to render.
+	if lexer.Config().EnsureNL && !strings.HasSuffix(code, "\n") {
+		highlighted = strings.TrimSuffix(highlighted, "\n")
+	}
+	return strings.Split(highlighted, "\n")
 }
 
-// syntaxColorFor maps a chroma TokenType to a theme syntax color. We collapse
-// chroma's ~140 token types onto the 9 syntax* tokens upstream defines
-// (comment / keyword / function / variable / string / number / type /
-// operator / punctuation). This matches upstream's cli-highlight palette
-// which only colors those nine groups.
-//
-// Note: chroma's `Category()` returns the top-level group (Keyword, Name,
-// Literal, …) so we check Category for those that are uniform, and
-// SubCategory for the Literal family where the relevant distinction
-// (String vs Number) lives.
+// syntaxColorFor maps lexer categories to Pi's syntax, diff, metadata, and tag-name colors.
+// upstream: packages/coding-agent/src/modes/interactive/theme/theme.ts:buildCliHighlightTheme
 func syntaxColorFor(t chroma.TokenType, theme *Theme) string {
+	switch t {
+	case chroma.GenericInserted:
+		return theme.ToolDiffAdded
+	case chroma.GenericDeleted:
+		return theme.ToolDiffRemoved
+	case chroma.NameDecorator:
+		return theme.Muted
+	case chroma.NameTag:
+		return theme.SyntaxKeyword
+	}
 	switch t.SubCategory() {
 	case chroma.LiteralString:
 		return theme.SyntaxString
@@ -154,7 +184,7 @@ func syntaxColorFor(t chroma.TokenType, theme *Theme) string {
 		switch t {
 		case chroma.NameFunction, chroma.NameFunctionMagic, chroma.NameBuiltin:
 			return theme.SyntaxFunction
-		case chroma.NameClass, chroma.NameNamespace, chroma.NameDecorator:
+		case chroma.NameClass, chroma.NameNamespace:
 			return theme.SyntaxType
 		case chroma.NameVariable, chroma.NameVariableClass, chroma.NameVariableGlobal,
 			chroma.NameVariableInstance, chroma.NameAttribute:

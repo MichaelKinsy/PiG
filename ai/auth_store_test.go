@@ -2,9 +2,11 @@ package ai
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -53,7 +55,8 @@ func TestReadOnlyAuthStorageDoesNotCreateFilesOrRunCommands(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []CredentialInfo{{"cmd", CredentialAPIKey}, {"codex", CredentialOAuth}, {"env", CredentialAPIKey}}
+	// Pi's Object.entries retains the file's cmd, env, codex order.
+	want := []CredentialInfo{{"cmd", CredentialAPIKey}, {"env", CredentialAPIKey}, {"codex", CredentialOAuth}}
 	if len(infos) != len(want) {
 		t.Fatalf("List = %+v", infos)
 	}
@@ -131,7 +134,7 @@ func TestAuthStorageModifyIsTheCredentialWritePath(t *testing.T) {
 		t.Fatalf("Modify error = %v; want the callback error", err)
 	}
 	infos, err := store.List(ctx)
-	if err != nil || len(infos) != 2 || infos[0].ProviderID != "codex" || infos[1].ProviderID != "openai" {
+	if err != nil || len(infos) != 2 || infos[0].ProviderID != "openai" || infos[1].ProviderID != "codex" {
 		t.Fatalf("List = %+v, %v", infos, err)
 	}
 	canceled, cancel := context.WithCancel(ctx)
@@ -163,6 +166,100 @@ func TestInMemoryAuthStorageModifyAndRead(t *testing.T) {
 	}
 	if missing, err := store.Read(ctx, "absent"); err != nil || missing != nil {
 		t.Fatalf("Read(absent) = %+v, %v", missing, err)
+	}
+}
+
+// Upstream packages/coding-agent/src/core/auth-storage.ts:356-366,449-469 serializes seeds and committed writes and parses each mutation's input. Every mutable credential field must cross that ownership boundary.
+func TestInMemoryAuthStorageCredentialIsolation(t *testing.T) {
+	mutations := []struct {
+		name string
+		run  func(*Credential)
+	}{
+		{"env", func(c *Credential) { c.Env["REGION"] = "changed" }},
+		{"availableModelIds", func(c *Credential) { c.AvailableModelIDs[2] = 'X' }},
+		{"gatewayConfig", func(c *Credential) { c.GatewayConfig[11] = '9' }},
+		{"extra value", func(c *Credential) { c.Extra["custom"][9] = '9' }},
+		{"extra map", func(c *Credential) { c.Extra["new"] = json.RawMessage(`true`) }},
+	}
+	for _, mutation := range mutations {
+		for _, boundary := range []string{"seed", "read", "modify error", "modify nil", "modify cancelled", "write input", "write result"} {
+			t.Run(mutation.name+"/"+boundary, func(t *testing.T) {
+				seed, want := isolationCredential(), isolationCredential()
+				store := NewInMemoryAuthStorage(map[string]Credential{"oauth": seed})
+				switch boundary {
+				case "seed":
+					mutation.run(&seed)
+				case "read":
+					got, err := store.Read(t.Context(), "oauth")
+					if err != nil || got == nil {
+						t.Fatalf("Read = %v, %v", got, err)
+					}
+					mutation.run(got)
+				case "modify error", "modify nil", "modify cancelled":
+					ctx, cancel := context.WithCancelCause(t.Context())
+					defer cancel(nil)
+					failure := errors.New("refresh rejected")
+					got, err := store.Modify(ctx, "oauth", func(current *Credential) (*Credential, error) {
+						mutation.run(current)
+						switch boundary {
+						case "modify error":
+							return current, failure
+						case "modify cancelled":
+							cancel(failure)
+							return current, nil
+						default:
+							return nil, nil
+						}
+					})
+					if boundary == "modify nil" {
+						// Upstream returns the mutated parsed value but leaves its serialized backing value unchanged.
+						changed := isolationCredential()
+						mutation.run(&changed)
+						if err != nil || !reflect.DeepEqual(got, &changed) {
+							t.Fatalf("Modify(nil) = %#v, %v; want %#v", got, err, changed)
+						}
+					} else if got != nil || !errors.Is(err, failure) {
+						t.Fatalf("Modify = %#v, %v; want nil, %v", got, err, failure)
+					}
+				case "write input", "write result":
+					next := isolationCredential()
+					next.Access = "committed"
+					want.Access = "committed"
+					got, err := store.Modify(t.Context(), "oauth", func(*Credential) (*Credential, error) { return &next, nil })
+					if err != nil || !reflect.DeepEqual(got, &want) {
+						t.Fatalf("Modify = %#v, %v; want %#v", got, err, want)
+					}
+					if boundary == "write input" {
+						mutation.run(&next)
+					} else {
+						mutation.run(got)
+					}
+				}
+				// Read also waits for a cancelled callback to settle before checking the backing credential.
+				memoryAuthRead(t, store, "oauth", &want)
+			})
+		}
+	}
+}
+
+func isolationCredential() Credential {
+	return Credential{
+		Type: CredentialOAuth, Access: "expired", Refresh: "refresh-token",
+		Env:               map[string]string{"REGION": "eu"},
+		AvailableModelIDs: json.RawMessage(`["model"]`),
+		GatewayConfig:     json.RawMessage(`{"version":1,"models":[]}`),
+		Extra:             map[string]json.RawMessage{"custom": json.RawMessage(`{"value":1}`)},
+	}
+}
+
+func TestCloneCredentialPreservesEmptyFields(t *testing.T) {
+	for _, want := range []Credential{{}, {
+		Env: map[string]string{}, Extra: map[string]json.RawMessage{"empty": {}},
+		AvailableModelIDs: json.RawMessage{}, GatewayConfig: json.RawMessage{},
+	}} {
+		if got := cloneCredential(want); !reflect.DeepEqual(got, want) {
+			t.Fatalf("clone = %#v, want %#v", got, want)
+		}
 	}
 }
 

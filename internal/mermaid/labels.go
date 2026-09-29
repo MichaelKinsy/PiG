@@ -14,10 +14,9 @@ import (
 // Label and source-text handling, ported from grok-mermaid labels.ts.
 
 const (
-	wrapWidth    = 24 // node labels wrap to at most this many columns per line
-	minWrapWidth = 4  // ...and no narrower when fitting a diagram to a width
-	maxLines     = 4  // ...and at most this many lines; overflow truncates with …
-	maxLabel     = 28 // edge labels are truncated to this many columns
+	wrapWidth = 24 // node labels wrap to at most this many columns per line
+	maxLines  = 4  // ...and at most this many lines; overflow truncates with …
+	maxLabel  = 28 // edge labels are truncated to this many columns
 )
 
 // labelBreakChars: identifier-boundary characters preferred as break points so a
@@ -303,28 +302,9 @@ func lastBreak(s string) int {
 	return best
 }
 
-// maxLinesFor returns the line budget for labels wrapped to wrap columns.
-//
-// At the natural width this is maxLines, matching grok-mermaid. Narrowing a
-// diagram to fit an area (RenderWithin) reduces how much text a line holds, so
-// the budget grows to keep the same total capacity: narrowing then costs rows
-// rather than words. Without this, fitting a diagram silently truncated labels
-// with an ellipsis, which is worse than the raw source it replaced, because the
-// source at least still carries the whole label.
-func maxLinesFor(wrap int) int {
-	if wrap >= wrapWidth || wrap < 1 {
-		return maxLines
-	}
-	budget := (wrapWidth*maxLines + wrap - 1) / wrap
-	if budget < maxLines {
-		return maxLines
-	}
-	return budget
-}
-
 // wrapLabel wraps a label to width columns over at most maxLines lines,
 // truncating the last line with an ellipsis if it overflows.
-func wrapLabel(label string, width, maxLn int) (lines []string, splitWord bool) {
+func wrapLabel(label string, width, maxLn int) (lines []string) {
 	if width < 1 {
 		width = 1
 	}
@@ -335,7 +315,6 @@ func wrapLabel(label string, width, maxLn int) (lines []string, splitWord bool) 
 		ww := stringWidth(word)
 		switch {
 		case ww > width:
-			splitWord = true
 			if cur != "" {
 				lines = append(lines, cur)
 			}
@@ -392,7 +371,7 @@ func wrapLabel(label string, width, maxLn int) (lines []string, splitWord bool) 
 		}
 		lines[len(lines)-1] = s.String() + "…"
 	}
-	return lines, splitWord
+	return lines
 }
 
 // fitLabel truncates to inner columns, leaving room for the ellipsis.

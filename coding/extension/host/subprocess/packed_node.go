@@ -47,7 +47,7 @@ func (c CellSpec) NodeExtensions() ([]nodeExtension, error) {
 // Node runtime plus a manifest naming every member's socket-env name and
 // resolved entry, loaded in plan order by runtime-node/cell.mjs. Unlike a
 // Go/Rust/Python packed cell nothing is compiled here: TS/JS source is read
-// fresh at process start by the same type-stripping loader an isolated Node
+// fresh at process start by the same jiti loader an isolated Node
 // extension uses (builder_node.go), so the cache holds only the runtime copy
 // and the manifest, not the extension source.
 type nodePackedCell struct {
@@ -107,7 +107,11 @@ func nodePackedLauncherCommand(ctx context.Context, binPath string) (*exec.Cmd, 
 // always changes it.
 func nodePackedCellHash(cellKey string, exts []nodeExtension) (string, []nodeCellManifestEntry) {
 	digest := sha256.New()
-	_, _ = digest.Write([]byte(nodeLauncherFormat + "\x00" + cellKey + "\x00"))
+	// The cell publishes a copy of the embedded runtime, so its key covers
+	// the runtime's content: a cell an earlier PiG cached keeps that PiG's
+	// loader and shims, and must not be reused by a PiG whose runtime differs.
+	_, _ = digest.Write(nodeRuntimeDigest())
+	_, _ = digest.Write([]byte(nodeRuntimeVersion + "\x00" + nodeLauncherFormat + "\x00" + cellKey + "\x00"))
 	manifest := make([]nodeCellManifestEntry, 0, len(exts))
 	for _, ext := range exts {
 		_, _ = digest.Write([]byte(ext.Name + "\x00" + ext.Entry + "\x00"))
@@ -157,7 +161,7 @@ func buildNodePackedCell(ctx context.Context, cacheRoot, cellKey string, exts []
 		if err := os.MkdirAll(filepath.Join(runtimeDir, "shims"), 0o755); err != nil {
 			return "", err
 		}
-		if err := copyEmbeddedTree(nodeRuntimeFS, "runtime-node", runtimeDir); err != nil {
+		if err := materializeNodeRuntime(ctx, filepath.Join(cacheRoot, "ext"), runtimeDir); err != nil {
 			return "", err
 		}
 		data, err := json.Marshal(manifest)

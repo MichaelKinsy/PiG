@@ -45,19 +45,19 @@ func TestReadImageModelProfileOverridesFallback(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if !strings.Contains(got.Content, "Read image file [image/png]") || !strings.Contains(got.Content, "Current model does not support images") {
-				t.Fatalf("content=%q", got.Content)
+			if !strings.Contains(got.Text(), "Read image file [image/png]") || !strings.Contains(got.Text(), "Current model does not support images") {
+				t.Fatalf("content=%q", got.Text())
 			}
 			if tc.omit {
-				if len(got.Images) != 0 || !strings.Contains(got.Content, "omitted") {
+				if len(got.Images()) != 0 || !strings.Contains(got.Text(), "omitted") {
 					t.Fatalf("failed image result=%#v", got)
 				}
 				return
 			}
-			if len(got.Images) != 1 {
-				t.Fatalf("images=%#v", got.Images)
+			if len(got.Images()) != 1 {
+				t.Fatalf("images=%#v", got.Images())
 			}
-			data, err := base64.StdEncoding.DecodeString(got.Images[0].Data)
+			data, err := base64.StdEncoding.DecodeString(got.Images()[0].Data)
 			if err != nil {
 				t.Fatal(err)
 			}

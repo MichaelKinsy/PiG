@@ -1,54 +1,26 @@
 package ai
 
-//
-// Mirrors upstream .upstream/current/packages/ai/src/providers/amazon-bedrock.ts.
-// Uses the AWS SDK Go v2 bedrockruntime client and its ConverseStream
-// API. Auth resolves through the default AWS credentials chain (env
-// vars, shared config, IMDS, SSO, etc.) with an optional bearer-token
-// fast path via AWS_BEARER_TOKEN_BEDROCK that matches upstream's
-// `useBearerToken` branch.
-//
-// What's ported faithfully:
-//   - ConverseStream end-to-end: text, tool calls, thinking,
-//     metadata/usage, stop reason mapping.
-//   - Message conversion mirroring transformMessages + convertMessages
-//     (user text/image, assistant text/toolCall/thinking, toolResult
-//     coalescing into a single user message).
-//   - Tool configuration with toolSpec + JSON input schema.
-//   - System prompt with optional CachePoint for prompt-cache-aware
-//     Claude models (gated by PI_CACHE_RETENTION).
-//   - Adaptive vs enabled thinking via additionalModelRequestFields
-//     for Claude models, mirroring buildAdditionalModelRequestFields.
-//   - Bedrock error name → human-readable prefix mapping for retry
-//     classifiers downstream (BEDROCK_ERROR_PREFIXES).
-//   - Region resolution: explicit > AWS_REGION > AWS_DEFAULT_REGION >
-//     endpoint hostname > us-east-1 when no profile is set.
-//
-// Known deferred bits (clearly bounded, do not affect the common path):
-//   - HTTP/HTTPS proxy installation (HTTP_PROXY/HTTPS_PROXY): the SDK
-//     honours its own proxy env vars at the transport layer, but
-//     upstream installs a custom ProxyAgent. Revisit if a user reports
-//     a proxy-only environment.
-//   - AWS_BEDROCK_FORCE_HTTP1: the SDK uses HTTP/2 by default, same
-//     as upstream's pre-installed handler. Add when we have a custom
-//     endpoint that requires HTTP/1.1.
-//   - requestMetadata cost-allocation tags: accepted in StreamOptions
-//     but not yet plumbed into the ConverseStream input.
-//   - GovCloud thinking-display filtering: mirrored as a comment in
-//     buildAdditionalModelRequestFields but not gated.
+// Ports packages/ai/src/api/bedrock-converse-stream.ts
+// ConverseStream uses the AWS SDK transport with request-scoped proxy, region, and credential selection.
 
 import (
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"net/url"
-	"os"
-	"regexp"
 	"strings"
+	"time"
+	"unicode"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
+	awsmiddleware "github.com/aws/aws-sdk-go-v2/aws/middleware"
+	awshttp "github.com/aws/aws-sdk-go-v2/aws/transport/http"
 	awsconfig "github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/bedrockruntime"
@@ -63,9 +35,11 @@ import (
 // BedrockProvider implements the Provider interface backed by AWS
 // Bedrock's ConverseStream API.
 type BedrockProvider struct {
-	model     string
-	modelName string
-	baseURL   string
+	model          string
+	modelName      string
+	baseURL        string
+	selectedModel  *Model
+	converseStream func(context.Context, *bedrockruntime.ConverseStreamInput, ...func(*bedrockruntime.Options)) (*bedrockruntime.ConverseStreamOutput, error)
 }
 
 // NewBedrockProvider constructs a Bedrock provider for the given model
@@ -84,54 +58,84 @@ func NewBedrockProviderWithName(model, modelName, baseURL string) *BedrockProvid
 	return &BedrockProvider{model: model, modelName: modelName, baseURL: baseURL}
 }
 
-// ID returns the provider identifier matching upstream.
-func (p *BedrockProvider) ID() string { return "amazon-bedrock" }
+// NewBedrockProviderWithModel retains the selected model's limits and compatibility metadata for requests and callbacks.
+// Ports packages/ai/src/api/bedrock-converse-stream.ts (stream receives the caller's model, including overrides).
+func NewBedrockProviderWithModel(model Model) *BedrockProvider {
+	return &BedrockProvider{model: model.ID, modelName: model.DisplayName, baseURL: model.ProviderMeta.BaseURL, selectedModel: &model}
+}
+
+// ID returns the selected model's provider identity, or the canonical Bedrock identity for constructors without model metadata.
+func (p *BedrockProvider) ID() string {
+	if p.selectedModel != nil {
+		return modelProviderID(p.selectedModel)
+	}
+	return "amazon-bedrock"
+}
 
 // Close releases any persistent resources held by the provider. The
 // bedrockruntime client maintains no goroutines or sockets that
 // outlive a call, so this is a no-op.
 func (p *BedrockProvider) Close() error { return nil }
 
-// Stream runs ConverseStream and translates its event stream into the
-// pig AssistantMessageEvent channel. Mirrors upstream streamBedrock.
+// Stream runs ConverseStream and translates its events into one terminal assistant result. Request failures preserve available HTTP status, AWS error code, and request identity as diagnostics. An explicit CacheRetention overrides the legacy environment preference. Nil contexts are rejected before stream construction.
 func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptContext, opts StreamOptions) (*AssistantMessageEventStream, error) {
-	if err := validateProviderRequest(ctx, transcript); err != nil {
-		return nil, fmt.Errorf("amazon-bedrock: invalid transcript: %w", err)
+	requestErr := validateProviderRequest(ctx, transcript)
+	if requestErr != nil && (ctx == nil || ctx.Err() == nil) {
+		return nil, fmt.Errorf("amazon-bedrock: invalid transcript: %w", requestErr)
 	}
-	cfg, err := loadBedrockConfig(ctx, p.baseURL, p.model, opts.Env)
+	builder := newObservedProviderBuilder(ctx, APIBedrockConverseStream, p.ID(), p.model)
+	builder.modelCost = opts.ModelCost
+	if requestErr != nil {
+		failBedrockResponse(ctx, builder, requestErr, "", false)
+		return builder.stream, nil
+	}
+	cfg, err := loadBedrockConfig(ctx, p.baseURL, p.model, opts)
 	if err != nil {
+		if ctx.Err() != nil {
+			failBedrockResponse(ctx, builder, err, "", false)
+			return builder.stream, nil
+		}
 		return nil, fmt.Errorf("amazon-bedrock: %w", err)
 	}
-	client := bedrockruntime.NewFromConfig(cfg)
+	client := bedrockruntime.NewFromConfig(cfg, func(options *bedrockruntime.Options) {
+		if cfg.BearerAuthTokenProvider != nil {
+			options.BearerAuthSigner = bedrockBearerSigner{}
+		}
+	})
 
 	modelMeta := &Model{ID: p.model, DisplayName: p.modelName}
-	if generated, ok := LookupModel(p.ID() + "/" + p.model); ok {
+	if p.selectedModel != nil {
+		modelMeta = new(*p.selectedModel)
+	} else if generated, ok := LookupModel(p.ID() + "/" + p.model); ok {
 		modelMeta = generated.ToModel()
 	}
 	if modelMeta.DisplayName == "" {
 		modelMeta.DisplayName = p.modelName
 	}
-	supportsMidConversation := modelMeta.ProviderMeta.Compat != nil &&
-		modelMeta.ProviderMeta.Compat.SupportsMidConvoSystemMessages != nil &&
-		*modelMeta.ProviderMeta.Compat.SupportsMidConvoSystemMessages
-	resolved := ResolveTranscript(transcript, supportsMidConversation)
+	// Bedrock has no mid-conversation system messages. Later system messages always fold into the leading prompt, whatever the model compat claims.
+	resolved := prepareProviderToolFlow(CollapseSystemMessages(transcript))
 	messages := resolved.Messages()
-	cacheRetention := resolveBedrockCacheRetentionWithEnv(opts.Env)
-	system := buildBedrockSystemPrompt(p.model, p.modelName, GetCurrentSystemPrompt(messages[:min(1, len(messages))]), cacheRetention)
+	cacheRetention := resolveBedrockCacheRetention(opts.CacheRetention, opts.Env)
+	system := buildBedrockSystemPrompt(p.model, p.modelName, GetCurrentSystemPrompt(messages[:min(1, len(messages))]), cacheRetention, opts.Env)
 	conversation := WithoutInitialSystemMessage(messages)
-	convertedMessages, err := convertBedrockMessages(conversation, p.model, p.modelName, cacheRetention)
+	convertedMessages, err := convertBedrockMessages(conversation, p.model, p.modelName, cacheRetention, opts.Env)
 	if err != nil {
 		return nil, fmt.Errorf("amazon-bedrock: convert messages: %w", err)
 	}
 	supportsStrictTools := modelMeta.ProviderMeta.Compat != nil && modelMeta.ProviderMeta.Compat.SupportsStrictMode != nil && *modelMeta.ProviderMeta.Compat.SupportsStrictMode
-	tools, err := convertBedrockTools(GetCurrentTools(messages), supportsStrictTools)
+	tools, err := convertBedrockTools(GetCurrentTools(messages), opts.ToolChoice, supportsStrictTools)
 	if err != nil {
 		return nil, fmt.Errorf("amazon-bedrock: convert tools: %w", err)
 	}
 
 	inf := &btypes.InferenceConfiguration{}
-	if opts.MaxTokens > 0 {
-		mt := int32(opts.MaxTokens)
+	maxTokens := opts.MaxTokens
+	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:inferenceMaxTokens
+	if maxTokens == 0 && isAnthropicClaudeBedrockModel(modelMeta.ID, modelMeta.DisplayName) {
+		maxTokens = modelMeta.Capabilities.MaxOutputTokens
+	}
+	if maxTokens > 0 {
+		mt := int32(maxTokens)
 		inf.MaxTokens = &mt
 	}
 	if opts.TemperatureSet || opts.Temperature != 0 {
@@ -145,6 +149,7 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptConte
 		System:          system,
 		InferenceConfig: inf,
 		ToolConfig:      tools,
+		RequestMetadata: opts.RequestMetadata,
 	}
 	if extra := buildBedrockAdditionalFields(modelMeta, p.modelName, opts); extra != nil {
 		input.AdditionalModelRequestFields = bdoc.NewLazyDocument(extra)
@@ -165,20 +170,65 @@ func (p *BedrockProvider) Stream(ctx context.Context, transcript TranscriptConte
 		}
 	}
 
-	resp, err := client.ConverseStream(ctx, input, func(options *bedrockruntime.Options) {
-		if len(opts.Headers) > 0 {
-			options.APIOptions = append(options.APIOptions, withBedrockHeaders(opts.Headers))
+	converse := p.converseStream
+	if converse == nil {
+		converse = client.ConverseStream
+	}
+	// Pi returns the event stream before the request settles: the async body of `stream` starts at its first await (bedrock-converse-stream.ts:129-330).
+	requestContext, abort := context.WithCancel(ctx)
+	builder.abort = abort
+	go builder.runResponse(func() error {
+		p.streamResponse(ctx, requestContext, converse, input, opts, modelMeta, builder)
+		return nil
+	})
+	return builder.stream, nil
+}
+
+// streamResponse sends the request and runs the stream loop. A body the transport can observe is read by the provider as an executor turn; any other body is read by the SDK's event-stream reader.
+func (p *BedrockProvider) streamResponse(ctx, requestContext context.Context, converse func(context.Context, *bedrockruntime.ConverseStreamInput, ...func(*bedrockruntime.Options)) (*bedrockruntime.ConverseStreamOutput, error), input *bedrockruntime.ConverseStreamInput, opts StreamOptions, modelMeta *Model, builder *assistantStreamBuilder) {
+	tap := &bedrockBodyTap{}
+	defer tap.close()
+	resp, err := converse(requestContext, input, tap.option, func(options *bedrockruntime.Options) {
+		if opts.OnResponse != nil {
+			options.APIOptions = append(options.APIOptions, func(stack *smithymiddleware.Stack) error {
+				return stack.Deserialize.Add(smithymiddleware.DeserializeMiddlewareFunc("PiGProviderResponse", func(ctx context.Context, input smithymiddleware.DeserializeInput, next smithymiddleware.DeserializeHandler) (smithymiddleware.DeserializeOutput, smithymiddleware.Metadata, error) {
+					output, metadata, err := next.HandleDeserialize(ctx, input)
+					if err == nil {
+						if response, ok := output.RawResponse.(*smithyhttp.Response); ok {
+							err = observeProviderResponse(ctx, opts, response.Response, modelMeta)
+							if err != nil {
+								if result, ok := output.Result.(*bedrockruntime.ConverseStreamOutput); ok && result.GetStream() != nil {
+									_ = result.GetStream().Close()
+								} else {
+									_ = response.Body.Close()
+								}
+							}
+						}
+					}
+					return output, metadata, err
+				}), smithymiddleware.Before)
+			})
 		}
+		options.APIOptions = append(options.APIOptions, withBedrockHeaders(opts.Headers))
 	})
 	if err != nil {
-		err = mapBedrockTransportError(ctx, err, "fetch failed")
-		return nil, fmt.Errorf("amazon-bedrock: %s", formatBedrockError(err))
+		failBedrockResponse(ctx, builder, err, "", false)
+		return
 	}
-
-	builder := newAssistantStreamBuilder(ctx, APIBedrockConverseStream, p.ID(), p.model)
-	builder.modelCost = opts.ModelCost
-	go p.parseBedrockStream(ctx, resp, builder)
-	return builder.stream, nil
+	stream := resp.GetStream()
+	if body := tap.body(); body != nil {
+		if stream != nil {
+			_ = stream.Close()
+		}
+		requestID, _ := awsmiddleware.GetRequestIDMetadata(resp.ResultMetadata)
+		builder.managed = true
+		_ = builder.responseTurn(func() error {
+			p.runBedrockPipeline(ctx, builder.turn, builder, body, normalizeBedrockDiagnosticValue(requestID), opts.OnResponse != nil)
+			return nil
+		})
+		return
+	}
+	p.parseBedrockStream(ctx, resp, builder)
 }
 
 func maxTokensPtr(v int) *int {
@@ -190,50 +240,63 @@ func maxTokensPtr(v int) *int {
 
 // ─── Region / endpoint / auth resolution ─────────────────────────────────
 
-// loadBedrockConfig builds an aws.Config honouring the same env vars
-// and precedence rules upstream uses: option region > AWS_REGION >
-// AWS_DEFAULT_REGION > region parsed from base URL > us-east-1 (when
-// no AWS_PROFILE is set). Honours AWS_BEARER_TOKEN_BEDROCK and
-// AWS_BEDROCK_SKIP_AUTH.
-func loadBedrockConfig(ctx context.Context, baseURL, modelID string, env ProviderEnv) (aws.Config, error) {
-	opts := []func(*awsconfig.LoadOptions) error{}
+// loadBedrockConfig preserves explicit/scoped profile ownership, ambient key precedence, and ARN region precedence. A configured region or ambient profile unpins standard AWS endpoints; caller-supplied custom endpoints remain fixed.
+func loadBedrockConfig(ctx context.Context, baseURL, modelID string, options StreamOptions) (aws.Config, error) {
+	env := options.Env
+	httpClient := awshttp.NewBuildableClient().WithTransportOptions(func(transport *http.Transport) {
+		transport.Proxy = func(request *http.Request) (*url.URL, error) {
+			return ResolveHTTPProxyURLForTarget(request.URL.String(), env)
+		}
+		if transport.DialContext != nil {
+			transport.DialContext = bedrockObservedDial(transport.DialContext)
+		}
+	})
+	opts := []func(*awsconfig.LoadOptions) error{awsconfig.WithHTTPClient(httpClient)}
 
-	region := resolveBedrockRegionWithEnv(baseURL, modelID, env)
+	configuredRegion := firstNonEmptyString(options.Region, getProviderEnvValue("AWS_REGION", env), getProviderEnvValue("AWS_DEFAULT_REGION", env))
+	ambientProfile := getProviderEnvValue("AWS_PROFILE", nil)
+	useEndpoint := bedrockEndpointRegion(baseURL) == "" || (configuredRegion == "" && ambientProfile == "")
+	regionEnv := env
+	if options.Region != "" {
+		regionEnv = mergeProviderEnv(env, ProviderEnv{"AWS_REGION": options.Region})
+	}
+	region := resolveBedrockRegionWithEnv(baseURL, modelID, regionEnv)
 	if region != "" {
 		opts = append(opts, awsconfig.WithRegion(region))
 	}
-	if trimmed := strings.TrimSpace(baseURL); trimmed != "" {
+	if trimmed := strings.TrimSpace(baseURL); useEndpoint && trimmed != "" {
 		opts = append(opts, awsconfig.WithBaseEndpoint(strings.TrimRight(trimmed, "/")))
 	}
+	optionsProfile := firstNonEmptyString(options.Profile, env["AWS_PROFILE"])
+	if profile := firstNonEmptyString(optionsProfile, ambientProfile); profile != "" {
+		opts = append(opts, awsconfig.WithSharedConfigProfile(profile))
+	}
 
-	// Test-only auth bypass mirrored from upstream.
-	if getProviderEnvValue("AWS_BEDROCK_SKIP_AUTH", env) == "1" {
+	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:stream
+	// Explicit/scoped profiles own credential selection; ambient profiles do not displace env keys.
+	skipAuth := getProviderEnvValue("AWS_BEDROCK_SKIP_AUTH", env) == "1"
+	if skipAuth {
 		opts = append(opts, awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(
 			"dummy-access-key", "dummy-secret-key", "",
 		)))
+	} else if accessKey, secretKey := getProviderEnvValue("AWS_ACCESS_KEY_ID", env), getProviderEnvValue("AWS_SECRET_ACCESS_KEY", env); optionsProfile == "" && accessKey != "" && secretKey != "" {
+		opts = append(opts, awsconfig.WithCredentialsProvider(credentials.NewStaticCredentialsProvider(accessKey, secretKey, getProviderEnvValue("AWS_SESSION_TOKEN", env))))
 	}
 
 	cfg, err := awsconfig.LoadDefaultConfig(ctx, opts...)
 	if err != nil {
 		return aws.Config{}, fmt.Errorf("load AWS config: %w", err)
 	}
-	if cfg.Region == "" {
-		cfg.Region = "us-east-1"
-	}
-
-	// Bearer-token auth alternative. The SDK signs every request with
-	// SigV4 by default; setting the bearer token provider lets the SDK
-	// emit `Authorization: Bearer …` instead. Mirrors upstream
-	// useBearerToken branch (config.token + httpBearerAuth scheme).
-	if tok := getProviderEnvValue("AWS_BEARER_TOKEN_BEDROCK", env); tok != "" && getProviderEnvValue("AWS_BEDROCK_SKIP_AUTH", env) != "1" {
-		cfg.BearerAuthTokenProvider = staticBearerTokenProvider(tok)
+	if token := firstNonEmptyString(options.APIKey, getProviderEnvValue("AWS_BEARER_TOKEN_BEDROCK", env)); token != "" && !skipAuth {
+		cfg.BearerAuthTokenProvider = staticBearerTokenProvider(token)
+		cfg.AuthSchemePreference = []string{"httpBearerAuth"}
 	}
 	return cfg, nil
 }
 
 // bedrockARNRegionRE extracts the region embedded in an inference-profile ARN
 // (e.g. arn:aws:bedrock:us-west-2:...). Mirrors upstream amazon-bedrock.ts:146.
-var bedrockARNRegionRE = regexp.MustCompile(`^arn:aws(?:-[a-z0-9-]+)?:bedrock:([a-z0-9-]+):`)
+var bedrockARNRegionRE = lazyregexp.New(`^arn:aws(?:-[a-z0-9-]+)?:bedrock:([a-z0-9-]+):`)
 
 func resolveBedrockRegion(baseURL, modelID string) string {
 	return resolveBedrockRegionWithEnv(baseURL, modelID, nil)
@@ -251,17 +314,16 @@ func resolveBedrockRegionWithEnv(baseURL, modelID string, env ProviderEnv) strin
 	if r := getProviderEnvValue("AWS_DEFAULT_REGION", env); r != "" {
 		return r
 	}
+	if getProviderEnvValue("AWS_PROFILE", nil) != "" {
+		return ""
+	}
 	if r := bedrockEndpointRegion(baseURL); r != "" {
 		return r
-	}
-	if getProviderEnvValue("AWS_PROFILE", env) != "" {
-		// Let the SDK resolve region from the profile's config.
-		return ""
 	}
 	return "us-east-1"
 }
 
-var bedrockEndpointHostRE = regexp.MustCompile(`^bedrock-runtime(-fips)?\.([a-z0-9-]+)\.amazonaws\.com(\.cn)?$`)
+var bedrockEndpointHostRE = lazyregexp.New(`^bedrock-runtime(-fips)?\.([a-z0-9-]+)\.amazonaws\.com(\.cn)?$`)
 
 func bedrockEndpointRegion(baseURL string) string {
 	if baseURL == "" {
@@ -286,11 +348,26 @@ func (s staticBearerTokenProvider) RetrieveBearerToken(_ context.Context) (smith
 	return smithybearer.Token{Value: string(s)}, nil
 }
 
+// bedrockBearerSigner preserves bearer auth on caller-selected endpoints, including HTTP proxies, as the Node SDK does.
+// upstream: packages/ai/src/api/bedrock-converse-stream.ts:stream
+// Authentication never substitutes a different transport for the selected endpoint.
+type bedrockBearerSigner struct{}
+
+func (bedrockBearerSigner) SignWithBearerToken(_ context.Context, token smithybearer.Token, message smithybearer.Message) (smithybearer.Message, error) {
+	request, ok := message.(*smithyhttp.Request)
+	if !ok {
+		return nil, fmt.Errorf("bedrock bearer auth: unexpected request type %T", message)
+	}
+	signed := request.Clone()
+	signed.Header.Set("Authorization", "Bearer "+token.Value)
+	return signed, nil
+}
+
 type bedrockHeadersMiddleware struct {
 	headers ProviderHeaders
 }
 
-func (middleware bedrockHeadersMiddleware) ID() string { return "PiGProviderHeaders" }
+func (middleware bedrockHeadersMiddleware) ID() string { return "pi-ai-custom-headers" }
 
 func isReservedBedrockHeader(name string) bool {
 	name = strings.ToLower(name)
@@ -299,8 +376,8 @@ func isReservedBedrockHeader(name string) bool {
 
 func (middleware bedrockHeadersMiddleware) HandleBuild(ctx context.Context, input smithymiddleware.BuildInput, next smithymiddleware.BuildHandler) (smithymiddleware.BuildOutput, smithymiddleware.Metadata, error) {
 	request, ok := input.Request.(*smithyhttp.Request)
-	if !ok {
-		return smithymiddleware.BuildOutput{}, smithymiddleware.Metadata{}, fmt.Errorf("bedrock provider headers: unexpected request type %T", input.Request)
+	if !ok || request == nil || request.Header == nil {
+		return next.HandleBuild(ctx, input)
 	}
 	for name, value := range middleware.headers {
 		if isReservedBedrockHeader(name) {
@@ -317,6 +394,9 @@ func (middleware bedrockHeadersMiddleware) HandleBuild(ctx context.Context, inpu
 
 func withBedrockHeaders(headers ProviderHeaders) func(*smithymiddleware.Stack) error {
 	return func(stack *smithymiddleware.Stack) error {
+		if len(headers) == 0 {
+			return nil
+		}
 		return stack.Build.Add(bedrockHeadersMiddleware{headers: headers}, smithymiddleware.After)
 	}
 }
@@ -337,22 +417,16 @@ const (
 // its tool_result). Mirrors upstream bedrock-provider convertMessages.
 const bedrockEmptyPlaceholder = "<empty>"
 
-// resolveBedrockCacheRetention mirrors upstream resolveCacheRetention.
-// Defaults to "short"; PI_CACHE_RETENTION can lift it to "long" or
-// disable it with "none".
-func resolveBedrockCacheRetention() bedrockCacheRetention {
-	return resolveBedrockCacheRetentionWithEnv(nil)
-}
-
-func resolveBedrockCacheRetentionWithEnv(env ProviderEnv) bedrockCacheRetention {
-	switch getProviderEnvValue("PI_CACHE_RETENTION", env) {
-	case "long":
-		return bedrockCacheLong
-	case "none":
-		return bedrockCacheNone
-	default:
-		return bedrockCacheShort
+// resolveBedrockCacheRetention uses the explicit option first, then the legacy long-only environment preference, otherwise short.
+// upstream: packages/ai/src/api/bedrock-converse-stream.ts:resolveCacheRetention
+func resolveBedrockCacheRetention(cacheRetention CacheRetention, env ProviderEnv) bedrockCacheRetention {
+	if cacheRetention != "" {
+		return bedrockCacheRetention(cacheRetention)
 	}
+	if getProviderEnvValue("PI_CACHE_RETENTION", env) == "long" {
+		return bedrockCacheLong
+	}
+	return bedrockCacheShort
 }
 
 func bedrockModelMatchCandidates(modelID, modelName string) []string {
@@ -384,11 +458,9 @@ func isAnthropicClaudeBedrockModel(modelID, modelName string) bool {
 	return false
 }
 
-func supportsBedrockPromptCaching(modelID string) bool {
-	return supportsBedrockPromptCachingWithName(modelID, "")
-}
-
-func supportsBedrockPromptCachingWithName(modelID, modelName string) bool {
+// supportsBedrockPromptCaching checks the model and request-scoped force opt-in before falling back to the process environment.
+// upstream: packages/ai/src/api/bedrock-converse-stream.ts:supportsPromptCaching
+func supportsBedrockPromptCaching(modelID, modelName string, env ProviderEnv) bool {
 	candidates := bedrockModelMatchCandidates(modelID, modelName)
 	hasClaudeRef := false
 	for _, candidate := range candidates {
@@ -400,10 +472,10 @@ func supportsBedrockPromptCachingWithName(modelID, modelName string) bool {
 	if !hasClaudeRef {
 		// Allow forcing for application inference profiles whose ARNs
 		// don't reveal the model name. Mirrors upstream.
-		return os.Getenv("AWS_BEDROCK_FORCE_CACHE") == "1"
+		return getProviderEnvValue("AWS_BEDROCK_FORCE_CACHE", env) == "1"
 	}
 	for _, candidate := range candidates {
-		if strings.Contains(candidate, "fable-5") || strings.Contains(candidate, "sonnet-5") {
+		if strings.Contains(candidate, "fable-5") || strings.Contains(candidate, "opus-5") || strings.Contains(candidate, "sonnet-5") {
 			return true
 		}
 	}
@@ -421,7 +493,7 @@ func supportsBedrockThinkingSignatureWithName(modelID, modelName string) bool {
 
 func supportsBedrockAdaptiveThinkingWithName(modelID, modelName string) bool {
 	for _, candidate := range bedrockModelMatchCandidates(modelID, modelName) {
-		if strings.Contains(candidate, "opus-4-6") || strings.Contains(candidate, "opus-4-7") || strings.Contains(candidate, "opus-4-8") || strings.Contains(candidate, "sonnet-4-6") || strings.Contains(candidate, "sonnet-5") || strings.Contains(candidate, "fable-5") {
+		if strings.Contains(candidate, "opus-4-6") || strings.Contains(candidate, "opus-4-7") || strings.Contains(candidate, "opus-4-8") || strings.Contains(candidate, "opus-5") || strings.Contains(candidate, "sonnet-4-6") || strings.Contains(candidate, "sonnet-5") || strings.Contains(candidate, "fable-5") {
 			return true
 		}
 	}
@@ -430,14 +502,14 @@ func supportsBedrockAdaptiveThinkingWithName(modelID, modelName string) bool {
 
 // ─── Message conversion ──────────────────────────────────────────────────
 
-func buildBedrockSystemPrompt(modelID, modelName, systemPrompt string, cacheRetention bedrockCacheRetention) []btypes.SystemContentBlock {
+func buildBedrockSystemPrompt(modelID, modelName, systemPrompt string, cacheRetention bedrockCacheRetention, env ProviderEnv) []btypes.SystemContentBlock {
 	if systemPrompt == "" {
 		return nil
 	}
 	blocks := []btypes.SystemContentBlock{
 		&btypes.SystemContentBlockMemberText{Value: sanitizeSurrogates(systemPrompt)},
 	}
-	if cacheRetention != bedrockCacheNone && supportsBedrockPromptCachingWithName(modelID, modelName) {
+	if cacheRetention != bedrockCacheNone && supportsBedrockPromptCaching(modelID, modelName, env) {
 		blocks = append(blocks, &btypes.SystemContentBlockMemberCachePoint{
 			Value: btypes.CachePointBlock{
 				Type: btypes.CachePointTypeDefault,
@@ -457,19 +529,12 @@ func bedrockCacheTTL(retention bedrockCacheRetention) btypes.CacheTTL {
 
 // convertBedrockMessages mirrors upstream convertMessages + the
 // transformMessages tool-id normalization + the consecutive-toolResult
-// coalescing into a single user message that Bedrock requires.
-func convertBedrockMessages(msgs []Message, modelID, modelName string, cacheRetention bedrockCacheRetention) ([]btypes.Message, error) {
+// coalescing into a single user message that Bedrock requires. User, assistant and tool-result text uses ECMAScript emptiness checks without trimming nonblank payloads. System messages are skipped: the caller has already folded them into the leading prompt.
+func convertBedrockMessages(msgs []Message, modelID, modelName string, cacheRetention bedrockCacheRetention, env ProviderEnv) ([]btypes.Message, error) {
 	out := make([]btypes.Message, 0, len(msgs))
 
 	for i := 0; i < len(msgs); i++ {
 		switch message := msgs[i].(type) {
-		case SystemMessage:
-			text := RenderSystemMessageUpdate(message)
-			if strings.TrimSpace(text) != "" {
-				out = append(out, btypes.Message{Role: btypes.ConversationRoleUser, Content: []btypes.ContentBlock{
-					&btypes.ContentBlockMemberText{Value: sanitizeSurrogates(text)},
-				}})
-			}
 		case UserMessage:
 			blocks, err := bedrockUserContent(message.Content)
 			if err != nil {
@@ -510,7 +575,7 @@ func convertBedrockMessages(msgs []Message, modelID, modelName string, cacheRete
 	}
 
 	// Final cache point on the last user message (mirrors upstream).
-	if cacheRetention != bedrockCacheNone && supportsBedrockPromptCachingWithName(modelID, modelName) && len(out) > 0 {
+	if cacheRetention != bedrockCacheNone && supportsBedrockPromptCaching(modelID, modelName, env) && len(out) > 0 {
 		last := &out[len(out)-1]
 		if last.Role == btypes.ConversationRoleUser {
 			last.Content = append(last.Content, &btypes.ContentBlockMemberCachePoint{
@@ -525,7 +590,7 @@ func bedrockUserContent(content UserContent) ([]btypes.ContentBlock, error) {
 	switch content := content.(type) {
 	case UserText:
 		text := sanitizeSurrogates(string(content))
-		if strings.TrimSpace(text) == "" {
+		if trimJSWhitespace(text) == "" {
 			text = bedrockEmptyPlaceholder
 		}
 		return []btypes.ContentBlock{
@@ -537,7 +602,7 @@ func bedrockUserContent(content UserContent) ([]btypes.ContentBlock, error) {
 			switch block := block.(type) {
 			case TextContent:
 				text := sanitizeSurrogates(block.Text)
-				if strings.TrimSpace(text) == "" {
+				if trimJSWhitespace(text) == "" {
 					continue
 				}
 				out = append(out, &btypes.ContentBlockMemberText{Value: text})
@@ -568,14 +633,18 @@ func bedrockAssistantContent(blocks []AssistantContentBlock, modelID, modelName 
 	for _, block := range blocks {
 		switch block := block.(type) {
 		case TextContent:
-			if strings.TrimSpace(block.Text) == "" {
+			text := sanitizeSurrogates(block.Text)
+			if trimJSWhitespace(text) == "" {
 				continue
 			}
-			out = append(out, &btypes.ContentBlockMemberText{Value: sanitizeSurrogates(block.Text)})
+			out = append(out, &btypes.ContentBlockMemberText{Value: text})
 		case ToolCall:
-			arguments := block.Arguments
+			arguments, err := sanitizeBedrockDocument(block.Arguments)
+			if err != nil {
+				return nil, err
+			}
 			if arguments == nil {
-				arguments = JsonObject{}
+				arguments = map[string]any{}
 			}
 			out = append(out, &btypes.ContentBlockMemberToolUse{Value: btypes.ToolUseBlock{
 				ToolUseId: aws.String(normalizeBedrockToolID(block.ID)),
@@ -583,19 +652,29 @@ func bedrockAssistantContent(blocks []AssistantContentBlock, modelID, modelName 
 				Input:     bdoc.NewLazyDocument(arguments),
 			}})
 		case ThinkingContent:
-			if strings.TrimSpace(block.Thinking) == "" {
+			// upstream: packages/ai/src/api/bedrock-converse-stream.ts:convertMessages
+			if block.Redacted {
+				if data := decodeBedrockRedactedContent(block.ThinkingSignature); len(data) > 0 {
+					out = append(out, &btypes.ContentBlockMemberReasoningContent{
+						Value: &btypes.ReasoningContentBlockMemberRedactedContent{Value: data},
+					})
+				}
+				continue
+			}
+			thinking := sanitizeSurrogates(block.Thinking)
+			if trimJSWhitespace(thinking) == "" {
 				continue
 			}
 			if supportsBedrockThinkingSignatureWithName(modelID, modelName) {
-				if strings.TrimSpace(block.ThinkingSignature) == "" {
+				if trimJSWhitespace(block.ThinkingSignature) == "" {
 					// Mirror upstream fallback: emit plain text when a
 					// thinking block lacks its signature.
-					out = append(out, &btypes.ContentBlockMemberText{Value: sanitizeSurrogates(block.Thinking)})
+					out = append(out, &btypes.ContentBlockMemberText{Value: thinking})
 				} else {
 					out = append(out, &btypes.ContentBlockMemberReasoningContent{
 						Value: &btypes.ReasoningContentBlockMemberReasoningText{
 							Value: btypes.ReasoningTextBlock{
-								Text:      aws.String(sanitizeSurrogates(block.Thinking)),
+								Text:      aws.String(thinking),
 								Signature: aws.String(block.ThinkingSignature),
 							},
 						},
@@ -604,7 +683,7 @@ func bedrockAssistantContent(blocks []AssistantContentBlock, modelID, modelName 
 			} else {
 				out = append(out, &btypes.ContentBlockMemberReasoningContent{
 					Value: &btypes.ReasoningContentBlockMemberReasoningText{
-						Value: btypes.ReasoningTextBlock{Text: aws.String(sanitizeSurrogates(block.Thinking))},
+						Value: btypes.ReasoningTextBlock{Text: aws.String(thinking)},
 					},
 				})
 			}
@@ -613,6 +692,43 @@ func bedrockAssistantContent(blocks []AssistantContentBlock, modelID, modelName 
 		}
 	}
 	return out, nil
+}
+
+// sanitizeBedrockDocument removes empty keys from a copied JSON tree, never from the retained tool call. The SDK rejects empty document map keys at serialization.
+func sanitizeBedrockDocument(value any) (any, error) {
+	normalized, err := normalizeJSONValue(value)
+	if err != nil {
+		return nil, err
+	}
+	return sanitizeBedrockDocumentValue(normalized)
+}
+
+func sanitizeBedrockDocumentValue(value any) (any, error) {
+	switch value := value.(type) {
+	case map[string]any:
+		delete(value, "")
+		for key, child := range value {
+			converted, err := sanitizeBedrockDocumentValue(child)
+			if err != nil {
+				return nil, err
+			}
+			value[key] = converted
+		}
+		return value, nil
+	case []any:
+		for index, child := range value {
+			converted, err := sanitizeBedrockDocumentValue(child)
+			if err != nil {
+				return nil, err
+			}
+			value[index] = converted
+		}
+		return value, nil
+	case json.Number:
+		return value.Float64()
+	default:
+		return value, nil
+	}
 }
 
 // bedrockToolResultRun walks a span of consecutive tool-result messages
@@ -641,7 +757,7 @@ func bedrockToolResultBlock(message ToolResultMessage) (btypes.ContentBlock, err
 	for _, block := range message.Content {
 		switch block := block.(type) {
 		case TextContent:
-			if text := sanitizeSurrogates(block.Text); strings.TrimSpace(text) != "" {
+			if text := sanitizeSurrogates(block.Text); trimJSWhitespace(text) != "" {
 				parts = append(parts, &btypes.ToolResultContentBlockMemberText{Value: text})
 			}
 		case ImageContent:
@@ -672,7 +788,7 @@ func bedrockToolResultBlock(message ToolResultMessage) (btypes.ContentBlock, err
 	}}, nil
 }
 
-var bedrockToolIDSanitizeRE = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
+var bedrockToolIDSanitizeRE = lazyregexp.New(`[^a-zA-Z0-9_-]`)
 
 func normalizeBedrockToolID(id string) string {
 	clean := bedrockToolIDSanitizeRE.ReplaceAllString(id, "_")
@@ -708,8 +824,31 @@ func bedrockImageBlock(mime, dataB64 string) (btypes.ImageBlock, error) {
 
 // ─── Tool config ─────────────────────────────────────────────────────────
 
-func convertBedrockTools(tools []ToolSchema, supportsStrictMode bool) (*btypes.ToolConfiguration, error) {
+func convertBedrockTools(tools []ToolSchema, toolChoice any, supportsStrictMode bool) (*btypes.ToolConfiguration, error) {
 	if len(tools) == 0 {
+		return nil, nil
+	}
+	switch value := toolChoice.(type) {
+	case nil, string, map[string]any:
+	case JsonObject:
+		toolChoice = map[string]any(value)
+	case map[string]string:
+		object := make(map[string]any, 2)
+		for _, key := range []string{"type", "name"} {
+			if field, present := value[key]; present {
+				object[key] = field
+			}
+		}
+		toolChoice = object
+	default:
+		value, err := normalizeJSONValue(toolChoice)
+		if err != nil {
+			return nil, err
+		}
+		toolChoice = value
+	}
+	choice, _ := toolChoice.(string)
+	if choice == "none" {
 		return nil, nil
 	}
 	out := make([]btypes.Tool, 0, len(tools))
@@ -735,16 +874,42 @@ func convertBedrockTools(tools []ToolSchema, supportsStrictMode bool) (*btypes.T
 		}
 		out = append(out, &btypes.ToolMemberToolSpec{Value: toolSpec})
 	}
-	return &btypes.ToolConfiguration{
-		Tools: out,
-		// toolChoice is intentionally left unset (defaults to auto)
-		// because pig's StreamOptions does not currently expose a
-		// tool-choice setting. The Provider interface stays small.
-	}, nil
+	config := &btypes.ToolConfiguration{Tools: out}
+	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:convertToolConfig
+	switch choice {
+	case "auto":
+		config.ToolChoice = &btypes.ToolChoiceMemberAuto{Value: btypes.AutoToolChoice{}}
+	case "any":
+		config.ToolChoice = &btypes.ToolChoiceMemberAny{Value: btypes.AnyToolChoice{}}
+	default:
+		if object, ok := toolChoice.(map[string]any); ok && object["type"] == "tool" {
+			name, ok := object["name"].(string)
+			if !ok {
+				return nil, fmt.Errorf("toolChoice tool name must be a string")
+			}
+			config.ToolChoice = &btypes.ToolChoiceMemberTool{Value: btypes.SpecificToolChoice{Name: aws.String(name)}}
+		}
+	}
+	return config, nil
 }
 
 // ─── Additional model request fields (thinking) ──────────────────────────
 
+// isGovCloudBedrockTarget follows configured region precedence independently of endpoint and ARN region resolution.
+// upstream: packages/ai/src/api/bedrock-converse-stream.ts:isGovCloudBedrockTarget
+func isGovCloudBedrockTarget(model *Model, opts StreamOptions) bool {
+	region := opts.Region
+	if region == "" {
+		region = getProviderEnvValue("AWS_REGION", opts.Env)
+	}
+	if region == "" {
+		region = getProviderEnvValue("AWS_DEFAULT_REGION", opts.Env)
+	}
+	id := strings.ToLower(model.ID)
+	return strings.HasPrefix(strings.ToLower(region), "us-gov-") || strings.HasPrefix(id, "us-gov.") || strings.HasPrefix(id, "arn:aws-us-gov:")
+}
+
+// buildBedrockAdditionalFields omits thinking.display for GovCloud targets in both adaptive and budget-based requests.
 func buildBedrockAdditionalFields(model *Model, modelName string, opts StreamOptions) map[string]any {
 	if opts.Thinking == "" || opts.Thinking == ThinkingOff || !opts.IsReasoning {
 		return nil
@@ -753,11 +918,15 @@ func buildBedrockAdditionalFields(model *Model, modelName string, opts StreamOpt
 		return nil
 	}
 
-	display := "summarized"
+	thinking := map[string]any{}
+	if !isGovCloudBedrockTarget(model, opts) {
+		thinking["display"] = "summarized"
+	}
 
 	if supportsBedrockAdaptiveThinkingWithName(model.ID, modelName) {
+		thinking["type"] = "adaptive"
 		return map[string]any{
-			"thinking":      map[string]any{"type": "adaptive", "display": display},
+			"thinking":      thinking,
 			"output_config": map[string]any{"effort": mapBedrockThinkingEffort(model, opts.Thinking)},
 		}
 	}
@@ -781,27 +950,23 @@ func buildBedrockAdditionalFields(model *Model, modelName string, opts StreamOpt
 			budget = defaults[ThinkingHigh]
 		}
 	}
-	result := map[string]any{
-		"thinking": map[string]any{
-			"type":          "enabled",
-			"budget_tokens": budget,
-			"display":       display,
-		},
-	}
+	thinking["type"], thinking["budget_tokens"] = "enabled", budget
+	result := map[string]any{"thinking": thinking}
 	// Upstream defaults interleaved_thinking on for non-adaptive Claude.
-	result["anthropic_beta"] = []string{"interleaved-thinking-2025-05-14"}
+	if opts.InterleavedThinking == nil || *opts.InterleavedThinking {
+		result["anthropic_beta"] = []string{"interleaved-thinking-2025-05-14"}
+	}
 	return result
 }
 
-// supportsNativeXhighEffort reports whether a Bedrock model supports the
-// native "xhigh" effort level. Currently only Claude Opus 4.7+ models.
-// Mirrors upstream supportsNativeXhighEffort (amazon-bedrock.ts).
+// supportsNativeXhighEffort recognizes the Bedrock model families with native xhigh effort in both model IDs and display names.
+// upstream: packages/ai/src/api/bedrock-converse-stream.ts:supportsNativeXhighEffort
 func supportsNativeXhighEffort(model *Model) bool {
 	if model == nil {
 		return false
 	}
 	for _, s := range bedrockModelMatchCandidates(model.ID, model.DisplayName) {
-		if strings.Contains(s, "opus-4-7") || strings.Contains(s, "opus-4-8") || strings.Contains(s, "sonnet-5") || strings.Contains(s, "fable-5") {
+		if strings.Contains(s, "opus-4-7") || strings.Contains(s, "opus-4-8") || strings.Contains(s, "opus-5") || strings.Contains(s, "sonnet-5") || strings.Contains(s, "fable-5") {
 			return true
 		}
 	}
@@ -809,14 +974,14 @@ func supportsNativeXhighEffort(model *Model) bool {
 }
 
 func mapBedrockThinkingEffort(model *Model, level ThinkingLevel) string {
+	// upstream: packages/ai/src/api/bedrock-converse-stream.ts:mapThinkingLevelToEffort
+	if level == ThinkingXHigh && supportsNativeXhighEffort(model) {
+		return "xhigh"
+	}
 	if model != nil {
 		if mapped, ok := model.ThinkingLevelMap[level]; ok && mapped != nil {
 			return *mapped
 		}
-	}
-	// Upstream: if level is xhigh and model supports native xhigh, pass through.
-	if level == ThinkingXHigh && supportsNativeXhighEffort(model) {
-		return "xhigh"
 	}
 	switch level {
 	case ThinkingMinimal, ThinkingLow:
@@ -835,10 +1000,47 @@ func mapBedrockThinkingEffort(model *Model, level ThinkingLevel) string {
 // activeBlock tracks the streaming state for a single content block
 // indexed by Bedrock's contentBlockIndex.
 type activeBlock struct {
-	kind        string // "text" | "thinking" | "toolUse"
-	toolID      string
-	toolName    string
-	partialJSON strings.Builder
+	kind            string // "text" | "thinking" | "toolUse"
+	toolID          string
+	toolName        string
+	partialJSON     strings.Builder
+	contentIndex    int
+	redactedContent []byte
+}
+
+// decodeBedrockRedactedContent accepts the base64 alphabet and ASCII whitespace
+// accepted by atob. Invalid persisted signatures drop only the redacted block.
+func decodeBedrockRedactedContent(signature string) []byte {
+	signature = strings.Map(func(r rune) rune {
+		switch r {
+		case ' ', '\t', '\n', '\r', '\f':
+			return -1
+		default:
+			return r
+		}
+	}, signature)
+	var data []byte
+	var err error
+	if strings.Contains(signature, "=") {
+		data, err = base64.StdEncoding.DecodeString(signature)
+	} else {
+		data, err = base64.RawStdEncoding.DecodeString(signature)
+	}
+	if err != nil {
+		return nil
+	}
+	return data
+}
+
+func flushBedrockRedactedContent(block *activeBlock, builder *assistantStreamBuilder) {
+	if len(block.redactedContent) == 0 {
+		return
+	}
+	thinking := builder.partial.Content[block.contentIndex].(ThinkingContent)
+	thinking.ThinkingSignature = base64.StdEncoding.EncodeToString(block.redactedContent)
+	thinking.thinkingSignatureEmpty = false
+	builder.partial.Content[block.contentIndex] = thinking
+	block.redactedContent = nil
 }
 
 type bedrockEventStream interface {
@@ -853,100 +1055,35 @@ func (p *BedrockProvider) parseBedrockStream(ctx context.Context, resp *bedrockr
 		builder.fail(StopReasonError, errors.New("amazon-bedrock: nil stream"))
 		return
 	}
-	p.parseBedrockEvents(ctx, stream, builder)
+	requestID, _ := awsmiddleware.GetRequestIDMetadata(resp.ResultMetadata)
+	p.parseBedrockEvents(ctx, stream, builder, normalizeBedrockDiagnosticValue(requestID))
 }
 
-func (p *BedrockProvider) parseBedrockEvents(ctx context.Context, stream bedrockEventStream, builder *assistantStreamBuilder) {
+func (p *BedrockProvider) parseBedrockEvents(ctx context.Context, stream bedrockEventStream, builder *assistantStreamBuilder, requestID string) {
 	defer func() { _ = stream.Close() }()
 
-	blocks := map[int32]*activeBlock{}
-	var usage Usage
-	stopReason := StopReasonStop
-	hasStopReason := false
-	var stopErrMsg string
-
+	state := newBedrockStreamState(p, builder)
 	events := stream.Events()
 	for {
 		select {
 		case <-ctx.Done():
-			builder.fail(StopReasonAborted, ctx.Err())
+			state.finalizeBlocks()
+			failBedrockResponse(ctx, builder, ctx.Err(), requestID, true)
 			return
 		case ev, ok := <-events:
 			if !ok {
-				if streamErr := stream.Err(); streamErr != nil {
-					if errors.Is(streamErr, context.Canceled) || errors.Is(streamErr, io.EOF) {
-						// fall through to done
-					} else {
-						streamErr = mapBedrockTransportError(ctx, streamErr, "terminated")
-						builder.fail(StopReasonError, fmt.Errorf("amazon-bedrock: %s", formatBedrockError(streamErr)))
-						return
-					}
+				state.finalizeBlocks()
+				var streamErr error
+				if err := stream.Err(); err != nil && !errors.Is(err, io.EOF) {
+					streamErr = err
 				}
-				if !hasStopReason {
-					builder.fail(StopReasonError, errors.New("amazon-bedrock: Bedrock stream ended without a stop reason"))
-					return
-				}
-				if stopReason == StopReasonError {
-					message := stopErrMsg
-					if message == "" {
-						message = "An unknown error occurred"
-					}
-					builder.fail(StopReasonError, fmt.Errorf("amazon-bedrock: %s", message))
-					return
-				}
-				builder.done(stopReason, &usage, "")
+				state.finish(ctx, streamErr, requestID)
 				return
 			}
-			switch e := ev.(type) {
-			case *btypes.ConverseStreamOutputMemberMessageStart:
-				if e.Value.Role != btypes.ConversationRoleAssistant {
-					builder.fail(StopReasonError, errors.New("amazon-bedrock: Unexpected assistant message start but got user message start instead"))
-					return
-				}
-				builder.start()
-
-			case *btypes.ConverseStreamOutputMemberContentBlockStart:
-				idx := aws.ToInt32(e.Value.ContentBlockIndex)
-				if start := e.Value.Start; start != nil {
-					if tu, ok := start.(*btypes.ContentBlockStartMemberToolUse); ok {
-						blocks[idx] = &activeBlock{
-							kind:     "toolUse",
-							toolID:   aws.ToString(tu.Value.ToolUseId),
-							toolName: aws.ToString(tu.Value.Name),
-						}
-						builder.toolCallStart(streamToolCallDelta{
-							index: int(idx), id: aws.ToString(tu.Value.ToolUseId), name: aws.ToString(tu.Value.Name),
-						})
-					}
-				}
-
-			case *btypes.ConverseStreamOutputMemberContentBlockDelta:
-				p.handleBedrockDelta(e.Value, blocks, builder)
-
-			case *btypes.ConverseStreamOutputMemberContentBlockStop:
-				idx := aws.ToInt32(e.Value.ContentBlockIndex)
-				if block, ok := blocks[idx]; ok {
-					switch block.kind {
-					case "text":
-						builder.endText()
-					case "thinking":
-						builder.endThinking()
-					case "toolUse":
-						builder.endToolCall(int(idx))
-					}
-				}
-				delete(blocks, idx)
-
-			case *btypes.ConverseStreamOutputMemberMessageStop:
-				rawStopReason := string(e.Value.StopReason)
-				builder.setResponseMetadata("", "", rawStopReason, "", nil)
-				stopReason, stopErrMsg = mapBedrockStopReason(rawStopReason)
-				hasStopReason = true
-
-			case *btypes.ConverseStreamOutputMemberMetadata:
-				if u := e.Value.Usage; u != nil {
-					handleBedrockUsage(u, builder, &usage)
-				}
+			if err := state.handle(ev); err != nil {
+				state.finalizeBlocks()
+				failBedrockResponse(ctx, builder, err, requestID, true)
+				return
 			}
 		}
 	}
@@ -974,23 +1111,33 @@ func handleBedrockUsage(u *btypes.TokenUsage, builder *assistantStreamBuilder, u
 		usage.TotalTokens = usage.Input + usage.Output
 	}
 	builder.calculateCost(usage)
-	builder.setUsage(usage)
+	// output.usage is mutated in place (bedrock-converse-stream.ts:707-718), not replaced: earlier shallow copies observe the update.
+	builder.partial.Usage = *usage
 }
 
 func (p *BedrockProvider) handleBedrockDelta(ev btypes.ContentBlockDeltaEvent, blocks map[int32]*activeBlock, builder *assistantStreamBuilder) {
+	p.handleBedrockDeltaFields(ev, nil, blocks, builder)
+}
+
+// handleBedrockDeltaFields is handleContentBlockDelta. reasoning holds every reasoningContent member of the payload when the caller decoded the JSON itself; nil reads the single member of the SDK's union value.
+func (p *BedrockProvider) handleBedrockDeltaFields(ev btypes.ContentBlockDeltaEvent, reasoning *bedrockReasoningFields, blocks map[int32]*activeBlock, builder *assistantStreamBuilder) {
 	idx := aws.ToInt32(ev.ContentBlockIndex)
 	switch d := ev.Delta.(type) {
 	case *btypes.ContentBlockDeltaMemberText:
 		// Lazily create a text block if needed (Bedrock does not emit
 		// ContentBlockStart for text blocks).
-		if _, ok := blocks[idx]; !ok {
-			blocks[idx] = &activeBlock{kind: "text"}
+		block, ok := blocks[idx]
+		if !ok {
+			block = &activeBlock{kind: "text", contentIndex: builder.textBlockStartWithBlock(TextContent{scratch: bedrockBlockScratch(builder, idx)})}
+			blocks[idx] = block
 		}
-		builder.textDelta(d.Value)
+		if block.kind == "text" {
+			builder.textBlockDelta(block.contentIndex, d.Value)
+		}
 
 	case *btypes.ContentBlockDeltaMemberToolUse:
 		b, ok := blocks[idx]
-		if !ok {
+		if !ok || b.kind != "toolUse" {
 			return
 		}
 		b.partialJSON.WriteString(aws.ToString(d.Value.Input))
@@ -999,16 +1146,56 @@ func (p *BedrockProvider) handleBedrockDelta(ev btypes.ContentBlockDeltaEvent, b
 		})
 
 	case *btypes.ContentBlockDeltaMemberReasoningContent:
-		switch rc := d.Value.(type) {
-		case *btypes.ReasoningContentBlockDeltaMemberText:
-			if _, ok := blocks[idx]; !ok {
-				blocks[idx] = &activeBlock{kind: "thinking"}
+		block, ok := blocks[idx]
+		if !ok {
+			// upstream: packages/ai/src/api/bedrock-converse-stream.ts:handleContentBlockDelta
+			block = &activeBlock{kind: "thinking", contentIndex: builder.thinkingBlockStartWithContent(ThinkingContent{thinkingSignatureEmpty: true, scratch: bedrockBlockScratch(builder, idx)})}
+			blocks[idx] = block
+		}
+		if block.kind != "thinking" {
+			return
+		}
+		if reasoning == nil {
+			reasoning = bedrockReasoningFromUnion(d.Value)
+		}
+		// upstream: packages/ai/src/api/bedrock-converse-stream.ts:handleContentBlockDelta reads text, signature and redactedContent in this order, each when present.
+		if reasoning.text != nil && *reasoning.text != "" {
+			builder.thinkingBlockDelta(block.contentIndex, *reasoning.text)
+		}
+		if reasoning.signature != nil && *reasoning.signature != "" {
+			thinking := builder.partial.Content[block.contentIndex].(ThinkingContent)
+			if !thinking.Redacted {
+				thinking.ThinkingSignature += *reasoning.signature
+				thinking.thinkingSignatureEmpty = thinking.ThinkingSignature == ""
+				builder.partial.Content[block.contentIndex] = thinking
 			}
-			builder.thinkingDelta(rc.Value, false)
-		case *btypes.ReasoningContentBlockDeltaMemberSignature:
-			builder.thinkingSignature(rc.Value)
+		}
+		if len(reasoning.redacted) > 0 {
+			thinking := builder.partial.Content[block.contentIndex].(ThinkingContent)
+			if !thinking.Redacted {
+				thinking.Redacted = true
+				thinking.ThinkingSignature = ""
+				thinking.thinkingSignatureEmpty = true
+				builder.partial.Content[block.contentIndex] = thinking
+				builder.thinkingBlockDelta(block.contentIndex, "[Reasoning redacted]")
+			}
+			block.redactedContent = append(block.redactedContent, reasoning.redacted...)
 		}
 	}
+}
+
+// bedrockReasoningFromUnion reads the members of an SDK ReasoningContentBlockDelta union value.
+func bedrockReasoningFromUnion(value btypes.ReasoningContentBlockDelta) *bedrockReasoningFields {
+	fields := &bedrockReasoningFields{}
+	switch rc := value.(type) {
+	case *btypes.ReasoningContentBlockDeltaMemberText:
+		fields.text = &rc.Value
+	case *btypes.ReasoningContentBlockDeltaMemberSignature:
+		fields.signature = &rc.Value
+	case *btypes.ReasoningContentBlockDeltaMemberRedactedContent:
+		fields.redacted = rc.Value
+	}
+	return fields
 }
 
 func mapBedrockStopReason(reason string) (StopReason, string) {
@@ -1020,11 +1207,75 @@ func mapBedrockStopReason(reason string) (StopReason, string) {
 	case string(btypes.StopReasonToolUse):
 		return StopReasonToolUse, ""
 	default:
-		return StopReasonError, reason
+		if reason != "" {
+			return StopReasonError, "Provider stopped with: " + reason
+		}
+		return StopReasonError, ""
 	}
 }
 
 // ─── Error formatting ────────────────────────────────────────────────────
+
+// upstream: packages/ai/src/api/bedrock-converse-stream.ts:MAX_BEDROCK_DIAGNOSTIC_VALUE_CHARS
+const maxBedrockDiagnosticValueChars = 200
+
+func normalizeBedrockDiagnosticValue(value string) string {
+	value = strings.TrimFunc(value, func(r rune) bool { return r == '\ufeff' || (r != '\u0085' && unicode.IsSpace(r)) })
+	if value == "" || utf16Length(value) > maxBedrockDiagnosticValueChars {
+		return ""
+	}
+	return value
+}
+
+func appendBedrockFailureDiagnostic(message *AssistantMessage, err error, fallbackRequestID string) {
+	details := map[string]any{}
+	if response, ok := errors.AsType[*smithyhttp.ResponseError](err); ok && response.Response != nil && response.Response.Response != nil {
+		details["status"] = response.HTTPStatusCode()
+	}
+	code := ""
+	if apiError, ok := errors.AsType[smithy.APIError](err); ok {
+		code = apiError.ErrorCode()
+	}
+	if strings.HasSuffix(code, "Exception") {
+		if code = normalizeBedrockDiagnosticValue(code); code != "" {
+			details["errorCode"] = code
+		}
+	}
+	requestID := ""
+	if response, ok := errors.AsType[*awshttp.ResponseError](err); ok {
+		requestID = normalizeBedrockDiagnosticValue(response.RequestID)
+	}
+	if requestID == "" {
+		requestID = normalizeBedrockDiagnosticValue(fallbackRequestID)
+	}
+	if requestID != "" {
+		details["requestId"] = requestID
+	}
+	if len(details) == 0 {
+		return
+	}
+	message.Diagnostics = append(message.Diagnostics, AssistantMessageDiagnostic{Type: "bedrock_response_failure", Timestamp: time.Now().UnixMilli(), Details: details})
+}
+
+func failBedrockResponse(ctx context.Context, builder *assistantStreamBuilder, err error, requestID string, streaming bool) {
+	if ctx.Err() != nil {
+		builder.fail(StopReasonAborted, errors.New("Request aborted"))
+		return
+	}
+	appendBedrockFailureDiagnostic(builder.partial, err, requestID)
+	transportMessage := "fetch failed"
+	if streaming {
+		transportMessage = "terminated"
+	}
+	mapped := mapBedrockTransportError(ctx, err, transportMessage)
+	message := formatBedrockError(mapped)
+	if streaming {
+		if apiError, ok := errors.AsType[*smithy.GenericAPIError](mapped); ok {
+			message = apiError.ErrorMessage() + bedrockDataRetentionHint(apiError.ErrorMessage())
+		}
+	}
+	builder.fail(StopReasonError, errors.New(message))
+}
 
 // bedrockErrorPrefixes mirrors upstream's BEDROCK_ERROR_PREFIXES table
 // verbatim. Retry classifiers downstream match patterns like
@@ -1041,15 +1292,19 @@ func formatBedrockError(err error) string {
 	if err == nil {
 		return ""
 	}
+	norm := NormalizeProviderError(err)
+	core := FormatProviderError(norm)
 	if apiErr, ok := errors.AsType[smithy.APIError](err); ok {
 		prefix, ok := bedrockErrorPrefixes[apiErr.ErrorCode()]
 		if !ok {
 			prefix = apiErr.ErrorCode()
 		}
-		msg := apiErr.ErrorMessage()
-		return fmt.Sprintf("%s: %s%s", prefix, msg, bedrockDataRetentionHint(msg))
+		if norm.MessageCarriesBody {
+			core = apiErr.ErrorMessage()
+		}
+		return fmt.Sprintf("%s: %s%s", prefix, core, bedrockDataRetentionHint(core))
 	}
-	return err.Error() + bedrockDataRetentionHint(err.Error())
+	return core + bedrockDataRetentionHint(core)
 }
 
 // bedrockDataRetentionHint appends a link to the AWS data-retention docs when a
@@ -1061,12 +1316,6 @@ func bedrockDataRetentionHint(message string) string {
 	}
 	return ""
 }
-
-// ─── Misc helpers ────────────────────────────────────────────────────────
-
-// sanitizeSurrogates is defined in openai_responses.go and shared
-// across providers. The Bedrock-specific sanitization matches upstream
-// behavior.
 
 func init() {
 	builtInProviders[APIBedrockConverseStream] = func(_, model, baseURL string) Provider {

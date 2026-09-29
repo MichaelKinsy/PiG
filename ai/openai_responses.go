@@ -1,7 +1,7 @@
 package ai
 
-// Mirrors upstream .upstream/current/packages/ai/src/providers/openai-responses.ts
-// and .upstream/current/packages/ai/src/providers/openai-responses-shared.ts.
+// Ports packages/ai/src/api/openai-responses.ts.
+// Ports packages/ai/src/api/openai-responses-shared.ts.
 
 import (
 	"bytes"
@@ -13,7 +13,9 @@ import (
 	"io"
 	"maps"
 	"net/http"
+	"slices"
 	"strings"
+	"sync"
 )
 
 // ─── Config ──────────────────────────────────────────────────────────────────
@@ -24,17 +26,24 @@ const openAIResponsesMinOutputTokens = 16
 
 // OpenAIResponsesConfig configures the OpenAI Responses API provider.
 type OpenAIResponsesConfig struct {
+	api API
+	// requestModel selects a deployment on the wire without changing logical model identity or replay capabilities.
+	requestModel string
 	// BaseURL is the API base (default: https://api.openai.com/v1).
 	BaseURL string
 	// APIKey is the bearer token.
 	APIKey string
-	// Model is the model name sent in the request.
+	// Model is the logical model identity used for response metadata and replay capabilities.
 	Model string
+	// ModelMetadata supplies the selected model's thinking map and input capabilities.
+	ModelMetadata *Model
 	// ProviderID is the provider label (e.g. "openai", "github-copilot").
 	ProviderID string
 	// ExtraHeaders are added to every request.
 	ExtraHeaders   map[string]string
 	SamplingParams map[string]any
+	// ThinkingLevelMap supplies an explicit map when selected ModelMetadata is absent.
+	ThinkingLevelMap ThinkingLevelMap
 	// APIKeyHeader is the header name used for the API key.
 	// Default: Authorization.
 	APIKeyHeader string
@@ -105,31 +114,34 @@ func NewOpenAIResponsesProvider(cfg OpenAIResponsesConfig) Provider {
 func (p *openAIResponsesProvider) ID() string   { return p.cfg.ProviderID }
 func (p *openAIResponsesProvider) Close() error { return nil }
 
-// responsesCompat is the resolved subset of OpenAIResponsesCompat the request
-// builder reads. SendSessionIdHeader and SupportsLongCacheRetention default
-// true; the others default false, mirroring upstream openai-responses.ts
-// (`?? false`).
+func (p *openAIResponsesProvider) api() API {
+	if p.cfg.api != "" {
+		return p.cfg.api
+	}
+	if p.cfg.Codex {
+		return APIOpenAICodexResponses
+	}
+	return APIOpenAIResponses
+}
+
+// responsesCompat holds the resolved request flags. Long cache retention defaults to true; strict mode uses the provider default.
 type responsesCompat struct {
-	SendSessionIdHeader            bool
-	SupportsLongCacheRetention     bool
-	SupportsStrictMode             bool
-	SupportsOpenAIGrammarTools     bool
-	SupportsMidConvoSystemMessages bool
-	SupportsAdditionalTools        bool
-	SupportsToolSearch             bool
+	SupportsLongCacheRetention      bool
+	SupportsStrictMode              bool
+	SupportsOpenAIGrammarTools      bool
+	SupportsMidConvoSystemMessages  bool
+	SupportsAdditionalTools         bool
+	SupportsExplicitPromptCacheMode bool
+	SupportsToolSearch              bool
 }
 
 func getResponsesCompat(compat *OpenAIResponsesCompat, strictModeDefault bool) responsesCompat {
 	out := responsesCompat{
-		SendSessionIdHeader:        true,
 		SupportsLongCacheRetention: true,
 		SupportsStrictMode:         strictModeDefault,
 	}
 	if compat == nil {
 		return out
-	}
-	if compat.SendSessionIdHeader != nil {
-		out.SendSessionIdHeader = *compat.SendSessionIdHeader
 	}
 	if compat.SupportsLongCacheRetention != nil {
 		out.SupportsLongCacheRetention = *compat.SupportsLongCacheRetention
@@ -142,16 +154,31 @@ func getResponsesCompat(compat *OpenAIResponsesCompat, strictModeDefault bool) r
 	}
 	out.SupportsMidConvoSystemMessages = compat.SupportsMidConvoSystemMessages != nil && *compat.SupportsMidConvoSystemMessages
 	out.SupportsAdditionalTools = compat.SupportsAdditionalTools != nil && *compat.SupportsAdditionalTools
+	out.SupportsExplicitPromptCacheMode = compat.SupportsExplicitPromptCacheMode != nil && *compat.SupportsExplicitPromptCacheMode
 	out.SupportsToolSearch = compat.SupportsToolSearch != nil && *compat.SupportsToolSearch
 	return out
 }
 
 func getPromptCacheRetention(compat responsesCompat, cacheRetention string) *string {
-	if cacheRetention != "long" || !compat.SupportsLongCacheRetention {
+	if cacheRetention != "long" || !compat.SupportsLongCacheRetention || compat.SupportsExplicitPromptCacheMode {
 		return nil
 	}
 	ret := "24h"
 	return &ret
+}
+
+// getPromptCacheOptions selects explicit writes or the supported long TTL for capable Responses models.
+func getPromptCacheOptions(compat responsesCompat, retention string) map[string]string {
+	if !compat.SupportsExplicitPromptCacheMode {
+		return nil
+	}
+	if retention == "none" {
+		return map[string]string{"mode": "explicit"}
+	}
+	if retention == "long" && compat.SupportsLongCacheRetention {
+		return map[string]string{"ttl": "30m"}
+	}
+	return nil
 }
 
 // ─── Request wire types ──────────────────────────────────────────────────────
@@ -171,6 +198,7 @@ type respInputItem struct {
 
 	// For type=function_call (a JSON string) and type=tool_search_call (an object)
 	CallID    string          `json:"call_id,omitempty"`
+	Namespace string          `json:"namespace,omitempty"`
 	Name      string          `json:"name,omitempty"`
 	Arguments json.RawMessage `json:"arguments,omitempty"`
 
@@ -233,7 +261,7 @@ type respRequest struct {
 	Stream               bool              `json:"stream"`
 	Instructions         string            `json:"instructions,omitempty"`
 	Tools                []respTool        `json:"tools,omitempty"`
-	ToolChoice           string            `json:"tool_choice,omitempty"`
+	ToolChoice           any               `json:"tool_choice,omitempty"`
 	ParallelToolCalls    *bool             `json:"parallel_tool_calls,omitempty"`
 	Text                 map[string]string `json:"text,omitempty"`
 	MaxOutputTokens      int               `json:"max_output_tokens,omitempty"`
@@ -244,6 +272,7 @@ type respRequest struct {
 	Include              []string          `json:"include,omitempty"`
 	PromptCacheKey       string            `json:"prompt_cache_key,omitempty"`
 	PromptCacheRetention string            `json:"prompt_cache_retention,omitempty"`
+	PromptCacheOptions   map[string]string `json:"prompt_cache_options,omitempty"`
 }
 
 // ─── SSE event types ─────────────────────────────────────────────────────────
@@ -354,7 +383,7 @@ type respOutputItem struct {
 	Summary          []respOutputContent `json:"summary,omitempty"`
 	Status           string              `json:"status,omitempty"`
 	Phase            string              `json:"phase,omitempty"`
-	Input            string              `json:"input,omitempty"` // for custom_tool_call items
+	Input            *string             `json:"input,omitempty"` // for custom_tool_call items
 }
 
 type respOutputContent struct {
@@ -389,15 +418,20 @@ func (p *openAIResponsesProvider) resolveResponsesModel() (*GeneratedModel, bool
 	return nil, false
 }
 
-// resolvedModel returns the reasoning/thinking view of the resolved catalog
-// entry, falling back to a synthetic high-thinking model when the config names
-// no known model (matching upstream's default when the SDK is handed an unknown
-// model id).
+// resolvedModel uses selected metadata when supplied, otherwise the catalog or an unknown-model reasoning default.
 func (p *openAIResponsesProvider) resolvedModel() *Model {
-	if generated, ok := p.resolveResponsesModel(); ok {
-		return generated.ToModel()
+	if p.cfg.ModelMetadata != nil {
+		return p.cfg.ModelMetadata
 	}
-	return &Model{ID: p.cfg.Model, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh}}
+	model := &Model{ID: p.cfg.Model, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh}}
+	if generated, ok := p.resolveResponsesModel(); ok {
+		model = generated.ToModel()
+	}
+	if p.cfg.ThinkingLevelMap != nil {
+		model.ThinkingLevelMap = cloneThinkingLevelMap(p.cfg.ThinkingLevelMap)
+		model.Capabilities.MaxThinking = thinkingMaxLevel(true, model.ThinkingLevelMap)
+	}
+	return model
 }
 
 // modelSupportsImages reports whether the configured responses model accepts
@@ -406,6 +440,12 @@ func (p *openAIResponsesProvider) resolvedModel() *Model {
 // reasoning clamp with, so a codex or non-codex provider never gates images on a
 // different catalog entry than the one that drives thinking.
 func (p *openAIResponsesProvider) modelSupportsImages() bool {
+	if p.cfg.ModelMetadata != nil {
+		if p.cfg.ModelMetadata.Input != nil {
+			return slices.Contains(p.cfg.ModelMetadata.Input, "image")
+		}
+		return p.cfg.ModelMetadata.Capabilities.SupportsImages
+	}
 	generated, ok := p.resolveResponsesModel()
 	if !ok {
 		return false
@@ -509,6 +549,9 @@ func (p *openAIResponsesProvider) convertAnchoredMessages(messages []Message, gr
 	var items []respInputItem
 	messageIndex := 0
 	supportsImages := p.modelSupportsImages()
+	targetAPI := p.api()
+	targetModel := p.cfg.Model
+	normalizedToolIDs := make(map[string]string)
 	for _, message := range messages {
 		switch message := message.(type) {
 		case SystemMessage:
@@ -542,7 +585,10 @@ func (p *openAIResponsesProvider) convertAnchoredMessages(messages []Message, gr
 			content, _ := json.Marshal(parts)
 			items = append(items, respInputItem{Role: "user", Content: content})
 		case ToolResultMessage:
-			callID := normalizeResponsesToolCallID(message.ToolCallID, p.cfg.ProviderID)
+			callID := message.ToolCallID
+			if normalized, exists := normalizedToolIDs[callID]; exists {
+				callID = normalized
+			}
 			if before, _, ok := strings.Cut(callID, "|"); ok {
 				callID = before
 			}
@@ -552,6 +598,8 @@ func (p *openAIResponsesProvider) convertAnchoredMessages(messages []Message, gr
 			}
 			items = append(items, respInputItem{Type: resultType, CallID: callID, Output: convertResponsesToolResultOutput(message.Content, supportsImages)})
 		case AssistantMessage:
+			sameProviderAPI := message.Provider == p.cfg.ProviderID && message.API == targetAPI
+			sameModel := sameProviderAPI && message.Model == targetModel
 			initialItemCount := len(items)
 			textBlockIndex := 0
 			for _, block := range message.Content {
@@ -583,18 +631,32 @@ func (p *openAIResponsesProvider) convertAnchoredMessages(messages []Message, gr
 					content, _ := json.Marshal([]map[string]any{{"type": "output_text", "text": text, "annotations": []any{}}})
 					items = append(items, respInputItem{Type: "message", Role: "assistant", Content: content, Status: "completed", ID: id, Phase: phase})
 				case ToolCall:
-					normalized := normalizeResponsesToolCallID(block.ID, p.cfg.ProviderID)
+					normalized := block.ID
+					if !sameModel {
+						normalized = normalizeResponsesToolCallID(block.ID, p.cfg.ProviderID, !sameProviderAPI)
+					}
+					normalizedToolIDs[block.ID] = normalized
 					callID, itemID, _ := strings.Cut(normalized, "|")
+					if sameProviderAPI && !sameModel && strings.HasPrefix(itemID, "fc_") {
+						itemID = ""
+					}
+					namespace := ""
+					if sameModel {
+						namespace = block.Namespace
+					}
 					if property, isGrammar := grammarProps[block.Name]; isGrammar {
 						input, err := getGrammarToolInput(block.Name, block.Arguments, property)
 						if err != nil {
 							return nil, err
 						}
-						items = append(items, respInputItem{Type: "custom_tool_call", ID: itemID, CallID: callID, Name: block.Name, Input: sanitizeSurrogates(input)})
+						items = append(items, respInputItem{Type: "custom_tool_call", ID: itemID, CallID: callID, Name: block.Name, Namespace: namespace, Input: sanitizeSurrogates(input)})
 					} else {
+						if !strings.HasPrefix(itemID, "fc_") {
+							itemID = ""
+						}
 						arguments, _ := json.Marshal(block.Arguments)
 						encoded, _ := json.Marshal(string(arguments))
-						items = append(items, respInputItem{Type: "function_call", ID: itemID, CallID: callID, Name: block.Name, Arguments: encoded})
+						items = append(items, respInputItem{Type: "function_call", ID: itemID, CallID: callID, Name: block.Name, Namespace: namespace, Arguments: encoded})
 					}
 				}
 			}
@@ -648,22 +710,8 @@ func buildForeignResponsesItemID(itemID string) string {
 	return normalized
 }
 
-// normalizeResponsesToolCallID ports upstream openai-responses-shared.ts
-// normalizeToolCallId. For an allowed provider it splits {call_id}|{item_id},
-// sanitizes the call part, and reduces the item part to a Codex-safe fc_ id
-// (the Responses API rejects item ids that are not fc_-prefixed and bounded).
-// Upstream distinguishes same-provider vs foreign tool calls via source.provider,
-// which pig's Message model does not carry; a native openai-responses item id is
-// always fc_-prefixed while a foreign provider's (e.g. github-copilot
-// call_xxx|<base64>) never is, so on well-formed history the fc_ prefix decides
-// foreign-vs-same exactly as upstream. The two can differ only on poisoned or
-// migrated history: a same-origin item id that is not fc_-prefixed is hashed here
-// but sanitize-and-preserved upstream (and the reverse for a foreign id that is
-// already fc_-prefixed). Both remain valid, deterministically paired, and are
-// never persisted, so there is no observable or interop difference (not a
-// divergence). Locked by TestResponsesToolCallID_SameOriginNonFcItemIsHashed.
-// Non-allowed providers keep pig's existing raw id (no normalization applied).
-func normalizeResponsesToolCallID(id, providerID string) string {
+// normalizeResponsesToolCallID normalizes cross-model IDs for supported target providers. Source provider/API identity, not an item prefix, determines whether the item needs a foreign namespace.
+func normalizeResponsesToolCallID(id, providerID string, foreign bool) string {
 	if !responsesToolCallProviders[providerID] {
 		return id
 	}
@@ -673,10 +721,10 @@ func normalizeResponsesToolCallID(id, providerID string) string {
 	}
 	callID := normalizeResponsesIDPart(before)
 	var itemID string
-	if strings.HasPrefix(after, "fc_") {
-		itemID = normalizeResponsesIDPart(after)
-	} else {
+	if foreign {
 		itemID = buildForeignResponsesItemID(after)
+	} else {
+		itemID = normalizeResponsesIDPart(after)
 	}
 	if !strings.HasPrefix(itemID, "fc_") {
 		itemID = normalizeResponsesIDPart("fc_" + itemID)
@@ -740,13 +788,20 @@ func (p *openAIResponsesProvider) convertTools(tools []ToolSchema, supportsStric
 
 // ─── Stream ──────────────────────────────────────────────────────────────────
 
+// Stream returns before HTTP setup settles. Successful setup admits start before waiting for body data.
 func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript TranscriptContext, opts StreamOptions) (*AssistantMessageEventStream, error) {
+	ctx = withProviderRequestOptions(ctx, opts)
 	if err := validateProviderRequest(ctx, transcript); err != nil {
 		return nil, fmt.Errorf("openai-responses: invalid transcript: %w", err)
 	}
 	compat := getResponsesCompat(p.cfg.Compat, p.cfg.StrictModeDefault)
 	resolved := ResolveTranscript(transcript, compat.SupportsMidConvoSystemMessages)
 	messages := resolved.Messages()
+	target := &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{API: p.api(), ProviderID: p.cfg.ProviderID}, Input: []string{"text"}}
+	if p.modelSupportsImages() {
+		target.Input = append(target.Input, "image")
+	}
+	messages = TransformMessages(messages, target, nil)
 	conversation := WithoutInitialSystemMessage(messages)
 	transcriptTools := ResolveTranscriptTools(messages, compat.SupportsAdditionalTools || compat.SupportsToolSearch)
 	tools := transcriptTools.RequestTools
@@ -758,11 +813,9 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	if err != nil {
 		return nil, err
 	}
-	originalThinking := opts.Thinking
 	if p.cfg.ProviderID == string(APIOpenAICodexResponses) && opts.Thinking != ThinkingOff && opts.Thinking != "" {
 		opts.Thinking = ClampThinkingLevel(p.resolvedModel(), opts.Thinking)
 	}
-	defer func() { opts.Thinking = originalThinking }()
 	if !p.cfg.Codex {
 		if systemPrompt := GetCurrentSystemPrompt(messages[:min(1, len(messages))]); systemPrompt != "" {
 			sysContent, _ := json.Marshal(sanitizeSurrogates(systemPrompt))
@@ -777,7 +830,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	}
 
 	req := respRequest{
-		Model:  p.cfg.Model,
+		Model:  cmp.Or(p.cfg.requestModel, p.cfg.Model),
 		Input:  inputJSON,
 		Stream: true,
 	}
@@ -792,14 +845,16 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		}
 		req.Text = map[string]string{"verbosity": "low"}
 		req.ToolChoice = "auto"
-		if toolChoice, ok := opts.ToolChoice.(string); ok && toolChoice != "" {
-			req.ToolChoice = toolChoice
-		}
 		parallel := true
 		req.ParallelToolCalls = &parallel
 		req.Include = []string{"reasoning.encrypted_content"}
 	}
 
+	// upstream: packages/ai/src/api/openai-responses.ts:buildParams
+	// Azure shares the same presence-based string/object tool-choice contract.
+	if opts.ToolChoice != nil {
+		req.ToolChoice = opts.ToolChoice
+	}
 	if len(tools) > 0 {
 		convertedTools, err := p.convertTools(tools, compat.SupportsStrictMode, compat.SupportsOpenAIGrammarTools)
 		if err != nil {
@@ -815,12 +870,18 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		req.Temperature = new(opts.Temperature)
 	}
 
-	// Reasoning/thinking support.
-	// Mirrors upstream openai-responses.ts buildParams reasoning block.
+	// An omitted effort remains omitted; the model's off mapping controls the default request.
+	// upstream: packages/ai/src/api/openai-responses.ts:buildParams
 	if p.cfg.IsReasoning || opts.IsReasoning {
 		model := p.resolvedModel()
+		if model.Capabilities.MaxThinking == "" {
+			model = new(*model)
+			model.Capabilities.MaxThinking = ThinkingHigh
+		}
 		clamped := opts.Thinking
-		if !p.cfg.Codex || (clamped != ThinkingOff && clamped != "") {
+		if opts.ReasoningEffort != "" {
+			clamped = ThinkingLevel(opts.ReasoningEffort)
+		} else if clamped != ThinkingOff && clamped != "" {
 			clamped = ClampThinkingLevel(model, clamped)
 		}
 		if clamped != ThinkingOff && clamped != "" {
@@ -851,16 +912,18 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 
 	// Prompt caching.
 	cacheRetention := string(opts.CacheRetention)
-	if cacheRetention == "" && !p.cfg.Codex {
-		cacheRetention = getProviderEnvValue("PI_CACHE_RETENTION", mergeProviderEnv(p.cfg.Env, opts.Env))
+	if !p.cfg.Codex {
+		cacheRetention = string(resolveCompletionsCacheRetention(opts.CacheRetention, mergeProviderEnv(p.cfg.Env, opts.Env)))
 	}
 	if opts.SessionID != "" && cacheRetention != "none" {
 		req.PromptCacheKey = ClampOpenAIPromptCacheKey(opts.SessionID)
-		if !p.cfg.Codex {
-			if ret := getPromptCacheRetention(compat, cacheRetention); ret != nil {
-				req.PromptCacheRetention = *ret
-			}
+	}
+	// Retention and write policy do not depend on a session-affinity key.
+	if !p.cfg.Codex {
+		if ret := getPromptCacheRetention(compat, cacheRetention); ret != nil {
+			req.PromptCacheRetention = *ret
 		}
+		req.PromptCacheOptions = getPromptCacheOptions(compat, cacheRetention)
 	}
 
 	payload := any(req)
@@ -929,7 +992,7 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	if p.cfg.Codex && opts.Transport != TransportSSE {
 		cacheSessionID := ""
 		if cacheRetention != "none" {
-			cacheSessionID = ClampOpenAIPromptCacheKey(opts.SessionID)
+			cacheSessionID = opts.SessionID
 		}
 		webSocketStream, err := p.startCodexWebSocket(ctx, endpointURL, body, apiKey, accountID, cacheSessionID, grammarProps, opts)
 		if err != nil {
@@ -963,15 +1026,6 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 	if p.cfg.Codex {
 		httpReq.Header.Set("chatgpt-account-id", accountID)
 	}
-	if opts.SessionID != "" && cacheRetention != "none" {
-		sessionID := ClampOpenAIPromptCacheKey(opts.SessionID)
-		if p.cfg.Codex {
-			httpReq.Header.Set("session-id", sessionID)
-		} else if compat.SendSessionIdHeader {
-			httpReq.Header.Set("session_id", sessionID)
-		}
-		httpReq.Header.Set("x-client-request-id", sessionID)
-	}
 	for k, v := range p.cfg.ExtraHeaders {
 		if strings.EqualFold(k, "Host") {
 			httpReq.Host = v
@@ -986,6 +1040,22 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 			} else {
 				httpReq.Header.Set(k, v)
 			}
+		}
+	}
+	if opts.SessionID != "" && cacheRetention != "none" {
+		if p.cfg.Codex {
+			sessionID := ClampOpenAIPromptCacheKey(opts.SessionID)
+			httpReq.Header.Set("session-id", sessionID)
+			httpReq.Header.Set("x-client-request-id", sessionID)
+		} else {
+			format := SessionAffinityOpenAI
+			if p.cfg.ProviderID == "openrouter" || strings.Contains(p.cfg.BaseURL, "openrouter.ai") {
+				format = SessionAffinityOpenRouter
+			}
+			if p.cfg.Compat != nil && p.cfg.Compat.SessionAffinityFormat != "" {
+				format = p.cfg.Compat.SessionAffinityFormat
+			}
+			applyOpenAISessionAffinityHeaders(httpReq.Header, opts.SessionID, format, false)
 		}
 	}
 	applyProviderHeaders(httpReq, opts.Headers)
@@ -1009,36 +1079,105 @@ func (p *openAIResponsesProvider) Stream(ctx context.Context, transcript Transcr
 		httpReq.Header.Set("User-Agent", PiUserAgent())
 	}
 
-	resp, err := p.client.Do(httpReq) //nolint:bodyclose // body closed via defer in SSE goroutine below
-	if err != nil {
-		return nil, fmt.Errorf("openai-responses: request: %w", err)
-	}
-	if resp.StatusCode != http.StatusOK {
-		b, _ := io.ReadAll(resp.Body)
-		_ = resp.Body.Close()
-		return nil, fmt.Errorf("openai-responses: HTTP %d: %s", resp.StatusCode, string(b))
-	}
-
-	api := APIOpenAIResponses
-	if p.cfg.Codex {
-		api = APIOpenAICodexResponses
-	}
-	builder := newAssistantStreamBuilder(ctx, api, p.cfg.ProviderID, p.cfg.Model)
+	builder := newObservedProviderBuilder(ctx, p.api(), p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
-	go func() {
-		defer func() { _ = resp.Body.Close() }()
-		bodyReader := io.Reader(resp.Body)
-		if p.cfg.Codex {
-			bodyReader = newCodexMappedSSEReader(ctx, resp.Body)
-		}
-		p.parseResponsesSSE(ctx, bodyReader, builder, grammarProps)
-	}()
+	builder.requestServiceTier, _ = opts.SamplingParams["service_tier"].(string)
+	requestContext, abort := context.WithCancel(httpReq.Context())
+	builder.abort = abort
+	httpReq = httpReq.WithContext(requestContext)
+	go builder.runResponse(func() error { return p.streamResponse(ctx, httpReq, opts, builder, grammarProps) })
 	return builder.stream, nil
 }
 
-// getServiceTierCostMultiplier mirrors openai-responses.ts and
-// openai-codex-responses.ts. PiG sends no request service tier, so both
-// upstream resolvers reduce to the tier the response reports.
+func (p *openAIResponsesProvider) streamResponse(ctx context.Context, httpReq *http.Request, opts StreamOptions, builder *assistantStreamBuilder, grammarProps map[string]string) error {
+	var resp *http.Response
+	var err error
+	var releaseRequest context.CancelFunc
+	if p.cfg.Codex {
+		resp, releaseRequest, err = p.doCodexSSERequest(httpReq, opts)
+	} else {
+		resp, err = providerHTTPClient(p.client, opts.Fetch).Do(httpReq)
+	}
+	if err != nil {
+		if p.cfg.Codex {
+			return err
+		}
+		return openAIRequestError(ctx, err, "openai-responses: request")
+	}
+	closeBody := sync.OnceFunc(func() {
+		_ = resp.Body.Close()
+		if releaseRequest != nil {
+			releaseRequest()
+		}
+	})
+	defer closeBody()
+	_, builder.managed = resp.Body.(*observedResponseBody)
+	// Codex SSE always runs as an executor turn: a body without a readiness owner is treated as always pending.
+	builder.managed = builder.managed || p.cfg.Codex
+	return builder.responseTurn(func() error {
+		if resp.StatusCode != http.StatusOK {
+			b, _ := io.ReadAll(resp.Body)
+			if p.cfg.Codex {
+				return fmt.Errorf("openai-responses: HTTP %d: %s", resp.StatusCode, string(b))
+			}
+			name := p.cfg.ProviderID
+			// upstream: packages/ai/src/api/openai-responses.ts:stream
+			if name == "openai" {
+				name = "OpenAI"
+			}
+			// upstream: packages/ai/src/api/azure-openai-responses.ts:formatAzureOpenAIError
+			if p.api() == APIAzureOpenAIResponses {
+				name = "Azure OpenAI"
+			}
+			return openAIHTTPError(resp.StatusCode, b, name+" API error")
+		}
+		if !p.cfg.Codex {
+			err := observeProviderResponse(ctx, opts, resp, &Model{ID: p.cfg.Model, ProviderMeta: ProviderMetadata{ProviderID: p.cfg.ProviderID, API: p.api()}})
+			if builder.turn != nil {
+				// upstream: packages/ai/src/api/azure-openai-responses.ts:128, openai-responses.ts:177: `await options?.onResponse?.(...)` awaits the hook's result (one reaction even when no hook exists) before pushing start.
+				suspendContinuation(builder.turn)
+			}
+			if err != nil {
+				return err
+			}
+		}
+		if p.cfg.Codex {
+			if _, observed := resp.Body.(*observedResponseBody); !observed {
+				stopAbort := context.AfterFunc(ctx, closeBody)
+				defer stopAbort()
+			}
+			// fetch() resolves and `await options?.onResponse?.()` returns before start (openai-codex-responses.ts:400-414,471-473).
+			for range codexFetchResolutionTicks + 1 {
+				suspendContinuation(builder.turn)
+			}
+			reader := newCodexBodyReader(ctx, resp.Body, closeBody, builder.turn, builder.abort)
+			defer reader.close()
+			builder.start()
+			p.parseResponses(ctx, newCodexSSEDecoder(ctx, reader, builder), builder, grammarProps)
+			return nil
+		}
+		if !builder.managed {
+			stopAbort := context.AfterFunc(ctx, closeBody)
+			defer stopAbort()
+		}
+		bodyReader := io.Reader(resp.Body)
+		if observed, ok := resp.Body.(*observedResponseBody); ok {
+			native := newNativeBodyIterator(ctx, observed, builder.turn, builder.abort)
+			defer func() { _ = native.Close() }()
+			bodyReader = native
+		}
+		// Awaits in Pi's order after headers (openai-responses.ts:177-186, azure-openai-responses.ts:128-136):
+		//  1. `await options?.onResponse?.(...)`: one reaction, modeled above.
+		//  2. `stream.push({ type: "start" })`, synchronous.
+		//  3. `await processResponsesStream(...)`: its only await is the `for await` over the SDK Stream (openai-responses-shared.ts:598), modeled by
+		//     the native body iterator's first read and the openAIStreamDecoder generator chain (openai 6.40.0 core/streaming.mjs:28-48,191-245).
+		builder.start()
+		p.parseResponsesSSE(ctx, bodyReader, builder, grammarProps)
+		return nil
+	})
+}
+
+// getServiceTierCostMultiplier mirrors OpenAI and Codex service-tier pricing.
 func getServiceTierCostMultiplier(modelID, serviceTier string) float64 {
 	switch serviceTier {
 	case "flex":
@@ -1071,6 +1210,23 @@ func applyServiceTierPricing(usage *Usage, serviceTier, modelID string) {
 // Mirrors upstream processResponsesStream in openai-responses-shared.ts.
 
 func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Reader, builder *assistantStreamBuilder, grammarProps map[string]string) {
+	var decoder providerSSEDecoder
+	if p.cfg.Codex {
+		raw := newSSEDecoder(r)
+		raw.beforeNext = func() { builder.publish() }
+		decoder = raw
+	} else {
+		var suspend func()
+		if builder.turn != nil {
+			suspend = func() { suspendContinuation(builder.turn) }
+		}
+		decoder = newOpenAIStreamDecoder(r, func() { builder.publish() }, suspend)
+	}
+	p.parseResponses(ctx, decoder, builder, grammarProps)
+}
+
+// parseResponses is processResponsesStream over an already constructed record decoder.
+func (p *openAIResponsesProvider) parseResponses(ctx context.Context, decoder providerSSEDecoder, builder *assistantStreamBuilder, grammarProps map[string]string) {
 	// Track current item state for multi-event sequences.
 	type currentState struct {
 		itemType     string
@@ -1087,6 +1243,9 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 	reasoningBlocksByID := make(map[string]int)
 	nextToolIndex := 0
 	createState := func(outputIndex int, item respOutputItem) *currentState {
+		if item.Type == "message" && item.Phase == "final_answer" {
+			builder.partial.StopReason = StopReasonStop
+		}
 		if state := states[outputIndex]; state != nil {
 			return state
 		}
@@ -1102,7 +1261,8 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 			state.toolID = item.CallID + "|" + item.ID
 			state.toolName = item.Name
 			state.argsJSON.WriteString(item.Arguments)
-			builder.toolCallStart(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, namespace: item.Namespace})
+			builder.toolCallStart(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, namespace: item.Namespace,
+				initialJSON: item.Arguments, scratch: toolCallScratch{hasPartialJson: true, partialJson: item.Arguments}})
 		case "custom_tool_call":
 			state.toolIndex = nextToolIndex
 			nextToolIndex++
@@ -1112,9 +1272,12 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 			if state.customProp == "" {
 				state.customProp = "input"
 			}
-			state.customIn = item.Input
+			if item.Input != nil {
+				state.customIn = *item.Input
+			}
 			state.grammarBuf = &grammarToolInputJSONBuffer{}
-			builder.toolCallStart(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, namespace: item.Namespace})
+			builder.toolCallStart(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, namespace: item.Namespace,
+				initialArguments: JsonObject{state.customProp: state.customIn}, scratch: toolCallScratch{customInput: true, property: state.customProp}})
 		default:
 			return nil
 		}
@@ -1122,10 +1285,11 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 		return state
 	}
 
-	decoder := newSSEDecoder(r)
+	sawTerminal := false
+	_, codexSSE := decoder.(*codexSSEDecoder)
 	for decoder.Next() {
-		if err := ctx.Err(); err != nil {
-			builder.fail(StopReasonAborted, err)
+		if p.cfg.Codex && !codexSSE && ctx.Err() != nil {
+			builder.failUnfinished(StopReasonAborted, errors.New("Request was aborted"))
 			return
 		}
 		data := decoder.Event().Data
@@ -1135,13 +1299,13 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 
 		var event respSSEEvent
 		if err := json.Unmarshal([]byte(data), &event); err != nil {
-			builder.fail(StopReasonError, fmt.Errorf("openai-responses: invalid SSE JSON: %w", err))
+			builder.failUnfinished(StopReasonError, fmt.Errorf("openai-responses: invalid SSE JSON: %w", err))
 			return
 		}
 
 		if !p.cfg.ignoreSSEErrorObjects {
 			if errorMessage, ok := openAIStreamErrorMessage(event.StreamError); ok {
-				builder.fail(StopReasonError, errors.New(errorMessage))
+				builder.failUnfinished(StopReasonError, errors.New(errorMessage))
 				return
 			}
 		}
@@ -1149,7 +1313,7 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 		switch event.Type {
 		case "response.created":
 			if event.Response != nil {
-				builder.setResponseMetadata(event.Response.ID, event.Response.Model, "", "", nil)
+				builder.partial.ResponseID = event.Response.ID
 			}
 
 		case "response.output_item.added":
@@ -1184,9 +1348,11 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 			if state := states[event.OutputIndex]; state != nil && state.itemType == "function_call" {
 				previous := state.argsJSON.String()
 				if after, ok := strings.CutPrefix(event.Arguments, previous); ok && after != "" {
-					state.argsJSON.WriteString(after)
 					builder.toolCallDelta(streamToolCallDelta{index: state.toolIndex, argumentsDelta: after})
 				}
+				state.argsJSON.Reset()
+				state.argsJSON.WriteString(event.Arguments)
+				builder.setToolCallFinal(state.toolIndex, "", event.Arguments)
 			}
 
 		case "response.custom_tool_call_input.delta":
@@ -1195,9 +1361,10 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 				delta, ok, err := appendGrammarToolInputJSONDelta(state.grammarBuf, state.customProp, next, false)
 				state.customIn = next
 				if err != nil {
-					builder.fail(StopReasonError, fmt.Errorf("openai-responses: %w", err))
+					builder.failUnfinished(StopReasonError, fmt.Errorf("openai-responses: %w", err))
 					return
 				}
+				builder.setCustomToolCallInput(state.toolIndex, state.customProp, next, *state.grammarBuf)
 				if ok {
 					builder.toolCallDelta(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, argumentsDelta: delta})
 				}
@@ -1208,9 +1375,10 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 				delta, ok, err := appendGrammarToolInputJSONDelta(state.grammarBuf, state.customProp, event.Input, true)
 				state.customIn = event.Input
 				if err != nil {
-					builder.fail(StopReasonError, fmt.Errorf("openai-responses: %w", err))
+					builder.failUnfinished(StopReasonError, fmt.Errorf("openai-responses: %w", err))
 					return
 				}
+				builder.setCustomToolCallInput(state.toolIndex, state.customProp, event.Input, *state.grammarBuf)
 				if ok {
 					builder.toolCallDelta(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, argumentsDelta: delta})
 				}
@@ -1257,14 +1425,24 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 				builder.setToolCallFinal(state.toolIndex, item.Namespace, arguments)
 				builder.endToolCall(state.toolIndex)
 			case "custom_tool_call":
-				finalInput := cmp.Or(item.Input, state.customIn)
+				finalInput := state.customIn
+				if item.Input != nil {
+					finalInput = *item.Input
+				}
 				delta, ok, err := appendGrammarToolInputJSONDelta(state.grammarBuf, state.customProp, finalInput, true)
 				if err != nil {
-					builder.fail(StopReasonError, fmt.Errorf("openai-responses: %w", err))
+					builder.failUnfinished(StopReasonError, fmt.Errorf("openai-responses: %w", err))
 					return
 				}
+				builder.setCustomToolCallInput(state.toolIndex, state.customProp, finalInput, *state.grammarBuf)
 				if ok {
-					builder.toolCallDelta(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, namespace: item.Namespace, argumentsDelta: delta})
+					builder.toolCallDelta(streamToolCallDelta{index: state.toolIndex, id: state.toolID, name: state.toolName, argumentsDelta: delta})
+				}
+				if item.Namespace != "" {
+					index := builder.toolCalls[state.toolIndex].contentIndex
+					block := builder.partial.Content[index].(ToolCall)
+					block.Namespace = item.Namespace
+					builder.partial.Content[index] = block
 				}
 				builder.endToolCall(state.toolIndex)
 			}
@@ -1275,7 +1453,7 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 				continue
 			}
 			if event.Response == nil {
-				builder.fail(StopReasonError, errors.New("openai-responses: terminal response is missing response metadata"))
+				builder.failUnfinished(StopReasonError, errors.New("openai-responses: terminal response is missing response metadata"))
 				return
 			}
 			for _, item := range event.Response.Output {
@@ -1319,7 +1497,11 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 				}
 				builder.calculateCost(usage)
 				if !p.cfg.SkipServiceTierPricing {
-					applyServiceTierPricing(usage, event.Response.ServiceTier, p.cfg.Model)
+					serviceTier := event.Response.ServiceTier
+					if p.cfg.Codex && (serviceTier == "" || (serviceTier == "default" && (builder.requestServiceTier == "flex" || builder.requestServiceTier == "priority"))) {
+						serviceTier = builder.requestServiceTier
+					}
+					applyServiceTierPricing(usage, serviceTier, p.cfg.Model)
 				}
 				builder.setUsage(usage)
 			}
@@ -1339,18 +1521,26 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 			if stopReason == StopReasonStop && responseBuilderHasToolCall(builder) {
 				stopReason = StopReasonToolUse
 			}
-			builder.setResponseMetadata(event.Response.ID, event.Response.Model, rawStopReason, "", event.Response.EndTurn)
-			if stopReason == StopReasonError {
-				builder.fail(stopReason, errors.New(errorMessage))
-			} else {
-				builder.done(stopReason, usage, "")
+			if event.Response.ID != "" {
+				builder.partial.ResponseID = event.Response.ID
 			}
-			return
+			builder.setResponseMetadata("", "", rawStopReason, "", event.Response.EndTurn)
+			builder.partial.StopReason = stopReason
+			builder.partial.ErrorMessage = errorMessage
+			sawTerminal = true
+			if p.cfg.Codex && !codexSSE {
+				if stopReason == StopReasonError {
+					builder.failUnfinished(stopReason, errors.New(errorMessage))
+				} else {
+					builder.done(stopReason, nil, "")
+				}
+				return
+			}
 
 		case "response.failed":
 			msg := "Unknown error (no error details in response)"
 			if event.Response != nil {
-				builder.setResponseMetadata(event.Response.ID, event.Response.Model, event.Response.Status, "", nil)
+				builder.setResponseMetadata(event.Response.ID, "", event.Response.Status, "", nil)
 				builder.setUsage(parseResponsesUsage(event.Response.Usage))
 				if e := event.Response.Error; e != nil {
 					code := cmp.Or(e.Code, "unknown")
@@ -1360,35 +1550,59 @@ func (p *openAIResponsesProvider) parseResponsesSSE(ctx context.Context, r io.Re
 					msg = "incomplete: " + d.Reason
 				}
 			}
-			builder.fail(StopReasonError, fmt.Errorf("openai-responses: %s", msg))
+			builder.failUnfinished(StopReasonError, fmt.Errorf("openai-responses: %s", msg))
 			return
 
 		case "error":
-			builder.fail(StopReasonError, fmt.Errorf("openai-responses: error %s: %s", event.Code, event.Message))
+			builder.failUnfinished(StopReasonError, fmt.Errorf("openai-responses: error %s: %s", event.Code, event.Message))
 			return
 		}
 	}
 
-	if err := decoder.Err(); err != nil && !errors.Is(err, io.EOF) && ctx.Err() == nil {
-		builder.fail(StopReasonError, err)
+	if codexSSE {
+		p.finishCodexSSE(ctx, builder, decoder, sawTerminal)
+		return
+	}
+	if p.cfg.Codex && ctx.Err() != nil {
+		builder.failUnfinished(StopReasonAborted, errors.New("Request was aborted"))
+		return
+	}
+	if err := decoder.Err(); err != nil && !errors.Is(err, io.EOF) {
+		reason := StopReasonError
+		if ctx.Err() != nil {
+			reason = StopReasonAborted
+		}
+		builder.failUnfinished(reason, err)
+		return
+	}
+	if sawTerminal {
+		if builder.turn != nil {
+			// processResponsesStream resolves before the outer Responses producer checks cancellation and publishes done.
+			suspendContinuation(builder.turn)
+		}
+		switch {
+		case ctx.Err() != nil:
+			builder.failUnfinished(StopReasonAborted, errors.New("Request was aborted"))
+		case builder.partial.StopReason == StopReasonError:
+			builder.failUnfinished(StopReasonError, errors.New(builder.partial.ErrorMessage))
+		default:
+			builder.done(builder.partial.StopReason, nil, "")
+		}
 		return
 	}
 	if err := ctx.Err(); err != nil {
-		builder.fail(StopReasonAborted, err)
+		if p.cfg.Codex {
+			err = errors.New("Request was aborted")
+		} else {
+			err = errors.New("OpenAI Responses stream ended before a terminal response event")
+		}
+		builder.failUnfinished(StopReasonAborted, err)
 		return
 	}
-	builder.fail(StopReasonError, errors.New("OpenAI Responses stream ended before a terminal response event"))
+	builder.failUnfinished(StopReasonError, errors.New("OpenAI Responses stream ended before a terminal response event"))
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-// sanitizeSurrogates removes unpaired UTF-16 surrogates from a string.
-// Mirrors upstream sanitizeSurrogates from sanitize-unicode.ts.
-func sanitizeSurrogates(s string) string {
-	// Go strings are valid UTF-8; unpaired surrogates can't exist.
-	// This is a no-op but kept for upstream structural fidelity.
-	return s
-}
 
 func joinResponseItemText(parts []respOutputContent) string {
 	values := make([]string, len(parts))

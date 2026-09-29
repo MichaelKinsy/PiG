@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -30,7 +31,7 @@ type oauthProxy struct {
 	cfg  ProviderOAuthConfig
 
 	keyMu     sync.Mutex
-	keyCreds  OAuthCredentialsWire
+	keyCreds  string
 	keyValue  string
 	keyCached bool
 }
@@ -81,7 +82,7 @@ func (p *oauthProxy) LoginContext(ctx context.Context, cb ai.OAuthLoginCallbacks
 	if err := unmarshalOAuthResult(resp, &wire); err != nil {
 		return ai.OAuthCredentials{}, err
 	}
-	return fromWireCreds(wire), nil
+	return wire, nil
 }
 
 func (p *oauthProxy) RefreshToken(creds ai.OAuthCredentials) (ai.OAuthCredentials, error) {
@@ -93,7 +94,27 @@ func (p *oauthProxy) RefreshTokenContext(ctx context.Context, creds ai.OAuthCred
 	if !p.cfg.HasRefresh {
 		return ai.OAuthCredentials{}, fmt.Errorf("%s: token refresh not supported", p.name)
 	}
-	resp, err := p.request(ctx, MethodOAuthRefresh, toWireCreds(creds))
+	args, err := storedOAuthCredential(creds)
+	if err != nil {
+		return ai.OAuthCredentials{}, err
+	}
+	// Pi composes AbortSignal.any([caller, AbortSignal.timeout]) only in resolveStoredOAuth; Models.refresh hands the caller's signal alone.
+	signalCtx, req := ctx, RequestPayload{Method: MethodOAuthRefresh, Tool: p.name, Args: args}
+	if caller, timeout, composed := ai.OAuthRefreshTimeout(ctx); composed {
+		signalCtx = caller
+		milliseconds := float64(timeout.Milliseconds())
+		req.SignalTimeoutMS = &milliseconds
+	}
+	conn := p.me.connection()
+	if conn == nil {
+		return ai.OAuthCredentials{}, errors.New("extension not connected")
+	}
+	id := conn.newRequestID()
+	resp, err := p.requestOn(ctx, conn, id, req)
+	// The extension may keep the signal after it answers; the caller's later abort still reaches it. A request that ended with the caller's own cancellation was cancelled in flight.
+	if ctx.Err() == nil {
+		conn.forwardAbort(signalCtx, id)
+	}
 	if err != nil {
 		return ai.OAuthCredentials{}, err
 	}
@@ -102,7 +123,7 @@ func (p *oauthProxy) RefreshTokenContext(ctx context.Context, creds ai.OAuthCred
 		return ai.OAuthCredentials{}, err
 	}
 	p.invalidateKeyCache()
-	return fromWireCreds(wire), nil
+	return wire, nil
 }
 
 // GetAPIKey extracts the bearer from credentials. It is called at key-resolution
@@ -121,10 +142,15 @@ func (p *oauthProxy) GetAPIKey(creds ai.OAuthCredentials) string {
 // GetAPIKeyContext resolves the bearer, returning the extension's error when
 // its getApiKey fails, as upstream propagates the exception to the model call.
 func (p *oauthProxy) GetAPIKeyContext(ctx context.Context, creds ai.OAuthCredentials) (string, error) {
-	wire := toWireCreds(creds)
 	if !p.cfg.HasGetAPIKey {
-		return wire.Access, nil
+		return creds.Access, nil
 	}
+	// getApiKey may read any credential key, so the cache is keyed by the complete stored credential.
+	args, err := storedOAuthCredential(creds)
+	if err != nil {
+		return "", err
+	}
+	wire := string(args)
 	p.keyMu.Lock()
 	if p.keyCached && p.keyCreds == wire {
 		v := p.keyValue
@@ -133,7 +159,7 @@ func (p *oauthProxy) GetAPIKeyContext(ctx context.Context, creds ai.OAuthCredent
 	}
 	p.keyMu.Unlock()
 
-	resp, err := p.request(ctx, MethodOAuthGetAPIKey, wire)
+	resp, err := p.request(ctx, MethodOAuthGetAPIKey, args)
 	if err != nil {
 		return "", err
 	}
@@ -167,7 +193,7 @@ func (p *oauthProxyWithStore) OAuthCredentialStatus() (ai.OAuthCredentialStatus,
 }
 
 func (p *oauthProxyWithStore) StoreOAuthCredentials(creds ai.OAuthCredentials) (string, error) {
-	resp, err := p.request(context.Background(), MethodOAuthStoreCredentials, toWireCreds(creds))
+	resp, err := p.request(context.Background(), MethodOAuthStoreCredentials, creds)
 	if err != nil {
 		return "", err
 	}
@@ -193,7 +219,8 @@ func (p *oauthProxyWithStore) DeleteOAuthCredentials() (bool, error) {
 }
 
 func (p *oauthProxy) request(ctx context.Context, method string, payload any) (*Envelope, error) {
-	if p.me.conn == nil {
+	conn := p.me.connection()
+	if conn == nil {
 		return nil, errors.New("extension not connected")
 	}
 	var args json.RawMessage
@@ -207,12 +234,14 @@ func (p *oauthProxy) request(ctx context.Context, method string, payload any) (*
 	// Tool carries the provider name so an extension serving several OAuth
 	// providers can route the request to the right one; oauth_* methods do not
 	// otherwise identify the provider.
-	resp, err := p.me.conn.Request(ctx, &Envelope{
-		Type:    MsgRequest,
-		Request: &RequestPayload{Method: method, Tool: p.name, Args: args},
-	})
+	return p.requestOn(ctx, conn, "", RequestPayload{Method: method, Tool: p.name, Args: args})
+}
+
+// requestOn sends req on conn under id, or a fresh ID when id is empty.
+func (p *oauthProxy) requestOn(ctx context.Context, conn *Conn, id string, req RequestPayload) (*Envelope, error) {
+	resp, err := conn.Request(ctx, &Envelope{ID: id, Type: MsgRequest, Request: &req})
 	if err != nil {
-		return nil, fmt.Errorf("%s %s: %w", p.name, method, err)
+		return nil, fmt.Errorf("%s %s: %w", p.name, req.Method, err)
 	}
 	if resp.Response != nil && resp.Response.Error != nil {
 		return nil, resp.Response.Error.ToError()
@@ -227,16 +256,17 @@ func unmarshalOAuthResult(resp *Envelope, out any) error {
 	return json.Unmarshal(resp.Response.Result, out)
 }
 
-func toWireCreds(c ai.OAuthCredentials) OAuthCredentialsWire {
-	return OAuthCredentialsWire{Refresh: c.Refresh, Access: c.Access, Expires: c.Expires, ProjectID: c.ProjectID}
-}
-
-func fromWireCreds(w OAuthCredentialsWire) ai.OAuthCredentials {
-	return ai.OAuthCredentials{Refresh: w.Refresh, Access: w.Access, Expires: w.Expires, ProjectID: w.ProjectID}
+// storedOAuthCredential returns the stored credential object Pi passes to refreshToken and getApiKey: the token object with its "oauth" discriminator (provider-composer.ts:292-293, auth/resolve.ts:145-155).
+func storedOAuthCredential(creds ai.OAuthCredentials) (json.RawMessage, error) {
+	credential, err := ai.CredentialFromOAuth(creds)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(credential)
 }
 
 // registerOAuthProvider inspects a provider's config for an oauth sub-config
-// and, when present, registers a bridged ai OAuth provider driven by me.conn.
+// and, when present, registers a bridged ai OAuth provider driven by the current connection.
 // Called from both the isolated and packed register paths. A nil/absent oauth
 // key is a no-op.
 func (h *Host) registerOAuthProvider(me *managedExt, name string, config json.RawMessage) error {
@@ -255,7 +285,11 @@ func (h *Host) registerOAuthProvider(me *managedExt, name string, config json.Ra
 		provider = &oauthProxyWithStore{oauthProxy: base}
 	}
 	ai.RegisterOAuthProvider(name, provider)
-	me.oauthProviderNames = append(me.oauthProviderNames, name)
+	h.mu.Lock()
+	if !slices.Contains(me.oauthProviderNames, name) {
+		me.oauthProviderNames = append(me.oauthProviderNames, name)
+	}
+	h.mu.Unlock()
 	return nil
 }
 

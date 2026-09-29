@@ -72,7 +72,11 @@ func TestCompactionRetryDelayIsCappedByMaxAgentDelay(t *testing.T) {
 // compaction.modelOverrides entry (upstream getCompactionSettings(model)).
 func TestSessionCompactionSettingsUseModelOverride(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{settings: `{"compaction":{"reserveTokens":9000,"modelOverrides":{"faux/faux-1":{"reserveTokens":1234}}}}`})
-	if got := h.session.compactionSettings().ReserveTokens; got != 1234 {
+	settings, err := h.session.compactionSettings()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := settings.ReserveTokens; got != 1234 {
 		t.Fatalf("reserveTokens = %d, want the faux/faux-1 override 1234", got)
 	}
 }

@@ -3,6 +3,7 @@ package codingagent
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/internal/testenv"
@@ -89,7 +90,7 @@ func TestLoadSkillsFromPath_DedupsSymlinkedSkill(t *testing.T) {
 		t.Fatal(err)
 	}
 	aliasDir := filepath.Join(root, "alias-alpha")
-	testenv.Symlink(t, targetDir, aliasDir)
+	testenv.RequireDirectoryLink(t, targetDir, aliasDir)
 
 	skills, err := LoadSkillsFromPath(root)
 	if err != nil {
@@ -141,5 +142,60 @@ func TestLoadSkillPath_AllowsNameDifferentFromDirectory(t *testing.T) {
 	}
 	if skill.Name != "custom-name" {
 		t.Fatalf("skill.Name = %q, want custom-name", skill.Name)
+	}
+}
+
+// Upstream loadSkillFromFile (core/skills.ts) skips, with no diagnostic, a
+// Markdown file other than SKILL.md that has no description or whose
+// frontmatter does not parse, whether it is named directly or found at the
+// root of a skills directory; loadSkills warns about a file path that is not
+// Markdown.
+func TestLoadSkillsFromPath_SkipsMarkdownThatIsNotASkill(t *testing.T) {
+	root := t.TempDir()
+	for name, content := range map[string]string{
+		"SUITE.md":             "# Suite\n\nDocumentation, not a skill.\n",
+		"broken.md":            "---\nname: [unclosed\n---\nbody",
+		"listed.md":            "---\nname: listed\ndescription: listed\n---\nbody",
+		"notes.txt":            "---\ndescription: text\n---\n",
+		"inner/SKILL.md":       "---\nname: inner\ndescription: inner\n---\nbody",
+		"undescribed/SKILL.md": "---\nname: undescribed\n---\nbody",
+	} {
+		path := filepath.Join(root, filepath.FromSlash(name))
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	skills, err := LoadSkillsFromPath(filepath.Join(root, "SUITE.md"))
+	if err != nil || len(skills) != 0 {
+		t.Fatalf("SUITE.md = %#v, %v; want skipped", skills, err)
+	}
+	skills, err = LoadSkillsFromPath(filepath.Join(root, "broken.md"))
+	if err != nil || len(skills) != 0 {
+		t.Fatalf("broken.md = %#v, %v; want skipped", skills, err)
+	}
+	if _, err := LoadSkillsFromPath(filepath.Join(root, "notes.txt")); err == nil || !strings.Contains(err.Error(), "not a markdown file") {
+		t.Fatalf("notes.txt error = %v", err)
+	}
+	// A declared SKILL.md is always a skill: a missing description stays a
+	// diagnostic for the caller.
+	skills, err = LoadSkillsFromPath(filepath.Join(root, "undescribed", "SKILL.md"))
+	if err != nil || len(skills) != 1 {
+		t.Fatalf("undescribed = %#v, %v", skills, err)
+	}
+
+	skills, err = LoadSkillsFromPath(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, skill := range skills {
+		names = append(names, skill.Name)
+	}
+	if strings.Join(names, ",") != "inner,listed,undescribed" {
+		t.Fatalf("names = %v", names)
 	}
 }

@@ -69,7 +69,7 @@ func checkSelfUpdateVersion(force bool) (code int, done bool) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), selfUpdateTimeout)
 	defer cancel()
-	manifest, err := codingagent.FetchUpdateManifest(ctx, &http.Client{Timeout: selfUpdateTimeout}, src)
+	manifest, err := codingagent.FetchUpdateManifest(ctx, &http.Client{Timeout: selfUpdateTimeout}, src, codingagent.FetchUpdateManifestOptions{Retry: true})
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Update failed: could not reach the update source: %v\n%s\n", err, codingagent.SelfUpdateFallback())
 		return 1, true
@@ -97,7 +97,7 @@ func applyPackageManagerUpdate(prov *codingagent.SelfUpdateProvenance, npmComman
 	ctx, cancel := context.WithTimeout(context.Background(), selfUpdateTimeout)
 	defer cancel()
 	client := &http.Client{Timeout: selfUpdateTimeout}
-	manifest, err := codingagent.FetchUpdateManifest(ctx, client, src)
+	manifest, err := codingagent.FetchUpdateManifest(ctx, client, src, codingagent.FetchUpdateManifestOptions{Retry: true})
 	if err != nil {
 		return fmt.Errorf("could not reach the update source: %w", err)
 	}
@@ -107,7 +107,7 @@ func applyPackageManagerUpdate(prov *codingagent.SelfUpdateProvenance, npmComman
 	}
 	updateName := strings.TrimSpace(manifest.PackageName)
 	target := codingagent.SelfUpdatePackageTarget{PackageName: updateName, InstallSpec: updateName + "@" + manifest.Version}
-	cmd := codingagent.PackageManagerUpdateCommand(prov.PackageOwner, prov.PackageName, npmCommand, target)
+	cmd := prov.GetSelfUpdateCommand(npmCommand, target)
 	if cmd == nil {
 		return fmt.Errorf("no update command for package manager %s", prov.PackageOwner)
 	}
@@ -137,7 +137,7 @@ func applyStandaloneUpdate(exePath string, force bool) error {
 	defer cancel()
 	client := &http.Client{Timeout: selfUpdateTimeout}
 
-	manifest, err := codingagent.FetchUpdateManifest(ctx, client, src)
+	manifest, err := codingagent.FetchUpdateManifest(ctx, client, src, codingagent.FetchUpdateManifestOptions{Retry: true})
 	if err != nil {
 		return fmt.Errorf("could not reach the update source: %w\n%s", err, codingagent.SelfUpdateFallback())
 	}

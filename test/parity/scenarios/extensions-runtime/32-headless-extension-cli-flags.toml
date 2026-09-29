@@ -1,0 +1,25 @@
+# Pi 0.87.1 main.ts:741 passes parsed extensionFlagValues to the runtime;
+# core/extensions/loader.ts:344 reads that map for pi.getFlag in every mode.
+# Capture at both session_start and command dispatch to exercise real binding.
+name = "32-headless-extension-cli-flags"
+description = "Headless extension handlers receive configured string and boolean CLI flags"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts", "packages/coding-agent/src/main.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["testdata/ext/flag-values.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/flag-values.mjs"]
+
+[cli]
+args = ["--no-session", "--model", "test-faux/faux-1", "--capture", "{{TEMP}}/flags.json", "--configured", "cli-value", "--enabled", "-p", "/flags"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/flags.json"
+
+[assert]
+exit_code = 0
+artifact_normalized_equal = true
+artifact_both_contain = ["cli-value", "true"]
+both_not_contain = ["Extension error", "TypeError"]
+runs = 3

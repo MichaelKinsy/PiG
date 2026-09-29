@@ -1,0 +1,32 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:5219-5336 preserves no-match settings patterns in an empty catalog and opens the selector with removable unavailable rows.
+# No provider is authenticated. The command exercises the actual CLI, runtime snapshot, settings resolution, and selector, not a leaf-only rendering fixture.
+name = "21-unavailable-scoped-models"
+description = "Scoped model selection remains usable when every configured model is unavailable."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/coding-agent/src/core/model-resolver.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "openai/gpt-5.5"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 20
+keys = ["/scoped-models", "Enter"]
+settle_seconds = 2
+capture_start = "Model Configuration"
+capture_end = "2 unavailable"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/unavailable-scoped-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/unavailable-scoped-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["fixture/unavailable-one [unavailable]", "fixture/unavailable-two [unavailable]"]
+both_not_contain = ["No authenticated models", "panic:"]
+output_equal = true
+runs = 3

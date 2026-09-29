@@ -59,7 +59,7 @@ func TestStoppedTerminalReaderDoesNotEatNextKeystroke(t *testing.T) {
 
 	mainInput := make(chan []byte, 1)
 	go func() {
-		data, err := ReadInput(r)
+		data, err := readTestInput(r)
 		if err == nil {
 			mainInput <- data
 		}

@@ -217,6 +217,7 @@ func newTuiAltScreen(out io.Writer, showHardwareCursor bool, options TuiAltScree
 	t := &TuiAltScreen{
 		tuiBase: tuiBase{
 			out:                out,
+			terminalBackground: &terminalBackgroundQueries{},
 			showHardwareCursor: showHardwareCursor,
 			now:                time.Now,
 			afterFunc: func(d time.Duration, fn func()) stoppableTimer {

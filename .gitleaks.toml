@@ -17,7 +17,9 @@ regexes = [
 ]
 paths = [
   # Upstream test-file SHA-256 digests.
-  '''^parity/upstream-sync/[^/]+\.tsv$''',
+  '''^test/parity/upstream-sync/[^/]+\.tsv$''',
+  # Pi's vendored, compiled SDK bundle (upstream code shipped verbatim).
+  '''^coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-ai/sdk-bundle/[^/]+\.js$''',
   # SHA-256 digests of Pi's vendored provider data files.
   '''^coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-ai/providers/data/\.manifest\.json$''',
 ]

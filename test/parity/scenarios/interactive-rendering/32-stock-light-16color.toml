@@ -1,0 +1,44 @@
+# Upstream evidence: Pi 0.87.1 theme-controller.ts:58-83 awaits OSC 11 before session_start.
+# tmux answers OSC 11 from window-style: white is #c0c0c0 (light), black is dark.
+# The deliberately conflicting COLORFGBG proves the terminal reply wins.
+# theme.ts:178-244,528-529 uses 256-color escapes without a truecolor hint.
+# Probe: real Pi, TERM=ansi (16-color declaration), no COLORTERM, stock settings.
+# Pi still uses its 256-color theme mode, not a 16-color approximation.
+# Crop includes persisted user backgrounds, thinking and assistant foregrounds.
+name = "32-stock-light-16color"
+description = "A 16-color TERM still uses Pi's 256-color light theme after OSC 11 detection."
+covers = [
+  "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts",
+  "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+  "packages/tui/src/terminal-image.ts",
+  "packages/tui/src/terminal-colors.ts",
+]
+# Serial: this real-terminal oracle has Pi's fixed 100 ms OSC 11 deadline;
+# competing parity sessions can make either process miss the terminal reply.
+tags = ["fast", "hermetic", "tui", "serial"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/stock-color-agent", "TERM=ansi", "COLORTERM=", "COLORFGBG=15;0"]
+pi = ["PI_CODING_AGENT_DIR=testdata/stock-color-agent", "PI_SKIP_VERSION_CHECK=1", "TERM=ansi", "COLORTERM=", "COLORFGBG=15;0"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+window_style = "bg=white"
+ready_pattern_pig = "Resume marker end"
+ready_pattern_pi = "Resume marker end"
+ready_timeout_seconds = 30
+cwd = "testdata/thinking-cwd"
+capture_start = "Pick a color"
+capture_end = "Resume marker end"
+
+[assert]
+both_reach_ready = true
+both_contain = ["Resumed reasoning alpha", "Resumed answer charlie", "Resume marker end"]
+escaped_output_equal = true
+runs = 3

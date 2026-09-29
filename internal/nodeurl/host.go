@@ -1,5 +1,4 @@
-// Package nodeurl ports the parts of Node's url module that PiG needs to match
-// Pi: the WHATWG host parser for file URLs and url.fileURLToPath.
+// Package nodeurl ports the Node URL host/path handling and fileURLToPath semantics used by PiG.
 package nodeurl
 
 import (
@@ -30,31 +29,44 @@ var whatwgDomainToASCII = idna.New(
 // domain, where localhost is empty. The input is percent-decoded first, as
 // the parser does.
 func FileHost(server string) (string, error) {
+	return parseSpecialHost(server, true)
+}
+
+// SpecialHost parses the host of a WHATWG special URL. Unlike FileHost, localhost remains a hostname.
+func SpecialHost(server string) (string, error) {
+	return parseSpecialHost(server, false)
+}
+
+func parseSpecialHost(server string, file bool) (string, error) {
+	kind := "URL"
+	if file {
+		kind = "file URL"
+	}
 	if server == "" {
 		return "", nil
 	}
 	if strings.HasPrefix(server, "[") {
 		if !strings.HasSuffix(server, "]") {
-			return "", fmt.Errorf("invalid file URL host %q", server)
+			return "", fmt.Errorf("invalid %s host %q", kind, server)
 		}
 		addr, err := netip.ParseAddr(server[1 : len(server)-1])
 		if err != nil || !addr.Is6() || addr.Zone() != "" {
-			return "", fmt.Errorf("invalid file URL host %q", server)
+			return "", fmt.Errorf("invalid %s host %q", kind, server)
 		}
 		return "[" + serializeIPv6(addr) + "]", nil
 	}
 	ascii, err := whatwgDomainToASCII.ToASCII(strings.ToValidUTF8(string(percentDecode(server)), string(utf8.RuneError)))
 	if err != nil || ascii == "" || strings.ContainsFunc(ascii, isForbiddenDomainCodePoint) {
-		return "", fmt.Errorf("invalid file URL host %q", server)
+		return "", fmt.Errorf("invalid %s host %q", kind, server)
 	}
 	if endsInANumber(ascii) {
 		ipv4, err := parseIPv4Host(ascii)
 		if err != nil {
-			return "", fmt.Errorf("invalid file URL host %q: %w", server, err)
+			return "", fmt.Errorf("invalid %s host %q: %w", kind, server, err)
 		}
 		return ipv4, nil
 	}
-	if ascii == "localhost" {
+	if file && ascii == "localhost" {
 		return "", nil
 	}
 	return ascii, nil

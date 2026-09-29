@@ -6,6 +6,7 @@ import (
 	"sync/atomic"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
@@ -18,27 +19,35 @@ var toolCardSeq atomic.Uint64
 // always does: upstream withBuiltInRenderers gives it the built-in renderers
 // it does not define.
 func usesToolDefinitionRenderers(name string, definition extension.ToolDefinition) bool {
-	if tui.HasBuiltInToolRenderers(name) {
+	if tui.HasBuiltInToolRenderers(name) || tui.HasBuiltInToolRenderers(definition.BuiltInRenderers) {
 		return true
 	}
 	return definition.RenderCall != nil || definition.RenderResult != nil || definition.RenderShell == extension.ToolRenderShellSelf
 }
 
-// applyToolPresentation selects how an extension tool's card draws: a
-// definition with renderers draws them as upstream does, and one without uses
-// the generic details card (D59). Built-in tools without an extension
-// override keep their built-in card.
+// applyToolPresentation binds definition renderers and their retained call arguments. Core read/write cards use the same built-in definitions as extension overrides, so presentation never depends on private tool-result metadata.
 func (m *InteractiveMode) applyToolPresentation(comp *tui.ToolExecutionComponent, toolCallID, name string, args json.RawMessage) {
-	if comp == nil || m.newRunner == nil {
+	if comp == nil {
 		return
 	}
 	if comp.HasDefinition() {
 		comp.SetDefinitionArgs(args)
 		return
 	}
-	definition, ok := m.newRunner.GetToolDefinition(name)
+	var definition extension.ToolDefinition
+	var ok bool
+	if m.newRunner != nil {
+		definition, ok = m.newRunner.GetToolDefinition(name)
+	}
+	if !ok && (name == "read" || name == "write") {
+		definition, ok = extension.ToolDefinition{Name: name}, true
+	}
 	if ok && usesToolDefinitionRenderers(name, definition) {
-		definition = withBuiltInRenderers(name, definition)
+		builtIn := name
+		if definition.BuiltInRenderers != "" {
+			builtIn = definition.BuiltInRenderers
+		}
+		definition = withBuiltInRenderers(builtIn, definition)
 		comp.SetDefinition(m.toolDefinitionRenderers(definition, comp, toolCallID), args)
 		return
 	}
@@ -92,7 +101,7 @@ func (m *InteractiveMode) toolDefinitionRenderers(definition extension.ToolDefin
 		renderers.Result = func(input tui.ToolRenderInput) (tui.Component, bool) {
 			result := comp.ResultValue()
 			if result == nil {
-				result = agent.AgentToolResult{Content: comp.Output, IsError: input.IsError}
+				result = agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: comp.Output}}, IsError: input.IsError}
 			}
 			options := extension.ToolRenderResultOptions{Expanded: input.Expanded, IsPartial: input.IsPartial}
 			component, ok := runToolRenderer(func() extension.Component {

@@ -21,6 +21,7 @@
 package tools
 
 import (
+	"slices"
 	"strings"
 	"unicode/utf16"
 	"unicode/utf8"
@@ -99,7 +100,9 @@ func TruncateTail(content string, maxBytes, maxLines int) TruncationResult {
 		}
 	}
 
-	// Walk backwards collecting lines that still fit.
+	// Walk backwards collecting lines that still fit, newest first; reversed
+	// once below. Prepending each line was quadratic in the kept lines, and
+	// streaming snapshots run this on every throttled update.
 	var collected []string
 	outputBytes := 0
 	truncatedBy := "lines"
@@ -126,10 +129,10 @@ func TruncateTail(content string, maxBytes, maxLines int) TruncationResult {
 			}
 			break
 		}
-		// Prepend (we're walking backwards).
-		collected = append([]string{line}, collected...)
+		collected = append(collected, line)
 		outputBytes += lineBytes
 	}
+	slices.Reverse(collected)
 	if len(collected) >= maxLines && outputBytes <= maxBytes {
 		truncatedBy = "lines"
 	}

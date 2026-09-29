@@ -1,0 +1,10 @@
+[
+ {"name":"medium","compat":{"thinkingFormat":"zai","supportsThinkingTokenBudget":true},"level":"medium","budgets":{"medium":4096}},
+ {"name":"off","compat":{"thinkingFormat":"zai","supportsThinkingTokenBudget":true},"budgets":{"high":8192}},
+ {"name":"alias","compat":{"thinkingFormat":"qwen","thinkingTokenBudgetField":"thinking_budget"},"level":"medium","budgets":{"medium":4096}},
+ {"name":"alias-tokens","compat":{"thinkingFormat":"qwen","thinkingTokenBudgetField":"thinking_budget_tokens"},"level":"medium","budgets":{"medium":4096}},
+ {"name":"alias-wins","compat":{"thinkingFormat":"zai","supportsThinkingTokenBudget":true,"thinkingTokenBudgetField":"thinking_budget"},"level":"medium","budgets":{"medium":4096}},
+ {"name":"ceiling","compat":{"thinkingFormat":"zai","supportsThinkingTokenBudget":true},"level":"high","budgets":{"high":8192},"maxTokens":4096},
+ {"name":"template","compat":{"thinkingFormat":"chat-template","chatTemplateKwargs":{"enable_thinking":{"$var":"thinking.enabled"},"thinking_budget":{"$var":"thinking.budget"}}},"level":"high"},
+ {"name":"template-off","compat":{"thinkingFormat":"chat-template","chatTemplateKwargs":{"enable_thinking":{"$var":"thinking.enabled"},"thinking_budget":{"$var":"thinking.budget"}}}}
+]

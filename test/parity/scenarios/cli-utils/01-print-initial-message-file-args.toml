@@ -1,0 +1,50 @@
+# Pi 0.87.1 file-processor.ts:77-78 adds a newline after file content even when it already ends in LF. initial-message.ts concatenates that envelope and the first prompt without another separator.
+# Compare the complete JSON-mode stream so the actual user message, rather than the faux provider's permissive acknowledgement, proves the file bytes.
+name = "01-print-initial-message-file-args"
+description = "CLI @file preserves trailing newlines in the user message sent by print/JSON mode."
+covers = [
+  "packages/coding-agent/src/cli/args.ts",
+  "packages/coding-agent/src/cli/file-processor.ts",
+  "packages/coding-agent/src/cli/initial-message.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--mode", "json", "--model", "test-faux/faux-1", "--system-prompt", "File bytes probe.", "--no-context-files", "--no-skills", "@testdata/cli-file.txt", "prompt-after-file"]
+cwd = "."
+snapshot_cwd = true
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_equal = true
+stderr_equal = true
+runs = 3
+both_contain = ['\n\n</file>\nprompt-after-file', '"text":"cli-file-ok"']
+
+# normalize-rationale: Only independent clocks, the header UUID and the isolated cwd identity vary. Every byte of file content, envelope whitespace and event field order remains compared.
+# Snapshot cwd roots differ only by their isolated random suffix; preserve all path suffixes and envelope bytes.
+[[assert.normalize_replace]]
+pattern = 'parity-snap-cwd-[0-9]{10}'
+with = 'parity-snap-cwd-0000000000'
+reason = "Alias the isolated working-directory identity, not its contents or path suffix."
+
+[[assert.normalize_replace]]
+pattern = '"timestamp":[0-9]+'
+with = '"timestamp":0'
+reason = "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+[[assert.normalize_replace]]
+pattern = '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z"'
+with = '"timestamp":"2000-01-01T00:00:00.000Z"'
+reason = "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+[[assert.normalize_replace]]
+pattern = '"id":"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"'
+with = '"id":"SESSION"'
+reason = "The header UUID is independently generated; no prompt text is replaced."

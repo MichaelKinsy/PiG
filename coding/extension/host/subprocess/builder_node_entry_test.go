@@ -109,3 +109,22 @@ func write(t *testing.T, path, body string) {
 		t.Fatalf("write %s: %v", path, err)
 	}
 }
+
+// A "pi.extensions" entry naming a directory upstream keeps as the extension
+// path, such as "./" in @plannotator/pi-extension, runs the file jiti's import
+// of that directory loads (extsource.NodeDirectoryImport); Node refuses to
+// import the directory itself.
+func TestResolveNodeEntrypointImportsADeclaredDirectoryAsJiti(t *testing.T) {
+	dir := t.TempDir()
+	write(t, filepath.Join(dir, "package.json"), `{"name":"pkg","type":"module","pi":{"extensions":["./"]}}`)
+	want := filepath.Join(dir, "index.ts")
+	write(t, want, "export default function extension(pi) {}\n")
+
+	got, err := resolveNodeEntrypoint(dir)
+	if err != nil {
+		t.Fatalf("resolveNodeEntrypoint: %v", err)
+	}
+	if got != want {
+		t.Errorf("entrypoint = %q, want %q", got, want)
+	}
+}

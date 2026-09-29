@@ -1,0 +1,26 @@
+# Pi 0.87.1 session-manager.ts:790-877 derives picker recency from max user/assistant
+# activity; findMostRecentSession:751-772 independently selects by filesystem mtime.
+# Both probes use the real file-backed SessionManager through load/append/list/continue.
+# Only the test-runner envelope is removed; every printed value comes from production.
+name = "09-session-activity-timestamp"
+description = "Session listing uses message activity while continue uses file mtime"
+covers = ["packages/coding-agent/src/core/session-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-activity-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/session-activity-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SESSION_ACTIVITY modified=3000", "SESSION_ACTIVITY order=old,new continue=new"]
+runs = 3

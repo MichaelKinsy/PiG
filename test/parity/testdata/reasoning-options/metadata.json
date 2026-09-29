@@ -1,0 +1,11 @@
+[
+  {"source":"models-dev","name":"verified","value":[{"type":"toggle"},{"type":"effort","values":["none","low","high","max"]}]},
+  {"source":"models-dev","name":"no-off","value":[{"type":"effort","values":["low","high","max"]}]},
+  {"source":"models-dev","name":"toggle","value":[{"type":"toggle"}]},
+  {"source":"models-dev","name":"budget","value":[{"type":"budget_tokens","min":1024,"max":32000}]},
+  {"source":"models-dev","name":"defaults","value":[{"type":"effort","values":[null,"default"]}]},
+  {"source":"openrouter","name":"mandatory","value":{"mandatory":true,"default_enabled":true,"supported_efforts":["max","high","low"],"default_effort":"max"}},
+  {"source":"openrouter","name":"mandatory-no-efforts","value":{"mandatory":true}},
+  {"source":"openrouter","name":"optional","value":{"mandatory":false,"default_enabled":true,"supported_efforts":["high","low"]}},
+  {"source":"openrouter","name":"optional-no-efforts","value":{"mandatory":false}}
+]

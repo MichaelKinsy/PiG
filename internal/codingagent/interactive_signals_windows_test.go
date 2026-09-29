@@ -13,8 +13,11 @@ import (
 // a bound app.suspend twice therefore leaves one status line, not two.
 func TestHandleSuspendShowsTheWindowsStatus(t *testing.T) {
 	m := &InteractiveMode{chatContainer: tui.NewContainer()}
-	m.handleSuspend()
-	m.handleSuspend()
+	for range 2 {
+		if err := m.handleSuspend(); err != nil {
+			t.Fatal(err)
+		}
+	}
 
 	if got := m.chatContainer.ChildCount(); got != 2 {
 		t.Fatalf("chat holds %d children after two suspends, want one spacer and one status", got)

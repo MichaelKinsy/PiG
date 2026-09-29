@@ -1,0 +1,27 @@
+# Pi 0.87.1 #6104 custom operations return absolute directory/file paths under
+# '/'; the tool must relativize them without losing a leading character or the
+# directory slash. Source find.ts:143-172 and :290-309 retain numeric limits,
+# including a reached zero. The latter case runs real fd against one temp file.
+# Exact result text and SDK details are compared. No output normalization.
+name = "21-find-operations-and-limits"
+description = "Custom find operations relativize roots and retain zero/fractional result-limit details"
+covers = ["packages/coding-agent/src/core/tools/find.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/find-operations-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/find-operations-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['FIND_OPS root ["home/user/project/\nhome/user/project/file.txt",null]', '"resultLimitReached":0', '"resultLimitReached":1.5']
+runs = 3

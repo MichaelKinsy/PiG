@@ -31,6 +31,8 @@ func newExtensionDialogProbeSized(t *testing.T, width, height int) (*Interactive
 	m.layout = tui.NewContainer(m.chatContainer, m.editorContainer)
 	var output bytes.Buffer
 	m.tuiInst = tui.NewWithOutput(&output, width, height)
+	m.installRenderDispatcher()
+	t.Cleanup(m.tuiInst.Stop)
 	m.tuiInst.Add(m.layout)
 	return m, &output
 }

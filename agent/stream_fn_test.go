@@ -2,6 +2,7 @@ package agent
 
 import (
 	"context"
+	"reflect"
 	"sync"
 	"testing"
 
@@ -47,6 +48,58 @@ func TestStreamFnSendsEachProviderRequest(t *testing.T) {
 	}
 	if final := agent.Messages(); len(final) == 0 || final[len(final)-1].Assistant == nil {
 		t.Fatalf("turn did not complete through StreamFn: %+v", final)
+	}
+}
+
+// upstream: packages/agent/src/agent-loop.ts:402-413 does not let provider continuations interrupt streamFunction's synchronous prefix.
+func TestStreamFnOwnsCallerPrefixThroughIteratorAdoption(t *testing.T) {
+	t.Parallel()
+	var mu sync.Mutex
+	var workers sync.WaitGroup
+	t.Cleanup(workers.Wait)
+	var order []string
+	record := func(value string) {
+		mu.Lock()
+		order = append(order, value)
+		mu.Unlock()
+	}
+	a := NewAgent(AgentOptions{
+		Model: &ai.Model{ID: "m"},
+		StreamFn: func(ctx context.Context, _ *ai.Model, _ ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+			observation := ai.StreamObservationFromContext(ctx)
+			if observation == nil {
+				t.Error("streamFunction has no owned caller prefix")
+				return agentTestStream(textSeq("done")), nil
+			}
+			stream := ai.NewAssistantMessageEventStream()
+			producer := observation.PrepareContinuation()
+			workers.Go(func() {
+				if err := producer.Run(func(*ai.StreamObservation) error {
+					record("provider continuation")
+					message := agentTestAssistant([]ai.AssistantContentBlock{ai.TextContent{Text: "done"}}, ai.StopReasonStop)
+					if err := stream.Push(ai.StartEvent{Partial: message}); err != nil {
+						return err
+					}
+					return stream.Push(ai.DoneEvent{Reason: ai.StopReasonStop, Message: message})
+				}); err != nil {
+					t.Error(err)
+				}
+			})
+			record("caller prefix")
+			return stream, nil
+		},
+		OnEvent: func(event AgentEvent) {
+			if start, ok := event.(MessageStartEvent); ok && start.Message.Assistant != nil {
+				record("assistant start")
+			}
+		},
+	})
+	if _, err := a.Send(t.Context(), "hi"); err != nil {
+		t.Fatal(err)
+	}
+	want := []string{"caller prefix", "provider continuation", "assistant start"}
+	if !reflect.DeepEqual(order, want) {
+		t.Fatalf("order = %v, want %v", order, want)
 	}
 }
 

@@ -1,0 +1,1434 @@
+{
+  "pi": "0.87.1",
+  "baseCommit": "5fe7bdcea",
+  "publicCommit": "b3beb2a8c364389f0d3c5f8c9a02a542806d42c6",
+  "platform": "linux/amd64",
+  "corpusSha256": "59b2812674dbbc349f80c02128b5865e6a0471a3992f60fcc4a796cd3391b0e0",
+  "binaries": {
+    "public-main": "9047cb5021a114679be0b796361c7afa9d1bed33178f7f3daa4ad8bb70e335d4",
+    "candidate-before": "da8c93bf005b33c19c7e0a03f9e4c334ab78e54d6b01ec62c7d755f9c122f33f",
+    "candidate-final": "6bd98aca823863efb9a804011aca193ced91ee3bbea64f7f2fbd5af2416d5d0b"
+  },
+  "nodes": [
+    {
+      "node": "22.13.0",
+      "finalReportSha256": "9b771e1724ff2d8ff0ea6b012e6aa3627ef9106831182b6590d8bf435a89426a",
+      "packages": [
+        {
+          "name": "minimal",
+          "version": "fixture",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "minimal"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 0,
+          "publicStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@juicesharp/rpiv-todo",
+          "version": "2.11.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "todos"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "todo",
+              "write"
+            ]
+          },
+          "publicExit": 0,
+          "publicStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@ff-labs/pi-fff",
+          "version": "0.11.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "fff-health",
+              "fff-mode",
+              "fff-rescan",
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "fffind",
+              "ffgrep",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 0,
+          "publicStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@benvargas/pi-claude-code-use",
+          "version": "2.2.1",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "5976509c49fbd51cac1025f533572def8cf2cc320c5d59a93039a4a4bc946323",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-secret-guard",
+          "version": "1.2.15",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "dd81525abcd38f1cb6e8f4cd83e706537632c051e2d66c148a23aed32e24ac3d",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-session-switch",
+          "version": "0.4.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "switch-session"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "c56c730bccc82fd03c9ec19a1e4ea602e97d2ca7cc89776d4a0750e24cd7f3a7",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-observational-memory",
+          "version": "3.1.4",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "om:status",
+              "om:view"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "recall",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "e5456234f80f2b0e5a36554f985a8927d39fd47466ba2e3973af3a814e19a46d",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@tmustier/pi-usage-extension",
+          "version": "0.9.5",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "usage"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "dd62463286d9908913c5310718bc7f25d3151326239fd45f8d013d7f2f25dc4f",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@observal/pi-insights",
+          "version": "1.2.3",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "pi-insights"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "f56ce72d42a790d97532fcdd5f4a32bb478bf3b2d32c86bcaa6a0c1fe7b33081",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@specode/pi-subscription-usage",
+          "version": "1.1.1",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "usage"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "7edd46b30f58559622fcdab6b8db8e466e89a930cefac556f8909aaeb5d1dde6",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-open-agents",
+          "version": "0.1.22",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "4b7a3d56c8264d151498244e4ef126d24888aee33a16b8d55ccde839c6b8b5bf",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-lens",
+          "version": "4.3.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "lens-allow-edit",
+              "lens-context-toggle",
+              "lens-health",
+              "lens-map",
+              "lens-perf",
+              "lens-tdi",
+              "lens-toggle",
+              "lens-tools",
+              "lens-widget-toggle",
+              "llama"
+            ],
+            "tools": [
+              "ast_grep_outline",
+              "ast_grep_replace",
+              "ast_grep_search",
+              "bash",
+              "edit",
+              "effective_config",
+              "find",
+              "grep",
+              "lens_diagnostic_mark",
+              "lens_diagnostics",
+              "ls",
+              "lsp_navigation",
+              "module_report",
+              "pi_lens_activate_tools",
+              "powershell",
+              "project_report",
+              "read",
+              "read_enclosing",
+              "read_symbol",
+              "symbol_search",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "6a4616a2f1408a21ffcff541a1010d03dd0217d64821f2825ae812edbcb18ffc",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        }
+      ]
+    },
+    {
+      "node": "22.23.3",
+      "finalReportSha256": "f3b54e59c66e5f6e8009f206152c37a27e7b0c6ccc02027dbc69f279bc73ee71",
+      "packages": [
+        {
+          "name": "minimal",
+          "version": "fixture",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "minimal"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 0,
+          "publicStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@juicesharp/rpiv-todo",
+          "version": "2.11.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "todos"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "todo",
+              "write"
+            ]
+          },
+          "publicExit": 0,
+          "publicStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@ff-labs/pi-fff",
+          "version": "0.11.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "fff-health",
+              "fff-mode",
+              "fff-rescan",
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "fffind",
+              "ffgrep",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 0,
+          "publicStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@benvargas/pi-claude-code-use",
+          "version": "2.2.1",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "fc493e4756d9e540fb389e9e5c7f5709b8de8914fc4c9bb83826042de3ecd978",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-secret-guard",
+          "version": "1.2.15",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "57dde6ace48ddeb014dd358daeb054ded4287ff0f18b4c9a5410a036795c1382",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-session-switch",
+          "version": "0.4.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "switch-session"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "34d6dafc617f82d689cf3ecf5a688424ab93926abad39523935dae2f0a91ae7b",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-observational-memory",
+          "version": "3.1.4",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "om:status",
+              "om:view"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "recall",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "9b2c8076674ce176a860297e37c4ab865118746622a51ab8d85d442ddafd5648",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@tmustier/pi-usage-extension",
+          "version": "0.9.5",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "usage"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "65c7d9b322f7f9c0cf3f65575bbaf209ee6075680bb1a322cfeacd10a6105144",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@observal/pi-insights",
+          "version": "1.2.3",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "pi-insights"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "d675d1647587e36e5adc224b0da2891d4689459f1046bd322ed14133f63fa4f5",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@specode/pi-subscription-usage",
+          "version": "1.1.1",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "usage"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "4b77eb5a9ce54cbf52539af30d22c6fa5461004bd5b468dc86470eacc5f416a5",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-open-agents",
+          "version": "0.1.22",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "2a2c6f5ce52de86976167d1af3119f82bb4ef20bb5b53e07098c938635ccc177",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-lens",
+          "version": "4.3.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "lens-allow-edit",
+              "lens-context-toggle",
+              "lens-health",
+              "lens-map",
+              "lens-perf",
+              "lens-tdi",
+              "lens-toggle",
+              "lens-tools",
+              "lens-widget-toggle",
+              "llama"
+            ],
+            "tools": [
+              "ast_grep_outline",
+              "ast_grep_replace",
+              "ast_grep_search",
+              "bash",
+              "edit",
+              "effective_config",
+              "find",
+              "grep",
+              "lens_diagnostic_mark",
+              "lens_diagnostics",
+              "ls",
+              "lsp_navigation",
+              "module_report",
+              "pi_lens_activate_tools",
+              "powershell",
+              "project_report",
+              "read",
+              "read_enclosing",
+              "read_symbol",
+              "symbol_search",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "210471be3ad442bbbffafe2175c997e035a31cd46d86fb1d5fd15534c37ac679",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        }
+      ]
+    },
+    {
+      "node": "24.21.0",
+      "finalReportSha256": "29a9d9000d0fa42664450173d47c433963aa6fec026bb4e8b14bb240cc436d96",
+      "packages": [
+        {
+          "name": "minimal",
+          "version": "fixture",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "minimal"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 0,
+          "publicStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@juicesharp/rpiv-todo",
+          "version": "2.11.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "todos"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "todo",
+              "write"
+            ]
+          },
+          "publicExit": 0,
+          "publicStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@ff-labs/pi-fff",
+          "version": "0.11.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "fff-health",
+              "fff-mode",
+              "fff-rescan",
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "fffind",
+              "ffgrep",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 0,
+          "publicStderrSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@benvargas/pi-claude-code-use",
+          "version": "2.2.1",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "c360044704a8b2c11a2249b0b40ac1fb6e24ab9f2b5e3afb536746765bd09bc2",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-secret-guard",
+          "version": "1.2.15",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "902ebf41aa9bd78ccc4c51538ba0a676d72c2bbe0337b94c50bdb529af820c85",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-session-switch",
+          "version": "0.4.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "switch-session"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "ec6eaf0e0fb07ca3e3005c78cd8193e25881453f923c9295c6e54948d8c6f62e",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-observational-memory",
+          "version": "3.1.4",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "om:status",
+              "om:view"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "recall",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "f922ce62d66c57ff08d8d2b36066ef6119bbefc62f9d5567821c08f3e3909028",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@tmustier/pi-usage-extension",
+          "version": "0.9.5",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "usage"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "286a93c38f39e07816799ef721deee7a2bd3dd189f40d1a579eca755834fa320",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@observal/pi-insights",
+          "version": "1.2.3",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "pi-insights"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "f4c13bdc1c6a349ab9e506a7408867314789be68d035f998abc85338d933e659",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@specode/pi-subscription-usage",
+          "version": "1.1.1",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "usage"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "b009da0b4f22d2bbd70bcfe80942e6f1ce28f99502ad1c2f6d566c64fff6819a",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-open-agents",
+          "version": "0.1.22",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "deb553914044f2b7acf52144357511b5d324d2602d82516d41c4997ba99c33a6",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-lens",
+          "version": "4.3.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "lens-allow-edit",
+              "lens-context-toggle",
+              "lens-health",
+              "lens-map",
+              "lens-perf",
+              "lens-tdi",
+              "lens-toggle",
+              "lens-tools",
+              "lens-widget-toggle",
+              "llama"
+            ],
+            "tools": [
+              "ast_grep_outline",
+              "ast_grep_replace",
+              "ast_grep_search",
+              "bash",
+              "edit",
+              "effective_config",
+              "find",
+              "grep",
+              "lens_diagnostic_mark",
+              "lens_diagnostics",
+              "ls",
+              "lsp_navigation",
+              "module_report",
+              "pi_lens_activate_tools",
+              "powershell",
+              "project_report",
+              "read",
+              "read_enclosing",
+              "read_symbol",
+              "symbol_search",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "bbfa3a91720e73dc4dea14fec7e1cd43e2c579b6da06d24569dd58e439f2358c",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        }
+      ]
+    },
+    {
+      "node": "26.10.0",
+      "finalReportSha256": "35ce3b3feeebd82a954233b0a29b69de97b7c590589a67e8f80af9c266c1bead",
+      "packages": [
+        {
+          "name": "minimal",
+          "version": "fixture",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "minimal"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "1ee53c9195758543acb64f59aa5e024f3c49ae67998721e878da2857579b642c",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@juicesharp/rpiv-todo",
+          "version": "2.11.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "todos"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "todo",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "fc8dd9da87550a68a3e9deff9a2e2d221a1afdda591e726fe0cb176a791c214c",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@ff-labs/pi-fff",
+          "version": "0.11.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "fff-health",
+              "fff-mode",
+              "fff-rescan",
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "fffind",
+              "ffgrep",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "c167b7992f76808fbcab03587d1d926d4df14623394d4989836476690eacb28c",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@benvargas/pi-claude-code-use",
+          "version": "2.2.1",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "2bb9264d2112948de49b2f5e32a93c737d7b7c01e0635171ef52ba8687b05bb7",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-secret-guard",
+          "version": "1.2.15",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "1fe5416ec85eb6e4459c4618316410602d40a92ec28b52fe5e2a9ce26843246a",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-session-switch",
+          "version": "0.4.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "switch-session"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "d27f730eda6e7865bfb54de8b246b478998077651e9f396d0ba237a4413f9b9a",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-observational-memory",
+          "version": "3.1.4",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "om:status",
+              "om:view"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "recall",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "643b396fd870685c482b2545cc5870f64e7d4aac37e6b369532e3aa1b382e06d",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@tmustier/pi-usage-extension",
+          "version": "0.9.5",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "usage"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "b6cdd3e8edc76393a4d46c7326b9dc56a6c5b903dbf206aa8469157c765ee2a0",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@observal/pi-insights",
+          "version": "1.2.3",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "pi-insights"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "6a1bd282d3ced38b000f08427e87aa173fa926dfd89a73ec3b988bf5e6d07cca",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "@specode/pi-subscription-usage",
+          "version": "1.1.1",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama",
+              "usage"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "483438b3d4cde8a14241b6ac99ec47ef38fad614fecef822d9f7fd5fc068244a",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-open-agents",
+          "version": "0.1.22",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "llama"
+            ],
+            "tools": [
+              "bash",
+              "edit",
+              "find",
+              "grep",
+              "ls",
+              "powershell",
+              "read",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "a3297bd6b3e9fad08cb282029675b43b6d126adf7eed94f5f5b9c684a805b2d7",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        },
+        {
+          "name": "pi-lens",
+          "version": "4.3.0",
+          "piExit": 0,
+          "piStdout": "42\n",
+          "piStderr": "",
+          "piTrace": {
+            "commands": [
+              "lens-allow-edit",
+              "lens-context-toggle",
+              "lens-health",
+              "lens-map",
+              "lens-perf",
+              "lens-tdi",
+              "lens-toggle",
+              "lens-tools",
+              "lens-widget-toggle",
+              "llama"
+            ],
+            "tools": [
+              "ast_grep_outline",
+              "ast_grep_replace",
+              "ast_grep_search",
+              "bash",
+              "edit",
+              "effective_config",
+              "find",
+              "grep",
+              "lens_diagnostic_mark",
+              "lens_diagnostics",
+              "ls",
+              "lsp_navigation",
+              "module_report",
+              "pi_lens_activate_tools",
+              "powershell",
+              "project_report",
+              "read",
+              "read_enclosing",
+              "read_symbol",
+              "symbol_search",
+              "write"
+            ]
+          },
+          "publicExit": 1,
+          "publicStderrSha256": "db67666ec76c0ac1b6bdcd0238b33a2011c5d4110c36a6b2708434fcde59b41e",
+          "baseMatchesPi": true,
+          "candidateMatchesPi": true
+        }
+      ]
+    }
+  ]
+}

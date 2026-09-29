@@ -53,15 +53,9 @@ type ExtensionActions struct {
 // instead of dropping extension calls on the floor.
 type SendUserMessageHandler func(content any, options *SendUserMessageOptions) error
 
-// ProviderActions is the optional injection of provider-registration
-// callbacks. Mirrors upstream's inline structural type at
-// runner.ts:264 (third argument to bindCore).
-//
-// Fields are pointers-to-func so absence is `nil` (matches upstream's
-// optional `?` modifier on each field).
-//
-// upstream: runner.ts:264 (`providerActions?: { registerProvider?, unregisterProvider? }`)
+// ProviderActions supplies synchronous provider registration callbacks. Registration errors are reported per queued entry during binding and returned directly for post-bind calls.
+// upstream: packages/coding-agent/src/core/extensions/runner.ts:bindCore
 type ProviderActions struct {
-	RegisterProvider   func(name string, config ProviderConfig)
+	RegisterProvider   func(name string, config ProviderConfig) error
 	UnregisterProvider func(name string)
 }

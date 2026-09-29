@@ -1,0 +1,47 @@
+# Real Pi 0.87.1 is driven through RPC with a local OpenAI-compatible server.
+# Complete tool_execution_end, tool message start/end, direct bash response, queried message/entry and on-disk entry records are compared.
+# Shared typed aliases preserve eight-hex entry identities, complete path suffixes and timestamp types. The probe checks clock range and cross-surface timestamp identity without rewriting records.
+# The raw RPC stream and child stderr are retained as an artifact; stderr also reaches the comparator unchanged.
+# Empty-file write/read cases assert that explicit empty text survives message creation, queries and persistence, while absent text remains distinct.
+# Other event families (assistant streaming, system prompt and thinking state) are outside this tool-result contract.
+name = "17-tool-rpc-error-and-bash-wire"
+description = "Tool errors carry empty details and direct bash preserves optional exit status and message timestamps across RPC and persistence"
+covers = ["packages/agent/src/agent-loop.ts", "packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/bash-executor.ts", "packages/coding-agent/src/core/tools/read.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["python3", "./test/parity/testdata/tool-rpc-wire.py", "pig", "--evidence", "{{TEMP}}/tool-wire"]
+pi_args = ["python3", "./test/parity/testdata/tool-rpc-wire.py", "pi", "--evidence", "{{TEMP}}/tool-wire"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+artifact_path = "{{TEMP}}/tool-wire/raw.json"
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3
+
+[[assert.json_aliases]]
+paths = ["/**/id", "/**/parentId"]
+kind = "id"
+group = "entry"
+pattern = '^[0-9a-f]{8}$'
+reason = "Pi generates eight-hex entry identities; preserve field presence, syntax and bijective references across queried and persisted records."
+
+[[assert.json_aliases]]
+paths = ["/**/text", "/**/output"]
+kind = "path"
+roots = ["temp"]
+reason = "Tool errors may include the private fixture path; retain complete surrounding error text and every path suffix."
+
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Clocks are independent; retain numeric/string type and syntax. The probe separately validates range and repeated message/entry timestamps across all surfaces."

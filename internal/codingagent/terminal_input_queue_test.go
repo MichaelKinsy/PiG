@@ -30,8 +30,9 @@ type remoteInputExtension struct {
 }
 
 type remoteInputRequest struct {
-	id   string
-	data string
+	id    string
+	data  string
+	state subprocess.TerminalInputArgs
 }
 
 // attachRemoteInputExtension subscribes a fake subprocess extension to m's
@@ -80,11 +81,9 @@ func (e *remoteInputExtension) serve() {
 		case env.Type == subprocess.MsgCancel && env.Cancel != nil:
 			e.cancels <- env.Cancel.RequestID
 		case env.Type == subprocess.MsgRequest && env.Request != nil && env.Request.Method == "terminal_input":
-			var args struct {
-				Data string `json:"data"`
-			}
+			var args subprocess.TerminalInputArgs
 			_ = json.Unmarshal(env.Request.Args, &args)
-			e.requests <- remoteInputRequest{id: env.ID, data: args.Data}
+			e.requests <- remoteInputRequest{id: env.ID, data: args.Data, state: args}
 		}
 	}
 }

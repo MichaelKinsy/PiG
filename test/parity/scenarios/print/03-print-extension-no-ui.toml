@@ -1,0 +1,26 @@
+# Pi 0.87.1 runner.ts:320-351,578-580: print has no UI; every UI method is a no-op/default.
+# Probed with pi -p '/ui-probe <file>' on 2026-09-26. The artifact records all UI methods,
+# including factory side effects. Combined output must remain empty (notify is silent).
+name = "03-print-extension-no-ui"
+description = "Print extensions report hasUI false and use Pi's complete no-op UI"
+covers = ["packages/coding-agent/src/core/extensions/runner.ts", "packages/coding-agent/src/modes/print-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "/ui-probe {{TEMP}}/ui.json"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/ui.json"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["../testdata/extension-ui-context.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../testdata/extension-ui-context.mjs"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_not_contain = ["HEADLESS_NOTIFICATION_MUST_NOT_APPEAR", "extension_error"]
+artifact_normalized_equal = true
+artifact_both_contain = ['"hasUI": false', '"select": "undefined"', '"factories": []']

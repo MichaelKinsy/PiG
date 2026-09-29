@@ -1,0 +1,69 @@
+package codingagent
+
+import (
+	"context"
+	"testing"
+	"time"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/tui"
+)
+
+// Pi tui.ts:698 and handleTerminalInput route input to only the focused component.
+func TestOverlayStackProbeInputOwnership(t *testing.T) {
+	m := newSwitchTuiProbe(t)
+	ctx, cancel := context.WithCancel(t.Context())
+	m.runCtx = ctx
+	u := &ExtUIContext{m: m}
+	done := make(chan struct{}, 2)
+	var handles []extension.RemoteOverlayHandle
+	t.Cleanup(func() {
+		for _, handle := range handles {
+			handle.Close(nil)
+		}
+		for range handles {
+			waiting := true
+			for waiting {
+				select {
+				case <-done:
+					waiting = false
+				case fn := <-m.uiTaskCh:
+					fn()
+				case <-time.After(5 * time.Second):
+					cancel()
+					t.Error("overlay cleanup stalled")
+					waiting = false
+				}
+			}
+		}
+		cancel()
+		m.teardownCurrentTui()
+		m.tuiInst.StopWithOptions(tui.StopOptions{PreserveScreen: true})
+	})
+	for range 2 {
+		mounted := make(chan extension.RemoteOverlayHandle, 1)
+		go func() {
+			u.RunRemoteOverlay(extension.RemoteOverlayOptions{Overlay: true}, nil, func(handle extension.RemoteOverlayHandle) { mounted <- handle })
+			done <- struct{}{}
+		}()
+		waiting := true
+		for waiting {
+			select {
+			case handle := <-mounted:
+				handles = append(handles, handle)
+				waiting = false
+			case fn := <-m.uiTaskCh:
+				fn()
+			case <-time.After(5 * time.Second):
+				t.Fatal("overlay did not mount")
+			}
+		}
+	}
+	first := handles[0].(*customOverlay)
+	second := handles[1].(*customOverlay)
+	firstRoute, _ := first.inputRoute()
+	secondRoute, _ := second.inputRoute()
+	if firstRoute != nil || secondRoute == nil {
+		t.Fatalf("back overlay still reads input=%t; front reads input=%t; shared channel=%t", firstRoute != nil, secondRoute != nil, firstRoute == secondRoute)
+	}
+}

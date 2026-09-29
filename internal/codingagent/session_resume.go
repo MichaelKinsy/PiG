@@ -11,17 +11,21 @@
 package codingagent
 
 import (
+	"bufio"
 	"bytes"
 	"cmp"
-	"encoding/json"
+	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
 // SessionInfo is the picker-display summary of a session JSONL.
@@ -43,19 +47,39 @@ type SessionInfo struct {
 const maxConcurrentSessionInfoLoads = 10 // upstream: coding-agent/src/core/session-manager.ts:MAX_CONCURRENT_SESSION_INFO_LOADS
 
 // ListSessions returns every valid jsonl in this manager's session
-// directory, newest mtime first. Files that fail header parsing are
+// directory, newest message activity first. Files that fail header parsing are
 // silently skipped (matches upstream: corrupted sessions shouldn't
 // crash the picker).
-func (sm *SessionManager) ListSessions() ([]SessionInfo, error) {
-	return listSessionsInDir(sm.sessionDir)
+func (sm *SessionManager) ListSessions(options ...SessionListOptions) ([]SessionInfo, error) {
+	if len(options) == 0 {
+		return listSessionsInDir(sm.sessionDir)
+	}
+	return listSessionsInDirWithOptions(sm.sessionDir, sessionListOptions(options))
 }
 
 // ListCurrentSessions returns the selector's Current Folder scope. A custom
 // session directory may contain sessions from several projects, so it filters
 // by header cwd; the default encoded directory is already cwd-scoped.
-func (sm *SessionManager) ListCurrentSessions() ([]SessionInfo, error) {
-	infos, err := sm.ListSessions()
-	if err != nil || sm.sessionDirIsCwdScoped() {
+func (sm *SessionManager) ListCurrentSessions(options ...SessionListOptions) ([]SessionInfo, error) {
+	selected := sessionListOptions(options)
+	filter := !sm.sessionDirIsCwdScoped()
+	if filter && selected.OnProgress != nil {
+		progress := selected.OnProgress
+		selected.OnProgress = func(loaded, total int, partial []SessionInfo) {
+			if partial != nil {
+				filtered := make([]SessionInfo, 0, len(partial))
+				for _, info := range partial {
+					if sessionCwdMatches(info.CWD, sm.cwd) {
+						filtered = append(filtered, info)
+					}
+				}
+				partial = filtered
+			}
+			progress(loaded, total, partial)
+		}
+	}
+	infos, err := sm.ListSessions(selected)
+	if err != nil || !filter {
 		return infos, err
 	}
 	out := make([]SessionInfo, 0, len(infos))
@@ -68,77 +92,33 @@ func (sm *SessionManager) ListCurrentSessions() ([]SessionInfo, error) {
 }
 
 // ListAllSessions returns every valid session JSONL under
-// <agentDir>/sessions/*/*.jsonl, newest modified first.
+// <agentDir>/sessions/*/*.jsonl, newest message activity first.
 // Mirrors upstream session selector "All" scope.
-func (sm *SessionManager) ListAllSessions() ([]SessionInfo, error) {
+func (sm *SessionManager) ListAllSessions(options ...SessionListOptions) ([]SessionInfo, error) {
+	selected := sessionListOptions(options)
 	if !sm.sessionDirIsCwdScoped() {
-		return listSessionsInDir(sm.sessionDir)
+		return listSessionsInDirWithOptions(sm.sessionListRoot(), selected)
 	}
-	root := filepath.Join(AgentDir(), "sessions")
-	return listSessionsAcrossRoot(root)
+	return listSessionsAcrossRootWithOptions(sm.sessionListRoot(), selected)
+}
+
+// sessionListRoot is the directory the All scope lists: a custom session directory itself, or the agent sessions directory that holds every project's session directory.
+func (sm *SessionManager) sessionListRoot() string {
+	if !sm.sessionDirIsCwdScoped() {
+		return sm.sessionDir
+	}
+	return filepath.Join(AgentDir(), "sessions")
 }
 
 func listSessionsAcrossRoot(root string) ([]SessionInfo, error) {
-	entries, err := os.ReadDir(root)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	files := make([]string, 0)
-	for _, e := range entries {
-		subdir := filepath.Join(root, e.Name())
-		info, err := os.Stat(subdir)
-		if err != nil || !info.IsDir() {
-			continue
-		}
-		subentries, err := os.ReadDir(subdir)
-		if err != nil {
-			continue
-		}
-		for _, se := range subentries {
-			if se.IsDir() || !strings.HasSuffix(se.Name(), ".jsonl") {
-				continue
-			}
-			files = append(files, filepath.Join(subdir, se.Name()))
-		}
-	}
-	infos := summarizeSessionFiles(files)
-	slices.SortFunc(infos, compareSessionRecencyDesc)
-	return infos, nil
+	return listSessionsAcrossRootWithOptions(root, sessionListOptions(nil))
 }
 
-func listSessionsInDir(dir string) ([]SessionInfo, error) {
-	entries, err := os.ReadDir(dir)
-	if err != nil {
-		if errors.Is(err, os.ErrNotExist) {
-			return nil, nil
-		}
-		return nil, err
-	}
-	files := make([]string, 0, len(entries))
-	for _, e := range entries {
-		if e.IsDir() || !strings.HasSuffix(e.Name(), ".jsonl") {
-			continue
-		}
-		files = append(files, filepath.Join(dir, e.Name()))
-	}
-	infos := summarizeSessionFiles(files)
-	slices.SortFunc(infos, compareSessionRecencyDesc)
-	return infos, nil
+var listSessionsInDir = func(dir string) ([]SessionInfo, error) {
+	return listSessionsInDirWithOptions(dir, sessionListOptions(nil))
 }
 
-// compareSessionRecencyDesc is a total order over sessions, newest-first.
-// The primary key is filesystem mtime, matching upstream findMostRecentSession
-// (which sorts by mtime alone via a stable JS sort). When two sessions share a
-// coarse mtime (sub-second writes on a low-resolution filesystem, as on some
-// CI runners) the header creation timestamp (RFC3339Nano, parsed into Created)
-// breaks the tie. Path is the final key so the comparator is a strict total
-// order: slices.SortFunc is not stable, so a comparator that returned 0 for
-// distinct sessions would leave their order undefined. Upstream leaves
-// equal-mtime order unspecified, so these secondary keys only refine an
-// otherwise undefined case and never reorder sessions with distinct mtimes.
+// compareSessionRecencyDesc orders listing metadata by activity and discovery metadata by mtime. Creation time and path break ties deterministically.
 func compareSessionRecencyDesc(a, b SessionInfo) int {
 	if c := cmp.Compare(b.Modified.UnixNano(), a.Modified.UnixNano()); c != 0 {
 		return c
@@ -150,46 +130,22 @@ func compareSessionRecencyDesc(a, b SessionInfo) int {
 }
 
 func summarizeSessionFiles(files []string) []SessionInfo {
-	if len(files) == 0 {
-		return nil
-	}
-	results := make([]SessionInfo, len(files))
-	ok := make([]bool, len(files))
-	sem := make(chan struct{}, maxConcurrentSessionInfoLoads)
-	var wg sync.WaitGroup
-	for i, path := range files {
-		wg.Add(1)
-		go func(idx int, file string) {
-			defer wg.Done()
-			sem <- struct{}{}
-			defer func() { <-sem }()
-			info, err := summarizeSessionFile(file)
-			if err != nil {
-				return
-			}
-			results[idx] = info
-			ok[idx] = true
-		}(i, path)
-	}
-	wg.Wait()
-	infos := make([]SessionInfo, 0, len(files))
-	for i := range files {
-		if ok[i] {
-			infos = append(infos, results[i])
-		}
-	}
+	infos, _ := summarizeSessionFilesWithOptions(files, sessionListOptions(nil), 10, false)
 	return infos
 }
 
 type sessionSummaryEntry struct {
-	Type    string                `json:"type"`
-	Name    string                `json:"name"`
-	Message sessionSummaryMessage `json:"message"`
+	Type      string                `json:"type"`
+	Name      string                `json:"name"`
+	Timestamp string                `json:"timestamp"`
+	Message   sessionSummaryMessage `json:"message"`
 }
 
 type sessionSummaryMessage struct {
-	Role string
-	Text string
+	Role       string
+	Text       string
+	Timestamp  *float64
+	HasContent bool
 }
 
 func (message *sessionSummaryMessage) UnmarshalJSON(data []byte) error {
@@ -204,12 +160,21 @@ func (message *sessionSummaryMessage) UnmarshalJSON(data []byte) error {
 		return nil
 	}
 	var content struct {
-		Content sessionSummaryContent `json:"content"`
+		Content   json.RawMessage `json:"content"`
+		Timestamp *float64        `json:"timestamp"`
 	}
 	if err := json.Unmarshal(data, &content); err != nil {
 		return err
 	}
-	message.Text = string(content.Content)
+	message.Timestamp = content.Timestamp
+	message.HasContent = len(content.Content) != 0
+	var text sessionSummaryContent
+	if message.HasContent {
+		if err := json.Unmarshal(content.Content, &text); err != nil {
+			return err
+		}
+	}
+	message.Text = string(text)
 	return nil
 }
 
@@ -217,7 +182,6 @@ type sessionSummaryContent string
 
 var (
 	canonicalMessagePrefix     = []byte(`{"type":"message",`)
-	canonicalSessionInfoPrefix = []byte(`{"type":"session_info",`)
 	canonicalMessageRolePrefix = []byte(`"message":{"role":"`)
 )
 
@@ -241,12 +205,6 @@ func summarizeSessionEntry(line []byte) (sessionSummaryEntry, bool) {
 				return sessionSummaryEntry{}, false
 			}
 		}
-	}
-	if !isCanonicalMessage && !bytes.HasPrefix(trimmed, canonicalSessionInfoPrefix) && bytes.HasPrefix(trimmed, []byte(`{"type":`)) {
-		if json.Valid(trimmed) {
-			return sessionSummaryEntry{}, true
-		}
-		return sessionSummaryEntry{}, false
 	}
 	var entry sessionSummaryEntry
 	if err := json.Unmarshal(trimmed, &entry); err != nil {
@@ -288,8 +246,15 @@ func (content *sessionSummaryContent) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
-// summarizeSessionFile streams the JSONL file and retains only picker metadata and searchable user/assistant text.
+// summarizeSessionFile streams picker metadata and searchable text without retaining entry objects.
 func summarizeSessionFile(path string) (SessionInfo, error) {
+	return summarizeSessionFileContext(context.Background(), path)
+}
+
+func summarizeSessionFileContext(ctx context.Context, path string) (SessionInfo, error) {
+	if err := ctx.Err(); err != nil {
+		return SessionInfo{}, err
+	}
 	st, err := os.Stat(path)
 	if err != nil {
 		return SessionInfo{}, err
@@ -299,12 +264,20 @@ func summarizeSessionFile(path string) (SessionInfo, error) {
 		return SessionInfo{}, err
 	}
 	defer func() { _ = f.Close() }()
+	interrupted := make(chan struct{})
+	stopInterrupt := context.AfterFunc(ctx, func() { _ = f.Close(); close(interrupted) })
+	defer func() {
+		if !stopInterrupt() {
+			<-interrupted
+		}
+	}()
 
 	info := SessionInfo{Path: path, Modified: st.ModTime()}
 	var firstUserMsg string
 	var allMessages []string
+	var lastActivityTime int64
 	haveHeader := false
-	err = forEachJSONLLine(f, func(line []byte) error {
+	err = forEachJSONLLineContext(ctx, f, func(line []byte) error {
 		if len(line) == 0 {
 			return nil
 		}
@@ -322,6 +295,7 @@ func summarizeSessionFile(path string) (SessionInfo, error) {
 			info.ParentSession = header.ParentSession
 			if t, err := time.Parse(time.RFC3339Nano, header.Timestamp); err == nil {
 				info.Created = t
+				info.Modified = t
 			}
 			return nil
 		}
@@ -332,6 +306,13 @@ func summarizeSessionFile(path string) (SessionInfo, error) {
 		switch entry.Type {
 		case "message":
 			info.MessageCount++
+			if entry.Message.HasContent && (entry.Message.Role == "user" || entry.Message.Role == "assistant") {
+				if entry.Message.Timestamp != nil {
+					lastActivityTime = max(lastActivityTime, int64(*entry.Message.Timestamp))
+				} else if timestamp, err := time.Parse(time.RFC3339Nano, entry.Timestamp); err == nil {
+					lastActivityTime = max(lastActivityTime, timestamp.UnixMilli())
+				}
+			}
 			if firstUserMsg == "" && entry.Message.Role == "user" {
 				firstUserMsg = entry.Message.Text
 			}
@@ -339,15 +320,21 @@ func summarizeSessionFile(path string) (SessionInfo, error) {
 				allMessages = append(allMessages, entry.Message.Text)
 			}
 		case "session_info":
-			info.Name = strings.TrimSpace(entry.Name)
+			info.Name = jsTrim(entry.Name)
 		}
 		return nil
 	})
+	if ctx.Err() != nil {
+		return SessionInfo{}, ctx.Err()
+	}
 	if err != nil {
 		return SessionInfo{}, err
 	}
 	if !haveHeader {
 		return SessionInfo{}, fmt.Errorf("session: empty file: %s", path)
+	}
+	if lastActivityTime > 0 {
+		info.Modified = time.UnixMilli(lastActivityTime)
 	}
 	info.FirstMessage = truncate(firstUserMsg, 200)
 	info.AllMessagesText = strings.Join(allMessages, " ")
@@ -397,11 +384,37 @@ func truncate(s string, n int) string {
 // FindMostRecent returns the path to the most-recently-modified valid
 // session jsonl in this manager's directory, or "" when none exist.
 func (sm *SessionManager) FindMostRecent() string {
-	infos, err := sm.ListSessions()
-	if err != nil || len(infos) == 0 {
+	return sm.findMostRecent(false)
+}
+
+// findMostRecent uses bounded header discovery and file mtime rather than the activity timestamps shown in the picker.
+func (sm *SessionManager) findMostRecent(filterCwd bool) string {
+	files, err := os.ReadDir(sm.sessionDir)
+	if err != nil {
 		return ""
 	}
-	return infos[0].Path
+	candidates := make([]SessionInfo, 0, len(files))
+	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".jsonl") {
+			continue
+		}
+		path := filepath.Join(sm.sessionDir, file.Name())
+		stat, err := os.Stat(path)
+		if err != nil {
+			return ""
+		}
+		header := readSessionHeaderForDiscovery(path)
+		if header == nil || filterCwd && !sessionCwdMatches(header.CWD, sm.cwd) {
+			continue
+		}
+		created, _ := time.Parse(time.RFC3339Nano, header.Timestamp)
+		candidates = append(candidates, SessionInfo{Path: path, Modified: stat.ModTime(), Created: created})
+	}
+	slices.SortFunc(candidates, compareSessionRecencyDesc)
+	if len(candidates) == 0 {
+		return ""
+	}
+	return candidates[0].Path
 }
 
 // FindMostRecentForContinue selects the session to resume for the
@@ -413,11 +426,7 @@ func (sm *SessionManager) FindMostRecent() string {
 // this cwd (upstream's `filterCwd` branch) so `--continue` never resumes
 // another project's session.
 func (sm *SessionManager) FindMostRecentForContinue() string {
-	infos, err := sm.ListCurrentSessions()
-	if err != nil || len(infos) == 0 {
-		return ""
-	}
-	return infos[0].Path
+	return sm.findMostRecent(!sm.sessionDirIsCwdScoped())
 }
 
 // sessionDirIsCwdScoped reports whether this manager's session directory
@@ -450,13 +459,11 @@ func canonicalDir(p string) string {
 	if p == "" {
 		return ""
 	}
-	abs := p
-	if !filepath.IsAbs(abs) {
-		if a, err := filepath.Abs(abs); err == nil {
-			abs = a
-		}
+	abs, err := nodepath.Resolve(p)
+	if err != nil {
+		abs = p
 	}
-	if resolved, err := filepath.EvalSymlinks(abs); err == nil {
+	if resolved, err := evalCanonicalPath(abs); err == nil {
 		return resolved
 	}
 	return filepath.Clean(abs)
@@ -469,23 +476,114 @@ func absCleanDir(p string) string {
 	if p == "" {
 		return ""
 	}
-	if !filepath.IsAbs(p) {
-		if a, err := filepath.Abs(p); err == nil {
-			p = a
-		}
+	abs, err := nodepath.Resolve(p)
+	if err != nil {
+		return filepath.Clean(p)
 	}
-	return filepath.Clean(p)
+	return abs
 }
 
-// FindByID locates a session jsonl whose header `id` matches the given
-// id (anywhere in the manager's session dir). Returns "" when no match.
-// Used by `--session <id>`.
+// FindByID finds an exact header ID without reading transcript bodies. A custom session directory is filtered by cwd; discovery errors are best-effort.
 func (sm *SessionManager) FindByID(id string) string {
-	infos, _ := sm.ListSessions()
-	for _, info := range infos {
-		if info.ID == id {
-			return info.Path
+	files, err := os.ReadDir(sm.sessionDir)
+	if err != nil {
+		return ""
+	}
+	filterCWD := !sm.sessionDirIsCwdScoped()
+	for _, file := range files {
+		if !strings.HasSuffix(file.Name(), ".jsonl") {
+			continue
 		}
+		path := filepath.Join(sm.sessionDir, file.Name())
+		header := readSessionHeaderForDiscovery(path)
+		if header == nil || header.ID != id {
+			continue
+		}
+		if filterCWD && !sessionCwdMatches(header.CWD, sm.cwd) {
+			continue
+		}
+		return path
 	}
 	return ""
+}
+
+const maxSessionHeaderScanBytes = 1024 * 1024
+
+// readSessionHeaderForDiscovery extracts identity and cwd from the first truthy parsed entry within the upstream scan bound. Blank, malformed, and JSON-falsy entries do not terminate discovery.
+func readSessionHeaderForDiscovery(path string) *SessionHeader {
+	header, _ := ReadSessionHeader(path)
+	return header
+}
+
+// SessionHeaderScanLimitError reports that bounded discovery could not reach a header.
+type SessionHeaderScanLimitError struct{ Path string }
+
+func (err *SessionHeaderScanLimitError) Error() string {
+	return fmt.Sprintf("Session header exceeds %d-byte scan limit: %s", maxSessionHeaderScanBytes, err.Path)
+}
+
+// ReadSessionHeader scans at most Pi's header-discovery bound. Explicit opens may fall back to full loading on a scan-limit error.
+func ReadSessionHeader(path string) (*SessionHeader, error) {
+	file, err := os.Open(path)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = file.Close() }()
+	reader := bufio.NewReader(io.LimitReader(file, maxSessionHeaderScanBytes+1))
+	remaining := maxSessionHeaderScanBytes
+	for {
+		line, readErr := reader.ReadBytes('\n')
+		remaining -= len(line)
+		if remaining < 0 {
+			return nil, &SessionHeaderScanLimitError{Path: path}
+		}
+		if readErr != nil && !errors.Is(readErr, io.EOF) {
+			return nil, readErr
+		}
+		// upstream: coding-agent/src/core/session-manager.ts:parseSessionHeaderCandidate
+		if json.Valid(line) {
+			var value any
+			decoder := json.NewDecoder(bytes.NewReader(line))
+			decoder.UseNumber()
+			if err := decoder.Decode(&value); err != nil {
+				return nil, err
+			}
+			switch value := value.(type) {
+			case nil:
+			case bool:
+				if value {
+					return nil, nil
+				}
+			case json.Number:
+				number, _ := value.Float64()
+				if number != 0 {
+					return nil, nil
+				}
+			case string:
+				if value != "" {
+					return nil, nil
+				}
+			case map[string]any:
+				id, hasID := value["id"].(string)
+				if value["type"] != "session" || !hasID {
+					return nil, nil
+				}
+				cwd, _ := value["cwd"].(string)
+				timestamp, _ := value["timestamp"].(string)
+				parent, _ := value["parentSession"].(string)
+				version := 0
+				if number, ok := value["version"].(json.Number); ok {
+					if parsed, err := number.Int64(); err == nil {
+						version = int(parsed)
+					}
+				}
+				return &SessionHeader{Type: "session", ID: id, CWD: cwd, Timestamp: timestamp, ParentSession: parent, Version: version}, nil
+			default:
+				return nil, nil
+			}
+		}
+		if errors.Is(readErr, io.EOF) {
+			return nil, nil
+		}
+	}
 }

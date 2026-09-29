@@ -1,0 +1,26 @@
+# Pi 0.87.1 google-shared.ts:47-115 resolves model-specific logical levels and
+# clamps omitted reasoning to the lowest supported level without includeThoughts.
+# google-generative-ai.ts:322-344 applies mapped custom budgets. Both native
+# adapters are probed via their onPayload boundary; no service credentials needed.
+name = "14-google-thinking-level-maps"
+description = "Google and Vertex preserve mapped reasoning levels, disabled-thinking fallback and mapped token budgets."
+covers = ["packages/ai/src/api/google-shared.ts", "packages/ai/src/api/google-generative-ai.ts", "packages/ai/src/api/google-vertex.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/google-thinking-maps-pig"]
+pi_args = ["node", "./test/parity/testdata/google-thinking-maps-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['google/omitted {"thinkingLevel":"LOW"}', 'google/medium-pro {"includeThoughts":true,"thinkingLevel":"MEDIUM"}', 'vertex/extended-budget {"includeThoughts":true,"thinkingBudget":1234}']
+runs = 3

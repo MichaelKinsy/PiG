@@ -69,12 +69,12 @@ func TestTreeSelectLabelKeysFollowRebinding(t *testing.T) {
 	}
 
 	ts.HandleInput("L")
-	if ts.editingLabel {
+	if ts.labelInput != nil {
 		t.Fatal("L entered label editing after app.tree.editLabel moved to ctrl+e")
 	}
 	ts.HandleInput("\x1b")
 	ts.HandleInput("\x05")
-	if !ts.editingLabel {
+	if ts.labelInput == nil {
 		t.Fatal("ctrl+e did not enter label editing")
 	}
 }

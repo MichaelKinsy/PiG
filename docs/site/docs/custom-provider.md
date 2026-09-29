@@ -116,6 +116,12 @@ Provider registrations belong to the live extension generation. PiG removes them
 
 A successful atomic reload replaces provider state with the new validated extension set. A failed replacement keeps the previous working set.
 
+## Per-request HTTP transport
+
+Node extensions can pass Pi's `fetch` option to model requests. PiG calls that function in the originating extension process. It sends the request URL, method, headers, and serialized body unchanged and reads the response body on demand. Cancellation, response-read errors, and transport errors remain on that request. Closing the response or shutting down the extension releases its reader. The native Go equivalent is `ai.StreamOptions.Fetch`.
+
+This option applies to HTTP, not WebSocket connections. Google Generative AI and Google Vertex reject custom fetch functions, as in Pi. For Cloudflare binding routes, use the binding auth sentinel and explicit `Authorization: null` and `x-api-key: null` headers so placeholder credentials do not override gateway-managed credentials.
+
 ## Connection failure
 
 A provider extension can hold live state even when no tool call is active. PiG keeps heartbeat active while the connection owns that state.

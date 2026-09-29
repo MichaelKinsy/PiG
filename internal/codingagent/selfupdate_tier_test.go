@@ -197,6 +197,9 @@ func TestAC9StandaloneReceiptControlsOwnership(t *testing.T) {
 }
 
 func TestResolveSelfUpdateTier_ReadOnlyBinaryIsUnsupported(t *testing.T) {
+	if testenv.RunUnprivileged(t) {
+		return
+	}
 	requireStandaloneSelfUpdateTier(t)
 	dir := t.TempDir()
 	exe := writeFakeExe(t, dir)
@@ -263,6 +266,9 @@ func TestAC2ResolveSelfUpdateTier(t *testing.T) {
 		}
 	})
 	t.Run("read_only_unsupported", func(t *testing.T) {
+		if testenv.RunUnprivileged(t) {
+			return
+		}
 		requireStandaloneSelfUpdateTier(t)
 		dir := t.TempDir()
 		exe := writeFakeExe(t, dir)
@@ -306,6 +312,9 @@ func TestAC2ResolveSelfUpdateTier(t *testing.T) {
 		}
 	})
 	t.Run("package_managed_read_only_is_unsupported", func(t *testing.T) {
+		if testenv.RunUnprivileged(t) {
+			return
+		}
 		root := t.TempDir()
 		npmRoot := filepath.Join(root, "node_modules")
 		binDir := filepath.Join(npmRoot, "pig", "bin")

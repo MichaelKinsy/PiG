@@ -266,20 +266,7 @@ func (capture *OutputCapture) totalLinesLocked() int {
 // ApplyShellOutputUpdate folds one update into the previous view (nil before
 // the first update).
 func ApplyShellOutputUpdate(current *harness.ShellOutputView, update harness.ShellOutputUpdate) harness.ShellOutputView {
-	previous := ""
-	if current != nil {
-		previous = current.Text
-	}
-	switch update.Kind {
-	case harness.ShellOutputUpdateReplace:
-		return update.Output
-	case harness.ShellOutputUpdateAppend:
-		return harness.ShellOutputView{Text: previous + update.Text, ShellOutputMetadata: update.Metadata}
-	case harness.ShellOutputUpdateSlide:
-		return harness.ShellOutputView{Text: utf16Slice(previous, update.Drop) + update.Text, ShellOutputMetadata: update.Metadata}
-	default:
-		return harness.ShellOutputView{Text: previous, ShellOutputMetadata: update.Metadata}
-	}
+	return tools.ApplyShellOutputUpdate(current, update)
 }
 
 func updateFrom(previous *harness.ShellOutputView, current harness.ShellOutputView) (harness.ShellOutputUpdate, bool) {
@@ -363,14 +350,6 @@ func equalUnits(left, right []uint16) bool {
 		}
 	}
 	return true
-}
-
-func utf16Slice(text string, start int) string {
-	units := utf16.Encode([]rune(text))
-	if start >= len(units) {
-		return ""
-	}
-	return string(utf16.Decode(units[max(start, 0):]))
 }
 
 // SanitizeShellOutput removes C0 control characters other than tab and

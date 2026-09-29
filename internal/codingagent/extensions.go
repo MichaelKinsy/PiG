@@ -221,7 +221,10 @@ func (u *TUIUIContext) Input(title, placeholder string) (string, bool) {
 		inputCh, releaseInput := u.interactiveMode.acquireModalInputChannel()
 		defer releaseInput()
 		for !input.Done() {
-			buf := <-inputCh
+			buf, ok := u.interactiveMode.readModalInput(inputCh)
+			if !ok {
+				return "", false
+			}
 			for _, chunk := range dropKeyReleases(input, []string{string(buf)}) {
 				input.HandleInput(chunk)
 				if input.Done() {

@@ -323,27 +323,34 @@ func TestGitBranchChangeReachesTerminalWhileIdle(t *testing.T) {
 	git("init", "-q", "-b", "trunk")
 	git("-c", "user.email=t@t", "-c", "user.name=t", "commit", "--allow-empty", "-q", "-m", "one")
 
-	synctest.Test(t, func(t *testing.T) {
-		m, term := newTickRenderProbe(t, "regular")
-		m.opts.CWD = repo
-		m.statusLine.SetCwd(repo)
-		m.isIdle = true
-		m.tuiInst.Render()
-		if frame := widthx.StripAnsi(term.take()); !strings.Contains(frame, "(trunk)") {
-			t.Fatalf("initial footer lacks the branch: %q", frame)
+	m, term := newTickRenderProbe(t, "regular")
+	m.opts.CWD = repo
+	m.statusLine.SetCwd(repo)
+	m.isIdle = true
+	m.tuiInst.Render()
+	if frame := widthx.StripAnsi(term.take()); !strings.Contains(frame, "(trunk)") {
+		t.Fatalf("initial footer lacks the branch: %q", frame)
+	}
+	ctx, cancel := context.WithCancel(t.Context())
+	m.startGitBranchWatcher(ctx)
+	defer func() { cancel(); m.backgroundTasks.Wait() }()
+	git("checkout", "-q", "-b", "feature")
+	// Native filesystem delivery cannot participate in synctest's fake clock. Drive the real owner queue without input, with Pi's 3000ms waitFor budget.
+	deadline := time.NewTimer(3 * time.Second)
+	defer deadline.Stop()
+	tick := time.NewTicker(10 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		select {
+		case <-deadline.C:
+			t.Fatal("the idle footer did not show the new branch without input")
+		case <-tick.C:
+			m.drainMainLoopOnce()
+			if strings.Contains(widthx.StripAnsi(term.take()), "(feature)") {
+				return
+			}
 		}
-
-		ctx, cancel := context.WithCancel(t.Context())
-		m.startGitBranchWatcher(ctx)
-		git("checkout", "-q", "-b", "feature")
-		time.Sleep(6 * time.Second) // past one HEAD poll
-		synctest.Wait()
-		m.drainMainLoopOnce()
-		if frame := widthx.StripAnsi(term.take()); !strings.Contains(frame, "(feature)") {
-			t.Fatalf("the idle footer did not show the new branch without input: %q", frame)
-		}
-		cancel()
-	})
+	}
 }
 
 // Every retry countdown second reaches the screen, in order, even when the

@@ -29,6 +29,18 @@ The Node extension runtime embeds the third-party packages Pi 0.87.1 depends on 
 - `get-east-asian-width` 1.6.0, Copyright (c) Sindre Sorhus, MIT.
 - `partial-json` 0.1.7, Copyright (c) 2023 Promplate Dev Team, MIT.
 - `highlight.js` 10.7.3, Copyright (c) 2006, Ivan Sagalaev, BSD-3-Clause.
+- `ignore` 7.0.8, Copyright (c) 2013 Kael Zhang and contributors, MIT.
+- `diff` 8.0.4, Copyright (c) 2009-2015, Kevin Decker, BSD-3-Clause.
+- `cross-spawn` 7.0.6, Copyright (c) 2018 Made With MOXY Lda, MIT, with `path-key` 3.1.1 and `shebang-regex` 3.0.0, Copyright (c) Sindre Sorhus, MIT; `shebang-command` 2.0.0, Copyright (c) Kevin Mårtensson, MIT; and `which` 2.0.2 and `isexe` 2.0.0, Copyright (c) Isaac Z. Schlueter and Contributors, ISC.
+- `jiti` 2.7.0, Copyright (c) Pooya Parsa, MIT, with bundled MIT and ISC dependencies.
+- `chalk` 6.0.0, Copyright (c) Sindre Sorhus, MIT.
+- `undici` 8.10.2, Copyright (c) Matteo Collina and Undici contributors, MIT.
+- `semver` 7.8.5, Copyright (c) Isaac Z. Schlueter and Contributors, ISC.
+- `minimatch` 10.2.6 and `lru-cache` 11.4.0, BlueOak-1.0.0; `brace-expansion` 5.0.9 and `balanced-match` 4.0.4, Copyright Julian Gruber and Isaac Z. Schlueter, MIT.
+- `hosted-git-info` 9.0.3, Copyright (c) 2015 Rebecca Turner, ISC.
+- `grok-mermaid` 0.2.3, Copyright 2023-2026 SpaceXAI and Copyright 2026 Alexey Zaytsev, Apache-2.0.
+- `@silvia-odwyer/photon-node` 0.3.4, Copyright 2023 Silvia O'Dwyer, Apache-2.0.
+- `proper-lockfile` 4.1.2, Copyright (c) 2018 Made With MOXY Lda, MIT; `retry` 0.12.0, Copyright (c) 2011 Tim Koschützki and Felix Geisendörfer, MIT; `graceful-fs` 4.2.11, Copyright (c) 2011-2022 Isaac Z. Schlueter, Ben Noordhuis and Contributors, ISC; `signal-exit` 3.0.7, Copyright (c) 2015 Contributors, ISC.
 
 See `THIRD_PARTY_NOTICES.md` for the applicable license texts. Dependencies included in a release are recorded in that release's SPDX SBOM.
 
@@ -42,6 +54,8 @@ PiG also contains a Go port of `grok-mermaid` 0.2.2 and data generated from its 
 The generated width table also derives from `unicode-width` 0.2.0, Copyright (c) 2015 The Rust Project Developers, used under its MIT option.
 
 PiG ports upstream Pi code that incorporates material from OpenTUI, `ansi-regex`, and `strip-ansi`. Their notices are retained in the corresponding source files and in `THIRD_PARTY_NOTICES.md`.
+
+`internal/nodespawn` translates libuv 1.51.0 Windows command-line quoting, Copyright Joyent, Inc. and other Node contributors, MIT.
 
 The project banner and derived social banners adapt the Go gopher, which was designed by Renee French and is licensed under CC-BY-4.0. The license text is in `LICENSES/CC-BY-4.0.txt`.
 

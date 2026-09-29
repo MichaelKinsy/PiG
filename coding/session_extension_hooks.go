@@ -252,6 +252,16 @@ func (s *Session) extensionProviderRequestHook(payload any, _ *ai.Model) (any, e
 	return result, nil
 }
 
+// extensionProviderResponseHook awaits observers before the provider consumes its response.
+func (s *Session) extensionProviderResponseHook(ctx context.Context, response ai.ProviderResponse, _ *ai.Model) error {
+	runner := s.currentRunner()
+	if runner == nil || !runner.HasHandlers(icodingagent.EventAfterProviderResponse) {
+		return nil
+	}
+	_, err := runner.Emit(ctx, extension.AfterProviderResponseEvent{Type: icodingagent.EventAfterProviderResponse, Status: response.Status, Headers: response.Headers})
+	return err
+}
+
 // extensionProviderHeadersHook emits before_provider_headers on the merged
 // request headers (sdk.ts buildRequestOptions.transformHeaders).
 func (s *Session) extensionProviderHeadersHook(ctx context.Context, headers ai.ProviderHeaders) (ai.ProviderHeaders, error) {
@@ -285,7 +295,7 @@ func (s *Session) extensionEventHook(ev agent.AgentEvent) {
 	if !runner.HasHandlers(icodingagent.EventMessageEnd) {
 		return
 	}
-	replacement, err := runner.EmitMessageEnd(context.Background(), end.Message)
+	replacement, err := runner.EmitMessageEnd(icodingagent.AgentEventContext(ev), end.Message)
 	if err != nil || replacement == nil {
 		return
 	}
@@ -302,7 +312,7 @@ func (s *Session) extensionEventHook(ev agent.AgentEvent) {
 func normalizeReplacementContent(message agent.AgentMessage) agent.AgentMessage {
 	switch {
 	case message.User != nil && message.User.Content == nil:
-		message.User.Content = []ai.UserContentBlock{}
+		message.User.Content = ai.UserContentBlocks{}
 	case message.Assistant != nil && message.Assistant.Content == nil:
 		message.Assistant.Content = []ai.AssistantContentBlock{}
 	case message.ToolResult != nil && message.ToolResult.Content == nil:
@@ -384,7 +394,20 @@ func (s *Session) takeAgentStartMessages() []agent.AgentMessage {
 // example to refresh a UI after navigating).
 func (s *Session) ExtensionCommandActions() extension.CommandActions {
 	return extension.CommandActions{
-		WaitForIdle: func() error { return s.WaitForIdle(context.Background()) },
+		WaitForIdle:        func() error { return s.WaitForIdle(context.Background()) },
+		WaitForIdleContext: s.WaitForIdle,
+		NewSession: func(opts *extension.NewSessionOptions) (extension.CancelledResult, error) {
+			return s.extensionNewSession(context.Background(), opts)
+		},
+		NewSessionContext: s.extensionNewSession,
+		Fork: func(entryID string, opts *extension.ForkOptions) (extension.CancelledResult, error) {
+			return s.extensionFork(context.Background(), entryID, opts)
+		},
+		ForkContext: s.extensionFork,
+		SwitchSession: func(path string, opts *extension.SwitchSessionOptions) (extension.CancelledResult, error) {
+			return s.extensionSwitchSession(context.Background(), path, opts)
+		},
+		SwitchSessionContext: s.extensionSwitchSession,
 		// upstream print-mode.ts/rpc-mode.ts bind navigateTree to
 		// session.navigateTree and return only whether it was cancelled.
 		NavigateTree: func(targetID string, opts *extension.NavigateTreeOptions) (extension.CancelledResult, error) {
@@ -402,9 +425,19 @@ func (s *Session) ExtensionCommandActions() extension.CommandActions {
 	}
 }
 
-// bindExtensionCommandActions binds the Session's command actions on runner.
+// bindExtensionCommandActions binds the Session's views, message delivery, abort and command actions without replacing mode-owned callbacks. Abort requests cancellation without awaiting the handler's own run.
 func (s *Session) bindExtensionCommandActions(runner *inproc.Runner) {
 	if runner != nil {
+		runner.BindAbort(s.RequestAbort)
+		runner.BindScopedModels(s.ScopedModels)
+		runner.BindSystemPromptOptions(s.GetSystemPromptOptions)
+		runner.BindTools(extension.ContextActions{
+			GetAllTools: s.GetAllTools, GetActiveTools: s.ActiveToolNames,
+			SetActiveTools: s.SetActiveToolsByName, GetSystemPrompt: s.systemPrompt,
+			GetModel: func() extension.Model { return s.Model() }, SessionManager: s,
+			ModelRegistry: s.ModelRegistry(), IsIdle: s.IsIdle, HasPendingMessages: s.HasPendingMessages,
+			SendUserMessage: s.SendExtensionUserMessage,
+		})
 		runner.BindCommandActions(s.ExtensionCommandActions())
 	}
 }

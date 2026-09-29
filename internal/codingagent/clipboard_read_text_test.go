@@ -19,17 +19,25 @@ func useClipboardTextTestSeams(
 	goos string,
 	env map[string]string,
 	run clipboardRunner,
-	native func() nativeClipboardText,
+	native func() *tui.NativeClipboard,
 ) {
 	t.Helper()
-	oldGOOS, oldEnv, oldRun, oldNative := clipboardGOOS, clipboardEnv, clipboardRun, getNativeClipboardText
+	oldGOOS, oldEnv, oldRun, oldNative := clipboardGOOS, clipboardEnv, clipboardRun, getNativeClipboard
 	t.Cleanup(func() {
-		clipboardGOOS, clipboardEnv, clipboardRun, getNativeClipboardText = oldGOOS, oldEnv, oldRun, oldNative
+		clipboardGOOS, clipboardEnv, clipboardRun, getNativeClipboard = oldGOOS, oldEnv, oldRun, oldNative
 	})
 	clipboardGOOS = goos
 	clipboardEnv = fakeEnvLookup(env)
 	clipboardRun = run
-	getNativeClipboardText = native
+	getNativeClipboard = native
+}
+
+// nativeTextHelper is the getNativeClipboard() result whose getText is read.
+func nativeTextHelper(read func(context.Context) (*string, error)) *tui.NativeClipboard {
+	return &tui.NativeClipboard{GetText: func(ctx context.Context) (*string, bool, error) {
+		text, err := read(ctx)
+		return text, true, err
+	}}
 }
 
 // Upstream: "awaits native clipboard text and catches rejected reads".
@@ -41,14 +49,14 @@ func TestReadClipboardTextAwaitsNativeTextAndCatchesRejectedReads(t *testing.T) 
 			t.Fatal("native test unexpectedly ran a platform command")
 			return nil, nil
 		},
-		func() nativeClipboardText {
-			return func(context.Context) (*string, error) {
+		func() *tui.NativeClipboard {
+			return nativeTextHelper(func(context.Context) (*string, error) {
 				calls++
 				if calls == 1 {
 					return &want, nil
 				}
 				return nil, errors.New("clipboard unavailable")
-			}
+			})
 		},
 	)
 	if got := readClipboardText(t.Context()); got != want {
@@ -78,17 +86,22 @@ func TestReadClipboardTextCommandResultStopsFallback(t *testing.T) {
 			t.Run(fmt.Sprintf("%s result %q", tc.command, text), func(t *testing.T) {
 				var calls []string
 				var gotArgs []string
+				var gotTimeout time.Duration
 				nativeCalls := 0
 				useClipboardTextTestSeams(t, "linux", map[string]string{"DISPLAY": ":0", tc.env: "1"},
-					func(_ context.Context, name string, args ...string) ([]byte, error) {
+					func(ctx context.Context, name string, args ...string) ([]byte, error) {
 						calls = append(calls, name)
 						if name == tc.command {
 							gotArgs = slices.Clone(args)
+							// Upstream asserts the last command ran with { timeoutMs: 5000 }.
+							if deadline, ok := ctx.Deadline(); ok {
+								gotTimeout = time.Until(deadline)
+							}
 							return []byte(text), nil
 						}
 						return nil, errors.New("unavailable")
 					},
-					func() nativeClipboardText {
+					func() *tui.NativeClipboard {
 						nativeCalls++
 						return nil
 					},
@@ -99,6 +112,9 @@ func TestReadClipboardTextCommandResultStopsFallback(t *testing.T) {
 				if !slices.Equal(calls, tc.calls) || !slices.Equal(gotArgs, tc.args) {
 					t.Fatalf("calls = %v args = %v, want %v %v", calls, gotArgs, tc.calls, tc.args)
 				}
+				if gotTimeout <= 4*time.Second || gotTimeout > clipboardTextTimeout {
+					t.Fatalf("%s timeout remaining = %v, want within (4s, 5s]", tc.command, gotTimeout)
+				}
 				if nativeCalls != 0 {
 					t.Fatal("native clipboard consulted after a successful command")
 				}
@@ -107,9 +123,7 @@ func TestReadClipboardTextCommandResultStopsFallback(t *testing.T) {
 	}
 }
 
-// Upstream: "uses native X11 after command failures: %j". This exercises the
-// injectable native adapter contract; hostNativeClipboardText has no Linux
-// implementation, so PORT_MAP records the production residual separately.
+// Upstream: "uses native X11 after command failures: %j", with getNativeClipboard mocked as upstream does.
 func TestReadClipboardTextUsesInjectedNativeX11AfterCommandFailures(t *testing.T) {
 	for _, tc := range []struct {
 		name string
@@ -123,37 +137,31 @@ func TestReadClipboardTextUsesInjectedNativeX11AfterCommandFailures(t *testing.T
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var calls []string
+			nativeLookups := 0
 			useClipboardTextTestSeams(t, "linux", map[string]string{"DISPLAY": ":0", "WAYLAND_DISPLAY": "wayland-0"},
 				func(_ context.Context, name string, _ ...string) ([]byte, error) {
 					calls = append(calls, name)
 					return nil, errors.New("unavailable")
 				},
-				func() nativeClipboardText {
-					return func(context.Context) (*string, error) { return tc.text, nil }
+				func() *tui.NativeClipboard {
+					nativeLookups++
+					return nativeTextHelper(func(context.Context) (*string, error) { return tc.text, nil })
 				},
 			)
 			if got := readClipboardText(t.Context()); got != tc.want {
 				t.Fatalf("read = %q, want %q", got, tc.want)
 			}
-			if !slices.Equal(calls, []string{"wl-paste", "xclip", "xsel"}) {
-				t.Fatalf("calls = %v", calls)
+			if !slices.Equal(calls, []string{"wl-paste", "xclip", "xsel"}) || nativeLookups != 1 {
+				t.Fatalf("calls = %v native lookups = %d, want one", calls, nativeLookups)
 			}
 		})
-	}
-}
-
-func TestHostNativeClipboardTextReturnsNilOnLinux(t *testing.T) {
-	oldGOOS := clipboardGOOS
-	t.Cleanup(func() { clipboardGOOS = oldGOOS })
-	clipboardGOOS = "linux"
-	if native := hostNativeClipboardText(); native != nil {
-		t.Fatal("Linux unexpectedly exposed a production native clipboard adapter")
 	}
 }
 
 // Upstream: "falls back to X11 tools when wl-paste is unavailable".
 func TestReadClipboardTextFallsBackToX11ToolsWhenWlPasteIsUnavailable(t *testing.T) {
 	var calls []string
+	nativeLookups := 0
 	useClipboardTextTestSeams(t, "linux", map[string]string{"WAYLAND_DISPLAY": "wayland-0", "DISPLAY": ":0"},
 		func(_ context.Context, name string, _ ...string) ([]byte, error) {
 			calls = append(calls, name)
@@ -162,50 +170,72 @@ func TestReadClipboardTextFallsBackToX11ToolsWhenWlPasteIsUnavailable(t *testing
 			}
 			return []byte("X11 text"), nil
 		},
-		func() nativeClipboardText { return nil },
+		func() *tui.NativeClipboard { nativeLookups++; return nil },
 	)
 	if got := readClipboardText(t.Context()); got != "X11 text" {
 		t.Fatalf("read = %q, want X11 text", got)
 	}
-	if !slices.Equal(calls, []string{"wl-paste", "xclip"}) {
-		t.Fatalf("calls = %v", calls)
+	if !slices.Equal(calls, []string{"wl-paste", "xclip"}) || nativeLookups != 0 {
+		t.Fatalf("calls = %v native lookups = %d", calls, nativeLookups)
 	}
 }
 
 // ctrlVImageBackends are the platform image readers Ctrl+V can block on. Each
-// test runs against every one on any host, faking whichever command the
+// test runs against every one on any host, faking whichever read the
 // backend runs first; DISPLAY gives the Linux reader an X11 backend.
 var ctrlVImageBackends = []struct {
-	goos string
-	env  map[string]string
+	name  string
+	goos  string
+	env   map[string]string
+	image bool
 }{
-	{"darwin", nil},
-	{"linux", map[string]string{"DISPLAY": ":0"}},
+	{"darwin-image", "darwin", nil, true},
+	{"darwin-text", "darwin", nil, false},
+	{"linux-command", "linux", map[string]string{"DISPLAY": ":0"}, false},
+}
+
+// useBlockingClipboardBackend exercises blocking native image reads, native text
+// fallback, and Linux command reads without reaching the host clipboard.
+func useBlockingClipboardBackend(t *testing.T, goos string, env map[string]string, image bool, block func(context.Context) error) {
+	t.Helper()
+	oldGOOS, oldRun, oldNative := clipboardGOOS, clipboardRun, getNativeClipboard
+	t.Cleanup(func() { clipboardGOOS, clipboardRun, getNativeClipboard = oldGOOS, oldRun, oldNative })
+	clipboardGOOS = goos
+	withEnv(t, env)
+	clipboardRun = func(ctx context.Context, _ string, _ ...string) ([]byte, error) {
+		return nil, block(ctx)
+	}
+	getNativeClipboard = func() *tui.NativeClipboard {
+		return &tui.NativeClipboard{
+			GetImage: func(ctx context.Context) ([]byte, bool, error) {
+				if image {
+					return nil, true, block(ctx)
+				}
+				return nil, true, nil
+			},
+			GetText: func(ctx context.Context) (*string, bool, error) { return nil, true, block(ctx) },
+		}
+	}
 }
 
 // Ctrl+V falls back to clipboard text in the regular renderer as well as
 // fullscreen. Upstream handleClipboardPaste is renderer-independent.
 func TestCtrlVPasteDoesNotBlockOwnerLoop(t *testing.T) {
 	for _, backend := range ctrlVImageBackends {
-		t.Run(backend.goos, func(t *testing.T) {
+		t.Run(backend.name, func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
-				oldGOOS, oldRun := clipboardGOOS, clipboardRun
-				t.Cleanup(func() { clipboardGOOS, clipboardRun = oldGOOS, oldRun })
-				clipboardGOOS = backend.goos
-				withEnv(t, backend.env)
-
 				started := make(chan struct{})
 				startOnce := sync.OnceFunc(func() { close(started) })
 				release := make(chan struct{})
-				clipboardRun = func(ctx context.Context, _ string, _ ...string) ([]byte, error) {
+				useBlockingClipboardBackend(t, backend.goos, backend.env, backend.image, func(ctx context.Context) error {
 					startOnce()
 					select {
 					case <-release:
-						return nil, errors.New("no image")
+						return errors.New("no image")
 					case <-ctx.Done():
-						return nil, ctx.Err()
+						return ctx.Err()
 					}
-				}
+				})
 
 				m := newSwitchTuiProbe(t)
 				m.tuiInst.CancelPendingRender()
@@ -235,22 +265,17 @@ func TestCtrlVPasteDoesNotBlockOwnerLoop(t *testing.T) {
 
 func TestCtrlVPasteTeardownCancelsAndJoinsImageRead(t *testing.T) {
 	for _, backend := range ctrlVImageBackends {
-		t.Run(backend.goos, func(t *testing.T) {
-			oldGOOS, oldRun := clipboardGOOS, clipboardRun
-			t.Cleanup(func() { clipboardGOOS, clipboardRun = oldGOOS, oldRun })
-			clipboardGOOS = backend.goos
-			withEnv(t, backend.env)
-
+		t.Run(backend.name, func(t *testing.T) {
 			started := make(chan struct{})
 			startOnce := sync.OnceFunc(func() { close(started) })
 			cancelled := make(chan struct{})
 			cancelOnce := sync.OnceFunc(func() { close(cancelled) })
-			clipboardRun = func(ctx context.Context, _ string, _ ...string) ([]byte, error) {
+			useBlockingClipboardBackend(t, backend.goos, backend.env, backend.image, func(ctx context.Context) error {
 				startOnce()
 				<-ctx.Done()
 				cancelOnce()
-				return nil, ctx.Err()
-			}
+				return ctx.Err()
+			})
 
 			m := newSwitchTuiProbe(t)
 			m.tuiInst.CancelPendingRender()
@@ -267,15 +292,15 @@ func TestCtrlVPasteTeardownCancelsAndJoinsImageRead(t *testing.T) {
 }
 
 func TestCtrlVTextFallbackRegularMode(t *testing.T) {
-	oldGOOS, oldRun := clipboardGOOS, clipboardRun
-	t.Cleanup(func() { clipboardGOOS, clipboardRun = oldGOOS, oldRun })
-	clipboardGOOS = "darwin"
-	clipboardRun = func(_ context.Context, name string, _ ...string) ([]byte, error) {
-		if name == "pbpaste" {
-			return []byte("paste"), nil
-		}
-		return nil, errors.New("no image")
-	}
+	useClipboardTextTestSeams(t, "darwin", nil,
+		func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("no image") },
+		func() *tui.NativeClipboard {
+			return &tui.NativeClipboard{
+				GetImage: func(context.Context) ([]byte, bool, error) { return nil, true, nil },
+				GetText:  func(context.Context) (*string, bool, error) { return new("paste"), true, nil },
+			}
+		},
+	)
 	m := newSwitchTuiProbe(t)
 	m.tuiInst.CancelPendingRender()
 	t.Cleanup(m.teardownCurrentTui)
@@ -299,11 +324,11 @@ func TestClipboardTextCtrlVAndRightClickShareOwnedReader(t *testing.T) {
 	var nativeCalls atomic.Int32
 	useClipboardTextTestSeams(t, "darwin", nil,
 		func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("no image") },
-		func() nativeClipboardText {
-			return func(context.Context) (*string, error) {
+		func() *tui.NativeClipboard {
+			return nativeTextHelper(func(context.Context) (*string, error) {
 				nativeCalls.Add(1)
 				return new("paste"), nil
-			}
+			})
 		},
 	)
 	m := newFullscreenProbe(t)
@@ -332,8 +357,8 @@ func TestRightClickPasteDropsResultAfterFocusChange(t *testing.T) {
 	started, release := make(chan struct{}), make(chan struct{})
 	useClipboardTextTestSeams(t, "darwin", nil,
 		func(context.Context, string, ...string) ([]byte, error) { return nil, errors.New("unused") },
-		func() nativeClipboardText {
-			return func(ctx context.Context) (*string, error) {
+		func() *tui.NativeClipboard {
+			return nativeTextHelper(func(ctx context.Context) (*string, error) {
 				close(started)
 				select {
 				case <-release:
@@ -341,7 +366,7 @@ func TestRightClickPasteDropsResultAfterFocusChange(t *testing.T) {
 				case <-ctx.Done():
 					return nil, ctx.Err()
 				}
-			}
+			})
 		},
 	)
 	m := newFullscreenProbe(t)
@@ -365,5 +390,89 @@ func TestRightClickPasteDropsResultAfterFocusChange(t *testing.T) {
 		case <-deadline.C:
 			t.Fatal("clipboard result was not posted")
 		}
+	}
+}
+
+// Ports packages/coding-agent/test/clipboard.test.ts:93 at upstream's mock boundary: getNativeClipboard returns a helper whose getText supplies the text after every command fails, on every platform.
+func TestReadClipboardTextUsesGetNativeClipboardText(t *testing.T) {
+	for _, goos := range []string{"linux", "darwin", "windows"} {
+		t.Run(goos, func(t *testing.T) {
+			lookups := 0
+			var commands []string
+			old := getNativeClipboard
+			t.Cleanup(func() { getNativeClipboard = old })
+			getNativeClipboard = func() *tui.NativeClipboard {
+				lookups++
+				return &tui.NativeClipboard{GetText: func(context.Context) (*string, bool, error) { return new("native text"), true, nil }}
+			}
+			oldGOOS, oldEnv, oldRun := clipboardGOOS, clipboardEnv, clipboardRun
+			t.Cleanup(func() { clipboardGOOS, clipboardEnv, clipboardRun = oldGOOS, oldEnv, oldRun })
+			clipboardGOOS = goos
+			clipboardEnv = fakeEnvLookup(map[string]string{"DISPLAY": ":0"})
+			clipboardRun = func(_ context.Context, name string, _ ...string) ([]byte, error) {
+				commands = append(commands, name)
+				return nil, errors.New("unavailable")
+			}
+			if got := readClipboardText(t.Context()); got != "native text" || lookups != 1 {
+				t.Fatalf("read=%q lookups=%d commands=%v", got, lookups, commands)
+			}
+		})
+	}
+}
+
+func TestHostNativeClipboardTextWrapsGetNativeClipboard(t *testing.T) {
+	old := getNativeClipboard
+	t.Cleanup(func() { getNativeClipboard = old })
+	getNativeClipboard = func() *tui.NativeClipboard { return nil }
+	if hostNativeClipboardText() != nil {
+		t.Fatal("missing helper produced a reader")
+	}
+	getNativeClipboard = func() *tui.NativeClipboard { return &tui.NativeClipboard{} }
+	if hostNativeClipboardText() != nil {
+		t.Fatal("helper without GetText produced a reader")
+	}
+	failure := errors.New("boom")
+	for _, tc := range []struct {
+		name      string
+		value     *string
+		available bool
+		err       error
+		want      *string
+		wantErr   error
+	}{
+		{"available", new("text"), true, nil, new("text"), nil},
+		{"empty", new(""), true, nil, new(""), nil},
+		{"unavailable", new("stale"), false, nil, nil, nil},
+		{"error", nil, true, failure, nil, failure},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			getNativeClipboard = func() *tui.NativeClipboard {
+				return &tui.NativeClipboard{GetText: func(context.Context) (*string, bool, error) { return tc.value, tc.available, tc.err }}
+			}
+			read := hostNativeClipboardText()
+			if read == nil {
+				t.Fatal("no reader")
+			}
+			got, err := read(t.Context())
+			if !errors.Is(err, tc.wantErr) || (got == nil) != (tc.want == nil) || (got != nil && *got != *tc.want) {
+				t.Fatalf("got=%v err=%v", got, err)
+			}
+		})
+	}
+}
+
+// Upstream readClipboardText decodes command stdout with Buffer.toString("utf8"): each maximal ill-formed subpart becomes one U+FFFD.
+func TestReadClipboardTextDecodesCommandBytesLikeBufferToString(t *testing.T) {
+	useClipboardTextTestSeams(t, "linux", map[string]string{"WAYLAND_DISPLAY": "1"},
+		func(ctx context.Context, name string, args ...string) ([]byte, error) {
+			if name == "wl-paste" {
+				return []byte("a\xff\xfeb"), nil
+			}
+			return nil, errors.New("unavailable")
+		},
+		func() *tui.NativeClipboard { return nil },
+	)
+	if got, want := readClipboardText(t.Context()), "a��b"; got != want {
+		t.Fatalf("read = %q, want %q", got, want)
 	}
 }

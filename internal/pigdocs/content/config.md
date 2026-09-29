@@ -2,7 +2,7 @@
 
 PiG reads configuration from two places: the agent directory, which applies to every project you open, and the `.pig` directory inside a project. PiG also loads instruction files such as `AGENTS.md` from the directories around your working directory.
 
-PiG keeps all of its state under `~/.pig`. It does not read or write Pi's `~/.pi` directory, so PiG and Pi can run side by side on one machine without sharing settings, credentials or sessions. This separation is divergence D2.
+PiG keeps its state under `~/.pig` by default. It does not read or write Pi's `~/.pi` directory unless you explicitly select shared directories, so PiG and Pi can run side by side without sharing settings, credentials or sessions. This separation and its opt-in are divergence D2.
 
 Use `/settings` in an interactive session to change common preferences. When you edit a configuration file by hand, run `/reload` so the running session picks up the change. `/reload` rereads settings, keybindings, extensions, skills, prompt templates, themes and context files.
 
@@ -31,7 +31,7 @@ The root holds these directories:
 
 ## Agent directory
 
-The agent directory is `<root>/agent`, which is `~/.pig/agent` by default. Set `PIG_CODING_AGENT_DIR` to move only this directory. Pi reads `PI_CODING_AGENT_DIR` for the same purpose. PiG ignores that variable.
+The agent directory is `<root>/agent`, which is `~/.pig/agent` by default. Set `PIG_CODING_AGENT_DIR` to move only this directory. Pi reads `PI_CODING_AGENT_DIR` for the same purpose. PiG reads that variable only in shared mode.
 
 This page writes the agent directory as `<agent-dir>`.
 
@@ -53,7 +53,35 @@ This page writes the agent directory as `<agent-dir>`.
 | `<agent-dir>/bin/` | Helper binaries that PiG downloads for its tools, such as `fd` and `rg`. |
 | `<agent-dir>/npm/`, `<agent-dir>/git/` | Packages installed at user scope. See [packages](packages.md). |
 
+PiG reuses helpers already installed in `<agent-dir>/bin/`. Concurrent requests for the same missing helper share one download within a tools manager, including when installation finishes before a waiting request claims the download. Pi starts separate downloads for overlapping same-tool requests; PiG's coalescing is an additive robustness improvement (D81). Separate managers and processes do not share this coordination.
+
 PiG also finds skills in `~/.agents/skills/`. See [skills](skills.md).
+
+## Using Pi's directories
+
+Set one environment variable before starting PiG:
+
+```bash
+PIG_USE_PI_DIRS=1 pig
+```
+
+Only the exact value `1` enables sharing. This selects `~/.pi/agent` and `<cwd>/.pi` instead of PiG's agent and project directories (D2). It does not merge, copy or migrate the two trees. Project trust still applies. The setting lives in the environment because a setting inside the relocated directory cannot select that directory.
+
+In shared mode, `PI_CODING_AGENT_DIR` overrides the agent directory and `PI_CODING_AGENT_SESSION_DIR` overrides session storage. `--session-dir` still wins over the environment, followed by the `sessionDir` setting. PiG ignores `PIG_CODING_AGENT_DIR` and `PIG_CODING_AGENT_SESSION_DIR` in this mode. `PIG_HOME` and `XDG_CONFIG_HOME` still control PiG-owned SDK caches, documentation, Piglets and other product state, not the shared agent directory.
+
+Sharing includes settings, credentials, custom models, keybindings, trust decisions, sessions and discovered resources. PiG and Pi 0.87.1 read the same current JSON and JSONL shapes. Settings writes retain unknown keys. PiG does not write `models.json`. Use Pi-compatible Package declarations and resources in shared settings; PiG-only extensions and Piglets do not become Pi-compatible by changing their directory.
+
+PiG coordinates auth, settings, trust and dynamic model-catalog cache writes with Pi's directory-lock protocol. Independent sessions can use the same agent directory. Do not edit one session concurrently from two processes. Stop older PiG processes before sharing their files. PiG automatically reclaims empty regular lock files from v0.2.0 after checking that no older writer holds them. If an older PiG holds a lock, acquisition uses the normal timeout and asks you to stop that process. PiG does not reclaim nonempty files, symlinks or active lock directories. Keep a backup before selecting an existing configuration tree.
+
+Packages that hard-code Pi paths, such as Powerline and `pi-acp`, need the default `~/.pi/agent` location. For `pi-acp`, pass the opt-in to the adapter so its PiG child inherits it:
+
+```bash
+PIG_USE_PI_DIRS=1 PI_ACP_PI_COMMAND="$(command -v pig)" pi-acp
+```
+
+The adapter keeps its own `~/.pi/pi-acp/session-map.json`; PiG does not copy or rewrite it. Use one adapter process per home to avoid competing map writes. A custom `PI_CODING_AGENT_DIR` does not relocate paths a package hard-codes, including pi-acp's prompt-template directories.
+
+Unset `PIG_USE_PI_DIRS` to return to separate PiG directories. The shared files remain where they are.
 
 ## Project directory
 
@@ -123,7 +151,7 @@ On startup, PiG runs the one-time migrations that Pi runs:
 3. PiG moves the `fd` and `rg` binaries from `<agent-dir>/tools/` into `<agent-dir>/bin/`.
 4. PiG renames a `commands/` directory to `prompts/` and warns about deprecated extension directories.
 
-PiG does not import anything from Pi's `~/.pi` directory.
+PiG applies these migrations only to the selected directories. It does not import files from the unselected tree.
 
 ## Diagnostics
 

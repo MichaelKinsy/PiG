@@ -96,10 +96,10 @@ func TestPackedStderrLogUnreportedExitAndCancellation(t *testing.T) {
 			} else if err := process.cmd.Process.Kill(); err != nil {
 				t.Fatal(err)
 			}
-			<-process.watchDone
+			<-process.watcherDone
 			if cancelParent {
 				// Drive the closed-connection path before Shutdown can suppress a false crash.
-				h.handleIncoming(me)
+				h.handleIncoming(me, me.connection())
 			}
 			h.Shutdown("after exit")
 			assertPackedLogs(t, tmp)

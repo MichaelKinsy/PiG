@@ -69,7 +69,7 @@ func TestSessionSelectorToggleScopeAndMutation(t *testing.T) {
 	all := []SessionInfo{{Path: "/tmp/a.jsonl", Name: "a", Modified: now}, {Path: "/tmp/b.jsonl", Name: "b", Modified: now.Add(-time.Hour)}}
 	deleted := ""
 	renamed := ""
-	sel := newSessionSelector(
+	sel := newLoadedSessionSelector(
 		func() ([]SessionInfo, error) { return current, nil },
 		func() ([]SessionInfo, error) { return all, nil },
 		func(path, name string) error { renamed = filepath.Base(path) + ":" + name; return nil },
@@ -77,13 +77,19 @@ func TestSessionSelectorToggleScopeAndMutation(t *testing.T) {
 		"/tmp/current.jsonl",
 		DefaultKeybindingsManager(),
 	)
-	if len(sel.filtered) != 1 {
-		t.Fatalf("current scope filtered=%d want 1", len(sel.filtered))
+	// Pi's SessionList.filterSessions retains the active session.
+	if len(sel.filtered) != len(current) {
+		t.Fatalf("current scope filtered=%d want %d", len(sel.filtered), len(current))
 	}
-	if sel.filtered[0].Session.Path != "/tmp/a.jsonl" {
-		t.Fatalf("filtered current session should exclude active path, got %q", sel.filtered[0].Session.Path)
+	if sel.filtered[0].Session.Path != current[0].Path {
+		t.Fatalf("active session missing from first row: %q", sel.filtered[0].Session.Path)
+	}
+	sel.HandleInput("\x04")
+	if sel.confirmDelete != "" || sel.statusState.message != "Cannot delete the currently active session" || deleted != "" {
+		t.Fatalf("active deletion: confirmation=%q status=%q deleted=%q", sel.confirmDelete, sel.statusState.message, deleted)
 	}
 	sel.HandleInput("\t")
+	sel.drainLoadUpdates()
 	if sel.scope != sessionScopeAll || len(sel.filtered) != 2 {
 		t.Fatalf("toggle scope failed scope=%s filtered=%d", sel.scope, len(sel.filtered))
 	}
@@ -94,6 +100,7 @@ func TestSessionSelectorToggleScopeAndMutation(t *testing.T) {
 	}
 	sel.renameInput.SetText("renamed")
 	sel.HandleInput("\r")
+	sel.drainLoadUpdates() // Await the post-rename reload before changing the selected row.
 	if renamed != "b.jsonl:renamed" {
 		t.Fatalf("renamed=%q", renamed)
 	}
@@ -109,11 +116,8 @@ func TestSessionSelectorToggleScopeAndMutation(t *testing.T) {
 }
 
 func TestSessionSelectorRenderEmptyCurrentScopeMatchesUpstreamEmptyStateCopy(t *testing.T) {
-	now := time.Now()
-	sel := newSessionSelector(
-		func() ([]SessionInfo, error) {
-			return []SessionInfo{{Path: "/tmp/current.jsonl", Name: "current", Modified: now}}, nil
-		},
+	sel := newLoadedSessionSelector(
+		func() ([]SessionInfo, error) { return nil, nil },
 		func() ([]SessionInfo, error) { return nil, nil },
 		nil,
 		nil,
@@ -162,7 +166,7 @@ func TestSessionSelectorRowsMatchUpstreamLayout(t *testing.T) {
 			Modified:     now.Add(-time.Duration(i) * time.Hour),
 		})
 	}
-	sel := newSessionSelector(
+	sel := newLoadedSessionSelector(
 		func() ([]SessionInfo, error) { return sessions, nil },
 		func() ([]SessionInfo, error) { return sessions, nil },
 		nil, nil, "", DefaultKeybindingsManager(),
@@ -188,7 +192,7 @@ func TestSessionSelectorRowsMatchUpstreamLayout(t *testing.T) {
 
 func TestSessionSelectorRenderRenameModeUsesBareInputSurface(t *testing.T) {
 	now := time.Now()
-	sel := newSessionSelector(
+	sel := newLoadedSessionSelector(
 		func() ([]SessionInfo, error) {
 			return []SessionInfo{{Path: "/tmp/a.jsonl", Name: "alpha", Modified: now}}, nil
 		},
@@ -208,7 +212,8 @@ func TestSessionSelectorRenderRenameModeUsesBareInputSurface(t *testing.T) {
 	if !strings.Contains(joined, "Rename Session") {
 		t.Fatalf("rename render missing title:\n%s", joined)
 	}
-	if !strings.Contains(joined, "> ") || !strings.Contains(joined, "alpha") {
+	// Pi Input.setValue retains the initial cursor before the first character.
+	if !strings.Contains(joined, "> \x1b[7ma\x1b[27mlpha") {
 		t.Fatalf("rename render missing bare input line:\n%s", joined)
 	}
 	if strings.Contains(joined, "Enter: confirm  Esc: cancel") {

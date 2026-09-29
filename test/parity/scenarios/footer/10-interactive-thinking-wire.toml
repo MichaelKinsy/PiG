@@ -1,0 +1,23 @@
+# Pi 0.87.1 sdk.ts:231-255 clamps before creating the Session; footer.ts:186-190 reads its level.
+# The fixture runs the real interactive CLI on a PTY with an initial prompt, captures a loopback HTTP request, awaits the assistant reply, exits, and checks the saved Session. It repeats after changing the default to off and resuming the saved high Session. It asserts the thinking fields, not unrelated system-prompt text or request headers.
+name = "10-interactive-thinking-wire"
+description = "Interactive startup keeps the clamped Session level in the footer, saved Session, and both OpenAI request APIs."
+covers = ["packages/coding-agent/src/core/sdk.ts", "packages/coding-agent/src/modes/interactive/components/footer.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["python3", "./test/parity/testdata/interactive-thinking-wire.py", "pig"]
+pi_args = ["python3", "./test/parity/testdata/interactive-thinking-wire.py", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

@@ -1,5 +1,7 @@
 package tui
 
+// Ports packages/tui/src/terminal.ts.
+
 // This package keeps terminal control separate from application input routing.
 
 import (
@@ -9,12 +11,13 @@ import (
 	"math"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"golang.org/x/term"
 )
@@ -75,10 +78,7 @@ func jsNumber(text string) (float64, bool) {
 // extension UI) keep working through `EnterRawMode` directly. New callers
 // can use `Start`/`Stop` for a behavior-equivalent surface to upstream.
 type Terminal interface {
-	// Start enters raw mode, spawns a goroutine that reads stdin and
-	// invokes onInput for each chunk, and registers a SIGWINCH handler
-	// that invokes onResize on terminal resize. Returns an error if raw
-	// mode could not be entered. Mirrors upstream `ProcessTerminal.start`.
+	// Start owns input framing, negotiation filtering and native normalization before invoking onInput for each event. The resize callback follows terminal dimension changes.
 	Start(onInput func([]byte), onResize func()) error
 
 	// Stop reverses Start: cancels and joins the input goroutine, removes the
@@ -107,26 +107,27 @@ type ProcessTerminal struct {
 	stdin  *os.File
 	stdout *os.File
 	out    io.Writer
+	outMu  sync.Mutex
 
-	// startMu guards Start/Stop lifecycle state. Both calls are safe to
-	// invoke multiple times; the second Start before a Stop is a no-op,
-	// and Stop on a never-Started terminal is a no-op.
-	startMu     sync.Mutex
-	stopRestore func()             // restore closure from EnterRawMode; non-nil while running
-	stopReader  context.CancelFunc // cancels the input goroutine
-	readerDone  chan struct{}      // closes after the input goroutine can no longer consume stdin
-	resizeStop  func()             // stops the platform resize watcher; non-nil while running
+	// startMu guards reader, resize and protocol-query ownership. Start is idempotent until Stop releases that ownership.
+	startMu         sync.Mutex
+	stopRestore     func()             // restore closure from EnterRawMode; non-nil while running
+	stopReader      context.CancelFunc // cancels the input goroutine
+	readerDone      chan struct{}      // closes after the input goroutine can no longer consume stdin
+	resizeStop      func()             // stops the platform resize watcher; non-nil while running
+	protocolQueried bool
 
 	progressMu        sync.Mutex
 	progressTicker    *time.Ticker
 	progressStop      chan struct{}
+	progressDone      chan struct{}
 	progressKeepalive time.Duration
 }
 
 const (
 	terminalProgressKeepalive = time.Second
 	terminalProgressActiveSeq = "\x1b]9;4;3\x07"
-	terminalProgressClearSeq  = "\x1b]9;4;0;\x07"
+	terminalProgressClearSeq  = "\x1b]9;4;0\x07"
 )
 
 // NewProcessTerminal constructs a terminal helper around the provided stdin and
@@ -173,8 +174,8 @@ const (
 )
 
 var (
-	kittyProtocolResponse    = regexp.MustCompile(`^\x1b\[\?(\d+)u`)
-	deviceAttributesResponse = regexp.MustCompile(`^\x1b\[\?[\d;]*c`)
+	kittyProtocolResponse    = lazyregexp.New(`^\x1b\[\?(\d+)u`)
+	deviceAttributesResponse = lazyregexp.New(`^\x1b\[\?[\d;]*c`)
 )
 
 // SetKittyProtocolActive mirrors upstream keys.ts global Kitty state.
@@ -192,7 +193,16 @@ func IsKittyProtocolActive() bool {
 // (disambiguation, event types, alternate keys), queries the resulting flags,
 // then sends Device Attributes as a sentinel. A terminal without Kitty still
 // answers DA, which enables modifyOtherKeys without a startup timer.
-const extendedKeyInit = "\x1b[?2004h\x1b[>7u\x1b[?u\x1b[c"
+const kittyKeyboardProtocolQuery = "\x1b[>7u\x1b[?u\x1b[c"
+const extendedKeyInit = "\x1b[?2004h" + kittyKeyboardProtocolQuery
+
+func (t *ProcessTerminal) queryAndEnableKittyProtocol() {
+	SetKittyProtocolActive(false)
+	modifyOtherKeysActive.Store(false)
+	t.protocolQueried = true
+	keyboardProtocolPushed.Store(true)
+	t.Write(kittyKeyboardProtocolQuery)
+}
 
 // EnterRawMode puts stdin into raw mode and returns a restore function.
 //
@@ -200,6 +210,20 @@ const extendedKeyInit = "\x1b[?2004h\x1b[>7u\x1b[?u\x1b[c"
 // screen, no hidden terminal reader, and callers continue to own the input loop.
 func EnterRawMode() (restore func(), err error) {
 	return processTerminal.EnterRawMode()
+}
+
+// EnterRawModeWithDrain separates process-shutdown input draining from cooked-mode restoration. A renderer drains first, stops while output is still raw, then restores cooked mode. Temporary terminal handoffs call only restore.
+func EnterRawModeWithDrain() (restore func(), drain func(), err error) {
+	restore, err = EnterRawModeForHandoff()
+	if err != nil {
+		return nil, nil, err
+	}
+	return restore, func() { _ = processTerminal.DrainInput(time.Second, 50*time.Millisecond) }, nil
+}
+
+// EnterRawModeForHandoff enters raw mode with a restore closure that leaves unread input for the next terminal owner. The caller must join its reader before restoring and drain late releases separately on final shutdown.
+func EnterRawModeForHandoff() (restore func(), err error) {
+	return processTerminal.enterRawMode(false)
 }
 
 // EnterRawMode puts this terminal into raw mode and returns a restore closure
@@ -221,11 +245,8 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 	// On Windows, enable VT output processing so pig's ANSI renderer displays;
 	// term.MakeRaw only configures raw input. No-op on unix.
 	vtRestore := t.enableVTProcessing()
-	// Enable bracketed paste and probe Kitty keyboard protocol.
-	SetKittyProtocolActive(false)
-	modifyOtherKeysActive.Store(false)
-	t.Write(extendedKeyInit)
-	keyboardProtocolPushed.Store(true)
+	t.Write("\x1b[?2004h")
+	t.queryAndEnableKittyProtocol()
 	return func() {
 		// Stop the terminal generating extended-key sequences before anything
 		// else, so the drain below has a finite amount of input to consume.
@@ -240,69 +261,24 @@ func (t *ProcessTerminal) enterRawMode(drainOnRestore bool) (restore func(), err
 		}
 		_ = term.Restore(fd, state)
 		vtRestore()
+		t.protocolQueried = false
 	}, nil
 }
 
-// ReadInput blocks until stdin yields non-negotiation input or a read error.
-// Keyboard protocol replies are consumed without returning an empty event.
-func ReadInput(r io.Reader) ([]byte, error) {
-	return processTerminal.readInput(r)
-}
-
-func (t *ProcessTerminal) readInput(r io.Reader) ([]byte, error) {
-	for {
-		data, err := t.readInputChunk(r)
-		if err != nil || len(data) > 0 {
-			return data, err
-		}
-	}
-}
-
-// readInputChunk performs only one read. A negotiation-only chunk returns empty
-// so the started-terminal loop checks cancellable readiness before reading again.
-func (t *ProcessTerminal) readInputChunk(r io.Reader) ([]byte, error) {
+// ReadInputChunk reads one unframed terminal chunk. The input-loop owner passes it to TerminalInput so negotiation is handled after sequence framing.
+func ReadInputChunk(r io.Reader) ([]byte, error) {
 	if file, ok := r.(*os.File); ok && file != nil {
 		r = terminalInput(file)
 	}
 	buf := make([]byte, 256)
 	n, err := r.Read(buf)
-	if err != nil {
-		return nil, err
-	}
-	chunk := string(buf[:n])
-	// Both keyboard queries can be answered in one read. Consume every leading
-	// reply so Device Attributes never reaches the focused input component.
-	for {
-		sequence, rest, ok := keyboardProtocolNegotiationPrefix(chunk)
-		if !ok {
-			break
-		}
-		t.handleKeyboardProtocolNegotiationSequence(sequence)
-		chunk = rest
-	}
-	return []byte(chunk), nil
-}
-
-func keyboardProtocolNegotiationPrefix(data string) (sequence, rest string, ok bool) {
-	for _, pattern := range []*regexp.Regexp{kittyProtocolResponse, deviceAttributesResponse} {
-		loc := pattern.FindStringIndex(data)
-		if loc != nil && loc[0] == 0 {
-			return data[:loc[1]], data[loc[1]:], true
-		}
-	}
-	return "", data, false
-}
-
-// HandleKeyboardProtocolNegotiationSequence consumes one complete Kitty-flags
-// or Device Attributes response emitted by the active process terminal.
-func HandleKeyboardProtocolNegotiationSequence(sequence string) bool {
-	return processTerminal.handleKeyboardProtocolNegotiationSequence(sequence)
+	return buf[:n], err
 }
 
 func (t *ProcessTerminal) handleKeyboardProtocolNegotiationSequence(sequence string) bool {
 	if match := kittyProtocolResponse.FindStringSubmatch(sequence); match != nil && match[0] == sequence {
-		flags, err := strconv.Atoi(match[1])
-		if err != nil {
+		flags, err := strconv.ParseFloat(match[1], 64)
+		if err != nil && !math.IsInf(flags, 0) {
 			return false
 		}
 		if flags == 0 {
@@ -349,9 +325,7 @@ func (t *ProcessTerminal) disableModifyOtherKeys() {
 // in restore(), with its own state flags making the second call a no-op
 // (terminal.ts:377-386, 423-433).
 //
-// The escape sequences go out as a single write so the teardown cannot be
-// interleaved halfway through by a concurrent render, which is what makes this
-// safe to call from the signal path.
+// Each protocol has its own write. The output lock keeps teardown writes adjacent to other control writes on this terminal.
 func (t *ProcessTerminal) disableKeyboardProtocol() {
 	popKitty := keyboardProtocolPushed.Swap(false)
 	disableModify := modifyOtherKeysActive.Swap(false)
@@ -359,29 +333,21 @@ func (t *ProcessTerminal) disableKeyboardProtocol() {
 		return
 	}
 	kittyProtocolActive.Store(false)
-	seq := ""
+	t.outMu.Lock()
+	defer t.outMu.Unlock()
 	if popKitty {
-		seq += keyboardProtocolPop
+		t.write(keyboardProtocolPop)
 	}
 	if disableModify {
-		seq += modifyOtherKeysDisable
+		t.write(modifyOtherKeysDisable)
 	}
-	t.Write(seq)
 }
 
-// Start mirrors upstream `ProcessTerminal.start(onInput, onResize)`. It
-// enters raw mode, then spawns one goroutine that reads stdin in 256-byte
-// chunks and invokes onInput for each, and registers a SIGWINCH handler
-// goroutine that invokes onResize on terminal resize.
+// Start enters raw mode and owns input and resize delivery. Each onInput callback receives one framed, normalized event after keyboard negotiation filtering. Callbacks run synchronously in input order.
 //
-// Use [ProcessTerminal.StartWithReadError] when the caller must distinguish
-// terminal closure from user input.
+// Use [ProcessTerminal.StartWithReadError] to distinguish terminal closure from user input. Caller-owned loops use EnterRawMode, ReadInputStream and TerminalInput instead.
 //
-// Callers that prefer to own the read loop directly (the original pig
-// pattern) should use `EnterRawMode` instead. Both patterns coexist.
-//
-// Calling Start twice without an intervening Stop is a no-op and returns
-// nil; the existing Start owns the lifecycle.
+// Calling Start twice without an intervening Stop is a no-op.
 func (t *ProcessTerminal) Start(onInput func([]byte), onResize func()) error {
 	return t.StartWithReadError(onInput, onResize, nil)
 }
@@ -424,62 +390,50 @@ func (t *ProcessTerminal) StartWithReadError(onInput func([]byte), onResize func
 	return nil
 }
 
+var normalizeTerminalInput = NormalizeProcessInputSequence
+
 func (t *ProcessTerminal) forwardInput(ctx context.Context, onInput func([]byte), onReadError func(error)) {
-	waiter, err := newTerminalInputWaiter(ctx)
+	t.forwardInputFrom(ctx, t.stdin, onInput, onReadError)
+}
+
+func (t *ProcessTerminal) forwardInputFrom(ctx context.Context, source io.Reader, onInput func([]byte), onReadError func(error)) {
+	reader, err := newTerminalReader(ctx, source)
 	if err != nil {
 		if ctx.Err() == nil && onReadError != nil {
 			onReadError(err)
 		}
 		return
 	}
-	defer waiter.close()
+	defer reader.close()
+	input := t.NewTerminalInput(func(sequence string) {
+		onInput([]byte(normalizeTerminalInput(sequence)))
+	})
+	defer input.Close()
 	for {
 		if ctx.Err() != nil {
 			return
 		}
-		// Input the reader already took from the terminal does not signal
-		// the handle again, so it is delivered without waiting.
-		if !terminalInputBuffered(t.stdin) {
-			ready, err := waiter.wait(t.stdin)
-			if err != nil {
-				if ctx.Err() == nil && onReadError != nil {
-					onReadError(err)
-				}
-				return
-			}
-			if !ready || ctx.Err() != nil {
-				return
-			}
-			// A console also signals for records that yield no character;
-			// reading then would block where Stop cannot end the read.
-			pending, err := terminalInputPending(t.stdin)
-			if err != nil {
-				if ctx.Err() == nil && onReadError != nil {
-					onReadError(err)
-				}
-				return
-			}
-			if !pending {
-				continue
-			}
+		ms := -1
+		if deadline := input.nextDeadline(); !deadline.IsZero() {
+			ms = max(0, int(math.Ceil(float64(time.Until(deadline))/float64(time.Millisecond))))
 		}
-		data, err := t.readInputChunk(t.stdin)
+		data, err := reader.read(ms)
+		if len(data) > 0 {
+			input.Process(data)
+		} else if err == nil {
+			input.Flush()
+		}
 		if err != nil {
+			if ctx.Err() != nil {
+				return
+			}
+			input.FlushPending()
 			if ctx.Err() == nil && onReadError != nil {
 				onReadError(err)
 			}
 			return
 		}
-		// Deliver bytes already consumed from stdin before checking
-		// cancellation. Stop() promises the next terminal owner sees bytes
-		// typed during the handoff by leaving *unread* input alone; a byte
-		// readInput already removed from the fd cannot be put back, so
-		// dropping it here would lose it outright instead of handing it off
-		// (this raced TestStoppedTerminalReaderDoesNotEatNextKeystroke's
-		// keystroke-burst sibling, TestForwardInputDoesNotDropReadBytesOnCancel).
-		if len(data) > 0 {
-			onInput(data)
-		}
+		// Deliver bytes already consumed before checking cancellation; unread bytes belong to the next terminal owner.
 		if ctx.Err() != nil {
 			return
 		}
@@ -489,8 +443,8 @@ func (t *ProcessTerminal) forwardInput(ctx context.Context, onInput func([]byte)
 // Stop mirrors upstream `ProcessTerminal.stop()`. It cancels and joins the
 // input goroutine, removes the resize handler, and restores cooked mode without
 // draining unread input. This lets a subsequent terminal owner receive bytes
-// typed during focus handoff. Safe to call multiple times; Stop on a
-// never-Started terminal is a no-op.
+// typed during focus handoff. Safe to call multiple times; a standalone
+// protocol query is unwound even when no reader was started.
 func (t *ProcessTerminal) Stop() {
 	t.startMu.Lock()
 	defer t.startMu.Unlock()
@@ -512,6 +466,10 @@ func (t *ProcessTerminal) Stop() {
 	if t.stopRestore != nil {
 		t.stopRestore()
 		t.stopRestore = nil
+	} else if t.protocolQueried {
+		t.Write("\x1b[?2004l")
+		t.disableKeyboardProtocol()
+		t.protocolQueried = false
 	}
 }
 
@@ -579,6 +537,12 @@ func minDuration(a, b time.Duration) time.Duration {
 
 // Write emits data to the terminal output.
 func (t *ProcessTerminal) Write(data string) {
+	t.outMu.Lock()
+	defer t.outMu.Unlock()
+	t.write(data)
+}
+
+func (t *ProcessTerminal) write(data string) {
 	if t.out == nil {
 		return
 	}
@@ -643,9 +607,7 @@ func (t *ProcessTerminal) ClearScreen() { t.Write("\x1b[2J\x1b[H") }
 // SetTitle writes an OSC 0 title update sequence.
 func (t *ProcessTerminal) SetTitle(title string) { t.Write("\x1b]0;" + title + "\x07") }
 
-// SetProgress writes the OSC 9;4 progress indicator used during agent work and
-// keeps it alive while active so terminals like Ghostty do not clear it during
-// long-running operations.
+// SetProgress writes the OSC 9;4 progress indicator and keeps it alive during agent work. Clearing stops the keepalive and writes OSC 9;4;0 followed directly by BEL.
 func (t *ProcessTerminal) SetProgress(active bool) {
 	if active {
 		t.Write(terminalProgressActiveSeq)
@@ -662,7 +624,10 @@ func (t *ProcessTerminal) SetProgress(active bool) {
 		stopCh := make(chan struct{})
 		t.progressTicker = ticker
 		t.progressStop = stopCh
+		done := make(chan struct{})
+		t.progressDone = done
 		go func() {
+			defer close(done)
 			for {
 				select {
 				case <-stopCh:
@@ -691,8 +656,10 @@ func (t *ProcessTerminal) clearProgressInterval() bool {
 	}
 	t.progressTicker.Stop()
 	close(t.progressStop)
+	<-t.progressDone
 	t.progressTicker = nil
 	t.progressStop = nil
+	t.progressDone = nil
 	return true
 }
 

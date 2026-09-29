@@ -2,7 +2,7 @@
 
 This file documents Pig-only **additive** features that have no upstream Pi
 equivalent. These are not behavioral divergences from upstream: upstream simply
-doesn't have these capabilities. `DIVERGENCES.md` is reserved for actual
+doesn't have these capabilities. `docs/parity/DIVERGENCES.md` is reserved for actual
 user-visible behavioral deltas where upstream and pig do the same thing
 differently (e.g. rendering, command output, prompts).
 
@@ -11,8 +11,12 @@ Each record uses a global `D<N>` ID. Put one short
 rationale in this file.
 
 If an upstream behavior changes such that one of these additive features starts
-*conflicting* with upstream, promote it to `DIVERGENCES.md` with a numbered D
+*conflicting* with upstream, promote it to `docs/parity/DIVERGENCES.md` with a numbered D
 entry and a SCRUTINIZED tag.
+
+## Repository release maintenance
+
+`make set-version VERSION=x.y.z` is repository-only release tooling, not an additive Stock PiG runtime API. It synchronizes the PiG pin, Standard development version, and changelog heading while preserving Go dependency pins and checksums. The explicit `--release-modules` option prepares local module requirements and publication checksums on an unpublished release branch. The nested tags must be published before that candidate reaches `main`; `make module-publication` verifies required public tags and downloaded checksums without workspace or SDK-cache assistance. The command preserves Unreleased entries unless `--move-unreleased` is selected, supports a read-only `--dry-run`, and permits explicit renaming of an unpublished candidate with `--rename-current`. See `docs/project/RELEASING.md`. This required release substrate does not select product behavior and adds no numbered runtime divergence. Pi's corresponding repository automation is `scripts/sync-versions.js` and `scripts/release.mjs`; the Go module publication mechanism is Go-specific.
 
 ---
 
@@ -24,9 +28,17 @@ What: Pig adds product-neutral Piglet source management, validation, execution,
 and build commands. Upstream Pi has no Piglet composition or Piglet Binary
 concept.
 
-Current behavior: `pig piglet list|show|validate|schema|add|remove|pull|publish|build` operates on explicit Piglet source or a signed Piglet Binary release. `pig piglet add` accepts local paths, product-contributed catalog refs, npm source packages, and Git refs. Remote sources are materialized without changing Package settings, must pass portable Piglet validation, and write an adjacent origin record containing the exact npm version/integrity or Git commit. Git refs include local `git:file://localhost/<path>` URLs, which upstream parseGitUrl rejects. On Windows a file URL's drive becomes a plain segment of the checkout path (`git/localhost/C/...`), any other path segment containing `:` is refused with upstream's "Refusing to use path outside package install root", and git clones the equivalent `file:///C:/...` because Git for Windows reads the localhost form as a UNC path. JSON inventory includes that origin. A Piglet selects Resources by typed origin, controls ambient discovery, scopes capabilities, and may declare a required agent environment. `piglet build --format binary` resolves exact component closure and can fuse compatible Go factories while preserving the ordinary extension registration contract. A Piglet can set `build.extensionRealization: fused` to reject any selected extension that would otherwise use a subprocess realization. A built Piglet Binary verifies its embedded Piglet, resolution record, executable component plan, and optional Ed25519 DSSE signature before command dispatch. `pig piglet keygen`, `build --sign-key`, `pull`, `verify`, and `trust` provide offline signing, signer continuity, revocation, and a local required-signature policy. `pull` downloads a signed release index and one target asset from HTTPS or GitHub Releases, pins the first signer locally, and publishes no managed file until the index checksum and both signatures verify. `pig piglet publish <name|path> --to github` publishes one GitHub Release named `v<release.version>` with a signed Binary per target, `SHA256SUMS`, and a signed `piglet-release.json` index. It builds each target with a ready signing builder or collects prebuilt signed Binaries with `--artifacts`, lists every target it cannot produce and uploads nothing, refuses an existing release, and checks every staged asset as `pull` would. Publication dry-runs by default and runs `gh release create` only with `--yes`; Pig never handles a GitHub token. `pig verify --provenance` can separately delegate an explicit Sigstore keyless provenance check to the GitHub CLI; startup never makes that network request.
+Current behavior: `pig piglet list|show|validate|schema|add|remove|pull|update|publish|build` operates on explicit Piglet source or a signed Piglet Binary release. `pig piglet add` accepts local paths, product-contributed catalog refs, npm source packages, and Git refs. Remote sources are materialized without changing Package settings, must pass portable Piglet validation, and write an adjacent origin record containing the exact npm version/integrity or Git commit. Git refs include local `git:file://localhost/<path>` URLs, which upstream parseGitUrl rejects. On Windows a file URL's drive becomes a plain segment of the checkout path (`git/localhost/C/...`), any other path segment containing `:` is refused with upstream's "Refusing to use path outside package install root", and git clones the equivalent `file:///C:/...` because Git for Windows reads the localhost form as a UNC path. JSON inventory includes that origin. A Piglet selects Resources by typed origin, controls ambient discovery, scopes capabilities, and may declare a required agent environment. `piglet build --format binary` resolves exact component closure and can fuse compatible Go factories while preserving the ordinary extension registration contract. A Piglet can set `build.extensionRealization: fused` to reject any selected extension that would otherwise use a subprocess realization. A built Piglet Binary verifies its embedded Piglet, resolution record, executable component plan, and optional Ed25519 DSSE signature before command dispatch. `pig piglet keygen`, `build --sign-key`, `pull`, `verify`, and `trust` provide offline signing, signer continuity, revocation, and a local required-signature policy. `pull` downloads a signed release index and one target asset from HTTPS or GitHub Releases, pins the first signer locally, and publishes no managed file until the index checksum and both signatures verify. `pig piglet publish <name|path> --to github` publishes one GitHub Release named `v<release.version>` with a signed Binary per target, `SHA256SUMS`, and a signed `piglet-release.json` index. It builds each target with a ready signing builder or collects prebuilt signed Binaries with `--artifacts`, lists every target it cannot produce and uploads nothing, refuses an existing release, and checks every staged asset as `pull` would. Publication dry-runs by default and runs `gh release create` only with `--yes`; Pig never handles a GitHub token. `pig verify --provenance` can separately delegate an explicit Sigstore keyless provenance check to the GitHub CLI; startup never makes that network request.
 Stock Pig contains the generic command and runtime machinery but selects no
 Piglet and activates no product Resources by default.
+
+`publish --tag-prefix <name>/` selects an explicit per-Piglet Git tag namespace while preserving unprefixed tags by default. The prefix must match the manifest name. Repository-layout inference is deliberately absent: the same publication inputs keep the same release identity when sibling Piglets are added or a publisher uses prebuilt artifacts outside a checkout. Signed indexes carry `github.repository` and `github.tagPrefix`; receipts retain that envelope. `github:owner/repo/<piglet>@version` binds name, version, repository, and namespace. `update <name>` enumerates the signed repository's public GitHub releases API and selects the highest stable SemVer only in that namespace, never repository-wide latest. Explicit versions can select prereleases. Discovery is bounded to 100 pages of 100 releases and fails on an incomplete inventory. Pull and update reject rollback and repository/namespace changes and revalidate signer and release continuity under the managed-store lock.
+
+`add git:<repository>@<full-commit>#subdirectory=<escaped-path>` reads only the selected subdirectory's Piglet. It requires a matching clean commit, copies declared relative local Resources and prompt files into `<name>.source/<commit>/`, and rewrites only the corresponding registered YAML paths. It preserves explicit empty scopes and executable permissions. The origin binds original and registered Piglet digests and each copied file digest. Closure paths cannot escape the Piglet file's directory, traverse symlinks, include Git metadata, or copy special files. The in-memory closure is bounded to 4,096 visited entries and 32 MiB. Source removal owns only its recorded closure. Bundled source requires explicit YAML fields rather than aliases or merge keys. Other remote source forms retain their refusal of local Resource origins. These are required, inert distribution mechanisms; no optional product is selected.
+
+Evidence: `TestPublishGitHubNamedNamespace` and `TestNamedGitHubReferenceEscapesTag` fail on unprefixed-only publishing/pull; `TestAddMonorepoPinnedClosure` fails on the prior local-origin refusal; `TestUpdateCommandRoutesBeforeSession` fails on the absent update command. `TestMonorepoPublishPullUpdateIsolation` publishes two names at the same versions through fake `gh`, serves their exact uploaded bytes through a local HTTPS GitHub transport, and checks named updates, mismatched identities, tampering, signer rotation, revocation, rollback, and cancellation. `TestPigletAddPinnedMonorepoThroughCoreMaterializer` uses a real local bare Git repository and removes the materialized checkout before verifying both registered closures. Pi 0.87.1 has no Piglet release counterpart: `packages/coding-agent/src/package-manager-cli.ts:375-385` recognizes only install/remove/uninstall/update/list as Package verbs, and `packages/coding-agent/src/cli/args.ts:253-254` puts other positional words into prompt messages. Piglet evidence is additive, not a paired Pi coverage claim. A compiling mutation that clears the discovery prefix makes `TestDiscoverGitHubVersionPagesNamespaceAndStableVersions` select unprefixed `7.0.0` instead of namespaced `2.0.0` and fails the publisher-to-update test. The restored code passes both. `TestUpdateUnprefixedRepositoryCannotInstallAnotherPiglet` reproduces an unprefixed update installing `beta` when `alpha` was requested; update now binds the installed name independently of the tag namespace before asset download. `TestPullCancellationAfterDownloadDoesNotPublish` also fails on a completed download that previously published after cancellation; pull now checks cancellation before verification and again under the publication lock. The cross-family `cli-utils/04-package-install-local` comparator is `output_equal` at three runs after probing Pi 0.87.1.
+
+Resource disposition: release HTTP requests own response bodies, use bounded reads, and inherit caller cancellation; staged Binary files and failed publication directories are removed. Source closure collection closes every file and directory, reads directories in bounded batches, caps retained file bytes, and installs no source file until validation completes. These operations run in explicit pre-session CLI commands, not on the TUI loop. `BenchmarkPigletClosure` covers sixteen 64-KiB files. A Linux/amd64 Go 1.27.1 sample reports 1.78 ms/op, 2.24 MB/op, and 624 allocations/op; CPU and allocation profiles identify runtime GC/syscalls and `io.ReadAll` respectively. This is a resource baseline, not a speedup claim. Reproduce with `go test ./coding/piglet -run '^$' -bench '^BenchmarkPigletClosure$' -benchmem -cpuprofile /tmp/piglet-closure-cpu.pprof -memprofile /tmp/piglet-closure-mem.pprof -o /tmp/piglet-closure.test`.
 
 Installed PiG Packages distribute Resources and never activate Piglets. An npm package used as a Piglet source is materialized directly and is not added to Package settings. Optional catalog and product transports must use public resolver contracts and must not be imported or registered by Stock Pig.
 
@@ -54,7 +66,6 @@ Tests:
 - `cmd/pig/build_command_test.go`
 - `cmd/pig/build_progress_test.go`
 - `internal/buildprogress/reporter_test.go`
-- `media/demo/tests/test_demo.py`
 - `cmd/pig/package_commands_test.go`
 
 PORT_MAP path: n/a.
@@ -75,7 +86,7 @@ widget_push`). Registration shape (`tools/commands/handlers/...`),
 host-call methods (`ui.notify`, `ui.setStatus`, `sendMessage`,
 `sendUserMessage`, `appendEntry`, `setSessionName`), tool-result shape
 (`content/details/is_error`), and cancellation semantics are identical
-across SDKs and validated by `tests/extension-conformance/conformance_test.go`,
+across SDKs and validated by `test/extension-conformance/conformance_test.go`,
 which compares the in-process Go reference against Go, Rust, and Python
 subprocess SDKs. Focused components use one lifecycle-owned worker per active
 overlay. Go, Rust, Python, and Node coalesce timer invalidation, preserve ordered
@@ -111,6 +122,8 @@ and `--sdk-path`/`--sdk-version` are accessors for build scripts that stage
 before printing so a script never wires an extension to a directory pig is about
 to restage. Staged-versus-embedded status is reported by `pig diagnose`, which
 already covers it alongside paths, auth, models, and environment.
+
+The Go bridge keeps nullable usage counts and optional booleans as pointers. `sdk.Bool`, `ContextUsage.TokensOr`, and `PercentOr` provide explicit construction/fallback ergonomics without changing field presence or wire behavior. Legacy Go factories and exact standalones build against a private current SDK alias with recursively copied subpackages and rewritten self-imports, including internal packages. Build-local aliases and modfiles are removed after success, failure, or cancellation; authored files remain unchanged. Interactive native cold builds select a product-neutral `Building extensions...` notice through the build observer. Node loads and print/JSON/RPC modes do not select it, regardless of terminal stderr.
 
 `pig reload` is deliberately the same word as the interactive `/reload`: both
 mean make what is loaded match what is on disk, and it is the command reached
@@ -151,7 +164,7 @@ Call-site markers:
   (`OnRemoteTerminalInput`, `RemoteTerminalInputHandler`)
 
 Tests:
-- `tests/extension-conformance/conformance_test.go` covers Go/Rust/Python
+- `test/extension-conformance/conformance_test.go` covers Go/Rust/Python
   isolated lifecycle and timer redraw.
 - `coding/extension/host/subprocess/integration_test.go` covers the Node runtime,
   including timer redraw, burst coalescing, and cleanup.
@@ -173,6 +186,8 @@ SCRUTINIZED:approved
 
 ## D20 Packed runtime-cell substrate for factory extensions
 
+Generated Go cells read requirements, SDK pins, local replacements, and checksums from both extension roots and their workspace modules. They retain the highest declared requirement for a workspace module, even when its source uses a local replacement. A local source path does not remove Go's minimum-version constraint. `TestBuildGoPackedCellKeepsRequiredWorkspaceVersions` checks the generated module and compiles two consumers with different version requirements; `make porter-check` exercises the released root and SDK pins through the real loader.
+
 Stock disposition: required substrate. Packing is a transparent host optimization and must remain behaviorally identical to isolated execution.
 
 What: pig adds an internal "runtime cell" planner and a set of generated
@@ -192,14 +207,20 @@ shebang Node script) is isolated. Generated runners live under
 except `packed-node`: nothing is compiled for a Node cell, so its cache
 (`coding/extension/host/subprocess/packed_node.go`) holds only one copy of the
 embedded Node runtime plus a manifest naming each member's resolved entry; the
-same type-stripping loader an isolated Node extension uses reads each member's
+same jiti loader an isolated Node extension uses reads each member's
 TS/JS source fresh at process start (N8; matches upstream pi hosting every
 extension in one process, `packages/coding-agent/src/core/extensions/loader.ts`).
 Each contained extension still gets its own Unix socket and runs the
-**same** `register` handshake: there is no multi-register payload. `Host.Reload` loads each extension on its own as upstream does: a failed
-extension is reported and not loaded, a failed packed cell restages its members
-in isolated cells, and a quarantined packed cell fissions
-its members back into generated isolated cells on the next reload.
+**same** `register` handshake: there is no multi-register payload. A disambiguated host key retains the selected extension's registration identity in every language. Go factories from distinct roots with the same module path occupy separate cells because a Go build can select only one root per module path. `Host.Reload` loads each extension on its own as upstream does: a failed
+extension is reported and not loaded. Native packed-cell failures retain their isolated fallback. Node factories share one process across interleaved native cells: a private host admission channel starts each member's factory only at its configured turn, and every member retains its own registration socket.
+
+Pi re-invokes an extension's factory inside the process that already holds its module: `/reload` clears the factory cache and re-invokes every factory, and a Session replacement builds a new resource loader whose first load keeps the cache. PiG mirrors that with the same admission channel. A cell process's stdin stays open, and each control line (`admit`, member name, socket, entry, cwd, reload pass; or `park`) starts one more generation of a member's factory on a new socket beside the old one. The runners are `runtime-node/generations.mjs` for Node and the generated Go, Rust and Python runners in `coding/extension/host/runtimecell/`. The Node runtime applies Pi's `extensionCache` rules to each admission: a reload re-imports the module (jiti re-evaluates `.ts`; Node's ESM cache keeps `.mjs`), and a same-cwd replacement reuses the cached factory. Compiled and Python factories keep package or module state because the process is retained. The old generation keeps serving until the swap; closing its connection retires it, including its event-bus subscriptions. The host counts the states that share one process (`processShare`) and kills the process with the last one, so a reload whose plan does not claim a process ends it. A compiled cell is retained by artifact, a Node cell by plan group, and an isolated Node extension by name and entry. Module state lives in the process that holds the module, and `isolation` is a PiG setting Pi lacks: an extension whose plan moves between an isolated process and a shared group, or that `Host.Load` started outside the plan, gets a new process and a new module on the next reload, and its old process ends (`TestReloadAcrossAPlacementChangeStartsAFreshProcess`). The `name`, `socket`, `entry` and `cwd` fields of an admission are percent-encoded (`%`, tab, line feed, carriage return) because a source path, the name derived from it and the runtime directory a user chooses may hold them; the Node, Go, Python and Rust runners decode the same four escapes. A crashed process is never retained: crash recovery and the supervisor start a fresh one. A process with a connection that closed without the host closing it, or that stopped answering its heartbeat, is never claimed again either, because a killed process still accepts control lines until it is reaped (`TestReloadAfterNodeCellCrashNoticeRefusesUnreapedProcess`, `TestUnexpectedConnectionCloseWithdrawsItsProcessFromRetention`). `RuntimeRetention` (`retention.go`) lets the Host of a replacement Session claim the processes its predecessor parked with `Host.Retain`, which returns once each runner has taken a `park` hold and connected to an acknowledgement socket, so retiring the last generation cannot end the process. A process exits when its last generation ends unless it is parked; the Node runtime keeps its stdin channel from holding the event loop open except while it awaits an admission or is parked, so RPC quit handling still observes an event-loop drain; an unclaimed parked process ends with the replacement's load. A Host that retires after its successor loaded parks nothing. Stock `pig` has no caller for `RuntimeRetention`: its Session replacement is in place and keeps one Host for the process (D30, D61), so its extension processes and module state already survive `/new`, `/resume`, and `/fork`. An embedder that builds a Host per replacement Session calls `SetRuntimeRetention` on each Host and `Retain` before `Shutdown`.
+
+Node process recovery uses the admitted factory, stack evidence, or last dispatched owner to quarantine only the culprit. The remaining Node members restart together. An unattributable crash restarts the whole group once; repeated unattributable crashes split diagnostic groups in halves until the failing member is identified, then rejoin all healthy members. Diagnostic groups and culprit quarantine are runtime fault containment, not changes to authored isolation. Recovery does not replay an interrupted tool or callback. Generation checks reject obsolete crash reports and connection-owned UI state; new named capability calls reach the replacement, while already-admitted callbacks fail on the dead connection. Recovery inherits the original owner cancellation and drains on Host shutdown.
+
+Node transform caching remains Jiti's implementation: the loader reads source contents on each load and disables evaluated-module caching between loads. PiG places the disposable filesystem cache under `<config-root>/cache/jiti` and separates loader content, Jiti and Node versions, and compiler environment options. A changed temporary directory does not discard valid transforms. Cache-disable options retain Jiti's behavior. The transform cache is not part of a published cell's immutable artifact or its pruning commands. Internal imports avoid loading unused TUI, highlighting, and schema dependencies; extension imports still receive the complete shared Pi namespaces. `TestNodeJitiCachePersistsWithoutStaleSource`, `TestNodeStartupDefersPresentationDependencies`, and `extensions-runtime/56-node-lazy-imports` guard these boundaries.
+
+PiG bundles the pinned AI and TUI implementation graphs while retaining canonical shared modules, complete exports, and original source-relative asset URLs. Private emoji-regex compilation and native segmenter construction happen when first used; public segmenter getters still return the same native instances. Node's source-validated bytecode cache activates on virtual-library import after the first Jiti transform and flushes when the runtime processes the host's ready message. Its default directory is `<config-root>/cache/node-compile`; existing Node cache configuration and `NODE_DISABLE_COMPILE_CACHE` remain authoritative. This cache stores no evaluated factories and is outside cell artifact pruning. `TestNodeLibraryBundlesKeepSharedIdentitiesWithoutRawCatalogLoads`, `TestNodeCompileCacheStartsAtLibraryImportAndChecksSourceBytes`, `TestNodeReadyPublishesNativeCompileCache`, the private Unicode guards, bundle regeneration, and pinned-source comparison cover these implementation boundaries. No worker, notification, callback, or factory ordering is removed.
 
 Why: pi's in-process model gives one runtime per extension for free. Pig
 must spawn a process per extension by default, which is expensive when
@@ -207,7 +228,7 @@ authors register many small factory-style SDK extensions; for Node this was
 especially costly (a 150-210 MB Node process per TS/JS extension). The
 packed-cell substrate is a transparent optimization that preserves the same
 wire per extension, preserves the upstream-equivalent extension API, and
-degrades to isolated cells under crash quarantine. It is not a new authoring
+uses fault containment under crash quarantine. It is not a new authoring
 model - factory extensions are still ordinary subprocess extensions; the host
 just shares the OS process when it is safe.
 
@@ -216,7 +237,8 @@ Skip conditions / non-pack triggers:
 - source resolution does not prove one exact standard factory;
 - the extension's isolation is set to anything other than empty/`shared-ok`
   (the `--isolated`/`isolation: strict` escape hatch);
-- the cell is quarantined, which fissions its members on reload.
+- a native cell is quarantined, which fissions its members on reload;
+- Node recovery identifies a culprit, which receives its own process while healthy members remain shared. Temporary bisection groups diagnose an unknown repeated crash.
 
 A Go module or workspace can contain several factory packages. Selecting the
 module or workspace root is ambiguous. Selecting one exact package keeps the
@@ -234,12 +256,16 @@ Call-site markers:
 - `coding/extension/host/subprocess/packed_rust.go`
 - `coding/extension/host/subprocess/packed_python.go`
 - `coding/extension/host/subprocess/packed_node.go`
+- `coding/extension/host/subprocess/node_recovery.go`
+- `coding/extension/host/subprocess/cell_start.go`
 - `coding/extension/host/subprocess/packed_quarantine.go`
 - `coding/extension/host/subprocess/source_resolver.go` (node factory defaults
   to `shared-ok`)
 - `coding/extension/host/runtimecell/go_packed.go`
 - `coding/extension/host/runtimecell/rust_packed.go`
 - `coding/extension/host/runtimecell/python_packed.go`
+- `coding/extension/host/subprocess/runtime-node/jiti-loader.mjs` (persistent transform cache location)
+- `coding/extension/host/subprocess/runtime-node/compile-cache.mjs` (native bytecode cache activation)
 - `coding/extension/host/subprocess/runtime-node/cell.mjs`
 - `coding/extension/host/subprocess/runtime-node/state.mjs` (AsyncLocalStorage
   scoping so a Node cell's shim calls resolve to the right extension)
@@ -256,6 +282,8 @@ Tests:
   `TestNodeCellReloadKeepsOneProcessForAllExtensions`,
   `TestNodeCellProcessDeathStopsExtensionsAndReloadRecovers`,
   `TestNodeCellIsolatedEscapeHatchGetsOwnProcess`)
+- `coding/extension/host/subprocess/retained_factory_test.go` and `retained_native_factory_test.go`: module state across reload and Session replacement for Node (packed and isolated), Go, Python and Rust, Pi's loader rules for `.mjs` and `.ts`, old-generation bus retirement, crash recovery after a retained reload, and release of unclaimed parked processes.
+- `coding/extension/host/subprocess/node_admission_test.go`, `node_recovery_test.go`, and `node_recovery_lifetime_test.go`: interleaved admission/bus, culprit-only quarantine, whole-group retry, bisection/rejoin, no replay, stale generations, original-owner cancellation and shutdown draining.
 - `coding/extension/host/subprocess/node_cell_memory_probe_test.go`
   (`TestNodeCellMemoryProbe`, gated by `PIG_NODE_CELL_MEMORY_PROBE=1`)
 
@@ -390,9 +418,9 @@ Call-site markers:
 Tests:
 - `coding/piglet/piglet_test.go`: MCP scoping tests
 - `coding/extension/host/inproc/context_actions_test.go`
-- `tests/extension-conformance/conformance_test.go`: cross-SDK source
+- `test/extension-conformance/conformance_test.go`: cross-SDK source
   round-trip
-- `tests/upstream-parity/context_parity_test.go`: `pigOnlyContextMembers`
+- `test/upstream-parity/context_parity_test.go`: `pigOnlyContextMembers`
 
 PORT_MAP path: n/a (downstream piglet-scoping and per-tool source plumbing).
 SCRUTINIZED:approved
@@ -477,7 +505,7 @@ The subprocess and fused paths converge at `adoptConn`, so a fused extension
 observes the same handshake, ready payload, provider registration, and event
 dispatch as a subprocess one.
 
-Conformance gate: every shared cross-SDK behavioral harness includes `fused-go` beside subprocess Go. The canonical Go fixture factory drives both realizations, so tool, command, event, UI, model, terminal-input, geometry, source-metadata, OAuth, user-content, and liveness recordings fail on fused-only drift. `TestConformance_TransportsMatch`, `TestLivenessConformanceSDKsMatch`, and the focused conformance rows in `tests/extension-conformance/` enforce the shared protocol behavior.
+Conformance gate: every shared cross-SDK behavioral harness includes `fused-go` beside subprocess Go. The canonical Go fixture factory drives both realizations, so tool, command, event, UI, model, terminal-input, geometry, source-metadata, OAuth, user-content, and liveness recordings fail on fused-only drift. `TestConformance_TransportsMatch`, `TestLivenessConformanceSDKsMatch`, and the focused conformance rows in `test/extension-conformance/` enforce the shared protocol behavior.
 
 Fused code shares Pig's process-global state. Before a Piglet Binary build links a factory, `coding/pigletbuild` inspects the factory package and its local module dependency closure. The build fails with `PIGLET_FUSED_PROCESS_HAZARD` when fused code calls `os.Exit`, `os.Chdir`, `log.Fatal*`, `fmt.Print*`, or accesses `os.Stdout`. Authors must return errors and use extension host/UI APIs instead of terminating the process, changing its working directory, or writing into terminal output.
 
@@ -489,7 +517,7 @@ Call sites:
 
 Remove when: the Piglet Binary component plan no longer supports fused realization.
 
-Locked by: the shared `fused-go` rows in `tests/extension-conformance/`; `TestBuildNativeArtifactRejectsFusedProcessHazards` and `TestVetFusedPackagesInspectsLocalDependencyClosure` in `coding/pigletbuild`; and `TestHost_LoadInProcess`, `TestAC59FusedFocusedComponentUsesProtocolV1`, `TestFusedFocusedTimerInvalidatesAndCleansUp`, and `TestHost_LoadInProcess_NilServe` in `coding/extension/host/subprocess/host_inprocess_test.go`.
+Locked by: the shared `fused-go` rows in `test/extension-conformance/`; `TestBuildNativeArtifactRejectsFusedProcessHazards` and `TestVetFusedPackagesInspectsLocalDependencyClosure` in `coding/pigletbuild`; and `TestHost_LoadInProcess`, `TestAC59FusedFocusedComponentUsesProtocolV1`, `TestFusedFocusedTimerInvalidatesAndCleansUp`, and `TestHost_LoadInProcess_NilServe` in `coding/extension/host/subprocess/host_inprocess_test.go`.
 
 SCRUTINIZED:approved
 ## D36 Insecure TLS opt-in for OpenAI-compatible providers
@@ -564,6 +592,7 @@ and machine-readable discovery.
 
 Call-site markers:
 - `cmd/pig/auth_commands.go`: target listing and credential-store dispatch.
+- `cmd/pig/package_commands.go`: pre-session settings use saved/default project trust without invoking extension handlers.
 - `cmd/pig/auth_contributions.go`: registration-only inspection and owner-only
   login startup.
 - `coding/extension/host/subprocess/host.go`: runtime provider ownership.
@@ -728,10 +757,63 @@ Tests:
 - `coding/extension/login_test.go`
 - `internal/codingagent/login_header_test.go`
 - `coding/extension/host/subprocess/ui_bridge_test.go`
-- `tests/extension-conformance/conformance_test.go`
+- `test/extension-conformance/conformance_test.go`
 - `coding/extension/host/subprocess/runtime_node_login_test.go`
 - `cmd/pig/extension_login_preview_command_test.go`
 
 PORT_MAP path: n/a, because this is a downstream extension API.
+SCRUTINIZED:approved
+
+## D67 Windows container builds use the image default user
+
+Stock disposition: required substrate. Native identity mapping belongs to the generic Piglet builder, not a selected product.
+
+What: Linux and macOS container builds pass `--user <uid>:<gid>` for the invoking user. Windows has SIDs rather than numeric host uid/gid values, so its Docker or Podman invocation omits `--user` and uses the Linux builder image's default user. The VM maps bind-mounted output to the Windows host user. The builder does not attempt a Windows numeric account lookup.
+
+Why: this is platform policy for Piglet builds, which have no Pi counterpart. The owner selected the image-default-user policy on 2026-09-25 (WIN-NOTES Q5). Reclassification changes no command, permission policy or test.
+
+Call-site marker: `coding/pigletbuild/container_builder.go`, `containerUserArgsFor`.
+
+Locked by: `coding/pigletbuild` `TestContainerUserArgsOnWindowsLookUpNoIdentity`, `TestContainerUserArgsPassTheInvokingUser`, and `TestContainerBuilderBuildProducesHostArtifactAndContainerIdentity`. These retain the Windows no-lookup requirement and Unix invoking-user requirement.
+
+Remove when: PiG maps a Windows identity into the build container, or container builds stop bind-mounting host output.
+
+SCRUTINIZED:approved
+
+## D69 Windows Piglet scripts are cmd.exe launchers
+
+Stock disposition: required substrate. The generic builder emits a launcher for the selected host platform without activating product behavior.
+
+What: `pig piglet build --format script` emits a POSIX launcher on Unix and a two-line CRLF cmd.exe launcher on Windows: `@setlocal DisableDelayedExpansion`, then `@pig --piglet "<source>" %*`. Double quoting and doubled percent signs preserve spaces, ampersands, carets, apostrophes and percent signs; disabling delayed expansion preserves exclamation marks. Windows output uses the requested `--out` name, which the caller names `.cmd`; `--out -` prints the same bytes. Unix retains mode 0755 and `exec pig --piglet '<source>' "$@"`.
+
+Why: Pi has no Piglet launchers. This is an additive platform format, not a different implementation of Pi behavior. The owner selected native cmd.exe launchers on 2026-09-25 (WIN-NOTES Q7). Reclassification changes no launcher bytes or quoting tests.
+
+Call-site marker: `coding/pigletbuild/main.go`, `sourceScript`.
+
+Locked by: `coding/pigletbuild` `TestSourceScriptPerPlatform`, `TestAC2AC7SourceScriptFileAndStdoutCreateNoPigState`, and `TestWindowsScriptKeepsBangsUnderDelayedExpansion`. These retain exact platform bytes and actual argument/quoting execution checks.
+
+Remove when: never, unless Windows runs POSIX shell scripts natively.
+
+SCRUTINIZED:approved
+
+## D81 Same-manager helper download coalescing
+
+Stock disposition: required substrate. Coordination protects the generic helper installer from competing writes without selecting product behavior.
+
+What: Pi starts one download per overlapping caller. PiG shares one in-flight download for concurrent requests for the same missing helper within a `ToolsManager`. The visible improvement is coalesced download reporting, with a single `Downloading...` status and one archive network fetch for the shared flight. The installed tool path and binary contents remain unchanged. Different helpers, managers and processes do not share a flight.
+
+A caller rechecks the installed path while claiming a new flight, so completion between its initial lookup and its claim does not trigger another download. Only the owner reports download status. Completion removes the flight on success or failure.
+
+Pi source: `packages/coding-agent/src/utils/tools-manager.ts:353-356` returns an installed path without reporting status. Lines 377-382 start a download for every missing-tool call without a shared Promise or in-flight map. A direct probe of Pi 0.87.1's installed `dist/utils/tools-manager.js`, with two calls held at an asset-response barrier, produces two version lookups, two asset requests and two status sequences.
+
+Why: the owner classifies coalescing identical concurrent downloads as an additive robustness improvement. Shared work prevents competing writes to the same archive and binary. This adds no command, setting or product workflow.
+
+Call-site marker: `internal/codingagent/tools/tools_manager.go`: `EnsureTool`.
+
+Locked by: `TestDownloadTool_LateCallerReusesFinishedDownload` in `internal/codingagent/tools/tools_manager_test.go` pauses a caller after its initial miss, lets another caller install and clear its flight, then releases the late caller. The fix and test match public commits `80feeefa8` and `178798664`; the production comment additionally cites D81. Removing only the locked recheck compiles and deterministically fails with `expected 1 download, got 2`. Both this test and `TestDownloadTool_ConcurrentDedup` pass 500 race-detector runs normally and under two-CPU stress. `test/parity/scenarios/tools/12-managed-tool-status.toml` compares the shared installed-tool reuse and status contract against pinned Pi; it does not claim Pi coalescing parity.
+
+Remove when: Pi implements equivalent same-tool download sharing, or PiG no longer coalesces helper downloads.
+
+Approval: the owner explicitly classifies this capability as additive robustness in the fix-download-dedup lane.
 SCRUTINIZED:approved
 

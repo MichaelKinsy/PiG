@@ -1,0 +1,22 @@
+# Pi 0.87.1 mermaid.ts:76-87 preserves unsupported and naturally over-wide source,
+# retains final partial-parse warnings, and renders readable partial diagrams while streaming.
+# The eight complete transform outputs are compared byte-for-byte; no ANSI/whitespace normalization applies.
+name = "42-mermaid-raw-fallback"
+description = "Unsupported and over-wide Mermaid diagrams retain source; partial warnings keep Pi's streaming boundary."
+covers = ["packages/coding-agent/src/modes/interactive/components/mermaid.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/mermaid-fallback-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/mermaid-fallback-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["title Pets", "Notebook", "(+1 more)"]
+runs = 3

@@ -40,10 +40,11 @@ func BenchmarkRPCPromptAdmission(b *testing.B) {
 			}
 		}()
 		turn := &rpcResponseTurn{write: write}
+		session.SetRetryContinuationScheduler(turn.after)
 		var runs sync.WaitGroup
 		admission := &rpcAdmission{ctx: b.Context(), turn: turn, session: session, write: write, runs: &runs, validateModel: func() error { return nil }}
 		turn.begin()
-		admission.prompt("bench", RPCPromptCommand{Message: "What is 20+22?"})
+		admission.prompt(rpcStringID("bench"), RPCPromptCommand{Message: "What is 20+22?"})
 		turn.end()
 		runs.Wait()
 		if err := session.FlushEvents(b.Context()); err != nil {

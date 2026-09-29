@@ -1,0 +1,41 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:2572-2583 and theme.ts:570-575,790-815:
+# lookup loads without selecting; missing lookup is absent; selection returns
+# the real synchronous result and exposes light or the dark failure fallback.
+# Compare every result row, with its theme escapes, excluding only the outer
+# DynamicBorder rows and unrelated startup identity.
+name = "13-extension-theme-results"
+description = "Extensions receive loaded named themes and synchronous selection success or failure."
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 120
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Theme results"
+capture_end = "escape/ctrl+c cancel"
+
+[[tmux.steps]]
+keys = ["/rigidity-themes", "Enter"]
+wait_contains = ["Theme results", "fallback:"]
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/dialogs-default"]
+pi = ["PI_CODING_AGENT_DIR=testdata/dialogs-default"]
+pig_extensions = ["testdata/rigidity-themes.ts"]
+pi_extensions = ["testdata/rigidity-themes.ts"]
+pig_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["lookup:light:function:light", "missing:true", 'set-light:{"success":true}', 'set-missing:{"success":false,"error":"Theme not found: rigidity-missing"}', "fallback:dark"]
+escaped_output_equal = true
+runs = 3

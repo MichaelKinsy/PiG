@@ -1,0 +1,18 @@
+# Pi AgentSession invokes the native Provider selected through the normal model
+# resolver. The callback requires resolved auth; port 9 must never be contacted.
+name = "38b-native-provider-main-turn"
+description = "A selected native provider answers a real print-mode agent turn"
+covers = ["packages/coding-agent/src/core/model-runtime.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+[cli]
+args = ["--model", "parity-native/native-model", "--no-session", "-p", "hello"]
+timeout_seconds = 30
+[env]
+pig_extensions = ["../testdata/extension-native-provider.mjs"]
+pi_extensions = ["../testdata/extension-native-provider.mjs"]
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_contain = ["native answer"]

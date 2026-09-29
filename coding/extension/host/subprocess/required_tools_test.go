@@ -29,7 +29,8 @@ func TestRequiredSDKToolsFailWhenMissing(t *testing.T) {
 		{"TestSessionLogLargerThanAPageReachesExtensionWhole", "node"},
 		{"TestNodeRuntimeLoaderProvidesUpstreamHelloExampleExports", "node"},
 		{"TestNodeRuntimePureHelpersMatchPinnedPi", "node"},
-		{"TestNodeRuntimeLoaderResolvesExtensionlessTypeScript", "node"},
+		{"TestNodeExtensionModulesLoadLikePinnedPi", "node"},
+		{"TestNodeExtensionSeesPiProcessIdentity", "node"},
 		{"TestNodeRuntimeLoaderServesPiAiCompatAndOAuth", "node"},
 	}
 	for _, tc := range cases {

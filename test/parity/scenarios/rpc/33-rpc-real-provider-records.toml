@@ -1,0 +1,53 @@
+# Upstream evidence: Pi 0.87.1 rpc-mode.ts:354-363 forwards toJsonEvent, agent-loop.ts:110-149,319 emits only the current run's messages at agent_end, and openai-completions.ts:558-576 retains responseId/rawStopReason. Read result shape is read.ts:157-188.
+# Both real binaries use one local OpenAI-compatible HTTP/SSE fixture, not PIG_TEST_FAUX or a result summarizer. Full records and stderr remain compared.
+# D82 covers only extension-process listeners and providers (docs/parity/DIVERGENCES.md). This scenario loads no extension, so every declared pair must be strictly equal; D82 grants no allowance here and does not excuse a native observation/admission difference.
+name = "33-rpc-real-provider-records"
+description = "Two real provider turns compare complete RPC events, tool results and persisted entries"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/modes/json-event.ts", "packages/agent/src/agent-loop.ts", "packages/ai/src/api/openai-completions.ts", "packages/coding-agent/src/core/tools/read.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+openai_fixture = true
+
+[rpc]
+cwd = "testdata/tool-wire"
+timeout_seconds = 30
+[[rpc.steps]]
+line = '{"id":"read","type":"prompt","message":"READ"}'
+wait_event = '{"type":"agent_settled"}'
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"text","type":"prompt","message":"two  spaces\n"}'
+wait_event = '{"type":"agent_settled"}'
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"entries","type":"get_entries"}'
+wait_event = '{"type":"response","id":"entries","command":"get_entries"}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-home/agent"]
+pig_args = ["--offline", "--no-extensions", "--model", "strict-wire/strict", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--offline", "--no-extensions", "--model", "strict-wire/strict", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3
+both_contain = ['"toolName":"read"', '"role":"toolResult"', '"type":"agent_settled"']
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "D2: the system message embeds the exact isolated cwd root; retain the complete section text and path suffix."
+
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message and entry clocks vary; retain field presence, type and valid timestamp syntax."
+[[assert.json_aliases]]
+paths = ["/**/id", "/**/parentId", "/**/leafId"]
+kind = "id"
+group = "entry"
+pattern = '^[a-f0-9]{8,16}$'
+reason = "Generated entry IDs vary per run. Preserve identity reuse and all parent/leaf references with one bijection; request and tool IDs stay literal."

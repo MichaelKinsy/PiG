@@ -42,11 +42,7 @@ func thinkingLevelToAI(level string) ai.ThinkingLevel {
 	return ai.ThinkingNone
 }
 
-// refreshThinkingLevel re-reads the thinking level from the agent after a
-// model switch, which applies the target model's level (upstream
-// _getThinkingLevelForModelSwitch). Upstream's footer and editor border read
-// session.thinkingLevel on every render; pig caches it for both, so each
-// switch refreshes them.
+// refreshThinkingLevel synchronizes the footer and editor with the Session's effective agent state at startup and after a model or thinking-level change.
 func (m *InteractiveMode) refreshThinkingLevel() {
 	if m.agent == nil {
 		return
@@ -80,43 +76,10 @@ func maxThinkingIndex(model *ai.Model) int {
 	return idx
 }
 
-// initThinkingLevel sets the initial thinking level from settings, clamped
-// to model capabilities. Called once during Run() setup.
+// initThinkingLevel binds the UI to the Session's already selected and clamped level, including restored session state.
 func (m *InteractiveMode) initThinkingLevel() {
 	m.hideThinking = m.opts.Settings.HideThinkingBlock
-
-	// Start from the persisted default (if any), fallback to "medium"
-	// (matches upstream DEFAULT_THINKING_LEVEL in defaults.ts).
-	// --thinking flag overrides the setting (upstream interactive-mode.ts:1249).
-	start := m.opts.Settings.DefaultThinkingLevel
-	if model := m.opts.Model; model != nil {
-		if perModel := m.opts.Settings.ModelThinkingLevels[model.ProviderMeta.ProviderID+"/"+model.ID]; perModel != "" {
-			start = perModel
-		}
-	}
-	if m.opts.ThinkingLevel != "" {
-		start = m.opts.ThinkingLevel
-	}
-	if start == "" {
-		start = "medium"
-	}
-
-	levels := levelsForModel(m.opts.Model)
-	maxIdx := maxThinkingIndex(m.opts.Model)
-	if maxIdx == 0 {
-		start = "off"
-	} else {
-		// Find the level in the cycle and clamp to max supported.
-		idx := min(max(slices.Index(levels, start), 0), maxIdx)
-		start = levels[idx]
-	}
-
-	m.thinkingLevel = start
-	m.agent.SetThinkingLevel(thinkingLevelToAI(start))
-	m.editor.ThinkingLevel = start
-	if m.statusLine != nil {
-		m.statusLine.SetThinkingLevel(start)
-	}
+	m.refreshThinkingLevel()
 }
 
 // cycleThinkingLevel advances to the next thinking level and updates state.

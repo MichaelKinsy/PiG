@@ -299,7 +299,7 @@ func writeSourceScript(path string, data []byte) (string, error) {
 // shell script, or on Windows a cmd.exe batch file with CRLF line endings.
 func sourceScript(goos, source string) []byte {
 	if goos == "windows" {
-		// pig divergence (D69): a Windows Piglet script is a cmd.exe launcher.
+		// pig additive (D69): a Windows Piglet script is a cmd.exe launcher.
 		// setlocal turns off delayed expansion that the calling cmd.exe may
 		// have enabled, so a ! in the source path stays literal.
 		return []byte("@setlocal DisableDelayedExpansion\r\n@pig --piglet " + quoteBatch(source) + " %*\r\n")

@@ -1,5 +1,7 @@
 package ai
 
+// Ports packages/ai/src/utils/event-stream.ts
+
 import (
 	"context"
 	"errors"
@@ -14,21 +16,35 @@ type eventDelivery struct {
 }
 
 type eventWaiter struct {
-	ready chan eventDelivery
+	ready   chan eventDelivery
+	onReady func(eventDelivery) func()
+}
+
+func (waiter *eventWaiter) deliver(delivery eventDelivery) func() {
+	waiter.ready <- delivery
+	if waiter.onReady != nil {
+		return waiter.onReady(delivery)
+	}
+	return nil
 }
 
 // AssistantMessageEventStream is an ordered in-process event stream. Result
 // completes independently of event iteration; unread events remain available
 // until consumed. Subprocess transports impose their own bounded backpressure.
 type AssistantMessageEventStream struct {
-	mu      sync.Mutex
-	queue   []AssistantMessageEvent
-	waiters []*eventWaiter
-	done    chan struct{}
+	mu           sync.Mutex
+	queue        []AssistantMessageEvent
+	waiters      []*eventWaiter
+	done         chan struct{}
+	executor     *continuationExecutor
+	publications assistantPublications
+	// producer is the executor turn that owns pushes, if any. Only a producer under the executor publishes live partial views.
+	producer *continuationTurn
 
-	started  bool
-	terminal bool
-	result   *AssistantMessage
+	terminal      bool
+	resolved      bool
+	result        *AssistantMessage
+	resultWaiters []*continuationPromise[*AssistantMessage]
 }
 
 // NewAssistantMessageEventStream creates an open stream.
@@ -37,47 +53,66 @@ func NewAssistantMessageEventStream() *AssistantMessageEventStream {
 }
 
 // Push appends an event. Pushes after termination are ignored, matching Pi's
-// EventStream. Invalid pre-terminal event sequences return an invariant error.
+// EventStream. Done and error may terminate without a start event. Missing data and invalid closed-union values return a payload error.
 func (s *AssistantMessageEventStream) Push(event AssistantMessageEvent) error {
 	if event == nil {
 		return errors.New("assistant message stream event is nil")
 	}
-	event = snapshotAssistantEvent(event)
-
 	s.mu.Lock()
-	defer s.mu.Unlock()
+	if executor := s.executor; executor != nil && executor.trace != nil && executor.trace.push != nil {
+		trace := executor.trace
+		s.mu.Unlock()
+		trace.push(s, event)
+		s.mu.Lock()
+	}
+	var continuations []func()
+	defer func() {
+		s.mu.Unlock()
+		for _, continuation := range continuations {
+			continuation()
+		}
+	}()
 	if s.terminal {
 		return nil
 	}
 	if err := s.validateLocked(event); err != nil {
 		return err
 	}
+	event = mapAssistantEventPartial(event, s.publishPartialLocked)
 
 	terminal := false
 	switch event := event.(type) {
 	case DoneEvent:
+		s.publishTerminalLocked(event.Message)
 		s.terminal = true
 		s.result = event.Message
 		terminal = true
 	case ErrorEvent:
+		s.publishTerminalLocked(event.Error)
 		s.terminal = true
 		s.result = event.Error
 		terminal = true
 	}
 
+	if terminal {
+		continuations = append(continuations, s.resolveResultLocked()...)
+	}
 	if len(s.waiters) == 0 {
 		s.queue = append(s.queue, event)
 	} else {
 		waiter := s.waiters[0]
 		s.waiters[0] = nil
 		s.waiters = s.waiters[1:]
-		waiter.ready <- eventDelivery{event: event}
+		if continuation := waiter.deliver(eventDelivery{event: event}); continuation != nil {
+			continuations = append(continuations, continuation)
+		}
 	}
 
 	if terminal {
-		close(s.done)
 		for _, waiter := range s.waiters {
-			waiter.ready <- eventDelivery{done: true}
+			if continuation := waiter.deliver(eventDelivery{done: true}); continuation != nil {
+				continuations = append(continuations, continuation)
+			}
 		}
 		s.waiters = nil
 	}
@@ -87,17 +122,10 @@ func (s *AssistantMessageEventStream) Push(event AssistantMessageEvent) error {
 func (s *AssistantMessageEventStream) validateLocked(event AssistantMessageEvent) error {
 	switch value := event.(type) {
 	case StartEvent:
-		if s.started {
-			return errors.New("assistant message stream emitted start more than once")
-		}
 		if value.Partial == nil {
 			return errors.New("assistant message stream start is missing partial")
 		}
-		s.started = true
 	case DoneEvent:
-		if !s.started {
-			return errors.New("assistant message stream emitted done before start")
-		}
 		if value.Message == nil {
 			return errors.New("assistant message stream done is missing message")
 		}
@@ -112,9 +140,6 @@ func (s *AssistantMessageEventStream) validateLocked(event AssistantMessageEvent
 			return fmt.Errorf("assistant message stream error has invalid reason %q", value.Reason)
 		}
 	default:
-		if !s.started {
-			return fmt.Errorf("assistant message stream emitted %s before start", event.EventType())
-		}
 		if partial := eventPartial(event); partial == nil {
 			return fmt.Errorf("assistant message stream %s is missing partial", event.EventType())
 		}
@@ -126,49 +151,38 @@ func (s *AssistantMessageEventStream) validateLocked(event AssistantMessageEvent
 // iterators divide events in waiter-registration order, matching Pi's queue.
 // Canceling ctx removes an outstanding waiter without a delivery goroutine.
 func (s *AssistantMessageEventStream) Events(ctx context.Context) iter.Seq[AssistantMessageEvent] {
+	return s.events(ctx, true)
+}
+
+// events is Events with optional delivery-time materialization. A forwarder passes false so a hop between streams neither copies nor observes the partial.
+func (s *AssistantMessageEventStream) events(ctx context.Context, materialize bool) iter.Seq[AssistantMessageEvent] {
 	if ctx == nil {
 		panic("assistant message event stream: nil iterator context")
 	}
 	return func(yield func(AssistantMessageEvent) bool) {
-		for {
-			event, ok := s.next(ctx)
-			if !ok || !yield(event) {
+		if turn, ok := ctx.Value(continuationTurnKey{}).(*continuationTurn); ok && turn != nil {
+			iterator := continuationEventIterator{stream: s, executor: turn.executor}
+			for {
+				delivery := awaitContinuation(turn, iterator.next(ctx))
+				if delivery.done || !yield(s.deliver(delivery.event, materialize)) {
+					return
+				}
+			}
+		}
+		for _, event := range s.observeEvents(ctx, materialize) {
+			if !yield(event) {
 				return
 			}
 		}
 	}
 }
 
-func (s *AssistantMessageEventStream) next(ctx context.Context) (AssistantMessageEvent, bool) {
-	s.mu.Lock()
-	if len(s.queue) > 0 {
-		event := s.queue[0]
-		s.queue[0] = nil
-		s.queue = s.queue[1:]
-		if len(s.queue) == 0 {
-			s.queue = nil
-		}
-		s.mu.Unlock()
-		return event, true
+// deliver sets the event's partial fields to the stream state at the consumer's tick.
+func (s *AssistantMessageEventStream) deliver(event AssistantMessageEvent, materialize bool) AssistantMessageEvent {
+	if !materialize {
+		return event
 	}
-	if s.terminal {
-		s.mu.Unlock()
-		return nil, false
-	}
-	waiter := &eventWaiter{ready: make(chan eventDelivery, 1)}
-	s.waiters = append(s.waiters, waiter)
-	s.mu.Unlock()
-
-	select {
-	case delivery := <-waiter.ready:
-		return delivery.event, !delivery.done
-	case <-ctx.Done():
-		delivery, assigned := s.cancelWaiter(waiter)
-		if !assigned {
-			return nil, false
-		}
-		return delivery.event, !delivery.done
-	}
+	return RefreshEvent(event)
 }
 
 func (s *AssistantMessageEventStream) cancelWaiter(waiter *eventWaiter) (eventDelivery, bool) {
@@ -188,13 +202,58 @@ func (s *AssistantMessageEventStream) cancelWaiter(waiter *eventWaiter) (eventDe
 	return <-waiter.ready, true
 }
 
-// Result waits for termination and returns the exact pointer carried by the
-// terminal DoneEvent or ErrorEvent.
+// End closes iteration without synthesizing an event. An optional result resolves Result once; ending without a result leaves it pending, as Pi's EventStream.end does.
+func (s *AssistantMessageEventStream) End(result ...*AssistantMessage) {
+	s.mu.Lock()
+	var continuations []func()
+	defer func() {
+		s.mu.Unlock()
+		for _, continuation := range continuations {
+			continuation()
+		}
+	}()
+	s.terminal = true
+	if len(result) > 0 && !s.resolved {
+		s.publishTerminalLocked(result[0])
+		s.result = result[0]
+		continuations = append(continuations, s.resolveResultLocked()...)
+	}
+	for _, waiter := range s.waiters {
+		if continuation := waiter.deliver(eventDelivery{done: true}); continuation != nil {
+			continuations = append(continuations, continuation)
+		}
+	}
+	s.waiters = nil
+}
+
+// Result waits for a terminal event or End result and returns the first resolved message pointer.
 func (s *AssistantMessageEventStream) Result() *AssistantMessage {
-	<-s.done
+	result, _ := s.ResultContext(context.Background())
+	return result
+}
+
+// ResultContext waits for the final result or the caller's cancellation without changing stream ownership. The goroutine that runs a consumer callback awaits the result as Pi's `await stream.result()` inside that callback does: it releases the callback's turn and resumes in FIFO order. Any other goroutine only waits, so it never yields a callback that is running.
+func (s *AssistantMessageEventStream) ResultContext(ctx context.Context) (*AssistantMessage, error) {
+	s.mu.Lock()
+	executor := s.executor
+	s.mu.Unlock()
+	if executor != nil {
+		executor.mu.Lock()
+		observation := executor.observation
+		executor.mu.Unlock()
+		if observation != nil && observation.ownedByCaller() {
+			resume := observation.suspend()
+			defer func() { resume(ctx.Err() == nil) }()
+		}
+	}
+	select {
+	case <-s.done:
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return s.result
+	return s.result, nil
 }
 
 func eventPartial(event AssistantMessageEvent) *AssistantMessage {

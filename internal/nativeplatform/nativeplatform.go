@@ -1,7 +1,4 @@
-// Package nativeplatform provides the operating-system queries that upstream
-// Pi loads from its per-platform N-API helpers (packages/tui/src/native-platform.ts).
-// Pig builds with CGO_ENABLED=0 and loads no Node addons, so each query calls
-// the same system function directly.
+// Package nativeplatform provides operating-system queries and native clipboard transfers. Pig builds with CGO_ENABLED=0; Go callers use platform APIs or the X11 wire protocol directly.
 package nativeplatform
 
 // IsModifierPressed mirrors the helper's isModifierPressed(name): it reports

@@ -1,0 +1,38 @@
+# Upstream evidence: Pi 0.87.1 print-mode.ts:79-93,125-146 writes the session header and every toJsonEvent record; openai-completions.ts:310,705-720 retains the failed assistant's API, empty content and provider error body.
+# No faux provider or event projection participates in this comparison.
+name = "04-json-real-provider-error"
+description = "JSON mode compares the complete HTTP-error assistant, event order, header and stderr"
+covers = ["packages/coding-agent/src/modes/print-mode.ts", "packages/ai/src/api/openai-completions.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+openai_fixture = true
+
+[cli]
+args = ["--mode", "json", "HTTP_ERROR"]
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_HOME=../rpc/testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../rpc/testdata/pi-home/agent"]
+pig_args = ["--offline", "--no-extensions", "--model", "strict-wire/strict", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+pi_args = ["--offline", "--no-extensions", "--model", "strict-wire/strict", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3
+both_contain = ['"stopReason":"error"', 'strict wire bad request']
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent session/message clocks vary; retain timestamp presence, type and valid syntax."
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "session"
+reason = "Only the session header has a top-level ID in this event-only mode; preserve a one-to-one identity correspondence."
+[[assert.json_aliases]]
+paths = ["/*/cwd", "/**/sections/cwd"]
+kind = "path"
+reason = "D2: compare the exact isolated cwd root through its explicit alias, retaining its entire suffix."

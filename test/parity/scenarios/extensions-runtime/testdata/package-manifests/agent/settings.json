@@ -1,0 +1,19 @@
+{
+  "packages": [
+    "./packages/bad-json",
+    "./packages/bad-extensions-type",
+    "./packages/bad-skills-type",
+    "./packages/bad-prompts-type",
+    "./packages/bad-themes-type",
+    "./packages/bad-missing",
+    "./packages/vendor-claude",
+    "./packages/vendor-cursor",
+    "./packages/vendor-plugin",
+    "./packages/context-mode",
+    "./packages/context-mode-no-pi"
+  ],
+  "extensions": [
+    "./loose.ts"
+  ],
+  "defaultProjectTrust": "always"
+}

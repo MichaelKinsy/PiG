@@ -39,8 +39,8 @@ func TestAssistantMessageBlock_ThinkingVisibleThenText(t *testing.T) {
 	lines := b.Render(80)
 
 	// lines[0] is the leading spacer (upstream Spacer(1) behaviour).
-	if lines[0] != "" {
-		t.Errorf("first line should be leading spacer, got %q", lines[0])
+	if lines[0] != "\x1b]133;A\x07" {
+		t.Errorf("first line should be zone start on the leading spacer, got %q", lines[0])
 	}
 	// lines[1] should contain thinking SGR.
 	if !strings.Contains(lines[1], "\x1b[3m"+ActiveTheme().ThinkingText) {
@@ -61,8 +61,8 @@ func TestAssistantMessageBlock_ThinkingHiddenShowsStub(t *testing.T) {
 	lines := b.Render(80)
 
 	// lines[0] is the leading spacer; lines[1] is the hidden stub.
-	if lines[0] != "" {
-		t.Errorf("first line should be leading spacer, got %q", lines[0])
+	if lines[0] != "\x1b]133;A\x07" {
+		t.Errorf("first line should be zone start on the leading spacer, got %q", lines[0])
 	}
 	if !strings.Contains(lines[1], thinkingHiddenLabel) {
 		t.Errorf("hidden thinking: want label %q, got %q", thinkingHiddenLabel, lines[1])
@@ -131,6 +131,10 @@ func TestAssistantMessageBlock_CJKWrapUsesBothHorizontalPaddingColumns(t *testin
 	b.SetTextDelta("日本語テスト hello world 你好世界 test")
 	lines := b.Render(32)
 	want := []string{"", " 日本語テスト hello world 你好", " 世界 test"}
+	// Pi's Markdown constructor pads its output, including both horizontal margins, to the requested width.
+	for i := 1; i < len(want); i++ {
+		want[i] += strings.Repeat(" ", 32-lineDisplayWidth(want[i]))
+	}
 	if len(lines) != len(want) {
 		t.Fatalf("CJK line count = %d, want %d: %#v", len(lines), len(want), lines)
 	}
@@ -148,8 +152,8 @@ func TestAssistantMessageBlock_ErrorRendersInsideAssistantBlock(t *testing.T) {
 	if len(lines) < 2 {
 		t.Fatalf("error block: got %d lines, want spacer + error text: %#v", len(lines), lines)
 	}
-	if lines[0] != "" {
-		t.Fatalf("first line should be leading spacer, got %q", lines[0])
+	if lines[0] != "\x1b]133;A\x07" {
+		t.Fatalf("first line should be zone start on the leading spacer, got %q", lines[0])
 	}
 	full := strings.Join(lines, "\n")
 	if !strings.Contains(full, "Error: GitHub Copilot credentials expired") {

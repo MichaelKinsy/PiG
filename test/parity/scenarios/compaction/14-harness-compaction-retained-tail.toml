@@ -1,0 +1,28 @@
+# Pi 0.87.1 agent harness compaction stores retained messages on the compaction
+# entry rather than using coding-agent firstKeptEntryId. Compare retained-tail
+# preparation, full summary request text, routing isolation, usage, file details,
+# and coded failures against unchanged installed Pi. Dynamic IDs/timestamps are
+# not reported; the assertion covers request text and identity separation.
+# The Node resolution flag selects the pinned agent package from Pi's dependencies.
+name = "14-harness-compaction-retained-tail"
+description = "Durable harness retained-tail preparation and summary requests match Pi"
+covers = ["packages/agent/src/harness/compaction/compaction.ts", "packages/agent/src/harness/compaction/utils.ts", "packages/agent/src/harness/messages.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/harness-compaction-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/harness-compaction-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["HARNESS_PREP", "HARNESS_ROUTING true", "summarization_failed", "Turn Context (split turn)"]
+runs = 3

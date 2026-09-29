@@ -16,7 +16,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "test": "node scripts/check-upstream-pin.mjs && node scripts/check-runtime-compat.mjs && tsc --noEmit -p tsconfig.json"
+    "test": "node --test scripts/check-upstream-pin.test.mjs && node scripts/check-upstream-pin.mjs && node scripts/check-runtime-compat.mjs && tsc --noEmit -p tsconfig.json"
   },
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": "0.87.1"

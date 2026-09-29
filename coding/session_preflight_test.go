@@ -28,7 +28,9 @@ func TestPreparedPromptBuffersBashBeforeFirstEvent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	s.RecordBashResult("echo held", BashResult{Output: "held", ExitCode: 0}, false)
+	if err := s.RecordBashResult("echo held", BashResult{Output: "held", ExitCode: new(0)}, false); err != nil {
+		t.Fatal(err)
+	}
 	before := len(s.Messages())
 	_, err = run.Run()
 	if err != nil {

@@ -1,0 +1,27 @@
+# Pi 0.87.1 sdk.ts:356-364 awaits the response notification; runner.ts:989-1018
+# ignores return values and serially awaits handlers before consuming SSE.
+# The extension serves a real openai-completions response with repeated headers,
+# records two observers and the assistant finalization, and prints their order.
+name = "50-after-provider-response"
+description = "Provider response observers receive status and headers before assistant streaming"
+covers = ["packages/coding-agent/src/core/sdk.ts", "packages/ai/src/api/openai-completions.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "event-prompt-probe/probe"
+
+[env]
+pig = ["PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/provider-prompt.mjs"]
+pi_extensions = ["testdata/ext/provider-prompt.mjs"]
+
+[print]
+prompt = "response"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["first:after_provider_response:200:first, second\nsecond\nassistant"]
+runs = 3

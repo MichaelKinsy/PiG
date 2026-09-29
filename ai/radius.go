@@ -34,22 +34,6 @@ type RadiusProvider struct {
 	dynamic []PiMessagesModel
 }
 
-// ModelsPublication is one refresh result handed to RefreshModelsContext.Publish.
-// Persist, when non-nil, is written to the models store before Update runs.
-type ModelsPublication struct {
-	Persist *ModelsStoreEntry
-	Update  func()
-}
-
-// RefreshModelsContext mirrors upstream RefreshModelsContext. Publish reports
-// false when the refresh was superseded or cancelled; the provider then stops.
-type RefreshModelsContext struct {
-	Credential   *Credential
-	Stored       *ModelsStoreEntry
-	AllowNetwork bool
-	Publish      func(ModelsPublication) (bool, error)
-}
-
 // NewRadiusProvider mirrors upstream radiusProvider.
 func NewRadiusProvider(options RadiusProviderOptions) *RadiusProvider {
 	id, name, gateway := options.ID, options.Name, options.Gateway

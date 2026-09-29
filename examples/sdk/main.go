@@ -70,6 +70,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("NewServices: %v", err) //nolint:gocritic // intentional: defers are cleanup-only, already empty
 	}
+	defer svcs.Close()
 
 	// 4. Build the Runtime. No extensions, no shared tools: bring
 	//    your own tools via SessionStartOptions.ExtraTools below if

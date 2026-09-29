@@ -15,7 +15,9 @@ import (
 
 func TestModelRegistrySetProviderReplacesInsteadOfMerging(t *testing.T) {
 	registry := NewModelRegistry(t.TempDir())
-	registry.RegisterProvider("dyn", extension.ProviderConfig{APIKey: "key", BaseURL: "http://a/v1", API: "openai-completions", Models: []extension.ProviderModelConfig{{ID: "m"}}})
+	if err := registry.RegisterProvider("dyn", extension.ProviderConfig{APIKey: "key", BaseURL: "http://a/v1", API: "openai-completions", Models: []extension.ProviderModelConfig{{ID: "m"}}}); err != nil {
+		t.Error(err)
+	}
 	if !registry.HasConfiguredAuth("dyn") {
 		t.Fatal("registered provider with a key is not configured")
 	}
@@ -73,7 +75,7 @@ func TestLlamaHostPublishesCatalogIntoModelRegistry(t *testing.T) {
 		t.Fatalf("GetAvailable = %+v", available)
 	}
 
-	if err := auth.Delete(llama.LlamaProviderID); err != nil {
+	if err := auth.Delete(t.Context(), llama.LlamaProviderID); err != nil {
 		t.Fatal(err)
 	}
 	host.SyncRegistration(context.Background())

@@ -5,7 +5,7 @@ import { CURSOR_MARKER } from "../tui.js";
 import { UndoStack } from "../undo-stack.js";
 import { getGraphemeSegmenter, isWhitespaceChar, sliceByColumn, truncateToWidth, visibleWidth } from "../utils.js";
 import { findWordBackward, findWordForward } from "../word-navigation.js";
-const segmenter = getGraphemeSegmenter();
+import { graphemeSegmenter as segmenter } from "../../../pi-tui-segmenters.mjs";
 /**
  * Input component - single-line text input with horizontal scrolling
  */

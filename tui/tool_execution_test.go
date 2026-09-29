@@ -787,9 +787,9 @@ func TestFormatEditHeaderShowsPatchFiles(t *testing.T) {
 }
 
 func TestFormatEditHeaderShowsMultipleFiles(t *testing.T) {
-	header := FormatEditHeader(json.RawMessage(`{"multi":[{"path":"parity/testdata/provider.ts"},{"path":"ai/test_faux.go"}]}`), "/workspace")
+	header := FormatEditHeader(json.RawMessage(`{"multi":[{"path":"test/parity/testdata/provider.ts"},{"path":"ai/test_faux.go"}]}`), "/workspace")
 	plain := stripANSI(header)
-	if !strings.Contains(plain, "parity/testdata/provider.ts") || !strings.Contains(plain, "+1 file") {
+	if !strings.Contains(plain, "test/parity/testdata/provider.ts") || !strings.Contains(plain, "+1 file") {
 		t.Fatalf("multi-file edit header does not identify affected files: %q", plain)
 	}
 }

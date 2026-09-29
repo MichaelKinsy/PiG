@@ -1,12 +1,14 @@
 package main
 
+// Ports packages/coding-agent/src/core/resource-loader.ts (mapSkillPath and resource source metadata).
+
 import (
 	"os"
 	"path/filepath"
-	"strings"
 
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -19,39 +21,52 @@ func resourceSourceInfoProvider(cwd, agentDir string, sm *codingagent.SettingsMa
 		extConfigs := collectExtensionConfigs(cwd, agentDir, sm, flags, nil, resolvers...)
 		if items, err := collectConfigResourceItems(cwd, agentDir, sm, resolvers...); err == nil {
 			for _, item := range items {
-				infos[item.Path] = sourceInfoFromResourceItem(item)
+				info := sourceInfoFromResourceItem(item)
+				if _, exists := infos[info.Path]; !exists {
+					infos[info.Path] = info
+				}
+			}
+		}
+		seen := make(map[string]bool, len(infos))
+		for _, info := range infos {
+			seen[info.ResourceType+":"+canonicalStatusPath(info.Path)] = true
+		}
+		add := func(path, kind string) {
+			path = resourceMetadataPath(path, kind)
+			key := kind + ":" + canonicalStatusPath(path)
+			if !seen[key] {
+				seen[key] = true
+				addInferredSourceInfo(infos, path, cwd, agentDir, kind)
 			}
 		}
 		for _, p := range promptPaths {
-			addInferredSourceInfo(infos, p, cwd, agentDir, "prompts")
+			add(p, "prompts")
 		}
 		for _, p := range skillInputs {
-			addInferredSourceInfo(infos, p, cwd, agentDir, "skills")
+			add(p, "skills")
 		}
 		for _, p := range themePaths {
-			addInferredSourceInfo(infos, p, cwd, agentDir, "themes")
+			add(p, "themes")
 		}
 		for _, cfg := range extConfigs {
 			path := cfg.Source
 			if path == "" {
 				path = cfg.Path
 			}
-			addInferredSourceInfo(infos, path, cwd, agentDir, "extensions")
+			add(path, "extensions")
 		}
 		return infos
 	}
 }
 
-// sourceInfoFromResourceItem is the item's upstream PathMetadata. A settings
-// entry ({source: "local"}) carries no baseDir upstream
-// (package-manager.ts resolveLocalEntries).
+// sourceInfoFromResourceItem returns Pi's PathMetadata. Skill bundles expose their SKILL.md entry, and a settings entry omits baseDir.
 func sourceInfoFromResourceItem(item tui.ResourceItem) codingagent.ResourceSourceInfo {
 	baseDir := item.BaseDir
 	if item.Origin == "top-level" && item.Source == "local" {
 		baseDir = ""
 	}
 	return codingagent.ResourceSourceInfo{
-		Path:         item.Path,
+		Path:         resourceMetadataPath(item.Path, string(item.ResourceType)),
 		ResourceType: string(item.ResourceType),
 		Enabled:      item.Enabled,
 		Scope:        item.Scope,
@@ -61,7 +76,20 @@ func sourceInfoFromResourceItem(item tui.ResourceItem) codingagent.ResourceSourc
 	}
 }
 
+func resourceMetadataPath(path, kind string) string {
+	if kind == "skills" {
+		if info, err := os.Stat(path); err == nil && info.IsDir() {
+			file := filepath.Join(path, "SKILL.md")
+			if info, err := os.Stat(file); err == nil && !info.IsDir() {
+				return file
+			}
+		}
+	}
+	return path
+}
+
 func addInferredSourceInfo(infos map[string]codingagent.ResourceSourceInfo, path, cwd, agentDir, kind string) {
+	path = resourceMetadataPath(path, kind)
 	if path == "" {
 		return
 	}
@@ -77,10 +105,10 @@ func addInferredSourceInfo(infos map[string]codingagent.ResourceSourceInfo, path
 	}
 	// Upstream getDefaultSourceInfoForPath.
 	switch {
-	case agentDir != "" && isWithin(path, filepath.Join(agentDir, kind)):
+	case agentDir != "" && packagemanager.IsWithin(path, filepath.Join(agentDir, kind)):
 		info.Scope, info.BaseDir = "user", filepath.Join(agentDir, kind)
-	case cwd != "" && isWithin(path, filepath.Join(cwd, ".pig", kind)):
-		info.Scope, info.BaseDir = "project", filepath.Join(cwd, ".pig", kind)
+	case cwd != "" && packagemanager.IsWithin(path, filepath.Join(codingagent.ProjectConfigDir(cwd), kind)):
+		info.Scope, info.BaseDir = "project", filepath.Join(codingagent.ProjectConfigDir(cwd), kind)
 	default:
 		// A path named on the command line (--prompt-template, --skill,
 		// --theme) is temporary, as upstream resolves CLI resources with
@@ -92,19 +120,4 @@ func addInferredSourceInfo(infos map[string]codingagent.ResourceSourceInfo, path
 		}
 	}
 	infos[path] = info
-}
-
-func isWithin(path, base string) bool {
-	if path == "" || base == "" {
-		return false
-	}
-	ap, err1 := filepath.Abs(path)
-	ab, err2 := filepath.Abs(base)
-	if err1 != nil || err2 != nil {
-		return false
-	}
-	if ap == ab {
-		return true
-	}
-	return strings.HasPrefix(ap, ab+string(filepath.Separator))
 }

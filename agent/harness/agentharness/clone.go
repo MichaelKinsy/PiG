@@ -11,7 +11,7 @@ import (
 // cannot affect another recipient or the emitter. Like structuredClone, the
 // copy preserves the object graph: a map, slice or pointer reached twice is
 // copied once and shared inside the clone, and cycles are reproduced rather
-// than followed forever. Unexported struct fields are copied by value.
+// than followed forever. Unexported struct fields are copied by value. Function values panic with DataCloneError before publication.
 func CloneHarnessEvent(event HarnessEvent) HarnessEvent {
 	clone := event
 	if event.Payload != nil {
@@ -19,6 +19,15 @@ func CloneHarnessEvent(event HarnessEvent) HarnessEvent {
 		clone.Payload = cloner.copy(reflect.ValueOf(event.Payload)).Interface().(HarnessEventPayload)
 	}
 	return clone
+}
+
+// CloneValue copies a structured value using the same graph-preserving clone as event delivery. Snapshot capture uses it to isolate stored payloads and returned values. Function values panic with DataCloneError.
+func CloneValue[T any](value T) T {
+	if any(value) == nil {
+		return value
+	}
+	cloner := graphCloner{seen: map[graphKey]reflect.Value{}}
+	return cloner.copy(reflect.ValueOf(&value).Elem()).Interface().(T)
 }
 
 // graphKey identifies one reference value: its type, address and, for
@@ -30,12 +39,20 @@ type graphKey struct {
 	length  int
 }
 
+// DataCloneError reports a value that structured cloning cannot copy.
+type DataCloneError struct{}
+
+func (*DataCloneError) Error() string { return "DataCloneError: function could not be cloned" }
+
 type graphCloner struct {
 	seen map[graphKey]reflect.Value
 }
 
 func (cloner *graphCloner) copy(value reflect.Value) reflect.Value {
 	switch value.Kind() {
+	case reflect.Func:
+		// upstream: packages/agent/src/harness/events.ts:emitBatch
+		panic(&DataCloneError{})
 	case reflect.Pointer:
 		if value.IsNil() {
 			return value

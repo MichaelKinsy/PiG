@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"sync"
@@ -22,9 +23,18 @@ func restoreStartupTheme(t *testing.T) {
 	})
 }
 
+const terminalBackgroundQuery = "\x1b]11;?\x07"
+
+func startThemeDetectionTest(t *testing.T, detection *startupThemeDetection) {
+	t.Helper()
+	detection.start(func(string) error { return nil })
+}
+
 func TestStartupThemeDetectionColorSchemeReplyWins(t *testing.T) {
-	detection := newStartupThemeDetection("", map[string]string{"COLORFGBG": "0;15"})
-	if got := detection.start(); got != "\x1b[?996n\x1b]11;?\x07" {
+	var output bytes.Buffer
+	detection := newStartupThemeDetection(nil, map[string]string{"COLORFGBG": "0;15"}, tui.NewWithOutput(&output, 80, 24))
+	detection.start(func(sequence string) error { _, err := output.WriteString(sequence); return err })
+	if got := output.String(); got != "\x1b[?996n\x1b]11;?\x07" {
 		t.Fatalf("queries = %q", got)
 	}
 	consumed, settled := detection.consume("\x1b]11;rgb:0000/0000/0000\x07")
@@ -47,8 +57,8 @@ func TestStartupThemeDetectionColorSchemeReplyWins(t *testing.T) {
 }
 
 func TestStartupThemeDetectionFallsBackToBackgroundThenEnvironment(t *testing.T) {
-	detection := newStartupThemeDetection("", map[string]string{"COLORFGBG": "15;0"})
-	detection.start()
+	detection := newStartupThemeDetection(nil, map[string]string{"COLORFGBG": "15;0"}, tui.NewWithOutput(io.Discard, 80, 24))
+	startThemeDetectionTest(t, detection)
 	if consumed, _ := detection.consume("\x1b]11;#ffffff\x1b\\"); !consumed {
 		t.Fatal("ST-terminated OSC 11 reply not consumed")
 	}
@@ -59,15 +69,15 @@ func TestStartupThemeDetectionFallsBackToBackgroundThenEnvironment(t *testing.T)
 		t.Fatalf("theme = %q; want the light OSC 11 background", got)
 	}
 
-	silent := newStartupThemeDetection("", map[string]string{"COLORFGBG": "0;15"})
-	silent.start()
+	silent := newStartupThemeDetection(nil, map[string]string{"COLORFGBG": "0;15"}, tui.NewWithOutput(io.Discard, 80, 24))
+	startThemeDetectionTest(t, silent)
 	silent.timeout()
 	if got := silent.themeName(); got != "light" {
 		t.Fatalf("theme = %q; want COLORFGBG light background", got)
 	}
 
-	unparsable := newStartupThemeDetection("", map[string]string{})
-	unparsable.start()
+	unparsable := newStartupThemeDetection(nil, map[string]string{}, tui.NewWithOutput(io.Discard, 80, 24))
+	startThemeDetectionTest(t, unparsable)
 	if consumed, _ := unparsable.consume("\x1b]11;garbage\x07"); !consumed {
 		t.Fatal("unparsable OSC 11 reply must still be consumed")
 	}
@@ -78,11 +88,11 @@ func TestStartupThemeDetectionFallsBackToBackgroundThenEnvironment(t *testing.T)
 }
 
 func TestStartupThemeDetectionConsumesOnlyRepliesItAwaits(t *testing.T) {
-	detection := newStartupThemeDetection("", nil)
+	detection := newStartupThemeDetection(nil, nil, tui.NewWithOutput(io.Discard, 80, 24))
 	if consumed, _ := detection.consume("\x1b]11;rgb:ffff/ffff/ffff\x07"); consumed {
 		t.Fatal("OSC 11 reply consumed before a query was sent")
 	}
-	detection.start()
+	startThemeDetectionTest(t, detection)
 	detection.timeout()
 	// A reply arriving after the timeout is still swallowed.
 	if consumed, settled := detection.consume("\x1b]11;rgb:ffff/ffff/ffff\x07"); !consumed || settled {
@@ -99,22 +109,21 @@ func TestStartupThemeDetectionConsumesOnlyRepliesItAwaits(t *testing.T) {
 }
 
 func TestStartupThemeDetectionHonorsThemeSetting(t *testing.T) {
-	if newStartupThemeDetection("dark", nil) != nil || newStartupThemeDetection("custom", nil) != nil {
+	if newStartupThemeDetection(new("dark"), nil, nil) != nil || newStartupThemeDetection(new("custom"), nil, nil) != nil {
 		t.Fatal("a fixed theme must not query the terminal")
 	}
-	detection := newStartupThemeDetection("paper/night", nil)
+	detection := newStartupThemeDetection(new("paper/night"), nil, tui.NewWithOutput(io.Discard, 80, 24))
 	if detection == nil {
 		t.Fatal("automatic setting must query the terminal")
 	}
-	detection.start()
+	startThemeDetectionTest(t, detection)
 	detection.consume("\x1b[?997;1n")
 	if got := detection.themeName(); got != "night" {
 		t.Fatalf("theme = %q; want the dark half of the automatic setting", got)
 	}
 }
 
-// fakeStartupTerminal records writes and feeds scripted input once the
-// queries are written, like a terminal answering them.
+// fakeStartupTerminal records writes and feeds framed input events after the queries are written.
 type fakeStartupTerminal struct {
 	mu      sync.Mutex
 	writes  []string
@@ -169,6 +178,16 @@ func (f *fakeStartupTerminal) Write(data string) {
 	}()
 }
 
+// startupBackgroundWriter replaces the otherwise discarded renderer output only for OSC 11 control writes.
+type startupBackgroundWriter struct{ terminal *fakeStartupTerminal }
+
+func (w startupBackgroundWriter) Write(data []byte) (int, error) {
+	if string(data) == terminalBackgroundQuery {
+		w.terminal.Write(string(data))
+	}
+	return len(data), nil
+}
+
 func TestStartupPromptAppliesTerminalReplyAndKeepsItOutOfInput(t *testing.T) {
 	restoreStartupTheme(t)
 	tui.SetThemeRegistry(tui.NewThemeRegistry())
@@ -176,12 +195,13 @@ func TestStartupPromptAppliesTerminalReplyAndKeepsItOutOfInput(t *testing.T) {
 	terminal := &fakeStartupTerminal{replies: [][]byte{
 		[]byte("\x1b]11;rgb:ffff/ffff/ffff\x07"),
 		[]byte("\x1b[?997;2n"),
-		[]byte("hi"),
+		[]byte("h"),
+		[]byte("i"),
 		[]byte("\r"),
 	}}
 	input := tui.NewExtensionInputComponent("Name", "")
 	opts := StartupUIOptions{Settings: Settings{}}
-	completed, err := runStartupComponentWith(input, opts, false, tui.NewWithOutput(io.Discard, 80, 24), terminal, map[string]string{})
+	completed, err := runStartupComponentWith(input, opts, false, tui.NewWithOutput(startupBackgroundWriter{terminal}, 80, 24), terminal, map[string]string{})
 	if err != nil || !completed {
 		t.Fatalf("completed=%v err=%v", completed, err)
 	}
@@ -191,7 +211,7 @@ func TestStartupPromptAppliesTerminalReplyAndKeepsItOutOfInput(t *testing.T) {
 	if got := tui.ActiveTheme().Name; got != "light" {
 		t.Fatalf("theme = %q; want the light color-scheme reply", got)
 	}
-	if writes := terminal.written(); len(writes) != 1 || writes[0] != "\x1b[?996n\x1b]11;?\x07" {
+	if writes := terminal.written(); len(writes) != 2 || writes[0] != terminalColorSchemeQuery || writes[1] != terminalBackgroundQuery {
 		t.Fatalf("writes = %q", writes)
 	}
 }
@@ -203,7 +223,7 @@ func TestStartupPromptFallsBackToBackgroundReplyAtTimeout(t *testing.T) {
 	selector := tui.NewExtensionSelector("Pick", []string{"a", "b"})
 	terminal := &fakeStartupTerminal{replies: [][]byte{[]byte("\x1b]11;rgb:ffff/ffff/ffff\x07")}}
 	done := make(chan error, 1)
-	ui := tui.NewWithOutput(io.Discard, 80, 24)
+	ui := tui.NewWithOutput(startupBackgroundWriter{terminal}, 80, 24)
 	go func() {
 		_, err := runStartupComponentWith(selector, StartupUIOptions{}, false, ui, terminal, map[string]string{})
 		done <- err

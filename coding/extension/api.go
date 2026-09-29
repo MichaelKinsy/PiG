@@ -35,7 +35,7 @@ type SendMessagePayload struct {
 //
 // upstream: types.ts:1161–1162
 type SendMessageOptions struct {
-	TriggerTurn bool      `json:"triggerTurn,omitempty"`
+	TriggerTurn *bool     `json:"triggerTurn,omitempty"`
 	DeliverAs   DeliverAs `json:"deliverAs,omitempty"`
 }
 
@@ -46,7 +46,8 @@ type SendMessageOptions struct {
 //
 // upstream: types.ts:1170–1171
 type SendUserMessageOptions struct {
-	DeliverAs DeliverAs `json:"deliverAs,omitempty"`
+	DeliverAs             DeliverAs `json:"deliverAs,omitempty"`
+	ExpandPromptTemplates *bool     `json:"expandPromptTemplates,omitempty"`
 }
 
 // ─── The fat API interface ───────────────────────────────────────────────
@@ -319,7 +320,7 @@ type API interface {
 	// Exec executes a shell command. Pass nil options for defaults. Upstream
 	// returns `Promise<ExecResult>`; Go returns `(ExecResult, error)`.
 	// Cancellation flows through `options.Signal` (which is a context.Context
-	// after the D3 migration; see DIVERGENCES.md).
+	// after the D3 migration; see docs/parity/DIVERGENCES.md).
 	// upstream: types.ts:1190
 	Exec(command string, args []string, options *ExecOptions) (ExecResult, error)
 
@@ -380,7 +381,7 @@ type API interface {
 	// pig translation rule (interface property → method): upstream exposes
 	// this as the property `events: EventBus`. Go interfaces cannot have
 	// fields, so the API surfaces a method that returns the host's single
-	// shared instance. See DIVERGENCES.md "TS→Go translation rituals".
+	// shared instance. See docs/parity/DIVERGENCES.md "TS→Go translation rituals".
 	// upstream: types.ts:1283
 	Events() EventBus
 }

@@ -36,6 +36,7 @@ func NewSelectSubmenu(title, description string, items []SelectItem, currentValu
 	}
 	if s.options.Searchable {
 		s.searchInput = NewInput(InputOptions{})
+		s.searchInput.Focused = true
 		s.searchInput.OnSubmit = func(string) { s.list.HandleInput("\r") }
 	}
 	s.buildSelectList(items, currentValue)

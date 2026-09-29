@@ -1,0 +1,39 @@
+# Upstream evidence: Pi 0.87.1 regression 6949 keeps the available partial session scope when settings also name an unavailable model. interactive-mode.ts:5237-5258 separates selector IDs from the resolved cycling scope.
+# This complete CLI path also checks canonical catalog identity: a known enabled model must not acquire a duplicate unavailable row.
+name = "22-partial-scoped-models"
+description = "Reordering a partial model scope preserves available models and canonical catalog identity."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/coding-agent/src/core/model-resolver.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "fixture/one"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 20
+capture_start = "Model Configuration"
+capture_end = "2/3 enabled"
+
+[[tmux.steps]]
+keys = ["/scoped-models", "Enter"]
+wait_visible_contains = ["Model catalogs refreshed."]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 31 3b 33 42"]
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/partial-scoped-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/partial-scoped-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["two [fixture]", "one [fixture]", "2/3 enabled"]
+both_not_contain = ["[unavailable]", "panic:"]
+output_equal = true
+runs = 3

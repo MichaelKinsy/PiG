@@ -1,0 +1,1 @@
+- Fixed option-shaped prompts after the `--` delimiter being rejected or parsed as flags. Arguments after the delimiter remain messages or `@files`, as in Pi.

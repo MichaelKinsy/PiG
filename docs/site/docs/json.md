@@ -10,7 +10,7 @@ Use this mode when one process invocation handles one prompt. Use [RPC mode](/do
 
 ## Framing
 
-Each output record is one JSON object followed by LF (`\n`). PiG writes diagnostics to standard error.
+Each output record is one JSON object followed by LF (`\n`). PiG writes diagnostics to standard error. JSON mode uses the same field ordering and string escaping as the [RPC event encoder](/docs/latest/rpc#framing).
 
 The first output line is the Session header. PiG writes it with `--no-session` too:
 
@@ -18,7 +18,7 @@ The first output line is the Session header. PiG writes it with `--no-session` t
 {"type":"session","version":3,"id":"session-uuid","timestamp":"2026-01-15T14:00:00Z","cwd":"/work/project"}
 ```
 
-Model-loop events follow as they occur.
+Model-loop events follow as they occur. PiG converts and serializes each event during the Session notification, before message persistence. The output reader writes those owned bytes in order; it does not observe a retained partial again later.
 
 ## Events
 
@@ -82,7 +82,9 @@ A tool call emits lifecycle records:
 
 ## Completion and errors
 
-PiG waits briefly for the terminal `agent_settled` event before it closes the stream. It does not print the final assistant text a second time.
+PiG drains serialized event output after the terminal `agent_settled` event before it closes the stream. It does not print the final assistant text a second time.
+
+A conversion or serialization failure fails the run without abandoning the event drain. Already serialized records remain ordered, and the first failure remains the reported cause. Termination signals retain their signal exit status rather than reporting an internal cancellation error.
 
 The process returns the prompt error as its exit status. A consumer must read standard error and inspect terminal message events.
 

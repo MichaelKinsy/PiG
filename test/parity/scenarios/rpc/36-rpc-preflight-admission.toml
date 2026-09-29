@@ -1,0 +1,74 @@
+# Pi 0.87.1 agent-session.ts:1606-1760 does not reserve the agent during input or before_agent_start awaits.
+# A second prompt and both queue APIs remain usable while the first preflight is suspended. UI responses are causal barriers, not timing sleeps.
+name = "36-rpc-preflight-admission"
+description = "Suspended preflight stays idle and admits another prompt, steering, follow-up and UI responses"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+[[rpc.steps]]
+line = '{"id":"first","type":"prompt","message":"Remember this exact code: alpha"}'
+wait_event = '{"type":"extension_ui_request","method":"select","title":"Preflight suspended"}'
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"idle","type":"get_state"}'
+wait_event = '{"type":"response","id":"idle"}'
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"steer","type":"steer","message":"What is 20+22? steer"}'
+wait_event = '{"type":"response","id":"steer"}'
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"follow","type":"follow_up","message":"What is 20+22? follow"}'
+wait_event = '{"type":"response","id":"follow"}'
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"second","type":"prompt","message":"What is 20+22?"}'
+wait_event = '{"type":"agent_settled"}'
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID}}","value":"release"}'
+wait_event = '{"type":"agent_settled"}'
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"input","type":"prompt","message":"hold-input"}'
+wait_event = '{"type":"extension_ui_request","method":"select","title":"Input suspended"}'
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"id":"input-idle","type":"get_state"}'
+wait_event = '{"type":"response","id":"input-idle"}'
+wait_timeout_seconds = 10
+[[rpc.steps]]
+line = '{"type":"extension_ui_response","id":"{{RPC_REQUEST_ID}}","value":"release"}'
+wait_event = '{"type":"agent_settled"}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["../../../../cmd/pig/testdata/rpc-preflight.mjs"]
+pi_extensions = ["../../../../cmd/pig/testdata/rpc-preflight.mjs", "../../testdata/test-faux-provider.ts"]
+# Same explicit prompt controls D2/D22 inputs without deleting captured sections. In-memory sessions leave no generated session filename to alias.
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--system-prompt", "RPC admission.", "--no-context-files", "--no-skills"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--system-prompt", "RPC admission.", "--no-context-files", "--no-skills"]
+
+[assert]
+json_output_equal = true
+stderr_equal = true
+exit_code = 0
+runs = 3
+[[assert.json_aliases]]
+paths = ["/*/id", "/**/sessionId"]
+kind = "id"
+group = "runtime"
+pattern = '^[0-9a-f-]{36}$'
+reason = "Session and UI UUIDs vary. A bijection preserves distinct identities; literal command IDs remain unchanged."
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "Only the exact isolated cwd varies in the explicit prompt; retain every other byte."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message clocks vary; retain presence, numeric/string type and valid syntax."

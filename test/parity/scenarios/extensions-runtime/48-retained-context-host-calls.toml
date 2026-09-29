@@ -1,0 +1,24 @@
+# Pi 0.87.1 runner.ts:809-886 retains live Context getters after the originating handler returns; only runtime invalidation makes those getters stale.
+# The Go side retains the original Go SDK Context across an actual Host/connection response, then invokes awaited UI calls on that same live connection. Neither side replaces the retained Context with a later handler's Context.
+name = "48-retained-context-host-calls"
+description = "Retained Context host calls survive normal completion but not connection retirement"
+covers = ["packages/coding-agent/src/core/extensions/runner.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/retained-context"]
+pi_args = ["node", "./test/parity/testdata/retained-context-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['["current draft","","replacement draft",true]']
+runs = 3

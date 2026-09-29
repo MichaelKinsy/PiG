@@ -1,0 +1,26 @@
+# Pi 0.87.1 openai-responses-shared.ts:442-445,477,683 applies final_answer
+# provisionally at item start/end, before the terminal response replaces it.
+# The exact output records the event-time stop reason, not the final mutable
+# message pointer. Both probes exercise all four upstream phase combinations.
+name = "13-responses-message-phases"
+description = "Responses partial events expose provisional final-answer stop before terminal incomplete overrides it."
+covers = ["packages/ai/src/api/openai-responses-shared.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/responses-phases-pig"]
+pi_args = ["node", "./test/parity/testdata/responses-phases-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["commentary/final_answer/completed start:pending end:stop terminal:stop", "final_answer/final_answer/incomplete start:stop end:stop terminal:length"]
+runs = 3

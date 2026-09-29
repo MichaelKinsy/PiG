@@ -195,6 +195,38 @@ func TestEmitContext_HandlerErrorRoutesViaEmitErrorAndContinues(t *testing.T) {
 	}
 }
 
+// TestEmitContext_SubprocessMessagesNotAListIsHandlerError: every subprocess
+// SDK forwards a context result whose messages value is not a list, and the
+// host reports it as that handler's error instead of treating the context as
+// unchanged. The next handler still runs and its replacement applies.
+func TestEmitContext_SubprocessMessagesNotAListIsHandlerError(t *testing.T) {
+	malformed := newFakeExtension("/ext/malformed")
+	malformed.Handlers["context"] = []extension.HandlerFn{func(...any) (any, error) {
+		return json.RawMessage(`{"messages":"not-a-list"}`), nil
+	}}
+	replacing := newFakeExtension("/ext/replacing")
+	replacing.Handlers["context"] = []extension.HandlerFn{func(...any) (any, error) {
+		return json.RawMessage(`{"messages":["replaced"],"_pigContextUnchanged":false}`), nil
+	}}
+	r := inproc.NewRunner([]extension.Extension{malformed, replacing}, ".")
+	var failures []string
+	r.AddErrorListener(func(e *extension.ExtensionError) {
+		if e.Event == "context" {
+			failures = append(failures, e.ExtensionPath)
+		}
+	})
+	got, err := r.EmitContext(context.Background(), []extension.AgentMessage{"original"})
+	if err != nil {
+		t.Fatalf("err = %v", err)
+	}
+	if len(failures) != 1 || failures[0] != "/ext/malformed" {
+		t.Fatalf("context handler errors = %v, want [/ext/malformed]", failures)
+	}
+	if len(got) != 1 || got[0] != "replaced" {
+		t.Fatalf("got = %v, want [replaced]", got)
+	}
+}
+
 // ─── EmitBeforeProviderRequest ────────────────────────────────────────────
 
 func TestEmitBPR_StaleRunnerReturnsErrStaleContext(t *testing.T) {

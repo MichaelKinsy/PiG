@@ -1,0 +1,45 @@
+# Pi 0.87.1 rpc-mode.ts:393-424,786-811 and agent-session.ts:1634-1760,1823-1873 admit input before awaited preflight/queue continuations.
+# State queries snapshot idle/empty queues in the input callback, even though their response and the subsequent queue events are observed after that callback.
+name = "35-rpc-queue-prompt-await"
+description = "Prompt preflight and queue awaits preserve input-time state snapshots and continuation order"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+[[rpc.steps]]
+line = '''{"id":"prompt","type":"prompt","message":""}
+{"id":"before-queues","type":"get_state"}
+{"id":"steer","type":"steer","message":""}
+{"id":"follow","type":"follow_up","message":""}
+{"id":"after-queues","type":"get_state"}'''
+wait_event = '{"type":"agent_settled"}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+# Same explicit prompt avoids D2/D22 inputs without deleting captured sections; in-memory sessions omit generated filenames.
+pig_args = ["--model", "test-faux/faux-1", "--no-session", "--system-prompt", "RPC runtime values.", "--no-context-files", "--no-skills"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session", "--system-prompt", "RPC runtime values.", "--no-context-files", "--no-skills"]
+
+[assert]
+json_output_equal = true
+stderr_equal = true
+exit_code = 0
+runs = 3
+[[assert.json_aliases]]
+paths = ["/**/sessionId"]
+kind = "id"
+group = "session"
+pattern = '^[0-9a-f-]{36}$'
+reason = "The in-memory session UUID varies per process. A bijection preserves identity across both snapshots."
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "Only the exact isolated cwd varies in the explicit system prompt; retain section structure and all other text."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent entry and message clocks vary; preserve field presence, timestamp type and syntax."

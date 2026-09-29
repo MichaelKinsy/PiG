@@ -13,7 +13,7 @@ Pi is the upstream TypeScript project at <https://github.com/earendil-works/pi>.
 
 ## PiG
 
-PiG is the Go implementation in this repository. The executable is `pig`. PiG follows the exact Pi release pinned in `coding/pigversion/pigversion.go`.
+PiG is the Go implementation in this repository. The executable is `pig`. PiG follows the exact Pi release pinned in `internal/coding/pigversion/pigversion.go`.
 
 ## Stock PiG
 
@@ -59,7 +59,7 @@ Pig Porter is the local interactive and headless workbench for upstream-first pa
 
 ## Divergence
 
-A divergence is an intentional user-visible or interoperability difference from the pinned Pi behavior. `DIVERGENCES.md` records each approved divergence. Language mechanics and implementation details that do not change observable behavior are not divergences.
+A divergence is an intentional user-visible or interoperability difference from the pinned Pi behavior. `docs/parity/DIVERGENCES.md` records each approved divergence. Language mechanics and implementation details that do not change observable behavior are not divergences.
 
 ## Evidence
 

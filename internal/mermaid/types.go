@@ -39,8 +39,4 @@ type Art struct {
 	Styled   [][]Span
 	Width    int
 	Warnings []string
-	// splitWord records that a label was broken inside a word to fit its box.
-	// RenderWithin refuses such a layout: a grid of sliced fragments is less
-	// readable than the source it would replace.
-	splitWord bool
 }

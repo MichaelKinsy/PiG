@@ -10,6 +10,8 @@ package widthx
 import (
 	"sort"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 const (
@@ -151,7 +153,7 @@ func FirstGrapheme(s string) (cluster, rest string) {
 	if s == "" {
 		return "", ""
 	}
-	r, n := utf8.DecodeRuneInString(s)
+	r, n := jsstring.DecodeRuneInString(s)
 	p := props(r)
 	prev := gcbOf(p)
 	// State for GB9c (InCB) and GB11 (emoji ZWJ) and GB12/13 (RI parity).
@@ -169,7 +171,7 @@ func FirstGrapheme(s string) (cluster, rest string) {
 	}
 	i := n
 	for i < len(s) {
-		r, n = utf8.DecodeRuneInString(s[i:])
+		r, n = jsstring.DecodeRuneInString(s[i:])
 		q := props(r)
 		cur := gcbOf(q)
 		brk := true
@@ -249,7 +251,9 @@ func GraphemeWidth(seg string) int {
 	}
 	// terminalSpacingMarkRegex: every code point is a terminal spacing mark.
 	allTSM, allZW, count := true, true, 0
-	for _, r := range seg {
+	for rest := seg; rest != ""; {
+		r, size := jsstring.DecodeRuneInString(rest)
+		rest = rest[size:]
 		p := props(r)
 		if p&pTSM == 0 {
 			allTSM = false
@@ -271,7 +275,7 @@ func GraphemeWidth(seg string) int {
 	// Strip leading non-printing code points.
 	base := seg
 	for base != "" {
-		r, n := utf8.DecodeRuneInString(base)
+		r, n := jsstring.DecodeRuneInString(base)
 		if props(r)&pNP == 0 {
 			break
 		}
@@ -280,13 +284,15 @@ func GraphemeWidth(seg string) int {
 	if base == "" {
 		return 0
 	}
-	cp, n := utf8.DecodeRuneInString(base)
+	cp, n := jsstring.DecodeRuneInString(base)
 	if cp >= 0x1f1e6 && cp <= 0x1f1ff {
 		return 2
 	}
 	width := EastAsianWidth(cp)
 	followsMark := false
-	for _, c := range base[n:] {
+	for rest := base[n:]; rest != ""; {
+		c, size := jsstring.DecodeRuneInString(rest)
+		rest = rest[size:]
 		p := props(c)
 		switch {
 		case p&pTSM != 0:
@@ -308,13 +314,15 @@ func GraphemeWidth(seg string) int {
 
 // couldBeEmoji mirrors upstream's prefilter, including its UTF-16 length test.
 func couldBeEmoji(seg string) bool {
-	cp, _ := utf8.DecodeRuneInString(seg)
+	cp, _ := jsstring.DecodeRuneInString(seg)
 	if (cp >= 0x1f000 && cp <= 0x1fbff) || (cp >= 0x2300 && cp <= 0x23ff) ||
 		(cp >= 0x2600 && cp <= 0x27bf) || (cp >= 0x2b50 && cp <= 0x2b55) {
 		return true
 	}
 	units := 0
-	for _, r := range seg {
+	for rest := seg; rest != ""; {
+		r, size := jsstring.DecodeRuneInString(rest)
+		rest = rest[size:]
 		if r == 0xFE0F {
 			return true
 		}
@@ -328,9 +336,12 @@ func couldBeEmoji(seg string) bool {
 }
 
 func isRGIEmoji(seg string) bool {
-	r, n := utf8.DecodeRuneInString(seg)
+	r, n := jsstring.DecodeRuneInString(seg)
 	if n == len(seg) {
 		return props(r)&pRGI1 != 0
+	}
+	if !utf8.ValidString(seg) {
+		seg = jsstring.FromUTF16(jsstring.ToUTF16(seg))
 	}
 	_, ok := rgiSet[seg]
 	return ok

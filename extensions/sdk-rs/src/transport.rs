@@ -28,6 +28,8 @@ mod windows_stream {
         fn recv(socket: usize, buffer: *mut u8, length: i32, flags: i32) -> i32;
         fn send(socket: usize, buffer: *const u8, length: i32, flags: i32) -> i32;
         fn closesocket(socket: usize) -> i32;
+        #[link_name = "shutdown"]
+        fn shutdown_socket(socket: usize, how: i32) -> i32;
     }
 
     fn last_socket_error() -> io::Error {
@@ -93,6 +95,20 @@ mod windows_stream {
             Ok(Self {
                 socket: self.socket.clone(),
             })
+        }
+
+        /// Ends the socket for every clone, as std's UnixStream::shutdown does on unix.
+        pub(crate) fn shutdown(&self, how: std::net::Shutdown) -> io::Result<()> {
+            let how = match how {
+                std::net::Shutdown::Read => 0,
+                std::net::Shutdown::Write => 1,
+                std::net::Shutdown::Both => 2,
+            };
+            if unsafe { shutdown_socket(self.socket.0, how) } == SOCKET_ERROR {
+                Err(last_socket_error())
+            } else {
+                Ok(())
+            }
         }
     }
 

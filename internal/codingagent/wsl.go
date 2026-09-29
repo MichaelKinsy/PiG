@@ -2,10 +2,11 @@ package codingagent
 
 import (
 	"os"
-	"regexp"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
-var wslReleasePattern = regexp.MustCompile(`(?i)microsoft|wsl`)
+var wslReleasePattern = lazyregexp.New(`(?i)microsoft|wsl`)
 
 // IsWSL reports whether the process runs under Windows Subsystem for Linux,
 // where Windows executables are reachable through interop. Ports

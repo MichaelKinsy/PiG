@@ -5,6 +5,45 @@ import (
 	"testing"
 )
 
+// TestCodingAgentTruncateToWidth preserves every input and assertion from packages/coding-agent/test/truncate-to-width.test.ts.
+func TestCodingAgentTruncateToWidth(t *testing.T) {
+	for _, tc := range []struct {
+		name          string
+		message       string
+		terminalWidth int
+		unchanged     bool
+		ellipsis      bool
+	}{
+		// packages/coding-agent/test/truncate-to-width.test.ts:11
+		{"should truncate messages with Unicode characters correctly", `✔ script to run › dev $ concurrently "vite" "node --import tsx ./`, 67, false, false},
+		// packages/coding-agent/test/truncate-to-width.test.ts:23
+		{"should handle emoji characters", "🎉 Celebration! 🚀 Launch 📦 Package ready for deployment now", 40, false, false},
+		// packages/coding-agent/test/truncate-to-width.test.ts:34
+		{"should handle mixed ASCII and wide characters", "Hello 世界 Test 你好 More text here that is long", 30, false, false},
+		// packages/coding-agent/test/truncate-to-width.test.ts:45
+		{"should not truncate messages that fit", "Short message", 50, true, false},
+		// packages/coding-agent/test/truncate-to-width.test.ts:56
+		{"should add ellipsis when truncating", "This is a very long message that needs to be truncated", 30, false, true},
+		// packages/coding-agent/test/truncate-to-width.test.ts:67
+		{"should handle the exact crash case from issue report", `✔ script to run › dev $ concurrently "vite" "node --import tsx ./server.ts"`, 67, false, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			const cursorWidth = 2
+			maxMsgWidth := tc.terminalWidth - cursorWidth
+			got := TruncateToWidth(tc.message, maxMsgWidth, "...", false)
+			if tc.unchanged && got != tc.message {
+				t.Errorf("TruncateToWidth = %q, want unchanged %q", got, tc.message)
+			}
+			if tc.ellipsis && !strings.Contains(got, "...") {
+				t.Errorf("TruncateToWidth = %q, want ellipsis", got)
+			}
+			if width := VisibleWidth(got); width > maxMsgWidth {
+				t.Errorf("message width %d + cursor width %d exceeds terminal width %d: %q", width, cursorWidth, tc.terminalWidth, got)
+			}
+		})
+	}
+}
+
 func TestTruncateToWidth_BasicAscii(t *testing.T) {
 	cases := []struct {
 		name     string

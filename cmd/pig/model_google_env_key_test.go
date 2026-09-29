@@ -2,11 +2,15 @@ package main
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
+
+	"golang.org/x/oauth2"
 
 	"github.com/MichaelKinsy/PiG/ai"
 )
@@ -31,6 +35,14 @@ func TestBuildModelGoogleKeysMatchUpstreamEnvVars(t *testing.T) {
 				t.Setenv(name, tc.env[name])
 			}
 			keys := make(chan string, 1)
+			t.Setenv("GOOGLE_CLOUD_PROJECT", "test-project")
+			t.Setenv("GOOGLE_CLOUD_LOCATION", "us-central1")
+			adc := filepath.Join(t.TempDir(), "adc.json")
+			if err := os.WriteFile(adc, []byte(`{"type":"authorized_user","client_id":"test-client","client_secret":"test-secret","refresh_token":"test-refresh"}`), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			t.Setenv("GOOGLE_APPLICATION_CREDENTIALS", adc)
+			ctx := context.WithValue(t.Context(), oauth2.HTTPClient, &http.Client{Transport: googleEnvKeyTokenTransport{t}})
 			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				select {
 				case keys <- r.Header.Get("x-goog-api-key") + r.URL.Query().Get("key"):
@@ -51,7 +63,7 @@ func TestBuildModelGoogleKeysMatchUpstreamEnvVars(t *testing.T) {
 				t.Fatal(err)
 			}
 			transcript := ai.NormalizeContext(ai.Context{Messages: []ai.Message{ai.UserMessage{Content: ai.UserText("Hello")}}})
-			stream, err := model.Provider.Stream(context.Background(), transcript, ai.StreamOptions{})
+			stream, err := model.Provider.Stream(ctx, transcript, ai.StreamOptions{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -67,4 +79,13 @@ func TestBuildModelGoogleKeysMatchUpstreamEnvVars(t *testing.T) {
 			}
 		})
 	}
+}
+
+type googleEnvKeyTokenTransport struct{ t *testing.T }
+
+func (transport googleEnvKeyTokenTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	if request.URL.Host != "oauth2.googleapis.com" {
+		transport.t.Fatalf("unexpected ADC token URL %s", request.URL)
+	}
+	return &http.Response{StatusCode: 200, Header: http.Header{"Content-Type": []string{"application/json"}}, Body: io.NopCloser(strings.NewReader(`{"access_token":"adc-access","token_type":"Bearer","expires_in":3600}`))}, nil
 }

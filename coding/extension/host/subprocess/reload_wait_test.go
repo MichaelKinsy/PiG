@@ -9,6 +9,9 @@ import (
 // Reload returns only after the packed processes it replaced have exited. A
 // Reload that returns while a replaced process is still exiting leaves two
 // processes for one Node cell and keeps the old process's cache usage lease.
+// An unchanged Node cell keeps its process and re-invokes its factories in it,
+// so this reload moves the extension out of the shared cell: the packed process
+// no longer has a member and is replaced.
 func TestReloadWaitsForReplacedPackedProcesses(t *testing.T) {
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Fatalf("node is required for the extension fixture: %v", err)
@@ -18,8 +21,13 @@ func TestReloadWaitsForReplacedPackedProcesses(t *testing.T) {
 		t.Fatal(err)
 	}
 	h := NewHost(t.TempDir())
+	isolate := false
 	h.SetConfigLoader(func() ([]ExtConfig, error) {
-		return []ExtConfig{{Name: "ctx-mode", Source: fixture, Enabled: true}}, nil
+		config := ExtConfig{Name: "ctx-mode", Source: fixture, Enabled: true}
+		if isolate {
+			config.Isolation = "isolated"
+		}
+		return []ExtConfig{config}, nil
 	})
 	t.Cleanup(func() { h.Shutdown("test done") })
 	if loaded, err := h.Reload(t.Context()); err != nil || len(loaded) != 1 {
@@ -35,6 +43,7 @@ func TestReloadWaitsForReplacedPackedProcesses(t *testing.T) {
 		t.Fatal("the extension did not run in a packed process")
 	}
 
+	isolate = true
 	if loaded, err := h.Reload(t.Context()); err != nil || len(loaded) != 1 {
 		t.Fatalf("reload = %d extensions, %v", len(loaded), err)
 	}

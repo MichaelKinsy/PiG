@@ -57,15 +57,16 @@ func TestOpenAICodexResponses_RequestMatchesCodexProtocol(t *testing.T) {
 		SystemPrompt: "system prompt",
 		Messages:     []Message{UserMessage{Content: UserText("hello")}},
 	})
-	_, err := provider.Stream(context.Background(), transcript, StreamOptions{
+	stream, err := provider.Stream(context.Background(), transcript, StreamOptions{
 		MaxTokens:   1000,
 		Thinking:    ThinkingHigh,
 		IsReasoning: true,
 		SessionID:   "sess",
 		Transport:   TransportSSE,
 	})
+	err = awaitProviderFailure(t, stream, err)
 	if err == nil {
-		t.Fatal("Stream() error = nil, want probe HTTP error")
+		t.Fatal("terminal error = nil, want probe HTTP error")
 	}
 
 	if got := capturedBody["instructions"]; got != "system prompt" {

@@ -204,8 +204,9 @@ func TestManagedToolCallbacksProbe(t *testing.T) {
 		Message string `json:"message"`
 	}
 	type trace struct {
-		Name     string   `json:"name"`
-		Statuses []status `json:"statuses"`
+		Name      string   `json:"name"`
+		Statuses  []status `json:"statuses"`
+		Downloads int      `json:"downloads,omitempty"`
 	}
 	var traces []trace
 	for _, tc := range toolStatusFailureCases() {
@@ -225,6 +226,31 @@ func TestManagedToolCallbacksProbe(t *testing.T) {
 	for _, tool := range []string{"fd", "rg"} {
 		result := trace{Name: "offline " + tool}
 		NewToolsManager(t.TempDir()).EnsureTool(t.Context(), tool, func(s ToolStatus) { result.Statuses = append(result.Statuses, status(s)) })
+		traces = append(traces, result)
+	}
+	t.Setenv("PI_OFFLINE", "")
+	for _, tool := range []string{"fd", "rg"} {
+		assetName := toolsTable[tool].GetAssetName("test", "linux", "arm64")
+		srv := newFakeReleaseServer(t, toolsTable[tool].Repo, "vtest", assetName, buildTarGz(t, tool, []byte("complete binary")))
+		tm := makeTestManager(t, srv, "linux", "arm64")
+		result := trace{Name: "installed reuse " + tool}
+		want := filepath.Join(tm.BinDir(), tool)
+		for range 2 {
+			path := tm.EnsureTool(t.Context(), tool, func(s ToolStatus) {
+				result.Statuses = append(result.Statuses, status{s.Type, strings.ReplaceAll(s.Message, tm.BinDir(), "/fixture/bin")})
+			})
+			if path != want {
+				t.Fatalf("installed %s path = %q, want %q", tool, path, want)
+			}
+		}
+		body, err := os.ReadFile(want)
+		if err != nil || string(body) != "complete binary" {
+			t.Fatalf("installed %s = %q, %v", tool, body, err)
+		}
+		result.Downloads = srv.dlHits
+		if result.Downloads != 1 || srv.apiHits != 1 {
+			t.Fatalf("installed reuse: downloads=%d lookups=%d", result.Downloads, srv.apiHits)
+		}
 		traces = append(traces, result)
 	}
 	encoded, err := json.Marshal(traces)

@@ -54,7 +54,7 @@ not copy TypeScript `src` directories or barrel modules because those are npm
 package mechanics.
 
 PiG does not currently implement Pi's experimental remote Session packages or
-its standalone telemetry and evaluation packages. `PORT_MAP.md` defines the
+its standalone telemetry and evaluation packages. `docs/parity/PORT_MAP.md` defines the
 exact package scope.
 
 ## User entity map

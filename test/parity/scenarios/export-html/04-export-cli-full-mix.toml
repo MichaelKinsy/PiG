@@ -1,0 +1,51 @@
+# Behavior family: export-html
+# Scenario: CLI --export with all message types (full mix).
+#
+# Session JSONL carries a comprehensive mix: user messages, assistant text,
+# thinking blocks, toolCall blocks with flat toolResult-role messages (bash +
+# write), error results, and ANSI escape codes. This exercises the full
+# FromJSONL parser and ToHTML template assembly across the entry-type spectrum.
+#
+# Pi 0.87.1 core/export-html/index.ts:144-177 embeds the complete page and session data.
+# Probe: pi --export <fixture>/full-mix.jsonl <isolated>/out.html.
+# Complete HTML equality is re-probed after refreshing the pinned assets.
+# Raw evidence and hashes: docs/findings/fix-export-html.md.
+#
+# Coverage limit: template-rendered tools only, so export-html's custom
+# extension tool pre-render path is not exercised here.
+
+name = "04-export-cli-full-mix"
+description = "CLI --export with thinking + tools + errors + ANSI produces identical HTML"
+covers = [
+  "packages/coding-agent/src/core/export-html/index.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_HOME=testdata/pig-home"]
+pig_args = ["--export", "testdata/sessions/full-mix.jsonl", "{{TEMP}}/out.html"]
+pi_args = ["--export", "testdata/sessions/full-mix.jsonl", "{{TEMP}}/out.html"]
+
+[cli]
+timeout_seconds = 15
+cwd = "."
+# The command's real output is the file, not the stdout line.
+artifact_path = "{{TEMP}}/out.html"
+
+[assert]
+exit_code = 0
+both_contain = ["Exported to:"]
+output_equal = true
+runs = 3
+
+# Compare the complete exported page, including template assets and embedded session data.
+artifact_equal = true
+
+artifact_both_contain = ["eyJoZWFkZXIiOnsidHlwZSI6InNlc3Npb24iLCJpZCI6InRlc3QtZnVsbCIs"]
+
+# normalize-rationale: only the status line's isolated root differs under D2; the artifact is untouched.
+[[assert.normalize_replace]]
+pattern = '(?m)^(Exported to: )/[^\r\n]*/parity-cli-04-export-cli-full-mix-(pig|pi)-[0-9]+'
+with = '${1}<TEMP>'
+reason = "D2: replace only this scenario's allocated temporary root, preserving the destination suffix and the full HTML artifact."

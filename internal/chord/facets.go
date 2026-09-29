@@ -104,7 +104,7 @@ func CombineFacetLoaders(loaders ...FacetLoader) FacetLoader {
 				reversed := slices.Clone(loaded)
 				slices.Reverse(reversed)
 				if cleanup := disposeLoaded(ctx, reversed); len(cleanup) > 0 {
-					return LoadedFacets{}, fmt.Errorf("Facet loading and cleanup failed: %w", errors.Join(append([]error{err}, cleanup...)...))
+					return LoadedFacets{}, NewAggregateError("Facet loading and cleanup failed", append([]error{err}, cleanup...))
 				}
 				return LoadedFacets{}, err
 			}
@@ -123,7 +123,7 @@ func CombineFacetLoaders(loaders ...FacetLoader) FacetLoader {
 			slices.Reverse(reversed)
 			errs := disposeLoaded(ctx, reversed)
 			if len(errs) > 1 {
-				return fmt.Errorf("Failed to dispose loaded facets: %w", errors.Join(errs...))
+				return NewAggregateError("Failed to dispose loaded facets", errs)
 			}
 			return joinErrors(errs)
 		}}, nil
@@ -254,7 +254,7 @@ func (lifecycle *facetLifecycle) dispose(ctx context.Context) error {
 	lifecycle.state = lifecycleDead
 	lifecycle.mu.Unlock()
 	if len(errs) > 1 {
-		return fmt.Errorf("Failed to dispose facet %s: %w", lifecycle.id, errors.Join(errs...))
+		return NewAggregateError(fmt.Sprintf("Failed to dispose facet %s", lifecycle.id), errs)
 	}
 	return joinErrors(errs)
 }
@@ -534,18 +534,19 @@ type serviceSlot struct {
 	serviceId      string
 	mu             sync.Mutex
 	implementation any
+	remote         *RemoteService
 	bound          bool
 }
 
 func (slot *serviceSlot) bind(implementation any) {
 	slot.mu.Lock()
-	slot.implementation, slot.bound = implementation, true
+	slot.implementation, slot.remote, slot.bound = implementation, nil, true
 	slot.mu.Unlock()
 }
 
 func (slot *serviceSlot) unbind() {
 	slot.mu.Lock()
-	slot.implementation, slot.bound = nil, false
+	slot.implementation, slot.remote, slot.bound = nil, nil, false
 	slot.mu.Unlock()
 }
 
@@ -578,8 +579,10 @@ func UseService[T any](env *FacetEnvironment, def pico3.ServiceDefinition[T]) (*
 }
 
 // ObserveService declares a hard dependency on keyed def. After activation,
-// handler runs on its own goroutine for each live instance with a context
-// cancelled when that instance closes or the facet is disposed.
+// handler runs synchronously within the delivery that admits each live
+// instance, with a context cancelled when that instance closes or the facet
+// is disposed. It must not block on that delivery; work that outlives the
+// call runs in a task the handler owns and ties to the context.
 func ObserveService[T any](env *FacetEnvironment, def pico3.ServiceDefinition[T], handler func(context.Context, T) error) error {
 	runtime := env.runtime
 	runtime.lifecycle.mu.Lock()
@@ -652,23 +655,30 @@ func newLocalKeyedRegistry(serviceIds []string, onError func(error)) *localKeyed
 
 func (registry *localKeyedRegistry) spawn(serviceId, key string, implementation any) (func(), error) {
 	registry.mu.Lock()
-	defer registry.mu.Unlock()
 	if registry.disposed {
+		registry.mu.Unlock()
 		return nil, errors.New("Local keyed service registry is disposed")
 	}
 	registration, ok := registry.registrations[serviceId]
 	if !ok {
+		registry.mu.Unlock()
 		return nil, fmt.Errorf("Local keyed service %s is not registered", serviceId)
 	}
 	if _, exists := registration.entries.Get(key); exists {
+		registry.mu.Unlock()
 		return nil, fmt.Errorf("Local service %s already has a live instance with key %s", serviceId, key)
 	}
 	registration.generations[key]++
 	instance := &localInstance{key: key, generation: registration.generations[key], implementation: implementation}
 	registration.entries.Set(key, instance)
+	var starts []func()
 	for _, observer := range registration.observers.Keys() {
-		registry.startLocked(observer, instance)
+		if start := registry.startLocked(observer, instance); start != nil {
+			starts = append(starts, start)
+		}
 	}
+	registry.mu.Unlock()
+	runObservationStarts(starts)
 	var once sync.Once
 	return func() {
 		once.Do(func() {
@@ -690,17 +700,22 @@ func (registry *localKeyedRegistry) spawn(serviceId, key string, implementation 
 
 func (registry *localKeyedRegistry) observe(serviceId string, handler func(context.Context, any) error) func() {
 	registry.mu.Lock()
-	defer registry.mu.Unlock()
 	registration, ok := registry.registrations[serviceId]
 	if !ok || registry.disposed {
+		registry.mu.Unlock()
 		registry.onError(fmt.Errorf("Service %s is disconnected", serviceId))
 		return func() {}
 	}
 	observer := &localObserver{handler: handler, tasks: map[*localInstance]context.CancelFunc{}}
 	registration.observers.Set(observer, true)
+	var starts []func()
 	for _, instance := range registration.entries.Values() {
-		registry.startLocked(observer, instance)
+		if start := registry.startLocked(observer, instance); start != nil {
+			starts = append(starts, start)
+		}
 	}
+	registry.mu.Unlock()
+	runObservationStarts(starts)
 	return func() {
 		registry.mu.Lock()
 		defer registry.mu.Unlock()
@@ -716,26 +731,20 @@ func (registry *localKeyedRegistry) observe(serviceId string, handler func(conte
 	}
 }
 
-func (registry *localKeyedRegistry) startLocked(observer *localObserver, instance *localInstance) {
+// startLocked admits one observation task; the caller runs the returned
+// invocation after releasing the registry lock.
+func (registry *localKeyedRegistry) startLocked(observer *localObserver, instance *localInstance) func() {
 	if observer.closed {
-		return
+		return nil
 	}
 	if _, running := observer.tasks[instance]; running {
-		return
+		return nil
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	observer.tasks[instance] = cancel
-	onError := registry.onError
-	go func() {
-		var err error
-		func() {
-			defer recoverInto(&err)
-			err = observer.handler(ctx, instance.implementation)
-		}()
-		if err != nil && ctx.Err() == nil {
-			onError(err)
-		}
-	}()
+	return observationStart(ctx, func(ctx context.Context) error {
+		return observer.handler(ctx, instance.implementation)
+	}, registry.onError)
 }
 
 func (registry *localKeyedRegistry) dispose() {
@@ -897,7 +906,7 @@ func (kernel *facetKernel) activate(ctx context.Context, facets []Facet) (err er
 	defer func() {
 		if err != nil {
 			if cleanup := kernel.terminate(ctx, nil); len(cleanup) > 0 {
-				err = fmt.Errorf("Facet generation startup and cleanup failed: %w", errors.Join(append([]error{err}, cleanup...)...))
+				err = NewAggregateError("Facet generation startup and cleanup failed", append([]error{err}, cleanup...))
 			}
 		}
 	}()
@@ -1105,7 +1114,7 @@ func (kernel *facetKernel) bindServices(external map[string]externalService) err
 		if err != nil {
 			return err
 		}
-		slot.bind(adapt(remote))
+		slot.bindRemote(adapt(remote), remote)
 	}
 	for serviceId, service := range external {
 		var services RemoteServices
@@ -1133,7 +1142,7 @@ func (kernel *facetKernel) bindServices(external map[string]externalService) err
 		slot := kernel.slots[serviceId]
 		kernel.mu.Unlock()
 		if slot != nil {
-			slot.bind(adapt(remote))
+			slot.bindRemote(adapt(remote), remote)
 		}
 	}
 	return nil
@@ -1208,7 +1217,7 @@ func (kernel *facetKernel) reload(ctx context.Context, facets []Facet) error {
 		slices.Reverse(staged)
 		if cleanup := disposeRecords(ctx, staged); len(cleanup) > 0 {
 			abortErrors := kernel.abort(ctx, nil)
-			return fmt.Errorf("Facet reload setup and cleanup failed: %w", errors.Join(append(append([]error{stageErr}, cleanup...), abortErrors...)...))
+			return NewAggregateError("Facet reload setup and cleanup failed", append(append([]error{stageErr}, cleanup...), abortErrors...))
 		}
 		kernel.setPhase(phaseActive)
 		return stageErr
@@ -1242,7 +1251,7 @@ func (kernel *facetKernel) reload(ctx context.Context, facets []Facet) error {
 		slices.Reverse(reversed)
 		if cleanup := disposeRecords(ctx, reversed); len(cleanup) > 0 {
 			abortErrors := kernel.abort(ctx, nil)
-			return fmt.Errorf("Facet reload activation and cleanup failed: %w", errors.Join(append(append([]error{activateErr}, cleanup...), abortErrors...)...))
+			return NewAggregateError("Facet reload activation and cleanup failed", append(append([]error{activateErr}, cleanup...), abortErrors...))
 		}
 		kernel.setPhase(phaseActive)
 		return activateErr
@@ -1281,7 +1290,7 @@ func (kernel *facetKernel) reload(ctx context.Context, facets []Facet) error {
 			if len(errs) == 1 {
 				return errs[0]
 			}
-			return fmt.Errorf("Failed to retire replaced facets: %w", errors.Join(errs...))
+			return NewAggregateError("Failed to retire replaced facets", errs)
 		}
 		for _, candidate := range candidateOrder {
 			for _, provision := range candidate.provisions {
@@ -1296,7 +1305,7 @@ func (kernel *facetKernel) reload(ctx context.Context, facets []Facet) error {
 	}()
 	if cutoverErr != nil {
 		abortErrors := kernel.abort(ctx, previous)
-		return fmt.Errorf("Facet reload failed after cutover: %w", errors.Join(append([]error{cutoverErr}, abortErrors...)...))
+		return NewAggregateError("Facet reload failed after cutover", append([]error{cutoverErr}, abortErrors...))
 	}
 	kernel.setPhase(phaseActive)
 	return nil
@@ -1329,7 +1338,7 @@ func (kernel *facetKernel) dispose(ctx context.Context) error {
 	}
 	errs := kernel.terminate(ctx, nil)
 	if len(errs) > 1 {
-		return fmt.Errorf("Failed to dispose facet generation: %w", errors.Join(errs...))
+		return NewAggregateError("Failed to dispose facet generation", errs)
 	}
 	return joinErrors(errs)
 }

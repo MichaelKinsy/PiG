@@ -1,5 +1,7 @@
 package extension
 
+import "context"
+
 // MarkdownMessageType identifies the transcript message being transformed for
 // display. Transformers never change model context or persisted message data.
 type MarkdownMessageType string
@@ -15,6 +17,8 @@ const (
 
 // MarkdownTransformContext mirrors upstream MarkdownTransformContext.
 type MarkdownTransformContext struct {
+	// Context owns the off-loop host generation; it is not part of Pi's wire context.
+	Context        context.Context     `json:"-"`
 	MessageType    MarkdownMessageType `json:"messageType"`
 	IsStreaming    bool                `json:"isStreaming"`
 	AvailableWidth int                 `json:"availableWidth"`

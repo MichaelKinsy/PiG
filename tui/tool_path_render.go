@@ -55,10 +55,17 @@ func renderToolPath(rawPath, cwd string) string {
 	return linkPath(fg(ActiveTheme().Accent, shortenPath(rawPath)), rawPath, cwd)
 }
 
-// boldText wraps s in SGR bold-on/bold-off without resetting color,
-// mirroring upstream theme.bold().
+// boldText scopes bold across nested resets and line breaks, as theme.bold does through chalk.
 func boldText(s string) string {
-	return "\x1b[1m" + s + SGRBoldDimReset
+	if s == "" {
+		return ""
+	}
+	const open = "\x1b[1m"
+	s = strings.ReplaceAll(s, SGRBoldDimReset, open)
+	if strings.Contains(s, "\n") {
+		s = strings.NewReplacer("\r\n", SGRBoldDimReset+"\r\n"+open, "\n", SGRBoldDimReset+"\n"+open).Replace(s)
+	}
+	return open + s + SGRBoldDimReset
 }
 
 // toolTitleText styles a tool name with the toolTitle color and bold,

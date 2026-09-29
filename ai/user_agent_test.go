@@ -19,7 +19,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
 func TestPiUserAgentFormat(t *testing.T) {
@@ -187,9 +187,9 @@ func userAgentProviderCases(t *testing.T) []userAgentProviderCase {
 			build: func(client *http.Client) Provider {
 				p, ok := NewGoogleVertexProvider(GoogleVertexConfig{
 					APIKey: "key", Model: "gemini-2.5-flash", Project: "proj", Location: "us-central1",
-				}).(*googleProvider)
+				}).(*googleVertexProvider)
 				if !ok {
-					t.Fatal("NewGoogleVertexProvider did not return *googleProvider")
+					t.Fatal("NewGoogleVertexProvider did not return *googleVertexProvider")
 				}
 				p.client = client
 				return p

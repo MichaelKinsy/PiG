@@ -234,7 +234,7 @@ func runPiOracle(t *testing.T, c piCorpus) piResult {
 	if err := os.MkdirAll(filepath.Join(dir, "node_modules"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	testenv.Symlink(t, filepath.Join(abs, "get-east-asian-width"), filepath.Join(dir, "node_modules", "get-east-asian-width"))
+	testenv.RequireDirectoryLink(t, filepath.Join(abs, "get-east-asian-width"), filepath.Join(dir, "node_modules", "get-east-asian-width"))
 	src, err := os.ReadFile(filepath.Join(abs, "utils.ts"))
 	if err != nil {
 		t.Fatal(err)

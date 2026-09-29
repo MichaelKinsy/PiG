@@ -1,0 +1,43 @@
+# Upstream evidence (Pi 0.87.1, real interactive probe): interactive-mode.ts:3235,6735 awaits user_bash inside the async
+# submit callback. Input keeps running: /bash-release can resolve that hook.
+# The complete trace is the asserted surface, not the unrelated footer or
+# bash component styling. No output normalization is applied.
+name = "41-user-bash-input-owner"
+description = "An awaiting user_bash hook keeps terminal input live until another command releases it"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/extensions/runner.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/user-bash-owner.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/user-bash-owner.mjs"]
+
+[tmux]
+width = 100
+height = 32
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "PT_BASH_TRACE"
+capture_end = 'PT_BASH_TRACE ["hook:start","release","hook:end"]'
+
+[[tmux.steps]]
+keys = ["!must-not-run", "Enter"]
+wait_contains = ["PT_BASH_WAIT"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/bash-release", "Enter"]
+wait_contains = ["PT_BASH_DONE", 'PT_BASH_TRACE ["hook:start","release","hook:end"]']
+wait_timeout_seconds = 20
+
+[assert]
+output_equal = true
+both_contain = ['PT_BASH_TRACE ["hook:start","release","hook:end"]']
+runs = 3

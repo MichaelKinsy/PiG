@@ -6,7 +6,6 @@ package codingagent
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"maps"
@@ -14,6 +13,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // ContextEditReplacement is the non-null replacement of a context_edit entry
@@ -102,7 +102,9 @@ func (s *Session) AppendContextEdit(targetID string, replacement *ContextEditRep
 		}
 		replacement = &ContextEditReplacement{Content: normalized}
 	}
-	id, err := generateEntryID()
+	s.leafAppendMu.Lock()
+	defer s.leafAppendMu.Unlock()
+	id, err := s.generateEntryID()
 	if err != nil {
 		return "", err
 	}
@@ -111,7 +113,7 @@ func (s *Session) AppendContextEdit(targetID string, replacement *ContextEditRep
 			Type:      "context_edit",
 			ID:        id,
 			ParentID:  s.LeafID(),
-			Timestamp: time.Now().UTC().Format(time.RFC3339Nano),
+			Timestamp: RFC3339NowNano(),
 		},
 		TargetID:    targetID,
 		Replacement: replacement,

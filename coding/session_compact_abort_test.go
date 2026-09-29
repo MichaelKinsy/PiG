@@ -25,7 +25,7 @@ func TestCompactAbortsActiveRun(t *testing.T) {
 		}
 	}()
 	for i := range 3 {
-		if _, err := sess.inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: fmt.Sprintf("q%d", i)}}}}); err != nil {
+		if _, err := sess.inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("q%d", i)}}}}); err != nil {
 			t.Fatal(err)
 		}
 		if _, err := sess.inner.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: fmt.Sprintf("a%d", i)}}, StopReason: ai.StopReasonStop}}); err != nil {

@@ -6,8 +6,8 @@ import { UndoStack } from "../undo-stack.js";
 import { autocompleteBoundaryRegex, autocompleteSeparatorRegex, cjkBreakRegex, getGraphemeSegmenter, getWordSegmenter, isWhitespaceChar, sliceByColumn, visibleWidth, } from "../utils.js";
 import { findWordBackward, findWordForward } from "../word-navigation.js";
 import { SelectList } from "./select-list.js";
-const graphemeSegmenter = getGraphemeSegmenter();
-const wordSegmenter = getWordSegmenter();
+import { graphemeSegmenter } from "../../../pi-tui-segmenters.mjs";
+import { wordSegmenter } from "../../../pi-tui-segmenters.mjs";
 /** Regex matching paste markers like `[paste #1 +123 lines]` or `[paste #2 1234 chars]`. */
 const PASTE_MARKER_REGEX = /\[paste #(\d+)( (\+\d+ lines|\d+ chars))?\]/g;
 /** Non-global version for single-segment testing. */

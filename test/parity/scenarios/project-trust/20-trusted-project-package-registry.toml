@@ -1,0 +1,28 @@
+# Control for D79. Pi 0.87.1 core/package-manager.ts:1150-1164,1511-1530 uses the project cwd.
+# A trusted project-scoped package retains this rule, including the project's registry.
+# The wrapper asserts one real view through the selected command and no installation.
+name = "20-trusted-project-package-registry"
+description = "Trusted project packages retain Pi's metadata cwd and project registry."
+covers = ["packages/coding-agent/src/core/package-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+# Launch the real CLI with isolated per-run loopback registries, then report measured traffic.
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["python3", "./test/parity/testdata/npm-registry-scope.py", "pig", "project"]
+pi_args = ["python3", "./test/parity/testdata/npm-registry-scope.py", "pi", "project"]
+pig = ["SCOPE_PROBE_TEMP={{TEMP}}"]
+pi = ["SCOPE_PROBE_TEMP={{TEMP}}"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 45
+
+[assert]
+exit_code = 0
+both_contain = ["metadata cwd=project; registry=project; selected-command=yes; installs=0"]
+output_equal = true
+runs = 3

@@ -1,8 +1,9 @@
 package sdk
 
 import (
-	"encoding/json"
 	"fmt"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // AutocompleteItem mirrors @earendil-works/pi-tui AutocompleteItem: Value is

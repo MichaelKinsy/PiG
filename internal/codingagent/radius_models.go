@@ -7,16 +7,16 @@ package codingagent
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"maps"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
@@ -26,6 +26,7 @@ import (
 // An empty Providers list refreshes every dynamic provider.
 type CatalogRefreshOptions struct {
 	AllowNetwork bool
+	Force        *bool
 	Providers    []string
 }
 
@@ -33,6 +34,8 @@ type CatalogRefreshOptions struct {
 type CatalogRefreshResult struct {
 	Aborted bool
 	Errors  map[string]error
+	// errorOrder retains Promise settlement order, which Pi exposes by iterating its error Map.
+	errorOrder []string
 }
 
 // ModelNetworkEnabled mirrors ModelRuntime.modelNetworkEnabled
@@ -51,7 +54,7 @@ type catalogRefreshState struct {
 	publish    sync.Mutex
 }
 
-var radiusBaseURLVersionSuffix = regexp.MustCompile(`/v1/?$`)
+var radiusBaseURLVersionSuffix = lazyregexp.New(`/v1/?$`)
 
 // defaultModelsStore mirrors ModelRuntime.create: models-store.json next to
 // models.json, or an in-memory store without an agent directory.
@@ -78,6 +81,16 @@ func dropUncomposableProviders(config *modelsConfig) []string {
 		if provider.OAuth != nil && provider.OAuth.Kind != "" && provider.BaseURL == "" {
 			failures = append(failures, fmt.Sprintf("Provider %q: Provider %s: \"baseUrl\" is required when \"oauth\" is set.", providerID, providerID))
 			delete(config.Providers, providerID)
+			continue
+		}
+		if !isBuiltInProvider(providerID) && provider.BaseURL == "" {
+			for _, model := range provider.Models {
+				if model.BaseURL == "" {
+					failures = append(failures, fmt.Sprintf("Provider %q: Provider %s: \"baseUrl\" is required when defining custom models.", providerID, providerID))
+					delete(config.Providers, providerID)
+					break
+				}
+			}
 		}
 	}
 	slices.Sort(failures)
@@ -203,13 +216,16 @@ func radiusCredentialKey(credential ai.Credential) string {
 
 func (r *ModelRegistry) storedCredential(providerID string) (ai.Credential, bool) {
 	r.mu.RLock()
-	storage := r.authStorage
+	storage := r.credentialStore
 	r.mu.RUnlock()
 	if storage == nil {
 		return ai.Credential{}, false
 	}
-	credential, ok, err := storage.Get(providerID)
-	return credential, ok && err == nil
+	credential, err := storage.Read(context.Background(), providerID)
+	if err != nil || credential == nil {
+		return ai.Credential{}, false
+	}
+	return *credential, true
 }
 
 // radiusHasAuth mirrors hasConfiguredAuth for a Radius provider: a stored
@@ -249,7 +265,7 @@ func (r *ModelRegistry) radiusEntries(authenticated bool) []ModelEntry {
 
 // RadiusAPIKey resolves the request credential of a Radius provider: a runtime
 // key, a stored OAuth token (refreshed when expired) or API key, then
-// RADIUS_API_KEY.
+// RADIUS_API_KEY. Store reads and token refreshes honor ctx; storage failures are returned instead of falling through to ambient credentials.
 func (r *ModelRegistry) RadiusAPIKey(ctx context.Context, providerID string) (string, error) {
 	r.mu.RLock()
 	provider := r.radiusProviderLocked(providerID)
@@ -262,26 +278,23 @@ func (r *ModelRegistry) RadiusAPIKey(ctx context.Context, providerID string) (st
 	if key, ok := r.RuntimeAPIKey(providerID); ok && key != "" {
 		return key, nil
 	}
-	credential, ok := r.storedCredential(providerID)
-	var stored *ai.Credential
-	if ok {
-		stored = &credential
+	credential, err := r.readStoredCredential(ctx, providerID)
+	if err != nil {
+		return "", err
 	}
-	resolved, err := r.resolveRefreshCredential(ctx, provider, stored)
+	resolved, err := r.resolveRefreshCredential(ctx, provider, credential)
 	if err != nil || resolved == nil {
 		return "", err
 	}
 	return radiusCredentialKey(*resolved), nil
 }
 
-var errCredentialChanged = errors.New("credential changed during refresh")
-
 // resolveRefreshCredential mirrors Models.resolveRefreshCredential: an OAuth
 // credential is refreshed under the auth lock once expired; otherwise the
 // stored API key or RADIUS_API_KEY applies.
 func (r *ModelRegistry) resolveRefreshCredential(ctx context.Context, provider *ai.RadiusProvider, stored *ai.Credential) (*ai.Credential, error) {
 	if stored != nil && stored.Type == ai.CredentialOAuth {
-		if time.Now().UnixMilli() < stored.Expires {
+		if float64(time.Now().UnixMilli()) < stored.ExpiresMillis() {
 			return stored, nil
 		}
 		if ctx.Err() != nil {
@@ -298,35 +311,35 @@ func (r *ModelRegistry) resolveRefreshCredential(ctx context.Context, provider *
 
 func (r *ModelRegistry) refreshRadiusOAuth(ctx context.Context, provider *ai.RadiusProvider) (*ai.Credential, error) {
 	r.mu.RLock()
-	storage := r.authStorage
+	storage := r.credentialStore
 	r.mu.RUnlock()
 	if storage == nil {
 		return nil, nil
 	}
-	var refreshed *ai.Credential
-	err := storage.Update(provider.ID(), func(current ai.Credential, exists bool) (ai.Credential, error) {
+	post, err := storage.Modify(ctx, provider.ID(), func(current *ai.Credential) (*ai.Credential, error) {
 		if err := ctx.Err(); err != nil {
-			return current, err
+			return nil, err
 		}
-		if !exists || current.Type != ai.CredentialOAuth {
-			return current, errCredentialChanged
+		if current == nil || current.Type != ai.CredentialOAuth || float64(time.Now().UnixMilli()) < current.ExpiresMillis() {
+			return nil, nil
 		}
-		if time.Now().UnixMilli() < current.Expires {
-			refreshed = &current
-			return current, nil
-		}
-		next, err := provider.OAuth().RefreshTokenContext(ctx, ai.OAuthCredentials{Refresh: current.Refresh, Access: current.Access, Expires: current.Expires})
+		next, err := provider.OAuth().RefreshTokenContext(ctx, current.OAuthCredentials())
 		if err != nil {
-			return current, err
+			return nil, err
 		}
-		updated := ai.Credential{Type: ai.CredentialOAuth, Refresh: next.Refresh, Access: next.Access, Expires: next.Expires, Scope: next.Scope}
-		refreshed = &updated
-		return updated, nil
+		updated, err := ai.CredentialFromOAuth(next)
+		if err != nil {
+			return nil, err
+		}
+		return &updated, nil
 	})
-	if errors.Is(err, errCredentialChanged) {
-		return nil, nil
+	if err != nil {
+		return nil, err
 	}
-	return refreshed, err
+	if post != nil && post.Type == ai.CredentialOAuth {
+		return post, nil
+	}
+	return nil, nil
 }
 
 // RefreshCatalogs mirrors ModelRuntime.refresh for dynamic providers: each
@@ -342,19 +355,41 @@ func (r *ModelRegistry) RefreshCatalogs(ctx context.Context, options CatalogRefr
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	for _, provider := range r.selectRadiusProviders(options.Providers) {
+		if r.GetProvider(provider.ID()) != nil {
+			continue
+		}
 		wg.Go(func() {
 			if err := r.refreshRadiusProvider(ctx, provider, options.AllowNetwork); err != nil {
 				mu.Lock()
 				result.Errors[provider.ID()] = err
+				result.errorOrder = append(result.errorOrder, provider.ID())
 				mu.Unlock()
 			}
 		})
 	}
+	wg.Go(func() {
+		native := r.refreshNativeModels(ctx, ai.ModelsRefreshOptions{AllowNetwork: new(options.AllowNetwork), Providers: options.Providers, Force: options.Force})
+		mu.Lock()
+		defer mu.Unlock()
+		for _, id := range native.ErrorOrder {
+			result.Errors[id] = native.Errors[id]
+			result.errorOrder = append(result.errorOrder, id)
+		}
+	})
 	wg.Wait()
-	result.Aborted = ctx.Err() != nil
+	maps.Copy(result.Errors, r.refreshNativeProviders(ctx, options.Providers, options.AllowNetwork, options.Force))
+	availability := r.reconcileAvailability(ctx, options.Providers, ai.ModelsRefreshResult{Aborted: ctx.Err() != nil, Errors: result.Errors, ErrorOrder: result.errorOrder})
+	result.Aborted, result.Errors, result.errorOrder = availability.Aborted, availability.Errors, availability.ErrorOrder
+	if backgroundRefresh(ctx) {
+		return result
+	}
 	r.mu.RLock()
 	listener := r.onChange
+	observers := append([]*modelRegistryChangeListener(nil), r.observers...)
 	r.mu.RUnlock()
+	for _, observer := range observers {
+		observer.publish()
+	}
 	listener.publish()
 	return result
 }
@@ -378,11 +413,7 @@ func (r *ModelRegistry) refreshRadiusProvider(parent context.Context, provider *
 	publish := func(publication ai.ModelsPublication) (bool, error) {
 		return r.publishCatalog(ctx, provider.ID(), generation, publication)
 	}
-	credential, hasCredential, credentialErr := r.readStoredCredential(provider.ID())
-	var stored *ai.Credential
-	if hasCredential {
-		stored = &credential
-	}
+	stored, credentialErr := r.readStoredCredential(ctx, provider.ID())
 	// Restore cached provider state before auth resolution or network access.
 	err := r.runCatalogRefreshPhase(ctx, provider, stored, false, publish)
 	if err == nil {
@@ -405,18 +436,24 @@ func (r *ModelRegistry) refreshCatalogFromNetwork(ctx context.Context, provider 
 	return r.runCatalogRefreshPhase(ctx, provider, credential, true, publish)
 }
 
-func (r *ModelRegistry) readStoredCredential(providerID string) (ai.Credential, bool, error) {
+func (r *ModelRegistry) readStoredCredential(ctx context.Context, providerID string) (*ai.Credential, error) {
 	r.mu.RLock()
-	storage := r.authStorage
+	storage := r.credentialStore
 	r.mu.RUnlock()
 	if storage == nil {
-		return ai.Credential{}, false, nil
+		return nil, nil
 	}
-	credential, ok, err := storage.GetRaw(providerID)
+	var credential *ai.Credential
+	// upstream: packages/ai/src/models.ts:refresh races credential reads against the operation signal while retaining the underlying work.
+	err := r.AwaitModelTasks(ctx, func(ctx context.Context) error {
+		var err error
+		credential, err = storage.Read(ctx, providerID)
+		return err
+	})
 	if err != nil {
-		return ai.Credential{}, false, fmt.Errorf("Credential store read failed for %s: %w", providerID, err)
+		return nil, ai.NewModelsError(ai.ModelsErrorAuth, "Credential store read failed for "+providerID, err)
 	}
-	return credential, ok, nil
+	return credential, nil
 }
 
 func (r *ModelRegistry) runCatalogRefreshPhase(ctx context.Context, provider *ai.RadiusProvider, credential *ai.Credential, allowNetwork bool, publish func(ai.ModelsPublication) (bool, error)) error {

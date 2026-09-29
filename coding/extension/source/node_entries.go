@@ -79,6 +79,47 @@ func NodeDirectoryEntries(dir string) []string {
 	return entries
 }
 
+// jitiExtensions is jiti 2.7.0's default extension list, the one upstream
+// loader.ts resolves extension paths with.
+var jitiExtensions = []string{".js", ".mjs", ".cjs", ".ts", ".tsx", ".mts", ".cts", ".mtsx", ".ctsx"}
+
+// NodeDirectoryImport returns the file upstream's jiti import of the
+// directory dir loads: <dir><ext>, then <dir>/index<ext> over jiti's
+// extensions, then require.resolve's package.json "main" (the file, then with
+// .js, .json or .node, then its index.js, index.json or index.node), then
+// dir's index.js, index.json or index.node. ok is false when none exists.
+func NodeDirectoryImport(dir string) (file string, ok bool) {
+	isFile := func(path string) bool {
+		info, err := os.Stat(path)
+		return err == nil && info.Mode().IsRegular()
+	}
+	for _, suffix := range []string{"", string(filepath.Separator) + "index"} {
+		for _, ext := range jitiExtensions {
+			if candidate := dir + suffix + ext; isFile(candidate) {
+				return candidate, true
+			}
+		}
+	}
+	var candidates []string
+	if data, err := os.ReadFile(filepath.Join(dir, "package.json")); err == nil {
+		var manifest struct {
+			Main string `json:"main"`
+		}
+		if json.Unmarshal(bytes.TrimPrefix(data, []byte("\xef\xbb\xbf")), &manifest) == nil && manifest.Main != "" {
+			main := filepath.Join(dir, filepath.FromSlash(manifest.Main))
+			candidates = append(candidates, main, main+".js", main+".json", main+".node",
+				filepath.Join(main, "index.js"), filepath.Join(main, "index.json"), filepath.Join(main, "index.node"))
+		}
+	}
+	candidates = append(candidates, filepath.Join(dir, "index.js"), filepath.Join(dir, "index.json"), filepath.Join(dir, "index.node"))
+	for _, candidate := range candidates {
+		if isFile(candidate) {
+			return candidate, true
+		}
+	}
+	return "", false
+}
+
 // NodeRootEntries is upstream's resolveExtensionEntries
 // (core/package-manager.ts): the existing entries dir's package.json
 // "pi.extensions" declares, else index.ts, else index.js, else nil. Declared

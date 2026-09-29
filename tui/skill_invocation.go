@@ -32,6 +32,16 @@ func (s *SkillInvocationMessageComponent) SetExpanded(expanded bool) {
 	s.Invalidate()
 }
 
+// HandleMouse toggles the skill on a left click inside the box content, excluding its one-cell padding.
+// Ports packages/coding-agent/src/modes/interactive/components/skill-invocation-message.ts:56.
+func (s *SkillInvocationMessageComponent) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
+	if event.Type != MouseClick || event.Button != MouseButtonLeft || event.X < 1 || event.X-1 >= max(1, event.Width-2) || event.Y < 1 || event.Y >= event.Height-1 {
+		return nil
+	}
+	s.SetExpanded(!s.expanded)
+	return &TuiMouseDispatchResult{TuiMouseEventResult: TuiMouseEventResult{Handled: true}}
+}
+
 // Render produces the skill invocation lines.
 // Mirrors upstream SkillInvocationMessageComponent which extends Box(paddingX=1, paddingY=1).
 // In pig's line renderer, paddingY manifests as empty rows above and below content.

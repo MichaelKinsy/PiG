@@ -10,6 +10,25 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
+func TestResumeEmptyReadKeepsTextPresence(t *testing.T) {
+	call := ai.ToolCall{ID: "empty-read", Name: "read", Arguments: ai.JsonObject{"path": "empty.txt"}}
+	m := resumeThinkingMode(t, false, userMsg("question"), assistantMsg("", call), agent.AgentMessage{ToolResult: &agent.ToolResultMessage{
+		Role: agent.RoleToolResult, ToolCallID: call.ID, ToolName: "read", Content: []ai.ToolResultMessageContent{ai.TextContent{Text: ""}},
+	}})
+	m.renderSessionEntries()
+	previous, last := m.chatContainer.LastTwoChildren()
+	for _, component := range []tui.Component{previous, last} {
+		if tool, ok := component.(*tui.ToolExecutionComponent); ok {
+			result, ok := tool.ResultValue().(agent.AgentToolResult)
+			if !ok || len(result.Content) != 1 || result.Content[0] != (ai.TextContent{Text: ""}) {
+				t.Fatalf("resumed read result = %#v", tool.ResultValue())
+			}
+			return
+		}
+	}
+	t.Fatal("missing resumed read card")
+}
+
 func TestFileToolErrorsUseResultNotSuccessDetails(t *testing.T) {
 	for _, tc := range []struct {
 		name    string
@@ -21,7 +40,7 @@ func TestFileToolErrorsUseResultNotSuccessDetails(t *testing.T) {
 		{"edit", &tools.EditToolDetails{Diff: "STALE_DIFF"}, tui.ActiveTheme().Error},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			render := toolBodyRenderer(tc.name, agent.AgentToolResult{Content: "ERROR_RESULT", Details: tc.details, IsError: true}, nil)
+			render := toolBodyRenderer(tc.name, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ERROR_RESULT"}}, Details: tc.details, IsError: true}, nil)
 			got := strings.Join(render(80, true), "\n")
 			if !strings.Contains(got, tc.color+"ERROR_RESULT") || strings.Contains(got, "STALE_DIFF") {
 				t.Fatalf("error result rendering = %q", got)

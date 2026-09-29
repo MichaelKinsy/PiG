@@ -13,12 +13,12 @@ import (
 	"strings"
 )
 
-// upstreamIndex resolves `// upstream: <file>:<symbol>` references against
-// the pinned Pi mirror (.upstream/current).
+// upstreamIndex resolves source references against the pinned Pi mirror and digest-verified dependency snapshots.
 type upstreamIndex struct {
-	root  string
-	files []string // slash paths relative to root
-	cache map[string]string
+	root         string
+	files        []string // slash paths relative to root
+	cache        map[string]string
+	dependencies map[string]string
 }
 
 func loadUpstreamIndex(root string) (*upstreamIndex, error) {
@@ -63,6 +63,9 @@ func (u *upstreamIndex) list() ([]string, error) {
 // the unique mirror file whose path ends with /ref.
 func (u *upstreamIndex) resolve(ref string) (string, error) {
 	ref = strings.TrimPrefix(ref, "./")
+	if _, ok := u.dependencies[ref]; ok {
+		return ref, nil
+	}
 	files, err := u.list()
 	if err != nil {
 		return "", err
@@ -86,6 +89,9 @@ func (u *upstreamIndex) resolve(ref string) (string, error) {
 }
 
 func (u *upstreamIndex) content(rel string) (string, error) {
+	if text, ok := u.dependencies[rel]; ok {
+		return text, nil
+	}
 	if s, ok := u.cache[rel]; ok {
 		return s, nil
 	}
@@ -130,24 +136,34 @@ func isLineRange(s string) bool {
 	return s != "" && strings.Trim(s, "0123456789-") == ""
 }
 
-// jsNumberRe matches v written as a JavaScript numeric literal, with or
-// without `_` digit separators.
+// jsNumberRe matches v as a JavaScript integer literal, with optional digit separators or equivalent integer exponent notation.
 func jsNumberRe(v *big.Int) *regexp.Regexp {
 	digits := v.String()
 	var b strings.Builder
-	b.WriteString(`(?:^|[^\w.])`)
+	b.WriteString(`(?:^|[^\w.])(?:`)
 	for i, r := range digits {
 		if i > 0 {
 			b.WriteString(`_?`)
 		}
 		b.WriteRune(r)
 	}
-	b.WriteString(`(?:[^\w]|$)`)
+	// Integer exponent notation is used by dependency defaults, e.g. 10e3.
+	for exponent := 1; exponent < len(digits) && digits[len(digits)-exponent] == '0'; exponent++ {
+		b.WriteByte('|')
+		for i, r := range digits[:len(digits)-exponent] {
+			if i > 0 {
+				b.WriteString(`_?`)
+			}
+			b.WriteRune(r)
+		}
+		fmt.Fprintf(&b, `[eE]\+?%d`, exponent)
+	}
+	b.WriteString(`)(?:[^\w]|$)`)
 	return regexp.MustCompile(b.String())
 }
 
 // mappedValue reports whether one of values appears in one of the upstream
-// files (mirror-relative paths from PORT_MAP.md).
+// files (mirror-relative paths from docs/parity/PORT_MAP.md).
 func (u *upstreamIndex) mappedValue(files []string, values []*regexp.Regexp) bool {
 	for _, f := range files {
 		text, err := u.content(f)
@@ -170,6 +186,15 @@ func spellings(values []*big.Int, expr string) []*regexp.Regexp {
 	var out []*regexp.Regexp
 	for _, v := range values {
 		out = append(out, jsNumberRe(v))
+		if v.Sign() > 0 && v.TrailingZeroBits() == uint(v.BitLen()-1) {
+			// TypeScript spells this exact integer as 2 ** exponent; Go uses 1 << exponent.
+			digits := fmt.Sprint(v.BitLen() - 1)
+			parts := make([]string, len(digits))
+			for i, digit := range digits {
+				parts[i] = string(digit)
+			}
+			out = append(out, regexp.MustCompile(`(?:^|[^\w.])2\s*\*\*\s*`+strings.Join(parts, `_?`)+`(?:[^\w.]|$)`))
+		}
 	}
 	if expr != "" {
 		out = append(out, exprSpellingRe(expr))

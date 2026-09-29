@@ -166,7 +166,7 @@ func TestProjectTrustStore_CanonicalSymlinkIdentity(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	testenv.Symlink(t, first, link)
+	testenv.RequireDirectoryLink(t, first, link)
 
 	store := NewProjectTrustStore(t.TempDir())
 	if err := store.Set(link, new(true)); err != nil {
@@ -175,7 +175,7 @@ func TestProjectTrustStore_CanonicalSymlinkIdentity(t *testing.T) {
 	if err := os.Remove(link); err != nil {
 		t.Fatal(err)
 	}
-	testenv.Symlink(t, second, link)
+	testenv.RequireDirectoryLink(t, second, link)
 	decision, err := store.Get(link)
 	if err != nil {
 		t.Fatal(err)

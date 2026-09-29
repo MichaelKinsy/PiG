@@ -25,6 +25,7 @@ const (
 	oauthBeta                    = "oauth-2025-04-20"
 	fineGrainedToolStreamingBeta = "fine-grained-tool-streaming-2025-05-14"
 	interleavedThinkingBeta      = "interleaved-thinking-2025-05-14"
+	serverSideFallbackBeta       = "server-side-fallback-2026-07-01"
 	midConversationEffortBeta    = "mid-conversation-output-config-2026-07-01"
 	thinkingBindingControlsBeta  = "thinking-binding-controls-2026-08-01"
 	// midConversationToolChangesBeta enables tool_addition and tool_removal
@@ -269,6 +270,7 @@ type anthropicBetaInputs struct {
 	reasoning                       bool
 	thinkingEnabled                 bool
 	forceAdaptiveThinking           bool
+	hasFallbacks                    bool
 	supportsMidConvoEffort          bool
 	// nativeToolChanges reports that the request carries tool_addition or
 	// tool_removal blocks and deferred tool declarations.
@@ -278,7 +280,7 @@ type anthropicBetaInputs struct {
 // getBetaFeatures mirrors upstream getBetaFeatures. A configured anthropic-beta
 // header (the last case-insensitive match across model headers, then request
 // headers) replaces the computed list: null suppresses every beta, and a value
-// is split on commas, trimmed, and deduplicated.
+// is split on commas, ECMAScript-trimmed, and deduplicated.
 func getBetaFeatures(modelHeaders, optionsHeaders anthropicHeaders, inputs anthropicBetaInputs) []string {
 	var configured *string
 	found := false
@@ -295,7 +297,7 @@ func getBetaFeatures(modelHeaders, optionsHeaders anthropicHeaders, inputs anthr
 		}
 		var features []string
 		for feature := range strings.SplitSeq(*configured, ",") {
-			if feature = strings.TrimSpace(feature); feature != "" {
+			if feature = trimJSWhitespace(feature); feature != "" {
 				features = append(features, feature)
 			}
 		}
@@ -311,6 +313,9 @@ func getBetaFeatures(modelHeaders, optionsHeaders anthropicHeaders, inputs anthr
 	}
 	if inputs.reasoning && inputs.thinkingEnabled && !inputs.forceAdaptiveThinking {
 		features = append(features, interleavedThinkingBeta)
+	}
+	if inputs.hasFallbacks {
+		features = append(features, serverSideFallbackBeta)
 	}
 	if inputs.supportsMidConvoEffort {
 		features = append(features, midConversationEffortBeta, thinkingBindingControlsBeta)
@@ -331,11 +336,10 @@ func uniqueStrings(values []string) []string {
 	return unique
 }
 
-// anthropicWireBody splits request params into the HTTP body and the
-// anthropic-beta header value. The SDK removes params.betas from the body and
-// sends betas.toString(); absent betas send no header.
+// anthropicWireBody enforces streaming on replacement payloads and splits request params into the HTTP body and anthropic-beta header. The SDK removes params.betas from the body and sends betas.toString(); absent betas send no header.
 func anthropicWireBody(payload any) ([]byte, *string, error) {
 	if request, ok := payload.(anthRequest); ok {
+		request.Stream = true
 		var betas *string
 		if request.Betas != nil {
 			joined := strings.Join(request.Betas, ",")
@@ -353,9 +357,14 @@ func anthropicWireBody(payload any) ([]byte, *string, error) {
 	if json.Unmarshal(body, &fields) != nil {
 		return body, nil, nil
 	}
+	if fields == nil {
+		fields = make(map[string]json.RawMessage)
+	}
+	fields["stream"] = json.RawMessage("true")
 	raw, ok := fields["betas"]
 	if !ok {
-		return body, nil, nil
+		body, err = json.Marshal(fields)
+		return body, nil, err
 	}
 	delete(fields, "betas")
 	var betas *string

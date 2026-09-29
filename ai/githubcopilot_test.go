@@ -147,7 +147,8 @@ func TestNormalizeDomain(t *testing.T) {
 		{"with path", "https://github.example.com/path/to", "github.example.com", true},
 		{"empty string", "", "", false},
 		{"whitespace only", "   ", "", false},
-		{"with port", "https://github.example.com:8443", "github.example.com:8443", true},
+		// Pi normalizeDomain returns URL.hostname, not URL.host (auth/oauth/github-copilot.ts:46).
+		{"with port", "https://github.example.com:8443", "github.example.com", true},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -623,6 +624,92 @@ func TestNewCopilotProvider_APIRouting(t *testing.T) {
 
 // ─── Copilot Anthropic wire format ────────────────────────────────────────────
 
+// Ports packages/ai/test/github-copilot-anthropic.test.ts:59,83,117.
+func TestCopilotAnthropicUpstream(t *testing.T) {
+	t.Run("applies Copilot-specific adaptive thinking effort overrides", func(t *testing.T) {
+		for _, id := range []string{"claude-opus-4.7", "claude-opus-5", "claude-opus-5.5", "claude-sonnet-4.6"} {
+			m := mustGeneratedModel(t, "github-copilot", id)
+			levels := GetSupportedThinkingLevels(m.ToModel())
+			if !slices.Contains(levels, ThinkingMax) || (id != "claude-sonnet-4.6" && !slices.Contains(levels, ThinkingXHigh)) || (id == "claude-sonnet-4.6" && slices.Contains(levels, ThinkingXHigh)) {
+				t.Fatalf("%s levels = %v", id, levels)
+			}
+			if id == "claude-opus-5" || id == "claude-opus-5.5" {
+				if m.API != APIAnthropicMessages || m.ContextWindow != 1000000 {
+					t.Fatalf("%s metadata = %+v", id, m)
+				}
+			}
+			if id == "claude-opus-5.5" {
+				assertCatalogJSON(t, levels, `["low","medium","high","xhigh","max"]`)
+				continue
+			}
+			for level, want := range map[ThinkingLevel]string{ThinkingMinimal: "low", ThinkingMax: "max"} {
+				if got := m.ThinkingLevelMap[level]; got == nil || *got != want {
+					t.Fatalf("%s map[%s] = %v", id, level, got)
+				}
+			}
+			if id != "claude-sonnet-4.6" {
+				if got := m.ThinkingLevelMap[ThinkingXHigh]; got == nil || *got != "xhigh" {
+					t.Fatalf("%s xhigh = %v", id, got)
+				}
+			}
+		}
+	})
+	for _, interleaved := range []bool{false, true} {
+		name := "uses Bearer auth, Copilot headers, and valid Anthropic Messages payload"
+		if interleaved {
+			name = "omits interleaved-thinking beta for adaptive-thinking models"
+		}
+		t.Run(name, func(t *testing.T) {
+			m := mustGeneratedModel(t, "github-copilot", "claude-sonnet-4.6")
+			if m.API != APIAnthropicMessages {
+				t.Fatal(m.API)
+			}
+			requests := make(chan capturedProviderRequest, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				body, err := io.ReadAll(r.Body)
+				if err != nil {
+					t.Error(err)
+				}
+				requests <- capturedProviderRequest{header: r.Header.Clone(), body: body}
+				w.Header().Set("Content-Type", "text/event-stream")
+				_, _ = io.WriteString(w, "event: message_start\ndata: {\"type\":\"message_start\",\"message\":{\"id\":\"msg_test\",\"usage\":{\"input_tokens\":10,\"output_tokens\":0}}}\n\nevent: message_delta\ndata: {\"type\":\"message_delta\",\"delta\":{\"stop_reason\":\"end_turn\"},\"usage\":{\"output_tokens\":5}}\n\n")
+			}))
+			t.Cleanup(server.Close)
+			p := NewAnthropicProvider(AnthropicConfig{Model: m.ID, ModelMetadata: m.ToModel(), ProviderID: m.Provider, BaseURL: server.URL, APIKey: "tid_copilot_session_test_token", ExtraHeaders: m.Headers, Compat: m.Compat, UseBearerAuth: true,
+				DynamicHeaders: func(c TranscriptContext, _ StreamOptions) map[string]string {
+					return map[string]string{"X-Initiator": inferInitiator(c.Messages()), "Openai-Intent": "conversation-edits"}
+				},
+			})
+			opts := StreamOptions{}
+			if interleaved {
+				opts.InterleavedThinking = new(true)
+			}
+			stream, err := p.Stream(t.Context(), NormalizeContext(Context{SystemPrompt: "You are a helpful assistant.", Messages: []Message{UserMessage{Content: UserText("Hello")}}}), opts)
+			if err != nil {
+				t.Fatal(err)
+			}
+			stream.Result()
+			r := <-requests
+			if r.header.Get("Authorization") != "Bearer tid_copilot_session_test_token" || r.header.Get("x-api-key") != "" || !strings.Contains(r.header.Get("User-Agent"), "GitHubCopilotChat") || r.header.Get("Copilot-Integration-Id") != "vscode-chat" || r.header.Get("X-Initiator") != "user" || r.header.Get("Openai-Intent") != "conversation-edits" {
+				t.Fatalf("headers = %v", r.header)
+			}
+			if strings.Contains(r.header.Get("anthropic-beta"), "fine-grained-tool-streaming-2025-05-14") || (interleaved && strings.Contains(r.header.Get("anthropic-beta"), "interleaved-thinking-2025-05-14")) {
+				t.Fatalf("betas = %q", r.header.Get("anthropic-beta"))
+			}
+			var body map[string]any
+			if err := json.Unmarshal(r.body, &body); err != nil {
+				t.Fatal(err)
+			}
+			if body["model"] != m.ID || body["stream"] != true || body["max_tokens"] != float64(m.MaxOutputTokens) {
+				t.Fatalf("payload = %s", r.body)
+			}
+			if _, ok := body["messages"].([]any); !ok {
+				t.Fatalf("messages = %v", body["messages"])
+			}
+		})
+	}
+}
+
 func TestCopilotSSE_AnthropicMessages(t *testing.T) {
 	// Anthropic-format SSE that the Copilot proxy returns for Claude models.
 	sseData := `event: message_start
@@ -751,6 +838,11 @@ data: {"type":"message_stop"}
 	// Verify anthropic-dangerous-direct-browser-access header
 	if got := capturedHeaders.Get("anthropic-dangerous-direct-browser-access"); got != "true" {
 		t.Errorf("anthropic-dangerous-direct-browser-access = %q, want %q", got, "true")
+	}
+
+	// With thinking enabled, adaptive Copilot models still omit the interleaved beta (packages/ai/src/api/anthropic-messages.ts:getBetaFeatures).
+	if strings.Contains(capturedHeaders.Get("anthropic-beta"), "interleaved-thinking-2025-05-14") {
+		t.Errorf("adaptive model sent interleaved-thinking beta: %q", capturedHeaders.Get("anthropic-beta"))
 	}
 
 	// Verify anthropic-version header
@@ -1192,5 +1284,69 @@ func TestCopilotRuntimeTokenOutranksStoredCredential(t *testing.T) {
 	}
 	if got, err := mgr.getBaseURL(context.Background()); err != nil || got != "https://api.enterprise.githubcopilot.com" {
 		t.Fatalf("baseURL after removal = %q, %v; want the OAuth token's proxy endpoint", got, err)
+	}
+}
+
+// TestNewCopilotProviderCatalogCompat asserts a Copilot provider built without
+// ModelMetadata still reads the generated github-copilot model's compat, as
+// upstream API leaves read model.compat. github-copilot.json gives
+// claude-haiku-4.5 supportsEagerToolInputStreaming false, so its tools omit
+// eager_input_streaming (.upstream/v0.87.1/packages/ai/src/api/anthropic-messages.ts:209),
+// and gemini-3.5-flash supportsDeveloperRole false, so its instructions use the
+// system role (openai-completions.ts:1225).
+func TestNewCopilotProviderCatalogCompat(t *testing.T) {
+	cases := []struct {
+		model string
+		api   API
+		check func(t *testing.T, body string)
+	}{
+		{"claude-haiku-4.5", APIAnthropicMessages, func(t *testing.T, body string) {
+			if !strings.Contains(body, `"name":"lookup"`) || strings.Contains(body, "eager_input_streaming") {
+				t.Errorf("claude-haiku-4.5 tools must omit eager_input_streaming: %s", body)
+			}
+		}},
+		{"claude-opus-5", APIAnthropicMessages, func(t *testing.T, body string) {
+			if !strings.Contains(body, `"eager_input_streaming":true`) {
+				t.Errorf("claude-opus-5 tools must keep eager_input_streaming (compat unset): %s", body)
+			}
+		}},
+		{"gemini-3.5-flash", APIOpenAICompletions, func(t *testing.T, body string) {
+			if !strings.Contains(body, `"role":"system"`) || strings.Contains(body, `"role":"developer"`) {
+				t.Errorf("gemini-3.5-flash must send the system role: %s", body)
+			}
+		}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.model, func(t *testing.T) {
+			auth, err := NewAuthStorage(t.TempDir() + "/auth.json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			access := "tid=test;exp=9999999999;proxy-ep=proxy.enterprise.githubcopilot.com;"
+			if err := auth.Set("github-copilot", Credential{Type: CredentialOAuth, Refresh: "ghu", Access: access, Expires: time.Now().Add(time.Hour).UnixMilli()}); err != nil {
+				t.Fatal(err)
+			}
+			provider, err := NewCopilotProvider(CopilotProviderConfig{Auth: auth, Model: tc.model, API: tc.api, Reasoning: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			var body string
+			fetch := &http.Client{Transport: copilotRoundTripper(func(request *http.Request) (*http.Response, error) {
+				data, _ := io.ReadAll(request.Body)
+				body = string(data)
+				return &http.Response{StatusCode: http.StatusBadRequest, Header: http.Header{}, Body: io.NopCloser(strings.NewReader(`{"error":{"message":"stop"}}`))}, nil
+			})}
+			transcript := NormalizeContext(Context{
+				SystemPrompt: "system",
+				Messages:     []Message{UserMessage{Content: UserText("hi")}},
+				Tools:        []ToolSchema{{Name: "lookup", Description: "Look up", Parameters: map[string]any{"type": "object"}}},
+			})
+			// The stubbed 400 ends the request; only the captured body matters.
+			if stream, err := provider.Stream(t.Context(), transcript, StreamOptions{Fetch: fetch, IsReasoning: true}); err == nil {
+				for range stream.Events(t.Context()) {
+				}
+			}
+			tc.check(t, body)
+		})
 	}
 }

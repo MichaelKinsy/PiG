@@ -12,7 +12,7 @@ import (
 
 // NormalizePromptContent applies the selected model's profile once, before new
 // images enter history. Prompt failures become text hints, unlike tool results.
-func NormalizePromptContent(content []ai.UserContentBlock, autoResize bool, model *ai.Model) []ai.UserContentBlock {
+func NormalizePromptContent(content []ai.UserContentBlock, autoResize bool, model *ai.Model, processImage imageprocessing.ProcessImageFunc) []ai.UserContentBlock {
 	var options *ai.ModelImageResizeOptions
 	if model != nil && model.InputLimits != nil && model.InputLimits.Images != nil {
 		options = model.InputLimits.Images.Resize
@@ -26,7 +26,7 @@ func NormalizePromptContent(content []ai.UserContentBlock, autoResize bool, mode
 			continue
 		}
 		decoded := imageprocessing.DecodeNodeBase64(image.Data)
-		data, mime, hint, err := imageprocessing.ProcessImage(decoded, image.MimeType, autoResize, options)
+		data, mime, hint, err := processImage(decoded, image.MimeType, autoResize, options)
 		if err != nil {
 			hints = append(hints, err.Error())
 			continue
@@ -83,7 +83,7 @@ func imagesFromExtension(images []extension.ImageContent) []ai.ImageContent {
 	return result
 }
 
-func promptContent(text string, images []ai.ImageContent) []ai.UserContentBlock {
+func promptContent(text string, images []ai.ImageContent) ai.UserContentBlocks {
 	content := make([]ai.UserContentBlock, 0, len(images))
 	content = append(content, ai.TextContent{Text: text})
 	for _, image := range images {

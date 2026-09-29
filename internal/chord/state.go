@@ -148,7 +148,7 @@ func (core *stateCore) drainLocked() error {
 	core.delivering = false
 	core.mu.Unlock()
 	if len(errs) > 1 {
-		return fmt.Errorf("replicated state listeners failed: %w", errors.Join(errs...))
+		return NewAggregateError("Replicated state listeners failed", errs)
 	}
 	return joinErrors(errs)
 }

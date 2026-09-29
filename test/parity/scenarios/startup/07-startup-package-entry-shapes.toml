@@ -1,0 +1,59 @@
+# Behavior family: startup
+# Upstream evidence: package-manager.ts collectFilesFromPaths keeps a declared
+# file as itself and searches a declared directory (collectSkillEntries,
+# collectFiles: dot entries and .gitignore/.ignore/.fdignore paths skipped);
+# skills.ts loadSkillFromFile skips root-level Markdown with no description;
+# the extension path "./" stays the package directory, labelled by its
+# git-relative path, and jiti imports that directory's index.ts; Pi never
+# reads .claude-plugin/plugin.json. Probed on Pi 0.87.1 at
+# 100x45 with a git Package declaring a SKILL.md file entry, a skills
+# directory with root-level Markdown, a prompts directory with a dot file and
+# an ignored file, a theme in a dot directory, "./" as its extension, and a
+# Claude plugin manifest with inline mcpServers:
+#   [Skills]
+#     listed, nested, planner
+#   [Prompts]
+#     /visible
+#   [Extensions]
+#     pig-parity/entry-shapes:entry-shapes
+#   [Themes]
+#     shapes-theme
+# PiG failed the Package: it read <file>/SKILL.md for the file entry, parsed
+# the Claude manifest's mcpServers object as a path list, and imported the
+# "./" directory, which Node refuses; it also listed no Package theme, and
+# a packed Node extension reported its entry file rather than its path.
+name = "07-startup-package-entry-shapes"
+description = "A Package's file and directory entries, dot-directory theme and Claude plugin manifest load and list as in Pi."
+covers = [
+  "packages/coding-agent/src/core/package-manager.ts",
+  "packages/coding-agent/src/core/skills.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_OFFLINE=1", "PIG_CODING_AGENT_DIR=testdata/entry-shapes/pig-agent"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/entry-shapes/pi-agent"]
+# The base arguments pass --no-extensions, which also drops Packages from the
+# listing under test.
+override_base_args = true
+
+[tmux]
+width = 100
+height = 45
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "[Skills]"
+capture_end = "shapes-theme"
+
+[[tmux.steps]]
+wait_visible_contains = ["shapes-theme"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["listed, nested, planner", "/visible", "pig-parity/entry-shapes:entry-shapes", "[Themes]", "shapes-theme"]
+both_not_contain = ["claude-only", "/ignored", "/.hidden", "SUITE", "Failed to load"]
+escaped_output_equal = true
+runs = 3

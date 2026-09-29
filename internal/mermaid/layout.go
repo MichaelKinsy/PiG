@@ -659,11 +659,8 @@ func layoutCanvas(g *graph, extras []nodeExtra, wrap int) *canvas {
 	orderRanks(byRank, g.edges, ranks)
 
 	wrapped := make([][]string, n)
-	var splitAnyWord bool
 	for i, nd := range g.nodes {
-		var splitWord bool
-		wrapped[i], splitWord = wrapLabel(nd.label, wrap, maxLinesFor(wrap))
-		splitAnyWord = splitAnyWord || splitWord
+		wrapped[i] = wrapLabel(nd.label, wrap, maxLines)
 	}
 	widest := func(lines []string) int {
 		if len(lines) == 0 {
@@ -790,7 +787,6 @@ func layoutCanvas(g *graph, extras []nodeExtra, wrap int) *canvas {
 	}
 
 	c.finalizeMask()
-	c.splitWord = c.splitWord || splitAnyWord
 	return c
 }
 
@@ -1090,7 +1086,6 @@ func drawFrame(c *canvas, p placed, title string, sub *canvas) {
 	drawBox(c, p, nil, shapeRect)
 	t := fitLabel(title, satSub(p.w, 4))
 	drawTextOverEdges(c, " "+t+" ", p.x+1, p.y, ClsText)
-	c.splitWord = c.splitWord || sub.splitWord
 	c.blit(sub, p.x+1+half(p.w-2-sub.w), p.y+1+half(p.h-2-sub.h))
 }
 
@@ -1294,17 +1289,7 @@ func placeLabel(c *canvas, label string, row, startX int) {
 	}
 }
 
-// frameTitleWidth returns the columns a subgraph frame must give its title.
-//
-// At the natural width the title is clipped to the label wrap width, matching
-// grok-mermaid. While narrowing to fit an area the full title is measured
-// instead, so the frame grows rather than losing the title's words; a frame that
-// grows past the target is rejected by the search, which then tries another
-// width. drawFrame clips to the frame it is given, so sizing the frame for the
-// whole title is what keeps it whole on screen.
+// frameTitleWidth measures a subgraph title clipped to the label wrap width.
 func frameTitleWidth(title string, wrap int) int {
-	if wrap >= wrapWidth {
-		return stringWidth(fitLabel(title, wrap))
-	}
-	return stringWidth(title)
+	return stringWidth(fitLabel(title, wrap))
 }

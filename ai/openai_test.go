@@ -720,11 +720,11 @@ func TestSystemPromptRole_ReasoningModelOnOpenAI(t *testing.T) {
 	}
 }
 
-func TestSystemPromptRole_ReasoningModelOnOllama(t *testing.T) {
+func TestSystemPromptRole_ReasoningModelOnUnconfiguredLocalEndpoint(t *testing.T) {
 	p := &openAIProvider{cfg: OpenAIConfig{BaseURL: "http://localhost:11434/v1"}}
 	role := p.systemPromptRole(true)
-	if role != "system" {
-		t.Errorf("reasoning model on Ollama role = %q, want system (no developer support)", role)
+	if role != "developer" {
+		t.Errorf("unconfigured compatible endpoint role = %q, want Pi's default developer role", role)
 	}
 }
 
@@ -1206,11 +1206,13 @@ func sseTextAndDone(t *testing.T, events []AssistantMessageEvent) (string, *Assi
 
 func TestParseSSEUnknownFinishEmitsError(t *testing.T) {
 	cases := []struct {
-		name   string
-		suffix string
+		name     string
+		suffix   string
+		complete bool
 	}{
-		{name: "done sentinel", suffix: "\ndata: [DONE]\n"},
-		{name: "stream eof"},
+		{name: "done sentinel", suffix: "\ndata: [DONE]\n", complete: true},
+		{name: "terminated frame at stream eof", suffix: "\n", complete: true},
+		{name: "unterminated frame at stream eof"},
 	}
 	for _, testCase := range cases {
 		t.Run(testCase.name, func(t *testing.T) {
@@ -1223,11 +1225,17 @@ func TestParseSSEUnknownFinishEmitsError(t *testing.T) {
 			if !ok {
 				t.Fatalf("event = %#v, want ErrorEvent", events[0])
 			}
-			if got := errorEvent.Error.ErrorMessage; got != "Provider finish_reason: vendor_custom" {
-				t.Fatalf("error = %q", got)
+			wantError := "Provider finish_reason: vendor_custom"
+			input, output := 7, 2
+			if !testCase.complete {
+				// OpenAI SDK _iterSSEMessages does not dispatch an unterminated SSE event at EOF.
+				wantError, input, output = "Stream ended without finish_reason", 0, 0
 			}
-			if usage := errorEvent.Error.Usage; usage.Input != 7 || usage.Output != 2 || usage.TotalTokens != 9 {
-				t.Fatalf("usage = %#v, want input 7 output 2 total 9", usage)
+			if got := errorEvent.Error.ErrorMessage; got != wantError {
+				t.Fatalf("error = %q, want %q", got, wantError)
+			}
+			if usage := errorEvent.Error.Usage; usage.Input != input || usage.Output != output || usage.TotalTokens != input+output {
+				t.Fatalf("usage = %#v, want input %d output %d", usage, input, output)
 			}
 		})
 	}

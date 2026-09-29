@@ -255,19 +255,23 @@ func TestGeminiThinkingBudget(t *testing.T) {
 }
 
 func TestGeminiThinkingLevel(t *testing.T) {
+	// Google model metadata, not model-name special cases, selects each native level.
 	tests := []struct {
-		level ThinkingLevel
-		model string
-		want  string
+		level  ThinkingLevel
+		model  string
+		mapped string
+		want   string
 	}{
-		{ThinkingMinimal, "gemini-3-pro", "LOW"},
-		{ThinkingHigh, "gemini-3-pro", "HIGH"},
-		{ThinkingLow, "gemma-4", "MINIMAL"},
-		{ThinkingMedium, "gemini-3-flash", "MEDIUM"},
+		{ThinkingMinimal, "gemini-3-pro", "low", "LOW"},
+		{ThinkingHigh, "gemini-3-pro", "high", "HIGH"},
+		{ThinkingLow, "gemma-4", "minimal", "MINIMAL"},
+		{ThinkingMedium, "gemini-3-flash", "medium", "MEDIUM"},
 	}
 	for _, test := range tests {
-		if got := geminiThinkingLevel(test.level, test.model); got != test.want {
-			t.Errorf("level %q/%q = %q, want %q", test.level, test.model, got, test.want)
+		model := &Model{ID: test.model, Capabilities: ModelCapabilities{MaxThinking: ThinkingHigh}, ThinkingLevelMap: ThinkingLevelMap{test.level: new(test.mapped)}}
+		config, err := buildGeminiThinkingConfig(model, test.level, true, nil)
+		if err != nil || config == nil || config.ThinkingLevel != test.want {
+			t.Errorf("level %q/%q = %#v, %v; want %s", test.level, test.model, config, err, test.want)
 		}
 	}
 }

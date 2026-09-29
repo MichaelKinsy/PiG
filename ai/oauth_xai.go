@@ -170,7 +170,7 @@ func (p xaiOAuthProvider) pollToken(ctx context.Context, deviceCode string) (Dev
 	case "authorization_pending":
 		return DeviceCodePollResult[OAuthCredentials]{Status: DevicePollPending}, nil
 	case "slow_down":
-		return DeviceCodePollResult[OAuthCredentials]{Status: DevicePollSlowDown}, nil
+		return DeviceCodePollResult[OAuthCredentials]{Status: DevicePollSlowDown, IntervalSeconds: body.Interval}, nil
 	case "access_denied", "authorization_denied":
 		return DeviceCodePollResult[OAuthCredentials]{Status: DevicePollFailed, Message: "xAI device authorization was denied"}, nil
 	case "expired_token":
@@ -226,18 +226,16 @@ func (p xaiOAuthProvider) credentialsFromToken(body xaiBody, previousRefresh str
 		// must carry one.
 		return OAuthCredentials{}, errors.New("Invalid xAI OAuth response field: refresh_token")
 	}
-	expiresIn := xaiDefaultTokenLifetime
+	expiresIn := float64(xaiDefaultTokenLifetime)
 	if body.ExpiresIn != nil {
 		if *body.ExpiresIn <= 0 {
 			return OAuthCredentials{}, errors.New("Invalid xAI OAuth response field: expires_in")
 		}
-		expiresIn = int64(*body.ExpiresIn)
+		expiresIn = *body.ExpiresIn
 	}
-	return OAuthCredentials{
-		Access:  body.AccessToken,
-		Refresh: refresh,
-		Expires: p.now().UnixMilli() + expiresIn*1000 - xaiRefreshSkewMs,
-	}, nil
+	creds := OAuthCredentials{Access: body.AccessToken, Refresh: refresh}
+	creds.SetExpiresMillis(float64(p.now().UnixMilli()) + expiresIn*1000 - float64(xaiRefreshSkewMs))
+	return creds, nil
 }
 
 func parseXaiDeviceCode(body xaiBody) (xaiDeviceCode, error) {

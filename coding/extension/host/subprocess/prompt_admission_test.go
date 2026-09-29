@@ -39,6 +39,7 @@ func TestPackedPromptHandlerBodyFIFO(t *testing.T) {
 			defer host.Shutdown("test complete")
 			records := make(chan string, 2*prompts)
 			bridge := NewUIBridge(func() {})
+			bridge.SetUIContext(newFakeUIContext())
 			bridge.SetNotifyFunc(func(message, _ string) { records <- message })
 			host.SetUIBridge(bridge)
 			loaded, errs := host.LoadAll(t.Context(), configs)
@@ -146,6 +147,7 @@ func TestNodePromptEndRunsWhileStartPromisePending(t *testing.T) {
 	defer host.Shutdown("test complete")
 	records := make(chan string, 3)
 	bridge := NewUIBridge(func() {})
+	bridge.SetUIContext(newFakeUIContext())
 	bridge.SetNotifyFunc(func(message, _ string) { records <- message })
 	host.SetUIBridge(bridge)
 	config := startupNodeFixture(t, t.TempDir(), "prompt-promise", `export default function(pi) {

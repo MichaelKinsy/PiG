@@ -13,13 +13,18 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // Ports utils/clipboard.ts copyToClipboard and
-// utils/clipboard-command.ts runClipboardCommand. PiG has no native clipboard
-// module, so the platform commands (pbcopy, clip, the Linux tools) are the
-// direct writers upstream tries after its native writer.
+// utils/clipboard-command.ts runClipboardCommand. Outside Linux the native
+// helper's SetText runs first; the platform commands (pbcopy, clip, the Linux
+// tools) are the writers upstream tries after it.
 
 const maxOSC52EncodedLength = 100_000
 
@@ -38,33 +43,92 @@ func runClipboardCommand(name string, args []string, options clipboardCommandOpt
 	if timeout <= 0 {
 		timeout = 3 * time.Second
 	}
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+	output, err := runClipboardCommandContext(ctx, name, args, options)
+	return output, err == nil
+}
+
+// runClipboardCommandContext shares the bounded subprocess lifetime for clipboard readers and writers under the caller's deadline. A reader waits for the child to exit and every holder of its stdout to close it, even after a nonzero exit. A writer receives no output pipe to retain after daemonizing and succeeds when the child exits successfully. The deadline, parent cancellation, or output overflow kills the child and closes the parent's pipe end without joining any descendant that inherited stdin or stdout. Input strings use Node's UTF-8 encoding, replacing lone UTF-16 units.
+// Ports packages/coding-agent/src/utils/clipboard-command.ts:runClipboardCommand.
+func runClipboardCommandContext(parent context.Context, name string, args []string, options clipboardCommandOptions) ([]byte, error) {
 	maxBytes := options.maxBytes
 	if maxBytes <= 0 {
 		maxBytes = 50 * 1024 * 1024
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	ctx, cancel := context.WithCancel(parent)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, name, args...)
-	var stdout bytes.Buffer
+	hideClipboardWindow(cmd)
+	// The parent owns its pipe end as an *os.File and closes it itself, so Wait joins only the child and never a copy that a descendant holds open.
+	parentEnd, childEnd, err := clipboardPipe(options.input == nil)
+	if err != nil {
+		return nil, err
+	}
+	stdout := nodespawn.Ignore
 	if options.input != nil {
-		// Clipboard writers can daemonize; give them no output pipe to retain.
-		cmd.Stdin = strings.NewReader(*options.input)
+		cmd.Stdin = childEnd
 	} else {
-		cmd.Stdout = &limitedWriter{w: &stdout, remaining: maxBytes}
+		cmd.Stdout = childEnd
+		stdout = nodespawn.Pipe
 	}
-	if err := cmd.Run(); err != nil {
-		return nil, false
+	// Upstream spawns with stdio ["pipe", input === undefined ? "pipe" :
+	// "ignore", "ignore"] and windowsHide: true.
+	nodespawn.HideWindow(cmd, nodespawn.Pipe, stdout, nodespawn.Ignore)
+	// Upstream's spawn finds the command with libuv's search on Windows.
+	nodespawn.SetProgram(cmd)
+	err = cmd.Start()
+	_ = childEnd.Close()
+	if err != nil {
+		_ = parentEnd.Close()
+		return nil, err
 	}
-	return stdout.Bytes(), true
+	var output bytes.Buffer
+	var streams sync.WaitGroup
+	outputDone := make(chan error, 1)
+	if options.input != nil {
+		outputDone <- nil
+		input := jsstring.ToUTF8(*options.input)
+		streams.Go(func() {
+			// A writer may exit before consuming all input.
+			_, _ = parentEnd.Write(input)
+			_ = parentEnd.Close()
+		})
+	} else {
+		streams.Go(func() {
+			_, err := io.Copy(&limitedWriter{w: &output, remaining: maxBytes, cancel: cancel}, parentEnd)
+			outputDone <- err
+		})
+	}
+	waitErr := cmd.Wait()
+	var outputErr error
+	// 'close' waits for stdout even when the child exits with a failure status.
+	select {
+	case outputErr = <-outputDone:
+	case <-ctx.Done():
+		outputErr = ctx.Err()
+	}
+	// Upstream abort destroys the streams instead of waiting for them to close.
+	_ = parentEnd.Close()
+	streams.Wait()
+	if waitErr != nil {
+		return nil, waitErr
+	}
+	if outputErr != nil {
+		return nil, outputErr
+	}
+	return output.Bytes(), nil
 }
 
 type limitedWriter struct {
 	w         io.Writer
 	remaining int
+	cancel    context.CancelFunc
 }
 
 func (l *limitedWriter) Write(p []byte) (int, error) {
 	if len(p) > l.remaining {
+		l.cancel()
 		return 0, errors.New("clipboard output exceeds the buffer limit")
 	}
 	l.remaining -= len(p)
@@ -80,6 +144,7 @@ type clipboardCopier struct {
 	run      func(name string, args []string, options clipboardCommandOptions) ([]byte, bool)
 	stdout   io.Writer
 	tempDir  func() string
+	native   func() *tui.NativeClipboard
 }
 
 func hostClipboardCopier() clipboardCopier {
@@ -90,6 +155,7 @@ func hostClipboardCopier() clipboardCopier {
 		run:      runClipboardCommand,
 		stdout:   os.Stdout,
 		tempDir:  os.TempDir,
+		native:   func() *tui.NativeClipboard { return getNativeClipboard() },
 	}
 }
 
@@ -103,8 +169,9 @@ func (c clipboardCopier) isRemoteSession() bool {
 	return c.getenv("SSH_CONNECTION") != "" || c.getenv("SSH_CLIENT") != "" || c.getenv("MOSH_CONNECTION") != ""
 }
 
+// emitOSC52 uses Buffer.from(text) semantics: lone UTF-16 units become U+FFFD before base64 encoding and the size check.
 func (c clipboardCopier) emitOSC52(text string) bool {
-	encoded := base64.StdEncoding.EncodeToString([]byte(text))
+	encoded := base64.StdEncoding.EncodeToString(jsstring.ToUTF8(text))
 	if len(encoded) > maxOSC52EncodedLength {
 		return false
 	}
@@ -135,12 +202,12 @@ func (c clipboardCopier) writerCommands() [][]string {
 
 // copyViaWindowsClipboard writes the Windows clipboard from WSL without WSLg.
 // PowerShell reads the text from a file because clip.exe and PowerShell stdin
-// decode piped bytes with the console code page, which mangles UTF-8.
+// decode piped bytes with the console code page, which mangles UTF-8. The file uses Node's UTF-8 encoding, replacing lone UTF-16 units.
 func (c clipboardCopier) copyViaWindowsClipboard(text string) bool {
 	suffix := make([]byte, 16)
 	_, _ = rand.Read(suffix)
 	tmpFile := filepath.Join(c.tempDir(), "pi-wsl-clip-"+hex.EncodeToString(suffix)+".txt")
-	if err := os.WriteFile(tmpFile, []byte(text), 0o600); err != nil {
+	if err := os.WriteFile(tmpFile, jsstring.ToUTF8(text), 0o600); err != nil {
 		return false
 	}
 	defer func() { _ = os.Remove(tmpFile) }()
@@ -156,10 +223,19 @@ func (c clipboardCopier) copyViaWindowsClipboard(text string) bool {
 
 func (c clipboardCopier) copy(text string) error {
 	copied := false
-	for _, command := range c.writerCommands() {
-		if _, ok := c.run(command[0], command[1:], clipboardCommandOptions{input: &text, timeout: 5 * time.Second}); ok {
-			copied = true
-			break
+	// Direct writes precede OSC 52 so the terminal cannot race the native writer. Linux tools retain clipboard selection ownership after this call returns.
+	// upstream: packages/coding-agent/src/utils/clipboard.ts:copyToClipboard
+	if c.platform != "linux" && c.native != nil {
+		if clipboard := c.native(); clipboard != nil && clipboard.SetText != nil {
+			copied = clipboard.SetText(context.Background(), text) == nil
+		}
+	}
+	if !copied {
+		for _, command := range c.writerCommands() {
+			if _, ok := c.run(command[0], command[1:], clipboardCommandOptions{input: &text, timeout: 5 * time.Second}); ok {
+				copied = true
+				break
+			}
 		}
 	}
 	osc52Emitted := false

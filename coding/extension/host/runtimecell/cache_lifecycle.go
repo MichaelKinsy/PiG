@@ -311,6 +311,12 @@ func inspectOrPruneCache(options CacheLifecycleOptions, prune bool) (CacheReport
 
 var tombstoneSequence atomic.Uint64
 
+// HasCacheEntries reports whether PruneCaches and InspectCache would classify at least one entry under cacheRoot.
+func HasCacheEntries(cacheRoot string) (bool, error) {
+	paths, err := cacheEntryPaths(cacheRoot)
+	return len(paths) > 0, err
+}
+
 func cacheEntryPaths(cacheRoot string) ([]string, error) {
 	var paths []string
 	extRoot := filepath.Join(cacheRoot, "ext")

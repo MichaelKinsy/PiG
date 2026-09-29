@@ -3,8 +3,6 @@ package codingagent
 import (
 	"context"
 	"errors"
-	"fmt"
-	"path/filepath"
 	"slices"
 	"sync"
 
@@ -101,9 +99,19 @@ func (m *InteractiveMode) runEditorSlotCustom(component llama.CustomComponent, r
 	inputCh, releaseInput := m.acquireModalInputChannel()
 	defer releaseInput()
 	for {
+		if m.modalStopped() {
+			return
+		}
 		select {
+		case <-m.modalContextDone():
+			return
+		case err := <-m.inputErrCh:
+			m.inputLoopErr = err
+			return
+		case task := <-m.uiTaskCh:
+			task()
 		case buf := <-inputCh:
-			for _, chunk := range dropKeyReleases(component, []string{string(buf)}) {
+			for _, chunk := range m.modalInputChunks(component, []string{string(buf)}) {
 				component.HandleInput(chunk)
 			}
 		case <-renderNotify:
@@ -160,63 +168,26 @@ func (m *InteractiveMode) applyLlamaAuthStatus(providers []tui.OAuthProvider) {
 	}
 }
 
-// loginAPIKeyProvider runs llama.cpp's own api-key login in the login dialog
-// and reports false for providers that use the plain key prompt.
+// loginAPIKeyProvider adapts the built-in extension's declared auth method to the shared dialog.
 func (m *InteractiveMode) loginAPIKeyProvider(providerID string) bool {
-	if m.opts.Llama == nil || providerID != llama.LlamaProviderID {
+	if m.opts.Llama == nil || providerID != m.opts.Llama.Provider().ID {
 		return false
 	}
-	previousModel := m.opts.Model
-	name := m.opts.Llama.Provider().Name
-	parent := m.runCtx
-	if parent == nil {
-		parent = context.Background()
+	if err := m.runAPIKeyLogin(tui.OAuthProvider{ID: providerID, Name: m.opts.Llama.Provider().Name, AuthType: "api_key"}); err != nil {
+		m.showError(err.Error())
 	}
-	loginCtx, cancel := context.WithCancelCause(parent)
-	defer cancel(nil)
-	dialog := m.newLoginDialog(name, func() { cancel(errLoginAborted) })
-	renderNotify := make(chan struct{}, 1)
-	requestRender := func() {
-		select {
-		case renderNotify <- struct{}{}:
-		default:
-		}
-	}
-	done := make(chan struct{})
-	var loginErr error
-	go func() {
-		defer close(done)
-		loginErr = m.opts.Llama.Login(llama.AuthInteraction{
-			Ctx: loginCtx,
-			Prompt: func(prompt llama.AuthPrompt) (string, error) {
-				showInput := dialog.ShowInput
-				// pig divergence (D80): preserve secret prompt metadata while allowing the configured Pi-compatible opt-out.
-				if prompt.Type == "secret" {
-					showInput = dialog.ShowSecretInput
-				}
-				answer := showInput(prompt.Message, prompt.Placeholder)
-				requestRender()
-				select {
-				case value, ok := <-answer:
-					if !ok {
-						return "", errLoginCancelled
-					}
-					return value, nil
-				case <-loginCtx.Done():
-					return "", errLoginCancelled
-				}
-			},
-		})
-	}()
-	m.runEditorSlotCustom(dialog, renderNotify, nil, done)
-	if loginErr != nil {
-		if loginErr.Error() != errLoginCancelled.Error() {
-			m.showError(dialog.Redact(fmt.Sprintf("Failed to save API key for %s: %v", name, loginErr)))
-		}
-		return true
-	}
-	m.completeProviderAuthentication(providerID, name, ai.CredentialAPIKey, previousModel, filepath.Join(m.opts.AgentDir, "auth.json"), dialog.Redact)
 	return true
+}
+
+func llamaAPIKeyAuth(provider *llama.Provider) *ai.APIKeyAuth {
+	return &ai.APIKeyAuth{Name: provider.APIKey.Name, Login: func(ctx context.Context, interaction ai.AuthInteraction) (ai.Credential, error) {
+		return provider.APIKey.Login(llama.AuthInteraction{Ctx: ctx, Prompt: func(prompt llama.AuthPrompt) (string, error) {
+			if prompt.Type == "secret" {
+				return interaction.Prompt(ctx, ai.AuthSecretPrompt{Message: prompt.Message, Placeholder: prompt.Placeholder})
+			}
+			return interaction.Prompt(ctx, ai.AuthTextPrompt{Message: prompt.Message, Placeholder: prompt.Placeholder})
+		}})
+	}}
 }
 
 var (

@@ -6,8 +6,8 @@ set -euo pipefail
 ROOT="${PIG_DIVERGENCE_ROOT:-$(cd "$(dirname "$0")/../.." && pwd)}"
 cd "$ROOT"
 
-if [[ ! -f DIVERGENCES.md ]]; then
-  echo "FAIL: DIVERGENCES.md missing"
+if [[ ! -f docs/parity/DIVERGENCES.md ]]; then
+  echo "FAIL: docs/parity/DIVERGENCES.md missing"
   exit 1
 fi
 
@@ -26,7 +26,7 @@ markers() {
     | grep -oE 'D[0-9]+' | sort -u || true
 }
 
-core=$(headings DIVERGENCES.md | sort -u)
+core=$(headings docs/parity/DIVERGENCES.md | sort -u)
 additive=$(headings docs/additive-features.md | sort -u)
 all=$(printf '%s\n%s\n' "$core" "$additive" | sed '/^$/d' | sort)
 divergence_refs=$(markers divergence)

@@ -1,0 +1,35 @@
+# Pi 0.87.1 ModelConfig.load (model-config.ts:281-311) appends two newlines
+# and File: <selected path> to read, parse, and schema failures; only ENOENT is silent.
+# The malformed/blank inputs are config-value-migration.test.ts:72-87 verbatim.
+# Direct Pi probes retained all four diagnostics and ordinary/missing empty results.
+# These regexes assert the diagnostic envelope and exact file label, not native
+# parser/OS/schema-validator wording. Full raw errors are retained, not normalized.
+# Native reason wording differs between Go and Node and is not closure claimed here.
+name = "29-model-config-diagnostic-source"
+description = "Model configuration errors identify the selected file without rewriting it"
+covers = ["packages/coding-agent/src/core/model-config.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/model-config-diagnostics"]
+pi_args = ["node", "./test/parity/testdata/model-config-diagnostics.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+both_match_regex = [
+  'CASE blank\nFailed to parse models\.json: [^\n]+\n\nFile: blank-models\.json\nEND',
+  'CASE malformed\nFailed to parse models\.json: [^\n]+\n\nFile: malformed-models\.json\nEND',
+  'CASE schema\nInvalid models\.json schema:\n[^\n]+\n\nFile: schema-models\.json\nEND',
+  'CASE directory\nFailed to load models\.json: [^\n]+\n\nFile: directory-models\.json\nEND',
+  'CASE ordinary\n\nEND',
+  'CASE missing\n\nEND',
+]
+runs = 3

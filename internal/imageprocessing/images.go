@@ -57,12 +57,8 @@ type preparedImageResult struct {
 	WasResized     bool
 }
 
-// NormalizeToolResultImages processes data images as they enter history. With
-// auto-resize enabled, oversized images are resized once; disabled, unsupported
-// still-image formats are still converted to a supported inline format (no
-// resize): mirroring upstream processImage, whose normalizeImage step runs
-// before the auto-resize branch. Decode/processing failures preserve the
-// original block; conversion and resize hints are appended to the tool result.
+// NormalizeToolResultImages processes tool images before history. Each conversion or resize hint follows its image; failures and unchanged results retain the original blocks and content slice.
+// Ports packages/coding-agent/src/utils/tool-result-images.ts.
 func NormalizeToolResultImages(result agent.AgentToolResult, autoResize bool) agent.AgentToolResult {
 	return NormalizeToolResultImagesWithOptions(result, autoResize, nil)
 }
@@ -70,44 +66,34 @@ func NormalizeToolResultImages(result agent.AgentToolResult, autoResize bool) ag
 // NormalizeToolResultImagesWithOptions applies the active model profile after
 // extension hooks. Failed image processing retains the original image block.
 func NormalizeToolResultImagesWithOptions(result agent.AgentToolResult, autoResize bool, options *ai.ModelImageResizeOptions) agent.AgentToolResult {
-	if len(result.Images) == 0 {
-		return result
-	}
-	images := make([]ai.ImageContent, 0, len(result.Images))
-	var hints []string
-	changed := false
-	for _, image := range result.Images {
-		if image.Data == "" {
-			images = append(images, image)
+	var normalized []ai.ToolResultMessageContent
+	for i, block := range result.Content {
+		image, isImage := block.(ai.ImageContent)
+		if !isImage {
+			if normalized != nil {
+				normalized = append(normalized, block)
+			}
 			continue
 		}
-		decoded := DecodeNodeBase64(image.Data)
-		processed, mime, hint, err := ProcessImage(decoded, image.MimeType, autoResize, options)
-		if err != nil {
-			images = append(images, image)
+		processed, mime, hint, err := ProcessImage(DecodeNodeBase64(image.Data), image.MimeType, autoResize, options)
+		data := base64.StdEncoding.EncodeToString(processed)
+		if err != nil || (data == image.Data && mime == image.MimeType && hint == "") {
+			if normalized != nil {
+				normalized = append(normalized, block)
+			}
 			continue
 		}
-		normalized := image
-		normalized.Data = base64.StdEncoding.EncodeToString(processed)
-		normalized.MimeType = mime
-		images = append(images, normalized)
-		if normalized.Data != image.Data || normalized.MimeType != image.MimeType {
-			changed = true
+		if normalized == nil {
+			normalized = make([]ai.ToolResultMessageContent, 0, len(result.Content)+1)
+			normalized = append(normalized, result.Content[:i]...)
 		}
+		normalized = append(normalized, ai.ImageContent{Data: data, MimeType: mime})
 		if hint != "" {
-			hints = append(hints, hint)
-			changed = true
+			normalized = append(normalized, ai.TextContent{Text: hint})
 		}
 	}
-	if !changed {
-		return result
-	}
-	result.Images = images
-	if len(hints) > 0 {
-		if result.Content != "" {
-			result.Content += "\n"
-		}
-		result.Content += strings.Join(hints, "\n")
+	if normalized != nil {
+		result.Content = normalized
 	}
 	return result
 }
@@ -143,6 +129,9 @@ func ResizeImageForLLM(in []byte) ([]byte, string, error) {
 func PrepareCLIImageAttachment(in []byte, inputMIME string) ([]byte, string, string, error) {
 	return ProcessImage(in, inputMIME, true, nil)
 }
+
+// ProcessImageFunc is the selected image processor at the model-input boundary.
+type ProcessImageFunc func([]byte, string, bool, *ai.ModelImageResizeOptions) ([]byte, string, string, error)
 
 // ProcessImage normalizes unsupported formats before applying a model's resize
 // profile. A false autoResize flag still converts unsupported formats. Errors

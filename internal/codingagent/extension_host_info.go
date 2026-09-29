@@ -9,6 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/llama"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
 // PiSourceInfo is upstream's SourceInfo (source-info.ts) as it travels to
@@ -105,6 +106,20 @@ func (c SlashCommandCatalog) SubprocessCommands() []subprocess.CommandInfo {
 	return out
 }
 
+// WithSkillSources projects loaded skills with the same resource provenance used by command discovery. Inline skills retain their authored metadata; file-backed skills use resolver and extension-discovery metadata.
+// Ports packages/coding-agent/src/core/resource-loader.ts
+func (c SlashCommandCatalog) WithSkillSources(skills []*SkillDef) []*SkillDef {
+	out := make([]*SkillDef, 0, len(skills))
+	for _, skill := range skills {
+		copy := *skill
+		if skill.Path != "" && skill.SourceInfo.Source != "inline" {
+			copy.SourceInfo = c.SourceInfoForPath(skill.Path, "skills")
+		}
+		out = append(out, &copy)
+	}
+	return out
+}
+
 // SourceInfoForPath returns the SourceInfo of a resource of kind
 // ("extensions", "prompts" or "skills") loaded from path.
 func (c SlashCommandCatalog) SourceInfoForPath(path, kind string) PiSourceInfo {
@@ -148,7 +163,7 @@ func (c SlashCommandCatalog) SourceInfoForPath(path, kind string) PiSourceInfo {
 		info.BaseDir = filepath.Dir(path)
 	}
 	userRoot := filepath.Join(c.AgentDir, kind)
-	projectRoot := filepath.Join(c.CWD, CONFIG_DIR_NAME, kind)
+	projectRoot := filepath.Join(ProjectConfigDir(c.CWD), kind)
 	switch {
 	case resourcePathWithin(path, userRoot):
 		info.Scope, info.BaseDir = "user", userRoot
@@ -189,8 +204,8 @@ func resourcePathWithin(path, base string) bool {
 	if path == "" || base == "" {
 		return false
 	}
-	ap, err1 := filepath.Abs(path)
-	ab, err2 := filepath.Abs(base)
+	ap, err1 := nodepath.Resolve(path)
+	ab, err2 := nodepath.Resolve(base)
 	if err1 != nil || err2 != nil {
 		return false
 	}

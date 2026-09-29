@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"math"
 	"sync"
 	"time"
 
@@ -29,7 +30,7 @@ type rpcUIRequest struct {
 	Message         string    `json:"message,omitempty"`
 	Placeholder     *string   `json:"placeholder,omitempty"`
 	Prefill         *string   `json:"prefill,omitempty"`
-	Timeout         *int64    `json:"timeout,omitempty"`
+	Timeout         *float64  `json:"timeout,omitempty"`
 	NotifyType      string    `json:"notifyType,omitempty"`
 	StatusKey       string    `json:"statusKey,omitempty"`
 	StatusText      *string   `json:"statusText,omitempty"`
@@ -42,13 +43,16 @@ type rpcUIRequest struct {
 type rpcUIContext struct {
 	output func(any)
 
-	mu      sync.Mutex
-	pending map[string]chan rpcUIResponse
-	closed  bool
+	mu        sync.Mutex
+	pending   map[string]chan rpcUIResponse
+	published map[string]struct{}
+	closed    bool
+	// pendingWaiters are closed when a dialog starts waiting for a response.
+	pendingWaiters []chan struct{}
 }
 
 func newRPCUIContext(output func(any)) *rpcUIContext {
-	return &rpcUIContext{output: output, pending: make(map[string]chan rpcUIResponse)}
+	return &rpcUIContext{output: output, pending: make(map[string]chan rpcUIResponse), published: make(map[string]struct{})}
 }
 
 func (u *rpcUIContext) request(ctx context.Context, request rpcUIRequest, opts extension.ExtensionUIDialogOptions) (rpcUIResponse, error) {
@@ -58,9 +62,9 @@ func (u *rpcUIContext) request(ctx context.Context, request rpcUIRequest, opts e
 	id := uuid.NewString()
 	request.Type = "extension_ui_request"
 	request.ID = id
-	if timeout := rpcDialogTimeout(opts); timeout > 0 {
-		milliseconds := timeout.Milliseconds()
-		request.Timeout = &milliseconds
+	timeoutMs, hasTimeout := rpcDialogTimeout(opts)
+	if hasTimeout {
+		request.Timeout = &timeoutMs
 	}
 
 	responses := make(chan rpcUIResponse, 1)
@@ -74,10 +78,23 @@ func (u *rpcUIContext) request(ctx context.Context, request rpcUIRequest, opts e
 
 	u.output(request)
 
+	u.mu.Lock()
+	if u.pending[id] == responses {
+		u.published[id] = struct{}{}
+		for _, waiter := range u.pendingWaiters {
+			close(waiter)
+		}
+		u.pendingWaiters = nil
+	}
+	u.mu.Unlock()
+	// Pi writes the request synchronously when the dialog opens; the dialog is installed once the request is written.
+	extension.CallInitiated(ctx)
+
 	var timeout <-chan time.Time
 	var timer *time.Timer
-	if duration := rpcDialogTimeout(opts); duration > 0 {
-		timer = time.NewTimer(duration)
+	// rpc-mode.ts:115-120: `if (opts?.timeout) setTimeout(...)` arms a Node timer for any truthy number, negative ones included.
+	if hasTimeout && timeoutMs != 0 && !math.IsNaN(timeoutMs) {
+		timer = time.NewTimer(extension.NodeTimerDelay(timeoutMs))
 		timeout = timer.C
 		defer timer.Stop()
 	}
@@ -92,25 +109,31 @@ func (u *rpcUIContext) request(ctx context.Context, request rpcUIRequest, opts e
 	case <-ctx.Done():
 		return rpcUIResponse{}, ctx.Err()
 	case <-timeout:
-		return rpcUIResponse{}, nil
+		// rpc-mode.ts:115-120 resolves the dialog's default on timeout: undefined for select and input, false for confirm, the same as a cancelled dialog.
+		return rpcUIResponse{}, context.Canceled
 	}
 }
 
-func rpcDialogTimeout(opts extension.ExtensionUIDialogOptions) time.Duration {
+// ReportsDialogInitiation reports that Select, Confirm, Input, and Editor mark
+// their call initiated once the request is written.
+func (u *rpcUIContext) ReportsDialogInitiation() bool { return true }
+
+// rpcDialogTimeout reads ExtensionUIDialogOptions.timeout as the raw JavaScript number the request echoes (rpc-mode.ts:138-150).
+func rpcDialogTimeout(opts extension.ExtensionUIDialogOptions) (float64, bool) {
 	if opts == nil {
-		return 0
+		return 0, false
 	}
 	data, err := json.Marshal(opts)
 	if err != nil {
-		return 0
+		return 0, false
 	}
 	var value struct {
-		Timeout float64 `json:"timeout"`
+		Timeout *float64 `json:"timeout"`
 	}
-	if json.Unmarshal(data, &value) != nil || value.Timeout <= 0 {
-		return 0
+	if json.Unmarshal(data, &value) != nil || value.Timeout == nil {
+		return 0, false
 	}
-	return time.Duration(value.Timeout * float64(time.Millisecond))
+	return *value.Timeout, true
 }
 
 func (u *rpcUIContext) remove(id string, responses chan rpcUIResponse) {
@@ -118,6 +141,7 @@ func (u *rpcUIContext) remove(id string, responses chan rpcUIResponse) {
 	defer u.mu.Unlock()
 	if u.pending[id] == responses {
 		delete(u.pending, id)
+		delete(u.published, id)
 	}
 }
 
@@ -130,6 +154,7 @@ func (u *rpcUIContext) HandleResponse(data []byte) bool {
 	responses, ok := u.pending[response.ID]
 	if ok {
 		delete(u.pending, response.ID)
+		delete(u.published, response.ID)
 	}
 	u.mu.Unlock()
 	if !ok {
@@ -137,6 +162,21 @@ func (u *rpcUIContext) HandleResponse(data []byte) bool {
 	}
 	responses <- response
 	return true
+}
+
+// PendingRequest returns a channel closed once a dialog waits for a response.
+// After stdin ends no response can arrive, so such a dialog never resolves,
+// as upstream leaves it pending until the process exits.
+func (u *rpcUIContext) PendingRequest() <-chan struct{} {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	waiter := make(chan struct{})
+	if len(u.published) > 0 {
+		close(waiter)
+	} else {
+		u.pendingWaiters = append(u.pendingWaiters, waiter)
+	}
+	return waiter
 }
 
 func (u *rpcUIContext) Close() {
@@ -148,6 +188,7 @@ func (u *rpcUIContext) Close() {
 	u.closed = true
 	pending := u.pending
 	u.pending = make(map[string]chan rpcUIResponse)
+	clear(u.published)
 	u.mu.Unlock()
 	for _, responses := range pending {
 		responses <- rpcUIResponse{Cancelled: true}
@@ -264,10 +305,10 @@ func (u *rpcUIContext) SetEditorText(text string) {
 	u.emit(rpcUIRequest{Method: "set_editor_text", Text: text})
 }
 
-func (*rpcUIContext) GetEditorText() string                                         { return "" }
-func (*rpcUIContext) AddAutocompleteProvider(extension.AutocompleteProviderFactory) {}
-func (*rpcUIContext) SetEditorComponent(any)                                        {}
-func (*rpcUIContext) GetEditorComponent() any                                       { return nil }
+func (*rpcUIContext) GetEditorText() string                                               { return "" }
+func (*rpcUIContext) AddAutocompleteProvider(extension.AutocompleteProviderFactory) error { return nil }
+func (*rpcUIContext) SetEditorComponent(any)                                              {}
+func (*rpcUIContext) GetEditorComponent() any                                             { return nil }
 
 // Theme is upstream rpc-mode.ts ui.theme, the active global theme.
 func (*rpcUIContext) Theme() extension.Theme                   { return codingagent.ActiveExtensionTheme() }

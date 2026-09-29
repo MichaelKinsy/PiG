@@ -50,6 +50,17 @@ func TestGetSupportedThinkingLevels(t *testing.T) {
 			want: []ThinkingLevel{ThinkingOff, ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh, ThinkingMax},
 		},
 		{
+			// Pi models.ts:924-932 reads the supplied model.reasoning, not a synthesized capability field.
+			name: "selected model reasoning without synthesized capabilities",
+			m:    &Model{ProviderMeta: ProviderMetadata{Reasoning: true}},
+			want: []ThinkingLevel{ThinkingOff, ThinkingMinimal, ThinkingLow, ThinkingMedium, ThinkingHigh},
+		},
+		{
+			name: "selected model map constrains reasoning",
+			m:    &Model{ProviderMeta: ProviderMetadata{Reasoning: true}, ThinkingLevelMap: ThinkingLevelMap{ThinkingOff: nil, ThinkingLow: nil, ThinkingXHigh: ptr("highest")}},
+			want: []ThinkingLevel{ThinkingMinimal, ThinkingMedium, ThinkingHigh, ThinkingXHigh},
+		},
+		{
 			name: "non reasoning model",
 			m:    &Model{},
 			want: []ThinkingLevel{ThinkingOff},

@@ -660,7 +660,7 @@ func TestRunCommandAddRejectsSymlinkedPromptBeforeWrite(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(outside, "prompt.md"), []byte("secret"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	testenv.Symlink(t, outside, filepath.Join(sourceDir, "prompts"))
+	testenv.RequireDirectoryLink(t, outside, filepath.Join(sourceDir, "prompts"))
 	source := filepath.Join(sourceDir, "broken.yaml")
 	if err := os.WriteFile(source, []byte("name: broken\nsystemPrompt:\n  file: prompts/prompt.md\n"), 0o644); err != nil {
 		t.Fatal(err)

@@ -141,27 +141,29 @@ func TestStateUpdateModelQualifiedUsesProviderModelID(t *testing.T) {
 	}
 }
 
-func require084GetBranchSignature(t *testing.T, getBranch func(Context) []BranchEntry) {
+func requireValueSliceGetBranchSignature(t *testing.T, getBranch func(Context) ([]BranchEntry, error)) {
 	t.Helper()
 	if getBranch == nil {
 		t.Fatal("Context.GetBranch method expression is nil")
 	}
 }
 
-func TestGetBranchKeeps084ValueSliceSignature(t *testing.T) {
-	// PiG 0.84 exposed []BranchEntry. Existing source extensions must keep
-	// compiling when the session mirror changes its internal representation.
-	require084GetBranchSignature(t, Context.GetBranch)
+func TestGetBranchKeepsValueSliceAndReportsSubscriptionFailure(t *testing.T) {
+	// The element stays a []BranchEntry value slice; 0.3.0 adds the error a failed session-log subscription reports.
+	requireValueSliceGetBranchSignature(t, Context.GetBranch)
 
 	ext := New("branch-compat")
 	ext.session.subscribed.Store(true)
 	ext.session.seed([]json.RawMessage{json.RawMessage(`{"id":"entry-1","type":"message","message":{"role":"user","content":"hello"}}`)}, 1, "entry-1")
-	first := Context{ext: ext}.GetBranch()
+	first, err := Context{ext: ext}.GetBranch()
+	if err != nil {
+		t.Fatal(err)
+	}
 	if len(first) != 1 || first[0].Role != "user" {
 		t.Fatalf("first branch = %+v", first)
 	}
 	first[0].Role = "changed"
-	if second := (Context{ext: ext}).GetBranch(); len(second) != 1 || second[0].Role != "user" {
+	if second, err := (Context{ext: ext}).GetBranch(); err != nil || len(second) != 1 || second[0].Role != "user" {
 		t.Fatalf("caller mutation reached cached branch: %+v", second)
 	}
 }
@@ -292,8 +294,9 @@ func TestContext_GetFlag_DefaultFallback(t *testing.T) {
 	ext.Flag("plan", FlagOptions{Type: FlagString, Default: "auto"})
 	valueCh := make(chan any, 1)
 	ext.Command("flag", "Read flag", func(ctx Context, args string) error {
-		valueCh <- ctx.GetFlag("plan")
-		return nil
+		value, err := ctx.GetFlag("plan")
+		valueCh <- value
+		return err
 	})
 
 	t.Setenv("PIG_EXT_SOCKET", host.sockPath)
@@ -671,7 +674,7 @@ func TestExtension_NotifyCallback(t *testing.T) {
 
 	ext := New("test-ext")
 	var notified bool
-	ext.Tool("ping", "Ping", nil, func(ctx Context, params map[string]any) (any, error) {
+	ext.Tool("ping", "Ping", Schema{}, func(ctx Context, params map[string]any) (any, error) {
 		ctx.Notify("pong", "info")
 		notified = true
 		return "ok", nil
@@ -775,7 +778,7 @@ func TestExtension_WidgetPush(t *testing.T) {
 	defer host.close()
 
 	ext := New("test-ext")
-	ext.Tool("widget", "Push widget", nil, func(ctx Context, params map[string]any) (any, error) {
+	ext.Tool("widget", "Push widget", Schema{}, func(ctx Context, params map[string]any) (any, error) {
 		if err := ctx.SetWidget("status", []string{"● 3 agents running"}); err != nil {
 			return nil, err
 		}

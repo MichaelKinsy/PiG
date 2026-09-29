@@ -12,8 +12,8 @@
 // does NOT hold a reference to the runner: staleness is the
 // runner's concern.
 //
-// pig-specific: no upstream equivalent (upstream uses TypeBox-typed
-// generic tools all the way down).
+// Ports packages/coding-agent/src/core/extensions/wrapper.ts.
+// Ports packages/coding-agent/src/core/tools/tool-definition-wrapper.ts.
 
 package coding
 
@@ -36,6 +36,8 @@ type bridgeTool struct {
 	def                 extension.ToolDefinition
 	schema              map[string]any
 	constrainedSampling *ai.ConstrainedSamplingConfig
+	// constrainedSamplingDisabled is an explicit `constrainedSampling: false`, kept for transcript declarations.
+	constrainedSamplingDisabled bool
 }
 
 // newBridgeTool constructs a bridgeTool, returning an error if the
@@ -48,13 +50,14 @@ func newBridgeTool(rt extension.RegisteredTool) (*bridgeTool, error) {
 		}
 	}
 	// Constrained sampling is tri-state on the wire: absent, the JSON literal
-	// false, or a config object. Upstream treats false as equivalent to
-	// undefined (disabled), so both collapse to a nil config here.
+	// false, or a config object. False behaves like absent for providers but
+	// stays visible in transcript declarations (transcript.ts:123-129).
 	sampling, err := parseConstrainedSampling(rt.Definition.ConstrainedSampling)
 	if err != nil {
 		return nil, fmt.Errorf("bridge tool %q: parse constrained_sampling: %w", rt.Definition.Name, err)
 	}
-	return &bridgeTool{def: rt.Definition, schema: schema, constrainedSampling: sampling}, nil
+	disabled := sampling == nil && strings.TrimSpace(string(rt.Definition.ConstrainedSampling)) == "false"
+	return &bridgeTool{def: rt.Definition, schema: schema, constrainedSampling: sampling, constrainedSamplingDisabled: disabled}, nil
 }
 
 // parseConstrainedSampling decodes a tool's constrained sampling request. An
@@ -82,12 +85,24 @@ func (b *bridgeTool) Label() string { return b.def.Label }
 // shape expected by `ai.ToolSchema`.
 func (b *bridgeTool) Schema() ai.ToolSchema {
 	return ai.ToolSchema{
-		Name:                b.def.Name,
-		Description:         b.def.Description,
-		Parameters:          b.schema,
-		PromptGuidelines:    b.def.PromptGuidelines,
-		ConstrainedSampling: b.constrainedSampling,
+		Name:                        b.def.Name,
+		Description:                 b.def.Description,
+		Parameters:                  b.schema,
+		PromptGuidelines:            b.def.PromptGuidelines,
+		ConstrainedSampling:         b.constrainedSampling,
+		ConstrainedSamplingDisabled: b.constrainedSamplingDisabled,
 	}
+}
+
+// ArgumentSchema keeps TypeBox's non-enumerable conversion metadata off provider requests.
+func (b *bridgeTool) ArgumentSchema() json.RawMessage {
+	if len(b.def.ValidationParameters) > 0 {
+		return b.def.ValidationParameters
+	}
+	if len(b.def.Parameters) > 0 {
+		return b.def.Parameters
+	}
+	return json.RawMessage(`{}`)
 }
 
 func (b *bridgeTool) PrepareArguments(params json.RawMessage) (json.RawMessage, error) {
@@ -136,17 +151,12 @@ func (b *bridgeTool) Execute(
 	return res, nil
 }
 
-// ExecutionMode returns the tool's parallelism preference. Defaults
-// to sequential when the definition leaves it empty.
+// ExecutionMode returns the tool's parallelism preference. Only an explicit sequential definition serializes execution.
 func (b *bridgeTool) ExecutionMode() agent.ToolExecutionMode {
-	switch b.def.ExecutionMode {
-	case "parallel":
-		return agent.ToolModeParallel
-	default:
-		// Empty or any unrecognized value falls back to sequential.
-		// This matches both upstream's default and the legacy adapter.
+	if b.def.ExecutionMode == "sequential" {
 		return agent.ToolModeSequential
 	}
+	return agent.ToolModeParallel
 }
 
 // BridgeNewRunnerTools converts extension-registered tools into AgentTools

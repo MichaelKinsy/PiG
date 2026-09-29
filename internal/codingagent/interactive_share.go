@@ -57,9 +57,17 @@ func (m *InteractiveMode) shareSessionWithLoader(parent context.Context, session
 	ticker := time.NewTicker(shareLoaderFrame)
 	defer ticker.Stop()
 	for {
+		if m.requestExit.Load() {
+			cancel()
+		}
 		select {
+		case err := <-m.inputErrCh:
+			m.inputLoopErr = err
+			cancel()
+		case task := <-m.uiTaskCh:
+			task()
 		case buf := <-inputCh:
-			for _, chunk := range dropKeyReleases(loader, []string{string(buf)}) {
+			for _, chunk := range m.modalInputChunks(loader, []string{string(buf)}) {
 				loader.HandleInput(chunk)
 			}
 			m.tuiInst.Render()

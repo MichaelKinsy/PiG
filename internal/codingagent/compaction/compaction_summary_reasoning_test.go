@@ -53,7 +53,7 @@ func createSummaryModel(reasoning bool, maxTokens int, compat *ai.ModelCompat) *
 }
 
 func summarizeThisMessages() []agent.AgentMessage {
-	return []agent.AgentMessage{{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "Summarize this."}}}}}
+	return []agent.AgentMessage{{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "Summarize this."}}}}}
 }
 
 func summaryPrompt(messages []agent.AgentMessage) string {
@@ -62,7 +62,7 @@ func summaryPrompt(messages []agent.AgentMessage) string {
 		if message.User == nil {
 			continue
 		}
-		for _, block := range message.User.Content {
+		for _, block := range message.ContentBlocks() {
 			if text, ok := block.(ai.TextContent); ok {
 				prompt.WriteString(text.Text)
 			}

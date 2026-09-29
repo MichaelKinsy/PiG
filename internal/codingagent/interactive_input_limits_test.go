@@ -17,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -122,7 +123,7 @@ func TestCompactionQueuePreservesUnprocessedImages(t *testing.T) {
 			if mode == compactionQueueFollowUp {
 				messages = follow
 			}
-			if len(messages) != 1 || len(messages[0].User.Content) != 2 || messages[0].User.Content[1] != attachment {
+			if len(messages) != 1 || len(messages[0].User.Content.(ai.UserContentBlocks)) != 2 || messages[0].User.Content.(ai.UserContentBlocks)[1] != attachment {
 				t.Fatalf("queued messages = %#v", messages)
 			}
 		})
@@ -133,12 +134,12 @@ func TestNormalizePromptContentOmissionAndDisabledResize(t *testing.T) {
 	attachment := ai.ImageContent{MimeType: "image/png", Data: base64.StdEncoding.EncodeToString(makePNGImage(t, 40, 20, color.RGBA{255, 0, 0, 255}))}
 	model := &ai.Model{InputLimits: &ai.ModelInputLimits{Images: &ai.ModelImageInputLimits{Resize: &ai.ModelImageResizeOptions{MaxWidth: 10}}}}
 	content := promptContent("keep", []ai.ImageContent{attachment})
-	got := NormalizePromptContent(content, false, model)
+	got := NormalizePromptContent(content, false, model, imageprocessing.ProcessImage)
 	if len(got) != 2 || got[0].(ai.TextContent).Text != "keep" || got[1] != attachment {
 		t.Fatalf("autoResize=false changed valid image: %#v", got)
 	}
 	broken := ai.ImageContent{Data: "broken", MimeType: "image/png"}
-	got = NormalizePromptContent(promptContent("keep", []ai.ImageContent{broken}), true, model)
+	got = NormalizePromptContent(promptContent("keep", []ai.ImageContent{broken}), true, model, imageprocessing.ProcessImage)
 	if len(got) != 1 || !strings.Contains(got[0].(ai.TextContent).Text, "keep\n\n") || !strings.Contains(got[0].(ai.TextContent).Text, "omitted") {
 		t.Fatalf("bad image was not omitted with hint: %#v", got)
 	}
@@ -151,7 +152,7 @@ func TestPromptImageInputLimitsAcceptNodeBase64(t *testing.T) {
 	data := base64.StdEncoding.EncodeToString(makePNGImage(t, 40, 20, color.RGBA{255, 0, 0, 255}))
 	wrapped := " \t" + data[:10] + "#" + data[10:]
 	model := &ai.Model{InputLimits: &ai.ModelInputLimits{Images: &ai.ModelImageInputLimits{Resize: &ai.ModelImageResizeOptions{MaxWidth: 10}}}}
-	got := NormalizePromptContent(promptContent("keep", []ai.ImageContent{{Data: wrapped, MimeType: "image/png"}}), true, model)
+	got := NormalizePromptContent(promptContent("keep", []ai.ImageContent{{Data: wrapped, MimeType: "image/png"}}), true, model, imageprocessing.ProcessImage)
 	if len(got) != 2 || !strings.Contains(got[0].(ai.TextContent).Text, "displayed at 10x5") {
 		t.Fatalf("Node-compatible attachment omitted or not resized: %#v", got)
 	}

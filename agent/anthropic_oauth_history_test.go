@@ -23,7 +23,7 @@ func TestAnthropicOAuthPoisonedHistoryRequest(t *testing.T) {
 	t.Setenv("PI_CACHE_RETENTION", "")
 	target := &ai.Model{ID: "claude-haiku-4-5", ProviderMeta: ai.ProviderMetadata{ProviderID: "anthropic", API: ai.APIAnthropicMessages}}
 	history := []AgentMessage{
-		{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "start"}}}},
+		{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "start"}}}},
 		{Assistant: &AssistantMessage{
 			Role: "assistant", API: ai.APIOpenAIResponses, Provider: "openai", ModelID: "gpt-5", StopReason: ai.StopReasonToolUse,
 			Content: []ai.AssistantContentBlock{
@@ -41,12 +41,12 @@ func TestAnthropicOAuthPoisonedHistoryRequest(t *testing.T) {
 			Role: "assistant", API: ai.APIAnthropicMessages, Provider: "anthropic", ModelID: "claude-haiku-4-5", StopReason: ai.StopReasonAborted,
 			Content: []ai.AssistantContentBlock{ai.TextContent{Text: "partial answer"}},
 		}},
-		{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "continue"}}}},
+		{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "continue"}}}},
 		{Assistant: &AssistantMessage{
 			Role: "assistant", API: ai.APIAnthropicMessages, Provider: "anthropic", ModelID: "claude-haiku-4-5", StopReason: ai.StopReasonToolUse,
 			Content: []ai.AssistantContentBlock{ai.TextContent{Text: ""}, ai.ToolCall{ID: "toolu_1", Name: "read", Arguments: ai.JsonObject{"path": "a"}}},
 		}},
-		{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "next"}}}},
+		{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "next"}}}},
 	}
 	tools := []ai.ToolSchema{
 		{Name: "bash", Parameters: map[string]any{"type": "object"}},

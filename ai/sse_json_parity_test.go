@@ -60,7 +60,11 @@ data: {bad json
 		builder := newAssistantStreamBuilder(context.Background(), APIMistralConversations, "mistral", "model")
 		provider := &mistralProvider{}
 		provider.consumeStream(context.Background(), io.NopCloser(strings.NewReader("data: {bad json\n\ndata: {\"choices\":[{\"delta\":{},\"finish_reason\":\"stop\"}]}\n\n")), builder)
-		assertSSEErrorContains(t, builder.stream.Result(), "invalid")
+		// readMistralEvents lets JSON.parse's SyntaxError escape (mistral-conversations.ts:498-506), so the message is V8's.
+		result := builder.stream.Result()
+		if result.StopReason != StopReasonError || result.ErrorMessage != "Expected property name or '}' in JSON at position 1 (line 1 column 2)" {
+			t.Fatalf("result = %#v", result)
+		}
 	})
 }
 

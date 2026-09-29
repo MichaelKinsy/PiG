@@ -44,29 +44,18 @@ func shellToolSchema(name, shellName string, exposeSessionEnvironment bool) ai.T
 	if exposeSessionEnvironment {
 		guidelines = []string{sessionGuideline}
 	}
-	return ai.ToolSchema{
+	return toolSchemaWithParameters(ai.ToolSchema{
 		Name:             name,
 		PromptGuidelines: guidelines,
 		Description: "Execute a " + shellName + " command in the current working directory. Returns stdout and stderr. " +
 			"Output is truncated to last " + strconv.Itoa(DefaultMaxLinesUpstream) + " lines or " +
 			strconv.Itoa(DefaultMaxBytesUpstream/1024) + "KB (whichever is hit first). " +
 			"If truncated, full output is saved to a temp file. Optionally provide a timeout in seconds.",
-		Parameters: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"command": map[string]any{
-					"type":        "string",
-					"description": "Shell command to execute",
-				},
-				"timeout": map[string]any{
-					"type":        "number",
-					"description": "Timeout in seconds (optional, no default timeout)",
-				},
-			},
-			"required": []string{"command"},
-		},
 		ConstrainedSampling: strictToolSampling(),
-	}
+	}, `{"type":"object","required":["command"],"properties":{
+		"command":{"type":"string","description":"Shell command to execute"},
+		"timeout":{"type":"number","description":"Timeout in seconds (optional, no default timeout)"}
+	}}`)
 }
 
 // strictToolSampling mirrors the constrainedSampling upstream's read, bash,
@@ -90,9 +79,9 @@ func jsNumber(v float64) string {
 }
 
 // shellToolError is a failed shell tool call. Upstream throws, and the agent
-// loop turns the message into an error result without details.
+// loop turns the message into an error result with an empty details object.
 func shellToolError(message string) agent.AgentToolResult {
-	return agent.AgentToolResult{Content: message, IsError: true}
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true}
 }
 
 // appendShellStatus mirrors upstream appendStatus.
@@ -111,6 +100,10 @@ func executeShellTool(ctx context.Context, cwd string, cfg shellToolConfig, rawP
 	var p shellParams
 	if err := json.Unmarshal(rawParams, &p); err != nil {
 		return agent.AgentToolResult{}, fmt.Errorf("%s: invalid params: %w", cfg.name, err)
+	}
+	cwd, err := toolCWD(ctx, cwd)
+	if err != nil {
+		return agent.AgentToolResult{}, err
 	}
 	command := p.Command
 	if cfg.commandPrefix != "" {
@@ -169,7 +162,7 @@ func executeShellTool(ctx context.Context, cwd string, cfg shellToolConfig, rawP
 	if details != nil {
 		resultDetails = details
 	}
-	return agent.AgentToolResult{Content: text, Details: resultDetails}, nil
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: text}}, Details: resultDetails}, nil
 }
 
 // formatShellOutput mirrors upstream formatOutput: the output (or emptyText),

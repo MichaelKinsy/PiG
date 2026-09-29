@@ -72,10 +72,14 @@ func (p *planMode) toggle(ctx sdk.Context) error {
 	p.executing = false
 	p.todos = nil
 	if p.enabled {
-		p.enablePlanModeTools(ctx)
+		if err := p.enablePlanModeTools(ctx); err != nil {
+			return err
+		}
 		ctx.Notify("Plan mode enabled. Built-in write tools disabled.", "info")
 	} else {
-		p.restoreNormalModeTools(ctx)
+		if err := p.restoreNormalModeTools(ctx); err != nil {
+			return err
+		}
 		ctx.Notify("Plan mode disabled. Full access restored.", "info")
 	}
 	if err := p.updateStatus(ctx); err != nil {
@@ -289,7 +293,9 @@ func (p *planMode) onAgentEnd(ctx sdk.Context, data map[string]any) (any, error)
 		first := p.todos[0]
 		p.enabled = false
 		p.executing = true
-		p.restoreNormalModeTools(ctx)
+		if err := p.restoreNormalModeTools(ctx); err != nil {
+			return nil, err
+		}
 		if err := p.updateStatus(ctx); err != nil {
 			return nil, err
 		}
@@ -334,10 +340,17 @@ func (p *planMode) onSessionStart(ctx sdk.Context, _ map[string]any) (any, error
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
-	if plan, ok := ctx.GetFlag("plan").(bool); ok && plan {
+	flag, err := ctx.GetFlag("plan")
+	if err != nil {
+		return nil, err
+	}
+	if plan, ok := flag.(bool); ok && plan {
 		p.enabled = true
 	}
-	entries := ctx.GetEntries()
+	entries, err := ctx.GetEntries()
+	if err != nil {
+		return nil, err
+	}
 	lastState := -1
 	var restored persistedPlanModeState
 	for i, raw := range entries {
@@ -370,7 +383,9 @@ func (p *planMode) onSessionStart(ctx sdk.Context, _ map[string]any) (any, error
 		p.rebuildCompletionState(entries)
 	}
 	if p.enabled {
-		p.enablePlanModeTools(ctx)
+		if err := p.enablePlanModeTools(ctx); err != nil {
+			return nil, err
+		}
 	}
 	return nil, p.updateStatus(ctx)
 }
@@ -445,20 +460,30 @@ func (p *planMode) persistState(ctx sdk.Context) error {
 	})
 }
 
-func (p *planMode) enablePlanModeTools(ctx sdk.Context) {
+func (p *planMode) enablePlanModeTools(ctx sdk.Context) error {
 	if p.toolsBeforePlanMode == nil {
-		p.toolsBeforePlanMode = ctx.GetActiveTools()
+		active, err := ctx.GetActiveTools()
+		if err != nil {
+			return err
+		}
+		p.toolsBeforePlanMode = active
 	}
 	ctx.SetActiveTools(getPlanModeTools(p.toolsBeforePlanMode))
+	return nil
 }
 
-func (p *planMode) restoreNormalModeTools(ctx sdk.Context) {
+func (p *planMode) restoreNormalModeTools(ctx sdk.Context) error {
 	tools := p.toolsBeforePlanMode
 	if tools == nil {
-		tools = getNormalModeTools(ctx.GetActiveTools())
+		active, err := ctx.GetActiveTools()
+		if err != nil {
+			return err
+		}
+		tools = getNormalModeTools(active)
 	}
 	ctx.SetActiveTools(tools)
 	p.toolsBeforePlanMode = nil
+	return nil
 }
 
 func getPlanModeTools(active []string) []string {

@@ -184,8 +184,9 @@ pig piglet show <name> --effective --json
 pig piglet validate <name|path>
 pig piglet schema
 pig piglet add <path|npm:<package>|git:<repository>>
-pig piglet pull <release-index-url|github:owner/repo@version> [--target os/arch]
-pig piglet publish <name|path> --to github --repo <owner/repo> --sign-key <key> [--targets os/arch,...] [--artifacts <dir>] [--yes]
+pig piglet pull <release-index-url|github:owner/repo[/piglet]@version> [--target os/arch]
+pig piglet update <name> [--version version] [--target os/arch] [--accept-signer key-id]
+pig piglet publish <name|path> --to github --repo <owner/repo> --sign-key <key> [--targets os/arch,...] [--artifacts <dir>] [--tag-prefix <name>/] [--yes]
 pig piglet remove <name> [--source|--binary|--all]
 pig piglet build <name> --format script --out <path|->
 pig piglet build <name> --format binary --out <path>
@@ -212,14 +213,27 @@ PiG fetches the package or repository, finds the Piglet file, validates it, and 
 
 PiG reads the Piglet path from the `pig.piglet` field of the package's `package.json`. Without that field, it reads `piglet.yaml` at the package or repository root. The path must stay inside the package.
 
-A remote Piglet must be portable. PiG refuses a Piglet that uses local sources, and a Git URL that contains credentials. The command fails before it fetches anything when `PIG_OFFLINE` or `PI_OFFLINE` is set.
+A remote Piglet must be portable. PiG refuses a Git URL that contains credentials. The command fails before it fetches anything when `PIG_OFFLINE` or `PI_OFFLINE` is set.
 
-### Planned (not in this release): source publication, named updates, and Image artifacts
+### Add from a monorepo
+
+Select a repository subdirectory at a full lowercase commit SHA (D18). The Piglet monorepo is `MichaelKinsy/pigpen`. Replace `<full-commit-sha>` with the reviewed commit:
+
+```bash
+pig piglet add 'git:https://github.com/MichaelKinsy/pigpen.git@<full-commit-sha>#subdirectory=piglets%2Fpig-with-batteries'
+```
+
+PiG reads `pig.piglet` or `piglet.yaml` inside the selected directory. It never selects the repository-root Piglet as a fallback. The selected checkout must match the commit and contain no modified or untracked files.
+
+This form copies declared relative local Packages, extensions, skills, and prompt files into `~/.pig/piglets/<name>.source/<commit>/`. It rewrites their paths in the registered YAML without changing explicit empty tool scopes. Each local path must exist beneath the Piglet file's directory. Executable permissions are preserved. Absolute paths, parent traversal, symlinks, Git metadata, non-regular files, and closures exceeding 4,096 entries or 32 MiB fail before registration. Keep all required build files inside each declared local Resource directory. Use explicit YAML fields rather than aliases or merge keys for this form. `extends`, local agent environments, Dev Containers, and file-based secrets remain unsupported for remote registration.
+
+The origin records the selected source, commit, original and registered Piglet digests, and copied file digests. Inventory verifies the closure. Source removal removes only that Piglet's recorded files. Other remote source forms still reject local Resource origins.
+
+### Planned (not in this release): source publication and Image artifacts
 
 ```text
 pig piglet publish <name> --to npm
 pig piglet pull <name>
-pig piglet update [<name>]
 pig piglet build <name> --format image --out <reference>
 pig piglet build <name> --format binary|image --locked
 pig piglet build <name> --format binary|image --record <path>
@@ -291,6 +305,25 @@ pig piglet publish reviewer --to github --repo acme/reviewer --sign-key ./review
 ```
 
 Publish is a dry run until `--yes` is present: it validates the Piglet, key, and targets, checks that the release does not exist, and prints the assets without building or uploading. With `--yes` it uploads one signed Binary per target named `pig-<name>-<os>-<arch>` (`.exe` for Windows), `SHA256SUMS`, and the signed `piglet-release.json` index. Targets come from `--targets`, else `build.targets`, else the host target. A target without a ready signing builder is listed with each builder's reason, and nothing is uploaded; the native builder builds only the host target, and container builders do not sign. `--artifacts <dir>` publishes prebuilt Binaries instead: each file must be signed by `--sign-key` and built from this Piglet source and `release.version`, with exactly one Binary per target. Publish runs `gh release view` and `gh release create` with the user's `gh` login and never handles a GitHub token. It refuses an existing release. `docs/examples/piglet-release.yml` in the PiG repository is a reusable GitHub Actions workflow that builds each target on a native runner, attests provenance, and publishes with `--artifacts`.
+
+### Monorepo publication and named Binary updates
+
+Use `MichaelKinsy/pigpen` for the Piglet monorepo. Replace `<version>` with a published release version:
+
+```bash
+pig piglet publish ./piglets/pig-with-batteries/piglet.yaml --to github --repo MichaelKinsy/pigpen --tag-prefix pig-with-batteries/ --sign-key ./pig-with-batteries-signing.key --yes
+pig piglet pull 'github:MichaelKinsy/pigpen/pig-with-batteries@<version>'
+pig piglet update pig-with-batteries
+pig piglet update pig-with-batteries --version 2.0.0-rc.1
+```
+
+The explicit `--tag-prefix` must equal the manifest name followed by `/`. It selects `pig-with-batteries/v1.2.3` without changing release SemVer. The default remains unprefixed `v1.2.3`. PiG never infers a namespace from repository layout. Dry runs, existence checks, uploads, default Git source refs, and URLs use that namespace. Download URLs escape the tag slash as `%2F`.
+
+The signed index records the repository and tag prefix separately from `sourceRef`. Named pulls bind the requested Piglet, version, repository, and prefix before downloading a Binary. Receipts retain this signed identity. To identify independently addable monorepo source, pass `--source-ref 'git:https://github.com/MichaelKinsy/pigpen.git@<full-commit-sha>#subdirectory=piglets%2Fpig-with-batteries'`; the default source ref selects only the repository's commit or tag.
+
+Update reads the current signed receipt and enumerates GitHub's public releases API. It selects the highest stable SemVer in that exact namespace, never repository-wide `latest`. Drafts, prereleases, invalid versions, and unrelated prefixes are excluded. Use `--version` to select a prerelease explicitly. Incomplete bounded discovery fails. The installed target stays selected unless `--target` overrides it.
+
+Update refuses rollback, repository or namespace changes, revoked keys, and signer changes without an exact `--accept-signer` key ID. Required-signature policy still applies. It verifies the same index, complete checksum and size, Binary signature, and manifest identities as pull. It revalidates continuity under the release-store lock before publishing. An already-current version is a no-op. Indexes without signed GitHub identity cannot supply automatic updates. Update does not refresh registered source Piglets or query a catalog. `PIG_OFFLINE` and `PI_OFFLINE` prevent update requests.
 
 Sigstore keyless provenance is separate CI identity evidence. Verify it explicitly with `pig verify --provenance --repo <owner/name> --signer-workflow <workflow> <binary>`. This invokes `gh attestation verify` and may contact GitHub. Piglet Binary startup never performs that network check; its Ed25519 verification is offline.
 

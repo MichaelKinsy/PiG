@@ -6,6 +6,9 @@ import (
 	"strconv"
 )
 
+// CurrentGoroutineID identifies the current internal owner for synchronous reentry checks. It is not a wire identity, a persisted value or an application identifier.
+func CurrentGoroutineID() uint64 { return currentGoroutine() }
+
 // currentGoroutine returns the calling goroutine's ID. Upstream Chord is
 // single-threaded, so "reentrant" means "on the current call stack"; the Go
 // runtime detects that case by comparing the goroutine that owns a delivery

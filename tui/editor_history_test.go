@@ -33,12 +33,14 @@ func assertEditorCursor(t *testing.T, e *Editor, line, col int) {
 	}
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:47 — does nothing on Up arrow when history is empty.
 func TestEditorHistoryUpDoesNothingWhenEmpty(t *testing.T) {
 	e := NewEditor()
 	e.HandleInput(historyUp)
 	assertEditorText(t, e, "")
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:55 — shows most recent history entry on Up arrow when editor is empty.
 func TestEditorHistoryUpShowsMostRecentEntry(t *testing.T) {
 	e := NewEditor()
 	e.AddToHistory("first prompt")
@@ -47,6 +49,7 @@ func TestEditorHistoryUpShowsMostRecentEntry(t *testing.T) {
 	assertEditorText(t, e, "second prompt")
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:66 — cycles through history entries on repeated Up arrow.
 func TestEditorHistoryUpCyclesEntries(t *testing.T) {
 	e := NewEditor()
 	e.AddToHistory("first")
@@ -58,6 +61,7 @@ func TestEditorHistoryUpCyclesEntries(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:86 — jumps to start before entering history from a non-empty draft.
 func TestEditorHistoryJumpsToStartBeforeEnteringFromDraft(t *testing.T) {
 	e := NewEditor()
 	e.AddToHistory("prompt")
@@ -77,6 +81,7 @@ func TestEditorHistoryJumpsToStartBeforeEnteringFromDraft(t *testing.T) {
 	assertEditorCursor(t, e, 0, 0)
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:106 — navigates forward through history with Down arrow.
 func TestEditorHistoryDownNavigatesForward(t *testing.T) {
 	e := NewEditor()
 	e.AddToHistory("first")
@@ -92,6 +97,7 @@ func TestEditorHistoryDownNavigatesForward(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:131 — exits history mode when typing a character.
 func TestEditorHistoryExitsOnTyping(t *testing.T) {
 	e := NewEditor()
 	e.AddToHistory("old prompt")
@@ -100,6 +106,7 @@ func TestEditorHistoryExitsOnTyping(t *testing.T) {
 	assertEditorText(t, e, "xold prompt")
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:142 — exits history mode on setText.
 func TestEditorHistoryExitsOnSetText(t *testing.T) {
 	e := NewEditor()
 	e.AddToHistory("first")
@@ -110,6 +117,7 @@ func TestEditorHistoryExitsOnSetText(t *testing.T) {
 	assertEditorText(t, e, "second")
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:156 — does not add empty strings to history.
 func TestEditorHistorySkipsEmptyStrings(t *testing.T) {
 	e := NewEditor()
 	e.AddToHistory("")
@@ -121,6 +129,7 @@ func TestEditorHistorySkipsEmptyStrings(t *testing.T) {
 	assertEditorText(t, e, "valid")
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:171 — does not add consecutive duplicates to history.
 func TestEditorHistorySkipsConsecutiveDuplicates(t *testing.T) {
 	e := NewEditor()
 	for range 3 {
@@ -132,6 +141,7 @@ func TestEditorHistorySkipsConsecutiveDuplicates(t *testing.T) {
 	assertEditorText(t, e, "same")
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:185 — allows non-consecutive duplicates in history.
 func TestEditorHistoryKeepsNonConsecutiveDuplicates(t *testing.T) {
 	e := NewEditor()
 	e.AddToHistory("first")
@@ -143,6 +153,7 @@ func TestEditorHistoryKeepsNonConsecutiveDuplicates(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:202 — uses cursor movement instead of history when editor has content.
 func TestEditorHistoryUsesCursorMovementWithContent(t *testing.T) {
 	e := NewEditor()
 	e.AddToHistory("history item")
@@ -152,6 +163,7 @@ func TestEditorHistoryUsesCursorMovementWithContent(t *testing.T) {
 	assertEditorText(t, e, "line1X\nline2")
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:218 — limits history to 100 entries.
 func TestEditorHistoryLimitsTo100Entries(t *testing.T) {
 	e := NewEditor()
 	for i := range 105 {
@@ -165,6 +177,7 @@ func TestEditorHistoryLimitsTo100Entries(t *testing.T) {
 	assertEditorText(t, e, "prompt 5")
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:239 — places cursor at start after browsing history upward.
 func TestEditorHistoryUpwardPlacesCursorAtStart(t *testing.T) {
 	e := NewEditor()
 	e.AddToHistory("older entry")
@@ -177,6 +190,7 @@ func TestEditorHistoryUpwardPlacesCursorAtStart(t *testing.T) {
 	assertEditorCursor(t, e, 0, 0)
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:254 — places cursor at end after browsing history downward.
 func TestEditorHistoryDownwardPlacesCursorAtEnd(t *testing.T) {
 	e := NewEditor()
 	e.AddToHistory("older entry")
@@ -192,6 +206,7 @@ func TestEditorHistoryDownwardPlacesCursorAtEnd(t *testing.T) {
 	assertEditorText(t, e, "newer entry")
 }
 
+// .upstream/v0.87.1/packages/tui/test/editor.test.ts:273 — allows opposite-direction cursor movement within multi-line history entry.
 func TestEditorHistoryAllowsOppositeCursorMovementInMultilineEntry(t *testing.T) {
 	e := NewEditor()
 	e.AddToHistory("line1\nline2\nline3")

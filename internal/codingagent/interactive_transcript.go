@@ -14,6 +14,7 @@ import (
 )
 
 func (m *InteractiveMode) rebuildChatFromSession() {
+	m.disposeArminComponents()
 	m.chatContainer.Clear()
 	m.tuiInst.ForceFullRender()
 	m.renderSessionEntries()
@@ -64,7 +65,23 @@ func compactionTrimIndex(branch []parsedEntry) int {
 	return 0
 }
 
+// renderSessionEntries refreshes the footer name before painting the current Session, including an unnamed fork. Pi's footer.ts:124-128 reads the current SessionManager name rather than retaining the source name.
 func (m *InteractiveMode) renderSessionEntries() {
+	var entries []SessionEntry
+	name := ""
+	if session := m.currentSession(); session != nil {
+		entries = session.GetBranch()
+		name = session.GetSessionName()
+	}
+	if m.statusLine != nil {
+		m.statusLine.SetName(name)
+	}
+	m.renderSessionEntryList(entries, true)
+}
+
+func (m *InteractiveMode) renderSessionEntryList(entries []SessionEntry, trim bool) {
+	m.previousThinkingDroppedCount = 0
+	m.disposeMarkdownBlocks()
 	defer m.refreshFooterContextUsage()
 	// Reset all component tracking: all are stale after a branch navigation.
 	m.toolMu.Lock()
@@ -95,43 +112,45 @@ func (m *InteractiveMode) renderSessionEntries() {
 	var branch []parsedEntry
 	var compactionCount int
 
-	if m.currentSession() != nil {
-		leafID := m.currentSession().LeafID()
-		if leafID != nil {
-			sess := m.currentSession()
-			for _, e := range sess.Branch(*leafID) {
-				pe := parsedEntry{entry: e}
-				switch e.Base.Type {
-				case "message":
-					if me, ok := sess.messageFor(e); ok {
-						pe.msg = &me
-						if m.statusLine != nil && me.Message.Assistant != nil && me.Message.Assistant.Usage != nil {
-							m.statusLine.SetTurnContextUsage(me.Message.Assistant.Usage)
-						}
-						message := me.Message.Clone()
-						pe.agent = &message
-					}
-				case "compaction":
-					compactionCount++
-					// The latest summarization usage also sets the context column;
-					// token and cost totals come from the session accounting.
-					if m.statusLine != nil {
-						var ce CompactionEntry
-						if json.Unmarshal(e.Raw(), &ce) == nil && ce.Usage != nil {
-							m.statusLine.SetTurnContextUsage(ce.Usage)
-						}
-					}
-				case "branch_summary":
-					if m.statusLine != nil {
-						var bs BranchSummaryEntry
-						if json.Unmarshal(e.Raw(), &bs) == nil && bs.Usage != nil {
-							m.statusLine.SetTurnContextUsage(bs.Usage)
-						}
+	sess := m.currentSession()
+	for _, e := range entries {
+		pe := parsedEntry{entry: e}
+		switch e.Base.Type {
+		case "message":
+			decode := SessionEntry.AsMessage
+			if sess != nil {
+				decode = sess.messageFor
+			}
+			if me, ok := decode(e); ok {
+				pe.msg = &me
+				if me.Message.Assistant != nil {
+					m.previousThinkingDroppedCount = countDroppedThinkingBlocks(me.Message.Assistant)
+					if m.statusLine != nil && me.Message.Assistant.Usage != nil {
+						m.statusLine.SetTurnContextUsage(me.Message.Assistant.Usage)
 					}
 				}
-				branch = append(branch, pe)
+				message := me.Message.Clone()
+				pe.agent = &message
+			}
+		case "compaction":
+			compactionCount++
+			// The latest summarization usage also sets the context column;
+			// token and cost totals come from the session accounting.
+			if m.statusLine != nil {
+				var ce CompactionEntry
+				if json.Unmarshal(e.Raw(), &ce) == nil && ce.Usage != nil {
+					m.statusLine.SetTurnContextUsage(ce.Usage)
+				}
+			}
+		case "branch_summary":
+			if m.statusLine != nil {
+				var bs BranchSummaryEntry
+				if json.Unmarshal(e.Raw(), &bs) == nil && bs.Usage != nil {
+					m.statusLine.SetTurnContextUsage(bs.Usage)
+				}
 			}
 		}
+		branch = append(branch, pe)
 	}
 
 	if m.statusLine != nil && compactionCount > 0 {
@@ -144,25 +163,29 @@ func (m *InteractiveMode) renderSessionEntries() {
 
 	cacheMissNotices := make(map[string]string)
 	if m.showCacheMissNotices() {
-		var previous *previousCacheRequest
+		entries := make([]cacheStatsEntry, 0, len(branch))
 		for _, item := range branch {
-			switch item.entry.Base.Type {
-			case "compaction", "branch_summary":
-				previous = nil
-			case "usage":
-				if usage, ok := decodeUsageEntry(item.entry.Raw()); ok && usage.Kind == "cache_warm" {
-					previous = cacheWarmPreviousRequest(usage.Provider, usage.Model, &usage.Usage, usage.Timestamp, previous)
+			entry := cacheStatsEntry{kind: item.entry.Base.Type}
+			if item.agent != nil {
+				entry.message = item.agent.Assistant
+			}
+			if entry.kind == "usage" {
+				if usage, ok := decodeUsageEntry(item.entry.Raw()); ok {
+					entry.usage = &usage
 				}
-			case "message":
-				if item.agent == nil || item.agent.Assistant == nil {
-					continue
-				}
+			}
+			entries = append(entries, entry)
+		}
+		var prices ModelPriceSource
+		if m.opts.ModelRegistry != nil {
+			prices = m.opts.ModelRegistry.CacheReadPrice
+		}
+		misses := collectCacheMisses(entries, prices)
+		for _, item := range branch {
+			if item.agent != nil && item.agent.Assistant != nil {
 				message := item.agent.Assistant
 				if message.StopReason != "aborted" && message.StopReason != "error" {
-					cacheMissNotices[item.entry.Base.ID] = formatCacheMissNotice(detectMiss(previous, message))
-				}
-				if next := asPreviousCacheRequest(message, previous != nil && previous.reportedCache); next != nil {
-					previous = next
+					cacheMissNotices[item.entry.Base.ID] = formatCacheMissNotice(misses[message])
 				}
 			}
 		}
@@ -182,7 +205,10 @@ func (m *InteractiveMode) renderSessionEntries() {
 	// (which precedes the compaction node), mirroring BuildContext's
 	// foundFirstKept logic. An empty FirstKeptEntryID keeps all prior
 	// history (renderStart stays 0).
-	renderStart := compactionTrimIndex(branch)
+	renderStart := 0
+	if trim {
+		renderStart = compactionTrimIndex(branch)
+	}
 
 	pendingCalls := make(map[string]ai.ToolCall)
 	// renderMessage renders one AgentMessage (user, assistant, toolResult)
@@ -193,7 +219,7 @@ func (m *InteractiveMode) renderSessionEntries() {
 		switch {
 		case msg.User != nil:
 			var sb strings.Builder
-			for _, block := range msg.User.Content {
+			for _, block := range msg.ContentBlocks() {
 				if tc, ok := block.(ai.TextContent); ok {
 					sb.WriteString(tc.Text)
 				}
@@ -254,16 +280,18 @@ func (m *InteractiveMode) renderSessionEntries() {
 				comp.SetExpanded(m.toolsExpanded)
 				switch msg.Assistant.StopReason {
 				case ai.StopReasonAborted:
-					comp.BodyRenderer = toolBodyRendererForCall(call, agent.AgentToolResult{Content: "Operation aborted", IsError: true})
-					comp.SetResultValue(agent.AgentToolResult{Content: "Operation aborted", IsError: true})
+					result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "Operation aborted"}}, IsError: true}
+					comp.BodyRenderer = toolBodyRendererForCall(call, result)
+					comp.SetResultValue(result)
 					comp.SetResult("Operation aborted", true, 0)
 				case ai.StopReasonError:
 					errorMessage := msg.Assistant.ErrorMessage
 					if errorMessage == "" {
 						errorMessage = "Error"
 					}
-					comp.BodyRenderer = toolBodyRendererForCall(call, agent.AgentToolResult{Content: errorMessage, IsError: true})
-					comp.SetResultValue(agent.AgentToolResult{Content: errorMessage, IsError: true})
+					result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: errorMessage}}, IsError: true}
+					comp.BodyRenderer = toolBodyRendererForCall(call, result)
+					comp.SetResultValue(result)
 					comp.SetResult(errorMessage, true, 0)
 				default:
 					pendingCalls[call.ID] = call
@@ -290,7 +318,7 @@ func (m *InteractiveMode) renderSessionEntries() {
 				return
 			}
 			images := r.Images()
-			result := agent.AgentToolResult{Content: r.Text(), Details: r.Details, IsError: r.IsError, Images: images}
+			result := agent.AgentToolResult{Content: r.Content, Details: r.Details, IsError: r.IsError}
 			comp.BodyRenderer = toolBodyRendererForCall(call, result)
 			if len(images) > 0 {
 				blocks := make([]tui.ImageBlock, len(images))
@@ -300,7 +328,7 @@ func (m *InteractiveMode) renderSessionEntries() {
 				comp.ImageBlocks = blocks
 			}
 			comp.SetResultValue(result)
-			comp.SetResult(r.Text(), r.IsError, 0)
+			comp.SetResult(result.Text(), r.IsError, 0)
 			m.maybeConvertImagesForKitty(comp)
 		}
 	}
@@ -317,16 +345,9 @@ func (m *InteractiveMode) renderSessionEntries() {
 				}
 			}
 		case "compaction":
-			// Render CompactionSummaryComponent at the boundary position.
 			var ce CompactionEntry
 			if err := json.Unmarshal(pe.entry.Raw(), &ce); err == nil && ce.Summary != "" {
-				comp := tui.NewCompactionSummaryComponent(ce.Summary, ce.TokensBefore)
-				if m.toolsExpanded {
-					comp.SetExpanded(true)
-				}
-				m.compactionOrder = append(m.compactionOrder, comp)
-				m.chatContainer.Add(tui.NewSpacer(1))
-				m.chatContainer.Add(comp)
+				m.addCompactionSummary(ce.Summary, ce.TokensBefore, ce.Usage)
 			}
 		case "branch_summary":
 			var be BranchSummaryEntry
@@ -338,6 +359,7 @@ func (m *InteractiveMode) renderSessionEntries() {
 				m.branchSummaryOrder = append(m.branchSummaryOrder, comp)
 				m.chatContainer.Add(tui.NewText(""))
 				m.chatContainer.Add(comp)
+				m.addCompactionCostNotice("branch_summary", be.Usage)
 			}
 		case "custom_message":
 			var cm CustomMessageEntry
@@ -355,7 +377,7 @@ func (m *InteractiveMode) renderSessionEntries() {
 			}
 		}
 	}
-	if len(branch) == 0 {
+	if len(branch) == 0 && trim && m.agent != nil {
 		// Fallback: no session available: render from agent messages only.
 		for _, msg := range m.agent.Messages() {
 			renderMessage(msg)
@@ -645,7 +667,7 @@ func (m *InteractiveMode) updatePendingMessagesDisplay() {
 // extractAgentMessageText pulls the first text content from an AgentMessage.
 func extractAgentMessageText(msg agent.AgentMessage) string {
 	if msg.User != nil {
-		for _, c := range msg.User.Content {
+		for _, c := range msg.ContentBlocks() {
 			if tc, ok := c.(ai.TextContent); ok {
 				return tc.Text
 			}

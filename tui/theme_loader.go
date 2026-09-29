@@ -28,6 +28,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -61,16 +62,15 @@ type ThemeJSON struct {
 	colorKeys []string
 }
 
-// LoadThemeFile reads a theme JSON file and returns the resolved Theme.
+// LoadThemeFile reads a theme JSON file and returns the resolved Theme, reporting invalid JSON with ECMAScript SyntaxError text.
 func LoadThemeFile(path string) (*Theme, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return nil, fmt.Errorf("read theme %s: %w", path, err)
 	}
 	data := text.StripBomBytes(raw)
-	if !json.Valid(data) {
-		var syntax any
-		return nil, fmt.Errorf("Failed to parse theme %s: %w", path, json.Unmarshal(data, &syntax))
+	if err := jsonparse.Validate(data); err != nil {
+		return nil, fmt.Errorf("Failed to parse theme %s: SyntaxError: %w", path, err)
 	}
 	// Pi validates every user-authored theme before use (theme-json.ts).
 	if err := ValidateThemeJSON(path, data); err != nil {

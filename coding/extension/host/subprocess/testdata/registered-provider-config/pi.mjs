@@ -1,0 +1,12 @@
+import { mkdtempSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+const [root, scenario] = process.argv.slice(2);
+const { ModelRuntime, ModelRegistry } = await import(pathToFileURL(join(root, "dist/index.js")).href);
+const { run, runShared } = await import(pathToFileURL(scenario).href);
+const runtime = await ModelRuntime.create({ authPath: join(mkdtempSync(join(tmpdir(), "pi-provider-config-")), "auth.json"), modelsPath: null, refreshOnCreate: false });
+const registry = new ModelRegistry(runtime);
+const register = (name, config) => registry.registerProvider(name, config);
+const unregister = (name) => registry.unregisterProvider(name);
+console.log(JSON.stringify({ single: await run(registry, register, unregister), shared: await runShared(registry, registry, register, register, unregister) }));

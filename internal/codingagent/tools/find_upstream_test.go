@@ -53,7 +53,7 @@ func TestFindToolUpstreamCases(t *testing.T) {
 		}
 		_ = os.WriteFile(filepath.Join(dir, ".secret", "hidden.txt"), []byte("hidden"), 0o644)
 		_ = os.WriteFile(filepath.Join(dir, "visible.txt"), []byte("visible"), 0o644)
-		lines := outputLines(runFind(t, dir, map[string]any{"pattern": "**/*.txt", "path": dir}).Content)
+		lines := outputLines(runFind(t, dir, map[string]any{"pattern": "**/*.txt", "path": dir}).Text())
 		if !slices.Contains(lines, "visible.txt") || !slices.Contains(lines, ".secret/hidden.txt") {
 			t.Fatalf("lines = %q", lines)
 		}
@@ -63,7 +63,7 @@ func TestFindToolUpstreamCases(t *testing.T) {
 		_ = os.WriteFile(filepath.Join(dir, ".gitignore"), []byte("ignored.txt\n"), 0o644)
 		_ = os.WriteFile(filepath.Join(dir, "ignored.txt"), []byte("ignored"), 0o644)
 		_ = os.WriteFile(filepath.Join(dir, "kept.txt"), []byte("kept"), 0o644)
-		out := runFind(t, dir, map[string]any{"pattern": "**/*.txt", "path": dir}).Content
+		out := runFind(t, dir, map[string]any{"pattern": "**/*.txt", "path": dir}).Text()
 		if !strings.Contains(out, "kept.txt") || strings.Contains(out, "ignored.txt") {
 			t.Fatalf("out = %q", out)
 		}
@@ -71,13 +71,13 @@ func TestFindToolUpstreamCases(t *testing.T) {
 	t.Run("surfaces fd glob parse errors", func(t *testing.T) {
 		dir := t.TempDir()
 		res := runFind(t, dir, map[string]any{"pattern": "[", "path": dir})
-		if !res.IsError || !strings.Contains(strings.ToLower(res.Content), "glob") {
+		if !res.IsError || !strings.Contains(strings.ToLower(res.Text()), "glob") {
 			t.Fatalf("res = %+v", res)
 		}
 	})
 	t.Run("flag-like pattern", func(t *testing.T) {
 		dir := t.TempDir()
-		if res := runFind(t, dir, map[string]any{"pattern": "--help", "path": dir}); res.Content != "No files found matching pattern" {
+		if res := runFind(t, dir, map[string]any{"pattern": "--help", "path": dir}); res.Text() != "No files found matching pattern" {
 			t.Fatalf("res = %+v", res)
 		}
 	})
@@ -92,14 +92,14 @@ func TestFind_LimitReachedNotice(t *testing.T) {
 		}
 	}
 	res := runFind(t, dir, map[string]any{"pattern": "*.ts"})
-	if !strings.HasSuffix(res.Content, "\n\n[1000 results limit reached. Use limit=2000 for more, or refine pattern]") {
-		t.Fatalf("tail = %q", res.Content[len(res.Content)-120:])
+	if !strings.HasSuffix(res.Text(), "\n\n[1000 results limit reached. Use limit=2000 for more, or refine pattern]") {
+		t.Fatalf("tail = %q", res.Text()[len(res.Text())-120:])
 	}
 	d, ok := res.Details.(*FindDetails)
-	if !ok || d.ResultLimitReached != 1000 {
+	if !ok || d.ResultLimitReached == nil || *d.ResultLimitReached != 1000 {
 		t.Fatalf("details = %+v", res.Details)
 	}
-	if n := len(outputLines(res.Content)); n != 1001 {
+	if n := len(outputLines(res.Text())); n != 1001 {
 		t.Fatalf("got %d lines, want 1000 results + notice", n)
 	}
 }
@@ -107,7 +107,7 @@ func TestFind_LimitReachedNotice(t *testing.T) {
 // TOOL-08: fd failures are errors, not "(no matches)".
 func TestFind_MissingPathIsError(t *testing.T) {
 	res := runFind(t, t.TempDir(), map[string]any{"pattern": "*", "path": "nope"})
-	if !res.IsError || res.Content == "" {
+	if !res.IsError || res.Text() == "" {
 		t.Fatalf("res = %+v", res)
 	}
 }
@@ -128,13 +128,13 @@ func TestFind_NoFdIsError(t *testing.T) {
 		&FindTool{CWD: dir, Tools: NewToolsManager(t.TempDir())},
 	} {
 		res, err := tool.Execute(context.Background(), "", args, nil)
-		if err != nil || !res.IsError || res.Content != "fd is not available and could not be downloaded" {
+		if err != nil || !res.IsError || res.Text() != "fd is not available and could not be downloaded" {
 			t.Fatalf("res = %+v, %v", res, err)
 		}
 	}
 	grepArgs, _ := json.Marshal(map[string]any{"pattern": "x"})
 	res, err := (&GrepTool{CWD: dir}).Execute(context.Background(), "", grepArgs, nil)
-	if err != nil || !res.IsError || res.Content != "ripgrep (rg) is not available and could not be downloaded" {
+	if err != nil || !res.IsError || res.Text() != "ripgrep (rg) is not available and could not be downloaded" {
 		t.Fatalf("grep res = %+v, %v", res, err)
 	}
 }
@@ -165,7 +165,7 @@ func TestSearchToolsResolveAgentBinAtCallTime(t *testing.T) {
 	testenv.Symlink(t, realRG, filepath.Join(binDir, name))
 	args, _ := json.Marshal(map[string]any{"pattern": "x"})
 	res, err := grep.Execute(context.Background(), "", args, nil)
-	if err != nil || res.IsError || res.Content != "No matches found" {
+	if err != nil || res.IsError || res.Text() != "No matches found" {
 		t.Fatalf("res = %+v, %v", res, err)
 	}
 }

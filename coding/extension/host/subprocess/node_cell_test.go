@@ -124,6 +124,7 @@ func nodeCellRequireNode(t testing.TB) {
 // process, so this fails with "node processes = 5, want 1": the exact,
 // documented C1 finding in blog-pack/EXTENSION-ARCH.md.
 func TestNodeCellHostsFiveExtensionsInOneProcess(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	var configs []ExtConfig
@@ -170,6 +171,7 @@ func TestNodeCellHostsFiveExtensionsInOneProcess(t *testing.T) {
 // one extension that throws at load is reported as an extension issue, and
 // the other 4 load and work, matching Pi's loader.ts continue-on-error.
 func TestNodeCellContinueOnErrorLoadsHealthyExtensions(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	var configs []ExtConfig
@@ -221,6 +223,7 @@ func TestNodeCellContinueOnErrorLoadsHealthyExtensions(t *testing.T) {
 // (cell_plan.go PlanCells), so registration order becomes alphabetical by
 // name instead of config order (the documented C3/N1 finding).
 func TestNodeCellRegistrationOrderMatchesConfigOrder(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	orderLog := filepath.Join(root, "order.log")
@@ -266,6 +269,7 @@ func TestNodeCellRegistrationOrderMatchesConfigOrder(t *testing.T) {
 // On main this fails the same way as TestNodeCellHostsFiveExtensionsInOneProcess:
 // there is no Node cell, so 5 Node processes exist both before and after reload.
 func TestNodeCellReloadKeepsOneProcessForAllExtensions(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	var configs []ExtConfig
@@ -319,6 +323,7 @@ func TestNodeCellReloadKeepsOneProcessForAllExtensions(t *testing.T) {
 // TestPackedCellFailureIsolatesFailingMember (reload_unresolved_test.go) for
 // the packed Go/Python case.
 func TestNodeCellProcessDeathStopsExtensionsAndReloadRecovers(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	var configs []ExtConfig
@@ -408,6 +413,7 @@ loop:
 // isShareableIsolation) still gets its own process, separate from the shared
 // Node cell hosting the other extensions.
 func TestNodeCellIsolatedEscapeHatchGetsOwnProcess(t *testing.T) {
+	t.Parallel()
 	nodeCellRequireNode(t)
 	root := t.TempDir()
 	var configs []ExtConfig

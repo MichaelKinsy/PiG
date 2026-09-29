@@ -39,7 +39,8 @@ type SettingItem struct {
 
 // SettingsList is a two-column selector that cycles setting values.
 // After Done()==true, callers read ChangedID/ChangedValue for the last
-// change, or Cancelled() if the user pressed Esc.
+// change, or Cancelled() if the user pressed Esc. A host that keeps the list
+// open, as upstream's onChange does, applies the change and calls Reset.
 type SettingsList struct {
 	invalidatable
 	items    []SettingItem
@@ -311,14 +312,6 @@ func (s *SettingsList) HandleInput(data string) {
 		if len(display) > 0 {
 			s.cursor = (s.cursor + 1) % len(display)
 		}
-	case kb.Matches(data, KBSelectPageUp):
-		s.moveCursor(-10)
-	case kb.Matches(data, KBSelectPageDown):
-		s.moveCursor(10)
-	case data == "\x1b[H":
-		s.cursor = 0
-	case data == "\x1b[F":
-		s.cursor = max(len(display)-1, 0)
 	case !s.searchEnabled:
 		// Without search, upstream ignores every other key.
 	case data == "\x7f" || data == "\b":
@@ -375,20 +368,6 @@ func (s *SettingsList) activateItem() {
 	s.ChangedID = item.ID
 	s.ChangedValue = item.CurrentValue
 	s.done = true
-}
-
-func (s *SettingsList) moveCursor(delta int) {
-	display := s.displayItems()
-	s.cursor += delta
-	if s.cursor < 0 {
-		s.cursor = 0
-	}
-	if s.cursor >= len(display) {
-		s.cursor = len(display) - 1
-	}
-	if s.cursor < 0 {
-		s.cursor = 0
-	}
 }
 
 func (s *SettingsList) displayItems() []int {

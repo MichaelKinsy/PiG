@@ -1,0 +1,30 @@
+# Pi 0.87.1 packages/ai/test/fireworks-models.test.ts:76,346-439 supplies the cases.
+# The fixtures use real provider request paths and a local HTTP server. They compare
+# complete tool declarations, session headers, cache-off behavior, and Kimi K3 max
+# effort. Native Anthropic explicitly uses default compat rather than catalog compat.
+# Oracle probe: node test/parity/testdata/catalog-options-pi.mjs. No output is normalized.
+# anthropic-messages.ts:60-84 supplies env=none/long and explicit-none cases; complete messages expose cache breakpoints.
+name = "06-catalog-options-wire"
+description = "Fireworks and OpenRouter session headers, tool compat overrides, and Kimi K3 effort match Pi requests."
+covers = [
+  "packages/ai/src/api/anthropic-messages.ts",
+  "packages/ai/src/api/openai-completions.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/catalog-options-pig"]
+pi_args = ["node", "./test/parity/testdata/catalog-options-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

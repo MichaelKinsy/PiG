@@ -1,0 +1,140 @@
+# Behavior family: rpc
+# Surface: get_session_stats after a faux tool turn, including the estimated
+# context usage.
+#
+# Upstream evidence (pi v0.87.1, probed 2026-09-24, default parity cwd):
+#   {"id":"p1","type":"prompt","message":"Run: expr 20 + 22"}
+#   ... wait for agent_end ...
+#   {"id":"stats","type":"get_session_stats"}
+#   {"id":"stats","type":"response","command":"get_session_stats","success":true,
+#    "data":{"sessionFile":"<file>","sessionId":"<id>","userMessages":1,
+#    "assistantMessages":2,"toolCalls":1,"toolResults":1,"totalMessages":5,
+#    "tokens":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0},
+#    "cost":0,"contextUsage":{"tokens":<n>,"contextWindow":128000,"percent":<n/1280>}}}
+#
+# The faux provider reports no usage, so contextUsage is the chars/4 estimate
+# of the system prompt and messages (compaction.ts
+# estimateProjectedContextTokens). The runner balances the D22 documentation
+# paths so both prompts have the same length (test/parity/runner/default_cwd.go),
+# which makes the exact token count comparable. The comparison therefore
+# fails if the estimator, the prompt sections, or that balance drift, long
+# before a footer percentage rounds differently. Complete parsed events remain
+# compared; object-member serialization order is not a JSON contract.
+# Pi 0.87.1 core/system-prompt.ts:147-160 spells the identity text below.
+# D2/D22 permit only those exact spellings and documentation destinations.
+# core/session-manager.ts:1062-1080 names the generated session file using its
+# millisecond timestamp and session ID; its directories and ID reference remain checked.
+
+# Complete events also cover bash.ts:301-302's initial content:[] update (H5), followed by the text/details output update at :270-276. No tool-update field is aliased.
+name = "26-rpc-session-stats-context-estimate"
+description = "RPC get_session_stats after a faux tool turn reports byte-equal counters and context estimate."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/compaction/compaction.ts",
+  "packages/coding-agent/src/core/tools/bash.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+
+[[rpc.steps]]
+line = '{"id":"p1","type":"prompt","message":"Run: expr 20 + 22"}'
+wait_contains = ['"type":"agent_end"']
+wait_timeout_seconds = 20
+
+[[rpc.steps]]
+line = '{"id":"stats","type":"get_session_stats"}'
+wait_contains = ['"id":"stats","type":"response","command":"get_session_stats"']
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+both_contain = ['"contextUsage":{"tokens":', '"toolCalls":1']
+json_output_equal = true
+stderr_equal = true
+runs = 3
+
+# Complete events precede the stats response and remain compared.
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd", "/**/sections/project_context"]
+kind = "path"
+roots = ["cwd"]
+reason = "D2: alias only the exact isolated cwd in the cwd section and project-instruction path; retain all tags, instructions, path suffixes and accounting."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Message wall clocks vary per process; retain field presence and type."
+[[assert.json_aliases]]
+paths = ["/*/data/sessionId"]
+kind = "id"
+group = "session"
+reason = "Independent session identifiers vary by process; retain one-to-one identity correspondence."
+[[assert.json_aliases]]
+paths = ["/*/data/sessionFile"]
+kind = "session_file"
+roots = ["temp"]
+group = "session"
+reason = "Each process generates its own ISO-millisecond filename and session ID (Pi session-manager.ts:1062-1080). Validate the exact filename format, preserve every directory suffix under the D2 temporary root, and bind the embedded UUID to data.sessionId through the same bijection."
+
+[[assert.json_aliases]]
+paths = ["/**/sections/docs"]
+kind = "path"
+roots = ["readme", "docs", "examples"]
+reason = "D2/D22: compare Pi's package README/docs/examples destinations with PiG's materialized README/docs and hosted examples root. Alias only those exact runtime destinations; retain filenames, URL/path suffixes, all surrounding wording and whitespace."
+
+[[assert.json_aliases]]
+paths = ["/**/sections/preamble"]
+kind = "literal"
+pig = "operating inside pig,"
+pi = "operating inside pi,"
+reason = "D2: only the host command identity differs in the preamble; retain the rest of the complete sentence."
+
+[[assert.json_aliases]]
+paths = ["/**/sections/docs"]
+kind = "literal"
+pig = "PiG documentation ("
+pi = "Pi documentation ("
+reason = "D2/D22: the documentation heading names the product; all usage conditions and topic wording remain compared."
+
+[[assert.json_aliases]]
+paths = ["/**/sections/docs"]
+kind = "literal"
+pig = "asks about pig itself,"
+pi = "asks about pi itself,"
+reason = "D2: this exact heading clause names the host command; no other words in the read-only condition are aliased."
+
+[[assert.json_aliases]]
+paths = ["/**/sections/docs"]
+kind = "literal"
+pig = "When reading pig docs or examples,"
+pi = "When reading pi docs or examples,"
+reason = "D2/D22: the path-resolution instruction names its product; retain its complete resolution rule and relative paths."
+
+[[assert.json_aliases]]
+paths = ["/**/sections/docs"]
+kind = "literal"
+pig = "pig packages (docs/packages.md)"
+pi = "pi packages (docs/packages.md)"
+reason = "D2: only the product name in the Package topic differs; the packages.md destination and every other topic remain literal."
+
+[[assert.json_aliases]]
+paths = ["/**/sections/docs"]
+kind = "literal"
+pig = "When working on pig topics,"
+pi = "When working on pi topics,"
+reason = "D2: this exact instruction prefix names the host product; retain its complete-read and cross-reference requirements."
+
+[[assert.json_aliases]]
+paths = ["/**/sections/docs"]
+kind = "literal"
+pig = "Always read pig .md files"
+pi = "Always read pi .md files"
+reason = "D2/D22: this exact instruction prefix names the product documentation; retain completely, link-following instructions, and the TUI example."

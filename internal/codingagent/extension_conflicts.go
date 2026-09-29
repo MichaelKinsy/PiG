@@ -27,10 +27,12 @@ func ExtensionsInLoadOrder(configured, builtins []extension.Extension) []extensi
 }
 
 // DetectExtensionConflicts mirrors upstream resource-loader.ts
-// detectExtensionConflicts. It walks extensions in load order, keeps the first
-// owner of each tool and flag name, and reports every later registration by
-// another extension. All extensions stay loaded; upstream adds the conflicts
-// to the extension load errors.
+// detectExtensionConflicts. It walks extensions in load order and each
+// extension's tools in registration order, keeps the first owner of each tool
+// and flag name, and reports every later registration by another extension.
+// All extensions stay loaded; upstream adds the conflicts to the extension
+// load errors. Flags have no recorded registration order and are walked by
+// name.
 func DetectExtensionConflicts(exts []extension.Extension) []ExtensionConflict {
 	toolOwners := make(map[string]string)
 	flagOwners := make(map[string]string)
@@ -40,9 +42,9 @@ func DetectExtensionConflicts(exts []extension.Extension) []ExtensionConflict {
 		if path == "" {
 			path = ext.Name
 		}
-		for _, name := range slices.Sorted(maps.Keys(ext.Tools)) {
+		for _, name := range toolNamesInRegistrationOrder(ext) {
 			if owner, exists := toolOwners[name]; exists && owner != path {
-				conflicts = append(conflicts, ExtensionConflict{Path: path, Message: fmt.Sprintf("Tool %q conflicts with %s", name, owner)})
+				conflicts = append(conflicts, ExtensionConflict{Path: path, Message: fmt.Sprintf("Tool \"%s\" conflicts with %s", name, owner)})
 				continue
 			}
 			toolOwners[name] = path
@@ -56,4 +58,26 @@ func DetectExtensionConflicts(exts []extension.Extension) []ExtensionConflict {
 		}
 	}
 	return conflicts
+}
+
+// toolNamesInRegistrationOrder returns Tools keys in ToolOrder order, the Go form of upstream's insertion-ordered ext.tools Map. Keys absent from ToolOrder follow by name.
+func toolNamesInRegistrationOrder(ext extension.Extension) []string {
+	names := make([]string, 0, len(ext.Tools))
+	seen := make(map[string]struct{}, len(ext.Tools))
+	for _, name := range ext.ToolOrder {
+		if _, ok := ext.Tools[name]; !ok {
+			continue
+		}
+		if _, duplicate := seen[name]; duplicate {
+			continue
+		}
+		seen[name] = struct{}{}
+		names = append(names, name)
+	}
+	for _, name := range slices.Sorted(maps.Keys(ext.Tools)) {
+		if _, ok := seen[name]; !ok {
+			names = append(names, name)
+		}
+	}
+	return names
 }

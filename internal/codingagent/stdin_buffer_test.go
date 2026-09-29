@@ -35,9 +35,12 @@ func TestStdinBuffer_SplitKittyNegotiationIsConsumedBeforeDispatch(t *testing.T)
 		t.Fatalf("partial negotiation = %#v", got)
 	}
 	chunks := b.ProcessString("7u")
-	if len(chunks) != 1 || !tui.HandleKeyboardProtocolNegotiationSequence(chunks[0]) {
-		t.Fatalf("completed negotiation was not consumed: %#v", chunks)
+	if len(chunks) != 1 {
+		t.Fatalf("completed negotiation = %#v", chunks)
 	}
+	input := tui.NewTerminalInput(func(sequence string) { t.Errorf("negotiation reached input: %q", sequence) })
+	defer input.Close()
+	input.Process([]byte(chunks[0]))
 	if !tui.IsKittyProtocolActive() {
 		t.Fatal("split Kitty response did not activate the protocol")
 	}
@@ -114,21 +117,6 @@ func TestStdinBuffer_HighByteMetaConversion(t *testing.T) {
 	}
 }
 
-func TestStdinBuffer_WezTermDoubleEscapeKittyRelease(t *testing.T) {
-	var b StdinBuffer
-	got, rem := extractCompleteSequences("\x1b\x1b[27;1u")
-	want := []string{"\x1b", "\x1b[27;1u"}
-	if !reflect.DeepEqual(got, want) || rem != "" {
-		t.Fatalf("extractCompleteSequences() = (%#v, %q) want (%#v, %q)", got, rem, want, "")
-	}
-
-	var emitted []string
-	emitted = append(emitted, b.ProcessString("\x1b\x1b[27;1u")...)
-	if !reflect.DeepEqual(emitted, want) {
-		t.Fatalf("ProcessString() = %#v want %#v", emitted, want)
-	}
-}
-
 // Ports upstream stdin-buffer.test.ts old-style mouse framing: ESC[M is only
 // the prefix; its three payload bytes belong to the same input sequence.
 func TestStdinBuffer_OldStyleMouseSequence(t *testing.T) {
@@ -140,32 +128,6 @@ func TestStdinBuffer_OldStyleMouseSequence(t *testing.T) {
 	want := []string{"\x1b[M !\""}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("completed X10 mouse sequence = %#v, want %#v", got, want)
-	}
-}
-
-func TestExtractCompleteSequences(t *testing.T) {
-	cases := []struct {
-		name          string
-		buffer        string
-		wantSeq       []string
-		wantRemainder string
-	}{
-		{"plain chars", "ab", []string{"a", "b"}, ""},
-		{"complete esc + plain", "\x1b[Ax", []string{"\x1b[A", "x"}, ""},
-		{"incomplete esc", "\x1b[", nil, "\x1b["},
-		{"mixed prefix then incomplete", "a\x1b[", []string{"a"}, "\x1b["},
-		// ESC+ESC at the buffer tail (no following byte): must not panic
-		// on the remaining[seqEnd] peek. Matches upstream's undefined
-		// nextChar fall-through (emit the double-ESC as one sequence).
-		{"double esc at tail", "\x1b\x1b", []string{"\x1b\x1b"}, ""},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			gotSeq, gotRem := extractCompleteSequences(tc.buffer)
-			if !reflect.DeepEqual(gotSeq, tc.wantSeq) || gotRem != tc.wantRemainder {
-				t.Fatalf("extractCompleteSequences(%q) = (%#v, %q) want (%#v, %q)", tc.buffer, gotSeq, gotRem, tc.wantSeq, tc.wantRemainder)
-			}
-		})
 	}
 }
 
@@ -233,14 +195,22 @@ func TestNewProcessStdinBufferUsesResolvedEscapeTimeout(t *testing.T) {
 	t.Setenv("SSH_CONNECTION", "")
 	t.Setenv("SSH_TTY", "")
 	t.Setenv("PI_TUI_ESC_TIMEOUT", "80")
-	b := newProcessStdinBuffer()
-	b.ProcessString("\x1b")
-	if got := b.FlushTimeout(); got != 80*time.Millisecond {
-		t.Fatalf("lone ESC FlushTimeout() = %v want 80ms", got)
-	}
-	b.ProcessString("[<35")
-	if got := b.FlushTimeout(); got != 50*time.Millisecond {
-		t.Fatalf("sequence FlushTimeout() = %v want 50ms", got)
+	for _, tc := range []struct {
+		sequence string
+		timeout  time.Duration
+	}{{"\x1b", 80 * time.Millisecond}, {"\x1b[<35", 50 * time.Millisecond}} {
+		t.Run(tc.sequence, func(t *testing.T) {
+			synctest.Test(t, func(t *testing.T) {
+				input := tui.NewTerminalInput(func(string) {})
+				defer input.Close()
+				input.Process([]byte(tc.sequence))
+				start := time.Now()
+				<-input.C
+				if got := time.Since(start); got != tc.timeout {
+					t.Fatalf("terminal deadline=%v, want %v", got, tc.timeout)
+				}
+			})
+		})
 	}
 }
 
@@ -249,7 +219,7 @@ func TestNewProcessStdinBufferUsesResolvedEscapeTimeout(t *testing.T) {
 // not rewritten into an ESC-prefixed Meta key (0x94 would become ESC+Ctrl-T,
 // and 0x8D would become ESC+CR, which is a newline).
 func TestStdinBuffer_ProcessTerminalBytesHoldsSplitCharacter(t *testing.T) {
-	b := newProcessStdinBuffer()
+	b := NewStdinBuffer(StdinBufferOptions{})
 	var got []string
 	got = append(got, b.ProcessTerminalBytes([]byte("a\xe2"))...)
 	got = append(got, b.ProcessTerminalBytes([]byte("\x80"))...)
@@ -293,21 +263,20 @@ func TestPriorityInputPrefersWaitingInputOverFlush(t *testing.T) {
 // disarmed once the buffer is empty again.
 func TestStdinFlushTimerArmsForPendingSequence(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
-		b := NewStdinBuffer(StdinBufferOptions{})
-		var flush stdinFlushTimer
-		b.ProcessString("\x1b[<35")
-		flush.sync(b)
+		var got []string
+		input := tui.NewTerminalInput(func(sequence string) { got = append(got, sequence) })
+		defer input.Close()
+		input.Process([]byte("\x1b[<35"))
 		start := time.Now()
-		<-flush.C
+		<-input.C
 		if elapsed := time.Since(start); elapsed != 50*time.Millisecond {
 			t.Fatalf("flush fired after %v, want 50ms", elapsed)
 		}
-		flush.stop()
-		if got := b.Flush(); !reflect.DeepEqual(got, []string{"\x1b[<35"}) {
+		input.Flush()
+		if !reflect.DeepEqual(got, []string{"\x1b[<35"}) {
 			t.Fatalf("Flush() = %q", got)
 		}
-		flush.sync(b)
-		if flush.C != nil {
+		if input.C != nil {
 			t.Fatal("flush timer armed with nothing pending")
 		}
 	})

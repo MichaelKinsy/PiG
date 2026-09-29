@@ -21,7 +21,6 @@ package codingagent
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
 	"math"
 	"os"
@@ -29,6 +28,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -290,6 +290,10 @@ func (f *treeRowFormatter) formatMessage(e SessionEntry) string {
 			return asstLabel + fg(th.Muted, "(no content)")
 		}
 		return asstLabel + text
+	case "bashExecution":
+		command, _ := me.Message.Custom["command"].(string)
+		command = strings.NewReplacer("\n", " ", "\t", " ").Replace(command)
+		return fg(th.Dim, "[bash]: "+jsTrim(command))
 	default:
 		// Unknown roles use upstream's `[<role>]` fallback.
 		return fg(th.Dim, "["+role+"]")

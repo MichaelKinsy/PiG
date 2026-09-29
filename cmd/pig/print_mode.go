@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -16,6 +17,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
+	"github.com/MichaelKinsy/PiG/coding/rpcclient"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 
 	"golang.org/x/term"
@@ -33,7 +35,7 @@ var errPrintModeHandled = fmt.Errorf("print mode: error already written")
 //
 // Upstream's print mode disposes its runtime and then exits 128+signum
 // (`process.exit(signal === "SIGHUP" ? 129 : 143)`), and leaves SIGINT to
-// Node's default handler, which exits 130. Callers therefore distinguish "a
+// Node's default handler, which terminates by signal. Callers therefore distinguish "a
 // timeout or supervisor killed the run" from "the run failed" by exit code, so
 // pig must report the same codes and must not print an internal cancellation
 // error. Recording the signal and returning normally, rather than exiting from
@@ -67,6 +69,8 @@ type printModeRuntime struct {
 	Session     coding.SessionStartOptions
 	ResumePath  string
 	SessionName string
+	// UnknownFlags carries extension CLI values into the bound runtime.
+	UnknownFlags map[string]any
 	// Commands carries the prompt templates, skills, resource provenance and
 	// built-in llama.cpp command of the session. runPrintMode binds it to
 	// the session's extension runner.
@@ -78,6 +82,48 @@ type printModeRuntime struct {
 	// SystemPromptSections rebuilds the session's system prompt with the
 	// skills extensions discovered (upstream _rebuildSystemPrompt).
 	SystemPromptSections func(skills []*codingagent.SkillDef) ai.OrderedSections
+	// SystemPromptResources reports the resource-loader state behind the rebuilt prompt.
+	SystemPromptResources func(skills []*codingagent.SkillDef) *coding.SystemPromptResources
+	// Rebuild constructs these inputs again for a replacement Session's destination cwd, as Pi's createRuntime does on every replacement. Without it a replacement fails.
+	Rebuild func(ctx context.Context, options coding.CreateAgentSessionRuntimeOptions) (printModeRuntime, error)
+	// Invalidate makes the extension host reject later calls of a replaced Session's extension processes.
+	Invalidate func(message string)
+	// Release retires the extension host and services of a replaced Session.
+	Release func(reason string)
+}
+
+// startOptions returns the options the first Session starts with.
+func (h printModeRuntime) startOptions() coding.SessionStartOptions {
+	start := h.Session
+	if start.SessionManager == nil {
+		start.ResumePath = h.ResumePath
+	}
+	return start
+}
+
+func (h printModeRuntime) inputs() cliSessionInputs {
+	return cliSessionInputs{Services: h.Services, Extensions: h.Extensions, Start: h.Session, Invalidate: h.Invalidate, Release: h.Release}
+}
+
+// printSessionState is the mode state of one print-mode Session.
+type printSessionState struct {
+	Services              *coding.Services
+	Bridge                *subprocess.UIBridge
+	Session               coding.SessionStartOptions
+	UnknownFlags          map[string]any
+	Commands              headlessCommandCatalog
+	ToolRegistryAllowed   map[string]struct{}
+	ToolRegistryExcluded  map[string]struct{}
+	SystemPromptSections  func(skills []*codingagent.SkillDef) ai.OrderedSections
+	SystemPromptResources func(skills []*codingagent.SkillDef) *coding.SystemPromptResources
+}
+
+func (h printModeRuntime) state() printSessionState {
+	return printSessionState{
+		Services: h.Services, Bridge: h.Bridge, Session: h.Session, UnknownFlags: h.UnknownFlags, Commands: h.Commands,
+		ToolRegistryAllowed: h.ToolRegistryAllowed, ToolRegistryExcluded: h.ToolRegistryExcluded,
+		SystemPromptSections: h.SystemPromptSections, SystemPromptResources: h.SystemPromptResources,
+	}
 }
 
 // printModeOptions mirrors upstream PrintModeOptions (print-mode.ts).
@@ -123,15 +169,14 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 	if opts.convertEvent == nil {
 		opts.convertEvent = rpcAgentEvent
 	}
-	// Print mode owns SIGINT: there's no interactive editor to deliver
-	// Ctrl+C as a byte, so the signal is the only abort path. SIGTERM and
-	// SIGHUP are owned here too so the exit code reports the signal:
-	// upstream registers SIGTERM (plus SIGHUP off win32) and exits
-	// 128+signum after disposing its runtime.
+	// Pi owns SIGTERM and SIGHUP but leaves SIGINT to the process default action.
+	// A signal-terminated process is distinguishable from numeric exit 130.
+	// The process context owns extension processes. Cancelling the run's own context stops prompting, but extensions still receive session_shutdown afterwards.
+	processCtx := ctx
 	ctx, cancel := context.WithCancel(ctx)
 	defer cancel()
 	intCh := make(chan os.Signal, 1)
-	termSignals := []os.Signal{syscall.SIGINT, syscall.SIGTERM}
+	termSignals := []os.Signal{syscall.SIGTERM}
 	if runtime.GOOS != "windows" {
 		termSignals = append(termSignals, syscall.SIGHUP)
 	}
@@ -156,69 +201,39 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 		}
 	}()
 
-	rt, err := coding.NewRuntime(coding.RuntimeOptions{
-		Services:      host.Services,
-		NewExtensions: host.Extensions,
-		AbortContext:  ctx,
-	})
-	if err != nil {
-		return fmt.Errorf("construct runtime: %w", err)
-	}
-	defer func() { _ = rt.Close() }()
-	if runner := rt.NewExtensionRunner(); runner != nil {
-		runner.AddErrorListener(printExtensionErrorListener(opts.stderr))
-	}
-
-	var sess *coding.Session
-	if host.ResumePath != "" {
-		sess, err = rt.Open(host.ResumePath, host.Session)
-	} else {
-		sess, err = rt.New(host.Session)
-	}
-	if err != nil {
-		return fmt.Errorf("construct session: %w", err)
-	}
-	defer func() { _ = sess.Close() }()
-	detachModelRegistry := wireSubprocessModelRegistry(host.Bridge, sess, host.Services)
-	defer detachModelRegistry()
-	// Upstream print mode binds the session to its extensions
-	// (session.bindExtensions), so sendUserMessage, isIdle, abort,
-	// hasPendingMessages, and waitForIdle reach this session.
 	extensionMode := extension.ModePrint
 	if opts.Mode == "json" {
 		extensionMode = extension.ModeJSON
 	}
-	runner := rt.NewExtensionRunner()
-	bindSessionExtensionActions(runner, host.Bridge, func() *coding.Session { return sess }, extension.ContextActions{
-		ModelRegistry:    host.Services.Registry(),
-		IsProjectTrusted: host.Services.SettingsManager().IsProjectTrusted,
-		Mode:             extensionMode,
+	factory := newCLISessionFactory(processCtx, host.inputs(), host.state(), func(ctx context.Context, options coding.CreateAgentSessionRuntimeOptions) (cliSessionInputs, printSessionState, error) {
+		if host.Rebuild == nil {
+			return cliSessionInputs{}, printSessionState{}, errors.New("print mode cannot rebuild a runtime for a replacement Session")
+		}
+		next, err := host.Rebuild(ctx, options)
+		if err != nil {
+			return cliSessionInputs{}, printSessionState{}, err
+		}
+		return next.inputs(), next.state(), nil
 	})
-	commands := host.Commands
-	commands.runner = runner
-	commands.mode = string(extensionMode)
-	if commands.notify == nil {
-		// Print mode binds no UI; ctx.ui.notify does nothing.
-		commands.notify = func(string, string) {}
+	defer factory.Close()
+	manager, err := coding.SessionManagerFor(host.Services, host.startOptions())
+	if err != nil {
+		return fmt.Errorf("construct session: %w", err)
 	}
-	// Extension host calls read the published copy of the catalog; this
-	// goroutine alone changes commands.
-	var publishedCommands atomic.Pointer[headlessCommandCatalog]
-	publishedCommands.Store(new(commands))
-	if host.Bridge != nil {
-		host.Bridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
-			return codingagent.ExtensionToolInfos(runner, host.ToolRegistryAllowed, host.ToolRegistryExcluded)
-		})
-		host.Bridge.SetHostAction("getCommands", func() []subprocess.CommandInfo {
-			return publishedCommands.Load().slashCatalog().SubprocessCommands()
-		})
+	rt, err := coding.CreateAgentSessionRuntime(ctx, factory.Factory(), coding.CreateAgentSessionRuntimeOptions{
+		CWD: host.Services.CWD(), AgentDir: host.Services.AgentDir(), SessionManager: manager,
+	})
+	if err != nil {
+		return fmt.Errorf("construct session: %w", err)
 	}
+	// Runtime.Close emits session_shutdown for the current Session, closes it, and retires the host as upstream disposeRuntime does.
+	defer func() { _ = rt.Close() }()
+	sess := rt.Session()
+	current := func() *coding.Session { return rt.Session() }
 
-	// Persist --name to session_info so the display name survives resume.
-	// Mirrors upstream sessionManager.appendSessionInfo(name) (main.ts:580),
-	// which runs when the session is created, before any mode starts.
+	// Initial naming appends metadata without a runtime name-change notification.
 	if host.SessionName != "" {
-		if err := sess.SetSessionName(host.SessionName); err != nil {
+		if _, err := sess.Inner().AppendSessionInfo(host.SessionName); err != nil {
 			return fmt.Errorf("set session name: %w", err)
 		}
 	}
@@ -226,62 +241,183 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 	// Line 1 of JSON output is always the session header, matching the
 	// session JSONL layout and upstream print-mode.ts, which writes
 	// getHeader() before binding extensions.
+	// JSON output goes through output-guard's ordered raw-stdout tail (writeRawStdout); a write failure exits 1 as the tail's catch does.
+	var stdoutFailed atomic.Bool
+	jsonOut := newStdoutQueue(opts.stdout, func(error) {
+		stdoutFailed.Store(true)
+		cancel()
+	})
 	if opts.Mode == "json" {
 		if hdr := sess.Inner().Header(); hdr.ID != "" {
-			writeJSONLine(opts.stdout, hdr)
+			writeJSONLine(jsonOut, hdr)
 		}
 	}
 
-	// Subscribe before prompting so no event of the run is missed. Every
-	// event is consumed even when it is not written: forwardAgentEvents pushes
-	// every agent event into the channel, and a consumer that stops reading
-	// blocks the agent's emit and deadlocks the run. A JSON conversion failure
-	// fails the run, as upstream's throwing toJsonEvent rejects prompt(), but
-	// the loop keeps draining until Close ends the channel.
+	// Pi's subscriber converts, serializes and writes before Session persistence (print-mode.ts:108-111). The Events consumer only drains and acknowledges delivery barriers, so a consumer that stops reading cannot block the agent's emit. A conversion or serialization failure fails the run, as upstream's throwing toJsonEvent rejects prompt(). One subscription and one consumer run per Session; a replaced Session's channel closes with the Session.
+	var convertMu sync.Mutex
 	var convertErr error
-	eventsDone := make(chan struct{})
-	go func() {
-		defer close(eventsDone)
-		for ev := range sess.Events() {
-			if coding.AcknowledgeEvent(ev) || opts.Mode != "json" || convertErr != nil {
-				continue
+	var consumers sync.WaitGroup
+	var detachOutput []func()
+	subscribe := func(session *coding.Session) {
+		if opts.Mode == "json" {
+			unsubscribe := session.Subscribe(func(event agent.AgentEvent) {
+				convertMu.Lock()
+				failed := convertErr != nil
+				convertMu.Unlock()
+				if failed {
+					return
+				}
+				frames, eventErr := opts.convertEvent(event)
+				var lines [][]byte
+				if eventErr == nil {
+					for _, frame := range frames {
+						var line []byte
+						line, eventErr = rpcclient.SerializeJsonLine(frame)
+						if eventErr != nil {
+							break
+						}
+						lines = append(lines, line)
+					}
+				}
+				for _, line := range lines {
+					_, _ = jsonOut.Write(line)
+				}
+				if eventErr != nil {
+					convertMu.Lock()
+					convertErr = fmt.Errorf("convert session event: %w", eventErr)
+					convertMu.Unlock()
+					cancel()
+				}
+			})
+			// print-mode.ts:113-118 subscribes an Agent listener after the Session's own, awaiting every pending stdout write before the next Agent event.
+			backpressure := subscribeStdoutBackpressure(session.Agent(), func() { jsonOut.Wait(ctx) })
+			convertMu.Lock()
+			detachOutput = append(detachOutput, unsubscribe, backpressure)
+			convertMu.Unlock()
+		}
+		consumers.Go(func() {
+			for event := range session.Events() {
+				coding.AcknowledgeEvent(event)
 			}
-			converted, err := opts.convertEvent(ev)
-			if err != nil {
-				convertErr = fmt.Errorf("convert session event: %w", err)
-				cancel()
-				continue
-			}
-			for _, out := range converted {
-				writeJSONLine(opts.stdout, out)
+		})
+	}
+
+	// state is the mode state of the current Session. Prompts read it at the moment they are sent.
+	var state atomic.Pointer[printSessionState]
+	var detachModelRegistry func()
+	var publishedCommands atomic.Pointer[headlessCommandCatalog]
+	// bind wires the Session to this mode as upstream rebindSession does: extension bindings, command actions, then the event subscription. It emits session_start for the Session's own reason, which is startup for the first Session.
+	bind := func(ctx context.Context, session *coding.Session, event extension.SessionStartEvent) error {
+		st, ok := factory.StateFor(session)
+		if !ok {
+			return errors.New("print mode: replacement Session has no mode state")
+		}
+		if detachModelRegistry != nil {
+			detachModelRegistry()
+		}
+		detachModelRegistry = wireSubprocessModelRegistry(st.Bridge, session, st.Services)
+		bindSessionReadActions(st.Bridge, current, st.Services.CWD(), session.Inner().GetSessionDir())
+		bindSessionAppendEntry(st.Bridge, current)
+		runner := session.ExtensionRunner()
+		if runner != nil {
+			runner.AddErrorListener(printExtensionErrorListener(opts.stderr))
+			// Upstream print mode binds the session to its extensions
+			// (session.bindExtensions), so sendUserMessage, isIdle, abort,
+			// hasPendingMessages, and waitForIdle reach this session.
+			runner.SetUIContext(nil, extensionMode)
+			runner.BindCommandActions(rt.ExtensionCommandActions(session))
+		}
+		bindSessionExtensionActions(runner, st.Bridge, current, extension.ContextActions{
+			ModelRegistry:    st.Services.Registry(),
+			IsProjectTrusted: st.Services.SettingsManager().IsProjectTrusted,
+			GetFlagValue:     func(name string) any { return st.UnknownFlags[name] },
+		}, rt.ExtensionCommandActions)
+		commands := st.Commands
+		commands.runner = runner
+		commands.mode = string(extensionMode)
+		if commands.notify == nil {
+			// Print mode binds no UI; ctx.ui.notify does nothing.
+			commands.notify = func(string, string) {}
+		}
+		// Extension host calls read the published copy of the catalog; this
+		// goroutine alone changes commands.
+		publishedCommands.Store(new(commands))
+		if st.Bridge != nil {
+			st.Bridge.SetHostAction("getAllTools", func() []subprocess.ToolInfo {
+				return codingagent.ExtensionToolInfos(runner, st.ToolRegistryAllowed, st.ToolRegistryExcluded)
+			})
+			st.Bridge.SetHostAction("getCommands", func() []subprocess.CommandInfo {
+				return publishedCommands.Load().slashCatalog().SubprocessCommands()
+			})
+		}
+		subscribe(session)
+		// Drive the extension session lifecycle so extensions that initialize on
+		// session_start (and clean up on session_shutdown) run in print mode too,
+		// not only interactive.
+		session.EmitSessionStartTransition(event.Reason, event.PreviousSessionFile)
+		skillsChanged, resourceErr := commands.extendFromExtensions(ctx, runner, codingagent.ResourcesDiscoverReason(event.Reason))
+		if resourceErr != nil {
+			return resourceErr
+		}
+		if skillsChanged && st.SystemPromptSections != nil {
+			session.SetSystemPromptSections(st.SystemPromptSections(commands.skills))
+			if st.SystemPromptResources != nil {
+				session.SetSystemPromptResources(*st.SystemPromptResources(commands.skills))
 			}
 		}
+		publishedCommands.Store(new(commands))
+		st.Commands = commands
+		state.Store(&st)
+		return nil
+	}
+	rt.SetRebindSession(func(ctx context.Context, session *coding.Session) error {
+		return bind(ctx, session, session.StartEvent())
+	})
+	defer func() {
+		if detachModelRegistry != nil {
+			detachModelRegistry()
+		}
 	}()
-	// Ordered teardown: shutdown hooks run while the session is still open,
-	// then closing it ends the event channel and the consumer exits. A failed
-	// run is reported like upstream's catch, console.error(error.message):
+
+	// A failed run is reported like upstream's catch, console.error(error.message):
 	// the error's own text on stderr, exit 1. A conversion failure is the
 	// cause of the cancellation the prompt then reports, so it wins. A
 	// termination signal stays quiet and reports its exit code instead.
 	var runErr error
 	defer func() {
-		sess.EmitSessionShutdown("quit")
-		_ = sess.Close()
+		// Ordered teardown: shutdown hooks run while the Session is still open,
+		// then closing it ends the event channel and the consumer exits.
+		_ = rt.Close()
 		// Upstream's signal handler disposes the runtime and calls process.exit
 		// without flushRawStdout. The process owns any blocked stdout write on
 		// this path; waiting for it would make a full client pipe prevent exit.
 		// Ordinary cancellation still drains output. Read convertErr only after
-		// the consumer has joined, never while it may still be converting.
+		// the consumers have joined, never while one may still be converting.
+		joined := make(chan struct{})
+		go func() { consumers.Wait(); close(joined) }()
 		select {
-		case <-eventsDone:
+		case <-joined:
 		case <-ctx.Done():
 			if receivedTerminationSignal.Load() != 0 {
 				return
 			}
-			<-eventsDone
+			<-joined
+		}
+		convertMu.Lock()
+		for _, detach := range detachOutput {
+			detach()
 		}
 		if convertErr != nil {
 			runErr = convertErr
+		}
+		convertMu.Unlock()
+		// A normal run flushes the raw-stdout tail (flushRawStdout); a termination signal exits without waiting on a blocked reader.
+		if receivedTerminationSignal.Load() == 0 {
+			jsonOut.Wait(context.Background())
+		}
+		if stdoutFailed.Load() {
+			err = errPrintModeHandled
+			return
 		}
 		if runErr != nil && receivedTerminationSignal.Load() == 0 {
 			_, _ = fmt.Fprintln(opts.stderr, runErr.Error())
@@ -289,32 +425,32 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 		}
 	}()
 
-	// Drive the extension session lifecycle so extensions that initialize on
-	// session_start (and clean up on session_shutdown) run in print mode too,
-	// not only interactive.
-	sess.EmitSessionStart("startup")
-	if commands.extendFromExtensions(ctx, runner, "startup") && host.SystemPromptSections != nil {
-		sess.SetSystemPromptSections(host.SystemPromptSections(commands.skills))
+	if err := bind(ctx, sess, sess.StartEvent()); err != nil {
+		runErr = err
+		return nil // reported by the teardown above
 	}
-	publishedCommands.Store(new(commands))
 
 	// A termination signal ends the run where it is: upstream's handler
 	// disposes the runtime and exits, so no later prompt starts.
-	if opts.InitialMessage != "" && ctx.Err() == nil {
-		_, runErr = sendPrintPrompt(ctx, sess, commands, opts.InitialMessage, opts.InitialImages)
+	send := func(message string, images []ai.ImageContent) {
+		if runErr != nil || ctx.Err() != nil {
+			return
+		}
+		st := state.Load()
+		_, runErr = sendPrintPrompt(ctx, current(), st.Commands, message, images)
+	}
+	if opts.InitialMessage != "" {
+		send(opts.InitialMessage, opts.InitialImages)
 	}
 	for _, message := range opts.Messages {
-		if runErr != nil || ctx.Err() != nil {
-			break
-		}
-		_, runErr = sendPrintPrompt(ctx, sess, commands, message, nil)
+		send(message, nil)
 	}
 	// Upstream prompt() resolves only after every agent event's extension
 	// handlers have run and every event was written; Send returns while the
 	// session may still be dispatching the run's tail. Wait for that before
 	// the deferred session_shutdown and host shutdown, or those handlers run
 	// against a closed extension connection and JSON output is cut short.
-	if err := sess.FlushEvents(ctx); err != nil && runErr == nil && ctx.Err() == nil {
+	if err := current().FlushEvents(ctx); err != nil && runErr == nil && ctx.Err() == nil {
 		runErr = fmt.Errorf("flush session events: %w", err)
 	}
 	if runErr != nil {
@@ -323,7 +459,7 @@ func runPrintMode(ctx context.Context, host printModeRuntime, opts printModeOpti
 	if opts.Mode != "text" {
 		return nil
 	}
-	return writePrintModeResult(sess.Messages(), opts.stdout, opts.stderr)
+	return writePrintModeResult(current().Messages(), opts.stdout, opts.stderr)
 }
 
 // sendPrintPrompt mirrors AgentSession.prompt for print and JSON mode's input
@@ -341,6 +477,10 @@ func sendPrintPrompt(ctx context.Context, sess *coding.Session, commands headles
 	text, images, handled, err = sess.RunInputHandlers(ctx, text, images, extension.InputSourceUser, "")
 	if err != nil || handled {
 		return handled, err
+	}
+	// An absent startup selection becomes Pi's Agent DEFAULT_MODEL. Its unknown provider fails credential preflight, not the lower-level SendContent model guard; commands and handled input above do not need credentials.
+	if model := sess.Model(); model == nil || model.Provider == nil && model.ProviderMeta.ProviderID == "unknown" {
+		return false, errors.New(codingagent.FormatNoAPIKeyFoundMessage("unknown"))
 	}
 	_, err = sess.SendContent(ctx, coding.BuildUserContent(commands.expandPrompt(text), images))
 	return false, err

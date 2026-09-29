@@ -5,7 +5,7 @@
 - `../docs/project/CONTEXT.md`
 - `../docs/project/RELEASING.md`
 - `../docs/project/PROVENANCE.md`
-- `../SECURITY.md`
+- `./SECURITY.md`
 
 ## Contract
 

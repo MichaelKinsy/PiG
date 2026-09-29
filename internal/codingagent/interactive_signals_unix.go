@@ -12,44 +12,6 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// installTerminalGoneHandler routes SIGHUP (SSH disconnect, window close) to
-// the bounded terminal-gone shutdown. Returns a stop func. The goroutine also
-// exits when ctx is cancelled.
-func (m *InteractiveMode) installTerminalGoneHandler(ctx context.Context) func() {
-	hupCh := make(chan os.Signal, 1)
-	signal.Notify(hupCh, syscall.SIGHUP)
-	go func() {
-		select {
-		case <-ctx.Done():
-			return
-		case <-hupCh:
-			m.handleTerminalGone()
-		}
-	}()
-	return func() { signal.Stop(hupCh) }
-}
-
-// handleTerminalGone runs the bounded terminal-gone shutdown: give extensions
-// a BOUNDED window to run cleanup that does not touch the tty (remove sockets,
-// flush state), then hard-exit WITHOUT terminal restore (restore writes to a
-// dead tty re-trigger EIO/EPIPE). The timeout guarantees we exit even if a
-// handler blocks on the dead terminal. Mirrors upstream's
-// session_shutdown-before-exit intent (interactive-mode.ts:3378), bounded for
-// the dead-tty case. Only SIGHUP reaches it: upstream registers SIGHUP
-// only off win32, where console close arrives as SIGTERM.
-func (m *InteractiveMode) handleTerminalGone() {
-	done := make(chan struct{})
-	go func() {
-		m.ShutdownFromSignal()
-		close(done)
-	}()
-	select {
-	case <-done:
-	case <-time.After(time.Second):
-	}
-	os.Exit(129)
-}
-
 // installResizeHandler drives onTerminalResize from SIGWINCH. Returns a stop
 // func; the goroutine also exits when ctx is cancelled.
 func (m *InteractiveMode) installResizeHandler(ctx context.Context) func() {
@@ -68,45 +30,104 @@ func (m *InteractiveMode) installResizeHandler(ctx context.Context) func() {
 	return func() { signal.Stop(winchCh) }
 }
 
-// handleSuspend drops pig to the shell via SIGTSTP and resumes cleanly when the
-// user `fg`s back. Mirrors upstream `packages/tui/src/tui.ts` SIGTSTP handler.
-// Steps:
-//
-//  1. Pop raw-mode (writes the bracketed-paste / modifyOtherKeys disable
-//     sequences and restores cooked termios) so the shell sees a normal
-//     terminal. Without this, the user's prompt would come back in raw mode and
-//     most keystrokes would be silently dropped.
-//  2. SIGTSTP to self. The kernel parks the process. Control returns to the
-//     parent shell.
-//  3. On `fg`, execution resumes here. Re-enter raw mode, re-install the same
-//     restore closure, and force a full re-render so the chat surface, status
-//     line, and editor box come back exactly as they were.
-//
-// In-flight agent operations are NOT cancelled: the LLM goroutine keeps
-// running while suspended. Errors during raw-mode re-entry are surfaced to the
-// chat surface rather than fatal-ing.
-func (m *InteractiveMode) handleSuspend() {
+// ignoreSuspendInterrupt changes dispatch-time listener state without discarding pending kernel signals. SIGINT delivered after resume cleanup follows the ordinary interrupt handler, as in Pi's process.removeListener path.
+func (m *InteractiveMode) ignoreSuspendInterrupt() func() {
 	m.suspended.Store(true)
-	defer m.suspended.Store(false)
-	if m.rawRestore != nil {
-		m.rawRestore()
-		m.rawRestore = nil
+	return func() { m.suspended.Store(false) }
+}
+
+// handleSuspend stops the terminal and returns after signal delivery. SIGCONT restores the terminal on the owner loop without cancelling Session work.
+func (m *InteractiveMode) handleSuspend() error {
+	ctx := m.runCtx
+	if ctx == nil {
+		ctx = context.Background()
 	}
-	// Send SIGTSTP to this process group, mirroring upstream's
-	// `process.kill(0, "SIGTSTP")`. In practice the group holds only pig: bash
-	// tools and extension subprocesses are spawned into their own groups here
-	// and upstream detaches them too (`bash.ts` spawns with
-	// `detached: platform !== "win32"`), so a long-running tool keeps executing
-	// while pig is parked in both systems. The kernel parks the job; on `fg`
-	// execution resumes from the next line.
-	if err := syscall.Kill(0, syscall.SIGTSTP); err != nil {
-		m.appendToChat(tui.NewText("\033[33msuspend failed: " + err.Error() + "\033[0m"))
+	return suspendTerminal(ctx, "unix", m.showStatus, m.suspendOperations())
+}
+
+func (m *InteractiveMode) suspendOperations() suspendOperations {
+	return suspendOperations{
+		keepAlive: func(interval time.Duration) func() {
+			return time.NewTicker(interval).Stop
+		},
+		ignoreInterrupt: m.ignoreSuspendInterrupt,
+		continued:       m.onSuspendContinue,
+		stop: func() {
+			if m.inputReader != nil {
+				m.inputReader.pause()
+			}
+			m.tuiInst.Stop()
+			if m.themeState.autoSyncEnabled.Load() {
+				m.writeThemeNotifications(false)
+			}
+			if m.rawRestore != nil {
+				m.rawRestore()
+				m.rawRestore = nil
+				m.rawDrain = nil
+			}
+		},
+		start: func() error {
+			restore, drain, err := tui.EnterRawModeWithDrain()
+			if err != nil {
+				return err
+			}
+			m.rawRestore = restore
+			m.rawDrain = drain
+			if m.inputReader != nil {
+				m.inputReader.resume()
+			}
+			if m.themeState.autoSyncEnabled.Load() {
+				m.writeThemeNotifications(true)
+			}
+			m.tuiInst.Start()
+			return nil
+		},
+		requestRender: func() { m.tuiInst.ForceFullRender(); m.tuiInst.Render() },
+		kill:          func(pid int) error { return syscall.Kill(pid, syscall.SIGTSTP) },
 	}
-	restore, err := tui.EnterRawMode()
-	if err != nil {
-		m.appendToChat(tui.NewText("\033[31msuspend resume failed (terminal not raw): " + err.Error() + "\033[0m"))
-		return
+}
+
+// onSuspendContinue owns one signal waiter in the mode's joined background scope. SIGCONT uses backpressured owner dispatch; canceled or failed operations cannot restart a stopped mode.
+func (m *InteractiveMode) onSuspendContinue(onContinue func() error, onCancel func()) func() {
+	parent := m.backgroundCtx
+	if parent == nil {
+		parent = m.runCtx
 	}
-	m.rawRestore = restore
-	m.tuiInst.Render()
+	if parent == nil {
+		parent = context.Background()
+	}
+	ctx, cancel := context.WithCancel(parent)
+	continued := make(chan os.Signal, 1)
+	signal.Notify(continued, syscall.SIGCONT)
+	m.backgroundTasks.Go(func() {
+		defer signal.Stop(continued)
+		select {
+		case <-ctx.Done():
+			onCancel()
+		case <-continued:
+			applied := make(chan struct{})
+			if err := m.postToMain(ctx, func() {
+				defer close(applied)
+				if ctx.Err() != nil {
+					onCancel()
+					return
+				}
+				if err := onContinue(); err != nil {
+					m.inputLoopErr = err
+				}
+			}); err != nil {
+				onCancel()
+				return
+			}
+			select {
+			case <-applied:
+			case <-ctx.Done():
+				onCancel()
+			}
+		}
+	})
+	return func() {
+		cancel()
+		signal.Stop(continued)
+	}
 }

@@ -1,0 +1,24 @@
+# Pi 0.87.1 agent-session-model-extension.test.ts drives model/thinking cycles, unconfigured auth, input handlers, and live command prompt options. The Pi fixture asserts the exact source rules before projecting results.
+# Both sides construct a real Session and provider; JSON key order is canonicalized, never values. Lifecycle replacement is additionally driven through the real interactive reload path by the owning unit test.
+# Integration probe: agent-session.ts:_rebuildSystemPrompt replaces the live options on tool activation, preserves the older borrowed object, and exposes exactly the new selection. Both original sharing/mutation and replacement/retention assertions remain in the complete output.
+name = "27-session-model-extension"
+description = "Session model selection, thinking preferences, input interception and live command options match Pi."
+covers = ["packages/coding-agent/src/core/agent-session.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/session-model-contract.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/session-model-contract.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

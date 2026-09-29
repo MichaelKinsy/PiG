@@ -273,6 +273,6 @@ func TestBedrockUsageCostMatchesUpstream(t *testing.T) {
 	close(input)
 	builder := newAssistantStreamBuilder(context.Background(), APIBedrockConverseStream, "amazon-bedrock", "us.anthropic.claude-opus-4-8")
 	builder.modelCost = (&Model{Capabilities: generated.ToCapabilities()}).CostRates()
-	go (&BedrockProvider{}).parseBedrockEvents(context.Background(), &fakeBedrockEventStream{events: input}, builder)
+	go (&BedrockProvider{}).parseBedrockEvents(context.Background(), &fakeBedrockEventStream{events: input}, builder, "")
 	assertUsageJSON(t, builder.stream.Result().Usage, `{"input":100,"output":5,"cacheRead":0,"cacheWrite":1000000,"cacheWrite1h":400000,"totalTokens":1000105,"cost":{"input":0.00055,"output":0.0001375,"cacheRead":0,"cacheWrite":8.525,"total":8.5256875}}`)
 }

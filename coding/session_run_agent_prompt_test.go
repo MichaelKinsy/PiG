@@ -50,7 +50,7 @@ func TestRunAgentPromptWaitsForTheEventConsumerBeforeContinuing(t *testing.T) {
 		_, err := session.RunAgentPrompt(context.Background(), func(ctx context.Context) ([]agent.AgentMessage, error) {
 			messages, err := session.agent.Send(ctx, "start")
 			session.agent.FollowUp(agent.AgentMessage{User: &agent.UserMessage{
-				Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "queued after the run"}}, Timestamp: time.Now().UnixMilli(),
+				Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "queued after the run"}}, Timestamp: time.Now().UnixMilli(),
 			}})
 			return messages, err
 		})
@@ -135,7 +135,7 @@ func TestCheckCompactionErrorWithoutUsageEstimatesFromLastUsage(t *testing.T) {
 	sess.completer = &fakeCompleter{summary: "threshold summary"}
 	model := fakeModel()
 	model.Capabilities.ContextWindow = 200000
-	sess.model.Store(model)
+	sess.Agent().SetModel(model)
 
 	now := time.Now().UnixMilli()
 	for _, message := range []*agent.AssistantMessage{

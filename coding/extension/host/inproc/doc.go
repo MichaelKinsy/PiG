@@ -22,7 +22,7 @@
 // `runner.ts` private/public names verbatim where the Go semantics
 // permit. Each exported method's doc comment cites
 // `// upstream: runner.ts:NNN`. The atomic.Pointer used for the stale
-// flag is a TS→Go translation rule (DIVERGENCES.md), not a divergence.
+// flag is a TS→Go translation rule (docs/parity/DIVERGENCES.md), not a divergence.
 //
 // upstream: .upstream/current/packages/coding-agent/src/core/extensions/runner.ts
 package inproc

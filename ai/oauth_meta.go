@@ -22,7 +22,6 @@ import (
 	"math"
 	"net/http"
 	"net/url"
-	"strings"
 	"time"
 )
 
@@ -262,8 +261,8 @@ func httpStatusOK(status int) bool { return status >= 200 && status < 300 }
 
 func metaErrorDetail(body map[string]any) string {
 	for _, key := range []string{"error_description", "detail", "message", "error"} {
-		if value, ok := body[key].(string); ok && strings.TrimSpace(value) != "" {
-			return ": " + strings.TrimSpace(value)
+		if value, ok := body[key].(string); ok && trimJSWhitespace(value) != "" {
+			return ": " + trimJSWhitespace(value)
 		}
 	}
 	return ""

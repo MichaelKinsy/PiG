@@ -1,0 +1,28 @@
+# Pi 0.87.1 agent-loop.ts:514 treats only executionMode="sequential" as
+# sequential. Both calls wait at one barrier until both have entered, so a
+# sequential bridge cannot return either result. Compare the actual ordered
+# result texts, not callback scheduling order. Go synctest detects the deadlock
+# when its bridge is mutated back to the sequential default. Pi imports its
+# published AgentSession and only transpiles upstream test setup helpers.
+name = "20-sdk-default-parallel-tools"
+description = "SDK extension tools without an execution mode can cooperate concurrently"
+covers = ["packages/coding-agent/src/core/extensions/wrapper.ts", "packages/agent/src/agent-loop.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/tool-parallel-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/tool-parallel-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['PARALLEL_TOOLS ["first","second"]']
+runs = 3

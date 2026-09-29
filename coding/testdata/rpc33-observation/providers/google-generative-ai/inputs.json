@@ -1,0 +1,51 @@
+{
+  "piVersion": "0.87.1",
+  "genaiVersion": "2.21.0",
+  "axes": {
+    "api": "google-generative-ai",
+    "shapes": [
+      "text",
+      "thinking",
+      "tool",
+      "mixed"
+    ],
+    "deliveries": [
+      "buffered",
+      "pending",
+      "split"
+    ],
+    "consumers": [
+      "direct",
+      "held-direct",
+      "result-only",
+      "cancel",
+      "agent",
+      "held-agent"
+    ],
+    "layers": [
+      0,
+      1,
+      2,
+      "runtime"
+    ]
+  },
+  "bodies": {
+    "text": [
+      "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"one\"}]}}],\"responseId\":\"resp-g\",\"modelVersion\":\"probe\"}\r\n\r\n",
+      "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\" two\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13}}\r\n\r\n"
+    ],
+    "thinking": [
+      "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"one\",\"thought\":true}]}}],\"responseId\":\"resp-g\"}\r\n\r\n",
+      "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\" two\",\"thought\":true,\"thoughtSignature\":\"c2ln\"}]}}]}\r\n\r\n",
+      "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"answer\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13,\"thoughtsTokenCount\":2}}\r\n\r\n"
+    ],
+    "tool": [
+      "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"read\",\"args\":{\"path\":\"target.txt\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13},\"modelVersion\":\"probe\",\"responseId\":\"g1\"}\r\n\r\n"
+    ],
+    "mixed": [
+      "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"looking\"}]}}],\"responseId\":\"resp-g\"}\r\n\r\n",
+      "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"id\":\"call-g\",\"name\":\"read\",\"args\":{\"path\":\"target.txt\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13}}\r\n\r\n"
+    ]
+  },
+  "laterBody": "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"ok\"}]},\"finishReason\":\"STOP\"}]}\r\n\r\n"
+}

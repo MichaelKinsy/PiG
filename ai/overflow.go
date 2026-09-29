@@ -1,49 +1,53 @@
 package ai
 
-import "regexp"
+import (
+	"regexp"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+)
 
 // overflowPatterns detect context overflow errors from different providers.
 // Mirrors upstream OVERFLOW_PATTERNS (packages/ai/src/utils/overflow.ts).
-var overflowPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)prompt (?:is )?too long`),                                                                   // Anthropic and z.ai token overflow
-	regexp.MustCompile(`(?i)request_too_large`),                                                                         // Anthropic request byte-size overflow (HTTP 413)
-	regexp.MustCompile(`(?i)input is too long for requested model`),                                                     // Amazon Bedrock
-	regexp.MustCompile(`(?i)exceeds the context window`),                                                                // OpenAI (Completions & Responses API)
-	regexp.MustCompile(`(?i)exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|\s*\([\d,]+\))`), // OpenAI-compatible proxies (LiteLLM)
-	regexp.MustCompile(`(?i)input token count.*exceeds the maximum`),                                                    // Google (Gemini)
-	regexp.MustCompile(`(?i)maximum prompt length is \d+`),                                                              // xAI (Grok)
-	regexp.MustCompile(`(?i)reduce the length of the messages`),                                                         // Groq
-	regexp.MustCompile(`(?i)maximum context length is \d+ tokens`),                                                      // OpenRouter (most backends)
-	regexp.MustCompile(`(?i)exceeds (?:the )?maximum allowed input length of [\d,]+ tokens?`),                           // OpenRouter/Poolside
-	regexp.MustCompile(`(?i)input \(\d+ tokens\) is longer than the model'?s context length \(\d+ tokens\)`),            // Together AI
-	regexp.MustCompile(`(?i)exceeds the limit of \d+`),                                                                  // GitHub Copilot
-	regexp.MustCompile(`(?i)exceeds the available context size`),                                                        // llama.cpp server
-	regexp.MustCompile(`(?i)greater than the context length`),                                                           // LM Studio
-	regexp.MustCompile(`(?i)context window exceeds limit`),                                                              // MiniMax
-	regexp.MustCompile(`(?i)exceeded model token limit`),                                                                // Kimi For Coding
-	regexp.MustCompile(`(?i)too large for model with \d+ maximum context length`),                                       // Mistral
-	regexp.MustCompile(`(?i)prompt has [\d,]+ tokens?, but the configured context size is [\d,]+ tokens?`),              // DS4 server
-	regexp.MustCompile(`(?i)model_context_window_exceeded`),                                                             // z.ai non-standard finish_reason surfaced as error text
-	regexp.MustCompile(`(?i)prompt too long; exceeded (?:max )?context length`),                                         // Ollama explicit overflow error
-	regexp.MustCompile(`(?i)range of input length should be`),                                                           // DashScope / Qwen Token Plan
-	regexp.MustCompile(`(?i)context[_ ]length[_ ]exceeded`),                                                             // Generic fallback
-	regexp.MustCompile(`(?i)too many tokens`),                                                                           // Generic fallback
-	regexp.MustCompile(`(?i)token limit exceeded`),                                                                      // Generic fallback
+var overflowPatterns = []*lazyregexp.Regexp{
+	lazyregexp.New(`(?i)prompt (?:is )?too long`),                                                                   // Anthropic and z.ai token overflow
+	lazyregexp.New(`(?i)request_too_large`),                                                                         // Anthropic request byte-size overflow (HTTP 413)
+	lazyregexp.New(`(?i)input is too long for requested model`),                                                     // Amazon Bedrock
+	lazyregexp.New(`(?i)exceeds the context window`),                                                                // OpenAI (Completions & Responses API)
+	lazyregexp.New(`(?i)exceeds (?:the )?(?:model'?s )?maximum context length(?: of [\d,]+ tokens?|\s*\([\d,]+\))`), // OpenAI-compatible proxies (LiteLLM)
+	lazyregexp.New(`(?i)input token count.*exceeds the maximum`),                                                    // Google (Gemini)
+	lazyregexp.New(`(?i)maximum prompt length is \d+`),                                                              // xAI (Grok)
+	lazyregexp.New(`(?i)reduce the length of the messages`),                                                         // Groq
+	lazyregexp.New(`(?i)maximum context length is \d+ tokens`),                                                      // OpenRouter (most backends)
+	lazyregexp.New(`(?i)exceeds (?:the )?maximum allowed input length of [\d,]+ tokens?`),                           // OpenRouter/Poolside
+	lazyregexp.New(`(?i)input \(\d+ tokens\) is longer than the model'?s context length \(\d+ tokens\)`),            // Together AI
+	lazyregexp.New(`(?i)exceeds the limit of \d+`),                                                                  // GitHub Copilot
+	lazyregexp.New(`(?i)exceeds the available context size`),                                                        // llama.cpp server
+	lazyregexp.New(`(?i)greater than the context length`),                                                           // LM Studio
+	lazyregexp.New(`(?i)context window exceeds limit`),                                                              // MiniMax
+	lazyregexp.New(`(?i)exceeded model token limit`),                                                                // Kimi For Coding
+	lazyregexp.New(`(?i)too large for model with \d+ maximum context length`),                                       // Mistral
+	lazyregexp.New(`(?i)prompt has [\d,]+ tokens?, but the configured context size is [\d,]+ tokens?`),              // DS4 server
+	lazyregexp.New(`(?i)model_context_window_exceeded`),                                                             // z.ai non-standard finish_reason surfaced as error text
+	lazyregexp.New(`(?i)prompt too long; exceeded (?:max )?context length`),                                         // Ollama explicit overflow error
+	lazyregexp.New(`(?i)range of input length should be`),                                                           // DashScope / Qwen Token Plan
+	lazyregexp.New(`(?i)context[_ ]length[_ ]exceeded`),                                                             // Generic fallback
+	lazyregexp.New(`(?i)too many tokens`),                                                                           // Generic fallback
+	lazyregexp.New(`(?i)token limit exceeded`),                                                                      // Generic fallback
 }
 
 // cerebrasBodylessOverflowPattern is Cerebras's bodyless 400/413 overflow.
-var cerebrasBodylessOverflowPattern = regexp.MustCompile(`(?i)^4(?:00|13)\s*(?:status code)?\s*\(no body\)`)
+var cerebrasBodylessOverflowPattern = lazyregexp.New(`(?i)^4(?:00|13)\s*(?:status code)?\s*\(no body\)`)
 
 // nonOverflowPatterns exclude rate limiting and server errors that also match
 // an overflow pattern, such as Bedrock's "ThrottlingException: Too many
 // tokens". Mirrors upstream NON_OVERFLOW_PATTERNS.
-var nonOverflowPatterns = []*regexp.Regexp{
-	regexp.MustCompile(`(?i)^(Throttling error|Service unavailable):`), // AWS Bedrock non-overflow errors
-	regexp.MustCompile(`(?i)rate limit`),                               // Generic rate limiting
-	regexp.MustCompile(`(?i)too many requests`),                        // Generic HTTP 429 style
+var nonOverflowPatterns = []*lazyregexp.Regexp{
+	lazyregexp.New(`(?i)^(Throttling error|Service unavailable):`), // AWS Bedrock non-overflow errors
+	lazyregexp.New(`(?i)rate limit`),                               // Generic rate limiting
+	lazyregexp.New(`(?i)too many requests`),                        // Generic HTTP 429 style
 }
 
-func matchesAny(patterns []*regexp.Regexp, text string) bool {
+func matchesAny(patterns []*lazyregexp.Regexp, text string) bool {
 	for _, pattern := range patterns {
 		if pattern.MatchString(text) {
 			return true
@@ -85,5 +89,9 @@ func IsRecoverableLength(message AssistantMessage, desiredMaxOutput int) bool {
 // GetOverflowPatterns returns a copy of the overflow patterns. Mirrors
 // upstream getOverflowPatterns.
 func GetOverflowPatterns() []*regexp.Regexp {
-	return append([]*regexp.Regexp(nil), overflowPatterns...)
+	patterns := make([]*regexp.Regexp, len(overflowPatterns))
+	for i, pattern := range overflowPatterns {
+		patterns[i] = pattern.Regexp()
+	}
+	return patterns
 }

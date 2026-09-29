@@ -1,0 +1,24 @@
+# Pi0.87.1 extensions-runner.test.ts:1126/1149/1173. loader.ts:202-217 retains both pending entries and filters all matching registrations; runner.ts:443-501 reports each bind error, drains, and installs immediate callbacks.
+# The Pi driver executes the installed loader/Runner/ModelRuntime with in-memory credentials and no network. The Go driver uses the native shared runtime/Runner and the canonical Services-owned registry. Complete records retain the exact error, queue lengths and cost tiers without normalization.
+name = "64-runner-provider-bindings"
+description = "Queued providers drain with owning errors and post-bind registration is immediately visible"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts", "packages/coding-agent/src/core/extensions/runner.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/runner-providers"]
+pi_args = ["node", "./test/parity/testdata/runner-providers-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"errors":["/tmp/broken-extension.ts: Provider broken-provider: \"api\" is required when registering streamSimple."]', '"aborted":false', '"before":2,"after":0', '"pendingBefore":0,"pendingAfter":0', '"inputTokensAbove":272000,"input":2,"output":3,"cacheRead":0.2,"cacheWrite":2.5', '"removed":true']
+runs = 3

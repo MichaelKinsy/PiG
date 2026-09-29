@@ -18,6 +18,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 const (
@@ -40,31 +41,17 @@ func testExtensionBinaryPath(dir, name string) string {
 	return filepath.Join(dir, name+strings.TrimPrefix(extensionArtifactName(runtime.GOOS, "go"), "bin"))
 }
 
-// buildFixture compiles the fixture extension binary into tmpDir and returns
-// the path. Shared by all integration tests.
+// buildFixture returns the package-owned wire fixture, or the caller's prebuilt artifact.
 func buildFixture(t *testing.T) string {
 	t.Helper()
 	if p, ok := mustUsePrebuilt(t, envFixtureExtBin); ok {
 		return p
 	}
-	modRoot := findModuleRoot(t)
-	tmpDir := t.TempDir()
-	binPath := testExtensionBinaryPath(tmpDir, "fixture-ext")
-
-	// Build has its own generous timeout separate from the test context,
-	// because under heavy parallel execution (-p 12 -count=3) the Go
-	// build cache is contended and compilation alone can take 30s+.
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, "go", "build", "-o", binPath,
-		"./coding/extension/host/subprocess/testdata/fixture-ext/")
-	cmd.Dir = modRoot
-	cmd.Env = append(os.Environ(), "CGO_ENABLED=0")
-	out, err := cmd.CombinedOutput()
+	path, err := wireFixtureBinary()
 	if err != nil {
-		t.Fatalf("build fixture: %v\n%s", err, out)
+		t.Fatal(err)
 	}
-	return binPath
+	return path
 }
 
 // shortSockDir returns an isolated short socket directory path (macOS
@@ -337,8 +324,8 @@ func TestHost_Integration_WidgetPushAndUICall(t *testing.T) {
 	if !ok {
 		t.Fatalf("result type = %T, want agent.AgentToolResult", result)
 	}
-	if tr.Content != "Hello, pig!" {
-		t.Errorf("content = %q", tr.Content)
+	if tr.Text() != "Hello, pig!" {
+		t.Errorf("content = %q", tr.Text())
 	}
 
 	// Gap 5: Verify ui.notify was called through the socket.
@@ -392,7 +379,7 @@ func TestHostIntegrationPreservesGenericExtensionProvidedEdit(t *testing.T) {
 		t.Fatal(err)
 	}
 	toolResult, ok := result.(agent.AgentToolResult)
-	if !ok || toolResult.Content != "Hello, neutral!" {
+	if !ok || toolResult.Text() != "Hello, neutral!" {
 		t.Fatalf("generic extension edit result = %#v", result)
 	}
 }
@@ -468,8 +455,8 @@ func TestHost_Integration_SpawnAndRegister(t *testing.T) {
 	if !ok {
 		t.Fatalf("result type = %T, want agent.AgentToolResult", result)
 	}
-	if tr.Content != "Hello, pig!" {
-		t.Errorf("content = %q, want %q", tr.Content, "Hello, pig!")
+	if tr.Text() != "Hello, pig!" {
+		t.Errorf("content = %q, want %q", tr.Text(), "Hello, pig!")
 	}
 
 	// Execute the command.
@@ -530,20 +517,21 @@ type testUIContext struct {
 	// dispatches each host call on its own goroutine, so these setters can run
 	// concurrently: mirroring the real specialLinesComponent, which is mutex
 	// guarded. Tests read a locked snapshot via uiSnapshot.
-	stateMu            sync.Mutex
-	workingIndicators  []any
-	hiddenLabels       []string
-	footerCleared      bool
-	headerCleared      bool
-	editorCleared      bool
-	footerLines        []string
-	headerLines        []string
-	editorLabel        string
-	editorBorderPrefix string
-	editorHistory      []string
-	autocompleteSource extension.AsyncSuggestionSource
-	allThemes          []extension.ThemeMeta
-	themeByName        map[string]extension.Theme
+	stateMu               sync.Mutex
+	workingIndicators     []any
+	hiddenLabels          []string
+	footerCleared         bool
+	headerCleared         bool
+	editorCleared         bool
+	footerLines           []string
+	headerLines           []string
+	editorLines           []string
+	remoteEditor          extension.RemoteEditor
+	autocompleteMu        sync.Mutex
+	autocompleteSource    *extension.AutocompleteProvider
+	autocompleteFactories []extension.AutocompleteProviderFactory
+	allThemes             []extension.ThemeMeta
+	themeByName           map[string]extension.Theme
 
 	uiStateMu     sync.Mutex
 	editorText    string
@@ -639,63 +627,63 @@ func (h *testUIContext) SetHeader(factory any) {
 func (h *testUIContext) SetLogin(extension.LoginDefinition) error { return nil }
 
 func (h *testUIContext) SetEditorComponent(factory any) {
+	editor, _ := factory.(extension.RemoteEditor)
 	h.stateMu.Lock()
-	defer h.stateMu.Unlock()
-	if frame, ok := factory.(extension.WidthLines); ok {
-		factory = frame.Lines
-	}
-	if lines, ok := factory.([]string); ok {
-		h.footerLines = append([]string(nil), lines...)
-		return
-	}
-	if factory == nil {
-		h.editorCleared = true
-		return
-	}
-	// Subprocess shim now ships a structured decoration payload.
-	// Record what the bridge handed us so tests can assert end-to-end
-	// that the setEditorComponent factory reached the host with the
-	// captured ANSI prefix/suffix and history entries intact.
-	if payload, ok := factory.(map[string]any); ok {
-		if deco, ok := payload["decoration"].(map[string]any); ok {
-			h.editorLabel, _ = deco["label"].(string)
-			h.editorBorderPrefix, _ = deco["borderPrefix"].(string)
-		}
-		if hist, ok := payload["history"].([]string); ok {
-			h.editorHistory = append([]string(nil), hist...)
-		}
+	h.editorCleared = factory == nil
+	h.remoteEditor = editor
+	h.stateMu.Unlock()
+	if editor != nil {
+		editor.Bind(&testEditorHost{ui: h})
+		editor.Configure(extension.RemoteEditorConfig{Focused: true})
+		editor.SetText("")
 	}
 }
+
+type testEditorHost struct {
+	extension.RemoteEditorHost
+	ui *testUIContext
+}
+
+func (h *testEditorHost) EditorFrame(lines []string, _ int, _ bool) {
+	h.ui.stateMu.Lock()
+	h.ui.editorLines = append([]string(nil), lines...)
+	h.ui.stateMu.Unlock()
+}
+func (h *testEditorHost) EditorChanged(text, _ string) {
+	h.ui.uiStateMu.Lock()
+	h.ui.editorText = text
+	h.ui.uiStateMu.Unlock()
+}
+func (h *testEditorHost) EditorInputDone() {}
+func (h *testEditorHost) EditorClosed()    {}
 
 // uiStateSnapshot is a lock-free copy of testUIContext's concurrently-mutated
 // UI state, for tests to assert against without racing the dispatch goroutines.
 type uiStateSnapshot struct {
-	workingIndicators  int
-	hiddenLabels       []string
-	footerCleared      bool
-	headerCleared      bool
-	editorCleared      bool
-	footerLines        []string
-	headerLines        []string
-	editorLabel        string
-	editorBorderPrefix string
-	editorHistory      []string
+	workingIndicators int
+	hiddenLabels      []string
+	footerCleared     bool
+	headerCleared     bool
+	editorCleared     bool
+	footerLines       []string
+	headerLines       []string
+	editorLines       []string
+	remoteEditor      extension.RemoteEditor
 }
 
 func (h *testUIContext) uiSnapshot() uiStateSnapshot {
 	h.stateMu.Lock()
 	defer h.stateMu.Unlock()
 	return uiStateSnapshot{
-		workingIndicators:  len(h.workingIndicators),
-		hiddenLabels:       append([]string(nil), h.hiddenLabels...),
-		footerCleared:      h.footerCleared,
-		headerCleared:      h.headerCleared,
-		editorCleared:      h.editorCleared,
-		footerLines:        append([]string(nil), h.footerLines...),
-		headerLines:        append([]string(nil), h.headerLines...),
-		editorLabel:        h.editorLabel,
-		editorBorderPrefix: h.editorBorderPrefix,
-		editorHistory:      append([]string(nil), h.editorHistory...),
+		workingIndicators: len(h.workingIndicators),
+		hiddenLabels:      append([]string(nil), h.hiddenLabels...),
+		footerCleared:     h.footerCleared,
+		headerCleared:     h.headerCleared,
+		editorCleared:     h.editorCleared,
+		footerLines:       append([]string(nil), h.footerLines...),
+		headerLines:       append([]string(nil), h.headerLines...),
+		editorLines:       append([]string(nil), h.editorLines...),
+		remoteEditor:      h.remoteEditor,
 	}
 }
 
@@ -782,17 +770,52 @@ func (h *testOverlayHandle) UpdateCount() int {
 // RunRemoteOverlay records the handle/host and blocks until the host signals
 // close. Mirrors the real ExtUIContext.RunRemoteOverlay contract in a way
 // that lets tests drive the protocol without a real TTY.
-func (h *testUIContext) AddAutocompleteProvider(factory extension.AutocompleteProviderFactory) {
-	if src, ok := factory.(extension.AsyncSuggestionSource); ok {
-		h.stateMu.Lock()
-		h.autocompleteSource = src
-		h.stateMu.Unlock()
+func (h *testUIContext) AddAutocompleteProvider(factory extension.AutocompleteProviderFactory) error {
+	h.autocompleteMu.Lock()
+	defer h.autocompleteMu.Unlock()
+	h.autocompleteFactories = append(h.autocompleteFactories, factory)
+	provider := &extension.AutocompleteProvider{
+		GetSuggestions: func(context.Context, []string, int, int, bool) (*extension.AutocompleteSuggestions, error) {
+			return nil, nil
+		},
+		ApplyCompletion: func(_ context.Context, lines []string, line, col int, _ extension.AutocompleteItem, _ string) (extension.AutocompleteCompletion, error) {
+			return extension.AutocompleteCompletion{Lines: lines, CursorLine: line, CursorCol: col}, nil
+		},
+	}
+	for _, factory := range h.autocompleteFactories {
+		var err error
+		provider, err = factory(context.Background(), provider)
+		if err != nil {
+			return err
+		}
+	}
+	h.autocompleteSource = provider
+	return nil
+}
+
+func (h *testUIContext) AutocompleteProvider(context.Context) (*extension.AutocompleteProvider, error) {
+	h.autocompleteMu.Lock()
+	defer h.autocompleteMu.Unlock()
+	if h.autocompleteSource != nil {
+		return h.autocompleteSource, nil
+	}
+	return testAutocompleteBase(), nil
+}
+
+func testAutocompleteBase() *extension.AutocompleteProvider {
+	return &extension.AutocompleteProvider{
+		GetSuggestions: func(context.Context, []string, int, int, bool) (*extension.AutocompleteSuggestions, error) {
+			return nil, nil
+		},
+		ApplyCompletion: func(_ context.Context, lines []string, line, col int, _ extension.AutocompleteItem, _ string) (extension.AutocompleteCompletion, error) {
+			return extension.AutocompleteCompletion{Lines: lines, CursorLine: line, CursorCol: col}, nil
+		},
 	}
 }
 
-func (h *testUIContext) autocompleteProvider() extension.AsyncSuggestionSource {
-	h.stateMu.Lock()
-	defer h.stateMu.Unlock()
+func (h *testUIContext) autocompleteProvider() *extension.AutocompleteProvider {
+	h.autocompleteMu.Lock()
+	defer h.autocompleteMu.Unlock()
 	return h.autocompleteSource
 }
 
@@ -1043,30 +1066,17 @@ func TestHost_Integration_GracefulShutdownNoCrash(t *testing.T) {
 // These SDK tests catch mismatches like schema→parameters or []string→[]struct
 // that only surface when the SDK serializes differently from the host.
 
-// buildSDKFixture compiles the SDK-based test fixture.
+// buildSDKFixture returns the package-owned SDK fixture, or the caller's prebuilt artifact.
 func buildSDKFixture(t *testing.T) string {
 	t.Helper()
 	if p, ok := mustUsePrebuilt(t, envSDKFixtureBin); ok {
 		return p
 	}
-	tmpDir := t.TempDir()
-	binPath := testExtensionBinaryPath(tmpDir, "sdk-fixture")
-
-	// The SDK fixture has its own go.mod with a replace directive.
-	// Build has its own generous timeout separate from the test context,
-	// because under heavy parallel execution (-p 12 -count=3) the Go
-	// build cache is contended and compilation alone can take 30s+.
-	srcDir := filepath.Join("testdata", "sdk-fixture")
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Second)
-	defer cancel()
-	cmd := exec.CommandContext(ctx, "go", "build", "-o", binPath, ".")
-	cmd.Dir = srcDir
-	cmd.Env = append(os.Environ(), "CGO_ENABLED=0", "GOWORK=off")
-	out, err := cmd.CombinedOutput()
+	path, err := sdkFixtureBinary()
 	if err != nil {
-		t.Fatalf("build sdk-fixture: %v\n%s", err, out)
+		t.Fatal(err)
 	}
-	return binPath
+	return path
 }
 
 // TestHost_Integration_SDKRegister proves an extension built with the Go SDK
@@ -1251,8 +1261,8 @@ func TestHost_Integration_SDKUIParityMethods(t *testing.T) {
 	if !strings.Contains(summary.CustomErr, "unsupported") {
 		t.Fatalf("customErr = %q, want unsupported (SDK no-key path)", summary.CustomErr)
 	}
-	if !strings.Contains(summary.AutoErr, "unsupported") {
-		t.Fatalf("autoErr = %q, want unsupported", summary.AutoErr)
+	if !strings.Contains(summary.AutoErr, "factory is missing") {
+		t.Fatalf("autoErr = %q, want invalid factory rejection", summary.AutoErr)
 	}
 	// onTerminalInput is implemented for subprocess extensions: the host asks
 	// the extension whether to consume each chunk, bounded so a slow extension
@@ -1517,7 +1527,7 @@ func TestHost_Integration_TSFileShim(t *testing.T) {
 		},
 		GetContextUsage: func() *extension.ContextUsage {
 			tokens := 42
-			pct := 4
+			pct := 4.0
 			return &extension.ContextUsage{Tokens: &tokens, ContextWindow: 1000, Percent: &pct}
 		},
 	})
@@ -1546,7 +1556,7 @@ func TestHost_Integration_TSFileShim(t *testing.T) {
 	}
 	resJSON, _ := json.Marshal(result)
 	var res struct {
-		Content string `json:"Content"`
+		Content []ai.TextContent `json:"Content"`
 		Details struct {
 			Source               string          `json:"source"`
 			ActiveTools          []string        `json:"activeTools"`
@@ -1584,8 +1594,10 @@ func TestHost_Integration_TSFileShim(t *testing.T) {
 			} `json:"contextUsage"`
 		} `json:"Details"`
 	}
-	_ = json.Unmarshal(resJSON, &res)
-	if res.Content != "echo-ts: hello" {
+	if err := json.Unmarshal(resJSON, &res); err != nil {
+		t.Fatal(err)
+	}
+	if len(res.Content) != 1 || res.Content[0].Text != "echo-ts: hello" {
 		t.Fatalf("content = %q, want %q (raw=%s)", res.Content, "echo-ts: hello", resJSON)
 	}
 	if !reflect.DeepEqual(res.Details.ActiveTools, []string{"read", "write"}) {
@@ -1655,7 +1667,7 @@ func TestHost_Integration_TSFileShim(t *testing.T) {
 	}
 	pollUntil(t, testTimeout(t, 2*time.Second), "header/footer/editor never set", func() bool {
 		s := fakeUI.uiSnapshot()
-		return len(s.headerLines) > 0 && len(s.footerLines) > 0 && s.editorLabel != ""
+		return len(s.headerLines) > 0 && len(s.footerLines) > 0 && s.remoteEditor != nil && len(s.editorLines) > 0
 	})
 	uiState := fakeUI.uiSnapshot()
 	if len(uiState.headerLines) == 0 || !strings.Contains(uiState.headerLines[0], "ts-header") {
@@ -1664,20 +1676,23 @@ func TestHost_Integration_TSFileShim(t *testing.T) {
 	if len(uiState.footerLines) == 0 || !strings.Contains(uiState.footerLines[0], "ts-footer") {
 		t.Fatalf("footerLines = %v, want ts-footer", uiState.footerLines)
 	}
-	// setEditorComponent decoration must reach the host with the
-	// captured label + ANSI prefix + history.
-	if uiState.editorLabel != "ts-mode" {
-		t.Errorf("editorLabel = %q, want ts-mode", uiState.editorLabel)
-	}
-	if !strings.Contains(uiState.editorBorderPrefix, "\x1b[31m") {
-		t.Errorf("editorBorderPrefix = %q, want SGR red prefix", uiState.editorBorderPrefix)
-	}
-	if len(uiState.editorHistory) != 2 || uiState.editorHistory[0] != "history-1" || uiState.editorHistory[1] != "history-2" {
-		t.Errorf("editorHistory = %v, want [history-1 history-2]", uiState.editorHistory)
-	}
+	// Pi's CustomEditor receives keys and renders its history, not decorations.
+	uiState.remoteEditor.Input("\x1b[A")
+	t.Cleanup(func() {
+		if t.Failed() {
+			t.Logf("editor frame=%q text=%q", fakeUI.uiSnapshot().editorLines, fakeUI.GetEditorText())
+		}
+	})
+	pollUntil(t, testTimeout(t, 2*time.Second), "editor did not recall its history", func() bool {
+		return strings.Contains(widthx.StripAnsi(strings.Join(fakeUI.uiSnapshot().editorLines, "\n")), "history-2") && fakeUI.GetEditorText() == "history-2"
+	})
+	uiState.remoteEditor.Input("\x1b[A")
+	pollUntil(t, testTimeout(t, 2*time.Second), "editor did not recall its previous history", func() bool {
+		return strings.Contains(widthx.StripAnsi(strings.Join(fakeUI.uiSnapshot().editorLines, "\n")), "history-1") && fakeUI.GetEditorText() == "history-1"
+	})
 
 	// Wait for the autocomplete provider to register, then drive it
-	// directly through the captured AsyncSuggestionSource so we
+	// directly through the captured provider so we
 	// exercise the full Go→Node→handler→response round trip.
 	pollUntil(t, testTimeout(t, 5*time.Second), "autocompleteSource was not registered", func() bool {
 		return fakeUI.autocompleteProvider() != nil
@@ -1685,7 +1700,10 @@ func TestHost_Integration_TSFileShim(t *testing.T) {
 	autocomplete := fakeUI.autocompleteProvider()
 	suggestCtx, suggestCancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer suggestCancel()
-	got := autocomplete.Suggest(suggestCtx, []string{"check #5"}, 0, len("check #5"))
+	got, err := autocomplete.GetSuggestions(suggestCtx, []string{"check #5"}, 0, len("check #5"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got == nil {
 		t.Fatal("autocomplete returned nil for #5 prefix")
 		return
@@ -1698,7 +1716,10 @@ func TestHost_Integration_TSFileShim(t *testing.T) {
 	}
 	// And confirm the chain falls back gracefully when no token is
 	// present (base provider returns null → suggestions are nil).
-	got2 := autocomplete.Suggest(suggestCtx, []string{"plain text"}, 0, len("plain text"))
+	got2, err := autocomplete.GetSuggestions(suggestCtx, []string{"plain text"}, 0, len("plain text"), false)
+	if err != nil {
+		t.Fatal(err)
+	}
 	if got2 != nil {
 		t.Errorf("autocomplete on plain text = %+v, want nil", got2)
 	}

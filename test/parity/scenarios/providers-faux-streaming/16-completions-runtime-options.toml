@@ -1,0 +1,27 @@
+# Pi 0.87.1 simple-options.ts:15-34 defaults/clamps the reply budget. Cloudflare
+# auth supplies account/gateway env before cloudflare-stream.ts replaces URL
+# placeholders. The Go probe uses models.json -> BuildModel -> Model Runtime ->
+# real HTTP provider; Pi uses compat.streamSimple against the same HTTP fixture.
+# Both preserve empty-tool history and caller-supplied upstream Authorization.
+name = "16-completions-runtime-options"
+description = "Model Runtime sends default/clamped reply limits and resolves Cloudflare ambient endpoint identifiers."
+covers = ["packages/ai/src/api/simple-options.ts", "packages/ai/src/providers/cloudflare-auth.ts", "packages/ai/src/providers/cloudflare-stream.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/completions-runtime-options-pig"]
+pi_args = ["node", "./test/parity/testdata/completions-runtime-options-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"case":"context-default","maxCompletion":3904', '"case":"context-explicit","maxCompletion":3904', '"path":"/v1/account-id/gateway-id/compat/chat/completions"', '"auth":"Bearer upstream-token","gatewayAuth":"Bearer cf-token"']
+runs = 3

@@ -1,0 +1,21 @@
+# Pi native Provider registration exposes models immediately. A targeted refresh
+# awaits its publication, then streaming invokes its callbacks with resolved auth.
+# The callback's deterministic timestamps avoid normalization of stream content.
+name = "38-native-provider-callbacks"
+description = "Native provider catalog, auth, refresh and streamed result match Pi"
+covers = ["packages/coding-agent/src/core/model-registry.ts", "packages/coding-agent/src/core/model-runtime.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "-p", "/native-probe {{TEMP}}/native.json"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/native.json"
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["../testdata/extension-native-provider.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../testdata/extension-native-provider.mjs"]
+[assert]
+exit_code = 0
+runs = 3
+artifact_normalized_equal = true
+artifact_both_contain = ['"ownerObject": true', '"found": true', '"catalog": true', '"refreshed": true', '"native answer"', '"text_delta"']

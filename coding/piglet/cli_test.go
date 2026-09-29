@@ -44,7 +44,7 @@ func TestPigletHelpListsCurrentSurface(t *testing.T) {
 		}
 	}
 	got := slices.Sorted(maps.Keys(commands))
-	want := []string{"add", "build", "keygen", "list", "publish", "pull", "remove", "schema", "show", "trust", "validate", "verify"}
+	want := []string{"add", "build", "keygen", "list", "publish", "pull", "remove", "schema", "show", "trust", "update", "validate", "verify"}
 	if !slices.Equal(got, want) {
 		t.Fatalf("Piglet help commands = %v, want %v\n%s", got, want, stdout.String())
 	}
@@ -368,7 +368,7 @@ func TestRunCommandAddRemoteSourcesWritesOriginAndListsIt(t *testing.T) {
 			stdout.Reset()
 			stderr.Reset()
 			code = RunCommand([]string{"piglet", "add", tc.source, "--no-input"}, &stdout, &stderr)
-			if code != 1 || !strings.Contains(stderr.String(), "already installed") || !strings.Contains(stderr.String(), "pig piglet update "+tc.pigletName) {
+			if code != 1 || !strings.Contains(stderr.String(), "already installed") || !strings.Contains(stderr.String(), "pig piglet remove "+tc.pigletName+" --source") {
 				t.Fatalf("duplicate code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 			}
 		})

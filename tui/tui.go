@@ -6,8 +6,11 @@ package tui
 import (
 	"fmt"
 	"io"
+	"maps"
 	"os"
+	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -174,6 +177,14 @@ func (c *Container) LastTwoChildren() (Component, Component) {
 		return nil, c.children[0]
 	}
 	return c.children[n-2], c.children[n-1]
+}
+
+// Children returns a snapshot of the mounted child identities in insertion order. Callers can invoke child methods without holding the container lock.
+// upstream: packages/tui/src/tui.ts:Container
+func (c *Container) Children() []Component {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return slices.Clone(c.children)
 }
 
 func (c *Container) ChildCount() int {
@@ -383,9 +394,10 @@ type tuiBase struct {
 	// the base children. Mirrors upstream's getMountedRoots override.
 	mountedRoots func() []Component
 
-	out    io.Writer
-	width  int
-	height int
+	out                io.Writer
+	terminalBackground *terminalBackgroundQueries
+	width              int
+	height             int
 
 	forceRedraw        bool // set by ForceFullRender/requestRender(force); cleared after next frame
 	fixedSize          bool // true when constructed via NewWithOutput (tests)
@@ -409,12 +421,13 @@ type tuiBase struct {
 	// kitty graphics support
 	kitty bool
 
-	renderRequested  bool
-	renderTimer      stoppableTimer
-	renderGeneration uint64
-	lastRenderAt     time.Time
-	now              func() time.Time
-	afterFunc        func(time.Duration, func()) stoppableTimer
+	renderRequested          bool
+	immediateRenderRequested bool
+	renderTimer              stoppableTimer
+	renderGeneration         uint64
+	lastRenderAt             time.Time
+	now                      func() time.Time
+	afterFunc                func(time.Duration, func()) stoppableTimer
 
 	// renderOnMain, when set, marshals a scheduled render onto the owner's
 	// main loop instead of running doRender on the throttle-timer
@@ -495,7 +508,9 @@ type TUI struct {
 	// previousKittyImageIDs tracks all Kitty image IDs present in the last
 	// rendered buffer so we can delete them before a full clear. Mirrors
 	// upstream TUI.previousKittyImageIds (Set<number>).
-	previousKittyImageIDs map[int]struct{}
+	previousKittyImageIDs []int
+	resetKittyIDs         map[int][]int
+	resetKittyWork        map[int][]int
 }
 
 // OverlayOptions controls the size/position of an overlay.
@@ -544,10 +559,13 @@ func (t *tuiBase) refreshOverlayVisibility(width, height int) {
 		results = append(results, visibilityResult{id: candidate.id, visible: candidate.evaluate(width, height)})
 	}
 	t.overlayMu.Lock()
+	previous := t.overlayModel.focusedComponent()
 	for _, result := range results {
 		t.overlayModel.apply(overlayCommand{kind: overlaySetEvaluatedVisible, entryID: result.id, visible: result.visible})
 	}
+	next := t.overlayModel.focusedComponent()
 	t.overlayMu.Unlock()
+	moveFocusFlag(previous, next)
 }
 
 func (t *tuiBase) currentOverlayVisibility(opts OverlayOptions) bool {
@@ -559,9 +577,43 @@ func (t *tuiBase) currentOverlayVisibility(opts OverlayOptions) bool {
 
 func (t *tuiBase) applyOverlayCommand(command overlayCommand) overlayCommandResult {
 	t.overlayMu.Lock()
+	previous := t.overlayModel.focusedComponent()
 	result := t.overlayModel.apply(command)
+	next := t.overlayModel.focusedComponent()
 	t.overlayMu.Unlock()
+	moveFocusFlag(previous, next)
 	return result
+}
+
+// Focusable is pi-tui's Focusable: a component that renders differently while it holds TUI focus, as a focused
+// Editor or TextInput emits the hardware-cursor marker. Go interfaces carry no fields, so the TUI sets the flag
+// through SetFocused instead of assigning `focused`.
+type Focusable interface {
+	SetFocused(focused bool)
+}
+
+// moveFocusFlag clears the focused flag of the component that lost TUI focus and sets it on the one that gained it,
+// as Pi's TUI.setFocus does. It runs on the owner loop that renders these components.
+func moveFocusFlag(previous, next Component) {
+	if sameComponent(previous, next) {
+		return
+	}
+	if component, ok := previous.(Focusable); ok {
+		component.SetFocused(false)
+	}
+	if component, ok := next.(Focusable); ok {
+		component.SetFocused(true)
+	}
+}
+
+// sameComponent reports whether a and b are the same component. Components of an uncomparable dynamic type, such as
+// a func, never compare equal.
+func sameComponent(a, b Component) bool {
+	if a == nil || b == nil {
+		return a == nil && b == nil
+	}
+	kind := reflect.TypeOf(a)
+	return kind == reflect.TypeOf(b) && kind.Comparable() && a == b
 }
 
 // SetOverlayCommandDispatcher installs the ordered ingress used by remote
@@ -595,6 +647,29 @@ func (t *tuiBase) postOverlayCommand(command overlayCommand) bool {
 func (h *OverlayHandle) Close() {
 	h.apply(overlayCommand{kind: overlayRemoveTarget, entryID: h.id})
 }
+
+// Hide permanently removes this overlay, matching Pi's OverlayHandle.hide.
+func (h *OverlayHandle) Hide() { h.Close() }
+
+// SetHidden changes visibility without removing the overlay.
+func (h *OverlayHandle) SetHidden(hidden bool) { h.setHidden(hidden) }
+
+// IsHidden reports the mounted overlay's explicit hidden state.
+func (h *OverlayHandle) IsHidden() bool { return h.isHidden() }
+
+// Focus gives an eligible visible overlay keyboard focus.
+func (h *OverlayHandle) Focus() { h.focus() }
+
+// OverlayUnfocusOptions mirrors upstream OverlayUnfocusOptions: an explicit focus target, which may be nil, used after this overlay releases focus.
+type OverlayUnfocusOptions struct {
+	Target Component
+}
+
+// Unfocus restores focus to the next eligible component. It keeps its zero-argument signature so that a value assigned to interface{ Unfocus() } keeps compiling; UnfocusWith is upstream OverlayHandle.unfocus(options).
+func (h *OverlayHandle) Unfocus() { h.unfocus() }
+
+// UnfocusWith releases focus to options' explicit target, which may be nil, instead of the next visible capturing overlay or previous target. Mirrors upstream OverlayHandle.unfocus(options).
+func (h *OverlayHandle) UnfocusWith(options OverlayUnfocusOptions) { h.unfocus(options.Target) }
 
 // closeTree permanently removes this entry and every nested descendant.
 func (h *OverlayHandle) closeTree() {
@@ -853,15 +928,16 @@ func (t *tuiBase) FocusedComponent() Component {
 	return component
 }
 
-// ActiveOverlay returns the currently focused eligible overlay component.
+// ActiveOverlay refreshes overlay visibility and restores eligible focus before input dispatch. An active replacement keeps input until it changes focus, even if it is not mounted in the render tree.
 func (t *tuiBase) ActiveOverlay() Component {
 	t.refreshOverlayVisibility(t.width, t.height)
-	focused := t.FocusedComponent()
-	blockerMounted := t.componentMounted(focused)
 	t.overlayMu.Lock()
-	t.overlayModel.prepareInput(blockerMounted)
+	previous := t.overlayModel.focusedComponent()
+	t.overlayModel.prepareInput()
+	next := t.overlayModel.focusedComponent()
 	input := t.overlayModel.inputSnapshot()
 	t.overlayMu.Unlock()
+	moveFocusFlag(previous, next)
 	if !input.eligible {
 		return nil
 	}
@@ -899,6 +975,7 @@ func New() *TUI {
 	t := &TUI{
 		tuiBase: tuiBase{
 			out:                os.Stdout,
+			terminalBackground: &terminalBackgroundQueries{},
 			showHardwareCursor: os.Getenv("PI_HARDWARE_CURSOR") == "1",
 			now:                time.Now,
 			afterFunc: func(d time.Duration, fn func()) stoppableTimer {
@@ -918,6 +995,7 @@ func NewWithOutput(out io.Writer, cols, rows int) *TUI {
 	t := &TUI{
 		tuiBase: tuiBase{
 			out:                out,
+			terminalBackground: &terminalBackgroundQueries{},
 			width:              cols,
 			height:             rows,
 			fixedSize:          true,
@@ -1077,6 +1155,44 @@ func (t *tuiBase) RequestRender() {
 	t.requestRender(false)
 }
 
+// RequestImmediateRender preempts a throttled frame and coalesces keyboard updates onto the next owner-loop turn. It exposes TuiBase.requestImmediateRender to the Go driver's separately owned input path.
+func (t *tuiBase) RequestImmediateRender() {
+	t.mu.Lock()
+	if t.stopped || t.immediateRenderRequested {
+		t.mu.Unlock()
+		return
+	}
+	if t.renderTimer != nil {
+		t.renderTimer.Stop()
+		t.renderTimer = nil
+	}
+	t.renderGeneration++
+	generation := t.renderGeneration
+	t.immediateRenderRequested = true
+	t.renderRequested = true
+	dispatch := t.renderOnMain
+	if dispatch == nil {
+		t.renderTimer = t.afterFunc(0, func() { t.runImmediateRender(generation) })
+		t.mu.Unlock()
+		return
+	}
+	t.mu.Unlock()
+	dispatch(func() { t.runImmediateRender(generation) })
+}
+
+func (t *tuiBase) runImmediateRender(generation uint64) {
+	t.mu.Lock()
+	if generation != t.renderGeneration || !t.immediateRenderRequested {
+		t.mu.Unlock()
+		return
+	}
+	t.immediateRenderRequested = false
+	t.renderRequested = false
+	t.renderTimer = nil
+	t.mu.Unlock()
+	t.renderScheduled(generation)
+}
+
 // requestRender mirrors upstream TUI.requestRender(): coalesce repeated
 // render requests and enforce a minimum delay between frames.
 func (t *tuiBase) requestRender(force bool) {
@@ -1085,6 +1201,7 @@ func (t *tuiBase) requestRender(force bool) {
 
 	if force {
 		t.forceRedraw = true
+		t.immediateRenderRequested = false
 		t.renderGeneration++
 		if t.renderTimer != nil {
 			t.renderTimer.Stop()
@@ -1145,7 +1262,7 @@ func (t *tuiBase) runScheduledRender(generation uint64) {
 
 func (t *tuiBase) renderScheduled(generation uint64) {
 	t.mu.Lock()
-	current := generation == t.renderGeneration
+	current := generation == t.renderGeneration && !t.stopped
 	t.mu.Unlock()
 	if !current {
 		return
@@ -1170,13 +1287,18 @@ func (t *tuiBase) renderAndReschedule() {
 // request before its callback runs.
 func (t *tuiBase) CancelPendingRender() {
 	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.cancelPendingRenderLocked()
+}
+
+func (t *tuiBase) cancelPendingRenderLocked() {
 	t.renderGeneration++
 	t.renderRequested = false
+	t.immediateRenderRequested = false
 	if t.renderTimer != nil {
 		t.renderTimer.Stop()
 		t.renderTimer = nil
 	}
-	t.mu.Unlock()
 }
 
 // Render performs a differential render pass using inline-flow output.
@@ -1230,6 +1352,8 @@ func (t *TUI) applyLineResetsCachedWithCursor(lines []string, cursorRow int, cur
 		t.resetOutPrev = nil
 		t.resetOutWork = nil
 		t.resetHasCursor = false
+		t.resetKittyIDs = nil
+		t.resetKittyWork = nil
 		return lines
 	}
 	if cap(t.resetOutWork) < len(lines) {
@@ -1238,18 +1362,34 @@ func (t *TUI) applyLineResetsCachedWithCursor(lines []string, cursorRow int, cur
 		t.resetOutWork = t.resetOutWork[:len(lines)]
 	}
 	out := t.resetOutWork
+	kittyIDs := t.resetKittyWork
+	clear(kittyIDs)
 	for i, line := range lines {
 		wasCursorRow := t.resetHasCursor && i == t.resetCursorRow
 		isCursorRow := cursorRow >= 0 && i == cursorRow
 		if !wasCursorRow && !isCursorRow && i < len(t.resetInPrev) && t.resetInPrev[i] == line {
 			out[i] = t.resetOutPrev[i]
+			if ids := t.resetKittyIDs[i]; len(ids) > 0 {
+				if kittyIDs == nil {
+					kittyIDs = make(map[int][]int)
+				}
+				kittyIDs[i] = ids
+			}
 			continue
 		}
 		if isCursorRow {
 			line = cursorFreeLine
 		}
 		out[i] = widthx.ApplyLineReset(line)
+		if ids := extractKittyImageIDs(out[i]); len(ids) > 0 {
+			if kittyIDs == nil {
+				kittyIDs = make(map[int][]int)
+			}
+			kittyIDs[i] = ids
+		}
 	}
+	t.resetKittyWork = t.resetKittyIDs
+	t.resetKittyIDs = kittyIDs
 	previousOut := t.resetOutPrev
 	t.resetInPrev = lines
 	t.resetOutPrev = out
@@ -1387,7 +1527,6 @@ func (t *TUI) doRender() {
 		}
 		lastChanged = len(newLines) - 1
 	}
-	appendStart := appendedLines && firstChanged == len(t.prevLines) && firstChanged > 0
 
 	if renderCaptureOn() && len(newLines) != len(t.prevLines) {
 		appendRenderCapture(t.prevLines, newLines, firstChanged, lastChanged, hardwareCursorRow, prevViewportTop, height)
@@ -1399,6 +1538,7 @@ func (t *TUI) doRender() {
 	if firstChanged != -1 {
 		firstChanged, lastChanged = t.expandChangedRangeForKittyImages(firstChanged, lastChanged, newLines)
 	}
+	appendStart := appendedLines && firstChanged == len(t.prevLines) && firstChanged > 0
 
 	// No content changes: still update the hardware cursor if it moved.
 	if firstChanged == -1 {
@@ -1430,14 +1570,14 @@ func (t *TUI) doRender() {
 			t.positionHardwareCursor(cursorPos, hasCursorPos, len(newLines))
 			return
 		}
-		var buf strings.Builder
+		buf := boundedTerminalWriter{write: func(data string) { _, _ = io.WriteString(t.out, data) }}
 		buf.WriteString("\x1b[?2026h")
 		buf.WriteString(buf0)
 		lineDiff := computeLineDiff(targetRow, hardwareCursorRow, viewportTop(prevViewportTop), prevViewportTop)
 		if lineDiff > 0 {
-			fmt.Fprintf(&buf, "\x1b[%dB", lineDiff)
+			buf.WriteString("\x1b[" + strconv.Itoa(lineDiff) + "B")
 		} else if lineDiff < 0 {
-			fmt.Fprintf(&buf, "\x1b[%dA", -lineDiff)
+			buf.WriteString("\x1b[" + strconv.Itoa(-lineDiff) + "A")
 		}
 		buf.WriteString("\r")
 		// Clear orphaned rows without scrolling. A non-empty frame starts one
@@ -1447,7 +1587,7 @@ func (t *TUI) doRender() {
 			clearStartOffset = 0
 		}
 		if extraLines > 0 && clearStartOffset > 0 {
-			fmt.Fprintf(&buf, "\x1b[%dB", clearStartOffset)
+			buf.WriteString("\x1b[" + strconv.Itoa(clearStartOffset) + "B")
 		}
 		for i := range extraLines {
 			buf.WriteString("\r\x1b[2K")
@@ -1457,10 +1597,10 @@ func (t *TUI) doRender() {
 		}
 		moveBack := max(0, extraLines-1+clearStartOffset)
 		if moveBack > 0 {
-			fmt.Fprintf(&buf, "\x1b[%dA", moveBack)
+			buf.WriteString("\x1b[" + strconv.Itoa(moveBack) + "A")
 		}
 		buf.WriteString("\x1b[?2026l")
-		_, _ = t.out.Write([]byte(buf.String()))
+		buf.flush()
 		t.cursorRow = targetRow
 		t.hardwareCursorRow = targetRow
 		t.positionHardwareCursor(cursorPos, hasCursorPos, len(newLines))
@@ -1498,7 +1638,7 @@ func (t *TUI) doRender() {
 		}
 	}
 
-	var buf strings.Builder
+	buf := boundedTerminalWriter{write: func(data string) { _, _ = io.WriteString(t.out, data) }}
 	buf.WriteString("\x1b[?2026h")
 	buf.WriteString(t.deleteChangedKittyImages(firstChanged, lastChanged))
 
@@ -1515,7 +1655,7 @@ func (t *TUI) doRender() {
 		currentScreenRow := min(max(hardwareCursorRow-prevViewportTop, 0), height-1)
 		moveToBottom := (height - 1) - currentScreenRow
 		if moveToBottom > 0 {
-			fmt.Fprintf(&buf, "\x1b[%dB", moveToBottom)
+			buf.WriteString("\x1b[" + strconv.Itoa(moveToBottom) + "B")
 		}
 		scroll := moveTargetRow - prevViewportBottom
 		for range scroll {
@@ -1527,9 +1667,9 @@ func (t *TUI) doRender() {
 
 	lineDiff := computeLineDiff(moveTargetRow, hardwareCursorRow, prevViewportTop, prevViewportTop)
 	if lineDiff > 0 {
-		fmt.Fprintf(&buf, "\x1b[%dB", lineDiff)
+		buf.WriteString("\x1b[" + strconv.Itoa(lineDiff) + "B")
 	} else if lineDiff < 0 {
-		fmt.Fprintf(&buf, "\x1b[%dA", -lineDiff)
+		buf.WriteString("\x1b[" + strconv.Itoa(-lineDiff) + "A")
 	}
 	if appendStart {
 		buf.WriteString("\r\n")
@@ -1545,7 +1685,7 @@ func (t *TUI) doRender() {
 		buf.WriteString("\x1b[2K")
 		line := newLines[i]
 		if widthx.IsImageLine(line) {
-			reservedRows := t.kittyImageReservedRows(newLines, i)
+			reservedRows := t.kittyImageReservedRows(newLines, i, renderEnd)
 			if reservedRows > 1 {
 				imageStartScreenRow := i - prevViewportTop
 				if imageStartScreenRow < 0 || imageStartScreenRow+reservedRows > height {
@@ -1553,13 +1693,12 @@ func (t *TUI) doRender() {
 					t.positionHardwareCursor(cursorPos, hasCursorPos, len(newLines))
 					return
 				}
-				buf.WriteString("\x1b[2K")
 				for range reservedRows - 1 {
 					buf.WriteString("\r\n\x1b[2K")
 				}
-				fmt.Fprintf(&buf, "\x1b[%dA", reservedRows-1)
+				buf.WriteString("\x1b[" + strconv.Itoa(reservedRows-1) + "A")
 				buf.WriteString(line)
-				fmt.Fprintf(&buf, "\x1b[%dB", reservedRows-1)
+				buf.WriteString("\x1b[" + strconv.Itoa(reservedRows-1) + "B")
 				i += reservedRows - 1
 				continue
 			}
@@ -1579,18 +1718,18 @@ func (t *TUI) doRender() {
 	if len(t.prevLines) > len(newLines) {
 		if renderEnd < len(newLines)-1 {
 			moveDown := (len(newLines) - 1) - renderEnd
-			fmt.Fprintf(&buf, "\x1b[%dB", moveDown)
+			buf.WriteString("\x1b[" + strconv.Itoa(moveDown) + "B")
 			finalCursorRow = len(newLines) - 1
 		}
 		extraLines := len(t.prevLines) - len(newLines)
 		for range extraLines {
 			buf.WriteString("\r\n\x1b[2K")
 		}
-		fmt.Fprintf(&buf, "\x1b[%dA", extraLines)
+		buf.WriteString("\x1b[" + strconv.Itoa(extraLines) + "A")
 	}
 
 	buf.WriteString("\x1b[?2026l")
-	_, _ = t.out.Write([]byte(buf.String()))
+	buf.flush()
 
 	t.cursorRow = max(0, len(newLines)-1)
 	t.hardwareCursorRow = finalCursorRow
@@ -1625,7 +1764,7 @@ func (t *TUI) differentialOverflowRow(newLines []string, firstChanged, lastChang
 	for i := firstChanged; i <= renderEnd; i++ {
 		line := newLines[i]
 		if widthx.IsImageLine(line) {
-			if reserved := t.kittyImageReservedRows(newLines, i); reserved > 1 {
+			if reserved := t.kittyImageReservedRows(newLines, i, renderEnd); reserved > 1 {
 				start := i - viewportTop
 				if start < 0 || start+reserved > height {
 					return -1
@@ -1649,7 +1788,7 @@ func (t *TUI) fullRender(newLines []string, width, height int, clear bool) {
 	bufLen := max(len(newLines), height)
 	viewportTop := max(0, bufLen-height)
 
-	var buf strings.Builder
+	buf := boundedTerminalWriter{write: func(data string) { _, _ = io.WriteString(t.out, data) }}
 	buf.WriteString("\x1b[?2026h")
 	if clear {
 		// Delete previously tracked Kitty images before wiping the screen
@@ -1657,17 +1796,28 @@ func (t *TUI) fullRender(newLines []string, width, height int, clear bool) {
 		buf.WriteString(t.deleteKittyImagesSet(t.previousKittyImageIDs))
 		buf.WriteString("\x1b[2J\x1b[H\x1b[3J")
 	}
-	for i, line := range newLines {
+	for i := 0; i < len(newLines); i++ {
 		if i > 0 {
 			buf.WriteString("\r\n")
 		}
-		buf.WriteString("\x1b[2K")
-		// Upstream fullRender (tui-main-screen.ts:279-301) has no width check:
-		// an over-wide row is emitted unchanged on initial, full, and resize renders.
+		line := newLines[i]
+		if widthx.IsImageLine(line) {
+			reservedRows := t.kittyImageReservedRows(newLines, i, len(newLines)-1)
+			if reservedRows > 1 && reservedRows <= height {
+				for range reservedRows - 1 {
+					buf.WriteString("\r\n")
+				}
+				buf.WriteString("\x1b[" + strconv.Itoa(reservedRows-1) + "A")
+				buf.WriteString(line)
+				buf.WriteString("\x1b[" + strconv.Itoa(reservedRows-1) + "B")
+				i += reservedRows - 1
+				continue
+			}
+		}
 		buf.WriteString(line)
 	}
 	buf.WriteString("\x1b[?2026l")
-	_, _ = t.out.Write([]byte(buf.String()))
+	buf.flush()
 
 	t.hasRendered = true
 	t.cursorRow = max(0, len(newLines)-1)
@@ -1733,21 +1883,21 @@ func (t *TUI) positionHardwareCursor(cursorPos widthx.CursorPosition, ok bool, t
 // where the new viewport hasn't shifted yet.
 func viewportTop(prev int) int { return prev }
 
-// HideCursor hides the terminal cursor.
-// RepaintAll forces the next Render() to redo a full paint with screen
-// clear, as if it were the first frame. Used after operations that hand
-// the terminal to an external editor or suspend Pig to the shell. Those
-// processes may leave arbitrary
-// ANSI state behind.
+// RepaintAll forces an immediate screen-clearing repaint after an external program has changed the terminal. Ordinary editor updates use differential rendering instead.
 func (t *TUI) RepaintAll() {
-	t.mu.Lock()
-	t.hasRendered = false
-	t.mu.Unlock()
+	t.ForceFullRender()
 	t.Render()
 }
 
+// HideCursor hides the terminal cursor.
 func (t *tuiBase) HideCursor() {
 	_, _ = fmt.Fprint(t.out, "\033[?25l")
+}
+
+// WriteRaw writes data to the terminal as is, as upstream's
+// terminal.write does for a component that drives the terminal itself.
+func (t *tuiBase) WriteRaw(data string) {
+	_, _ = io.WriteString(t.out, data)
 }
 
 // ShowCursor shows the terminal cursor.
@@ -1806,7 +1956,7 @@ func (t *TUI) RestoreRenderState(state TUIRenderState) {
 		restored[i] = line
 	}
 	t.prevLines = restored
-	t.previousKittyImageIDs = map[int]struct{}{}
+	t.previousKittyImageIDs = nil
 	t.prevWidth = state.PrevWidth
 	t.prevHeight = state.PrevHeight
 	t.cursorRow = state.CursorRow
@@ -1818,6 +1968,13 @@ func (t *TUI) RestoreRenderState(state TUIRenderState) {
 	t.hasRendered = len(restored) > 0
 }
 
+// Start resumes the main-screen renderer after a terminal handoff. The driver restores input and requests the full repaint, as Pi's TUI.start does.
+func (t *TUI) Start() {
+	t.stopped = false
+	t.HideCursor()
+	t.RequestRender()
+}
+
 func (t *TUI) Stop() { t.StopWithOptions(StopOptions{}) }
 
 // StopWithOptions tears down the main-screen renderer. With PreserveScreen set
@@ -1826,11 +1983,15 @@ func (t *TUI) Stop() { t.StopWithOptions(StopOptions{}) }
 // TuiMainScreen.stop({ preserveScreen }). Plain Stop() keeps the shutdown
 // behavior that parks the cursor below the content.
 func (t *TUI) StopWithOptions(options StopOptions) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.stopWithOptionsLocked(options)
+}
+
+// stopWithOptionsLocked also serves the overflow path, which already holds the render lock.
+func (t *TUI) stopWithOptionsLocked(options StopOptions) {
 	t.stopped = true
-	if t.renderTimer != nil {
-		t.renderTimer.Stop()
-		t.renderTimer = nil
-	}
+	t.cancelPendingRenderLocked()
 	// Move cursor to end of content (skipped on a preserve-screen switch).
 	if !options.PreserveScreen && len(t.prevLines) > 0 {
 		// Overwrite the inverted software cursor with a normal space so it
@@ -1983,48 +2144,65 @@ func extractKittyImageIDs(line string) []int {
 	return parseKittyImageHeader(line).ids
 }
 
-// kittyImagesActive reports whether the terminal uses the Kitty graphics
-// protocol. The Kitty image escape (\x1b_G) is emitted only when
-// GetCapabilities().Images == ImageProtocolKitty (see Image.Render). On every
-// other terminal no such sequence can appear in the rendered buffer, so the
-// per-frame full-buffer kitty scans (collect/expand/delete) are dead work.
-// Gating on this cached capability removes an O(total lines) string scan that
-// dominated the render frame on long sessions (~34% of CPU in profiling).
-func kittyImagesActive() bool { return GetCapabilities().Images == ImageProtocolKitty }
-
-// collectKittyImageIDs scans lines and returns the set of all Kitty image IDs
-// present. Mirrors upstream TUI.collectKittyImageIds.
-func (t *TUI) collectKittyImageIDs(lines []string) map[int]struct{} {
-	ids := make(map[int]struct{})
-	if !kittyImagesActive() {
-		return ids
+// visitKittyImageIDs reuses parsed IDs only for the exact reset-cache buffers. Arbitrary inputs and restored snapshots are scanned normally. Empty cache maps make image-free frames independent of transcript byte size without assuming a terminal capability forbids raw component output.
+func (t *TUI) visitKittyImageIDs(lines []string, visit func(int, []int)) {
+	if len(lines) == 0 {
+		return
 	}
-	for _, line := range lines {
-		for _, id := range extractKittyImageIDs(line) {
-			ids[id] = struct{}{}
+	var cached map[int][]int
+	known := false
+	if len(lines) == len(t.resetOutPrev) && &lines[0] == &t.resetOutPrev[0] {
+		cached, known = t.resetKittyIDs, true
+	} else if len(lines) == len(t.resetOutWork) && &lines[0] == &t.resetOutWork[0] {
+		cached, known = t.resetKittyWork, true
+	}
+	if known {
+		if len(cached) == 0 {
+			return
+		}
+		for _, index := range slices.Sorted(maps.Keys(cached)) {
+			visit(index, cached[index])
+		}
+		return
+	}
+	for index, line := range lines {
+		if ids := extractKittyImageIDs(line); len(ids) > 0 {
+			visit(index, ids)
 		}
 	}
+}
+
+// collectKittyImageIDs preserves the encounter order of Pi's Set, independent of advertised terminal capabilities. Custom components can emit Kitty sequences directly.
+func (t *TUI) collectKittyImageIDs(lines []string) []int {
+	var ids []int
+	seen := make(map[int]bool)
+	t.visitKittyImageIDs(lines, func(_ int, found []int) {
+		for _, id := range found {
+			if !seen[id] {
+				ids = append(ids, id)
+				seen[id] = true
+			}
+		}
+	})
 	return ids
 }
 
-// deleteKittyImagesSet emits delete sequences for all IDs in the set.
-func (t *TUI) deleteKittyImagesSet(ids map[int]struct{}) string {
+// deleteKittyImagesSet emits delete sequences in the original encounter order.
+func (t *TUI) deleteKittyImagesSet(ids []int) string {
 	var b strings.Builder
-	for id := range ids {
+	for _, id := range ids {
 		b.WriteString(DeleteKittyImage(id))
 	}
 	return b.String()
 }
 
-// expandLastChangedForKittyImages expands lastChanged to include any
-// previous lines containing Kitty images in [firstChanged, end).
-// Mirrors upstream TUI.expandLastChangedForKittyImages.
-func (t *TUI) kittyImageReservedRows(lines []string, index int) int {
+// kittyImageReservedRows counts blank rows reserved by an image within the render range.
+func (t *TUI) kittyImageReservedRows(lines []string, index, maxIndex int) int {
 	rows := parseKittyImageHeader(lines[index]).rows
 	if rows <= 1 {
 		return 1
 	}
-	maxRows := min(rows, len(lines)-index)
+	maxRows := min(rows, maxIndex-index+1, len(lines)-index)
 	reserved := 1
 	for reserved < maxRows {
 		line := lines[index+reserved]
@@ -2037,21 +2215,15 @@ func (t *TUI) kittyImageReservedRows(lines []string, index int) int {
 }
 
 func (t *TUI) expandChangedRangeForKittyImages(firstChanged, lastChanged int, newLines []string) (int, int) {
-	if !kittyImagesActive() {
-		return firstChanged, lastChanged
-	}
 	expandedFirst, expandedLast := firstChanged, lastChanged
 	for _, lines := range [][]string{t.prevLines, newLines} {
-		for i := range lines {
-			if len(extractKittyImageIDs(lines[i])) == 0 {
-				continue
-			}
-			blockEnd := i + t.kittyImageReservedRows(lines, i) - 1
+		t.visitKittyImageIDs(lines, func(i int, _ []int) {
+			blockEnd := i + t.kittyImageReservedRows(lines, i, len(lines)-1) - 1
 			if i >= firstChanged || i <= lastChanged && blockEnd >= firstChanged {
 				expandedFirst = min(expandedFirst, i)
 				expandedLast = max(expandedLast, blockEnd)
 			}
-		}
+		})
 	}
 	return expandedFirst, expandedLast
 }
@@ -2060,24 +2232,11 @@ func (t *TUI) expandChangedRangeForKittyImages(firstChanged, lastChanged int, ne
 // that appear in prevLines[firstChanged..lastChanged].
 // Mirrors upstream TUI.deleteChangedKittyImages.
 func (t *TUI) deleteChangedKittyImages(firstChanged, lastChanged int) string {
-	if !kittyImagesActive() {
+	if firstChanged < 0 || lastChanged < firstChanged || firstChanged >= len(t.prevLines) {
 		return ""
 	}
-	if firstChanged < 0 || lastChanged < firstChanged {
-		return ""
-	}
-	ids := make(map[int]struct{})
 	maxLine := min(lastChanged, len(t.prevLines)-1)
-	for i := firstChanged; i <= maxLine; i++ {
-		for _, id := range extractKittyImageIDs(t.prevLines[i]) {
-			ids[id] = struct{}{}
-		}
-	}
-	var b strings.Builder
-	for id := range ids {
-		b.WriteString(DeleteKittyImage(id))
-	}
-	return b.String()
+	return t.deleteKittyImagesSet(t.collectKittyImageIDs(t.prevLines[firstChanged : maxLine+1]))
 }
 
 // Delegates to widthx.StripAnsi. The legacy implementation handled only

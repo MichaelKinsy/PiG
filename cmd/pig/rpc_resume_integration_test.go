@@ -25,7 +25,7 @@ func TestRPCModeSessionReplacementAndExport(t *testing.T) {
 	}
 	userID, err := session.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{
 		Role:      agent.RoleUser,
-		Content:   []ai.UserContentBlock{ai.TextContent{Text: "resume marker"}},
+		Content:   ai.UserContentBlocks{ai.TextContent{Text: "resume marker"}},
 		Timestamp: 1,
 	}})
 	if err != nil {

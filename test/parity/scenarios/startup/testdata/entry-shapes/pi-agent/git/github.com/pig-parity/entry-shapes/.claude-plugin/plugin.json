@@ -1,0 +1,9 @@
+{
+  "name": "entry-shapes",
+  "author": { "name": "pig-parity" },
+  "mcpServers": {
+    "entry-shapes": { "command": "node", "args": ["${CLAUDE_PLUGIN_ROOT}/server.mjs"] }
+  },
+  "hooks": "./hooks/hooks.json",
+  "skills": "./claude-skills/"
+}

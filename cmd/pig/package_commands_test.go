@@ -6,6 +6,8 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"slices"
 	"strings"
 	"sync/atomic"
@@ -14,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/installresolver"
 	piglet "github.com/MichaelKinsy/PiG/coding/piglet"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
 
@@ -89,7 +92,7 @@ func TestInstallPackageDoesNotProjectStaticComponents(t *testing.T) {
 	write("agents/review.agent.md", "# review\n")
 	write(".mcp.json", `{"mcpServers":{"demo":{"command":"true"}}}`)
 	write("legacy.piglet.yaml", "name: legacy\n")
-	if err := installPackageArtifacts(t.TempDir(), codingagent.PackageSource{Source: root}, false, nil); err != nil {
+	if err := packagemanager.InstallPackageArtifacts(t.TempDir(), codingagent.NewSettingsManager(root, codingagent.AgentDir()).AgentDir(), codingagent.NewSettingsManager(root, codingagent.AgentDir()), codingagent.PackageSource{Source: root}, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	for _, path := range []string{
@@ -133,17 +136,31 @@ func TestListConfiguredPackagesPreservesBothSettingsScopesLikePi(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := settings.SetProjectPackages([]codingagent.PackageSource{{Source: filepath.ToSlash(projectSource), Prompts: []string{"-prompts/one.md"}}}); err != nil {
-		t.Fatal(err)
-	}
-	settings.Reload()
-	configured := listConfiguredPackages(cwd, settings)
-	if len(configured) != 2 || configured[0].Scope != "user" || configured[1].Scope != "project" {
-		t.Fatalf("configured Packages = %#v", configured)
-	}
-	effective := configuredPackagesForResolution(cwd, settings)
-	if len(effective) != 1 || effective[0].Scope != "user" || effective[0].ProjectDelta == nil {
-		t.Fatalf("effective Packages = %#v", effective)
+	// Pi package-manager.ts:1704-1729 replaces the user entry unless project autoload is explicitly false.
+	for _, tc := range []struct {
+		name     string
+		autoload *bool
+		scope    string
+		source   string
+	}{
+		{"omitted", nil, "project", filepath.ToSlash(projectSource)},
+		{"enabled", new(true), "project", filepath.ToSlash(projectSource)},
+		{"disabled delta", new(false), "user", packageRoot},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := settings.SetProjectPackages([]codingagent.PackageSource{{Source: filepath.ToSlash(projectSource), Autoload: tc.autoload, Prompts: []string{"-prompts/one.md"}}}); err != nil {
+				t.Fatal(err)
+			}
+			settings.Reload()
+			configured := listConfiguredPackages(cwd, settings)
+			if len(configured) != 2 || configured[0].Scope != "user" || configured[1].Scope != "project" {
+				t.Fatalf("configured Packages = %#v", configured)
+			}
+			effective := packagemanager.ConfiguredPackagesForResolution(cwd, settings.AgentDir(), settings)
+			if len(effective) != 1 || effective[0].Scope != tc.scope || effective[0].Source.Source != tc.source {
+				t.Fatalf("effective Packages = %#v, want %s/%s", effective, tc.scope, tc.source)
+			}
+		})
 	}
 }
 
@@ -169,9 +186,19 @@ func TestParsePackageCommand(t *testing.T) {
 	}
 }
 
-func TestParsePackageCommand_UninstallAliasRemoved(t *testing.T) {
-	if _, ok := parsePackageCommand([]string{"uninstall", "foo"}); ok {
-		t.Fatal("uninstall should not be parsed as a package command; use remove")
+// Pi package-manager-cli.ts:378-379 maps uninstall before parsing any flags.
+func TestParsePackageCommand_UninstallAlias(t *testing.T) {
+	for _, args := range [][]string{
+		{"uninstall", "npm:example"},
+		{"uninstall", "npm:example", "-l"},
+		{"uninstall", "-l", "npm:example"},
+		{"uninstall", "--help"},
+	} {
+		want, _ := parsePackageCommand(append([]string{"remove"}, args[1:]...))
+		got, ok := parsePackageCommand(args)
+		if !ok || !reflect.DeepEqual(got, want) {
+			t.Fatalf("parsePackageCommand(%v) = %+v, %v; want %+v", args, got, ok, want)
+		}
 	}
 }
 
@@ -236,15 +263,15 @@ func TestRunPackageCommand_InvalidOptionMatchesUpstreamHint(t *testing.T) {
 	if !strings.Contains(stderr, `Unknown option --local for "list".`) {
 		t.Fatalf("stderr missing unknown-option line:\n%s", stderr)
 	}
-	if !strings.Contains(stderr, `Use "pig --help" or "pig list".`) {
+	if !strings.Contains(stderr, `Use "pig --help" or "pig list [--approve|--no-approve]".`) {
 		t.Fatalf("stderr missing usage hint:\n%s", stderr)
 	}
 }
 
-func TestGetSelfUpdateUnavailableInstruction_PointsAtStandaloneFallback(t *testing.T) {
+func TestSelfUpdateFallback_PointsAtStandaloneFallback(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	t.Setenv("PIG_UPDATE_URL", "")
-	got := codingagent.GetSelfUpdateUnavailableInstruction(codingagent.PackageName, []string{"pnpm", "--global"})
+	got := codingagent.SelfUpdateFallback()
 	if strings.Contains(got, "legacy-update-host") {
 		t.Fatalf("instruction still references the stale legacy-update-host URL:\n%s", got)
 	}
@@ -256,15 +283,23 @@ func TestGetSelfUpdateUnavailableInstruction_PointsAtStandaloneFallback(t *testi
 func TestRunPackageCommand_SelfUpdateTargetWithoutSourceShowsFallback(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
 	t.Setenv("PIG_UPDATE_URL", "")
-	for _, args := range [][]string{{"update", "self"}, {"update"}} {
+	for _, tc := range []struct {
+		args       []string
+		wantStdout string
+	}{
+		{[]string{"update", "self"}, ""},
+		// Pi prints the skipped-extensions note before a bare self-update.
+		{[]string{"update"}, "Extensions are skipped. Run pig update --extensions to update extensions.\n"},
+	} {
+		args := tc.args
 		stdout, stderr, code := captureStdoutStderr(t, func() int {
 			return runPackageCommand(args)
 		})
 		if code != 1 {
 			t.Fatalf("%v: code = %d, want 1", args, code)
 		}
-		if stdout != "" {
-			t.Fatalf("%v: stdout = %q, want empty", args, stdout)
+		if stdout != tc.wantStdout {
+			t.Fatalf("%v: stdout = %q, want %q", args, stdout, tc.wantStdout)
 		}
 		// Writability alone no longer proves standalone ownership. Without the
 		// installer receipt, the resolver refuses mutation and names the path.
@@ -303,7 +338,7 @@ func TestNPMInstallArgsMatchUpstreamManagedInstallContract(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.manager, func(t *testing.T) {
-			if got := npmInstallArgs(tc.manager, "@scope/pkg@1.2.3", root, ""); !slices.Equal(got, tc.want) {
+			if got := packagemanager.NpmInstallArgs(tc.manager, "@scope/pkg@1.2.3", root, ""); !slices.Equal(got, tc.want) {
 				t.Fatalf("args = %v, want %v", got, tc.want)
 			}
 		})
@@ -312,7 +347,7 @@ func TestNPMInstallArgsMatchUpstreamManagedInstallContract(t *testing.T) {
 
 func TestNPMInstallArgsPassCustomRegistryWithoutCredentials(t *testing.T) {
 	registry := "https://npm.example.com/team"
-	got := npmInstallArgs("npm", "@scope/pkg@1.2.3", "/managed/npm", registry)
+	got := packagemanager.NpmInstallArgs("npm", "@scope/pkg@1.2.3", "/managed/npm", registry)
 	if !slices.Equal(got, []string{"install", "@scope/pkg@1.2.3", "--prefix", "/managed/npm", "--legacy-peer-deps", "--registry", registry}) {
 		t.Fatalf("args = %v", got)
 	}
@@ -326,16 +361,16 @@ func TestCustomNPMRegistryUsesDistinctManagedRoot(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("PIG_HOME", home)
 	t.Setenv("PIG_CODING_AGENT_DIR", filepath.Join(home, "agent"))
-	first, err := parseNpmInstallRef("npm:@acme/tools@1?registry=https%3A%2F%2Fnpm.one.example")
+	first, err := packagemanager.ParseNpmInstallRef("npm:@acme/tools@1?registry=https%3A%2F%2Fnpm.one.example")
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := parseNpmInstallRef("npm:@acme/tools@1?registry=https%3A%2F%2Fnpm.two.example")
+	second, err := packagemanager.ParseNpmInstallRef("npm:@acme/tools@1?registry=https%3A%2F%2Fnpm.two.example")
 	if err != nil {
 		t.Fatal(err)
 	}
-	firstPath := npmInstallPath(cwd, first, false)
-	secondPath := npmInstallPath(cwd, second, false)
+	firstPath := packagemanager.NpmInstallPath(cwd, codingagent.NewSettingsManager(cwd, codingagent.AgentDir()).AgentDir(), codingagent.NewSettingsManager(cwd, codingagent.AgentDir()), first, false)
+	secondPath := packagemanager.NpmInstallPath(cwd, codingagent.NewSettingsManager(cwd, codingagent.AgentDir()).AgentDir(), codingagent.NewSettingsManager(cwd, codingagent.AgentDir()), second, false)
 	if firstPath == secondPath || !strings.Contains(firstPath, filepath.Join("npm", "registries")) || !strings.Contains(secondPath, filepath.Join("npm", "registries")) {
 		t.Fatalf("custom registry paths = %q and %q", firstPath, secondPath)
 	}
@@ -362,7 +397,7 @@ func TestInstallManagedNPMPassesCustomRegistryToPackageManager(t *testing.T) {
 		t.Fatal(err)
 	}
 	source := "npm:@acme/tools@1.2.3?registry=https%3A%2F%2Fnpm.example.com%2Fteam"
-	if err := installManagedNPM(cwd, source, false); err != nil {
+	if err := packagemanager.InstallManagedNPM(cwd, codingagent.NewSettingsManager(cwd, codingagent.AgentDir()).AgentDir(), codingagent.NewSettingsManager(cwd, codingagent.AgentDir()), source, false); err != nil {
 		t.Fatal(err)
 	}
 	data, err := os.ReadFile(logPath)
@@ -382,13 +417,13 @@ func TestGetGitDependencyInstallArgs(t *testing.T) {
 	cwd := t.TempDir()
 	agentDir := t.TempDir()
 	sm := codingagent.NewSettingsManager(cwd, agentDir)
-	if got := getGitDependencyInstallArgs(sm); len(got) != 2 || got[0] != "install" || got[1] != "--omit=dev" {
+	if got := packagemanager.GetGitDependencyInstallArgs(sm); len(got) != 2 || got[0] != "install" || got[1] != "--omit=dev" {
 		t.Fatalf("default args = %v", got)
 	}
 	if err := sm.SetNpmCommand([]string{"pnpm"}); err != nil {
 		t.Fatal(err)
 	}
-	if got := getGitDependencyInstallArgs(sm); len(got) != 1 || got[0] != "install" {
+	if got := packagemanager.GetGitDependencyInstallArgs(sm); len(got) != 1 || got[0] != "install" {
 		t.Fatalf("configured npmCommand args = %v", got)
 	}
 }
@@ -400,12 +435,12 @@ func TestDetectSourceKind(t *testing.T) {
 		want   string
 	}{
 		{"npm:pi-web-access", "npm"},
-		{"@scope/pkg", "npm"},
+		{"@scope/pkg", "local"},
 		{"registry:old/name", "unsupported"},
 		{localDir, "local"},
 	}
 	for _, tc := range cases {
-		if got := detectSourceKind(tc.source); got != tc.want {
+		if got := packagemanager.DetectSourceKind(tc.source); got != tc.want {
 			t.Fatalf("detectSourceKind(%q) = %q, want %q", tc.source, got, tc.want)
 		}
 	}
@@ -418,10 +453,10 @@ func TestDetectRegisteredContributedSourceKind(t *testing.T) {
 	if err := installresolver.RegisterSourceScheme(scheme); err != nil {
 		t.Fatalf("register source scheme: %v", err)
 	}
-	if got := detectSourceKind(scheme + ":team/resource"); got != scheme {
+	if got := packagemanager.DetectSourceKind(scheme + ":team/resource"); got != scheme {
 		t.Fatalf("detectSourceKind = %q, want %q", got, scheme)
 	}
-	if got := detectSourceKind("unregistered:team/resource"); got != "unsupported" {
+	if got := packagemanager.DetectSourceKind("unregistered:team/resource"); got != "unsupported" {
 		t.Fatalf("unregistered kind = %q, want unsupported", got)
 	}
 }
@@ -441,7 +476,7 @@ func TestPackageSourceIdentityUsesSharedTypedContract(t *testing.T) {
 		{"./resources/tool", "local:" + filepath.Join(base, "resources", "tool")},
 	}
 	for _, tc := range cases {
-		if got := packageSourceIdentity(base, tc.source); got != tc.want {
+		if got := packagemanager.PackageSourceIdentity(base, tc.source); got != tc.want {
 			t.Errorf("packageSourceIdentity(%q) = %q, want %q", tc.source, got, tc.want)
 		}
 	}
@@ -466,11 +501,11 @@ fi
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	source := "git:https://github.com/acme/tools.git@main#subdirectory=plugins%2Freview"
-	if err := installManagedGit(cwd, source, false); err != nil {
+	if err := packagemanager.InstallManagedGit(cwd, codingagent.NewSettingsManager(cwd, agentDir).AgentDir(), codingagent.NewSettingsManager(cwd, agentDir), source, false); err != nil {
 		t.Fatal(err)
 	}
 	checkout := filepath.Join(agentDir, "git", "github.com", "acme", "tools")
-	packageRoot, err := gitInstallPath(cwd, source, false)
+	packageRoot, err := packagemanager.GitInstallPath(cwd, agentDir, source, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -504,10 +539,10 @@ if [ "$1" = clone ]; then mkdir -p "$3"; fi
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	source := "git:https://github.com/acme/tools#subdirectory=plugins%2Freview"
-	if err := installManagedGit(cwd, source, false); err == nil || !strings.Contains(err.Error(), "does not exist") {
+	if err := packagemanager.InstallManagedGit(cwd, codingagent.NewSettingsManager(cwd, agentDir).AgentDir(), codingagent.NewSettingsManager(cwd, agentDir), source, false); err == nil || !strings.Contains(err.Error(), "does not exist") {
 		t.Fatalf("missing subdirectory error = %v", err)
 	}
-	checkout, err := gitCheckoutPath(cwd, source, false)
+	checkout, err := packagemanager.GitCheckoutPath(cwd, agentDir, source, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -515,8 +550,8 @@ if [ "$1" = clone ]; then mkdir -p "$3"; fi
 	if err := os.MkdirAll(filepath.Join(checkout, "plugins"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	testenv.Symlink(t, outside, filepath.Join(checkout, "plugins", "review"))
-	if err := installManagedGit(cwd, source, false); err == nil || !strings.Contains(err.Error(), "resolves outside checkout") {
+	testenv.RequireDirectoryLink(t, outside, filepath.Join(checkout, "plugins", "review"))
+	if err := packagemanager.InstallManagedGit(cwd, codingagent.NewSettingsManager(cwd, agentDir).AgentDir(), codingagent.NewSettingsManager(cwd, agentDir), source, false); err == nil || !strings.Contains(err.Error(), "resolves outside checkout") {
 		t.Fatalf("escaping subdirectory error = %v", err)
 	}
 }
@@ -547,7 +582,7 @@ func TestRemoveGitSubdirectoryPreservesCheckoutUsedBySibling(t *testing.T) {
 	t.Setenv("PIG_CODING_AGENT_DIR", filepath.Join(home, "agent"))
 	removed := "git:https://github.com/acme/tools#subdirectory=plugins%2Freview"
 	sibling := "git:https://github.com/acme/tools#subdirectory=plugins%2Ftrace"
-	checkout, err := gitCheckoutPath(cwd, removed, false)
+	checkout, err := packagemanager.GitCheckoutPath(cwd, filepath.Join(home, "agent"), removed, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -586,10 +621,10 @@ func TestAddSourceToSettings_NormalizesLocalPathsRelativeToScopeBase(t *testing.
 		}
 	}
 	sm := codingagent.NewSettingsManager(cwd, agentDir)
-	if err := addSourceToSettings(cwd, sm, "./packages/global-pkg", false); err != nil {
+	if _, err := addSourceToSettings(cwd, sm, "./packages/global-pkg", false); err != nil {
 		t.Fatal(err)
 	}
-	if err := addSourceToSettings(cwd, sm, "./project-pkg", true); err != nil {
+	if _, err := addSourceToSettings(cwd, sm, "./project-pkg", true); err != nil {
 		t.Fatal(err)
 	}
 	globalWant, err := filepath.Rel(agentDir, globalPkg)
@@ -616,7 +651,7 @@ func TestRemoveSourceFromSettings_MatchesEquivalentLocalPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	sm := codingagent.NewSettingsManager(cwd, agentDir)
-	if err := addSourceToSettings(cwd, sm, "./remove-local-pkg", false); err != nil {
+	if _, err := addSourceToSettings(cwd, sm, "./remove-local-pkg", false); err != nil {
 		t.Fatal(err)
 	}
 	removed, err := removeSourceFromSettings(cwd, sm, pkgDir+string(filepath.Separator), false)
@@ -668,7 +703,7 @@ func TestInstalledPathForSource_GlobalRelativeLocalUsesAgentBase(t *testing.T) {
 	if !strings.HasPrefix(stored, ".") {
 		stored = "." + string(filepath.Separator) + stored
 	}
-	if got := installedPathForSource(cwd, stored, false); got != pkgDir {
+	if got := packagemanager.InstalledPathForSource(cwd, codingagent.NewSettingsManager(cwd, agentDir).AgentDir(), codingagent.NewSettingsManager(cwd, agentDir), stored, false); got != pkgDir {
 		t.Fatalf("installedPathForSource() = %q, want %q", got, pkgDir)
 	}
 }
@@ -687,8 +722,8 @@ func TestGetPnpmGlobalPackagePath_UsesConfiguredPnpmCommand(t *testing.T) {
 	if err := sm.SetNpmCommand([]string{stub}); err != nil {
 		t.Fatal(err)
 	}
-	if got := getPnpmGlobalPackagePath(cwd, "@scope/pkg"); got != filepath.ToSlash(pkgDir) && got != pkgDir {
-		t.Fatalf("getPnpmGlobalPackagePath() = %q, want %q", got, pkgDir)
+	if got, err := packagemanager.GetPnpmGlobalPackagePath(sm, "@scope/pkg"); err != nil || got != filepath.ToSlash(pkgDir) && got != pkgDir {
+		t.Fatalf("getPnpmGlobalPackagePath() = %q, %v; want %q, nil", got, err, pkgDir)
 	}
 }
 
@@ -715,11 +750,11 @@ printf '{"name":"demo"}\n' > "$root/node_modules/demo/package.json"
 	if err := sm.SetNpmCommand([]string{stub}); err != nil {
 		t.Fatal(err)
 	}
-	if err := installPackageArtifacts(cwd, codingagent.PackageSource{Source: "npm:demo@1.0.0"}, false, nil); err != nil {
+	if err := packagemanager.InstallPackageArtifacts(cwd, sm.AgentDir(), sm, codingagent.PackageSource{Source: "npm:demo@1.0.0"}, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	want := filepath.Join(agentDir, "npm", "node_modules", "demo")
-	if got := installedPathForSource(cwd, "npm:demo@1.0.0", false); got != want {
+	if got := packagemanager.InstalledPathForSource(cwd, sm.AgentDir(), sm, "npm:demo@1.0.0", false); got != want {
 		t.Fatalf("installed path = %q, want %q", got, want)
 	}
 }
@@ -916,7 +951,7 @@ func TestPigletAddFromLocalBareGitWritesCommitOrigin(t *testing.T) {
 	if err := os.MkdirAll(work, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runCmdInDir(work, "git", "init", "-q"); err != nil {
+	if _, err := packagemanager.RunCmdInDir(work, "git", "init", "-q"); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Join(work, "prompts"), 0o755); err != nil {
@@ -928,23 +963,23 @@ func TestPigletAddFromLocalBareGitWritesCommitOrigin(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(work, "prompts", "system.md"), []byte("from git\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runCmdInDir(work, "git", "add", "."); err != nil {
+	if _, err := packagemanager.RunCmdInDir(work, "git", "add", "."); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runCmdInDir(work, "git", "-c", "user.name=Pig Test", "-c", "user.email=pig@example.test", "commit", "-q", "-m", "fixture"); err != nil {
+	if _, err := packagemanager.RunCmdInDir(work, "git", "-c", "user.name=Pig Test", "-c", "user.email=pig@example.test", "commit", "-q", "-m", "fixture"); err != nil {
 		t.Fatal(err)
 	}
-	commit, err := runCmdInDir(work, "git", "rev-parse", "HEAD")
+	commit, err := packagemanager.RunCmdInDir(work, "git", "rev-parse", "HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runCmdInDir(work, "git", "tag", "v1.0.0"); err != nil {
+	if _, err := packagemanager.RunCmdInDir(work, "git", "tag", "v1.0.0"); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.MkdirAll(filepath.Dir(bare), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := runCmd("git", "clone", "--bare", work, bare); err != nil {
+	if _, err := packagemanager.RunCmd("git", "clone", "--bare", work, bare); err != nil {
 		t.Fatal(err)
 	}
 
@@ -1008,17 +1043,18 @@ mkdir -p "$root/node_modules/@acme/private"
 	if got := sm.GetGlobalSettings().Packages[0].Source; got != source {
 		t.Fatalf("stored source = %q, want %q", got, source)
 	}
-	ref, err := parseNpmInstallRef(source)
+	ref, err := packagemanager.ParseNpmInstallRef(source)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := npmInstallPath(cwd, ref, false)
-	if got := installedPathForSource(cwd, source, false); got != want {
+	want := packagemanager.NpmInstallPath(cwd, sm.AgentDir(), sm, ref, false)
+	if got := packagemanager.InstalledPathForSource(cwd, sm.AgentDir(), sm, source, false); got != want {
 		t.Fatalf("installed path = %q, want %q", got, want)
 	}
 }
 
-func TestInstallAndPersistBareNPMRecordsCanonicalSource(t *testing.T) {
+// Pi package-manager.ts:1446-1470 requires npm: for registry sources.
+func TestInstallAndPersistExplicitNPMRecordsCanonicalSource(t *testing.T) {
 	cwd := t.TempDir()
 	home := t.TempDir()
 	agentDir := filepath.Join(home, "agent")
@@ -1040,14 +1076,14 @@ mkdir -p "$root/node_modules/demo"
 	if err := sm.SetNpmCommand([]string{stub}); err != nil {
 		t.Fatal(err)
 	}
-	if err := installAndPersistPackage(cwd, sm, "demo", false, nil); err != nil {
+	if err := installAndPersistPackage(cwd, sm, "npm:demo", false, nil); err != nil {
 		t.Fatal(err)
 	}
 	if got := sm.GetGlobalSettings().Packages[0].Source; got != "npm:demo" {
 		t.Fatalf("stored source = %q, want npm:demo", got)
 	}
 	want := filepath.Join(agentDir, "npm", "node_modules", "demo")
-	if got := installedPathForSource(cwd, "npm:demo", false); got != want {
+	if got := packagemanager.InstalledPathForSource(cwd, sm.AgentDir(), sm, "npm:demo", false); got != want {
 		t.Fatalf("installed path = %q, want %q", got, want)
 	}
 	if _, err := os.Stat(filepath.Join(home, "state", "marketplace")); !os.IsNotExist(err) {
@@ -1074,11 +1110,11 @@ exit 0
 	t.Setenv("PATH", binDir+string(os.PathListSeparator)+os.Getenv("PATH"))
 
 	source := "git:https://github.com/acme/tools.git"
-	if err := installPackageArtifacts(cwd, codingagent.PackageSource{Source: source}, false, nil); err != nil {
+	if err := packagemanager.InstallPackageArtifacts(cwd, codingagent.NewSettingsManager(cwd, agentDir).AgentDir(), codingagent.NewSettingsManager(cwd, agentDir), codingagent.PackageSource{Source: source}, false, nil); err != nil {
 		t.Fatal(err)
 	}
 	want := filepath.Join(agentDir, "git", "github.com", "acme", "tools")
-	if got := installedPathForSource(cwd, source, false); got != want {
+	if got := packagemanager.InstalledPathForSource(cwd, codingagent.NewSettingsManager(cwd, agentDir).AgentDir(), codingagent.NewSettingsManager(cwd, agentDir), source, false); got != want {
 		t.Fatalf("installed path = %q, want %q", got, want)
 	}
 }
@@ -1093,7 +1129,7 @@ func TestInstalledPathForSource_GlobalNpmUsesManagedAgentPath(t *testing.T) {
 	if err := os.MkdirAll(pkgDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if got := installedPathForSource(cwd, "npm:example", false); got != pkgDir {
+	if got := packagemanager.InstalledPathForSource(cwd, codingagent.NewSettingsManager(cwd, agentDir).AgentDir(), codingagent.NewSettingsManager(cwd, agentDir), "npm:example", false); got != pkgDir {
 		t.Fatalf("installedPathForSource() = %q, want %q", got, pkgDir)
 	}
 }
@@ -1117,7 +1153,7 @@ func TestInstalledPathForSource_GlobalNpmFallsBackToPnpmResolvedPath(t *testing.
 	if err := sm.SetNpmCommand([]string{stub}); err != nil {
 		t.Fatal(err)
 	}
-	if got := installedPathForSource(cwd, "npm:example", false); got != pkgDir {
+	if got := packagemanager.InstalledPathForSource(cwd, sm.AgentDir(), sm, "npm:example", false); got != pkgDir {
 		t.Fatalf("installedPathForSource() = %q, want %q", got, pkgDir)
 	}
 }
@@ -1149,12 +1185,15 @@ func TestNormalizePackageSourceForSettings_UsesScopeBase(t *testing.T) {
 			t.Fatalf("non-local source %q was rewritten to %q", src, got)
 		}
 	}
-	if got := normalizePackageSourceForSettings(tmp, cwd, "@foo/bar"); got != "npm:@foo/bar" {
-		t.Fatalf("bare npm source = %q, want npm:@foo/bar", got)
-	}
-	custom := "@foo/bar@1?registry=https%3A%2F%2Fnpm.example.com"
-	if got := normalizePackageSourceForSettings(tmp, cwd, custom); got != "npm:"+custom {
-		t.Fatalf("bare custom-registry npm source = %q, want %q", got, "npm:"+custom)
+	// Pi package-manager.ts:1436-1470 normalizes every unprefixed source as a local path.
+	for _, raw := range []string{"@foo/bar", "@foo/bar@1?registry=https%3A%2F%2Fnpm.example.com"} {
+		want, err := filepath.Rel(tmp, filepath.Join(cwd, raw))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := normalizePackageSourceForSettings(tmp, cwd, raw); got != want {
+			t.Fatalf("unprefixed local source = %q, want %q", got, want)
+		}
 	}
 }
 
@@ -1218,7 +1257,7 @@ func TestAC1UpdateRoutingMatchesPi(t *testing.T) {
 		printPackageCommandHelp(packageUpdate)
 		return 0
 	})
-	if strings.Contains(stdout, "update pi") || strings.Contains(stdout, "pi ") && strings.Contains(stdout, "Update pi only") {
+	if regexp.MustCompile(`\bpi\b`).MatchString(stdout) {
 		t.Fatalf("update help advertises pi as a self target:\n%s", stdout)
 	}
 	if strings.Contains(stdout, "legacy-update-host") {

@@ -15,6 +15,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/configvalue"
+	"github.com/MichaelKinsy/PiG/internal/jsonparse"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
@@ -61,33 +62,27 @@ type modelsConfig struct {
 // providerConfig is a provider entry in models.json.
 // Matches upstream ProviderConfigSchema.
 type providerConfig struct {
-	Name           string             `json:"name,omitempty"`
-	BaseURL        string             `json:"baseUrl,omitempty"`
-	APIKey         string             `json:"apiKey,omitempty"`
-	API            string             `json:"api,omitempty"`
-	Headers        map[string]*string `json:"headers,omitempty"`
+	Name           string                         `json:"name,omitempty"`
+	BaseURL        string                         `json:"baseUrl,omitempty"`
+	APIKey         string                         `json:"apiKey,omitempty"`
+	StreamSimple   extension.ProviderStreamSimple `json:"-"`
+	API            string                         `json:"api,omitempty"`
+	Headers        map[string]*string             `json:"headers,omitempty"`
 	headerEntries  []orderedHeaderEntry
 	Compat         *providerCompat              `json:"compat,omitempty"`
 	AuthHeader     *bool                        `json:"authHeader,omitempty"`
 	Models         []modelDefinition            `json:"models,omitempty"`
 	ModelOverrides map[string]modelOverrideJSON `json:"modelOverrides,omitempty"`
-	// OAuth mirrors upstream ProviderConfig.oauth: allows extensions to register
-	// providers with OAuth support (/login, token refresh, modifyModels).
-	// The struct is stored but the actual login/refresh logic lives in the
-	// extension process; pig's model registry uses it for hasAuth checks and
-	// model filtering. Mirrors upstream model-registry.ts:registerProvider.
-	OAuth *oauthProviderConfig `json:"oauth,omitempty"`
+	// OAuth is the serializable discovery metadata; oauthCallbacks retains native callback values while this legacy registration owns the namespace.
+	OAuth          *oauthProviderConfig `json:"oauth,omitempty"`
+	oauthCallbacks *extension.ProviderOAuth
 	// Insecure skips TLS verification for this provider's endpoint. Opt-in,
 	// for self-signed/internal-CA on-prem gateways.
 	// pig additive (D36): additive optional field; no upstream equivalent.
 	Insecure bool `json:"insecure,omitempty"`
 }
 
-// oauthProviderConfig captures the serializable parts of the upstream OAuth
-// provider registration. The actual login/refreshToken/getApiKey callbacks
-// remain in the extension subprocess; this struct records whether a provider
-// was registered with OAuth support so the model registry can perform
-// hasAuth and getAvailable filtering.
+// oauthProviderConfig contains serializable OAuth discovery/filtering metadata. Callback values are retained separately.
 type oauthProviderConfig struct {
 	Name     string `json:"name,omitempty"`
 	Kind     string `json:"-"`
@@ -276,20 +271,24 @@ type providerCompat ai.OpenAICompat
 // ModelRegistry resolves model configurations from models.json and environment.
 // Mirrors upstream model-registry.ts.
 type ModelRegistry struct {
-	mu        sync.RWMutex
-	agentDir  string
-	config    *modelsConfig // parsed models.json (nil if absent/invalid)
-	loadError string        // non-empty if models.json failed to parse
-	dynamic   map[string]providerConfig
+	mu         sync.RWMutex
+	agentDir   string
+	modelsPath *string
+	config     *modelsConfig // parsed models.json (nil if absent/invalid)
+	loadError  string        // non-empty if models.json failed to parse
+	dynamic    map[string]providerConfig
+	native     map[string]registeredNativeProvider
+	// dynamicOrder is the registration order of dynamic, as upstream's
+	// extensionProviders map iterates.
+	dynamicOrder []string
 
-	// authStorage, when non-nil, provides credential lookup for
-	// HasConfiguredAuth and GetAvailable filtering. Mirrors upstream
-	// ModelRegistry.authStorage (model-registry.ts:304).
-	authStorage *ai.AuthStorage
-	onChange    *modelRegistryChangeListener
+	// credentialStore, when non-nil, provides stored credential lookup for HasConfiguredAuth and GetAvailable filtering.
+	credentialStore ai.CredentialStore
+	onChange        *modelRegistryChangeListener
+	observers       []*modelRegistryChangeListener
 
 	// runtimeCredentials overlays non-persistent API keys (--api-key) on
-	// authStorage; they outrank stored and ambient credentials.
+	// credentialStore; they outrank stored and ambient credentials.
 	runtimeCredentials *ai.RuntimeCredentials
 
 	// radius holds the Radius providers (built-in plus models.json gateways)
@@ -299,12 +298,34 @@ type ModelRegistry struct {
 
 	refreshMu     sync.Mutex
 	refreshStates map[string]*catalogRefreshState
+
+	// availabilityRefresh reconciles the Services-owned snapshot before catalog/auth changes notify consumers.
+	availabilityRefresh func(context.Context, []string) ai.ModelsRefreshResult
+	// registrationSync projects a registration change into the Services-owned snapshot before observers run.
+	registrationSync func(providerID string, provisional *ai.AuthCheck, providerOrder func() []string)
+	// availabilityAuth reads configured auth for Models-collection providers from the Services-owned snapshot.
+	availabilityAuth func(providerID string) bool
+	modelTasks       modelTaskOwner
+	// registrationRefresh queues Pi's unawaited local refresh after a registration.
+	registrationRefresh registrationRefresh
+
+	nativeMu             sync.Mutex
+	nativeModels         *ai.Models
+	nativeOriginal       map[string]*ai.ModelsProvider
+	nativeBase           map[string]*ai.ModelsProvider
+	nativeInputs         map[string]*ProviderConfigInput
+	nativeAvailable      map[string]bool
+	credentialOperations map[string][]chan struct{}
 }
 
 type modelRegistryChangeListener struct {
 	mu     sync.Mutex
 	active bool
 	notify func()
+	// admission guards closed and pending without waiting for an in-flight notification.
+	admission sync.Mutex
+	closed    bool
+	pending   sync.WaitGroup
 }
 
 func (listener *modelRegistryChangeListener) publish() {
@@ -318,13 +339,30 @@ func (listener *modelRegistryChangeListener) publish() {
 	}
 }
 
+// publishAsync notifies on a goroutine owned by the listener, so the publishing task never waits for listener code. close joins it.
+func (listener *modelRegistryChangeListener) publishAsync() {
+	if listener == nil {
+		return
+	}
+	listener.admission.Lock()
+	defer listener.admission.Unlock()
+	if listener.closed {
+		return
+	}
+	listener.pending.Go(listener.publish)
+}
+
 func (listener *modelRegistryChangeListener) close() {
 	if listener == nil {
 		return
 	}
+	listener.admission.Lock()
+	listener.closed = true
+	listener.admission.Unlock()
 	listener.mu.Lock()
 	listener.active = false
 	listener.mu.Unlock()
+	listener.pending.Wait()
 }
 
 // NewModelRegistry creates a registry, loading from <agent-dir>/models.json if present.
@@ -334,17 +372,47 @@ func NewModelRegistry(agentDir string) *ModelRegistry {
 	return r
 }
 
+// NewModelRegistryWithModelsPath loads the explicitly selected model configuration. An empty path disables the file.
+// Ports packages/coding-agent/src/core/model-runtime.ts:176-184.
+func NewModelRegistryWithModelsPath(modelsPath string) *ModelRegistry {
+	r := &ModelRegistry{modelsPath: &modelsPath, modelsStore: ai.NewInMemoryModelsStore()}
+	if modelsPath != "" {
+		r.agentDir = filepath.Dir(modelsPath)
+		r.modelsStore = defaultModelsStore(r.agentDir)
+	}
+	r.load()
+	return r
+}
+
+func (r *ModelRegistry) modelConfigPath() string {
+	if r.modelsPath != nil {
+		return *r.modelsPath
+	}
+	return filepath.Join(r.agentDir, "models.json")
+}
+
 func (r *ModelRegistry) readConfig() (*modelsConfig, string) {
-	data, err := os.ReadFile(filepath.Join(r.agentDir, "models.json"))
+	path := r.modelConfigPath()
+	if path == "" {
+		return nil, ""
+	}
+	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, "" // No models.json is fine
+		if os.IsNotExist(err) {
+			return nil, ""
+		}
+		return nil, "Failed to load models.json: " + err.Error() + "\n\nFile: " + path
+	}
+	content := []byte(stripJSONComments(text.StripBom(string(data))))
+	if err := jsonparse.Validate(content); err != nil {
+		return nil, "Failed to parse models.json: " + err.Error() + "\n\nFile: " + path
 	}
 	var cfg modelsConfig
-	if err := json.Unmarshal([]byte(stripJSONComments(text.StripBom(string(data)))), &cfg); err != nil {
-		return nil, "Failed to parse models.json: " + err.Error()
+	if err := json.Unmarshal(content, &cfg); err != nil {
+		return nil, "Failed to parse models.json: " + err.Error() + "\n\nFile: " + path
 	}
 	if err := r.validate(&cfg); err != nil {
-		return nil, err.Error()
+		return nil, "Invalid models.json schema:\n" + err.Error() + "\n\nFile: " + path
 	}
 	return &cfg, strings.Join(dropUncomposableProviders(&cfg), "\n\n")
 }
@@ -361,13 +429,6 @@ func (r *ModelRegistry) validate(cfg *modelsConfig) error {
 		if len(prov.Models) == 0 && prov.BaseURL == "" && prov.APIKey == "" && len(prov.Headers) == 0 && prov.Compat == nil && len(prov.ModelOverrides) == 0 && prov.OAuth == nil && prov.AuthHeader == nil {
 			return fmt.Errorf("provider %q: must specify \"baseUrl\", \"headers\", \"compat\", \"modelOverrides\", \"models\", \"apiKey\", \"oauth\", or \"authHeader\"", name)
 		}
-		if len(prov.Models) > 0 && prov.BaseURL == "" {
-			// Non-built-in providers with models require baseUrl.
-			// (Built-in providers inherit from their registration.)
-			if !isBuiltInProvider(name) {
-				return fmt.Errorf("provider %q: \"baseUrl\" is required when defining custom models", name)
-			}
-		}
 		for i, md := range prov.Models {
 			if md.ID == "" {
 				return fmt.Errorf("provider %q: model at index %d: \"id\" is required", name, i)
@@ -377,17 +438,19 @@ func (r *ModelRegistry) validate(cfg *modelsConfig) error {
 	return nil
 }
 
-// isBuiltInProvider returns true for providers with hardcoded defaults in buildModel.
-func isBuiltInProvider(name string) bool {
-	switch name {
-	case "openai", "github-copilot", "anthropic", "openrouter", "together", "groq", "ollama":
-		return true
-	}
-	return false
-}
+// isBuiltInProvider reports whether the pinned catalog supplies provider defaults.
+func isBuiltInProvider(name string) bool { return len(ai.ListModels(name)) > 0 }
 
-// LoadError returns any error from parsing models.json.
-func (r *ModelRegistry) LoadError() string { return r.loadError }
+// LoadError returns model configuration read, parse, and schema errors with the source path. Provider refresh failures surface through the Model Runtime's availability error, as in Pi.
+func (r *ModelRegistry) LoadError() string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	messages := []string{}
+	if r.loadError != "" {
+		messages = append(messages, r.loadError)
+	}
+	return strings.Join(messages, "\n\n")
+}
 
 // Resolve returns a ModelEntry for the given provider+model combination.
 // Resolution order:
@@ -398,6 +461,13 @@ func (r *ModelRegistry) LoadError() string { return r.loadError }
 //
 // Mirrors upstream parseModels + request-auth resolution.
 func (r *ModelRegistry) Resolve(providerID, modelID string) (ModelEntry, bool) {
+	if r.GetProvider(providerID) != nil {
+		model := r.NativeModels().GetModel(providerID, modelID)
+		if model == nil {
+			return ModelEntry{}, false
+		}
+		return NativeModelEntry(model), true
+	}
 	if entry, found, owned := r.resolveRadiusModel(providerID, modelID); owned {
 		return entry, found
 	}
@@ -530,6 +600,7 @@ func (r *ModelRegistry) ResolveGeneratedModel(providerID, modelID string, genera
 		dynamic = &registered
 	}
 	entry.Headers = r.composeRequestHeadersLocked(entry.ModelHeaders, providerID, modelID, configured, dynamic)
+	entry.Env = r.providerEnv(providerID)
 	if entry.APIKey == "" {
 		entry.APIKey = resolveAPIKeyFromEnv(providerID)
 	}
@@ -644,6 +715,9 @@ func firstModelValue(values ...string) string {
 
 // HasModelDefinition reports whether provider composition exposes providerID/modelID through an explicit models list.
 func (r *ModelRegistry) HasModelDefinition(providerID, modelID string) bool {
+	if r.GetProvider(providerID) != nil {
+		return r.NativeModels().GetModel(providerID, modelID) != nil
+	}
 	if _, found, owned := r.radiusModel(providerID, modelID); owned {
 		return found
 	}
@@ -686,24 +760,56 @@ func providerDefinesModel(prov providerConfig, modelID string) bool {
 	return false
 }
 
-// RegisterProvider registers or overrides a provider at runtime.
-func (r *ModelRegistry) RegisterProvider(name string, configMap extension.ProviderConfig) {
+// RegisterProvider validates the incoming configuration before changing the registry. Legacy entry points merge without dropping omitted callbacks; a native registration is displaced only after validation succeeds. A stored or configured provider is provisionally available in the Services snapshot before observers run; its availability refresh is scheduled after them.
+func (r *ModelRegistry) RegisterProvider(name string, configMap extension.ProviderConfig) error {
 	provider, ok := providerConfigFromRegistration(configMap)
 	if !ok {
-		return
+		return fmt.Errorf("provider %s: invalid registration configuration", name)
 	}
-	r.commitRegisteredProvider(func() { r.upsertRegisteredProviderLocked(name, provider) })
+	if err := r.validateExtensionRegistration(name, configMap, provider); err != nil {
+		return err
+	}
+	r.nativeMu.Lock()
+	previous, base := r.nativeInputs[name], r.nativeBase[name]
+	r.nativeMu.Unlock()
+	if previous != nil {
+		return r.RegisterProviderInput(name, legacyProviderInput(name, provider), base.Stream)
+	}
+	var provisional *ai.AuthCheck
+	r.commitRegisteredProvider(func() {
+		r.unregisterNativeProvider(name)
+		if r.native[name].provider != nil {
+			delete(r.dynamic, name)
+		}
+		delete(r.native, name)
+		r.upsertRegisteredProviderLocked(name, provider)
+		effective := r.dynamic[name]
+		provisional = registrationAuth(effective.OAuth != nil, effective.APIKey)
+	}, func() { r.syncRegistration(name, provisional) })
+	return nil
+}
+
+// noteDynamicLocked records name's registration order. The caller holds r.mu.
+func (r *ModelRegistry) noteDynamicLocked(name string) {
+	if !slices.Contains(r.dynamicOrder, name) {
+		r.dynamicOrder = append(r.dynamicOrder, name)
+	}
 }
 
 // SetProvider replaces a runtime-registered provider in one committed change,
 // so fields absent from config are cleared rather than kept. The built-in
-// llama.cpp provider republishes its resolved auth and catalog this way.
+// llama.cpp provider republishes its resolved auth and catalog this way. Each
+// republication projects availability and queues the local refresh.
 func (r *ModelRegistry) SetProvider(name string, configMap extension.ProviderConfig) {
 	provider, ok := providerConfigFromRegistration(configMap)
 	if !ok {
 		return
 	}
-	r.commitRegisteredProvider(func() { r.dynamic[name] = provider })
+	// Pi's llama extension registers a native provider (extensions/llama/index.ts:44), so republication offers no provisional auth.
+	r.commitRegisteredProvider(func() {
+		r.dynamic[name] = provider
+		r.noteDynamicLocked(name)
+	}, func() { r.syncRegistration(name, nil) })
 }
 
 func providerConfigFromRegistration(configMap extension.ProviderConfig) (providerConfig, bool) {
@@ -718,27 +824,48 @@ func providerConfigFromRegistration(configMap extension.ProviderConfig) (provide
 	if configMap.Models != nil && provider.Models == nil {
 		provider.Models = []modelDefinition{}
 	}
+	if configMap.Headers != nil && provider.Headers == nil {
+		provider.Headers = map[string]*string{}
+	}
 	if configMap.OAuth != nil {
 		if provider.OAuth == nil {
 			provider.OAuth = &oauthProviderConfig{}
 		}
 		provider.OAuth.HasLogin = true
 	}
+	provider.StreamSimple = configMap.StreamSimple
+	provider.oauthCallbacks = configMap.OAuth
 	return provider, true
 }
 
-func (r *ModelRegistry) commitRegisteredProvider(apply func()) {
+// ProviderStreamSimple returns the custom stream callback owned by this registry's current provider registration. It never installs a global API handler.
+func (r *ModelRegistry) ProviderStreamSimple(name string) extension.ProviderStreamSimple {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.dynamic[name].StreamSimple
+}
+
+// commitRegisteredProvider applies one change under the registry lock. committed, when non-nil, runs after the lock is released and before listeners are notified.
+func (r *ModelRegistry) commitRegisteredProvider(apply, committed func()) {
 	r.mu.Lock()
 	if r.dynamic == nil {
 		r.dynamic = make(map[string]providerConfig)
 	}
 	apply()
 	listener := r.onChange
+	observers := slices.Clone(r.observers)
 	r.mu.Unlock()
+	if committed != nil {
+		committed()
+	}
+	for _, observer := range observers {
+		observer.publish()
+	}
 	listener.publish()
 }
 
 func (r *ModelRegistry) upsertRegisteredProviderLocked(name string, incoming providerConfig) {
+	r.noteDynamicLocked(name)
 	existing, ok := r.dynamic[name]
 	if !ok {
 		r.dynamic[name] = incoming
@@ -752,6 +879,9 @@ func (r *ModelRegistry) upsertRegisteredProviderLocked(name string, incoming pro
 	}
 	if incoming.APIKey != "" {
 		existing.APIKey = incoming.APIKey
+	}
+	if incoming.StreamSimple != nil {
+		existing.StreamSimple = incoming.StreamSimple
 	}
 	if incoming.API != "" {
 		existing.API = incoming.API
@@ -808,43 +938,47 @@ func (r *ModelRegistry) upsertRegisteredProviderLocked(name string, incoming pro
 	}
 	if incoming.OAuth != nil {
 		existing.OAuth = incoming.OAuth
+		existing.oauthCallbacks = incoming.oauthCallbacks
 	}
 	r.dynamic[name] = existing
 }
 
-// UnregisterProvider removes a runtime-registered provider.
+// UnregisterProvider removes a runtime registration, projects the remaining catalog into the Services snapshot, notifies observers, and queues the local refresh. Pi does this for every call, including a name with no registration.
+// upstream: packages/coding-agent/src/core/model-runtime.ts:unregisterProvider
 func (r *ModelRegistry) UnregisterProvider(name string) {
+	r.unregisterNativeProvider(name)
 	r.mu.Lock()
-	if _, exists := r.dynamic[name]; !exists {
-		r.mu.Unlock()
-		return
-	}
 	delete(r.dynamic, name)
-	listener := r.onChange
+	delete(r.native, name)
+	r.dynamicOrder = slices.DeleteFunc(r.dynamicOrder, func(existing string) bool { return existing == name })
 	r.mu.Unlock()
-	listener.publish()
+	r.syncRegistration(name, nil)
+	r.publishNativeChange()
 }
 
-// SetAuthStorage wires the credential store for auth-aware filtering.
-// Must be called before GetAvailable or HasConfiguredAuth produce
-// meaningful results. Mirrors upstream ModelRegistry constructor
-// receiving authStorage (model-registry.ts:318).
+// SetAuthStorage wires the auth.json credential store for auth-aware
+// filtering. A nil storage leaves the registry without stored credentials.
 func (r *ModelRegistry) SetAuthStorage(auth *ai.AuthStorage) {
+	if auth == nil {
+		r.SetCredentialStore(nil)
+		return
+	}
+	r.SetCredentialStore(auth)
+}
+
+// SetCredentialStore wires the credential store for auth-aware filtering and resets the runtime-key overlay. Call it before using the registry.
+func (r *ModelRegistry) SetCredentialStore(store ai.CredentialStore) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
-	r.authStorage = auth
+	r.credentialStore = store
 	r.runtimeCredentials = nil
 }
 
-// runtimeCredentialsLocked returns the runtime key overlay over authStorage.
+// runtimeCredentialsLocked returns the runtime key overlay over credentialStore.
 // The caller holds r.mu for writing.
 func (r *ModelRegistry) runtimeCredentialsLocked() *ai.RuntimeCredentials {
 	if r.runtimeCredentials == nil {
-		var store ai.CredentialStore
-		if r.authStorage != nil {
-			store = r.authStorage
-		}
-		r.runtimeCredentials = ai.NewRuntimeCredentials(store)
+		r.runtimeCredentials = ai.NewRuntimeCredentials(r.credentialStore)
 	}
 	return r.runtimeCredentials
 }
@@ -881,13 +1015,12 @@ func (r *ModelRegistry) RuntimeAPIKey(providerID string) (string, bool) {
 // providerEnv returns the provider-scoped environment overrides for a
 // provider's API-key credential, or nil. These take precedence over the
 // process environment when resolving config-value `$VAR` references for the
-// provider's API key and headers. Mirrors upstream model-registry.ts reading
-// authStorage.getProviderEnv(model.provider) on the request-auth path.
+// provider's API key and headers.
 func (r *ModelRegistry) providerEnv(providerID string) map[string]string {
-	if r.authStorage == nil {
+	if r.credentialStore == nil {
 		return nil
 	}
-	env, err := r.authStorage.GetProviderEnv(providerID)
+	env, err := ai.CredentialStoreProviderEnv(context.Background(), r.credentialStore, providerID)
 	if err != nil {
 		return nil
 	}
@@ -902,10 +1035,36 @@ type modelRefreshResult struct {
 // Refresh reloads models.json from disk, preserves dynamic provider
 // registrations, and restores stored dynamic catalogs without network access.
 func (r *ModelRegistry) Refresh() {
-	if r.refreshContext(context.Background()).Aborted {
+	r.YieldToRegistrationRefresh(context.Background())
+	if r.refreshContext(context.Background(), nil).Aborted {
 		return
 	}
 	r.RefreshCatalogs(context.Background(), CatalogRefreshOptions{})
+}
+
+// ObserveChanges subscribes without replacing the host's catalog listener. Detach drains an in-flight callback and prevents later admission.
+func (r *ModelRegistry) ObserveChanges(notify func()) func() {
+	listener := &modelRegistryChangeListener{active: true, notify: notify}
+	r.mu.Lock()
+	r.observers = append(r.observers, listener)
+	r.mu.Unlock()
+	return func() {
+		r.mu.Lock()
+		r.observers = slices.DeleteFunc(r.observers, func(candidate *modelRegistryChangeListener) bool { return candidate == listener })
+		r.mu.Unlock()
+		listener.close()
+	}
+}
+
+// HasRegisteredProvider reports whether an extension owns an overlay for providerID.
+func (r *ModelRegistry) HasRegisteredProvider(providerID string) bool {
+	if r.GetProvider(providerID) != nil {
+		return true
+	}
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	_, exists := r.dynamic[providerID]
+	return exists
 }
 
 // SetChangeListener replaces the callback invoked after a committed registry change and returns a draining detach function.
@@ -929,33 +1088,35 @@ func (r *ModelRegistry) SetChangeListener(notify func()) func() {
 	}
 }
 
-// refreshContext parses outside the registry lock and publishes the complete
-// configuration only if the caller still owns the operation.
-func (r *ModelRegistry) refreshContext(ctx context.Context) modelRefreshResult {
-	if ctx.Err() != nil {
-		return modelRefreshResult{Aborted: true}
-	}
+// refreshContext reloads models.json and recomposes every native provider, or only the selected ones, whether or not the configuration changed and whether or not the caller's signal is aborted: Pi's ModelConfig.load takes no signal, and the signal is forwarded only to the catalog refresh that follows (model-runtime.ts:700-712). Aborted reports the caller's signal, so the caller skips that catalog refresh.
+func (r *ModelRegistry) refreshContext(ctx context.Context, providers []string) modelRefreshResult {
 	config, loadError := r.readConfig()
-	if ctx.Err() != nil {
-		return modelRefreshResult{Aborted: true}
-	}
 	r.mu.Lock()
-	if ctx.Err() != nil {
-		r.mu.Unlock()
-		return modelRefreshResult{Aborted: true}
-	}
 	r.config = config
 	r.loadError = loadError
 	r.configureRadiusProvidersLocked()
 	listener := r.onChange
+	observers := slices.Clone(r.observers)
 	r.mu.Unlock()
+	r.recomposeNativeProviders(providers)
+	aborted := ctx.Err() != nil
+	if backgroundRefresh(ctx) {
+		return modelRefreshResult{Aborted: aborted}
+	}
+	for _, observer := range observers {
+		observer.publish()
+	}
 	listener.publish()
-	return modelRefreshResult{}
+	return modelRefreshResult{Aborted: aborted}
 }
 
 // GetAll returns explicit models and configured overlays for exact generated identities; dynamic providers take precedence over models.json.
 func (r *ModelRegistry) GetAll() []ModelEntry {
 	out := append(r.getAllConfigured(), r.radiusEntries(false)...)
+	out = slices.DeleteFunc(out, func(entry ModelEntry) bool { return r.GetProvider(entry.ProviderID) != nil })
+	for _, model := range r.GetNativeModels() {
+		out = append(out, NativeModelEntry(model))
+	}
 	sortModelEntries(out)
 	return out
 }
@@ -1031,38 +1192,71 @@ func (r *ModelRegistry) getAllConfigured() []ModelEntry {
 // dynamically takes precedence over a models.json entry of the same name,
 // matching Resolve()'s lookup order.
 func (r *ModelRegistry) GetAvailable() []ModelEntry {
-	return append(r.getAvailableConfigured(), r.radiusEntries(true)...)
+	var entries []ModelEntry
+	for _, model := range r.GetAvailableModelData() {
+		entries = append(entries, NativeModelEntry(model))
+	}
+	return entries
 }
 
-func (r *ModelRegistry) getAvailableConfigured() []ModelEntry {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
-	var out []ModelEntry
-	for providerID, prov := range r.dynamic {
-		if !r.hasConfiguredAuthLocked(providerID, &prov) {
-			continue
+// GetAvailableModelData returns the available catalog without request authentication or backend construction.
+func (r *ModelRegistry) GetAvailableModelData() []*ai.Model {
+	var out []*ai.Model
+	configured := make(map[string]bool)
+	filters := make(map[string]func(string) bool)
+	for _, model := range r.GetAllModelData() {
+		id := model.ProviderMeta.ProviderID
+		available, checked := configured[id]
+		if !checked {
+			available = r.HasConfiguredAuth(id)
+			configured[id] = available
+			filters[id] = r.accountModelFilter(id)
 		}
-		for _, md := range prov.Models {
-			out = append(out, r.resolveModelDef(providerID, prov, md))
-		}
-	}
-	if r.config != nil {
-		for providerID, prov := range r.config.Providers {
-			if r.radiusProviderLocked(providerID) != nil {
-				continue
-			}
-			if _, dynamicOwns := r.dynamic[providerID]; dynamicOwns {
-				continue
-			}
-			if !r.hasConfiguredAuthLocked(providerID, &prov) {
-				continue
-			}
-			for _, md := range prov.Models {
-				out = append(out, r.resolveModelDef(providerID, prov, md))
-			}
+		if available && filters[id](model.ID) {
+			out = append(out, model)
 		}
 	}
 	return out
+}
+
+// accountModelFilter retains native availability snapshots and Copilot's optional OAuth picker allowlist.
+func (r *ModelRegistry) accountModelFilter(providerID string) func(string) bool {
+	r.mu.RLock()
+	native, registered := r.native[providerID]
+	available := slices.Clone(native.available)
+	r.mu.RUnlock()
+	if registered {
+		return func(id string) bool { return slices.Contains(available, id) }
+	}
+	all := func(string) bool { return true }
+	if providerID != "github-copilot" {
+		return all
+	}
+	r.mu.RLock()
+	store := r.credentialStore
+	runtime := r.runtimeCredentials
+	r.mu.RUnlock()
+	if runtime != nil {
+		if key, ok := runtime.RuntimeAPIKey(providerID); ok && key != "" {
+			return all
+		}
+	}
+	if store == nil {
+		return all
+	}
+	credential, found, err := ai.ReadRawCredential(context.Background(), store, providerID)
+	if err != nil || !found || credential.Type != ai.CredentialOAuth || len(credential.AvailableModelIDs) == 0 {
+		return all
+	}
+	var ids []string
+	if json.Unmarshal(credential.AvailableModelIDs, &ids) != nil || ids == nil {
+		return all
+	}
+	allowed := make(map[string]bool, len(ids))
+	for _, id := range ids {
+		allowed[id] = true
+	}
+	return func(id string) bool { return allowed[id] }
 }
 
 // HasConfiguredAuth reports whether the provider has either an API key
@@ -1070,11 +1264,22 @@ func (r *ModelRegistry) getAvailableConfigured() []ModelEntry {
 // credentials. Mirrors upstream ModelRegistry.hasConfiguredAuth()
 // (model-registry.ts:605-612).
 func (r *ModelRegistry) HasConfiguredAuth(providerID string) bool {
+	if r.GetProvider(providerID) != nil {
+		if r.availabilityAuth != nil {
+			return r.availabilityAuth(providerID)
+		}
+		r.nativeMu.Lock()
+		defer r.nativeMu.Unlock()
+		return r.nativeAvailable[providerID]
+	}
 	if _, owned := r.RadiusOAuth(providerID); owned {
 		return r.radiusHasAuth(providerID)
 	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
+	if native, ok := r.native[providerID]; ok {
+		return native.check != nil
+	}
 	if r.runtimeCredentials != nil && r.runtimeCredentials.HasRuntimeAPIKey(providerID) {
 		return true
 	}
@@ -1092,25 +1297,40 @@ func (r *ModelRegistry) HasConfiguredAuth(providerID string) bool {
 func (r *ModelRegistry) GetProviderAuthStatus(providerID string) ai.AuthStatus {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
-	if r.authStorage != nil {
-		status := r.authStorage.GetAuthStatus(providerID)
-		if status.Source != "" {
-			return status
+	if r.runtimeCredentials != nil && r.runtimeCredentials.HasRuntimeAPIKey(providerID) {
+		return ai.AuthStatus{Configured: true, Source: ai.AuthSourceRuntime}
+	}
+	var fallback ai.AuthStatus
+	if r.credentialStore != nil {
+		fallback = ai.CredentialStoreAuthStatus(context.Background(), r.credentialStore, providerID)
+		if fallback.Source == ai.AuthSourceStored {
+			return fallback
 		}
 	}
-	if prov, ok := r.dynamic[providerID]; ok && prov.APIKey != "" {
+	prov, dynamic := r.dynamic[providerID]
+	if !dynamic && r.config != nil {
+		prov = r.config.Providers[providerID]
+	}
+	if prov.APIKey != "" {
 		if configvalue.IsCommandConfigValue(prov.APIKey) {
 			return ai.AuthStatus{Configured: true, Source: ai.AuthSourceModelsJSONCommand}
 		}
-		if envVarNames := configvalue.GetConfigValueEnvVarNames(prov.APIKey); len(envVarNames) > 0 {
+		if names := configvalue.GetConfigValueEnvVarNames(prov.APIKey); len(names) > 0 {
 			if configvalue.IsConfigValueConfigured(prov.APIKey, r.providerEnv(providerID)) {
-				return ai.AuthStatus{Configured: true, Source: ai.AuthSourceEnvironment, Label: strings.Join(envVarNames, ", ")}
+				return ai.AuthStatus{Configured: true, Source: ai.AuthSourceEnvironment, Label: strings.Join(names, ", ")}
 			}
-			return ai.AuthStatus{Configured: false}
+			return ai.AuthStatus{}
 		}
-		return ai.AuthStatus{Configured: true, Source: ai.AuthSourceModelsJSONKey}
+		source := ai.AuthSourceModelsJSONKey
+		if dynamic {
+			source = ai.AuthSourceFallback
+		}
+		return ai.AuthStatus{Configured: true, Source: source}
 	}
-	return ai.AuthStatus{}
+	if fallback.Source == ai.AuthSourceEnvironment {
+		fallback.Configured = r.HasAnyKey(providerID)
+	}
+	return fallback
 }
 
 var builtInProviderDisplayNames = map[string]string{
@@ -1136,6 +1356,7 @@ var builtInProviderDisplayNames = map[string]string{
 	"opencode":               "OpenCode Zen",
 	"opencode-go":            "OpenCode Go",
 	"openai":                 "OpenAI",
+	"github-copilot":         "GitHub Copilot",
 	"openrouter":             "OpenRouter",
 	"together":               "Together AI",
 	"vercel-ai-gateway":      "Vercel AI Gateway",
@@ -1143,11 +1364,14 @@ var builtInProviderDisplayNames = map[string]string{
 	"xiaomi-token-plan-ams":  "Xiaomi MiMo Token Plan (Amsterdam)",
 	"xiaomi-token-plan-cn":   "Xiaomi MiMo Token Plan (China)",
 	"xiaomi-token-plan-sgp":  "Xiaomi MiMo Token Plan (Singapore)",
-	"zai":                    "ZAI Coding Plan (Global)",
+	"zai":                    "Z.AI",
 	"zai-coding-cn":          "ZAI Coding Plan (China)",
 }
 
 func (r *ModelRegistry) GetProviderDisplayName(providerID string) string {
+	if provider := r.GetProvider(providerID); provider != nil {
+		return provider.Name
+	}
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 	if provider := r.radiusProviderLocked(providerID); provider != nil {
@@ -1174,7 +1398,7 @@ func (r *ModelRegistry) hasConfiguredAuthLocked(providerID string, prov *provide
 		return true
 	}
 	// Dynamic provider with explicit API key.
-	if prov.APIKey != "" && configvalue.Resolve(prov.APIKey, r.providerEnv(providerID)) != "" {
+	if prov.APIKey != "" && configvalue.IsConfigValueConfigured(prov.APIKey, r.providerEnv(providerID)) {
 		return true
 	}
 	// OAuth registration present → check stored credentials.
@@ -1186,21 +1410,19 @@ func (r *ModelRegistry) hasConfiguredAuthLocked(providerID string, prov *provide
 }
 
 func (r *ModelRegistry) hasStoredOAuth(providerID string) bool {
-	if r.authStorage == nil {
+	if r.credentialStore == nil {
 		return false
 	}
-	cred, ok, _ := r.authStorage.Get(providerID)
-	return ok && cred.Type == "oauth"
+	cred, err := r.credentialStore.Read(context.Background(), providerID)
+	return err == nil && cred != nil && cred.Type == "oauth"
 }
 
-// hasStoredCredential reports any stored auth.json credential for
-// providerID. Upstream checkAuth treats a stored api_key or oauth credential
-// as configured auth.
+// hasStoredCredential reports any stored credential for providerID. Upstream checkAuth treats a stored api_key or oauth credential as configured auth.
 func (r *ModelRegistry) hasStoredCredential(providerID string) bool {
-	if r.authStorage == nil {
+	if r.credentialStore == nil {
 		return false
 	}
-	_, ok, _ := r.authStorage.GetRaw(providerID)
+	_, ok, _ := ai.ReadRawCredential(context.Background(), r.credentialStore, providerID)
 	return ok
 }
 
@@ -1246,87 +1468,15 @@ func (r *ModelRegistry) AvailableProviderCount() int {
 
 // resolveModelDef builds a ModelEntry from a custom model definition.
 func (r *ModelRegistry) resolveModelDef(providerID string, prov providerConfig, md modelDefinition) ModelEntry {
-	// Model-level overrides provider-level.
-	baseURL := md.BaseURL
-	if baseURL == "" {
-		baseURL = prov.BaseURL
-	}
-	api := md.API
-	if api == "" {
-		api = prov.API
-	}
-	apiKey := prov.APIKey
+	entry := modelDefinitionEntry(providerID, prov, md)
 	env := r.providerEnv(providerID)
-	if apiKey != "" {
-		apiKey = configvalue.Resolve(apiKey, env)
+	if prov.APIKey != "" {
+		entry.APIKey = configvalue.Resolve(prov.APIKey, env)
 	}
-
-	// Merge headers: provider → model.
 	providerHeaders := mergeHeadersOrdered(nil, prov.Headers, prov.headerEntries, env)
-	headers := mergeHeadersOrdered(providerHeaders, md.Headers, md.headerEntries, env)
-
-	// Merge compat: provider → model (model wins per-field).
-	compat := mergeCompat(prov.Compat, md.Compat)
-
-	name := md.Name
-	if name == "" {
-		name = md.ID
-	}
-
-	reasoning := false
-	if md.Reasoning != nil {
-		reasoning = *md.Reasoning
-	}
-
-	input := []string{"text"}
-	if md.Input != nil {
-		input = append([]string{}, (*md.Input)...)
-	}
-
-	ctxWindow := 128000
-	if md.ContextWindow != nil {
-		ctxWindow = *md.ContextWindow
-	}
-
-	maxTokens := 16384
-	if md.MaxTokens != nil {
-		maxTokens = *md.MaxTokens
-	}
-	var inputCost, outputCost, cacheReadCost, cacheWriteCost float64
-	var costTiers []ai.CostTier
-	if md.Cost != nil {
-		inputCost = md.Cost.Input
-		outputCost = md.Cost.Output
-		cacheReadCost = md.Cost.CacheRead
-		cacheWriteCost = md.Cost.CacheWrite
-		costTiers = append([]ai.CostTier(nil), md.Cost.Tiers...)
-	}
-
-	return ModelEntry{
-		ProviderID:       providerID,
-		ModelID:          md.ID,
-		APIKey:           apiKey,
-		BaseURL:          baseURL,
-		DisplayName:      name,
-		API:              api,
-		Headers:          headers,
-		Compat:           compat,
-		Reasoning:        reasoning,
-		ThinkingLevelMap: cloneThinkingLevelMap(md.ThinkingLevelMap),
-		SamplingParams:   maps.Clone(md.SamplingParams),
-		Input:            input,
-		InputLimits:      md.InputLimits.Clone(),
-		ContextWindow:    ctxWindow,
-		MaxTokens:        maxTokens,
-		InputCost:        inputCost,
-		OutputCost:       outputCost,
-		CacheReadCost:    cacheReadCost,
-		CacheWriteCost:   cacheWriteCost,
-		CostTiers:        costTiers,
-		PromptCache:      maps.Clone(md.PromptCache),
-		Env:              env,
-		Insecure:         prov.Insecure,
-	}
+	entry.Headers = mergeHeadersOrdered(providerHeaders, md.Headers, md.headerEntries, env)
+	entry.Env = env
+	return entry
 }
 
 // resolveProviderDefaults builds a partial ModelEntry from provider-level config.
@@ -1355,56 +1505,8 @@ func (r *ModelRegistry) resolveProviderDefaults(providerID string, prov provider
 
 // applyOverride merges a modelOverride into an existing ModelEntry.
 func (r *ModelRegistry) applyOverride(e *ModelEntry, ovr modelOverrideJSON) {
-	if ovr.Name != "" {
-		e.DisplayName = ovr.Name
-	}
-	if ovr.Reasoning != nil {
-		e.Reasoning = *ovr.Reasoning
-	}
-	if ovr.ThinkingLevelMap != nil {
-		e.ThinkingLevelMap = mergeThinkingLevelMaps(e.ThinkingLevelMap, ovr.ThinkingLevelMap)
-	}
-	if ovr.SamplingParams != nil {
-		if e.SamplingParams == nil {
-			e.SamplingParams = make(map[string]any, len(ovr.SamplingParams))
-		}
-		maps.Copy(e.SamplingParams, ovr.SamplingParams)
-	}
-	e.InputLimits = mergeModelInputLimits(e.InputLimits, ovr.InputLimits)
-	if ovr.Input != nil {
-		e.Input = append([]string(nil), (*ovr.Input)...)
-	}
-	if ovr.ContextWindow != nil {
-		e.ContextWindow = *ovr.ContextWindow
-	}
-	if ovr.MaxTokens != nil {
-		e.MaxTokens = *ovr.MaxTokens
-	}
-	if ovr.Cost != nil {
-		if ovr.Cost.Input != nil {
-			e.InputCost = *ovr.Cost.Input
-		}
-		if ovr.Cost.Output != nil {
-			e.OutputCost = *ovr.Cost.Output
-		}
-		if ovr.Cost.CacheRead != nil {
-			e.CacheReadCost = *ovr.Cost.CacheRead
-		}
-		if ovr.Cost.CacheWrite != nil {
-			e.CacheWriteCost = *ovr.Cost.CacheWrite
-		}
-		if ovr.Cost.Tiers != nil {
-			e.CostTiers = append([]ai.CostTier(nil), (*ovr.Cost.Tiers)...)
-		}
-	}
-	if ovr.PromptCache != nil {
-		if e.PromptCache == nil {
-			e.PromptCache = make(ai.ModelPromptCache, len(ovr.PromptCache))
-		}
-		maps.Copy(e.PromptCache, ovr.PromptCache)
-	}
+	applyModelOverride(e, ovr)
 	e.Headers = mergeHeadersOrdered(e.Headers, ovr.Headers, ovr.headerEntries, r.providerEnv(e.ProviderID))
-	e.Compat = mergeCompat((*providerCompat)(e.Compat), ovr.Compat)
 }
 
 func cloneThinkingLevelMap(in ai.ThinkingLevelMap) ai.ThinkingLevelMap {
@@ -1594,6 +1696,9 @@ func mergeCompat(a, b *providerCompat) *ai.OpenAICompat {
 	if ovr.SupportsThinkingTokenBudget != nil {
 		merged.SupportsThinkingTokenBudget = ovr.SupportsThinkingTokenBudget
 	}
+	if ovr.ThinkingTokenBudgetField != "" {
+		merged.ThinkingTokenBudgetField = ovr.ThinkingTokenBudgetField
+	}
 	if ovr.SupportsAdditionalTools != nil {
 		merged.SupportsAdditionalTools = ovr.SupportsAdditionalTools
 	}
@@ -1610,7 +1715,7 @@ func mergeCompat(a, b *providerCompat) *ai.OpenAICompat {
 		merged.SupportsMidConvoToolChanges = ovr.SupportsMidConvoToolChanges
 	}
 	if ovr.AllowedFallbackModels != nil {
-		merged.AllowedFallbackModels = append([]ai.AnthropicAllowedFallbackModel(nil), ovr.AllowedFallbackModels...)
+		merged.AllowedFallbackModels = slices.Clone(ovr.AllowedFallbackModels)
 		for i := range merged.AllowedFallbackModels {
 			merged.AllowedFallbackModels[i].Cost.Tiers = append([]ai.CostTier(nil), merged.AllowedFallbackModels[i].Cost.Tiers...)
 		}

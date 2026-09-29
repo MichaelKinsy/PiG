@@ -62,10 +62,9 @@ func (c *RuntimeCredentials) RuntimeAPIKey(providerID string) (string, bool) {
 	return key, ok
 }
 
-// Read implements CredentialStore: a runtime key reads as an api_key
-// credential ahead of the base store.
+// Read implements CredentialStore: a runtime key reads as an api_key credential ahead of the base store. Cancellation returns the caller's cause.
 func (c *RuntimeCredentials) Read(ctx context.Context, providerID string) (*Credential, error) {
-	if err := ctx.Err(); err != nil {
+	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}
 	if key, ok := c.RuntimeAPIKey(providerID); ok && key != "" {
@@ -77,8 +76,7 @@ func (c *RuntimeCredentials) Read(ctx context.Context, providerID string) (*Cred
 	return c.store.Read(ctx, providerID)
 }
 
-// List implements CredentialStore: base entries, with every runtime key
-// listed as an api_key entry.
+// List implements CredentialStore: base entries, with every runtime key listed as an api_key entry. It checks cancellation after the base list completes and preserves the caller's cause.
 func (c *RuntimeCredentials) List(ctx context.Context) ([]CredentialInfo, error) {
 	entries := map[string]CredentialInfo{}
 	var order []string
@@ -94,7 +92,7 @@ func (c *RuntimeCredentials) List(ctx context.Context) ([]CredentialInfo, error)
 			entries[entry.ProviderID] = entry
 		}
 	}
-	if err := ctx.Err(); err != nil {
+	if err := context.Cause(ctx); err != nil {
 		return nil, err
 	}
 	c.mu.RLock()
@@ -121,23 +119,14 @@ func (c *RuntimeCredentials) Modify(ctx context.Context, providerID string, fn f
 	return c.store.Modify(ctx, providerID, fn)
 }
 
-// credentialDeleter is a base store that can delete a provider's credential.
-type credentialDeleter interface {
-	Delete(providerID string) error
-}
-
 // Delete removes providerID's credential from the base store, then its
-// runtime key.
+// runtime key. Failed or cancelled deletion leaves the runtime key intact and preserves the cancellation cause.
 func (c *RuntimeCredentials) Delete(ctx context.Context, providerID string) error {
-	if err := ctx.Err(); err != nil {
+	if err := context.Cause(ctx); err != nil {
 		return err
 	}
 	if c.store != nil {
-		deleter, ok := c.store.(credentialDeleter)
-		if !ok {
-			return errors.New("runtime credentials: base credential store cannot delete")
-		}
-		if err := deleter.Delete(providerID); err != nil {
+		if err := c.store.Delete(ctx, providerID); err != nil {
 			return err
 		}
 	}

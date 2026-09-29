@@ -1,13 +1,4 @@
-// Package runtime holds the durable AgentHarness runtime declarations of
-// packages/agent/src/harness/runtime/types.ts: the process-local
-// configuration, the lane state projection, lane/operation command decisions
-// and the Drive pass with its effect gate.
-//
-// Drive procedures (agent/harness/runtime/drive) import this package. Upstream
-// runtime/lane.ts and the drive procedures import each other, which Go does
-// not allow; the Lane implementation that invokes drive procedures must live
-// in a package that imports both, or hand procedures its capabilities through
-// interfaces declared beside them.
+// Package runtime owns the durable AgentHarness runtime: lane control projections, serialized commands, and installed drive passes with their effect gates. Lane and its drive procedures share this package to preserve their mutual calls without a Go import cycle.
 package runtime
 
 import (
@@ -185,6 +176,9 @@ type Drive struct {
 	control    *execution.GateControl
 	closeAbort func(cause error)
 
+	completionMu   sync.Mutex
+	settling       bool
+	closeError     error
 	completionOnce sync.Once
 	completed      chan struct{}
 	outcome        agentharness.DriveOutcome
@@ -211,6 +205,14 @@ func NewDrive(ctx harness.Context, options agentharness.DriveOptions) *Drive {
 	return drive
 }
 
+// beginSettlement keeps observers behind the returned pass's synchronous outcome callback, including fault publication and lane cleanup. Active effects remain immediately observable on close.
+// Ports packages/agent/src/harness/runtime/lane.ts (driveOperation.then callbacks).
+func (drive *Drive) beginSettlement() {
+	drive.completionMu.Lock()
+	drive.settling = true
+	drive.completionMu.Unlock()
+}
+
 // Settle resolves the completion with outcome unless already settled.
 func (drive *Drive) Settle(outcome agentharness.DriveOutcome) {
 	drive.complete(outcome, nil)
@@ -222,6 +224,15 @@ func (drive *Drive) Fail(err error) {
 }
 
 func (drive *Drive) complete(outcome agentharness.DriveOutcome, err error) {
+	drive.completionMu.Lock()
+	defer drive.completionMu.Unlock()
+	if drive.closeError != nil {
+		outcome, err = agentharness.DriveOutcome{}, drive.closeError
+	}
+	drive.completeLocked(outcome, err)
+}
+
+func (drive *Drive) completeLocked(outcome agentharness.DriveOutcome, err error) {
 	drive.completionOnce.Do(func() {
 		drive.outcome, drive.err = outcome, err
 		close(drive.completed)
@@ -251,13 +262,20 @@ func (drive *Drive) SignalAbort() {
 	drive.control.SignalAbort()
 }
 
-// CloseGate permanently refuses admission with err, cancels CloseSignal and
-// rejects the completion with err unless it already settled.
+// CloseGate permanently refuses admission with err, cancels CloseSignal and rejects completion unless it already settled. If the pass is publishing its outcome, rejection becomes observable after that synchronous callback and lane cleanup finish; the first close error still wins.
 func (drive *Drive) CloseGate(err error) {
 	if err == nil {
 		err = errors.New("drive closed")
 	}
 	drive.control.Close(err)
 	drive.closeAbort(err)
-	drive.Fail(err)
+	drive.completionMu.Lock()
+	defer drive.completionMu.Unlock()
+	if drive.settling {
+		if drive.closeError == nil {
+			drive.closeError = err
+		}
+		return
+	}
+	drive.completeLocked(agentharness.DriveOutcome{}, err)
 }

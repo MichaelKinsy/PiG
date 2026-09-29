@@ -35,11 +35,11 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 
 REQUIRED_FILES = [
     "LICENSE",
-    "SECURITY.md",
-    "CONTRIBUTING.md",
-    "CODE_OF_CONDUCT.md",
-    "GOVERNANCE.md",
-    "MAINTAINERS.md",
+    ".github/SECURITY.md",
+    ".github/CONTRIBUTING.md",
+    ".github/CODE_OF_CONDUCT.md",
+    "docs/project/GOVERNANCE.md",
+    "docs/project/MAINTAINERS.md",
     "CHANGELOG.md",
     "CITATION.cff",
     ".github/dependabot.yml",
@@ -152,7 +152,7 @@ def check_pins() -> list[str]:
         "coding/extension/host/subprocess/builder_node.go",
         "minimumNodeRuntimeVersion",
     ).removesuffix(".0")
-    pi = search(r'^const UpstreamVersion = "([^"]+)"', "coding/pigversion/pigversion.go", "UpstreamVersion")
+    pi = search(r'^const UpstreamVersion = "([^"]+)"', "internal/coding/pigversion/pigversion.go", "UpstreamVersion")
     rust = search(r"^\s+RUST_VERSION:\s*(\S+)", ".github/workflows/ci.yml", "RUST_VERSION")
 
     def minor(version: str) -> str:
@@ -181,8 +181,8 @@ def check_pins() -> list[str]:
         ("Pi", pi, "extensions/sdk-ts peerDependency", sdk.get("peerDependencies", {}).get("@earendil-works/pi-coding-agent", "")),
         ("Pi", pi, "ci-parity Dockerfile ARG PI_VERSION", search(r"^ARG PI_VERSION=(\S+)$", "automation/images/ci-parity/Dockerfile", "PI_VERSION")),
         ("Pi", pi, "ci-parity image tag", re.search(r"-pi([\d.]+)-", parity_tag).group(1)),
-        ("Pi", pi, "parity/known-gaps.toml pi_version", search(r'^pi_version = "([^"]+)"', "parity/known-gaps.toml", "pi_version")),
-        ("Pi", pi, "parity/behavior-contracts.toml upstream_version", search(r'^upstream_version = "([^"]+)"', "parity/behavior-contracts.toml", "upstream_version")),
+        ("Pi", pi, "test/parity/known-gaps.toml pi_version", search(r'^pi_version = "([^"]+)"', "test/parity/known-gaps.toml", "pi_version")),
+        ("Pi", pi, "test/parity/behavior-contracts.toml upstream_version", search(r'^upstream_version = "([^"]+)"', "test/parity/behavior-contracts.toml", "upstream_version")),
         ("Pi", pi, "README Pi pin badge", search(r"img\.shields\.io/badge/Pi%20pin-([\d.]+)-", "README.md", "Pi pin badge")),
         ("Pi", pi, "README Pi pin badge text", search(r"\[!\[Pi pin ([\d.]+)\]", "README.md", "Pi pin badge text")),
         ("Pi", pi, "README Pi pin badge link", search(r"earendil-works/pi/releases/tag/v([\d.]+)\)", "README.md", "Pi pin badge link")),
@@ -202,7 +202,7 @@ def check_pins() -> list[str]:
         "Node": ".node-version",
         "Node extension runtime": "coding/extension/host/subprocess/builder_node.go minimumNodeRuntimeVersion",
         "Rust": ".github/workflows/ci.yml RUST_VERSION",
-        "Pi": "coding/pigversion/pigversion.go UpstreamVersion",
+        "Pi": "internal/coding/pigversion/pigversion.go UpstreamVersion",
     }
     return [
         f"{kind} pin drift: {where} = {value!r}, want {want!r} from {source[kind]}"
@@ -211,8 +211,10 @@ def check_pins() -> list[str]:
     ] + check_workflow_version_files()
 
 
-# Workflows never pin Go or Node by literal: each setup step reads the source.
+# Workflows read toolchain pins from files. The Node compatibility matrix reads
+# separate minimum/current runtime pins without changing the build runtime.
 SETUP_VERSION_FILES = {"setup-go": ("go-version", "go.mod"), "setup-node": ("node-version", ".node-version")}
+NODE_RUNTIME_MATRIX_INPUT = "node-version-file: ${{ matrix.node_version_file }}"
 
 
 def workflow_step(lines: list[str], index: int) -> list[str]:
@@ -245,7 +247,10 @@ def check_workflow_version_files() -> list[str]:
             if not match:
                 continue
             key, want = SETUP_VERSION_FILES[match.group(1)]
-            if f"{key}-file: {want}" not in workflow_step(lines, number - 1):
+            step = workflow_step(lines, number - 1)
+            if match.group(1) == "setup-node" and NODE_RUNTIME_MATRIX_INPUT in step:
+                continue
+            if f"{key}-file: {want}" not in step:
                 problems.append(f"{name}:{number}: actions/{match.group(1)} does not set {key}-file: {want}")
     return problems
 

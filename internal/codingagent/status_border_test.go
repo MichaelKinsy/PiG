@@ -46,7 +46,7 @@ func TestWorkingStatusStaysVisibleThroughPendingAndRunningToolsUntilAgentEnd(t *
 		agent.MessageStartEvent{Message: assistant},
 		agent.MessageEndEvent{Message: assistant},
 		agent.ToolExecutionStartEvent{ToolCallID: "call-1", ToolName: "read", Args: json.RawMessage(`{"path":"main.go"}`)},
-		agent.ToolExecutionEndEvent{ToolCallID: "call-1", ToolName: "read", Result: agent.AgentToolResult{Content: "contents"}},
+		agent.ToolExecutionEndEvent{ToolCallID: "call-1", ToolName: "read", Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "contents"}}}},
 		agent.TurnEndEvent{Message: assistant},
 	}
 	for _, event := range events {
@@ -80,7 +80,7 @@ func TestStatusBorderIdleCompactionAndMatchingEnd(t *testing.T) {
 	m := statusBorderMode(t, true)
 	m.isIdle = true
 	m.handleAgentEvent(agent.CompactionStartEvent{Reason: "manual"})
-	if got := widthx.StripAnsi(m.editor.Render(80)[1]); !strings.Contains(got, "── ⠋ Compacting context... (escape to cancel)") {
+	if got := widthx.StripAnsi(m.editor.Render(80)[0]); !strings.Contains(got, "── ⠋ Compacting context... (escape to cancel)") {
 		t.Fatalf("compaction border=%q", got)
 	}
 	if len(m.statusContainer.Render(80)) != 0 {
@@ -100,7 +100,7 @@ func TestStatusBorderIdleCompactionAndMatchingEnd(t *testing.T) {
 		t.Fatal("compaction end cleared replacement working status")
 	}
 	m.stopWorkingLoader()
-	if strings.Contains(widthx.StripAnsi(m.editor.Render(80)[1]), "Working") {
+	if strings.Contains(widthx.StripAnsi(m.editor.Render(80)[0]), "Working") {
 		t.Fatal("working end retained status")
 	}
 }
@@ -109,7 +109,7 @@ func TestStatusBorderFallbackAndIdleRows(t *testing.T) {
 	for _, mode := range []string{"regular", "fullscreen"} {
 		for _, embedded := range []bool{false, true} {
 			m := statusBorderMode(t, embedded)
-			m.opts.Settings.TuiMode = mode
+			m.opts.TuiMode = mode
 			m.opts.Settings.ClearOnShrink = new(true)
 			m.tuiInst.SetClearOnShrink(true)
 			m.startWorkingLoader()
@@ -135,7 +135,7 @@ func TestWorkingStatusOptionsAndVisibility(t *testing.T) {
 	ui := &ExtUIContext{m: m}
 	ui.SetWorkingMessage("Indexing")
 	ui.SetWorkingIndicator(map[string]any{"frames": []string{"A", "B"}, "intervalMs": 200})
-	if got := widthx.StripAnsi(m.editor.Render(80)[1]); !strings.Contains(got, "── A Indexing ") {
+	if got := widthx.StripAnsi(m.editor.Render(80)[0]); !strings.Contains(got, "── A Indexing ") {
 		t.Fatalf("custom status=%q", got)
 	}
 	m.tickStatusIndicators(m.statusLastFrame.Add(100 * time.Millisecond))
@@ -147,7 +147,7 @@ func TestWorkingStatusOptionsAndVisibility(t *testing.T) {
 		t.Fatal("custom interval did not advance")
 	}
 	ui.SetWorkingIndicator(map[string]any{"frames": []string{}})
-	if got := widthx.StripAnsi(m.editor.Render(80)[1]); !strings.Contains(got, "── Indexing ") {
+	if got := widthx.StripAnsi(m.editor.Render(80)[0]); !strings.Contains(got, "── Indexing ") {
 		t.Fatalf("hidden spinner=%q", got)
 	}
 	ui.SetWorkingVisible(false)
@@ -160,7 +160,7 @@ func TestWorkingStatusOptionsAndVisibility(t *testing.T) {
 	}
 	ui.SetWorkingIndicator(nil)
 	ui.SetWorkingMessage("")
-	if got := widthx.StripAnsi(m.editor.Render(80)[1]); !strings.Contains(got, "── ⠋ Working ") {
+	if got := widthx.StripAnsi(m.editor.Render(80)[0]); !strings.Contains(got, "── ⠋ Working ") {
 		t.Fatalf("reset status=%q", got)
 	}
 	m.handleAgentEvent(agent.CompactionStartEvent{Reason: "threshold"})

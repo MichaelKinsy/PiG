@@ -1,8 +1,9 @@
 package ai
 
-// Mirrors upstream .upstream/current/packages/ai/src/utils/oauth/openai-codex.ts.
+// Ports packages/ai/src/auth/oauth/openai-codex.ts.
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/base64"
@@ -19,6 +20,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
 )
 
 const (
@@ -65,7 +69,7 @@ func codexCreateState() (string, error) {
 // parseCodexAuthorizationInput extracts code (and optional state) from user-pasted
 // input. Mirrors upstream parseAuthorizationInput in openai-codex.ts:50-77.
 func parseCodexAuthorizationInput(input string) (code, state string) {
-	v := strings.TrimSpace(input)
+	v := trimJSWhitespace(input)
 	if v == "" {
 		return "", ""
 	}
@@ -137,10 +141,20 @@ func startCodexCallbackServer(expectedState string) (srv *http.Server, listener 
 	return srv, listener, resultCh, nil
 }
 
+// codexTokenResponse holds the members readTokenResponse reads (openai-codex.ts:127-146). Each member stays raw: Pi tests truthiness and typeof on the parsed value, so a mistyped member is a missing field, not a decode error.
 type codexTokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int64  `json:"expires_in"`
+	AccessToken  json.RawMessage `json:"access_token"`
+	RefreshToken json.RawMessage `json:"refresh_token"`
+	ExpiresIn    json.RawMessage `json:"expires_in"`
+}
+
+// nonEmptyJSONString returns the value of a JSON string member that is a JavaScript truthy string. Pi also accepts any other truthy value and would store it as the token; a token that is not a string cannot be a Credential and reports the missing-fields error.
+func nonEmptyJSONString(raw json.RawMessage) (string, bool) {
+	var value string
+	if json.Unmarshal(raw, &value) != nil || value == "" {
+		return "", false
+	}
+	return value, true
 }
 
 type TokenFailure struct {
@@ -172,6 +186,10 @@ func RefreshCodexToken(ctx context.Context, refreshToken string) (OAuthCredentia
 }
 
 func postCodexTokenForm(ctx context.Context, form url.Values) (OAuthCredentials, error) {
+	operation := "exchange"
+	if form.Get("grant_type") == "refresh_token" {
+		operation = "refresh"
+	}
 	ctx2, cancel := context.WithTimeout(ctx, 30*time.Second)
 	defer cancel()
 
@@ -184,28 +202,47 @@ func postCodexTokenForm(ctx context.Context, form url.Values) (OAuthCredentials,
 
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
+		if operation == "refresh" {
+			return OAuthCredentials{}, fmt.Errorf("OpenAI Codex token refresh error: %w", err)
+		}
+		if ctx.Err() != nil {
+			return OAuthCredentials{}, errors.New("Login cancelled")
+		}
 		return OAuthCredentials{}, fmt.Errorf("token exchange: %w", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	respBody, _ := io.ReadAll(resp.Body)
-	if resp.StatusCode != http.StatusOK {
-		return OAuthCredentials{}, fmt.Errorf("token exchange HTTP %d: %s", resp.StatusCode, string(respBody))
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		message := string(respBody)
+		if message == "" {
+			message = http.StatusText(resp.StatusCode)
+		}
+		return OAuthCredentials{}, fmt.Errorf("OpenAI Codex token %s failed (%d): %s", operation, resp.StatusCode, message)
 	}
-	var tok codexTokenResponse
-	if err := json.Unmarshal(respBody, &tok); err != nil {
+	var parsed json.RawMessage
+	if err := json.Unmarshal(respBody, &parsed); err != nil {
 		return OAuthCredentials{}, fmt.Errorf("token exchange invalid JSON: %w", err)
 	}
-	if tok.AccessToken == "" || tok.RefreshToken == "" || tok.ExpiresIn == 0 {
-		return OAuthCredentials{}, fmt.Errorf("token response missing required fields")
+	// `json?.access_token` reads a member of an object only; every other JSON value has none.
+	var tok codexTokenResponse
+	if trimmed := bytes.TrimSpace(parsed); len(trimmed) > 0 && trimmed[0] == '{' {
+		if err := json.Unmarshal(parsed, &tok); err != nil {
+			return OAuthCredentials{}, fmt.Errorf("token exchange invalid JSON: %w", err)
+		}
 	}
-	return OAuthCredentials{
-		Refresh: tok.RefreshToken,
-		Access:  tok.AccessToken,
-		// Mirror upstream's "now + expires_in*1000": no 5-minute safety
-		// margin (upstream stores raw; refresh-when-expired is checked
-		// against wall clock at access time).
-		Expires: time.Now().UnixMilli() + tok.ExpiresIn*1000,
-	}, nil
+	access, accessOK := nonEmptyJSONString(tok.AccessToken)
+	refresh, refreshOK := nonEmptyJSONString(tok.RefreshToken)
+	if !accessOK || !refreshOK || !jsonNumberToken(tok.ExpiresIn) {
+		stringified, err := jsonstringify.Canonicalize(parsed)
+		if err != nil {
+			return OAuthCredentials{}, fmt.Errorf("token exchange invalid JSON: %w", err)
+		}
+		return OAuthCredentials{}, fmt.Errorf("OpenAI Codex token %s response missing fields: %s", operation, stringified)
+	}
+	creds := OAuthCredentials{Refresh: refresh, Access: access}
+	// Mirror upstream's "Date.now() + expires_in * 1000": no safety margin, a fractional value stays exact and an overflowing literal is Infinity.
+	creds.SetExpiresMillis(float64(nowMillis()) + jsnumber.FromJSON(tok.ExpiresIn)*1000)
+	return creds, nil
 }
 
 // CodexAccountID extracts the chatgpt_account_id claim from a Codex access
@@ -294,7 +331,7 @@ func codexParseInterval(v any) (float64, bool) {
 		}
 		return t, true
 	case string:
-		trimmed := strings.TrimSpace(t)
+		trimmed := trimJSWhitespace(t)
 		if trimmed == "" {
 			return 0, true
 		}
@@ -589,9 +626,9 @@ func (c CodexOAuthProvider) LoginContext(ctx context.Context, callbacks OAuthLog
 	}
 	switch method {
 	case OpenAICodexDeviceCodeLoginMethod:
-		return LoginOpenAICodexDeviceCode(ctx, callbacks.OnDeviceCode)
+		return codexCredentialsFromToken(LoginOpenAICodexDeviceCode(ctx, callbacks.OnDeviceCode))
 	case OpenAICodexBrowserLoginMethod:
-		return LoginOpenAICodex(ctx, callbacks)
+		return codexCredentialsFromToken(LoginOpenAICodex(ctx, callbacks))
 	default:
 		return OAuthCredentials{}, fmt.Errorf("Unknown OpenAI Codex login method: %s", method)
 	}
@@ -600,5 +637,17 @@ func (c CodexOAuthProvider) RefreshToken(creds OAuthCredentials) (OAuthCredentia
 	return c.RefreshTokenContext(context.Background(), creds)
 }
 func (CodexOAuthProvider) RefreshTokenContext(ctx context.Context, creds OAuthCredentials) (OAuthCredentials, error) {
-	return RefreshCodexToken(ctx, creds.Refresh)
+	return codexCredentialsFromToken(RefreshCodexToken(ctx, creds.Refresh))
+}
+
+func codexCredentialsFromToken(credentials OAuthCredentials, err error) (OAuthCredentials, error) {
+	if err != nil {
+		return OAuthCredentials{}, err
+	}
+	accountID := CodexAccountID(credentials.Access)
+	if accountID == "" {
+		return OAuthCredentials{}, errors.New("Failed to extract accountId from token")
+	}
+	credentials.AccountID = accountID
+	return credentials, nil
 }

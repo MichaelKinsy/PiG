@@ -1,23 +1,63 @@
 package codingagent
 
 import (
-	"regexp"
+	"reflect"
 	"strconv"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+
+	gmparser "github.com/yuin/goldmark/parser"
+	gmtext "github.com/yuin/goldmark/text"
+	"github.com/yuin/goldmark/util"
+
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/internal/mermaid"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
-// Mermaid markdown transformer, ported from upstream
-// modes/interactive/components/mermaid.ts. Replaces top-level ```mermaid code
-// blocks with Unicode box-drawing diagrams (internal/mermaid), gated by the
-// MermaidRenderingMode and the message/streaming context.
+// Ports packages/coding-agent/src/modes/interactive/components/mermaid.ts.
 
-// mermaidFenceOpen matches a fenced-code opening line (up to 3 leading spaces,
-// 3+ backticks, optional info string), mirroring marked's fenced-code tokenizer.
-var mermaidFenceOpen = regexp.MustCompile("^( {0,3})(`{3,})(.*)$")
+var markedBlockSpace = lazyregexp.New(`^(?:[ \t]*(?:\n|$))+`)
+
+// Parse block ownership without inline rendering. The fence adapter applies Marked's token boundaries to every fence, so containment and the replacement body cannot disagree.
+var mermaidBlockParser = newMermaidBlockParser()
+
+func newMermaidBlockParser() gmparser.Parser {
+	blocks := append([]util.PrioritizedValue{util.Prioritized(&markedDefinitionParser{}, 0)}, gmparser.DefaultBlockParsers()...)
+	for i := range blocks {
+		switch {
+		case blocks[i].Value == gmparser.NewFencedCodeBlockParser():
+			blocks[i].Value = &markedFenceParser{}
+		case blocks[i].Value == gmparser.NewHTMLBlockParser():
+			blocks[i].Value = &markedHTMLParser{}
+		case reflect.TypeOf(blocks[i].Value) == reflect.TypeOf(gmparser.NewATXHeadingParser()):
+			blocks[i].Value = &markedATXHeadingParser{}
+		case reflect.TypeOf(blocks[i].Value) == reflect.TypeOf(gmparser.NewSetextHeadingParser()):
+			blocks[i].Value = &markedSetextHeadingParser{BlockParser: gmparser.NewSetextHeadingParser()}
+		}
+	}
+	return gmparser.NewParser(gmparser.WithBlockParsers(blocks...), gmparser.WithParagraphTransformers(gmparser.DefaultParagraphTransformers()...))
+}
+
+// Marked recognizes a multiline link definition before fenced code can interrupt its title. CommonMark paragraph splitting alone cannot preserve that token ownership. Angle destinations retain JavaScript dot's CR/LF/U+2028/U+2029 exclusions.
+var mermaidReferenceDefinition = lazyregexp.New(`^ {0,3}\[((?:\\[\s\S]|[^\[\]\\])+)\]: *(?:\n[ \t]*)?([^<` + markedJSSpace + `][^` + markedJSSpace + `]*|<[^\r\n\x{2028}\x{2029}]*?>)(?:(?: +(?:\n[ \t]*)?| *\n[ \t]*)(?:"(?:\\"?|[^"\\])*"|'[^'\n]*(?:\n[^'\n]+)*\n?'|\([^()]*\)))? *(?:\n+|$)`)
+
+func topLevelMermaidFences(markdown string) []*markedCodeBlock {
+	source := []byte(markdown)
+	root := mermaidBlockParser.Parse(gmtext.NewReader(source))
+	var fences []*markedCodeBlock
+	for node := root.FirstChild(); node != nil; node = node.NextSibling() {
+		code, ok := node.(*markedCodeBlock)
+		if !ok || code.Info == nil || !isMermaidInfo(string(code.Info.Segment.Value(source))) {
+			continue
+		}
+		fences = append(fences, code)
+	}
+	return fences
+}
 
 // createMermaidMarkdownTransformer returns a transformer that replaces top-level
 // Mermaid code blocks with terminal diagrams. theme may be nil (plain art).
@@ -33,82 +73,64 @@ func createMermaidMarkdownTransformer(getMode func() string, theme *tui.Theme) e
 	}
 }
 
-// transformMermaidBlocks scans markdown for top-level ```mermaid fenced blocks
-// and replaces each with its rendered diagram, leaving all other bytes intact
-// (marked's lexer→map→join round-trips non-code tokens to their raw source).
+// transformMermaidBlocks selects direct document code tokens, as Pi mermaid.ts:72-76 does with Marked. Non-code containers retain their raw text; only the selected fence bodies reach the diagram renderer.
 func transformMermaidBlocks(markdown string, context extension.MarkdownTransformContext, theme *tui.Theme) string {
-	lines := strings.SplitAfter(markdown, "\n") // keep trailing newlines
-	var out strings.Builder
-	for i := 0; i < len(lines); {
-		open := mermaidFenceOpen.FindStringSubmatch(strings.TrimSuffix(lines[i], "\n"))
-		if open == nil {
-			out.WriteString(lines[i])
-			i++
-			continue
-		}
-		fence := open[2]
-		info := open[3]
-		if !isMermaidInfo(info) {
-			out.WriteString(lines[i])
-			i++
-			continue
-		}
-		// Collect the block until a closing fence of >= len(fence) backticks.
-		closeRE := regexp.MustCompile("^ {0,3}`{" + strconv.Itoa(len(fence)) + ",}[ \\t]*$")
-		var raw strings.Builder
-		raw.WriteString(lines[i])
-		var body []string
-		j := i + 1
-		closed := false
-		for ; j < len(lines); j++ {
-			line := strings.TrimSuffix(lines[j], "\n")
-			raw.WriteString(lines[j])
-			if closeRE.MatchString(line) {
-				j++
-				closed = true
-				break
-			}
-			body = append(body, line)
-		}
-		// marked includes the newline after the closing fence in token.raw only
-		// when a non-blank line follows immediately (back-to-back blocks); before
-		// a blank-line boundary or EOF it belongs to the following space token.
-		// Strip it there and re-emit so surrounding blank lines survive exactly.
-		rawToken := raw.String()
-		trailingNL := ""
-		nextBlank := j >= len(lines) || strings.TrimSpace(strings.TrimSuffix(lines[j], "\n")) == ""
-		if closed && nextBlank && strings.HasSuffix(rawToken, "\n") {
-			rawToken = rawToken[:len(rawToken)-1]
-			trailingNL = "\n"
-		}
-		text := strings.Join(body, "\n")
-		out.WriteString(renderMermaidToken(rawToken, text, context, theme))
-		out.WriteString(trailingNL)
-		i = j
+	// Marked's lexer normalizes line endings before producing raw tokens.
+	markdown = strings.ReplaceAll(strings.ReplaceAll(markdown, "\r\n", "\n"), "\r", "\n")
+	fences := topLevelMermaidFences(markdown)
+	if len(fences) == 0 {
+		return markdown
 	}
+	var out strings.Builder
+	offset := 0
+	for _, fence := range fences {
+		out.WriteString(markdown[offset:fence.start])
+		body := strings.TrimSuffix(markdown[fence.bodyStart:fence.bodyEnd], "\n")
+		if fence.fence == '`' && fence.indent > 0 {
+			lines := strings.Split(body, "\n")
+			for i, line := range lines {
+				spaces := len(line) - len(strings.TrimLeftFunc(line, widthx.IsJSSpace))
+				if len(jsstring.ToUTF16(line[:spaces])) >= fence.indent {
+					lines[i] = jsstring.Slice(line, fence.indent)
+				}
+			}
+			body = strings.Join(lines, "\n")
+		}
+		out.WriteString(renderMermaidToken(markdown[fence.start:fence.end], body, context, theme))
+		offset = fence.end
+	}
+	out.WriteString(markdown[offset:])
 	return out.String()
+}
+
+// isMermaidFenceClose applies Marked's closing rule: up to three spaces, the opener's matching run, optional mixed backtick/tilde suffixes, then spaces only.
+func isMermaidFenceClose(line string, fenceLength int, fence byte) bool {
+	unindented := strings.TrimLeft(line, " ")
+	if len(line)-len(unindented) > 3 {
+		return false
+	}
+	rest := strings.TrimLeft(unindented, string(fence))
+	if len(unindented)-len(rest) < fenceLength {
+		return false
+	}
+	return strings.Trim(strings.TrimLeft(rest, "`~"), " ") == ""
 }
 
 // isMermaidInfo reports whether a fence info string names mermaid (first word,
 // lowercased), mirroring upstream isMermaid.
 func isMermaidInfo(info string) bool {
-	fields := strings.Fields(info)
+	fields := strings.FieldsFunc(info, widthx.IsJSSpace)
 	if len(fields) == 0 {
 		return false
 	}
-	return strings.ToLower(fields[0]) == "mermaid"
+	return strings.EqualFold(fields[0], "mermaid")
 }
 
-// renderMermaidToken renders one Mermaid token or returns its source.
-// pig divergence (D50): final failures include a display-only cause.
+// renderMermaidToken preserves the raw source when the natural layout is unsupported or wider than the available area, including during streaming.
 func renderMermaidToken(raw, text string, context extension.MarkdownTransformContext, theme *tui.Theme) string {
-	// pig divergence (D58): narrow labels before rejecting an over-wide diagram.
-	art, ok := mermaid.RenderWithin(text, context.AvailableWidth)
-	if !ok {
-		return raw + mermaidHint(unrenderableReason(text), context, theme)
-	}
-	if art.Width > context.AvailableWidth {
-		return raw + mermaidHint(oversizeReason(art.Width, context.AvailableWidth), context, theme)
+	art, ok := mermaid.Render(text)
+	if !ok || art.Width > context.AvailableWidth {
+		return raw
 	}
 	if !context.IsStreaming && len(art.Warnings) > 0 {
 		suffix := ""
@@ -128,9 +150,7 @@ func renderMermaidToken(raw, text string, context extension.MarkdownTransformCon
 	return strings.Join(wrapped, "  \n") + "\n"
 }
 
-// mermaidHint formats one "not rendered" line to append after the raw block, or
-// "" while streaming. Mirrors the shape upstream already uses for dropped
-// statements so all unrendered outcomes read identically.
+// mermaidHint appends the partial-parse warning after the raw code block once streaming finishes.
 func mermaidHint(reason string, context extension.MarkdownTransformContext, theme *tui.Theme) string {
 	if context.IsStreaming || reason == "" {
 		return ""
@@ -140,46 +160,6 @@ func mermaidHint(reason string, context extension.MarkdownTransformContext, them
 		line = theme.FgText("warning", line)
 	}
 	return "\n" + codeSpan(line) + "  \n"
-}
-
-// unrenderableReason names why the grammar rejected a diagram, in terms an
-// author can act on. A semicolon inside a statement is called out because it is
-// mermaid's statement separator: `A->>B: a;b` parses as a message followed by a
-// bogus statement `b`, which fails the whole diagram, while a trailing `;` is
-// fine.
-func unrenderableReason(text string) string {
-	kind := mermaid.DiagramKind(text)
-	if kind == "" {
-		return "unrecognized diagram type (flowchart, state, class, er, sequence)"
-	}
-	if hasInlineSemicolon(text) {
-		return "could not parse " + kind + " diagram; a ';' inside a statement splits it, so quote the text"
-	}
-	return "could not parse " + kind + " diagram"
-}
-
-// oversizeReason names an area overflow with both measurements, so the author
-// can shorten the diagram instead of re-reading the grammar. Returns "" when the
-// area is unmeasured (width 0 during early layout), where no honest number
-// exists to report.
-func oversizeReason(artWidth, availableWidth int) string {
-	if availableWidth <= 0 {
-		return ""
-	}
-	return "diagram is " + strconv.Itoa(artWidth) + " columns wide, area is " +
-		strconv.Itoa(availableWidth) + "; shorten the longest label or split the diagram"
-}
-
-// hasInlineSemicolon reports whether any line carries a semicolon before its
-// end, i.e. used as a separator rather than a terminator.
-func hasInlineSemicolon(text string) bool {
-	for line := range strings.SplitSeq(text, "\n") {
-		trimmed := strings.TrimSpace(line)
-		if i := strings.IndexByte(trimmed, ';'); i >= 0 && i < len(trimmed)-1 {
-			return true
-		}
-	}
-	return false
 }
 
 // codeSpan encodes one diagram row as an inline code span so Markdown preserves
@@ -223,9 +203,7 @@ func backtickRuns(s string) []int {
 	return runs
 }
 
-// styleSpan maps a diagram span's semantic class to pig's theme, mirroring
-// upstream styleSpan (theme colours differ from pi's, so themed output is not
-// byte-comparable across the two: only the span structure is parity-relevant).
+// styleSpan applies the theme color associated with each Mermaid semantic span.
 func styleSpan(span mermaid.Span, theme *tui.Theme) string {
 	switch span.Cls {
 	case mermaid.ClsBorder:

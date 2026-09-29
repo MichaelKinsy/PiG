@@ -20,7 +20,7 @@
       "name": "PiG",
       "description": "The Go implementation; executable pig.",
       "pig:kind": "project",
-      "pig:where": "coding/pigversion/pigversion.go pins Pi",
+      "pig:where": "internal/coding/pigversion/pigversion.go pins Pi",
       "pig:inspect": "pig verify"
     },
     {
@@ -182,7 +182,7 @@
       "name": "Divergence",
       "description": "A numbered, approved, user-visible difference from pinned Pi.",
       "pig:kind": "record",
-      "pig:where": "DIVERGENCES.md",
+      "pig:where": "docs/parity/DIVERGENCES.md",
       "pig:inspect": "pig docs show divergences"
     },
     {

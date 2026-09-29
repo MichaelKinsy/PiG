@@ -7,6 +7,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // ─── Session-management methods ──────────────────────────────────────────────
@@ -44,7 +45,7 @@ func (s *Session) ForkToNewSession(userMsgEntryID string) error {
 // ForkToNewSessionWithText forks before a user message, switches this Session
 // to the new file, and returns the selected message text.
 func (s *Session) ForkToNewSessionWithText(userMsgEntryID string) (string, error) {
-	sm := newSessionManagerForDir(s.services.CWD(), s.sessionDir)
+	sm := newSessionManagerForDir(s.services, s.sessionDir)
 	newSess, selectedText, err := sm.ForkToNewSession(s.inner, userMsgEntryID)
 	if err != nil {
 		return "", fmt.Errorf("coding: fork %s: %w", userMsgEntryID, err)
@@ -55,34 +56,42 @@ func (s *Session) ForkToNewSessionWithText(userMsgEntryID string) (string, error
 
 // NewSession replaces the active Session with a fresh Session.
 func (s *Session) NewSession(parentSession string) error {
-	id, err := icodingagent.GenerateSessionID()
+	next, err := s.prepareNewSession(parentSession)
 	if err != nil {
-		return fmt.Errorf("coding: new session id: %w", err)
-	}
-	var next *icodingagent.Session
-	if s.noSession {
-		next = icodingagent.NewSession(id, s.services.CWD())
-	} else {
-		next, err = newSessionManagerForDir(s.services.CWD(), s.sessionDir).Create(id, parentSession)
-		if err != nil {
-			return fmt.Errorf("coding: new session: %w", err)
-		}
-	}
-	if model := s.Model(); model != nil {
-		if err := next.AppendModelSwitch(providerID(model), model.ID, model.DisplayName); err != nil {
-			return fmt.Errorf("coding: new session model: %w", err)
-		}
-	}
-	if err := next.AppendThinkingLevelChange(string(s.ThinkingLevel())); err != nil {
-		return fmt.Errorf("coding: new session thinking level: %w", err)
+		return err
 	}
 	s.ReplaceInner(next)
 	return nil
 }
 
+func (s *Session) prepareNewSession(parentSession string) (*icodingagent.Session, error) {
+	id, err := icodingagent.GenerateSessionID()
+	if err != nil {
+		return nil, fmt.Errorf("coding: new session id: %w", err)
+	}
+	var next *icodingagent.Session
+	if s.noSession {
+		next = icodingagent.NewSession(id, s.services.CWD(), parentSession)
+	} else {
+		next, err = newSessionManagerForDir(s.services, s.sessionDir).Create(id, parentSession)
+		if err != nil {
+			return nil, fmt.Errorf("coding: new session: %w", err)
+		}
+	}
+	if model := s.Model(); model != nil {
+		if err := next.AppendModelSwitch(providerID(model), model.ID, model.DisplayName); err != nil {
+			return nil, fmt.Errorf("coding: new session model: %w", err)
+		}
+	}
+	if err := next.AppendThinkingLevelChange(string(s.ThinkingLevel())); err != nil {
+		return nil, fmt.Errorf("coding: new session thinking level: %w", err)
+	}
+	return next, nil
+}
+
 // SwitchSession loads a Session file and makes it active.
 func (s *Session) SwitchSession(path string) error {
-	next, err := newSessionManagerForDir(s.services.CWD(), s.sessionDir).Load(path)
+	next, err := newSessionManagerForDir(s.services, s.sessionDir).Load(path)
 	if err != nil {
 		return fmt.Errorf("coding: switch session: %w", err)
 	}
@@ -104,43 +113,56 @@ func (s *Session) CloneInPlace() error {
 	return nil
 }
 
-// Clone snapshots the current path-to-leaf as a new session JSONL on
-// disk. Returns the new Session; the caller should Close the new
-// session when done. The original session is unchanged.
-//
-// Per row 3.1 contract: clone writes a separate file with parentSession
-// metadata pointing at the source. Linear path only: orphan branches
-// are dropped.
+// Clone snapshots the current path-to-leaf as a new session JSONL on disk, dropping orphan branches and recording the source as parentSession. File-backed Sessions must already be saved. The original Session is unchanged; the caller owns closing the returned Session.
 func (s *Session) Clone() (*Session, error) {
 	leaf := s.inner.LeafID()
 	if leaf == nil {
 		return nil, fmt.Errorf("coding: clone: session is empty")
 	}
-	sm := newSessionManagerForDir(s.services.CWD(), s.sessionDir)
+	if err := s.inner.CheckSavedForFork(); err != nil {
+		return nil, err
+	}
+	sm := newSessionManagerForDir(s.services, s.sessionDir)
 	cloned, err := sm.Clone(s.inner, *leaf)
 	if err != nil {
 		return nil, fmt.Errorf("coding: clone: %w", err)
 	}
+	s.toolRegistryMu.RLock()
+	defer s.toolRegistryMu.RUnlock()
 	// The clone is built through NewSession, so it has the same extension and
 	// caller hooks, thinking budgets, model runtime and event buffer as any
 	// other Session; its agent state is the cloned path-to-leaf.
 	opts := SessionOptions{
-		Model:            s.Model(),
-		Tools:            s.tools,
-		SkipBuiltinTools: true,
-		BeforeToolCall:   s.callerHooks.beforeToolCall,
-		AfterToolCall:    s.callerHooks.afterToolCall,
-		Runner:           s.currentRunner(),
-		SessionDir:       s.sessionDir,
-		NoSession:        s.noSession,
-		EventBufferSize:  s.callerHooks.eventBufferSize,
-		Transport:        s.callerHooks.transport,
-		existing:         cloned,
+		ScopedModels:       s.ScopedModels(),
+		Model:              s.Model(),
+		Tools:              s.tools,
+		AllowedTools:       s.toolRegistry.allowed,
+		ExcludedTools:      s.toolRegistry.excluded,
+		toolRegistry:       &s.toolRegistry,
+		skipExtensionTools: s.toolRegistry.skipExtensions,
+		SkipBuiltinTools:   true,
+		BeforeToolCall:     s.callerHooks.beforeToolCall,
+		AfterToolCall:      s.callerHooks.afterToolCall,
+		Runner:             s.currentRunner(),
+		runnerShared:       true,
+		SessionDir:         s.sessionDir,
+		NoSession:          s.noSession,
+		EventBufferSize:    s.callerHooks.eventBufferSize,
+		Transport:          s.callerHooks.transport,
+		existing:           cloned,
+		ResourceLoader:     s.ResourceLoader(),
 	}
-	if s.structuredSystemPrompt {
+	if ref := s.resourceLoader.Load(); ref != nil {
+		opts.boundResourceLoader = &resourceLoaderRef{loader: ref.loader, promptFromLoader: ref.promptFromLoader}
+	}
+	opts.SystemPromptResources = s.systemPromptResources.Load()
+	// A Session that builds its default prompt keeps building it from its tools and loader, as a replacement AgentSession does (agent-session.ts _rebuildSystemPrompt); any other prompt is the caller's and is copied.
+	switch {
+	case s.defaultSystemPrompt:
+	case s.structuredSystemPrompt:
 		opts.SystemPromptSections = cloneSystemSections(s.baseSystemSections)
-	} else {
-		opts.SystemPrompt = s.baseSystemPrompt
+	default:
+		opts.SystemPrompt = *s.baseSystemPrompt.Load()
 	}
 	cloneSession, err := NewSession(s.services, opts)
 	if err != nil {
@@ -172,12 +194,9 @@ func (s *Session) LeafID() *string {
 	return s.inner.LeafID()
 }
 
-// SetName persists a session name as a SessionInfoEntry on disk.
-// The name surfaces in ListSessions / Runtime.ListSessions output and
-// in the resume picker UI. Empty name removes the most recent name
-// (silent no-op on filesystems where the entry doesn't exist).
+// SetName persists a session name as a SessionInfoEntry on disk. It rejects ECMAScript-trimmed empty names. The name surfaces in ListSessions / Runtime.ListSessions output and in the resume picker UI.
 func (s *Session) SetName(name string) error {
-	name = strings.TrimSpace(name)
+	name = widthx.JSTrim(name)
 	if name == "" {
 		return fmt.Errorf("coding: SetName: name is empty")
 	}
@@ -256,6 +275,8 @@ func (s *Session) DispatchSlash(line string) ([]string, error) {
 			return model.DisplayName
 		},
 		ToolNames: func() []string {
+			s.toolRegistryMu.RLock()
+			defer s.toolRegistryMu.RUnlock()
 			names := make([]string, 0, len(s.tools))
 			for _, t := range s.tools {
 				names = append(names, t.Name())

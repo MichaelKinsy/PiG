@@ -1,0 +1,60 @@
+# Behavior family: slash-commands
+# Upstream evidence: Pi 0.87.1 utils/changelog.ts:124-160 parses every release header and skips
+# Unreleased; interactive-mode.ts:6506-6523 reverses every parsed entry.
+# This preserves the strict-harness input's actual-document history contract.
+# Scenario 05 separately compares the complete pinned-document frame exactly.
+# A growing release can move every header above any fixed-height viewport.
+# Capture history from What's New through the final editor, not just the viewport.
+# The unsubmitted editor marker is a terminal-consumption barrier after /changelog.
+# D22 owns the different bundled product documents. Compare every source-derived
+# release header in its original reversed order, without aliasing or deduplication.
+# lint-known-gap: D22 documents differ; cross-product body/style equality is not
+# this contract. changelog_headers_complete checks each independent document.
+name = "11-changelog-complete-history"
+description = "With collapse-changelog enabled, /changelog renders every parsed release header in source-reversed order across complete terminal history."
+covers = ["packages/coding-agent/src/utils/changelog.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+capture_history = true
+capture_start = "What's New"
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+
+[[tmux.steps]]
+keys = ["/changelog", "Enter"]
+wait_contains = ["What's New"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["PARITY_CHANGELOG_CAPTURE_DONE"]
+wait_visible_contains = ["PARITY_CHANGELOG_CAPTURE_DONE"]
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent-collapse"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-collapse"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+changelog_headers_complete = true
+# Historical Pi releases legitimately mention "Updated to vX.Y.Z" in body text.
+# The complete header sequence rejects an actual condensed-only response.
+# Release bodies may also mention the Unreleased section in prose (PiG 0.3.0
+# does), so reject the rendered "[Unreleased]" header that Pi skips, not the word.
+both_not_contain = [
+  "unknown command",
+  "panic:",
+  "goroutine ",
+  "Disable collapse-changelog",
+  "[Unreleased]",
+  "No changelog entries found",
+]
+both_match_regex = ["(?m)^\\s*\\[\\d+\\.\\d+\\.\\d+\\]"]
+runs = 3

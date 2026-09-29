@@ -16,7 +16,7 @@ syntax directly. Relevant facts include:
 | entrypoint mode/package | determine whether a factory can be generated |
 | isolation | `shared-ok` permits packing; other values isolate |
 | SDK/protocol compatibility | ensure members can share a generated runner |
-| quarantine state | force fission after a packed failure |
+| quarantine state | native fission or Node culprit/diagnostic partition |
 | content/source hash | invalidate changed artifacts |
 
 Piglets and package settings resolve to concrete extension configs before
@@ -35,12 +35,9 @@ not quarantined
 language-specific source layout supported
 ```
 
-Candidates are grouped only with compatible same-language members. Anything
-else remains isolated. A Node/TypeScript factory packs into one Node cell the
-same way (N8): its subprocess launcher script runs `cell.mjs`, which loads
-every member's entry through the same type-stripping loader an isolated Node
-extension uses, in config order. A standalone Node script (an exact
-executable) is never packed.
+Candidates are grouped only with compatible same-language members. Native groups remain contiguous because their generated runners execute all factories together. Shareable Node factories occupy one process across intervening native cells. A private host admission channel names each manifest member at its configured turn; that member loads through jiti and completes its own registration before the next factory starts. An exact standalone or explicitly isolated Node extension stays separate. Temporary Node diagnostic groups exist only during crash attribution (D20).
+
+A Python cell cannot contain independent source roots with the same top-level factory module name. Python caches imports by module name. The planner starts a separate cell at that collision, preserving configured order and each factory's identity. Factories in one source root may share their package.
 
 A selected Go factory package may use helper and `internal` packages from its
 containing module or workspace. Pig retains that module or workspace as compiler
@@ -54,7 +51,7 @@ ambiguous. Select one exact factory package directory.
 | Go | temporary module/workspace plus `main.go` calling SDK factories |
 | Rust | temporary Cargo project/workspace plus generated `main.rs` |
 | Python | generated runner importing SDK factories |
-| Node | shell launcher execing `node` on `cell.mjs` plus a manifest (no generated source; each member's own TS/JS is read at start) |
+| Node | direct Node launcher, `cell.mjs`, immutable member manifest and host-ordered admission; no extension source is compiled |
 
 Each packed member still receives its own socket and performs the ordinary
 registration handshake. There is no multi-register handshake.
@@ -104,6 +101,10 @@ Representative current paths:
 
 Cache paths are rebuildable implementation details. They are not package
 versions, Piglet source identity, or Piglet release records.
+
+Node extensions use Jiti's persistent transform cache under `<config-root>/cache/jiti`. The cache separates loader content, Jiti and Node versions, and Jiti environment options. Jiti reads and hashes each source before reusing its compiled output. Evaluated extension modules remain uncached between loads, so every load creates a fresh factory. `JITI_FS_CACHE=false` retains Jiti's cache-disable behavior. This disposable transform cache is separate from published cell artifacts and their pruning commands.
+
+Node also requests a source-validated native bytecode cache under `<config-root>/cache/node-compile` when an extension imports a virtual SDK library (D20). Cache activation follows the first Jiti transform, so cold startup does not serialize Babel's unused compiler bytecode. The runtime flushes compiled artifacts when it processes the host's ready message. Node checks source bytes and VM compatibility before reuse; it never caches evaluated factories. Existing Node cache configuration remains authoritative, and `NODE_DISABLE_COMPILE_CACHE=1` disables this cache independently of Jiti. Both compiler caches are disposable and are outside the cell-pruning commands.
 
 Toolchain version records are keyed by the resolved executable's file identity and selector state such as Go, rustup, and Python version files. An unchanged warm lookup does not spawn the tool. Replacing the executable or selector state re-probes it, and a failed compiled build invalidates the relevant record before the next attempt.
 

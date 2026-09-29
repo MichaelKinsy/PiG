@@ -1,0 +1,22 @@
+# Interactive input shutdown ownership
+
+Pi 0.87.1 `packages/tui/src/terminal.ts:422-456` removes terminal listeners before `stop()` returns. `packages/coding-agent/src/modes/interactive/interactive-mode.ts:4138-4178` orders extension disposal and terminal teardown differently for signal shutdown and ordinary quit. No input callback may outlive its terminal owner.
+
+PiG started `pumpTerminalInput` without a completion handle. `Run` cancelled its context and paused the file reader, but did not join the decoder. A direct input loop could also return immediately on an already-requested quit. The original `TestUpstreamSignalShutdownExtensionCleanup` then restored and closed its captured stdout while the old pump still called `exitIfDeadTerminal`. Race evidence identifies both the global stdout pointer and its file descriptor, not only a timing failure.
+
+The input initializer now retains a single cancellation/completion owner alongside the existing channels. Startup and temporary UI loops reuse it. Final input-loop exit and `Run` cleanup cancel and join the reader and decoder. Ordinary quit joins before draining input, stopping the renderer, disposing extensions and printing its resume hint. Signal cleanup still runs first. The terminal file remains open for a subsequent reader. Other ReadClosers can interrupt an active read on cancellation; their close errors are returned after the workers finish. Natural EOF unregisters that cancellation callback before publishing EOF, so completed sources are not closed merely because loop cleanup follows. Non-closable test readers must complete their reads without waiting for external input.
+
+This change retains the current byte-read and negotiation behavior. It does not add another decoder, change request-parent ownership, modify remote-editor verdicts, or change terminal deadlines. The pausable terminal reader remains the owner of external-editor handoffs.
+
+## Evidence
+
+- The existing five `TestUpstreamSignalShutdownExtensionCleanup` cases retain their original order and resume-hint assertions. Their race failure was reproduced before the fix.
+- `TestInteractiveShutdownJoinsInputBeforeTerminalTeardown` holds an actual reader after cancellation and uses an independent release barrier. Both compiling mutations—omitting the pump join and omitting the raw-reader join—return in the wrong order: `drainInput, stop, dispose, read-returned`. Restored source returns `read-returned, drainInput, stop, dispose`.
+- The same test proves a temporary startup/UI loop does not stop shared input.
+- `TestInteractiveInputEOFJoinsWithoutClosingCompletedSource`, `TestInteractiveShutdownReturnsReaderCloseErrorAfterJoining` and `TestInteractiveShutdownLeavesTerminalFileForNextReader` guard EOF, error propagation and descriptor ownership.
+- The existing early-input owner test now closes the complete owner rather than only pausing its reader. Direct pump tests check the new cleanup error result; no assertions are removed.
+- Existing scenario33 compares the original Pi signal/quit order. It proves those callback-order contracts, not the internal goroutine join by itself. The held-reader and race tests supply that lifetime proof.
+
+`BenchmarkInteractiveInputLifecycle` measures creation, EOF delivery and complete input-owner cleanup with a finite reader. Three Go 1.27.1 linux/amd64 samples are approximately 11.3–11.9 microseconds, 6.1 KB and 25 allocations. CPU and allocation profiles are retained. This is a local lifecycle measurement, not a full startup or per-keystroke performance claim. The change owns at most one decoder and its reader per mode; closing releases their cancellation registrations and readiness resources without retaining transcript history.
+
+User documentation is updated in `docs/site/docs/extensions.md`. The full internal coding-agent race suite and twenty repeated shutdown/lifetime guards pass. Native/Windows vet and parity-tagged lint pass. Scenarios33 (shutdown order),35c (external editor) and session10 (terminal disconnect) pass their three declared Pi pairs. Cross-family theme37 fails on both hosts because its complete `Pick a color` capture anchor is absent; its crop and comparator remain unchanged, and no later-frame parity is inferred. Generated checks reach the outstanding upstream-test release obligations and pending D78 scrutiny. Markdown callback completion, tool-result ordering, resource-loader work and unknown-model input shape remain separate obligations.

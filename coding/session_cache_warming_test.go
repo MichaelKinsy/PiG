@@ -21,19 +21,21 @@ type warmingProvider struct {
 	options []ai.StreamOptions
 }
 
-func (*warmingProvider) ID() string   { return "anthropic" }
+func (*warmingProvider) ID() string   { return "capture-provider" }
 func (*warmingProvider) Close() error { return nil }
 func (p *warmingProvider) Stream(_ context.Context, _ ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 	p.mu.Lock()
 	p.options = append(p.options, options)
 	p.mu.Unlock()
 	message := &ai.AssistantMessage{
-		API: ai.APIAnthropicMessages, Provider: "anthropic", Model: "warm-model",
-		Content:    []ai.AssistantContentBlock{ai.TextContent{Text: "done"}},
-		Usage:      ai.Usage{Input: 100_000, Output: 1, TotalTokens: 100_001},
+		API: ai.APIAnthropicMessages, Provider: "capture-provider", Model: "capture-model",
+		Content:    []ai.AssistantContentBlock{ai.TextContent{Text: "ok"}},
+		Usage:      ai.Usage{CacheRead: 100_000, TotalTokens: 100_000},
 		StopReason: ai.StopReasonStop,
 	}
-	return newSessionTestStream(ai.StartEvent{Partial: message}, ai.DoneEvent{Reason: ai.StopReasonStop, Message: message}), nil
+	stream := ai.NewAssistantMessageEventStream()
+	stream.End(message)
+	return stream, nil
 }
 
 func (p *warmingProvider) calls() []ai.StreamOptions {
@@ -44,13 +46,13 @@ func (p *warmingProvider) calls() []ai.StreamOptions {
 
 func warmingModel(provider ai.Provider) *ai.Model {
 	return &ai.Model{
-		ID: "warm-model", DisplayName: "warm-model", Provider: provider,
+		ID: "capture-model", DisplayName: "Capture Model", Provider: provider,
 		Capabilities: ai.ModelCapabilities{
-			ContextWindow: 200_000, InputCostPer1M: 10, OutputCostPer1M: 50,
+			ContextWindow: 128_000, MaxOutputTokens: 4096, InputCostPer1M: 10, OutputCostPer1M: 50,
 			CacheReadCostPer1M: 0.25, CacheWriteCostPer1M: 12.5,
 		},
 		PromptCache:  ai.ModelPromptCache{"short": 300},
-		ProviderMeta: ai.ProviderMetadata{ProviderID: "anthropic", API: ai.APIAnthropicMessages},
+		ProviderMeta: ai.ProviderMetadata{ProviderID: "capture-provider", API: ai.APIAnthropicMessages, BaseURL: "https://capture.invalid/v1", Headers: map[string]string{"x-model": "model"}},
 	}
 }
 
@@ -107,6 +109,7 @@ func sendAndSettle(t *testing.T, sess *Session) {
 
 // Port of sdk-stream-options.test.ts "schedules cache warming after a
 // completed session request".
+// .upstream/v0.87.1/packages/coding-agent/test/sdk-stream-options.test.ts:166
 func TestSessionSchedulesCacheWarmingAfterASessionRequest(t *testing.T) {
 	sess, _ := newWarmingSession(t, "idle", SessionOptions{NoSession: true})
 	sendAndSettle(t, sess)
@@ -131,19 +134,26 @@ func TestSessionSchedulesCacheWarmingAfterASessionRequest(t *testing.T) {
 
 // Port of sdk-stream-options.test.ts "waits for the next request instead of
 // restoring cache warming".
+// .upstream/v0.87.1/packages/coding-agent/test/sdk-stream-options.test.ts:183
 func TestResumedSessionWaitsForTheNextRequest(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "resume.jsonl")
 	inner := icodingagent.NewSession("resume", dir)
 	inner.SetPath(path)
-	if _, err := inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "test"}}}}); err != nil {
+	if err := inner.AppendModelSwitch("capture-provider", "capture-model", "Capture Model"); err != nil {
 		t.Fatal(err)
 	}
-	usage := ai.Usage{Input: 100_000, Output: 1}
-	if _, err := inner.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Provider: "anthropic", ModelID: "warm-model", Usage: &usage}}); err != nil {
+	if err := inner.AppendThinkingLevelChange("off"); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := inner.AppendUsage("cache_warm", "anthropic", "warm-model", usage, ""); err != nil {
+	if _, err := inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "test"}}, Timestamp: time.Now().Add(-60 * time.Second).UnixMilli()}}); err != nil {
+		t.Fatal(err)
+	}
+	usage := ai.Usage{CacheRead: 100_000, TotalTokens: 100_000}
+	if _, err := inner.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Provider: "capture-provider", ModelID: "capture-model", Usage: &usage, API: ai.APIAnthropicMessages, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "ok"}}, StopReason: ai.StopReasonStop, Timestamp: time.Now().Add(-59 * time.Second).UnixMilli()}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := inner.AppendUsage("cache_warm", "capture-provider", "capture-model", usage, ""); err != nil {
 		t.Fatal(err)
 	}
 	sess, provider := newWarmingSession(t, "idle", SessionOptions{ResumePath: path})
@@ -250,8 +260,12 @@ func TestOnlySessionRequestsStartCacheWarming(t *testing.T) {
 	sess, provider := newWarmingSession(t, "idle", SessionOptions{NoSession: true})
 	stream := cacheWarmingStreamFn(func() *Session { return sess })
 	model := sess.Agent().Model()
-	if _, err := stream(context.Background(), model, ai.NormalizeContext(ai.Context{}), ai.StreamOptions{SessionID: "other"}); err != nil {
+	response, err := stream(context.Background(), model, ai.NormalizeContext(ai.Context{}), ai.StreamOptions{SessionID: "other"})
+	if err != nil {
 		t.Fatal(err)
+	}
+	if result := response.Result(); result.StopReason != ai.StopReasonStop {
+		t.Fatalf("request failed: %+v", result)
 	}
 	if status := sess.CacheWarmingStatus(); status.Reason != "waiting for first request" {
 		t.Fatalf("foreign request started warming: %+v", status)

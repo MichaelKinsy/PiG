@@ -10,6 +10,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io/fs"
 	"math"
 	"os"
 	"os/exec"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 // BashOperationsExecOptions, BashOperationsResult and BashOperations are the
@@ -109,7 +111,8 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	}
 	cmd := exec.Command(shell.Path, args...)
 	cmd.Dir = cwd
-	cmd.Env = env
+	// Upstream passes env as the spawn's env option.
+	nodespawn.SetEnv(cmd, env)
 	if commandFromStdin {
 		cmd.Stdin = strings.NewReader(command)
 	}
@@ -125,10 +128,22 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	// Process group so abort and timeout reap descendants (upstream spawns
 	// detached on non-win32 and kills the tree).
 	setProcessGroup(cmd)
+	// Upstream spawns with windowsHide: true and stdio
+	// [commandFromStdin ? "pipe" : "ignore", "pipe", "pipe"].
+	stdin := nodespawn.Ignore
+	if commandFromStdin {
+		stdin = nodespawn.Pipe
+	}
+	nodespawn.HideWindow(cmd, stdin, nodespawn.Pipe, nodespawn.Pipe)
+	// Upstream starts the shell with Node's spawn, which finds it with libuv's
+	// search on Windows. The shell must receive that command line byte for
+	// byte: Git Bash parses it with MSYS2 rules, not the C runtime's.
+	nodespawn.SetProgram(cmd)
+	nodespawn.SetCommandLine(cmd)
 	if err := cmd.Start(); err != nil {
 		_ = pw.Close()
 		_ = pr.Close()
-		return BashOperationsResult{}, err
+		return BashOperationsResult{}, &shellSpawnError{path: shell.Path, cause: err}
 	}
 	_ = pw.Close()
 
@@ -219,6 +234,37 @@ func (o *LocalShellOperations) Exec(ctx context.Context, command, cwd string, op
 	code := shellExitCode(cmd.ProcessState)
 	return BashOperationsResult{ExitCode: &code}, nil
 }
+
+// shellSpawnError preserves the spawn errno with Node's user-visible message.
+type shellSpawnError struct {
+	path  string
+	cause error
+}
+
+func (e *shellSpawnError) Error() string {
+	if spawnErr, ok := errors.AsType[*nodespawn.Error](e.cause); ok {
+		return spawnErr.Error()
+	}
+	code := nodeErrorCode(e.cause)
+	if e.notFound() {
+		code = "ENOENT"
+	}
+	if code != "" {
+		return "spawn " + e.path + " " + code
+	}
+	return e.cause.Error()
+}
+func (e *shellSpawnError) Unwrap() error { return e.cause }
+
+// Is reports a shell that os/exec could not find as fs.ErrNotExist.
+func (e *shellSpawnError) Is(target error) bool {
+	return target == fs.ErrNotExist && e.notFound()
+}
+
+// notFound reports that os/exec found no executable file for the shell. It
+// reports a missing one as exec.ErrNotFound; libuv reports the same spawn as
+// ENOENT.
+func (e *shellSpawnError) notFound() bool { return errors.Is(e.cause, exec.ErrNotFound) }
 
 // exitStdioGrace mirrors upstream EXIT_STDIO_GRACE_MS (utils/child-process.ts).
 const exitStdioGrace = 100 * time.Millisecond

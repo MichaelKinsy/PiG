@@ -1,0 +1,1 @@
+{"name":"context-mode","version":"1.0.169","skills":"./skills/","mcpServers":{"context-mode":{"command":"node","args":["${CLAUDE_PLUGIN_ROOT}/start.mjs"]}}}

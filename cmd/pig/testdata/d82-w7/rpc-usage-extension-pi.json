@@ -1,0 +1,47 @@
+[
+  {
+    "type": "message_start",
+    "outputTokens": 1,
+    "stopReason": "pending",
+    "text": "abcde"
+  },
+  {
+    "type": "message_update",
+    "outputTokens": 5
+  },
+  {
+    "type": "message_update",
+    "delta": "a",
+    "outputTokens": 5
+  },
+  {
+    "type": "message_update",
+    "delta": "b",
+    "outputTokens": 5
+  },
+  {
+    "type": "message_update",
+    "delta": "c",
+    "outputTokens": 5
+  },
+  {
+    "type": "message_update",
+    "delta": "d",
+    "outputTokens": 5
+  },
+  {
+    "type": "message_update",
+    "delta": "e",
+    "outputTokens": 5
+  },
+  {
+    "type": "message_update",
+    "outputTokens": 5
+  },
+  {
+    "type": "message_end",
+    "outputTokens": 5,
+    "stopReason": "stop",
+    "text": "abcde"
+  }
+]

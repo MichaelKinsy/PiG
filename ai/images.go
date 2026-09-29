@@ -3,6 +3,7 @@ package ai
 import (
 	"context"
 	"fmt"
+	"net/http"
 )
 
 // ImagesAPI identifies an image-generation provider API.
@@ -10,10 +11,10 @@ type ImagesAPI string
 
 const APIImagesOpenRouter ImagesAPI = "openrouter-images"
 
-// ImagesProvider identifies an image-generation provider.
-type ImagesProvider string
+// ImagesProviderId identifies an image-generation provider.
+type ImagesProviderId string
 
-const ProviderImagesOpenRouter ImagesProvider = "openrouter"
+const ProviderImagesOpenRouter ImagesProviderId = "openrouter"
 
 // ImagesCost mirrors upstream image model cost fields, expressed in USD per
 // million tokens where a provider reports token usage.
@@ -29,7 +30,7 @@ type ImagesModel struct {
 	ID       string
 	Name     string
 	API      ImagesAPI
-	Provider ImagesProvider
+	Provider ImagesProviderId
 	BaseURL  string
 	Headers  map[string]string
 	Input    []string
@@ -54,7 +55,7 @@ const (
 // AssistantImages is the final result of an image-generation request.
 type AssistantImages struct {
 	API          ImagesAPI
-	Provider     ImagesProvider
+	Provider     ImagesProviderId
 	Model        string
 	Output       []ContentBlock
 	ResponseID   string
@@ -64,21 +65,24 @@ type AssistantImages struct {
 	Timestamp    int64
 }
 
-// ProviderResponse is the provider HTTP response metadata exposed to hooks.
-type ProviderResponse struct {
-	Status  int
-	Headers map[string]string
-}
-
-// ProviderImagesOptions configures image-generation provider requests.
-type ProviderImagesOptions struct {
-	APIKey     string
-	Headers    map[string]string
+// ImagesOptions configures image-generation provider requests.
+type ImagesOptions struct {
+	// Fetch replaces HTTP execution without changing the caller's request context or redirect policy.
+	Fetch  *http.Client
+	APIKey string
+	// APIKeySet distinguishes an explicit empty key from an omitted override.
+	APIKeySet  bool
+	Headers    ProviderHeaders
+	Env        map[string]string
+	Metadata   map[string]any
 	TimeoutMs  int
 	MaxRetries int
 	OnPayload  func(payload any, model ImagesModel) (any, bool, error)
 	OnResponse func(response ProviderResponse, model ImagesModel) error
 }
+
+// ProviderImagesOptions is the image API options shape.
+type ProviderImagesOptions = ImagesOptions
 
 // ImagesFunction is an image-generation provider function.
 type ImagesFunction func(context.Context, ImagesModel, ImagesContext, ProviderImagesOptions) AssistantImages

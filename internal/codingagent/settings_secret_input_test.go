@@ -57,22 +57,16 @@ func TestMaskSecretInputSettingsRoundTrip(t *testing.T) {
 func TestMaskSecretInputSettingsMenuAppliesToNextDialog(t *testing.T) {
 	m := newPostLoginTestMode(t)
 	sc := m.buildSlashContext(t.Context())
-	changed := false
-	sc.ShowSettingsList = func(items []tui.SettingItem) (string, string, bool) {
+	sc.ShowSettingsList = func(items []tui.SettingItem, onChange func(id, value string) string) {
 		for _, item := range items {
 			if item.ID == "mask-secret-input" {
-				if !changed {
-					changed = true
-					return item.ID, "false", true
+				if shown := onChange(item.ID, "false"); shown != "false" {
+					t.Errorf("menu shows %q after the change, want false", shown)
 				}
-				if item.CurrentValue != "false" {
-					t.Error("menu did not show persisted false")
-				}
-				return "", "", false
+				return
 			}
 		}
 		t.Fatal("setting absent from /settings")
-		return "", "", false
 	}
 	if err := settingsHandler(sc); err != nil {
 		t.Fatal(err)
@@ -94,7 +88,7 @@ func TestMaskedLoginErrorDoesNotEnterFramesOrSession(t *testing.T) {
 	m.opts.SessionHandle = &recordingCompactHandle{agent: m.agent, inner: inner}
 	const secret = "synthetic-private-key-abcd"
 	m.opts.ModelBuilder = func(string) (*ai.Model, error) { return nil, errors.New("server echoed " + secret) }
-	if err := m.buildSlashContext(t.Context()).SetAPIKey("openai", secret); err != nil {
+	if err := setPostLoginAPIKey(m, "openai", secret); err != nil {
 		t.Fatal(err)
 	}
 	waitPostLoginStatus(t, m, "selecting its default model failed")
@@ -137,15 +131,12 @@ func TestPiIgnoresMaskSecretInputInSharedSettings(t *testing.T) {
 	}
 	for _, value := range []bool{true, false} {
 		dir := t.TempDir()
-		// Verify shared JSON independently of the existing Go/Pi lock-file incompatibility.
-		encoded, err := json.Marshal(Settings{MaskSecretInput: &value})
-		if err != nil {
+		// Exercise the integration's shared lock backend as well as the extra JSON key.
+		sm := NewSettingsManager(t.TempDir(), dir)
+		if err := sm.UpdateGlobal(func(s *Settings) { s.MaskSecretInput = &value }); err != nil {
 			t.Fatal(err)
 		}
-		if err := os.WriteFile(filepath.Join(dir, "settings.json"), encoded, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		data, err := exec.CommandContext(t.Context(), "node", filepath.Join(root, "parity/testdata/login-dialog-privacy.mjs"), root, "settings", dir).CombinedOutput()
+		data, err := exec.CommandContext(t.Context(), "node", filepath.Join(root, "test/parity/testdata/login-dialog-privacy.mjs"), root, "settings", dir).CombinedOutput()
 		if err != nil {
 			t.Fatalf("Pi settings reader: %v: %s", err, data)
 		}
@@ -160,7 +151,7 @@ func TestPiIgnoresMaskSecretInputInSharedSettings(t *testing.T) {
 		if result.Value != value || len(result.Errors) != 0 || result.Theme != "light" {
 			t.Fatalf("Pi rejected or misused shared setting: %s", data)
 		}
-		sm := NewSettingsManager(t.TempDir(), dir)
+		sm.Reload()
 		if sm.Get().GetMaskSecretInput() != value || sm.Get().Theme != "light" {
 			t.Fatal("Pi's settings update lost the Pig-only preference")
 		}
@@ -174,15 +165,23 @@ func TestLoginMaskSettingReachesStandardDialog(t *testing.T) {
 		t.Fatal(err)
 	}
 	m.opts.SettingsManager.Reload()
-	done := make(chan string, 1)
-	go func() { value, _ := m.showAPIKeyInput("openai"); done <- value }()
+	done := make(chan error, 1)
+	go func() { done <- m.runAPIKeyLogin(tui.OAuthProvider{ID: "openai", Name: "OpenAI", AuthType: "api_key"}) }()
 	waitForRender(t, m.editorContainer, "Enter OpenAI API key")
 	const key = "visible-like-pi"
 	deliverModalInput(t, m, []byte(key))
 	deliverModalInput(t, m, []byte(""))
 	frame := plainRender(m.editorContainer)
 	deliverModalInput(t, m, []byte("\r"))
-	if value := <-done; value != key {
+	if err := <-done; err != nil {
+		t.Fatal(err)
+	}
+	store, err := ai.NewAuthStorage(filepath.Join(m.opts.AgentDir, "auth.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	credential, ok, err := store.Get("openai")
+	if err != nil || !ok || credential.Key != key {
 		t.Fatal("changed submitted value")
 	}
 	if !strings.Contains(frame, key) || strings.Contains(frame, "Input hidden") {

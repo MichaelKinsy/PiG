@@ -172,7 +172,7 @@ func TestAgentToolLoadoutChangesUseNativeProviderToolChanges(t *testing.T) {
 func nativeToolChangePoisonedHistory() []AgentMessage {
 	return []AgentMessage{
 		{System: &ai.SystemMessage{Content: ai.SystemText("System prompt."), ToolsAdded: []ai.ToolSchema{{Name: "bash", Parameters: map[string]any{"type": "object"}}}}},
-		{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "start"}}}},
+		{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "start"}}}},
 		{Assistant: &AssistantMessage{
 			Role: "assistant", API: ai.APIOpenAIResponses, Provider: "openai", ModelID: "gpt-5", StopReason: ai.StopReasonToolUse,
 			Content: []ai.AssistantContentBlock{ai.TextContent{Text: "   "}, ai.ToolCall{ID: "call_a|fc_a", Name: "bash", Arguments: ai.JsonObject{"command": "ls"}}},
@@ -187,12 +187,12 @@ func nativeToolChangePoisonedHistory() []AgentMessage {
 			Role: "assistant", API: ai.APIAnthropicMessages, Provider: "anthropic", ModelID: "custom", StopReason: ai.StopReasonAborted,
 			Content: []ai.AssistantContentBlock{ai.TextContent{Text: "partial answer"}},
 		}},
-		{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "continue"}}}},
+		{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "continue"}}}},
 		{Assistant: &AssistantMessage{
 			Role: "assistant", API: ai.APIAnthropicMessages, Provider: "anthropic", ModelID: "custom", StopReason: ai.StopReasonToolUse,
 			Content: []ai.AssistantContentBlock{ai.TextContent{Text: ""}, ai.ToolCall{ID: "toolu_1", Name: "read", Arguments: ai.JsonObject{"path": "a"}}},
 		}},
-		{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "next"}}}},
+		{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "next"}}}},
 	}
 }
 
@@ -271,9 +271,9 @@ func TestNativeToolChangesPoisonedPersistedHistoryRequests(t *testing.T) {
 				}
 				return append(shape, "tools="+strings.Join(nativeToolChangeNames(body["tools"]), ","))
 			},
-			// The addition loads in place, between the call and its output.
+			// Pi 0.87.1 holds the addition until the pending tool output is emitted.
 			want: []string{
-				"developer", "user", "function_call:call_a", "additional_tools:read", "function_call_output:call_a",
+				"developer", "user", "function_call:call_a", "function_call_output:call_a", "additional_tools:read",
 				"user", "function_call:toolu_1", "function_call_output:toolu_1", "user", "tools=bash",
 			},
 		},
@@ -302,10 +302,9 @@ func TestNativeToolChangesPoisonedPersistedHistoryRequests(t *testing.T) {
 				}
 				return append(shape, "tools="+strings.Join(nativeToolChangeNames(body["tools"], "function"), ","))
 			},
-			// Completions keeps transcript order: the tool-bearing message lands
-			// where the persisted update sits, as upstream sends it.
+			// Pi 0.87.1 holds the tool-bearing system update behind the pending result.
 			want: []string{
-				"system", "user", "assistant:call_a_fc_a", "system:read", "tool:call_a_fc_a",
+				"system", "user", "assistant:call_a_fc_a", "tool:call_a_fc_a", "system:read",
 				"user", "assistant:toolu_1", "tool:toolu_1", "user", "tools=bash",
 			},
 		},

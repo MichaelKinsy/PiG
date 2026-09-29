@@ -8,7 +8,7 @@ import (
 
 // TestEvents_JSONTagsAreCamelCase is a smoke check that the most-watched
 // event types marshal with the expected upstream camelCase field names.
-// The reflection-based parity gates in tests/upstream-parity/ provide the
+// The reflection-based parity gates in test/upstream-parity/ provide the
 // authoritative coverage; this test exists so a failed JSON tag fails fast
 // inside the package itself.
 func TestEvents_JSONTagsAreCamelCase(t *testing.T) {

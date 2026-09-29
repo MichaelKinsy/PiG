@@ -1,0 +1,26 @@
+# Probed published Pi 0.87.1 tools.test.ts:596,607 through createBashTool with
+# createLocalShellOperations and caller operations. A nonexistent resolved shell
+# rejects with Node's spawn errno; caller operations bypass local shellPath
+# resolution. Both probes execute the production tool and compare full text.
+name = "17-shell-operations"
+description = "Shell spawn errors retain Node errno text and delegated operations bypass local shell resolution"
+covers = ["packages/coding-agent/src/core/tools/bash.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/shell-operations-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/shell-operations-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["BASH_SPAWN spawn /nonexistent-shell-path-xyz123 ENOENT", "BASH_DELEGATE (no output)"]
+runs = 3

@@ -28,14 +28,21 @@ const (
 // user dismissed the host prompt.
 var ErrOAuthCancelled = errors.New("oauth prompt cancelled")
 
-// OAuthCredentials is a set of OAuth credentials. The JSON tags are the wire
-// shape shared with the host and core (ai.OAuthCredentials), so the SDK passes
-// the type across the bridge without a conversion layer.
+// OAuthCredentials is Pi's OAuth token object (packages/ai/src/auth/types.ts OAuthCredentials). The JSON tags are the wire shape shared with the host and core (ai.OAuthCredentials).
+//
+// The six named fields keep their original order; fields added for Pi's complete token object follow them.
 type OAuthCredentials struct {
-	Refresh   string `json:"refresh"`
-	Access    string `json:"access"`
+	Refresh string `json:"refresh"`
+	Access  string `json:"access"`
+	// Expires is the truncated integer projection of expires in Unix milliseconds. ExpiresMillis reads Pi's exact JavaScript number, including a fraction or an absent property; SetExpiresMillis writes one. Assigning Expires replaces any retained exact value.
 	Expires   int64  `json:"expires"`
 	ProjectID string `json:"projectId,omitempty"`
+	AccountID string `json:"accountId,omitempty"`
+	Scope     string `json:"scope,omitempty"`
+	// Extra retains every other provider-owned key, including a present empty or null value of a named optional field. Named fields take precedence when both are set.
+	Extra map[string]json.RawMessage `json:"-"`
+
+	expiry oauthExpiry
 }
 
 // OAuthAuthInfo, OAuthDeviceCodeInfo, OAuthPrompt, OAuthSelectPrompt, and

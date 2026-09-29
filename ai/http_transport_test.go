@@ -10,13 +10,17 @@ import (
 // baseHTTPTransport unwraps the provider retry transport that streamingHTTPClient
 // now wraps around the shaped *http.Transport, so shape assertions inspect the
 // base transport.
-func baseHTTPTransport(t *testing.T, c *http.Client) *http.Transport {
+func baseHTTPTransport(t testing.TB, c *http.Client) *http.Transport {
 	t.Helper()
 	transport := c.Transport
 	for {
 		switch wrapped := transport.(type) {
+		case *providerRequestTransport:
+			transport = wrapped.base
 		case *retryTransport:
 			transport = wrapped.base
+		case *proxyTunnelTransport:
+			transport = wrapped.direct
 		case *nodeFetchTransport:
 			transport = wrapped.base
 		default:
@@ -35,8 +39,8 @@ func TestStreamingHTTPClient_MatchesUpstreamHTTPDispatcherShape(t *testing.T) {
 	if tr.ForceAttemptHTTP2 {
 		t.Error("ForceAttemptHTTP2 should be false to match upstream allowH2=false")
 	}
-	if tr.Proxy == nil {
-		t.Fatal("Proxy should honor environment proxy settings")
+	if tr.Proxy != nil {
+		t.Fatal("proxy selection belongs to the CONNECT transport, not forward-proxy request rewriting")
 	}
 }
 

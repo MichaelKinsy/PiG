@@ -16,6 +16,7 @@
 #   PIG_VERSION        install this version (for example 0.2.0) instead of the latest
 #   PIG_INSTALL_DIR    install directory (default: $HOME/.local/bin)
 #   PIG_API_BASE       API that names the latest release (default: https://pi-in-go.dev/api)
+#   PIG_LATEST_RELEASE_URL  page that redirects to the latest release, used when the API does not answer (default: https://github.com/MichaelKinsy/PiG/releases/latest)
 #   PIG_DOWNLOAD_BASE  release download root (default: https://github.com/MichaelKinsy/PiG/releases/download)
 #   PIG_UPDATE_URL     update manifest `pig update` should use (default: the latest release's update.json)
 #   PIG_HOME           PiG's settings directory, where the install receipt goes (default: ~/.pig)
@@ -31,6 +32,7 @@ set -eu
 
 main() {
   api_base=${PIG_API_BASE:-https://pi-in-go.dev/api}
+  latest_release_url=${PIG_LATEST_RELEASE_URL:-https://github.com/MichaelKinsy/PiG/releases/latest}
   download_base=${PIG_DOWNLOAD_BASE:-https://github.com/MichaelKinsy/PiG/releases/download}
   install_dir=${PIG_INSTALL_DIR:-${HOME:?HOME is not set}/.local/bin}
 
@@ -42,7 +44,7 @@ main() {
 
   version=${PIG_VERSION:-}
   if [ -z "$version" ]; then
-    version=$(latest_version "$downloader" "$api_base")
+    version=$(latest_version "$downloader" "$api_base" "$latest_release_url")
   fi
   version=${version#v}
   valid_version "$version" || fail "not a release version: $version"
@@ -178,12 +180,29 @@ detect_platform() {
   echo "${os}-${arch}"
 }
 
+# latest_version DOWNLOADER API_BASE LATEST_RELEASE_URL asks the site API, then GitHub's latest-release redirect, which is not subject to the API's rate limit. The archive is verified against SHA256SUMS either way.
 latest_version() {
-  response=$(fetch_stdout "$1" "${2%/}/latest-version") ||
-    fail "no PiG release is published yet (${2%/}/latest-version did not answer); build from source or set PIG_VERSION"
-  latest=$(printf '%s' "$response" | tr -d '\n\r' | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
-  [ -n "$latest" ] || fail "could not read the latest PiG version from ${2%/}/latest-version"
+  latest=
+  if response=$(fetch_stdout "$1" "${2%/}/latest-version"); then
+    latest=$(printf '%s' "$response" | tr -d '\n\r' | sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p')
+  fi
+  if [ -z "$latest" ]; then
+    latest=$(redirect_tag "$1" "$3")
+    [ -n "$latest" ] ||
+      fail "no PiG release is published yet (${2%/}/latest-version did not answer and $3 named no release); build from source or set PIG_VERSION"
+    say "${2%/}/latest-version did not name a release; using the latest on GitHub (${latest})" >&2
+  fi
   echo "$latest"
+}
+
+# redirect_tag DOWNLOADER URL prints the tag URL redirects to (.../releases/tag/<tag>) without following the redirect, or nothing.
+redirect_tag() {
+  case "$1" in
+    curl) location=$(curl --proto '=https' --tlsv1.2 -sS --retry 3 -o /dev/null -w '%{redirect_url}' "$2" 2>/dev/null) || location= ;;
+    # Wget indents response headers; its unindented Location diagnostic appends "[following]" even when redirects are disabled.
+    wget) location=$(wget --https-only --max-redirect=0 -S -O /dev/null "$2" 2>&1 | sed -n 's/^  *[Ll]ocation: *//p' | tr -d '\r' | tail -n 1) ;;
+  esac
+  printf '%s\n' "$location" | sed -n 's|.*/releases/tag/\([^/?#]*\)$|\1|p' | sed 's/%2[Bb]/+/g'
 }
 
 fetch_stdout() {

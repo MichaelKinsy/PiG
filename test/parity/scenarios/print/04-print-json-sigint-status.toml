@@ -1,0 +1,26 @@
+# Pi 0.87.1 print-mode.ts:49-64 handles SIGTERM/SIGHUP but not SIGINT.
+# A real HTTP server acknowledges the provider request before signalling each
+# real CLI. Python's returncode preserves signal termination (-2), unlike shell
+# status 130. Compare complete records for both print and JSON modes.
+name = "04-print-json-sigint-status"
+description = "Active print and JSON processes terminate by SIGINT rather than exit 130"
+covers = ["packages/coding-agent/src/modes/print-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+# The probe defaults to PIG_PARITY_PIG_BIN so it uses the verified harness build.
+pig_args = ["python3", "test/parity/testdata/session-wire.py", "--case", "print", "--case", "json"]
+pi_args = ["python3", "test/parity/testdata/session-wire.py", "--bin", "extensions/sdk-ts/node_modules/.bin/pi", "--case", "print", "--case", "json"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

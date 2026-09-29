@@ -50,7 +50,7 @@ func TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents(t *testing.T) {
 		},
 		agent.ToolExecutionStartEvent{ToolCallID: "tc1", ToolName: "bash", Args: json.RawMessage(`{"cmd":"ls"}`)},
 		agent.ToolExecutionUpdateEvent{ToolCallID: "tc1", ToolName: "bash", Content: "partial", Details: map[string]any{"progress": float64(1)}, Args: json.RawMessage(`{"cmd":"ls"}`)},
-		agent.ToolExecutionEndEvent{ToolCallID: "tc1", ToolName: "bash", Result: agent.AgentToolResult{Content: "done", Images: []ai.ImageContent{{Data: "aW1n", MimeType: "image/png"}}, Details: map[string]any{"nested": map[string]any{"value": "kept"}}, IsError: true}},
+		agent.ToolExecutionEndEvent{ToolCallID: "tc1", ToolName: "bash", Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}, ai.ImageContent{Data: "aW1n", MimeType: "image/png"}}, Details: map[string]any{"nested": map[string]any{"value": "kept"}}, IsError: true}},
 		agent.MessageEndEvent{Message: agent.AgentMessage{Custom: map[string]any{"marker": "end"}}},
 		agent.TurnEndEvent{TurnIndex: 3},
 		agent.AgentEndEvent{Messages: []agent.AgentMessage{{Custom: map[string]any{"marker": "final"}}}},
@@ -71,14 +71,15 @@ func TestDispatchAgentLoopEvent_DeliversAllAgentLoopEvents(t *testing.T) {
 	if te, ok := got[EventTurnEnd].(extension.TurnEndEvent); !ok || te.TurnIndex != 3 {
 		t.Fatalf("turn_end: got %#v, want TurnIndex=3", got[EventTurnEnd])
 	}
-	// message_update must carry the message tracked from message_start.
+	// Pi _emitExtensionEvent passes this update's message, not the cached start message.
 	mu, ok := got[EventMessageUpdate].(extension.MessageUpdateEvent)
 	if !ok {
 		t.Fatalf("message_update: got %#v", got[EventMessageUpdate])
 	}
 	trackedMsg, ok := mu.Message.(agent.AgentMessage)
-	if !ok || trackedMsg.Custom["marker"] != "m1" {
-		t.Fatalf("message_update carried the wrong message: got %#v, want the message from message_start (marker=m1)", mu.Message)
+	wantMessage := events[3].(agent.MessageUpdateEvent).Message
+	if !ok || trackedMsg.Assistant != wantMessage.Assistant || trackedMsg.Custom != nil {
+		t.Fatalf("message_update carried the wrong message: got %#v, want %#v", mu.Message, wantMessage)
 	}
 	delta, ok := mu.AssistantMessageEvent.(ai.TextDeltaEvent)
 	if !ok || delta.ContentIndex != 0 || delta.Delta != "hi" || delta.Partial != partial {

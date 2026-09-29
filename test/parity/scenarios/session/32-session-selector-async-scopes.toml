@@ -1,0 +1,25 @@
+# Pi 0.87.1 session-selector-path-delete.test.ts:187,219 requires scope input while an All load remains unresolved, retention of partial progress, and one in-flight load.
+# Both adapters exercise the production selector with the exact original deferred loaders and assertions; output records the load count and selected path after completion.
+# Binary overrides expose callback/deferred-Promise inputs unavailable through CLI flags. No ANSI or whitespace normalization is used.
+name = "32-session-selector-async-scopes"
+description = "Pending Session scope loads preserve input, progress, and selected scope"
+covers = ["packages/coding-agent/src/modes/interactive/components/session-selector.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-selector-async.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/session-selector-async.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['SESSION_PATH_DELETE_ASYNC [[1,"/tmp/current.jsonl"],[1,"/tmp/all.jsonl"]]']
+runs = 3

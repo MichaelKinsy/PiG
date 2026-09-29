@@ -1,5 +1,7 @@
 package ai
 
+// Ports packages/ai/src/utils/provider-retry.ts.
+
 import (
 	"context"
 	"fmt"
@@ -55,6 +57,17 @@ func ConfigureProviderRetry(maxRetries, maxRetryDelayMs int) error {
 }
 
 type providerMaxRetriesKey struct{}
+type providerMaxRetryDelayKey struct{}
+
+// WithProviderRequestRetry binds an independent caller's retry policy. A nil
+// delay uses Pi's provider default rather than another Session's configuration.
+func WithProviderRequestRetry(ctx context.Context, maxRetries int, maxRetryDelayMs *int) context.Context {
+	delay := defaultProviderMaxRetryDelayMs
+	if maxRetryDelayMs != nil {
+		delay = max(0, *maxRetryDelayMs)
+	}
+	return context.WithValue(WithProviderMaxRetries(ctx, maxRetries), providerMaxRetryDelayKey{}, delay)
+}
 
 // WithProviderMaxRetries returns a context whose provider requests retry at
 // most maxRetries times, overriding retry.provider.maxRetries. It carries
@@ -163,6 +176,8 @@ func abortableSleep(ctx context.Context, d time.Duration) error {
 // wrapping only `create().withResponse()`. Mid-stream errors are not retried.
 type retryTransport struct {
 	base http.RoundTripper
+	// onRetryResponse observes responses consumed by retry handling rather than returned to the caller.
+	onRetryResponse func(*http.Response) error
 }
 
 func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
@@ -170,7 +185,10 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	if maxRetries <= 0 {
 		return t.base.RoundTrip(req)
 	}
-	maxRetryDelayMs := int(configuredProviderMaxRetryDelayMs.Load())
+	maxRetryDelayMs, ok := req.Context().Value(providerMaxRetryDelayKey{}).(int)
+	if !ok {
+		maxRetryDelayMs = int(configuredProviderMaxRetryDelayMs.Load())
+	}
 	retriesRemaining := maxRetries
 	for {
 		resp, err := t.base.RoundTrip(req)
@@ -203,10 +221,29 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			return resp, err
 		}
 
+		if resp != nil && t.onRetryResponse != nil {
+			if observeErr := t.onRetryResponse(resp); observeErr != nil {
+				drainClose(resp)
+				return nil, observeErr
+			}
+		}
 		retryIndex := maxRetries - retriesRemaining
 		delay, delayErr := providerRetryDelay(headers, retryIndex, maxRetryDelayMs, providerMsg)
 		if delayErr != nil {
-			drainClose(resp)
+			// The SDK error used by Pi's retry policy already carries the response body.
+			if resp != nil && resp.Body != nil {
+				body, readErr := io.ReadAll(resp.Body)
+				_ = resp.Body.Close()
+				if ctxErr := req.Context().Err(); ctxErr != nil {
+					return nil, ctxErr
+				}
+				if readErr != nil {
+					return nil, fmt.Errorf("%w: %w", delayErr, readErr)
+				}
+				if len(body) > 0 {
+					return nil, fmt.Errorf("%w. %s", delayErr, body)
+				}
+			}
 			return nil, delayErr
 		}
 

@@ -30,16 +30,21 @@ func TestFormatPathRelativeToCwdOrAbsoluteJoinsWithSlashes(t *testing.T) {
 }
 
 // Node's path.resolve treats a rooted path without a drive (/x or \x) as
-// absolute on Windows, on the drive of the directory it resolves against.
+// absolute on Windows, on the drive of the process's working directory.
 func TestResolveAgainstCwdTreatsRootedPathsAsNodeDoes(t *testing.T) {
 	cwd := filepath.Join(os.TempDir(), "work")
-	want := filepath.Clean(filepath.VolumeName(cwd) + filepath.FromSlash("/tmp/project/.pi/SYSTEM.md"))
+	process, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := filepath.Clean(filepath.VolumeName(process) + filepath.FromSlash("/tmp/project/.pi/SYSTEM.md"))
 	for _, rooted := range []string{"/tmp/project/.pi/SYSTEM.md", filepath.FromSlash("/tmp/project/.pi/SYSTEM.md")} {
-		if got := resolveAgainstCwd(rooted, cwd); got != want {
+		if got, err := resolveAgainstCwd(rooted, cwd); err != nil || got != want {
 			t.Fatalf("resolveAgainstCwd(%q) = %q, want %q", rooted, got, want)
 		}
 	}
-	if got, want := resolveAgainstCwd(filepath.Join("sub", "AGENTS.md"), cwd), filepath.Join(cwd, "sub", "AGENTS.md"); got != want {
-		t.Fatalf("relative path = %q, want %q", got, want)
+	wantRelative := filepath.Join(cwd, "sub", "AGENTS.md")
+	if got, err := resolveAgainstCwd(filepath.Join("sub", "AGENTS.md"), cwd); err != nil || got != wantRelative {
+		t.Fatalf("relative path = %q, %v, want %q", got, err, wantRelative)
 	}
 }

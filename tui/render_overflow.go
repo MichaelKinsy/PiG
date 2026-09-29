@@ -9,10 +9,8 @@ import (
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
-// TUICrashLogName is the crash log written when an over-wide row reaches the
-// main screen's differential-render loop. Upstream writes pi-tui-crash.log;
-// PiG uses its own product prefix, as it does for pig-debug.log.
-const TUICrashLogName = "pig-tui-crash.log"
+// TUICrashLogName is the upstream crash-log filename for over-wide rows that reach the main-screen differential renderer.
+const TUICrashLogName = "pi-tui-crash.log"
 
 // RenderOverflowError is the value doRender panics with when an over-wide
 // non-image row reaches the differential-render loop. Its message is the
@@ -35,9 +33,7 @@ func (e *RenderOverflowError) Error() string {
 	}, "\n")
 }
 
-// SetLogDirectory sets the directory for the overflow crash log. Mirrors the
-// upstream TuiBase logDirectory constructor argument (getAgentDir() in
-// interactive mode). Empty selects the OS temp directory.
+// SetLogDirectory sets the redraw and overflow log directory. Empty disables redraw logging and selects the OS temp directory for crash dumps, matching TuiBase's logDirectory constructor argument.
 func (t *TUI) SetLogDirectory(dir string) {
 	t.mu.Lock()
 	t.logDirectory = dir
@@ -75,7 +71,7 @@ func (t *TUI) crashOnDifferentialOverflow(newLines []string, index, width int) {
 	}
 
 	// Clean up terminal state before throwing.
-	t.StopWithOptions(StopOptions{})
+	t.stopWithOptionsLocked(StopOptions{})
 
 	panic(&RenderOverflowError{Line: index, LineWidth: lineWidth, TerminalWidth: width, LogPath: crashLogPath})
 }

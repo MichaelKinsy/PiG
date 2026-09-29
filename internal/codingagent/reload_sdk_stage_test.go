@@ -37,7 +37,9 @@ func TestReloadStagesTheSDKBeforeRebuildingExtensions(t *testing.T) {
 		SubprocessHost:     host,
 		StageExtensionSDKs: func() error { order = append(order, "stage"); return nil },
 	})
-	m.buildSlashContext(context.Background()).Reload()
+	if err := m.buildSlashContext(t.Context()).Reload(); err != nil {
+		t.Fatal(err)
+	}
 
 	if len(order) != 2 || order[0] != "stage" || order[1] != "rebuild" {
 		t.Errorf("reload ran %v; want [stage rebuild]. Staging after the rebuild "+
@@ -56,7 +58,9 @@ func TestReloadContinuesAndReportsWhenStagingFails(t *testing.T) {
 		SubprocessHost:     host,
 		StageExtensionSDKs: func() error { return errors.New("disk full") },
 	})
-	m.buildSlashContext(context.Background()).Reload()
+	if err := m.buildSlashContext(t.Context()).Reload(); err != nil {
+		t.Fatal(err)
+	}
 
 	if !rebuilt {
 		t.Error("a staging failure aborted the reload; the user's other changes were dropped")
@@ -78,7 +82,9 @@ func TestReloadWithoutAStagingHookStillRebuilds(t *testing.T) {
 	host := &orderRecordingHost{onReload: func() { rebuilt = true }}
 
 	m := reloadTestMode(InteractiveOptions{SubprocessHost: host})
-	m.buildSlashContext(context.Background()).Reload()
+	if err := m.buildSlashContext(t.Context()).Reload(); err != nil {
+		t.Fatal(err)
+	}
 
 	if !rebuilt {
 		t.Error("reload skipped the rebuild when no staging hook was configured")
@@ -92,6 +98,7 @@ func reloadTestMode(opts InteractiveOptions) *InteractiveMode {
 	m := &InteractiveMode{runCtx: context.Background(), opts: opts}
 	m.editor = tui.NewEditor()
 	m.chatContainer = tui.NewContainer()
+	m.loadedResourcesContainer = tui.NewContainer()
 	m.tuiInst = tui.NewWithOutput(io.Discard, 80, 24)
 	m.agent = agent.NewAgent(agent.AgentOptions{})
 	return m
@@ -136,16 +143,13 @@ func TestReloadDiagnosticsListUnresolvedExtensions(t *testing.T) {
 	host := &reportingHost{report: &subprocess.ReloadReport{Issues: []string{issue}}}
 	m := reloadTestMode(InteractiveOptions{SubprocessHost: host})
 	slash := m.buildSlashContext(context.Background())
-	slash.Reload()
-	diag := slash.ReloadDiagnostics()
-	count := 0
-	for _, line := range diag.Diagnostics {
-		if line == "[extension] "+issue {
-			count++
-		}
+	if err := slash.Reload(); err != nil {
+		t.Fatal(err)
 	}
-	if count != 1 {
-		t.Fatalf("diagnostics = %q, want the unresolved extension listed once", diag.Diagnostics)
+	diagnostics := m.extensionDiagnostics()
+	want := extension.ResourceDiagnostic{Type: extension.DiagnosticError, Message: "Failed to load extension: no factory", Path: "/pkg/extensions/bad"}
+	if len(diagnostics) != 1 || diagnostics[0] != want {
+		t.Fatalf("diagnostics = %#v, want %#v once", diagnostics, want)
 	}
 }
 
@@ -154,7 +158,7 @@ func TestReloadDiagnosticsListUnresolvedExtensions(t *testing.T) {
 // so it never shows an unpluralized "(1 extensions)".
 func TestReloadSummaryMatchesUpstreamStatus(t *testing.T) {
 	sc, out, _, _ := newTestSlashContext()
-	sc.Reload = func() {}
+	sc.Reload = func() error { return nil }
 	sc.ReloadDiagnostics = func() ReloadDiag { return ReloadDiag{Extensions: 1, Themes: 2, Skills: 3, Prompts: 1, ContextFiles: 1} }
 	if err := reloadHandler(sc); err != nil {
 		t.Fatal(err)
@@ -201,7 +205,7 @@ func TestReloadKeepsPromptConflictsAfterChatRebuild(t *testing.T) {
 	if err := reloadHandler(m.buildSlashContext(t.Context())); err != nil {
 		t.Fatal(err)
 	}
-	out := stripANSITest(strings.Join(m.chatContainer.Render(300), "\n"))
+	out := stripANSITest(strings.Join(m.loadedResourcesContainer.Render(300), "\n"))
 	if got := strings.Count(out, "[Prompt conflicts]"); got != 1 {
 		t.Fatalf("[Prompt conflicts] shown %d times after /reload, want 1:\n%s", got, out)
 	}
@@ -210,6 +214,7 @@ func TestReloadKeepsPromptConflictsAfterChatRebuild(t *testing.T) {
 // A prompt contributed through resources_discover joins the one post-reload
 // diagnostics block rather than printing a second [Prompt conflicts] block.
 func TestReloadShowsExtensionPromptConflictsOnce(t *testing.T) {
+	isolateDisplayHome(t)
 	dir := t.TempDir()
 	local := filepath.Join(dir, "local.md")
 	dynamic := filepath.Join(dir, "dynamic.md")
@@ -230,7 +235,7 @@ func TestReloadShowsExtensionPromptConflictsOnce(t *testing.T) {
 	if err := reloadHandler(m.buildSlashContext(t.Context())); err != nil {
 		t.Fatal(err)
 	}
-	out := stripANSITest(strings.Join(m.chatContainer.Render(300), "\n"))
+	out := stripANSITest(strings.Join(m.loadedResourcesContainer.Render(300), "\n"))
 	if got := strings.Count(out, "[Prompt conflicts]"); got != 1 {
 		t.Fatalf("[Prompt conflicts] shown %d times after /reload, want 1:\n%s", got, out)
 	}
@@ -287,7 +292,7 @@ func TestReloadRebuildsChatWithReloadedDisplaySettings(t *testing.T) {
 	}
 	block := m.assistantBlocks[0]
 	lines := strings.Split(stripANSITest(strings.Join(block.Render(100), "\n")), "\n")
-	if !slices.Contains(lines, "visible-answer-marker") {
+	if !slices.Contains(lines, "\x1b]133;B\x07\x1b]133;C\x07visible-answer-marker"+strings.Repeat(" ", 100-len("visible-answer-marker"))) {
 		t.Fatalf("rebuilt block kept the pre-reload output padding:\n%s", strings.Join(lines, "\n"))
 	}
 	block.SetThinkingDelta("private-plan-marker")
@@ -337,16 +342,17 @@ func TestReloadListsAFailingExtensionOnce(t *testing.T) {
 	})
 	m := reloadTestMode(InteractiveOptions{SubprocessHost: host})
 	slash := m.buildSlashContext(context.Background())
-	slash.Reload()
-	diag := slash.ReloadDiagnostics()
+	if err := slash.Reload(); err != nil {
+		t.Fatal(err)
+	}
 	count := 0
-	for _, line := range diag.Diagnostics {
-		if strings.Contains(line, broken) || strings.Contains(line, "register boom") {
+	for _, d := range m.extensionDiagnostics() {
+		if strings.Contains(d.Path, broken) || strings.Contains(d.Message, "register boom") {
 			count++
 		}
 	}
-	if count != 1 {
-		t.Fatalf("diagnostics = %q, want the failing extension listed once", diag.Diagnostics)
+	if count != 1 || len(slash.ReloadDiagnostics().Diagnostics) != 0 {
+		t.Fatalf("diagnostics = %#v, summary = %q, want the failing extension listed once under [Extension issues] only", m.extensionDiagnostics(), slash.ReloadDiagnostics().Diagnostics)
 	}
 }
 
@@ -371,6 +377,29 @@ func TestDetectExtensionConflictsMatchesUpstream(t *testing.T) {
 	}
 }
 
+// Upstream resource-loader.ts detectExtensionConflicts walks ext.tools.keys(), a Map in registration order, and interpolates the raw tool name.
+func TestDetectExtensionConflictsUsesToolRegistrationOrder(t *testing.T) {
+	tools := func(names ...string) map[string]extension.RegisteredTool {
+		out := make(map[string]extension.RegisteredTool, len(names))
+		for _, name := range names {
+			out[name] = extension.RegisteredTool{}
+		}
+		return out
+	}
+	conflicts := DetectExtensionConflicts([]extension.Extension{
+		{Name: "a", Path: "/a.ts", Tools: tools("zeta", `win\tool`, "alpha"), ToolOrder: []string{"zeta", `win\tool`, "alpha"}},
+		{Name: "b", Path: "/b.ts", Tools: tools("zeta", `win\tool`, "alpha"), ToolOrder: []string{"zeta", `win\tool`, "alpha"}},
+	})
+	want := []ExtensionConflict{
+		{Path: "/b.ts", Message: `Tool "zeta" conflicts with /a.ts`},
+		{Path: "/b.ts", Message: `Tool "win\tool" conflicts with /a.ts`},
+		{Path: "/b.ts", Message: `Tool "alpha" conflicts with /a.ts`},
+	}
+	if !slices.Equal(conflicts, want) {
+		t.Fatalf("conflicts = %#v, want %#v", conflicts, want)
+	}
+}
+
 func TestReloadIncludesBuiltinExtensionsInLoadOrderAndConflicts(t *testing.T) {
 	tool := func(name string) map[string]extension.RegisteredTool {
 		return map[string]extension.RegisteredTool{name: {}}
@@ -389,16 +418,16 @@ func TestReloadIncludesBuiltinExtensionsInLoadOrderAndConflicts(t *testing.T) {
 		SubprocessHost:    host,
 		BuiltinExtensions: []extension.Extension{builtin},
 	})
-	m.buildSlashContext(context.Background()).Reload()
-
-	wantIssues := []string{
-		`[extension] builtin:piglet: Tool "shared" conflicts with /configured.ts`,
-		`[extension] builtin:piglet: Flag "--mode" conflicts with /configured.ts`,
+	if err := m.buildSlashContext(t.Context()).Reload(); err != nil {
+		t.Fatal(err)
 	}
-	for _, want := range wantIssues {
-		if !slices.Contains(m.reloadIssues, want) {
-			t.Errorf("reload issues = %q, want %q", m.reloadIssues, want)
-		}
+
+	wantIssues := []ExtensionConflict{
+		{Path: "builtin:piglet", Message: `Tool "shared" conflicts with /configured.ts`},
+		{Path: "builtin:piglet", Message: `Flag "--mode" conflicts with /configured.ts`},
+	}
+	if !slices.Equal(m.extensionConflicts, wantIssues) {
+		t.Errorf("extension conflicts = %#v, want %#v", m.extensionConflicts, wantIssues)
 	}
 	if got := m.newRunner.ExtensionNames(); !slices.Equal(got, []string{"subprocess", "piglet"}) {
 		t.Fatalf("runner extension order = %v, want configured then builtin", got)
@@ -424,7 +453,9 @@ func TestReloadReconstructsBuiltinFactories(t *testing.T) {
 			})
 			slash := m.buildSlashContext(context.Background())
 			for want := 1; want <= 2; want++ {
-				slash.Reload()
+				if err := slash.Reload(); err != nil {
+					t.Fatal(err)
+				}
 				if generation != want {
 					t.Fatalf("reload %d factory calls = %d", want, generation)
 				}
@@ -465,10 +496,12 @@ func TestReloadListsExtensionToolConflicts(t *testing.T) {
 	})
 	m := reloadTestMode(InteractiveOptions{SubprocessHost: host})
 	slash := m.buildSlashContext(context.Background())
-	slash.Reload()
-	want := "[extension] " + paths[1] + `: Tool "ask_user" conflicts with ` + paths[0]
-	if diag := slash.ReloadDiagnostics(); !slices.Contains(diag.Diagnostics, want) {
-		t.Fatalf("diagnostics = %q, want %q", diag.Diagnostics, want)
+	if err := slash.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	want := extension.ResourceDiagnostic{Type: extension.DiagnosticError, Path: paths[1], Message: `Tool "ask_user" conflicts with ` + paths[0]}
+	if diagnostics := m.extensionDiagnostics(); !slices.Contains(diagnostics, want) {
+		t.Fatalf("diagnostics = %#v, want %#v", diagnostics, want)
 	}
 	if host.ExtensionCount() != 2 {
 		t.Fatalf("loaded extensions = %d, want both copies", host.ExtensionCount())

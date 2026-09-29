@@ -1,0 +1,45 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:5928-5945,6038 reports the same completion for API-key login.
+# A synthetic key is stored through the real /login flow; no inference request is made.
+# The paired state scenario checks session/default persistence before its observer replaces this status.
+name = "13-post-login-api-key-status"
+description = "API-key completion reports the selected provider default and credential path"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+[tmux]
+width = 200
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Saved API key for OpenAI."
+capture_end = "/auth.json"
+settle_seconds = 1
+cwd = "../selectors/testdata/login-empty-project"
+[[tmux.steps]]
+keys = ["/login", "Enter"]
+wait_contains = ["Select authentication method"]
+[[tmux.steps]]
+keys = ["Down", "Enter"]
+wait_contains = ["Select provider"]
+[[tmux.steps]]
+keys = ["openai", "Enter"]
+wait_contains = ["API key"]
+[[tmux.steps]]
+keys = ["parity-key", "Enter"]
+wait_visible_contains = ["Saved API key for OpenAI. Selected gpt-5.5. Credentials saved to"]
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../selectors/testdata/pi-agent-noauth", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["PIG_CODING_AGENT_DIR=", "PIG_HOME=", "PI_CODING_AGENT_DIR=../selectors/testdata/pi-agent-noauth", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+[assert]
+both_reach_ready = true
+both_contain = ["Saved API key for OpenAI. Selected gpt-5.5. Credentials saved to"]
+output_normalized_equal = true
+runs = 3
+# normalize-rationale: the two credential files live in isolated agent-directory snapshots.
+[[assert.normalize_replace]]
+pattern = '/[^\r\n ]+/auth\.json'
+with = '<AUTH_PATH>'
+reason = "Credential files live in distinct per-binary temporary agent directories; compare the complete status apart from that isolated location."

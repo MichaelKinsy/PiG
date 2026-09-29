@@ -1,24 +1,16 @@
 package main
 
-import (
-	"github.com/MichaelKinsy/PiG/agent"
-	"github.com/MichaelKinsy/PiG/coding"
-)
+import "github.com/MichaelKinsy/PiG/coding"
 
-// rpcSetInitialActiveTools selects the startup loadout without shrinking the
-// Session registry used by subsequent extension and Piglet tool selection.
+// rpcSetInitialActiveTools selects the startup loadout without shrinking the Session registry.
 func rpcSetInitialActiveTools(session *coding.Session, names []string) {
-	registered := session.Tools()
-	byName := make(map[string]agent.AgentTool, len(registered))
-	for _, tool := range registered {
-		byName[tool.Name()] = tool
-	}
-	selected := make([]agent.AgentTool, 0, len(names))
+	seen := make(map[string]struct{}, len(names))
+	var selected []string
 	for _, name := range names {
-		if tool := byName[name]; tool != nil {
-			selected = append(selected, tool)
-			delete(byName, name)
+		if _, duplicate := seen[name]; !duplicate {
+			selected = append(selected, name)
+			seen[name] = struct{}{}
 		}
 	}
-	session.Agent().SetTools(selected)
+	session.SetActiveToolsByName(selected)
 }

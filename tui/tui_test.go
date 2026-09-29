@@ -22,7 +22,7 @@ func TestKittyDeletionPrecedesReplacementTransmission(t *testing.T) {
 	ui.hasRendered = true
 	ui.prevWidth = 80
 	ui.prevHeight = 24
-	ui.previousKittyImageIDs = map[int]struct{}{42: {}}
+	ui.previousKittyImageIDs = []int{42}
 	ui.doRender()
 
 	bytes := output.String()

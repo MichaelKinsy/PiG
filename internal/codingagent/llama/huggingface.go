@@ -8,10 +8,11 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
@@ -22,9 +23,9 @@ import (
 const defaultHuggingFaceURL = "https://huggingface.co"
 
 var (
-	quantizationPattern = regexp.MustCompile(`(?i)(?:^|[-_.])((?:UD-)?(?:IQ\d(?:_[A-Z0-9]+)+|Q\d(?:_[A-Z0-9]+)+|BF16|F16|F32|MXFP\d(?:_[A-Z0-9]+)*))$`)
-	shardSuffixPattern  = regexp.MustCompile(`-\d{5}-of-\d{5}$`)
-	rateLimitPattern    = regexp.MustCompile(`(?:^|;)t=(\d+)`)
+	quantizationPattern = lazyregexp.New(`(?i)(?:^|[-_.])((?:UD-)?(?:IQ\d(?:_[A-Z0-9]+)+|Q\d(?:_[A-Z0-9]+)+|BF16|F16|F32|MXFP\d(?:_[A-Z0-9]+)*))$`)
+	shardSuffixPattern  = lazyregexp.New(`-\d{5}-of-\d{5}$`)
+	rateLimitPattern    = lazyregexp.New(`(?:^|;)t=(\d+)`)
 )
 
 // localeCompare mirrors String.prototype.localeCompare under the root locale.

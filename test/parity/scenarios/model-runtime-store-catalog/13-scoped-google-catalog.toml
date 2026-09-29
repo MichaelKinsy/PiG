@@ -1,0 +1,33 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:5219 reads the runtime's composed available snapshot.
+# A GEMINI_API_KEY makes Google's catalog available without any custom registration.
+# /scoped-models must not apply a second, smaller provider allowlist to that snapshot.
+name = "13-scoped-google-catalog"
+description = "Scoped model selector includes the available Google catalog with environment credentials."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "google/gemini-2.5-flash"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "gemini-2.5-flash"
+ready_pattern_pi = "$0.000"
+ready_timeout_seconds = 20
+keys = ["/scoped-models", "Enter"]
+settle_seconds = 2
+capture_start = "Model Configuration"
+capture_end = "all enabled"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/scoped-google-agent", "GEMINI_API_KEY=scoped-catalog-test-key"]
+pi = ["PI_CODING_AGENT_DIR=testdata/scoped-google-agent", "GEMINI_API_KEY=scoped-catalog-test-key"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["[google]", "Model catalogs refreshed.", "all enabled"]
+both_not_contain = ["No authenticated models", "panic:"]
+output_equal = true
+runs = 3

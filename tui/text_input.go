@@ -1,14 +1,11 @@
 package tui
 
-// text_input.go: bare single-line text input.
-//
-// Mirrors upstream packages/tui/src/components/input.ts for input semantics
-// and render surface: a single `> ` prompt line with horizontal scrolling,
-// fake cursor, and optional hardware cursor marker.
+// Ports packages/tui/src/components/input.ts
 
 import (
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -17,55 +14,43 @@ type textInputState struct {
 	cursor int
 }
 
-// TextInput is a bare single-line text input component.
+// TextInput is a single-line input with UTF-16 cursor offsets and grapheme-aware editing. Unpaired UTF-16 units use the internal WTF-8 string representation.
 type TextInput struct {
 	invalidatable
-	value  string
-	cursor int // byte offset, always kept on grapheme boundary
-
-	done   bool
-	cancel bool
-
-	Focused bool
-
-	isInPaste   bool
-	pasteBuffer string
-
-	killRing   KillRing
-	lastAction string // kill | yank | type-word | ""
-	undoStack  UndoStack[textInputState]
-
-	prompt              string
-	placeholder         string
-	placeholderStyle    func(text string) string
+	value               string
+	cursor              int
+	done, cancel        bool
+	Focused             bool
+	isInPaste           bool
+	pasteBuffer         string
+	killRing            KillRing
+	lastAction          string
+	undoStack           UndoStack[textInputState]
+	prompt, placeholder string
+	placeholderStyle    func(string) string
 	renderedStartColumn int
-
-	// callbacks selects upstream Input's submit/escape contract: Enter and
-	// cancel call OnSubmit/OnEscape instead of latching Done. Set by NewInput.
-	callbacks bool
-	OnSubmit  func(value string)
-	OnEscape  func()
+	callbacks           bool
+	OnSubmit            func(string)
+	OnEscape            func()
 }
 
-// InputOptions mirrors upstream InputOptions. A nil Prompt takes upstream's
-// "> " default; nil PlaceholderStyle leaves the placeholder unstyled.
+// InputOptions mirrors InputOptions. Nil Prompt selects "> "; nil PlaceholderStyle leaves text unstyled.
 type InputOptions struct {
 	Prompt           *string
 	Placeholder      string
-	PlaceholderStyle func(text string) string
+	PlaceholderStyle func(string) string
 }
 
-// NewTextInput creates a text input with the given title/prompt.
-func NewTextInput(title string) *TextInput {
-	_ = title // retained for call-site compatibility while Render matches upstream Input.
+// NewTextInput creates a host-owned confirmation input. The title is supplied by its enclosing dialog; Done and Cancelled report completion.
+func NewTextInput(_ string) *TextInput {
 	return &TextInput{Focused: true, prompt: "> ", placeholderStyle: func(text string) string { return text }}
 }
 
-// NewInput creates an input with upstream Input's options and its
-// OnSubmit/OnEscape contract. Mirrors upstream new Input(options).
+// NewInput creates upstream Input's callback-driven component, initially unfocused.
 func NewInput(options InputOptions) *TextInput {
 	input := NewTextInput("")
 	input.callbacks = true
+	input.Focused = false
 	if options.Prompt != nil {
 		input.prompt = *options.Prompt
 	}
@@ -76,54 +61,63 @@ func NewInput(options InputOptions) *TextInput {
 	return input
 }
 
-// Done reports whether the input has been confirmed or cancelled.
-func (t *TextInput) Done() bool { return t.done }
+// SetFocused records whether the input holds TUI focus; only a focused input emits the hardware-cursor marker.
+func (t *TextInput) SetFocused(focused bool) {
+	if t.Focused != focused {
+		t.Focused = focused
+		t.Invalidate()
+	}
+}
 
-// Cancelled reports whether the user pressed Esc.
+func (t *TextInput) Done() bool      { return t.done }
 func (t *TextInput) Cancelled() bool { return t.cancel }
+func (t *TextInput) Text() string    { return t.GetValue() }
 
-// Text returns the current input text.
-func (t *TextInput) Text() string { return t.value }
+// GetValue returns the current JavaScript string, retaining unpaired UTF-16 units.
+func (t *TextInput) GetValue() string { return t.value }
 
-// SetText pre-fills the input.
-func (t *TextInput) SetText(s string) {
-	t.value = s
-	t.cursor = len(s)
+// SetValue replaces the value and clamps the existing UTF-16 cursor without rounding surrogate-half positions.
+func (t *TextInput) SetValue(value string) {
+	t.value = jsstring.Canonical(value)
+	t.cursor = min(t.cursor, jsstring.Length(t.value))
 	t.Invalidate()
 }
 
-func (t *TextInput) pushUndo() {
-	t.undoStack.Push(textInputState{value: t.value, cursor: t.cursor})
+// SetText sets the component text. Callback-driven Input retains its cursor as setValue does; host confirmation inputs prefill at the end.
+func (t *TextInput) SetText(value string) {
+	t.SetValue(value)
+	if !t.callbacks {
+		t.cursor = jsstring.Length(value)
+	}
 }
 
+func (t *TextInput) pushUndo() { t.undoStack.Push(textInputState{t.value, t.cursor}) }
 func (t *TextInput) undo() {
-	last, ok := t.undoStack.Pop()
+	snapshot, ok := t.undoStack.Pop()
 	if !ok {
 		return
 	}
-	t.value = last.value
-	t.cursor = last.cursor
+	t.value, t.cursor = snapshot.value, snapshot.cursor
 	t.lastAction = ""
 	t.Invalidate()
 }
 
-// HandleInput processes a key event.
+// HandleInput applies one input event. Paste state spans chunks; submission and cancellation use the selected owner/callback contract.
 func (t *TextInput) HandleInput(data string) {
 	if t.done {
 		return
 	}
-
 	if strings.Contains(data, "\x1b[200~") {
 		t.isInPaste = true
 		t.pasteBuffer = ""
-		data = strings.ReplaceAll(data, "\x1b[200~", "")
+		data = strings.Replace(data, "\x1b[200~", "", 1)
 	}
 	if t.isInPaste {
 		t.pasteBuffer += data
-		if end := strings.Index(t.pasteBuffer, "\x1b[201~"); end != -1 {
+		if end := strings.Index(t.pasteBuffer, "\x1b[201~"); end >= 0 {
 			t.handlePaste(t.pasteBuffer[:end])
-			remaining := t.pasteBuffer[end+len("\x1b[201~"):]
 			t.isInPaste = false
+			remaining := t.pasteBuffer[end+6:]
 			t.pasteBuffer = ""
 			if remaining != "" {
 				t.HandleInput(remaining)
@@ -131,7 +125,6 @@ func (t *TextInput) HandleInput(data string) {
 		}
 		return
 	}
-
 	kb := GetTUIKeybindings()
 	switch {
 	case kb.Matches(data, KBSelectCancel):
@@ -139,11 +132,11 @@ func (t *TextInput) HandleInput(data string) {
 			if t.OnEscape != nil {
 				t.OnEscape()
 			}
-			return
+		} else {
+			t.cancel = true
+			t.done = true
+			t.Invalidate()
 		}
-		t.cancel = true
-		t.done = true
-		t.Invalidate()
 		return
 	case kb.Matches(data, KBEditorUndo):
 		t.undo()
@@ -153,10 +146,10 @@ func (t *TextInput) HandleInput(data string) {
 			if t.OnSubmit != nil {
 				t.OnSubmit(t.value)
 			}
-			return
+		} else {
+			t.done = true
+			t.Invalidate()
 		}
-		t.done = true
-		t.Invalidate()
 		return
 	case kb.Matches(data, KBEditorDeleteCharBack):
 		t.handleBackspace()
@@ -184,12 +177,16 @@ func (t *TextInput) HandleInput(data string) {
 		return
 	case kb.Matches(data, KBEditorCursorLeft):
 		t.lastAction = ""
-		t.cursor = previousGraphemeStart(t.value, t.cursor)
+		if t.cursor > 0 {
+			t.cursor -= inputLastGraphemeLength(jsstring.Slice(t.value, 0, t.cursor))
+		}
 		t.Invalidate()
 		return
 	case kb.Matches(data, KBEditorCursorRight):
 		t.lastAction = ""
-		t.cursor = nextGraphemeEnd(t.value, t.cursor)
+		if t.cursor < jsstring.Length(t.value) {
+			t.cursor += inputFirstGraphemeLength(jsstring.Slice(t.value, t.cursor, jsstring.Length(t.value)))
+		}
 		t.Invalidate()
 		return
 	case kb.Matches(data, KBEditorCursorLineStart):
@@ -199,7 +196,7 @@ func (t *TextInput) HandleInput(data string) {
 		return
 	case kb.Matches(data, KBEditorCursorLineEnd):
 		t.lastAction = ""
-		t.cursor = len(t.value)
+		t.cursor = jsstring.Length(t.value)
 		t.Invalidate()
 		return
 	case kb.Matches(data, KBEditorCursorWordLeft):
@@ -209,339 +206,244 @@ func (t *TextInput) HandleInput(data string) {
 		t.moveWordForward()
 		return
 	}
-
 	if printable, ok := DecodePrintableKey(data); ok {
 		t.insertCharacter(printable)
 		return
 	}
-
-	hasControlChars := false
 	for _, ch := range data {
-		code := ch
-		if code < 32 || code == 0x7f || (code >= 0x80 && code <= 0x9f) {
-			hasControlChars = true
-			break
+		if ch < 32 || ch == 0x7f || ch >= 0x80 && ch <= 0x9f {
+			return
 		}
 	}
-	if !hasControlChars {
-		t.insertCharacter(data)
-	}
+	t.insertCharacter(data)
 }
 
-func (t *TextInput) insertCharacter(char string) {
-	if char == "" {
-		return
+func inputFirstGraphemeLength(text string) int {
+	first, _ := widthx.FirstGrapheme(text)
+	if first == "" {
+		return 1
 	}
-	if isWhitespaceGrapheme(char) || t.lastAction != "type-word" {
+	return jsstring.Length(first)
+}
+func inputLastGraphemeLength(text string) int {
+	segments := graphemeSegments(text)
+	if len(segments) == 0 {
+		return 1
+	}
+	return jsstring.Length(segments[len(segments)-1].Text)
+}
+func (t *TextInput) insertCharacter(char string) {
+	if isWhitespaceChar(char) || t.lastAction != "type-word" {
 		t.pushUndo()
 	}
 	t.lastAction = "type-word"
-	t.value = t.value[:t.cursor] + char + t.value[t.cursor:]
-	t.cursor += len(char)
+	t.value = jsstring.Splice(t.value, t.cursor, t.cursor, char)
+	t.cursor += jsstring.Length(char)
 	t.Invalidate()
 }
-
 func (t *TextInput) handleBackspace() {
-	if t.cursor == 0 {
+	t.lastAction = ""
+	if t.cursor <= 0 {
 		return
 	}
-	t.lastAction = ""
 	t.pushUndo()
-	start := previousGraphemeStart(t.value, t.cursor)
-	t.value = t.value[:start] + t.value[t.cursor:]
-	t.cursor = start
+	length := inputLastGraphemeLength(jsstring.Slice(t.value, 0, t.cursor))
+	t.value = jsstring.Splice(t.value, t.cursor-length, t.cursor, "")
+	t.cursor -= length
 	t.Invalidate()
 }
-
 func (t *TextInput) handleForwardDelete() {
-	if t.cursor >= len(t.value) {
+	t.lastAction = ""
+	if t.cursor >= jsstring.Length(t.value) {
 		return
 	}
-	t.lastAction = ""
 	t.pushUndo()
-	end := nextGraphemeEnd(t.value, t.cursor)
-	t.value = t.value[:t.cursor] + t.value[end:]
+	length := inputFirstGraphemeLength(jsstring.Slice(t.value, t.cursor, jsstring.Length(t.value)))
+	t.value = jsstring.Splice(t.value, t.cursor, t.cursor+length, "")
 	t.Invalidate()
 }
-
 func (t *TextInput) deleteToLineStart() {
 	if t.cursor == 0 {
 		return
 	}
 	t.pushUndo()
-	deleted := t.value[:t.cursor]
+	deleted := jsstring.Slice(t.value, 0, t.cursor)
 	t.killRing.Push(deleted, true, t.lastAction == "kill")
 	t.lastAction = "kill"
-	t.value = t.value[t.cursor:]
+	t.value = jsstring.Slice(t.value, t.cursor, jsstring.Length(t.value))
 	t.cursor = 0
 	t.Invalidate()
 }
-
 func (t *TextInput) deleteToLineEnd() {
-	if t.cursor >= len(t.value) {
+	if t.cursor >= jsstring.Length(t.value) {
 		return
 	}
 	t.pushUndo()
-	deleted := t.value[t.cursor:]
+	deleted := jsstring.Slice(t.value, t.cursor, jsstring.Length(t.value))
 	t.killRing.Push(deleted, false, t.lastAction == "kill")
 	t.lastAction = "kill"
-	t.value = t.value[:t.cursor]
+	t.value = jsstring.Slice(t.value, 0, t.cursor)
 	t.Invalidate()
 }
-
 func (t *TextInput) deleteWordBackward() {
 	if t.cursor == 0 {
 		return
 	}
 	wasKill := t.lastAction == "kill"
 	t.pushUndo()
-	oldCursor := t.cursor
+	old := t.cursor
 	t.moveWordBackward()
-	deleteFrom := t.cursor
-	t.cursor = oldCursor
-	deleted := t.value[deleteFrom:t.cursor]
-	t.killRing.Push(deleted, true, wasKill)
+	from := t.cursor
+	t.cursor = old
+	t.killRing.Push(jsstring.Slice(t.value, from, t.cursor), true, wasKill)
 	t.lastAction = "kill"
-	t.value = t.value[:deleteFrom] + t.value[t.cursor:]
-	t.cursor = deleteFrom
+	t.value = jsstring.Splice(t.value, from, t.cursor, "")
+	t.cursor = from
 	t.Invalidate()
 }
-
 func (t *TextInput) deleteWordForward() {
-	if t.cursor >= len(t.value) {
+	if t.cursor >= jsstring.Length(t.value) {
 		return
 	}
 	wasKill := t.lastAction == "kill"
 	t.pushUndo()
-	oldCursor := t.cursor
+	old := t.cursor
 	t.moveWordForward()
-	deleteTo := t.cursor
-	t.cursor = oldCursor
-	deleted := t.value[t.cursor:deleteTo]
-	t.killRing.Push(deleted, false, wasKill)
+	end := t.cursor
+	t.cursor = old
+	t.killRing.Push(jsstring.Slice(t.value, t.cursor, end), false, wasKill)
 	t.lastAction = "kill"
-	t.value = t.value[:t.cursor] + t.value[deleteTo:]
+	t.value = jsstring.Splice(t.value, t.cursor, end, "")
 	t.Invalidate()
 }
-
 func (t *TextInput) yank() {
 	text := t.killRing.Peek()
 	if text == "" {
 		return
 	}
 	t.pushUndo()
-	t.value = t.value[:t.cursor] + text + t.value[t.cursor:]
-	t.cursor += len(text)
+	t.value = jsstring.Splice(t.value, t.cursor, t.cursor, text)
+	t.cursor += jsstring.Length(text)
 	t.lastAction = "yank"
 	t.Invalidate()
 }
-
 func (t *TextInput) yankPop() {
 	if t.lastAction != "yank" || t.killRing.Len() <= 1 {
 		return
 	}
 	t.pushUndo()
-	prev := t.killRing.Peek()
-	if prev != "" && t.cursor >= len(prev) {
-		t.value = t.value[:t.cursor-len(prev)] + t.value[t.cursor:]
-		t.cursor -= len(prev)
-	}
+	previous := t.killRing.Peek()
+	length := jsstring.Length(previous)
+	t.value = jsstring.Splice(t.value, t.cursor-length, t.cursor, "")
+	t.cursor -= length
 	t.killRing.Rotate()
 	text := t.killRing.Peek()
-	t.value = t.value[:t.cursor] + text + t.value[t.cursor:]
-	t.cursor += len(text)
+	t.value = jsstring.Splice(t.value, t.cursor, t.cursor, text)
+	t.cursor += jsstring.Length(text)
 	t.lastAction = "yank"
 	t.Invalidate()
 }
-
 func (t *TextInput) moveWordBackward() {
 	if t.cursor == 0 {
 		return
 	}
 	t.lastAction = ""
-	for t.cursor > 0 {
-		start := previousGraphemeStart(t.value, t.cursor)
-		seg := t.value[start:t.cursor]
-		if !isWhitespaceGrapheme(seg) {
-			break
-		}
-		t.cursor = start
-	}
-	if t.cursor == 0 {
-		t.Invalidate()
-		return
-	}
-	start := previousGraphemeStart(t.value, t.cursor)
-	seg := t.value[start:t.cursor]
-	if isPunctuationGrapheme(seg) {
-		for t.cursor > 0 {
-			start = previousGraphemeStart(t.value, t.cursor)
-			seg = t.value[start:t.cursor]
-			if !isPunctuationGrapheme(seg) {
-				break
-			}
-			t.cursor = start
-		}
-	} else {
-		for t.cursor > 0 {
-			start = previousGraphemeStart(t.value, t.cursor)
-			seg = t.value[start:t.cursor]
-			if isWhitespaceGrapheme(seg) || isPunctuationGrapheme(seg) {
-				break
-			}
-			t.cursor = start
-		}
-	}
+	t.cursor = FindWordBackward(t.value, t.cursor)
 	t.Invalidate()
 }
-
 func (t *TextInput) moveWordForward() {
-	if t.cursor >= len(t.value) {
+	if t.cursor >= jsstring.Length(t.value) {
 		return
 	}
 	t.lastAction = ""
-	for t.cursor < len(t.value) {
-		end := nextGraphemeEnd(t.value, t.cursor)
-		seg := t.value[t.cursor:end]
-		if !isWhitespaceGrapheme(seg) {
-			break
-		}
-		t.cursor = end
-	}
-	if t.cursor >= len(t.value) {
-		t.Invalidate()
-		return
-	}
-	end := nextGraphemeEnd(t.value, t.cursor)
-	seg := t.value[t.cursor:end]
-	if isPunctuationGrapheme(seg) {
-		for t.cursor < len(t.value) {
-			end = nextGraphemeEnd(t.value, t.cursor)
-			seg = t.value[t.cursor:end]
-			if !isPunctuationGrapheme(seg) {
-				break
-			}
-			t.cursor = end
-		}
-	} else {
-		for t.cursor < len(t.value) {
-			end = nextGraphemeEnd(t.value, t.cursor)
-			seg = t.value[t.cursor:end]
-			if isWhitespaceGrapheme(seg) || isPunctuationGrapheme(seg) {
-				break
-			}
-			t.cursor = end
-		}
-	}
+	t.cursor = FindWordForward(t.value, t.cursor)
 	t.Invalidate()
 }
-
-func (t *TextInput) handlePaste(pastedText string) {
+func (t *TextInput) handlePaste(text string) {
 	t.lastAction = ""
 	t.pushUndo()
-	clean := strings.ReplaceAll(pastedText, "\r\n", "")
-	clean = strings.ReplaceAll(clean, "\r", "")
-	clean = strings.ReplaceAll(clean, "\n", "")
-	clean = strings.ReplaceAll(clean, "\t", "    ")
-	t.value = t.value[:t.cursor] + clean + t.value[t.cursor:]
-	t.cursor += len(clean)
+	clean := strings.NewReplacer("\r\n", "", "\r", "", "\n", "", "\t", "    ").Replace(text)
+	t.value = jsstring.Splice(t.value, t.cursor, t.cursor, clean)
+	t.cursor += jsstring.Length(clean)
 	t.Invalidate()
 }
 
-// Render produces the upstream bare input surface: a single prompt line.
-func (t *TextInput) Render(width int) []string {
-	return []string{t.renderInputLine(width)}
-}
-
+// Render returns the prompt, horizontally scrolled value and fake cursor. Cursor slicing follows UTF-16 even when setValue retained a surrogate-half offset.
+func (t *TextInput) Render(width int) []string { return []string{t.renderInputLine(width)} }
 func (t *TextInput) renderInputLine(width int) string {
-	prompt := t.prompt
-	availableWidth := width - widthx.VisibleWidth(prompt)
-	if availableWidth <= 0 {
-		return widthx.TruncateToWidth(prompt, width, "", false)
+	available := width - widthx.VisibleWidth(t.prompt)
+	if available <= 0 {
+		return widthx.TruncateToWidth(t.prompt, width, "", false)
 	}
-
 	marker := ""
 	if t.Focused {
 		marker = widthx.CursorMarker
 	}
 	if t.value == "" && t.placeholder != "" {
-		placeholder := widthx.TruncateToWidth(t.placeholder, availableWidth, "", false)
-		atCursor := " "
-		if segments := graphemeSegments(placeholder); len(segments) > 0 {
-			atCursor = segments[0].Text
+		placeholder := widthx.TruncateToWidth(t.placeholder, available, "", false)
+		at := " "
+		if first, _ := widthx.FirstGrapheme(placeholder); first != "" {
+			at = first
 		}
-		afterCursor := placeholder[min(len(atCursor), len(placeholder)):]
-		textWithCursor := marker + "\x1b[7m" + t.placeholderStyle(atCursor) + "\x1b[27m" + t.placeholderStyle(afterCursor)
-		padding := strings.Repeat(" ", max(0, availableWidth-widthx.VisibleWidth(textWithCursor)))
-		return prompt + textWithCursor + padding
+		after := jsstring.Slice(placeholder, jsstring.Length(at), jsstring.Length(placeholder))
+		content := marker + "\x1b[7m" + t.placeholderStyle(at) + "\x1b[27m" + t.placeholderStyle(after)
+		return t.prompt + content + strings.Repeat(" ", max(0, available-widthx.VisibleWidth(content)))
 	}
-
-	visibleText := ""
+	visible := ""
 	cursorDisplay := t.cursor
 	t.renderedStartColumn = 0
-	totalWidth := widthx.VisibleWidth(t.value)
-	if totalWidth < availableWidth {
-		visibleText = t.value
+	total := widthx.VisibleWidth(t.value)
+	if total < available {
+		visible = t.value
 	} else {
-		scrollWidth := availableWidth
-		if t.cursor == len(t.value) {
-			scrollWidth = availableWidth - 1
+		scrollWidth := available
+		if t.cursor == jsstring.Length(t.value) {
+			scrollWidth--
 		}
-		cursorCol := widthx.VisibleWidth(t.value[:t.cursor])
+		cursorCol := widthx.VisibleWidth(jsstring.Slice(t.value, 0, t.cursor))
 		if scrollWidth > 0 {
-			halfWidth := scrollWidth / 2
-			startCol := 0
+			half := scrollWidth / 2
+			start := 0
 			switch {
-			case cursorCol < halfWidth:
-				startCol = 0
-			case cursorCol > totalWidth-halfWidth:
-				startCol = max(0, totalWidth-scrollWidth)
+			case cursorCol < half:
+			case cursorCol > total-half:
+				start = max(0, total-scrollWidth)
 			default:
-				startCol = max(0, cursorCol-halfWidth)
+				start = max(0, cursorCol-half)
 			}
-			t.renderedStartColumn = startCol
-			visibleText = widthx.SliceByColumn(t.value, startCol, scrollWidth, true)
-			beforeCursor := widthx.SliceByColumn(t.value, startCol, max(0, cursorCol-startCol), true)
-			cursorDisplay = len(beforeCursor)
+			t.renderedStartColumn = start
+			visible = widthx.SliceByColumn(t.value, start, scrollWidth, true)
+			cursorDisplay = jsstring.Length(widthx.SliceByColumn(t.value, start, max(0, cursorCol-start), true))
 		} else {
-			visibleText = ""
 			cursorDisplay = 0
 		}
 	}
-
-	beforeCursor := visibleText[:cursorDisplay]
-	atCursor := " "
-	afterCursor := ""
-	if cursorDisplay < len(visibleText) {
-		seg := graphemeAt(visibleText, cursorDisplay)
-		if seg.End > cursorDisplay {
-			atCursor = visibleText[cursorDisplay:seg.End]
-			afterCursor = visibleText[seg.End:]
-		}
+	before := jsstring.Slice(visible, 0, cursorDisplay)
+	at, _ := widthx.FirstGrapheme(jsstring.Slice(visible, cursorDisplay, jsstring.Length(visible)))
+	if at == "" {
+		at = " "
 	}
-
-	cursorChar := "\x1b[7m" + atCursor + "\x1b[27m"
-	textWithCursor := beforeCursor + marker + cursorChar + afterCursor
-	padding := strings.Repeat(" ", max(0, availableWidth-widthx.VisibleWidth(textWithCursor)))
-	return prompt + textWithCursor + padding
+	after := jsstring.Slice(visible, cursorDisplay+jsstring.Length(at), jsstring.Length(visible))
+	content := before + marker + "\x1b[7m" + at + "\x1b[27m" + after
+	return t.prompt + content + strings.Repeat(" ", max(0, available-widthx.VisibleWidth(content)))
 }
 
-// HandleMouse moves the cursor to a left press on the input row and requests
-// focus. Mirrors upstream Input.handleMouse.
+// HandleMouse places the UTF-16 cursor at the clicked grapheme and requests focus.
 func (t *TextInput) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
 	if event.Type != MousePress || event.Button != MouseButtonLeft || event.Y != 0 {
 		return nil
 	}
-	targetColumn := t.renderedStartColumn + max(0, event.X-2)
-	currentColumn := 0
-	t.cursor = len(t.value)
-	for _, grapheme := range graphemeSegments(t.value) {
-		nextColumn := currentColumn + widthx.VisibleWidth(grapheme.Text)
-		if targetColumn < nextColumn {
-			t.cursor = grapheme.Start
+	target := t.renderedStartColumn + max(0, event.X-2)
+	column, units := 0, 0
+	t.cursor = jsstring.Length(t.value)
+	for _, segment := range graphemeSegments(t.value) {
+		next := column + segment.Width
+		if target < next {
+			t.cursor = units
 			break
 		}
-		currentColumn = nextColumn
+		column = next
+		units += jsstring.Length(segment.Text)
 	}
 	t.lastAction = ""
 	t.Invalidate()

@@ -1,0 +1,51 @@
+# rpc-mode.ts:324-344 delegates extension command replacements to runtimeHost.
+# Each RPC prompt response waits for the extension command; the next command
+# then runs against the replacement. The final notification records all
+# lifecycle events and resulting histories without volatile IDs or paths.
+#
+# pig divergence (D70): the fixture's replace-probe command sets
+# process.env.FIN_REPLACEMENT_LOG so the replacement's session_start handler can
+# find the log. Pi re-runs the extension factory inside the same Node process, so
+# the assignment survives into the replacement Session. Pig starts a fresh
+# extension process for each replacement Session, and a process environment
+# change does not cross that boundary. Pig's side receives the log path at
+# startup; Pi keeps the fixture's own assignment.
+name = "41-rpc-extension-session-replacement"
+description = "RPC extension commands await new, fork and resume with ordered lifecycle"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/core/agent-session-runtime.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 30
+settle_seconds = 1
+steps = [
+  {line = '{"id":"resume","type":"prompt","message":"/replace-probe resume {{TEMP}}/trace.jsonl"}', wait_contains = ['"id":"resume","type":"response"'], wait_timeout_seconds = 15},
+  {line = '{"id":"at","type":"prompt","message":"/replace-probe at {{TEMP}}/trace.jsonl"}', wait_contains = ['"id":"at","type":"response"'], wait_timeout_seconds = 15},
+  {line = '{"id":"before","type":"prompt","message":"/replace-probe before {{TEMP}}/trace.jsonl"}', wait_contains = ['"id":"before","type":"response"'], wait_timeout_seconds = 15},
+  {line = '{"id":"cancel","type":"prompt","message":"/replace-probe cancel {{TEMP}}/trace.jsonl"}', wait_contains = ['"id":"cancel","type":"response"'], wait_timeout_seconds = 15},
+  {line = '{"id":"new","type":"prompt","message":"/replace-probe new {{TEMP}}/trace.jsonl"}', wait_contains = ['"id":"new","type":"response"'], wait_timeout_seconds = 15},
+  {line = '{"id":"report","type":"prompt","message":"/replacement-report {{TEMP}}/trace.jsonl"}', wait_contains = ['replacement-trace:'], wait_timeout_seconds = 15},
+]
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "FIN_REPLACEMENT_LOG={{TEMP}}/trace.jsonl"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+pig_extensions = ["testdata/ext/session-replacement.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/session-replacement.mjs"]
+
+[assert]
+exit_code = 0
+runs = 3
+json_output_equal = true
+stderr_equal = true
+both_contain = ['replacement-trace:', '[\"result\",\"cancel\",true]', '[\"result\",\"new\",false]']
+both_not_contain = ["unsupported", '"success":false']
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "ui"
+pattern = '^[0-9a-f-]{36}$'
+reason = "Notifications have generated UUIDs; retain distinct identities, event order, payloads and all command responses."

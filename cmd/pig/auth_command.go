@@ -6,10 +6,11 @@ package main
 
 import (
 	"fmt"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
@@ -84,7 +85,7 @@ const authCommandHelp = `Usage:
 
 Auth commands require at least one of --provider or --model. Checks refresh expired OAuth credentials by default; --no-refresh prevents this. --credentials emits the credential, or includes it in JSON output.`
 
-var minExpiryPattern = regexp.MustCompile(`(?i)^(\d+)(ms|s|m|h)$`)
+var minExpiryPattern = lazyregexp.New(`(?i)^(\d+)(ms|s|m|h)$`)
 
 // ParseAuthCommand mirrors upstream parseAuthCommand. It returns nil for
 // arguments that are not an auth command.
@@ -226,7 +227,7 @@ func apiKeyFlagSet(rawArgs []string) bool {
 
 // authorizationBearerPattern mirrors upstream /^Bearer\s+(.+)$/iu with
 // JavaScript's \s and line-terminator-free `.`.
-var authorizationBearerPattern = regexp.MustCompile(`(?i)^Bearer[\t\n\v\f\r \x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]+([^\n\r\x{2028}\x{2029}]+)$`)
+var authorizationBearerPattern = lazyregexp.New(`(?i)^Bearer[\t\n\v\f\r \x{00a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}]+([^\n\r\x{2028}\x{2029}]+)$`)
 
 // GetAuthCredential mirrors upstream getAuthCredential: the resolved API key,
 // otherwise the token of an `Authorization: Bearer` header.

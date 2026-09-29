@@ -101,7 +101,7 @@ them.
 Set `PIG_RENDER_DEBUG` to any value to write render diagnostics. Use it when you
 report a display problem.
 
-As in Pi, a row wider than the terminal is fatal only when it reaches a differential render. Pig then writes `pig-tui-crash.log` to the agent directory (the system temp directory when there is none) with the terminal width, the offending row and its width, and every rendered row, restores the terminal, prints the error with the log path, and exits with status 1. The first render, a forced full render, and the full render after a resize emit an over-wide row unchanged.
+As in Pi, a row wider than the terminal is fatal only when it reaches a differential render. Pig then writes `pi-tui-crash.log` to the agent directory (the system temp directory when there is none) with the terminal width, the offending row and its width, and every rendered row, restores the terminal, prints the error with the log path, and exits with status 1. The first render, a forced full render, and the full render after a resize emit an over-wide row unchanged.
 
 ## Related
 

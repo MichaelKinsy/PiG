@@ -1,0 +1,26 @@
+# Pi 0.87.1 xhigh.test.ts:39,52 uses raw reasoningEffort, not clamped simple reasoning.
+# The hermetic endpoint rejects xhigh only when it receives that exact value, like the unsupported-model case.
+# Go drives Services.ModelRuntime.Complete and must surface setup rejection as a terminal error.
+# The zAI rows also enforce openai-completions.ts:878-885: null native mappings omit effort, and enabled thinking sends clear_thinking:false.
+# Mutation: replace raw reasoningEffort with clamped high; the endpoint accepts the request and the exact result changes from error to stop.
+name = "13-raw-openai-reasoning-effort"
+description = "Raw reasoningEffort reaches both OpenAI APIs unchanged and provider rejection becomes a runtime error result."
+covers = ["packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/openai-responses.ts", "packages/coding-agent/src/core/model-runtime.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/raw-effort-pig"]
+pi_args = ["node", "./test/parity/testdata/raw-effort-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

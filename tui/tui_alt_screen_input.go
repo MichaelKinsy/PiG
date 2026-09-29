@@ -1,10 +1,11 @@
 package tui
 
 import (
-	"regexp"
 	"slices"
 	"sort"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -15,7 +16,7 @@ import (
 
 // osc133PromptStart matches a leading OSC 133;A prompt-start mark, used by
 // scrollToPrompt. Mirrors upstream OSC133_PROMPT_START.
-var osc133PromptStart = regexp.MustCompile("^\x1b\\]133;A(?:\x07|\x1b\\\\)")
+var osc133PromptStart = lazyregexp.New("^\x1b\\]133;A(?:\x07|\x1b\\\\)")
 
 // altSearchSelectionMode mirrors upstream SearchSelectionMode.
 type altSearchSelectionMode string

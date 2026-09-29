@@ -2,13 +2,33 @@ package subprocess
 
 import (
 	"bytes"
-	"encoding/json"
 	"fmt"
-	"strings"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
+
+// pig additive (D19): autocomplete callback handles stay on their owner connection. ui.addAutocompleteProvider names a factoryId; autocomplete.sync wraps it around current or invokes apply/trigger, while autocomplete.suggest awaits getSuggestions. Captured references use ui.autocomplete.invoke and one-way release notifications. Columns are UTF-16. Parent cancellation owns handler calls; queryId also cancels editor-owned calls without a parent.
+type autocompleteDescriptor struct {
+	ID                string   `json:"id"`
+	LocalID           string   `json:"localId,omitempty"`
+	TriggerCharacters []string `json:"triggerCharacters"`
+	HasFileTrigger    bool     `json:"hasFileTrigger"`
+}
+
+type autocompleteInvocation struct {
+	QueryID    string                     `json:"queryId,omitempty"`
+	ID         string                     `json:"id"`
+	Operation  string                     `json:"operation"`
+	Lines      []string                   `json:"lines"`
+	CursorLine int                        `json:"cursorLine"`
+	CursorCol  int                        `json:"cursorCol"`
+	Force      bool                       `json:"force"`
+	Item       extension.AutocompleteItem `json:"item"`
+	Prefix     string                     `json:"prefix"`
+}
 
 // MaxFrameSize bounds a single length-prefixed wire frame. The 4-byte length
 // prefix is a uint32, so the hard ceiling is ~4 GB; this cap guards against
@@ -112,6 +132,9 @@ type RegisterPayload struct {
 	Providers        []ProviderDecl        `json:"providers,omitempty"`
 	MessageRenderers []MessageRendererDecl `json:"message_renderers,omitempty"`
 	EntryRenderers   []EntryRendererDecl   `json:"entry_renderers,omitempty"`
+	// MarkdownTransformer reports that the extension registered a Markdown
+	// transformer. The host runs it with RequestMarkdownTransform.
+	MarkdownTransformer bool `json:"markdown_transformer,omitempty"`
 
 	// WantsSessionLog subscribes this extension to session-log replication from
 	// the handshake, before the ready state is built, so the log is present on
@@ -138,6 +161,9 @@ func (p *RegisterPayload) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// CallRegisterTool carries one ToolDecl after the initial registration. The host validates and replaces the definition, refreshes the Session registry, and replies with allTools and activeTools before the SDK returns.
+const CallRegisterTool = "registerTool"
+
 // ToolDecl declares a tool the extension provides.
 type ToolDecl struct {
 	Name                string            `json:"name"`
@@ -146,6 +172,7 @@ type ToolDecl struct {
 	Parameters          json.RawMessage   `json:"parameters"`                     // JSON Schema
 	ConstrainedSampling json.RawMessage   `json:"constrained_sampling,omitempty"` // false | ConstrainedSamplingConfig (ai.ConstrainedSamplingConfig JSON); false/null/absent all disable
 	ExecutionMode       string            `json:"execution_mode,omitempty"`       // "sequential" | "parallel"
+	PromptSnippet       string            `json:"prompt_snippet,omitempty"`
 	PromptGuidelines    []string          `json:"prompt_guidelines,omitempty"`
 	Annotations         map[string]string `json:"annotations,omitempty"`
 	Source              string            `json:"source,omitempty"` // pig additive (D23): per-tool source override; default: extension name
@@ -156,6 +183,12 @@ type ToolDecl struct {
 	// and renderResult. The host asks for them with RequestRenderTool.
 	RendersCall   bool `json:"renders_call,omitempty"`
 	RendersResult bool `json:"renders_result,omitempty"`
+	// BuiltInRenderers names the built-in tool whose host renderers draw the
+	// halves the tool does not render itself: the Node runtime sets it for a
+	// definition from Pi's create<Tool>ToolDefinition (D73).
+	BuiltInRenderers string `json:"builtin_renderers,omitempty"`
+	// ValidationParameters preserves non-enumerable TypeBox kinds separately from provider parameters.
+	ValidationParameters json.RawMessage `json:"validation_parameters,omitempty"`
 }
 
 // CommandDecl declares a slash command the extension provides.
@@ -197,8 +230,74 @@ type FlagDecl struct {
 
 // ProviderDecl registers or overrides a model provider.
 type ProviderDecl struct {
-	Name   string          `json:"name"`
-	Config json.RawMessage `json:"config"`
+	StreamSimple bool                       `json:"stream_simple,omitempty"`
+	Name         string                     `json:"name"`
+	Config       json.RawMessage            `json:"config"`
+	Native       *NativeProviderDeclaration `json:"native,omitempty"`
+}
+
+// NativeProviderDeclaration describes callback ownership, never executable code. Key identifies the owner's callback object; Handle identifies its host-owned reference lifetime. Methods lists the callable public members. Provider calls carry caller callbacks as request-scoped handles, and stream creation is acknowledged before ordered events.
+type NativeProviderDeclaration struct {
+	ID      string                          `json:"id"`
+	Key     string                          `json:"key"`
+	Handle  string                          `json:"handle,omitempty"`
+	Headers *map[string]string              `json:"headers,omitempty"`
+	Auth    *ProviderObjectAuthDeclaration  `json:"auth,omitempty"`
+	Methods []string                        `json:"methods,omitempty"`
+	Name    string                          `json:"name"`
+	BaseURL *string                         `json:"baseUrl,omitempty"`
+	Models  []extension.ProviderModelConfig `json:"models"`
+	OAuth   *ProviderOAuthConfig            `json:"oauth,omitempty"`
+}
+
+type ProviderObjectAuthDeclaration struct {
+	APIKey *ProviderObjectAuthMethodDeclaration `json:"apiKey,omitempty"`
+	OAuth  *ProviderObjectAuthMethodDeclaration `json:"oauth,omitempty"`
+}
+
+type ProviderObjectAuthMethodDeclaration struct {
+	Name           string  `json:"name"`
+	IsSubscription *bool   `json:"isSubscription,omitempty"`
+	LoginLabel     *string `json:"loginLabel,omitempty"`
+}
+
+type ProviderObjectCall struct {
+	Handle     string          `json:"handle"`
+	Method     string          `json:"method"`
+	Params     json.RawMessage `json:"params"`
+	StreamID   string          `json:"streamId,omitempty"`
+	CallbackID string          `json:"callbackId,omitempty"`
+}
+
+const CallProviderObject = "provider.object"
+const MethodProviderSync = "provider_sync"
+const MethodProviderObjectCallback = "provider_object_callback"
+const MethodProviderCall = "provider_call"
+const MethodProviderStream = "provider_stream"
+const CallProviderPublish = "provider.publish"
+const CallProviderCallback = "provider.callback"
+
+// ModelStreamCall invokes a registry stream or an already-resolved API leaf.
+// Callback capabilities remain scoped to StreamID and the originating connection.
+type ModelStreamCall struct {
+	StreamID         string          `json:"streamId"`
+	Simple           bool            `json:"simple,omitempty"`
+	APIRequest       bool            `json:"apiRequest,omitempty"`
+	Fetch            bool            `json:"fetch,omitempty"`
+	OnPayload        bool            `json:"onPayload,omitempty"`
+	OnResponse       bool            `json:"onResponse,omitempty"`
+	TransformHeaders bool            `json:"transformHeaders,omitempty"`
+	Model            map[string]any  `json:"model"`
+	Request          json.RawMessage `json:"request"`
+}
+
+const MethodModelStreamCallback = "model_stream_callback"
+
+// ModelStreamCallback invokes one advertised callback before its provider boundary proceeds.
+type ModelStreamCallback struct {
+	StreamID string `json:"streamId"`
+	Callback string `json:"callback"`
+	Value    any    `json:"value"`
 }
 
 // ── OAuth provider bridge (additive, the current subprocess wire) ────────────────────────────
@@ -245,15 +344,8 @@ const (
 	CallOAuthOnManualCodeInput = "oauth.cb.onManualCodeInput" // Args: none.                    Result: OAuthInputResult.
 )
 
-// OAuthCredentialsWire is the wire shape of OAuth credentials. Matches
-// ai.OAuthCredentials so the host can marshal that type directly; the SDK
-// mirrors these tags.
-type OAuthCredentialsWire struct {
-	Refresh   string `json:"refresh"`
-	Access    string `json:"access"`
-	Expires   int64  `json:"expires"`
-	ProjectID string `json:"projectId,omitempty"`
-}
+// OAuthCredentialsWire is the wire shape of OAuth credentials: Pi's complete token object, including provider-owned keys and the exact JavaScript expires value.
+type OAuthCredentialsWire = ai.OAuthCredentials
 
 // OAuthAuthInfoWire, OAuthDeviceCodeInfoWire, OAuthProgressWire, OAuthPromptWire,
 // OAuthSelectPromptWire, and OAuthSelectOptionWire carry the login-callback
@@ -349,27 +441,29 @@ type ReadyPayload struct {
 // pi.getThinkingLevel(), ctx.isIdle(), ctx.getContextUsage(), etc.). It is
 // sent with [ReadyPayload] at startup and re-sent via "state_update"
 // notifies whenever the host knows it has changed.
+// State fields carry explicit empty/null values so a snapshot clears prior values; session log pages remain incremental.
 type StatePayload struct {
-	ActiveTools         []string                   `json:"activeTools,omitempty"`
-	AllTools            []ToolInfo                 `json:"allTools,omitempty"`
-	Commands            []CommandInfo              `json:"commands,omitempty"`
-	ThinkingLevel       string                     `json:"thinkingLevel,omitempty"`
-	Model               map[string]any             `json:"model,omitempty"`
+	ActiveTools         []string                   `json:"activeTools"`
+	AllTools            []ToolInfo                 `json:"allTools"`
+	Commands            []CommandInfo              `json:"commands"`
+	ThinkingLevel       string                     `json:"thinkingLevel"`
+	Model               map[string]any             `json:"model"`
+	ScopedModels        []scopedModelSnapshot      `json:"scopedModels"`
 	Session             *SessionStatePayload       `json:"session,omitempty"`
 	IsIdle              bool                       `json:"isIdle"`
 	ProjectTrusted      bool                       `json:"projectTrusted"`
 	HasPendingMessages  bool                       `json:"hasPendingMessages"`
-	ContextUsage        *extensionContextUsageDTO  `json:"contextUsage,omitempty"`
-	SystemPrompt        string                     `json:"systemPrompt,omitempty"`
+	ContextUsage        *extensionContextUsageDTO  `json:"contextUsage"`
+	SystemPrompt        string                     `json:"systemPrompt"`
 	SystemPromptOptions json.RawMessage            `json:"systemPromptOptions,omitempty"`
-	Flags               map[string]json.RawMessage `json:"flags,omitempty"`
+	Flags               map[string]json.RawMessage `json:"flags"`
 	HasUI               bool                       `json:"hasUI"`
 	FooterData          *FooterDataPayload         `json:"footerData,omitempty"`
 	// Always serialized: an emptied editor must clear the replicated value
 	// rather than leave the previous text in place.
 	EditorText    string         `json:"editorText"`
 	ToolsExpanded bool           `json:"toolsExpanded"`
-	AllThemes     []themeMetaDTO `json:"allThemes,omitempty"`
+	AllThemes     []themeMetaDTO `json:"allThemes"`
 	// TerminalCapabilities is the host terminal's resolved capabilities
 	// (detection plus settings overrides). The Node runtime seeds pi-tui's
 	// capability cache with it, so Pi's Markdown renders links as the host
@@ -380,6 +474,11 @@ type StatePayload struct {
 	// whether chalk styles draw. The Node runtime's theme helpers
 	// (getSelectListTheme, highlightCode, keyHint, ...) color with it.
 	Theme any `json:"theme,omitempty"`
+	// Keybindings is Pi's keybinding table as the host resolved it: every
+	// tui.* and app.* definition with the user's keybindings.json overrides.
+	// The Node runtime installs it as pi-tui's keybindings manager, the one
+	// Pi hands editor and custom-component factories and sets globally.
+	Keybindings any `json:"keybindings,omitempty"`
 }
 
 // TerminalCapabilitiesPayload mirrors pi-tui's TerminalCapabilities.
@@ -412,24 +511,29 @@ type FooterDataPayload struct {
 // host session file.
 type SessionStatePayload struct {
 	SessionID   string `json:"sessionId,omitempty"`
-	SessionName string `json:"sessionName,omitempty"`
-	SessionFile string `json:"sessionFile,omitempty"`
-	LeafID      string `json:"leafId,omitempty"`
+	SessionName string `json:"sessionName"`
+	SessionFile string `json:"sessionFile"`
+	LeafID      string `json:"leafId"`
 	// EntriesAppended carries only the next bounded page after this extension's
 	// cursor. EntryCount is the cursor after applying the page. When
 	// EntriesRemaining is true, the host sends another ordered state update.
 	EntriesAppended  []json.RawMessage `json:"entriesAppended,omitempty"`
 	EntryCount       int               `json:"entryCount"`
 	EntriesRemaining bool              `json:"entriesRemaining,omitempty"`
+	// Info carries the session manager facts the log does not hold: the
+	// header, cwd, session directory, and whether the session persists
+	// (upstream getHeader, getCwd, getSessionDir, isPersisted,
+	// usesDefaultSessionDir).
+	Info json.RawMessage `json:"info,omitempty"`
 }
 
 // extensionContextUsageDTO mirrors extension.ContextUsage on the wire. We
 // duplicate it here to avoid importing the public extension package from
 // the protocol layer.
 type extensionContextUsageDTO struct {
-	Tokens        int     `json:"tokens"`
-	ContextWindow int     `json:"contextWindow"`
-	Percent       float64 `json:"percent"`
+	Tokens        *int     `json:"tokens"`
+	ContextWindow int      `json:"contextWindow"`
+	Percent       *float64 `json:"percent"`
 }
 
 // ── Request (host→ext) ───────────────────────────────────────────────────────
@@ -442,6 +546,15 @@ type RequestPayload struct {
 	HandlerID  int             `json:"handler_id,omitempty"`
 	ToolCallID string          `json:"tool_call_id,omitempty"` // For tool_call: unique ID
 	Args       json.RawMessage `json:"args,omitempty"`         // Tool args or event payload
+	// SignalTimeoutMS, on oauth_refresh, asks a runtime whose refresh callback receives an AbortSignal to compose AbortSignal.timeout(SignalTimeoutMS) into it, as Pi's resolveStoredOAuth does (auth/resolve.ts:149-153). Absent, the signal follows only the caller (models.ts:474).
+	SignalTimeoutMS *float64 `json:"signal_timeout_ms,omitempty"`
+}
+
+// TerminalInputArgs carries an ordered input and the UI values visible before its listener runs. Data and EditorText preserve UTF-16 units using WTF-8 in Go and surrogate escapes in JSON. Runtimes with synchronous local UI getters refresh those values before invoking the listener; host-query SDKs read the same live UI through their existing calls.
+type TerminalInputArgs struct {
+	Data          string `json:"data"`
+	EditorText    string `json:"editorText"`
+	ToolsExpanded bool   `json:"toolsExpanded"`
 }
 
 // ── Response (ext→host) ──────────────────────────────────────────────────────
@@ -454,7 +567,14 @@ type BoundaryEventResultPayload struct {
 	Continue *bool            `json:"continue,omitempty"`
 }
 
-// ResponsePayload is the extension's reply to a request. For agent_before_settle,
+// BeforeAgentStartResponsePayload carries per-run mutations even when a handler fails. SelectedTools retains the untyped value until the handler chain ends: non-string entries cannot name registered tools, and null rejects prompt admission. Result carries the handler's ordinary message/systemPrompt result.
+type BeforeAgentStartResponsePayload struct {
+	Sections      ai.OrderedSections `json:"_pigPromptSections"`
+	SelectedTools json.RawMessage    `json:"_pigPromptSelectedTools"`
+	Result        json.RawMessage    `json:"_pigPromptResult"`
+}
+
+// ResponsePayload is the extension's reply to a request. For agent_before_settle and turn_end,
 // Result carries {_pigBoundaryEntries, _pigBoundaryResult}: the mutated input
 // draft list and the explicit handler result. Mutations also accompany Error;
 // the host applies them before surfacing the error and ignores the explicit result.
@@ -496,11 +616,34 @@ func (e *remoteError) ErrorStack() string { return e.stack }
 
 // ── Notify (bidirectional) ───────────────────────────────────────────────────
 
-// NotifyPayload carries a fire-and-forget notification.
+// NotifyPayload carries a fire-and-forget notification. The host-only runtime_input_end notification removes stdin as a Node keepalive. runtime_drained reports a still-pending quit handler whose event loop drained. runtime_quit_yield reports a post-disposal boundary that suspended beyond its immediately fulfilled continuations. Command suspension travels as request_state. None completes an extension request.
 type NotifyPayload struct {
 	Method string          `json:"method"` // e.g. "width_change", "widget_invalidate"
 	Args   json.RawMessage `json:"args,omitempty"`
 }
+
+// NotifyLoadFailed (ext→host) takes the place of the register handshake
+// when an extension's module or factory throws: the Node runtime reports its
+// loader's error, as Pi's loader words it, and closes. Args is a
+// FactoryLoadError.
+const NotifyLoadFailed = "load_failed"
+
+// FactoryLoadError is an extension's own report that it failed to load.
+// Message is Pi's loader error ("Failed to load extension: <message>", or the
+// missing-factory message); Stack is the thrown error's stack.
+type FactoryLoadError struct {
+	Message string `json:"error"`
+	Stack   string `json:"stack,omitempty"`
+}
+
+func (e *FactoryLoadError) Error() string      { return e.Message }
+func (e *FactoryLoadError) ErrorStack() string { return e.Stack }
+
+// RequestProviderStream invokes a legacy streamSimple callback. Native Provider objects retain their provider_stream method/params carrier.
+const RequestProviderStream = "provider_stream_simple"
+
+// NotifyProviderStreamEvent carries ordered assistant events before the final request response.
+const NotifyProviderStreamEvent = "provider_stream_event"
 
 // NotifyToolUpdate (ext→host) carries a tool's partial result while its
 // tool_call request runs, as upstream's onUpdate(partialResult) does. The host
@@ -524,6 +667,8 @@ const (
 	NotifyUICustomInput  = "ui.custom.input"
 	NotifyUICustomRender = "ui.custom.render"
 	NotifyUICustomClose  = "ui.custom.close"
+	NotifyUICustomOpened = "ui.custom.opened"
+	CallUICustomControl  = "ui.custom.control"
 )
 
 type RemoteOverlayOpenPayload struct {
@@ -532,13 +677,28 @@ type RemoteOverlayOpenPayload struct {
 	WidthFraction  float64 `json:"widthFraction,omitempty"`
 	HeightFraction float64 `json:"heightFraction,omitempty"`
 	Overlay        bool    `json:"overlay,omitempty"`
+	HasHandle      bool    `json:"hasHandle,omitempty"`
 	// OverlayOptions is upstream ui.custom()'s serialisable overlayOptions.
 	OverlayOptions *extension.OverlayLayout `json:"overlayOptions,omitempty"`
 }
 
+type RemoteOverlayControlPayload struct {
+	Key    string                      `json:"key"`
+	Action string                      `json:"action"`
+	Hidden bool                        `json:"hidden,omitempty"`
+	Target *RemoteOverlayTargetPayload `json:"target,omitempty"`
+}
+
+// RemoteOverlayTargetPayload names an explicit unfocus target: "null", "editor", or "overlay" with the key of another mounted overlay of the same extension.
+type RemoteOverlayTargetPayload struct {
+	Kind string `json:"kind"`
+	Key  string `json:"key,omitempty"`
+}
+
 type RemoteOverlayInputPayload struct {
-	Key  string `json:"key"`
-	Data string `json:"data"`
+	Key   string                        `json:"key"`
+	Data  string                        `json:"data"`
+	State *extension.RemoteOverlayState `json:"state,omitempty"`
 }
 
 type RemoteOverlayRenderPayload struct {
@@ -606,25 +766,23 @@ type PongPayload struct {
 
 // RequestStatePayload reports activity for one host-owned request. A blocked
 // state means the handler has entered an awaited operation; completed means its
-// body returned. Either admits the next unawaited UI prompt event. Started alone
+// body returned. The Node runtime reports suspended when an extension command's, or a quit session_shutdown handler's, event-loop window closed with the request unresponded. Either admits the next unawaited UI prompt event. Started alone
 // reports dispatch and does not establish handler-body invocation order.
 type RequestStatePayload struct {
 	RequestID string `json:"request_id"`
-	State     string `json:"state"`            // started | progress | blocked | completed
+	State     string `json:"state"`            // started | progress | blocked | completed | suspended
 	Reason    string `json:"reason,omitempty"` // user | host_call | external_io
 }
 
 // ── Tool Result (within Response) ────────────────────────────────────────────
 
-// ToolResult is the structured result from a tool execution, carried inside
-// ResponsePayload.Result. Content is a string or upstream's block array of
-// {type:"text",text} and {type:"image",data,mimeType}. Text blocks join with
-// newlines, unchanged; image blocks become Images in order.
+// ToolResult retains the ordered text/image array returned by a subprocess tool. The SDK's text shorthand decodes as one text block, including an explicit empty string.
 type ToolResult struct {
-	Content string            `json:"-"`
-	Images  []ai.ImageContent `json:"-"`
-	Details json.RawMessage   `json:"details,omitempty"`
-	IsError bool              `json:"is_error,omitempty"`
+	Content []ai.ToolResultMessageContent `json:"-"`
+	Details json.RawMessage               `json:"details,omitempty"`
+	IsError bool                          `json:"is_error,omitempty"`
+	// Usage is upstream AgentToolResult.usage: the tool execution's own usage.
+	Usage *ai.Usage `json:"usage,omitempty"`
 	// Terminate mirrors upstream AgentToolResult.terminate: the agent stops
 	// after the current tool batch when every result in it sets terminate.
 	Terminate bool `json:"terminate,omitempty"`
@@ -639,6 +797,7 @@ func (r *ToolResult) UnmarshalJSON(data []byte) error {
 		Content   json.RawMessage `json:"content,omitempty"`
 		Details   json.RawMessage `json:"details,omitempty"`
 		IsError   bool            `json:"is_error,omitempty"`
+		Usage     *ai.Usage       `json:"usage,omitempty"`
 		Terminate bool            `json:"terminate,omitempty"`
 		Preview   string          `json:"preview,omitempty"`
 	}
@@ -647,42 +806,39 @@ func (r *ToolResult) UnmarshalJSON(data []byte) error {
 	}
 	r.Details = raw.Details
 	r.IsError = raw.IsError
+	r.Usage = raw.Usage
 	r.Terminate = raw.Terminate
 	r.Preview = raw.Preview
+	r.Content = nil
 
 	if len(raw.Content) == 0 {
 		return nil
 	}
 	switch raw.Content[0] {
 	case '"':
-		return json.Unmarshal(raw.Content, &r.Content)
-	case '[':
-		var blocks []struct {
-			Type     string `json:"type"`
-			Text     string `json:"text"`
-			Data     string `json:"data"`
-			MimeType string `json:"mimeType"`
+		var text string
+		if err := json.Unmarshal(raw.Content, &text); err != nil {
+			return err
 		}
+		r.Content = []ai.ToolResultMessageContent{ai.TextContent{Text: text}}
+		return nil
+	case '[':
+		var blocks []json.RawMessage
 		if err := json.Unmarshal(raw.Content, &blocks); err != nil {
 			return fmt.Errorf("decode tool result content blocks: %w", err)
 		}
-		var sb strings.Builder
-		wroteText := false
-		for _, b := range blocks {
-			switch b.Type {
-			case "text":
-				if wroteText {
-					sb.WriteString("\n")
-				}
-				sb.WriteString(b.Text)
-				wroteText = true
-			case "image":
-				r.Images = append(r.Images, ai.ImageContent{Data: b.Data, MimeType: b.MimeType})
-			default:
-				return fmt.Errorf("tool result content block type %q is not text or image", b.Type)
+		r.Content = make([]ai.ToolResultMessageContent, 0, len(blocks))
+		for _, rawBlock := range blocks {
+			block, err := ai.UnmarshalContentBlock(rawBlock)
+			if err != nil {
+				return fmt.Errorf("decode tool result content block: %w", err)
 			}
+			value, ok := block.(ai.ToolResultMessageContent)
+			if !ok {
+				return fmt.Errorf("tool result content block %T is not text or image", block)
+			}
+			r.Content = append(r.Content, value)
 		}
-		r.Content = sb.String()
 		return nil
 	}
 	return fmt.Errorf("tool result content must be a string or a block array, got %s", raw.Content)
@@ -746,10 +902,23 @@ type RenderToolResult struct {
 
 // RenderToolContent is one text or image block of a RenderToolResult.
 type RenderToolContent struct {
-	Type     string `json:"type"`
-	Text     string `json:"text,omitempty"`
-	Data     string `json:"data,omitempty"`
-	MimeType string `json:"mimeType,omitempty"`
+	Type          string `json:"type"`
+	Text          string `json:"text,omitempty"`
+	TextSignature string `json:"textSignature,omitempty"`
+	Data          string `json:"data,omitempty"`
+	MimeType      string `json:"mimeType,omitempty"`
+}
+
+// MarshalJSON retains required empty text and image fields on the renderer wire.
+func (block RenderToolContent) MarshalJSON() ([]byte, error) {
+	switch block.Type {
+	case "text":
+		return json.Marshal(ai.TextContent{Text: block.Text, TextSignature: block.TextSignature})
+	case "image":
+		return json.Marshal(ai.ImageContent{Data: block.Data, MimeType: block.MimeType})
+	default:
+		return nil, fmt.Errorf("invalid render tool content type %q", block.Type)
+	}
 }
 
 // RenderToolContext carries the serializable fields of upstream

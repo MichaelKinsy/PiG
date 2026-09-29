@@ -1,5 +1,7 @@
 package tui
 
+import "github.com/MichaelKinsy/PiG/tui/widthx"
+
 type ImageTheme struct {
 	FallbackColor func(string) string
 }
@@ -55,6 +57,7 @@ func (i *Image) Invalidate() {
 	i.cachedWidth = 0
 }
 
+// Render returns image protocol rows or a width-bounded, styled fallback.
 func (i *Image) Render(width int) []string {
 	if i.cachedLines != nil && i.cachedWidth == width {
 		return i.cachedLines
@@ -82,7 +85,7 @@ func (i *Image) Render(width int) []string {
 			MaxWidthCells:  maxWidth,
 			MaxHeightCells: maxHeight,
 			ImageID:        i.imageID,
-			MoveCursor:     false,
+			MoveCursor:     new(false),
 		})
 		if result != nil {
 			if result.ImageID != 0 {
@@ -105,10 +108,10 @@ func (i *Image) Render(width int) []string {
 				lines = append(lines, moveUp+result.Sequence)
 			}
 		} else {
-			lines = []string{i.Theme.FallbackColor(ImageFallback(i.MIMEType, &i.Dimensions, i.Options.Filename))}
+			lines = []string{widthx.TruncateToWidth(i.Theme.FallbackColor(ImageFallback(i.MIMEType, &i.Dimensions, i.Options.Filename)), width, "...", false)}
 		}
 	} else {
-		lines = []string{i.Theme.FallbackColor(ImageFallback(i.MIMEType, &i.Dimensions, i.Options.Filename))}
+		lines = []string{widthx.TruncateToWidth(i.Theme.FallbackColor(ImageFallback(i.MIMEType, &i.Dimensions, i.Options.Filename)), width, "...", false)}
 	}
 	i.cachedLines = lines
 	i.cachedWidth = width

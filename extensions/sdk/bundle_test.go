@@ -4,7 +4,7 @@
 package sdk
 
 import (
-	"os"
+	"io/fs"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -16,22 +16,21 @@ import (
 // write a `package sdk` that does not compile, silently breaking every
 // out-of-tree Go extension build. bundle.go itself is excluded by design.
 func TestBundledFilesCoversModule(t *testing.T) {
-	entries, err := os.ReadDir(".")
+	var want []string
+	err := filepath.WalkDir(".", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() || path == "bundle.go" || strings.HasSuffix(path, "_test.go") {
+			return nil
+		}
+		if path == "go.mod" || entry.Name() == "LICENSE" || strings.HasSuffix(path, ".go") {
+			want = append(want, filepath.ToSlash(path))
+		}
+		return nil
+	})
 	if err != nil {
-		t.Fatalf("read module dir: %v", err)
-	}
-	want := []string{"LICENSE", "go.mod"}
-	for _, e := range entries {
-		name := e.Name()
-		if e.IsDir() || name == "bundle.go" {
-			continue
-		}
-		if strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-		if strings.HasSuffix(name, ".go") {
-			want = append(want, name)
-		}
+		t.Fatal(err)
 	}
 	got := BundledFiles()
 	slices.Sort(want)

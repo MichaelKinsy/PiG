@@ -1,11 +1,11 @@
 # TypeScript-to-Go porting for Pig
 
 Pig ports the observable behavior of the exact Pi release pinned by
-`coding/pigversion/pigversion.go`; it does not transliterate TypeScript
+`internal/coding/pigversion/pigversion.go`; it does not transliterate TypeScript
 syntax. Read the
 upstream implementation, its callers, tests, and published declarations before
 choosing a Go representation. If idiomatic Go and exact Pi behavior conflict,
-preserve behavior unless `DIVERGENCES.md` records an approved exception.
+preserve behavior unless `docs/parity/DIVERGENCES.md` records an approved exception.
 
 This guide complements the async-specific rules in
 [Extension authoring](extension-authoring.md) and the parity process in
@@ -153,7 +153,7 @@ it pins the TypeScript source as a submodule, imports upstream test baselines,
 treats reductions in difference baselines as convergence, and keeps intentional
 changes explicit. Pig uses the same principles with a frozen Pi oracle,
 `.upstream/current`, byte-faithful scenarios, semantic mappings, and
-`DIVERGENCES.md` because Pi's interactive/network surfaces cannot all be
+`docs/parity/DIVERGENCES.md` because Pi's interactive/network surfaces cannot all be
 imported as compiler golden files.
 
 For each Pig family:

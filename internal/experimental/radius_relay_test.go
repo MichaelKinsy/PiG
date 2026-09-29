@@ -174,6 +174,7 @@ func TestRadiusHostMultiplexingAndFinalChunk(t *testing.T) {
 	})
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/experimental-radius-relay.test.ts:163 — reconnects the server host after the relay connection drops.
 func TestRadiusHostRetryRefreshAndCancellation(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		sockets := make(chan *fakeRelaySocket, 4)
@@ -255,6 +256,8 @@ func TestRadiusHostProtocolRejectionAndDropOrder(t *testing.T) {
 	})
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/experimental-radius-relay.test.ts:185 — uses a raw authenticated WebSocket as the client byte transport (remote-close).
+// .upstream/v0.87.1/packages/coding-agent/test/experimental-radius-relay.test.ts:211 — reports established abnormal closures so the client can reconnect (error).
 func TestRadiusClientRawBinaryAndTerminalEvents(t *testing.T) {
 	for _, terminal := range []string{"remote-close", "error", "text", "local-close", "cancel"} {
 		t.Run(terminal, func(t *testing.T) {
@@ -263,14 +266,15 @@ func TestRadiusClientRawBinaryAndTerminalEvents(t *testing.T) {
 				ctx, cancel := context.WithCancel(t.Context())
 				defer cancel()
 				var received []byte
-				closes, failures := 0, 0
+				var errorText string
+				closes, failures, dataCalls := 0, 0, 0
 				factory := CreateRadiusClientTransportFactory(RadiusClientTransportOptions{ServerID: testServerID, Auth: explicitAuth(t, "http://localhost"), WebSocketFactory: func(_ context.Context, options RadiusRelayWebSocketOptions) (RadiusRelayWebSocket, error) {
 					if options.Authorization != "Bearer secret" || options.Protocol != RadiusRelayClientSubprotocol {
 						t.Errorf("opening = %+v", options)
 					}
 					return socket, nil
 				}})
-				transport, err := factory(ctx, RelayByteConnectionHandler{OnData: func(data []byte) { received = data }, OnClose: func() { closes++ }, OnError: func(error) { failures++ }})
+				transport, err := factory(ctx, RelayByteConnectionHandler{OnData: func(data []byte) { dataCalls++; received = data }, OnClose: func() { closes++ }, OnError: func(err error) { failures++; errorText = err.Error() }})
 				if err != nil {
 					t.Fatal(err)
 				}
@@ -283,7 +287,7 @@ func TestRadiusClientRawBinaryAndTerminalEvents(t *testing.T) {
 				}
 				socket.incoming <- socketMessage{binary: true, data: []byte{4, 5, 6}}
 				synctest.Wait()
-				if !bytes.Equal(received, []byte{4, 5, 6}) {
+				if dataCalls != 1 || !bytes.Equal(received, []byte{4, 5, 6}) {
 					t.Fatal(received)
 				}
 				switch terminal {
@@ -305,6 +309,9 @@ func TestRadiusClientRawBinaryAndTerminalEvents(t *testing.T) {
 				}
 				if terminal == "error" || terminal == "text" {
 					wantError = 1
+				}
+				if terminal == "error" && errorText != "network lost" {
+					t.Fatalf("error = %q, want network lost", errorText)
 				}
 				if closes != wantClose || failures != wantError {
 					t.Fatalf("close/error = %d/%d", closes, failures)
@@ -425,6 +432,7 @@ func TestRadiusRealFakeGateway(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/experimental-radius-relay.test.ts:231 — reports a useful error when Undici omits WebSocket failure details (empty failure).
 func TestRadiusHandshakeFailures(t *testing.T) {
 	for _, test := range []struct {
 		name     string
@@ -438,12 +446,16 @@ func TestRadiusHandshakeFailures(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			socket := newFakeRelaySocket(test.protocol)
-			_, err := openRadiusRelayWebSocket(t.Context(), &RadiusRelayAuth{Gateway: "http://localhost", Token: "token"}, testServerID, RadiusRelayClientSubprotocol, func(context.Context, RadiusRelayWebSocketOptions) (RadiusRelayWebSocket, error) {
-				if test.err != nil {
-					return nil, test.err
-				}
-				return socket, nil
-			})
+			_, err := CreateRadiusClientTransportFactory(RadiusClientTransportOptions{
+				ServerID: testServerID,
+				Auth:     explicitAuth(t, "http://localhost"),
+				WebSocketFactory: func(context.Context, RadiusRelayWebSocketOptions) (RadiusRelayWebSocket, error) {
+					if test.err != nil {
+						return nil, test.err
+					}
+					return socket, nil
+				},
+			})(t.Context(), RelayByteConnectionHandler{})
 			if err == nil || err.Error() != test.want {
 				t.Fatalf("failure = %v", err)
 			}

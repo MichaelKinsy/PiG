@@ -2,15 +2,18 @@ package sdk
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime/debug"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // ErrUnsupportedSubprocessUI is returned for UI methods whose upstream API
@@ -43,14 +46,11 @@ type TerminalInputResult struct {
 // terminal resizes. An extension that owns any of them re-pushes from here.
 type WidthChangeHandler func(ctx Context, width int)
 
-// TerminalInputHandler mirrors upstream's TerminalInputHandler. Like upstream's
+// TerminalInputHandler receives JavaScript UTF-16 chunks; lone surrogates use WTF-8 in Go strings.
+// It mirrors upstream's TerminalInputHandler. Like upstream's
 // synchronous listener, the input waits for the verdict, so a handler should
 // return promptly.
 type TerminalInputHandler func(data string) TerminalInputResult
-
-// AutocompleteProviderFactory is an opaque type; subprocess extensions
-// cannot serialize the closure, but the method is exposed for parity.
-type AutocompleteProviderFactory = any
 
 // RemoteComponent is the serializable subprocess form of an upstream custom
 // TUI component. The SDK renders it locally, sends only terminal lines to the
@@ -90,6 +90,71 @@ type RemoteOverlayOptions struct {
 	// Overlay opens the component as a floating viewport overlay instead of
 	// replacing the inline editor slot. Mirrors upstream ui.custom() overlay.
 	Overlay bool `json:"overlay,omitempty"`
+	// OverlayOptions is upstream ui.custom()'s overlayOptions: the overlay's
+	// position and size. Nil leaves them to the host's defaults.
+	OverlayOptions *OverlayOptions `json:"overlayOptions,omitempty"`
+}
+
+// OverlayOptions is the serializable subset of upstream pi-tui OverlayOptions:
+// every field except the visible callback.
+type OverlayOptions struct {
+	// Width is the overlay width in cells or a percentage of the terminal.
+	Width *OverlaySize `json:"width,omitempty"`
+	// MinWidth is the minimum overlay width in cells.
+	MinWidth int `json:"minWidth,omitempty"`
+	// MaxHeight caps the overlay height in rows or a percentage of the
+	// terminal.
+	MaxHeight *OverlaySize `json:"maxHeight,omitempty"`
+	// Anchor positions the overlay: "center", "top-left", "top-right",
+	// "bottom-left", "bottom-right", "top-center", "bottom-center",
+	// "left-center" or "right-center".
+	Anchor string `json:"anchor,omitempty"`
+	// OffsetX and OffsetY shift the overlay from its anchored position.
+	OffsetX int `json:"offsetX,omitempty"`
+	OffsetY int `json:"offsetY,omitempty"`
+	// Row and Col position the overlay absolutely, in cells or a percentage.
+	Row *OverlaySize `json:"row,omitempty"`
+	Col *OverlaySize `json:"col,omitempty"`
+	// Margin keeps the overlay away from the terminal edges.
+	Margin *OverlayMargin `json:"margin,omitempty"`
+	// NonCapturing leaves keyboard focus where it is.
+	NonCapturing bool `json:"nonCapturing,omitempty"`
+}
+
+// OverlaySize is upstream SizeValue: a cell count or a percentage of the
+// terminal ("50%"). Build one with [OverlayCells] or [OverlayPercent].
+type OverlaySize struct {
+	Value   float64
+	Percent bool
+}
+
+// OverlayCells is a size of n cells.
+func OverlayCells(n int) *OverlaySize { return &OverlaySize{Value: float64(n)} }
+
+// OverlayPercent is a size of pct percent of the terminal.
+func OverlayPercent(pct float64) *OverlaySize { return &OverlaySize{Value: pct, Percent: true} }
+
+// MarshalJSON writes a number, or an "N%" string for a percentage.
+func (v OverlaySize) MarshalJSON() ([]byte, error) {
+	if v.Percent {
+		return json.Marshal(strconv.FormatFloat(v.Value, 'f', -1, 64) + "%")
+	}
+	return json.Marshal(v.Value)
+}
+
+// OverlayMargin is upstream `OverlayMargin | number`: All sets every edge,
+// otherwise each edge is set on its own.
+type OverlayMargin struct {
+	All                      *int
+	Top, Right, Bottom, Left int
+}
+
+// MarshalJSON writes a number for All, else the per-edge object.
+func (m OverlayMargin) MarshalJSON() ([]byte, error) {
+	if m.All != nil {
+		return json.Marshal(*m.All)
+	}
+	return json.Marshal(map[string]int{"top": m.Top, "right": m.Right, "bottom": m.Bottom, "left": m.Left})
 }
 
 // ThemeMeta mirrors upstream getAllThemes() return elements.
@@ -114,6 +179,57 @@ func callResultError(result *callResultMsg, err error) error {
 	return nil
 }
 
+// hostDecoded decodes a host call's reply with the SDK's JSON package, which keeps unmatched UTF-16 units. A host or transport failure is an error.
+func hostDecoded[T any](c Context, method string, args any) (T, error) {
+	var value T
+	result, err := c.callHost(method, args)
+	if err := callResultError(result, err); err != nil {
+		return value, err
+	}
+	if result == nil {
+		return value, errors.New("host returned no result")
+	}
+	if err := json.Unmarshal(result.Result, &value); err != nil {
+		return value, fmt.Errorf("host reply to %s: %w", method, err)
+	}
+	return value, nil
+}
+
+// hostOptional returns one field of a host reply object, and whether it was present and not null.
+func hostOptional[T any](c Context, method string, args any, field string) (T, bool, error) {
+	var value T
+	fields, err := hostDecoded[map[string]json.RawMessage](c, method, args)
+	if err != nil {
+		return value, false, err
+	}
+	raw, ok := fields[field]
+	if !ok || string(raw) == "null" {
+		return value, false, nil
+	}
+	if err := json.Unmarshal(raw, &value); err != nil {
+		return value, false, fmt.Errorf("host reply to %s field %q: %w", method, field, err)
+	}
+	return value, true, nil
+}
+
+// hostRequired returns a field every reply of the method carries; its absence is a protocol error, not an empty value.
+func hostRequired[T any](c Context, method string, args any, field string) (T, error) {
+	value, present, err := hostOptional[T](c, method, args, field)
+	if err == nil && !present {
+		err = fmt.Errorf("host reply to %s has no %q", method, field)
+	}
+	return value, err
+}
+
+// hostOptionalString maps Pi's `string | undefined` getters: the wire carries an empty string for absent state.
+func hostOptionalString(c Context, method, field string) (*string, error) {
+	value, present, err := hostOptional[string](c, method, nil, field)
+	if err != nil || !present || value == "" {
+		return nil, err
+	}
+	return &value, nil
+}
+
 // Context provides the extension handler with access to host UI methods,
 // session state, and message injection. It is passed to every tool, command,
 // and event handler.
@@ -121,19 +237,43 @@ type Context struct {
 	ext        *Extension
 	toolCallID string // set for tool handlers
 	requestID  string
+	parent     *requestParent
 	ctx        context.Context
 }
 
-// Done returns a channel that closes when the host cancels this request.
+// RegisterTool registers a model-callable tool and waits for the host registry refresh. It shares Extension.RegisterTool's validation and panic behavior.
+func (c Context) RegisterTool(definition ToolDefinition) {
+	c.ext.RegisterTool(definition)
+}
+
+// Done observes active request cancellation. After normal completion, later reads observe the captured runtime lifetime instead of normal request cleanup.
 func (c Context) Done() <-chan struct{} {
+	if c.parent != nil {
+		if owner, completed := c.parent.lifetime(); completed {
+			if owner.Done() != nil {
+				return owner.Done()
+			}
+			return c.parent.conn.done
+		}
+	}
 	if c.ctx == nil {
 		return nil
 	}
 	return c.ctx.Done()
 }
 
-// Err returns the cancellation reason for this request, if any.
+// Err reports active request cancellation or invalidation of the captured runtime. Normal response publication does not invalidate a retained Context.
 func (c Context) Err() error {
+	if c.parent != nil {
+		if owner, completed := c.parent.lifetime(); completed {
+			select {
+			case <-c.parent.conn.done:
+				return errors.New("extension connection closed")
+			default:
+				return owner.Err()
+			}
+		}
+	}
 	if c.ctx == nil {
 		return nil
 	}
@@ -144,12 +284,20 @@ func (c Context) callHost(method string, args any) (*callResultMsg, error) {
 	if method != "ui.select" && method != "ui.confirm" && method != "ui.input" && method != "ui.editor" && method != "ui.custom" {
 		c.reportRequestState("blocked", "host_call")
 	}
-	result, err := c.ext.conn.callFor(c.requestID, method, args)
+	pending, err := c.beginHostCall(method, args)
+	if err != nil {
+		return nil, err
+	}
+	result, err := c.hostConnection().waitCall(pending)
 	c.reportRequestState("progress", "")
 	return result, err
 }
 
 func (c Context) reportRequestState(state, reason string) {
+	if c.parent != nil {
+		c.parent.report(state, reason)
+		return
+	}
 	if c.ext == nil || c.ext.conn == nil || c.requestID == "" {
 		return
 	}
@@ -216,11 +364,39 @@ func (c Context) SetTitle(title string) {
 // Select shows a selector and returns the user's choice.
 // Returns ("", false, nil) if cancelled and a non-nil error when the host UI call fails.
 func (c Context) Select(title string, options []string) (string, bool, error) {
+	return c.selectDialog(map[string]any{"title": title, "options": options})
+}
+
+// DialogOptions mirrors the serializable part of upstream
+// ExtensionUIDialogOptions. The dialog's AbortSignal is the request's
+// cancellation.
+type DialogOptions struct {
+	// Timeout auto-dismisses the dialog after this many milliseconds, with a
+	// live countdown. Pi's timeout is a JavaScript number, so fractional and
+	// very large values are preserved. In interactive mode only a positive
+	// value starts a countdown; in RPC mode any non-zero value arms Node's
+	// timer, as Pi does. Zero is omitted.
+	Timeout float64 `json:"timeout,omitempty"`
+}
+
+// SelectWithOptions is [Context.Select] with upstream's dialog options.
+func (c Context) SelectWithOptions(title string, options []string, opts DialogOptions) (string, bool, error) {
+	return c.selectDialog(map[string]any{"title": title, "options": options, "opts": opts})
+}
+
+// ConfirmWithOptions is [Context.Confirm] with upstream's dialog options.
+func (c Context) ConfirmWithOptions(title, message string, opts DialogOptions) (bool, error) {
+	return c.confirmDialog(map[string]any{"title": title, "message": message, "opts": opts})
+}
+
+// InputWithOptions is [Context.Input] with upstream's dialog options.
+func (c Context) InputWithOptions(title, placeholder string, opts DialogOptions) (string, bool, error) {
+	return c.inputDialog(map[string]any{"title": title, "placeholder": placeholder, "opts": opts})
+}
+
+func (c Context) selectDialog(args map[string]any) (string, bool, error) {
 	c.reportRequestState("blocked", "user")
-	result, err := c.callHost("ui.select", map[string]any{
-		"title":   title,
-		"options": options,
-	})
+	result, err := c.callHost("ui.select", args)
 	if err := callResultError(result, err); err != nil {
 		return "", false, err
 	}
@@ -234,11 +410,12 @@ func (c Context) Select(title string, options []string) (string, bool, error) {
 
 // Confirm shows a yes/no confirmation dialog and surfaces host UI failures.
 func (c Context) Confirm(title, message string) (bool, error) {
+	return c.confirmDialog(map[string]any{"title": title, "message": message})
+}
+
+func (c Context) confirmDialog(args map[string]any) (bool, error) {
 	c.reportRequestState("blocked", "user")
-	result, err := c.callHost("ui.confirm", map[string]any{
-		"title":   title,
-		"message": message,
-	})
+	result, err := c.callHost("ui.confirm", args)
 	if err := callResultError(result, err); err != nil {
 		return false, err
 	}
@@ -252,11 +429,12 @@ func (c Context) Confirm(title, message string) (bool, error) {
 // Input shows a text input dialog.
 // Returns ("", false, nil) if cancelled and a non-nil error when the host UI call fails.
 func (c Context) Input(title, placeholder string) (string, bool, error) {
+	return c.inputDialog(map[string]any{"title": title, "placeholder": placeholder})
+}
+
+func (c Context) inputDialog(args map[string]any) (string, bool, error) {
 	c.reportRequestState("blocked", "user")
-	result, err := c.callHost("ui.input", map[string]any{
-		"title":       title,
-		"placeholder": placeholder,
-	})
+	result, err := c.callHost("ui.input", args)
 	if err := callResultError(result, err); err != nil {
 		return "", false, err
 	}
@@ -319,8 +497,53 @@ func (c Context) SendMessage(customType, content string, display bool, opts Send
 	if err != nil {
 		return err
 	}
-	if result != nil && result.Error != nil {
-		return fmt.Errorf("%s: %s", result.Error.Code, result.Error.Message)
+	if err := callResultError(result, nil); err != nil {
+		return err
+	}
+	return nil
+}
+
+// CustomMessage mirrors the message argument of upstream pi.sendMessage.
+type CustomMessage struct {
+	// CustomType identifies the message for renderers and filters.
+	CustomType string
+	// Content is a string or an array of text/image content blocks
+	// (for example []map[string]any{{"type": "text", "text": "hi"}}).
+	Content any
+	// Display shows the message in the transcript.
+	Display bool
+	// Details is optional structured data for the message's renderer; nil
+	// leaves it unset.
+	Details any
+}
+
+// SendCustomMessage injects a custom message into the conversation, as
+// upstream pi.sendMessage does, with block content and details.
+func (c Context) SendCustomMessage(msg CustomMessage, opts SendMessageOptions) error {
+	options := map[string]any{}
+	if opts.TriggerTurn != nil {
+		options["triggerTurn"] = *opts.TriggerTurn
+	}
+	if opts.DeliverAs != "" {
+		options["deliverAs"] = opts.DeliverAs
+	}
+	message := map[string]any{
+		"customType": msg.CustomType,
+		"content":    msg.Content,
+		"display":    msg.Display,
+	}
+	if msg.Details != nil {
+		message["details"] = msg.Details
+	}
+	result, err := c.callHost("sendMessage", map[string]any{
+		"message": message,
+		"options": options,
+	})
+	if err != nil {
+		return err
+	}
+	if err := callResultError(result, nil); err != nil {
+		return err
 	}
 	return nil
 }
@@ -334,8 +557,8 @@ func (c Context) SendUserMessage(content any, deliverAs string) error {
 	if err != nil {
 		return err
 	}
-	if result != nil && result.Error != nil {
-		return fmt.Errorf("%s: %s", result.Error.Code, result.Error.Message)
+	if err := callResultError(result, nil); err != nil {
+		return err
 	}
 	return nil
 }
@@ -349,25 +572,17 @@ func (c Context) AppendEntry(customType string, data any) error {
 	if err != nil {
 		return err
 	}
-	if result != nil && result.Error != nil {
-		return fmt.Errorf("%s: %s", result.Error.Code, result.Error.Message)
+	if err := callResultError(result, nil); err != nil {
+		return err
 	}
 	return nil
 }
 
 // ── Editor Access ────────────────────────────────────────────────────────────
 
-// GetEditorText returns the current text in the input editor.
-func (c Context) GetEditorText() string {
-	result, err := c.callHost("ui.getEditorText", nil)
-	if err != nil || result == nil {
-		return ""
-	}
-	var resp struct {
-		Text string `json:"text"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Text
+// GetEditorText returns the current text in the input editor. A host or transport failure is returned rather than replaced by empty text.
+func (c Context) GetEditorText() (string, error) {
+	return hostRequired[string](c, "ui.getEditorText", nil, "text")
 }
 
 // SetEditorText sets the text in the input editor.
@@ -382,17 +597,9 @@ func (c Context) PasteToEditor(text string) {
 
 // ── Session State ────────────────────────────────────────────────────────────
 
-// GetSessionName returns the current session name.
-func (c Context) GetSessionName() string {
-	result, err := c.callHost("getSessionName", nil)
-	if err != nil || result == nil {
-		return ""
-	}
-	var resp struct {
-		Name string `json:"name"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Name
+// GetSessionName returns the current session name. Pi's getSessionName is `string | undefined`: nil means the session has no name, and a host or transport failure is returned as an error.
+func (c Context) GetSessionName() (*string, error) {
+	return hostOptionalString(c, "getSessionName", "name")
 }
 
 // SetSessionName sets the session name.
@@ -401,8 +608,8 @@ func (c Context) SetSessionName(name string) error {
 	if err != nil {
 		return err
 	}
-	if result != nil && result.Error != nil {
-		return fmt.Errorf("%s: %s", result.Error.Code, result.Error.Message)
+	if err := callResultError(result, nil); err != nil {
+		return err
 	}
 	return nil
 }
@@ -420,35 +627,21 @@ func (c Context) SetLabel(entryID, label string) error {
 	return nil
 }
 
-// GetFlag returns the value of a registered CLI flag.
-func (c Context) GetFlag(name string) any {
-	result, err := c.callHost("getFlag", map[string]string{"name": name})
-	if err != nil || result == nil {
-		return c.ext.flagDefaults[name]
+// GetFlag returns the host's flag value, or its first registered default when no override is set. False and empty strings are values, not missing overrides. A nil value with a nil error is Pi's undefined; a host or transport failure is returned rather than replaced by the default.
+func (c Context) GetFlag(name string) (any, error) {
+	value, present, err := hostOptional[any](c, "getFlag", map[string]string{"name": name}, "value")
+	if err != nil {
+		return nil, err
 	}
-	var resp struct {
-		Value any `json:"value"`
+	if !present {
+		return c.ext.flagDefaults[name], nil
 	}
-	_ = json.Unmarshal(result.Result, &resp)
-	if resp.Value == nil {
-		if def, ok := c.ext.flagDefaults[name]; ok {
-			return def
-		}
-	}
-	return resp.Value
+	return value, nil
 }
 
 // GetThinkingLevel returns the current thinking level.
-func (c Context) GetThinkingLevel() string {
-	result, err := c.callHost("getThinkingLevel", nil)
-	if err != nil || result == nil {
-		return ""
-	}
-	var resp struct {
-		Level string `json:"level"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Level
+func (c Context) GetThinkingLevel() (string, error) {
+	return hostRequired[string](c, "getThinkingLevel", nil, "level")
 }
 
 // SetThinkingLevel sets the thinking level.
@@ -507,30 +700,14 @@ type ToolInfo struct {
 }
 
 // GetActiveTools returns the currently active tool names.
-func (c Context) GetActiveTools() []string {
-	result, err := c.callHost("getActiveTools", nil)
-	if err != nil || result == nil {
-		return nil
-	}
-	var resp struct {
-		Tools []string `json:"tools"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Tools
+func (c Context) GetActiveTools() ([]string, error) {
+	return hostRequired[[]string](c, "getActiveTools", nil, "tools")
 }
 
 // GetAllTools returns every tool in the session's registry, active or not:
 // built-in tools, then extension tools. Mirrors upstream pi.getAllTools().
-func (c Context) GetAllTools() []ToolInfo {
-	result, err := c.callHost("getAllTools", nil)
-	if err != nil || result == nil {
-		return nil
-	}
-	var resp struct {
-		Tools []ToolInfo `json:"tools"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Tools
+func (c Context) GetAllTools() ([]ToolInfo, error) {
+	return hostRequired[[]ToolInfo](c, "getAllTools", nil, "tools")
 }
 
 // SetActiveTools sets the active tool list.
@@ -556,69 +733,45 @@ type CommandInfo struct {
 
 // GetCommands returns the session's extension commands, prompt templates and
 // skills. Mirrors upstream pi.getCommands().
-func (c Context) GetCommands() []CommandInfo {
-	result, err := c.callHost("getCommands", nil)
-	if err != nil || result == nil {
-		return nil
-	}
-	var resp struct {
-		Commands []CommandInfo `json:"commands"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Commands
+func (c Context) GetCommands() ([]CommandInfo, error) {
+	return hostRequired[[]CommandInfo](c, "getCommands", nil, "commands")
 }
 
 // ── Context Usage ────────────────────────────────────────────────────────────
 
-// ContextUsage reports context window utilization from the provider.
+// ContextUsage reports context-window utilization. Tokens and Percent are nil while usage is unknown after compaction.
 type ContextUsage struct {
-	Tokens        int     `json:"tokens"`
-	ContextWindow int     `json:"contextWindow"`
-	Percent       float64 `json:"percent"`
+	Tokens        *int     `json:"tokens"`
+	ContextWindow int      `json:"contextWindow"`
+	Percent       *float64 `json:"percent"`
 }
 
-// GetContextUsage returns context window usage from the last provider response.
-// Returns nil if no usage data is available yet.
-func (c Context) GetContextUsage() *ContextUsage {
-	result, err := c.callHost("getContextUsage", nil)
-	if err != nil || result == nil {
-		return nil
-	}
-	var usage ContextUsage
-	if err := json.Unmarshal(result.Result, &usage); err != nil {
-		return nil
-	}
-	if usage.Tokens == 0 && usage.ContextWindow == 0 {
-		return nil
-	}
-	return &usage
+// GetContextUsage returns context-window usage. Pi's getContextUsage is `ContextUsage | undefined`: nil means no usable model context window is available, and a host or transport failure is returned as an error.
+func (c Context) GetContextUsage() (*ContextUsage, error) {
+	return hostDecoded[*ContextUsage](c, "getContextUsage", nil)
 }
 
 // ── System Prompt ────────────────────────────────────────────────────────────
 
 // GetSystemPrompt returns the current system prompt text.
-// Returns empty string if no system prompt is active.
-func (c Context) GetSystemPrompt() string {
-	result, err := c.callHost("getSystemPrompt", nil)
-	if err != nil || result == nil {
-		return ""
-	}
-	var resp struct {
-		Prompt string `json:"prompt"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Prompt
+func (c Context) GetSystemPrompt() (string, error) {
+	return hostRequired[string](c, "getSystemPrompt", nil, "prompt")
 }
 
 // SystemPromptOptions holds the base inputs pi uses to build the system
 // prompt. Same shape as before_agent_start event.systemPromptOptions.
 // May include full context-file contents; treat as sensitive.
 type SystemPromptOptions struct {
-	CustomPrompt       string                    `json:"customPrompt,omitempty"`
+	CustomPrompt string `json:"customPrompt,omitempty"`
+	// CustomPromptSet distinguishes an explicitly empty custom prompt from absence without changing CustomPrompt's string type.
+	CustomPromptSet    bool                      `json:"-"`
+	ForceSystemPrompt  *string                   `json:"forceSystemPrompt,omitempty"`
 	SelectedTools      []string                  `json:"selectedTools,omitempty"`
 	ToolSnippets       map[string]string         `json:"toolSnippets,omitempty"`
+	ToolGuidelines     map[string][]string       `json:"toolGuidelines,omitempty"`
 	PromptGuidelines   []string                  `json:"promptGuidelines,omitempty"`
 	AppendSystemPrompt string                    `json:"appendSystemPrompt,omitempty"`
+	Sections           *SystemPromptSections     `json:"sections,omitempty"`
 	Cwd                string                    `json:"cwd"`
 	ContextFiles       []SystemPromptContextFile `json:"contextFiles,omitempty"`
 	Skills             []SystemPromptSkill       `json:"skills,omitempty"`
@@ -632,26 +785,21 @@ type SystemPromptContextFile struct {
 
 // SystemPromptSkill is skill metadata surfaced in the prompt.
 type SystemPromptSkill struct {
-	Name                   string `json:"name"`
-	Description            string `json:"description"`
-	FilePath               string `json:"filePath"`
-	BaseDir                string `json:"baseDir,omitempty"`
-	DisableModelInvocation bool   `json:"disableModelInvocation,omitempty"`
+	Name                   string     `json:"name"`
+	Description            string     `json:"description"`
+	FilePath               string     `json:"filePath"`
+	BaseDir                string     `json:"baseDir"`
+	SourceInfo             SourceInfo `json:"sourceInfo"`
+	DisableModelInvocation bool       `json:"disableModelInvocation"`
 }
 
 // GetSystemPromptOptions returns the base inputs pi currently uses to
-// build the system prompt (custom prompt, active tools, tool snippets,
-// prompt guidelines, appended text, cwd, context files, skills). It
+// build the system prompt (custom prompt, active tools, tool snippets and guidelines,
+// prompt guidelines, appended text, cwd, context files, complete skill metadata). It
 // reports current base inputs only, not per-turn before_agent_start
 // changes. Available in command handlers.
-func (c Context) GetSystemPromptOptions() SystemPromptOptions {
-	var opts SystemPromptOptions
-	result, err := c.callHost("getSystemPromptOptions", nil)
-	if err != nil || result == nil {
-		return opts
-	}
-	_ = json.Unmarshal(result.Result, &opts)
-	return opts
+func (c Context) GetSystemPromptOptions() (SystemPromptOptions, error) {
+	return hostDecoded[SystemPromptOptions](c, "getSystemPromptOptions", nil)
 }
 
 // ── Model Info ───────────────────────────────────────────────────────────────
@@ -751,21 +899,13 @@ func decodeModelProvider(raw json.RawMessage) string {
 	return ""
 }
 
-// GetModelInfo returns structured metadata about the active model.
-// Returns nil if no model is set.
-func (c Context) GetModelInfo() *ModelInfo {
-	result, err := c.callHost("getModelInfo", nil)
-	if err != nil || result == nil {
-		return nil
+// GetModelInfo returns structured metadata about the active model. Pi's model is `Model | undefined`: nil means no model is set, and a host or transport failure is returned as an error.
+func (c Context) GetModelInfo() (*ModelInfo, error) {
+	info, err := hostDecoded[ModelInfo](c, "getModelInfo", nil)
+	if err != nil || info.ID == "" {
+		return nil, err
 	}
-	var info ModelInfo
-	if err := json.Unmarshal(result.Result, &info); err != nil {
-		return nil
-	}
-	if info.ID == "" {
-		return nil
-	}
-	return &info
+	return &info, nil
 }
 
 // ── Session Branch ───────────────────────────────────────────────────────────
@@ -915,11 +1055,13 @@ type ToolCallInfo struct {
 // The slice and its entry values are copies.
 // Nested fields are shared with the decoded mirror and must be treated as read-only.
 // GetBranch returns nil without a session.
-func (c Context) GetBranch() []BranchEntry {
-	c.ext.ensureSessionLog()
+func (c Context) GetBranch() ([]BranchEntry, error) {
+	if err := c.ext.ensureSessionLog(); err != nil {
+		return nil, err
+	}
 	entries := c.ext.session.getBranchEntries()
 	if len(entries) == 0 {
-		return nil
+		return nil, nil
 	}
 	branch := make([]BranchEntry, len(entries))
 	for i, entry := range entries {
@@ -927,89 +1069,84 @@ func (c Context) GetBranch() []BranchEntry {
 			branch[i] = *entry
 		}
 	}
-	return branch
+	return branch, nil
 }
 
 // ── Session state ───────────────────────────────────────────────────────────
 
 // GetEntries returns all session entries.
-func (c Context) GetEntries() []json.RawMessage {
-	c.ext.ensureSessionLog()
-	return c.ext.session.getEntries()
+func (c Context) GetEntries() ([]json.RawMessage, error) {
+	if err := c.ext.ensureSessionLog(); err != nil {
+		return nil, err
+	}
+	return c.ext.session.getEntries(), nil
 }
 
-// GetSessionID returns the current session ID.
-func (c Context) GetSessionID() string {
-	result, err := c.callHost("getSessionID", nil)
-	if err != nil || result == nil {
-		return ""
-	}
-	var resp struct {
-		ID string `json:"id"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.ID
+// GetSessionID returns the current session ID, including for in-memory sessions.
+func (c Context) GetSessionID() (string, error) {
+	return hostRequired[string](c, "getSessionID", nil, "sessionId")
 }
 
-// GetSessionFile returns the path to the current session file.
-func (c Context) GetSessionFile() string {
-	c.ext.mu.RLock()
-	cached := c.ext.sessionFile
-	c.ext.mu.RUnlock()
-	if cached != "" {
-		return cached
-	}
-	result, err := c.callHost("getSessionFile", nil)
-	if err != nil || result == nil {
-		return ""
-	}
-	var resp struct {
-		Path string `json:"path"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Path
+// GetSessionFile returns the current session file path. Pi's getSessionFile is `string | undefined`: nil means an in-memory session.
+func (c Context) GetSessionFile() (*string, error) {
+	return hostOptionalString(c, "getSessionFile", "sessionFile")
 }
 
-// GetLeafID returns the current leaf entry ID in the session tree.
-func (c Context) GetLeafID() string {
-	result, err := c.callHost("getLeafID", nil)
-	if err != nil || result == nil {
-		return ""
-	}
-	var resp struct {
-		ID string `json:"id"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.ID
+// GetLeafID returns the current leaf entry ID. Pi's getLeafId is `string | null`: nil means an empty session.
+func (c Context) GetLeafID() (*string, error) {
+	return hostOptionalString(c, "getLeafID", "leafId")
 }
 
 // ── Provider ─────────────────────────────────────────────────────────────────
 
-// GetModelAuth returns auth credentials for a specific provider+model.
-func (c Context) GetModelAuth(providerID, modelID string) json.RawMessage {
+// GetModelAuth returns auth credentials for a specific provider+model. A host or transport failure is returned as an error.
+func (c Context) GetModelAuth(providerID, modelID string) (json.RawMessage, error) {
 	result, err := c.callHost("getModelAuth", map[string]string{
 		"provider": providerID,
 		"modelId":  modelID,
 	})
-	if err != nil || result == nil {
-		return nil
+	if err := callResultError(result, err); err != nil {
+		return nil, err
 	}
-	return result.Result
+	if result == nil {
+		return nil, errors.New("host returned no result")
+	}
+	return result.Result, nil
 }
 
 // ModelEventStream is the SDK-side pull stream for host model operations.
 type ModelEventStream struct {
-	mu       sync.Mutex
-	delivery sync.Mutex
-	queue    []map[string]any
-	changed  chan struct{}
-	done     chan struct{}
-	terminal bool
-	result   map[string]any
+	mu        sync.Mutex
+	delivery  sync.Mutex
+	queue     []map[string]any
+	changed   chan struct{}
+	done      chan struct{}
+	terminal  bool
+	result    map[string]any
+	startOnce sync.Once
+	started   chan error
+}
+
+// End completes iteration and resolves the final provider result.
+func (s *ModelEventStream) End(result map[string]any) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.terminal {
+		return
+	}
+	s.terminal = true
+	s.result = result
+	close(s.done)
+	close(s.changed)
+	s.changed = make(chan struct{})
 }
 
 func newModelEventStream() *ModelEventStream {
-	return &ModelEventStream{changed: make(chan struct{}), done: make(chan struct{})}
+	return &ModelEventStream{changed: make(chan struct{}), done: make(chan struct{}), started: make(chan error, 1)}
+}
+
+func (s *ModelEventStream) markStarted(err error) {
+	s.startOnce.Do(func() { s.started <- err; close(s.started) })
 }
 
 func (s *ModelEventStream) push(event map[string]any) {
@@ -1164,6 +1301,10 @@ func (r ModelRegistry) GetApiKeyAndHeaders(model map[string]any) (map[string]any
 }
 
 func (r ModelRegistry) Stream(model, request, options map[string]any) *ModelEventStream {
+	return r.stream(model, request, options, false)
+}
+
+func (r ModelRegistry) stream(model, request, options map[string]any, simple bool) *ModelEventStream {
 	stream := newModelEventStream()
 	streamID := fmt.Sprintf("model-stream-%d", r.context.ext.modelStreamSeq.Add(1))
 	r.context.ext.modelStreamsMu.Lock()
@@ -1177,7 +1318,7 @@ func (r ModelRegistry) Stream(model, request, options map[string]any) *ModelEven
 		merged[key] = value
 	}
 	go func() {
-		result, err := r.context.callHost("modelStream", map[string]any{"streamId": streamID, "model": model, "request": merged})
+		result, err := r.context.callHost("modelStream", map[string]any{"streamId": streamID, "model": model, "request": merged, "simple": simple})
 		if err := callResultError(result, err); err != nil {
 			stream.push(modelStreamErrorEvent(err, model))
 		} else {
@@ -1196,7 +1337,7 @@ func (r ModelRegistry) Stream(model, request, options map[string]any) *ModelEven
 }
 
 func (r ModelRegistry) StreamSimple(model, request, options map[string]any) *ModelEventStream {
-	return r.Stream(model, request, options)
+	return r.stream(model, request, options, true)
 }
 
 func (r ModelRegistry) Complete(model, request, options map[string]any) map[string]any {
@@ -1213,8 +1354,8 @@ func (c Context) Complete(model, request, auth map[string]any) (json.RawMessage,
 	if err != nil {
 		return nil, err
 	}
-	if result != nil && result.Error != nil {
-		return nil, fmt.Errorf("%s: %s", result.Error.Code, result.Error.Message)
+	if err := callResultError(result, nil); err != nil {
+		return nil, err
 	}
 	if result == nil {
 		return nil, nil
@@ -1229,19 +1370,39 @@ type ExecResult struct {
 	Stdout   string `json:"stdout"`
 	Stderr   string `json:"stderr"`
 	ExitCode int    `json:"code"`
+	// Killed reports that the command was killed by its timeout or by
+	// cancellation.
+	Killed bool `json:"killed"`
+}
+
+// ExecOptions mirrors the serializable part of upstream ExecOptions. The
+// command's AbortSignal is the request's cancellation.
+type ExecOptions struct {
+	// Timeout kills the command after this many milliseconds. Pi's timeout is
+	// a JavaScript number, so fractional and very large values are preserved.
+	// Only a positive value starts a timer; zero is omitted.
+	Timeout float64 `json:"timeout,omitempty"`
+	// Cwd is the command's working directory. Empty uses the session's.
+	Cwd string `json:"cwd,omitempty"`
 }
 
 // Exec runs a shell command through the host's bash executor.
 func (c Context) Exec(command string, args []string) (*ExecResult, error) {
-	result, err := c.callHost("exec", map[string]any{
-		"command": command,
-		"args":    args,
-	})
+	return c.exec(map[string]any{"command": command, "args": args})
+}
+
+// ExecWithOptions is [Context.Exec] with upstream's exec options.
+func (c Context) ExecWithOptions(command string, args []string, opts ExecOptions) (*ExecResult, error) {
+	return c.exec(map[string]any{"command": command, "args": args, "options": opts})
+}
+
+func (c Context) exec(payload map[string]any) (*ExecResult, error) {
+	result, err := c.callHost("exec", payload)
 	if err != nil {
 		return nil, err
 	}
-	if result != nil && result.Error != nil {
-		return nil, fmt.Errorf("%s: %s", result.Error.Code, result.Error.Message)
+	if err := callResultError(result, nil); err != nil {
+		return nil, err
 	}
 	if result == nil {
 		return nil, nil
@@ -1253,17 +1414,9 @@ func (c Context) Exec(command string, args []string) (*ExecResult, error) {
 
 // ── Theme ────────────────────────────────────────────────────────────────────
 
-// GetAllThemes returns all available themes with their names and paths.
-func (c Context) GetAllThemes() []ThemeMeta {
-	result, err := c.callHost("ui.getAllThemes", nil)
-	if err != nil || result == nil || result.Error != nil {
-		return nil
-	}
-	var resp struct {
-		Themes []ThemeMeta `json:"themes"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Themes
+// GetAllThemes returns all available themes with their names and paths. A host or transport failure is returned rather than an empty list.
+func (c Context) GetAllThemes() ([]ThemeMeta, error) {
+	return hostRequired[[]ThemeMeta](c, "ui.getAllThemes", nil, "themes")
 }
 
 // GetTheme loads a theme by name without switching to it.
@@ -1355,8 +1508,11 @@ func (c Context) SetHeader(lines []string) error {
 // Custom opens a focused remote component. Pass a [RemoteComponent] as factory
 // and [RemoteOverlayOptions] (or an equivalent JSON object) as options. Other
 // factory values retain the explicit unsupported error because live host TUI
-// component objects cannot cross a subprocess boundary.
+// component objects cannot cross a subprocess boundary. With no UI, Custom returns nil without invoking component callbacks.
 func (c Context) Custom(factory any, options any) (any, error) {
+	if !c.HasUI() {
+		return nil, nil
+	}
 	c.reportRequestState("blocked", "user")
 	component, ok := factory.(RemoteComponent)
 	if !ok || component == nil {
@@ -1410,19 +1566,19 @@ func (c Context) runRemoteComponent(component RemoteComponent, options any) (_ a
 	// Arm input and invalidation before the host sees the open call. A fused
 	// transport can focus the overlay and return the first key while beginCallFor
 	// is still sending the request.
-	if err := overlay.start(c.ext.conn, key, c.Width); err != nil {
+	if err := overlay.start(c.hostConnection(), key, c.Width); err != nil {
 		return nil, err
 	}
-	pending, err := c.ext.conn.beginCallFor(c.requestID, "ui.custom", args)
+	pending, err := c.beginHostCall("ui.custom", args)
 	if err != nil {
 		return nil, err
 	}
-	if err := overlay.render(c.ext.conn, key, c.Width()); err != nil {
-		_ = c.ext.conn.notify("ui.custom.close", map[string]any{"key": key})
-		_, _ = c.ext.conn.waitCall(pending)
+	if err := overlay.render(c.hostConnection(), key, c.Width()); err != nil {
+		_ = c.hostConnection().notify("ui.custom.close", map[string]any{"key": key})
+		_, _ = c.hostConnection().waitCall(pending)
 		return nil, err
 	}
-	result, err := c.ext.conn.waitCall(pending)
+	result, err := c.hostConnection().waitCall(pending)
 	c.reportRequestState("progress", "")
 	if err := callResultError(result, err); err != nil {
 		return nil, err
@@ -1443,20 +1599,16 @@ func (c Context) runRemoteComponent(component RemoteComponent, options any) (_ a
 	return response.Result, nil
 }
 
-// AddAutocompleteProvider attempts to register an autocomplete provider.
-// The subprocess bridge currently reports this as unsupported.
-func (c Context) AddAutocompleteProvider(factory AutocompleteProviderFactory) error {
-	result, err := c.callHost("ui.addAutocompleteProvider", map[string]any{})
-	return callResultError(result, err)
-}
-
 // OnTerminalInput subscribes to raw terminal input, receiving every chunk
 // before the editor does. The host is told to start forwarding only on the
 // first subscription and to stop on the last, so an extension that never
 // subscribes costs the input loop nothing.
 //
-// The returned unsubscribe is idempotent.
+// The returned unsubscribe is idempotent. With no UI, no subscription is retained.
 func (c Context) OnTerminalInput(handler TerminalInputHandler) (func(), error) {
+	if !c.HasUI() {
+		return func() {}, nil
+	}
 	if handler == nil {
 		return func() {}, fmt.Errorf("OnTerminalInput: handler must not be nil")
 	}
@@ -1492,8 +1644,11 @@ func (c Context) OnTerminalInput(handler TerminalInputHandler) (func(), error) {
 	return unsubscribe, nil
 }
 
-// SetEditorComponent clears the custom editor when factory is nil.
+// SetEditorComponent clears the custom editor when factory is nil. With no UI, it ignores the factory.
 func (c Context) SetEditorComponent(factory any) error {
+	if !c.HasUI() {
+		return nil
+	}
 	if factory != nil {
 		return fmt.Errorf("%w: editor component factories cannot be serialized", ErrUnsupportedSubprocessUI)
 	}
@@ -1510,16 +1665,8 @@ func (c Context) GetEditorComponent() any {
 // ── Tool expansion ───────────────────────────────────────────────────────────
 
 // GetToolsExpanded returns whether tool outputs are expanded.
-func (c Context) GetToolsExpanded() bool {
-	result, err := c.callHost("ui.getToolsExpanded", nil)
-	if err != nil || result == nil {
-		return false
-	}
-	var resp struct {
-		Expanded bool `json:"expanded"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Expanded
+func (c Context) GetToolsExpanded() (bool, error) {
+	return hostRequired[bool](c, "ui.getToolsExpanded", nil, "expanded")
 }
 
 // SetToolsExpanded sets whether tool outputs are expanded.
@@ -1556,6 +1703,13 @@ func (c Context) Mode() string {
 		return "print"
 	}
 	return c.ext.mode
+}
+
+// HasUI reports whether the host has bound a UI context. Print and JSON modes have no UI; interactive and RPC modes do.
+func (c Context) HasUI() bool {
+	c.ext.mu.RLock()
+	defer c.ext.mu.RUnlock()
+	return c.ext.hasUI
 }
 
 // Width returns the terminal width (from the ready message).
@@ -1625,31 +1779,14 @@ func (c Context) OnUpdate(partial any) error {
 // ═══════════════════════════════════════════════════════════════════════════════
 
 // IsProjectTrusted reports whether the current project is trusted. Untrusted
-// projects have project-scoped settings and hooks disabled. Defaults to trusted
-// when the host does not answer, matching the upstream runner.
-func (c Context) IsProjectTrusted() bool {
-	result, err := c.callHost("isProjectTrusted", nil)
-	if err != nil || result == nil || result.Error != nil {
-		return true
-	}
-	var resp struct {
-		Trusted bool `json:"trusted"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Trusted
+// projects have project-scoped settings and hooks disabled. A host or transport failure is returned rather than assumed trusted.
+func (c Context) IsProjectTrusted() (bool, error) {
+	return hostRequired[bool](c, "isProjectTrusted", nil, "trusted")
 }
 
-// IsIdle returns whether the agent is currently idle (not streaming).
-func (c Context) IsIdle() bool {
-	result, err := c.callHost("isIdle", nil)
-	if err != nil || result == nil || result.Error != nil {
-		return true // default to idle on error
-	}
-	var resp struct {
-		Idle bool `json:"idle"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Idle
+// IsIdle returns whether the agent is currently idle (not streaming). A host or transport failure is returned rather than assumed idle.
+func (c Context) IsIdle() (bool, error) {
+	return hostRequired[bool](c, "isIdle", nil, "idle")
 }
 
 // Abort cancels the current agent operation.
@@ -1658,16 +1795,8 @@ func (c Context) Abort() {
 }
 
 // HasPendingMessages returns whether there are queued messages waiting.
-func (c Context) HasPendingMessages() bool {
-	result, err := c.callHost("hasPendingMessages", nil)
-	if err != nil || result == nil || result.Error != nil {
-		return false
-	}
-	var resp struct {
-		Pending bool `json:"pending"`
-	}
-	_ = json.Unmarshal(result.Result, &resp)
-	return resp.Pending
+func (c Context) HasPendingMessages() (bool, error) {
+	return hostRequired[bool](c, "hasPendingMessages", nil, "pending")
 }
 
 // Shutdown triggers a graceful agent shutdown and exit.
@@ -1678,6 +1807,65 @@ func (c Context) Shutdown() {
 // Compact triggers compaction. Options are optional.
 func (c Context) Compact(opts map[string]any) {
 	_, _ = c.callHost("compact", opts)
+}
+
+// CompactOptions mirrors upstream CompactOptions.
+type CompactOptions struct {
+	// CustomInstructions steer the compaction summary.
+	CustomInstructions string
+	// OnComplete receives upstream's CompactionResult when compaction
+	// finishes.
+	OnComplete func(result map[string]any)
+	// OnError receives the failure when compaction fails.
+	OnError func(err error)
+}
+
+// CompactWithOptions starts compaction without waiting for it, as upstream
+// ctx.compact does. With OnComplete or OnError set, it reports the outcome to
+// them from another goroutine once compaction finishes; the call outlives the
+// handler that started it.
+func (c Context) CompactWithOptions(opts CompactOptions) {
+	args := map[string]any{}
+	if opts.CustomInstructions != "" {
+		args["customInstructions"] = opts.CustomInstructions
+	}
+	if opts.OnComplete == nil && opts.OnError == nil {
+		c.Compact(args)
+		return
+	}
+	if c.ext == nil || c.ext.conn == nil {
+		return
+	}
+	args["awaitCompletion"] = true
+	conn := c.ext.conn
+	go func() {
+		// The callbacks run after their handler returned; a panicking one
+		// must not take the extension down with it.
+		defer func() {
+			if recovered := recover(); recovered != nil {
+				fmt.Fprintf(os.Stderr, "extension: recovered from panic in compact callback: %v\n%s\n", recovered, debug.Stack())
+			}
+		}()
+		result, err := conn.call("compact", args)
+		if err := callResultError(result, err); err != nil {
+			if opts.OnError != nil {
+				opts.OnError(err)
+			}
+			return
+		}
+		var compaction map[string]any
+		if result != nil && len(result.Result) > 0 {
+			if err := json.Unmarshal(result.Result, &compaction); err != nil {
+				if opts.OnError != nil {
+					opts.OnError(fmt.Errorf("decode compaction result: %w", err))
+				}
+				return
+			}
+		}
+		if opts.OnComplete != nil {
+			opts.OnComplete(compaction)
+		}
+	}()
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════

@@ -81,9 +81,9 @@ pig package validate ./base-coding
 pig package validate ./base-coding --json
 ```
 
-Validation rejects malformed manifests and JSON Resources, missing members,
-duplicate public names, lexical/symlink escape, missing Compose services, and
-absolute or escaping bind mounts.
+Validation rejects malformed manifests and JSON Resources, missing members, duplicate non-skill public names, lexical or symlink escape, missing Compose services, and absolute or escaping bind mounts.
+
+At startup, duplicate skill names keep the first valid definition and produce a `[Skill conflicts]` warning with the selected and skipped paths, as in Pi. Resolved project, user and Package skills precede additional `--skill` paths. Use `--no-skills` to load only explicitly requested skills. Project skills, including ancestor `.agents/skills`, require project trust. A skill entry may name a Markdown file or a directory. Manifest globstars such as `prompts/**/*.md` match files at the root of that directory and at any depth below it.
 
 Direct Package installation preserves upstream behavior: it records the Package
 in settings and normal discovery exposes enabled members, defaulting to all
@@ -102,6 +102,10 @@ pig install npm:@example/package
 pig install 'npm:@example/private@1.2.3?registry=https%3A%2F%2Fnpm.example.com%2Fteam'
 ```
 
+Use `npm:` for registry sources and `git:` for Git shorthand such as `github.com/user/repo` or `git@github.com:user/repo`. Without a prefix, those spellings are local paths, even when the path does not exist. Explicit HTTPS and SSH URLs do not require `git:`.
+
+Ordinary npm libraries, such as `npm:is-number@7.0.0`, install and appear in `pig list` even when they contain no Pi resources. PiG does not import their JavaScript to classify them during installation. A root that statically proves a Go, Rust, or Python extension contract but contributes no Package resources is refused instead (D57); load that extension directly with `pig -e <path>`.
+
 A Git subdirectory selector is `#subdirectory=<URL-escaped-relative-path>`. PiG
 clones one repository checkout under the canonical Git root, resolves the
 selected Package root inside it, rejects missing or symlink-escaping selections,
@@ -114,6 +118,10 @@ managed root and passes the non-secret URL to npm, pnpm, or Bun. Registry URLs
 with embedded credentials, query strings, or fragments are rejected. Configure
 tokens and custom CAs through that package manager's normal `.npmrc`, environment,
 or certificate mechanism; PiG never accepts or writes a registry token.
+
+For user-scoped packages, version metadata lookups run from managed package storage and do not consult the invoking project's `.npmrc` (security divergence D79). Your user configuration and explicit `npmCommand` arguments still apply. Trusted project-scoped packages keep Pi's project `.npmrc` behavior.
+
+PiG chooses npm, pnpm, or Bun flags from the `npmCommand` executable name, or the name after its last `--` separator. It removes only a `.cmd` or `.exe` suffix and preserves case. It does not run a version probe to identify the package manager.
 
 Products may add source schemes through PiG's install-resolver contract. For
 example, a product-enabled PiG may accept a `marketplace:` source. Raw PiG does
@@ -170,15 +178,26 @@ pig update --self
 pig update <source>
 pig update --extension <source>
 pig update --extensions
+pig update --models
 pig update --all
 pig update --force
 pig remove <source>
+pig uninstall <source>
+pig uninstall <source> --local --approve
 ```
+
+`uninstall` is an alias for `remove`, including `--local` and help. Both commands remove the Package from the selected settings scope. Removing the last Package retains `"packages": []` in that settings file.
+
+Package commands show `Installing`, `Removing`, or `Updating` before work starts. npm and Git write their own output to the terminal. A failed child command prints its diagnostics before the CLI reports `Error: <command> failed with code <n>` and exits with status 1.
+
+npm updates batch eligible Packages by scope. Git updates reconcile the configured ref and reinstall dependencies when the checkout changes or dependencies are missing. Installing another ref of an already configured Package replaces its source without discarding resource filters. A failed new Git installation removes its incomplete checkout.
+
+At startup, an npm Package needs an installed manifest version that satisfies its configured pin or range. If installation fails or offline mode prevents it, the old installation does not supply Resources. Package listing still reports the physical installation. A project override with `autoload: false` uses the inherited user Package's installation and version requirement while retaining project Resource metadata.
 
 Bare update, `--self`, and the `self`/`pig` positional targets update PiG.
 `--extensions` updates installed Packages only; `--all` updates Packages before
 PiG. `--extension` names one Package and `--force` reinstalls the current PiG
-release. Conflicting targets fail before either update path starts.
+release. `--models` forces a model-catalog refresh through the shared model runtime without updating PiG or installed Packages. It cannot be combined with another update target. Conflicting targets fail before either update path starts.
 
 PiG's owned management surface uses full-word noun/verb commands such as
 `pig package list`, while retaining upstream-compatible install, remove, and
@@ -187,21 +206,26 @@ Use `pig --help` as the authority for the binary you are running.
 
 ### Enable or disable one installed Resource
 
-Use Package filters when you no longer want one Resource without removing the whole Package:
+Use Package filters when you no longer want one Resource without removing the whole Package. Package filters apply after manifest selection, so they cannot restore a resource excluded by the manifest. Within a filter, plain patterns select resources, `!pattern` excludes glob matches, `+path` restores an exact path, and `-path` disables an exact path even if it was restored. These groups apply in that order, regardless of their order in the array. An empty filter array disables every resource of that type.
 
 ```bash
 pig config
 pig config --local
 ```
 
-Use `pig config --local` to edit project-scoped overrides. The TUI updates
-settings. It does not update the Package's `package.json`. At startup a
+Use `pig config --local` to edit project-scoped overrides. New Package override entries include `autoload: false`. Cycling back to inherit removes an override-only entry but retains an explicitly installed project Package and unrelated resource filters. Empty Package and resource-filter arrays remain empty when settings are saved and reloaded.
+
+The TUI updates settings. It does not update the Package's `package.json`. At startup a
 declared extension, skill, prompt, or theme that matches nothing is skipped, as
 Pi skips it, and the rest of the Package loads; `pig config` lists it as
 missing so you can disable it. `pig package validate` remains strict for
 publication.
 
+Startup ignores malformed `package.json` JSON and discovers conventional directories instead. A `pi` object loads only its valid resource arrays. A wrong-typed field declares no resources and does not discard valid sibling fields. These manifest cases produce no diagnostic, as in Pi. Explicit installation and publication validation remain strict.
+
 ## Toolchains and first use
+
+In a conventional `extensions/` directory, each top-level `.ts` or `.js` file is an independent extension unless a `pi.extensions` manifest or `index.ts`/`index.js` selects directory entries. A `main.ts`, `main.js`, or `extension.ts` filename does not hide sibling extensions. A `package.json` without extension entries does not select the directory by itself.
 
 Installing materializes source. It does not necessarily build every extension
 immediately. A source extension builds into a content-addressed runtime cell on

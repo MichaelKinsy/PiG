@@ -10,6 +10,8 @@ import (
 
 const nodePreflightHelperFIFOEnv = "PIG_TEST_NODE_PREFLIGHT_FIFO"
 
+var fixtureRoot string
+
 func TestMain(m *testing.M) {
 	if fifoPath := os.Getenv(nodePreflightHelperFIFOEnv); fifoPath != "" {
 		fifo, err := os.OpenFile(fifoPath, os.O_WRONLY, 0)
@@ -53,6 +55,15 @@ func TestMain(m *testing.M) {
 	} {
 		if err := os.Setenv(key, path); err != nil {
 			fmt.Fprintf(os.Stderr, "set %s: %v\n", key, err)
+			_ = os.RemoveAll(testRoot)
+			os.Exit(2)
+		}
+	}
+	fixtureRoot = filepath.Join(testRoot, "fixtures")
+	// Cargo's default target is inside each generated cell's disposable build directory. Keep dependencies for this package run, without sharing mutable outputs with another test process.
+	if os.Getenv("CARGO_TARGET_DIR") == "" {
+		if err := os.Setenv("CARGO_TARGET_DIR", filepath.Join(testRoot, "cargo-target")); err != nil {
+			fmt.Fprintln(os.Stderr, "set package Cargo target:", err)
 			_ = os.RemoveAll(testRoot)
 			os.Exit(2)
 		}

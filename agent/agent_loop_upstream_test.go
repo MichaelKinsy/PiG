@@ -3,7 +3,6 @@ package agent
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"reflect"
 	"slices"
 	"strings"
@@ -20,6 +19,7 @@ import (
 // runPrompt when a case replaces the loop's queue callbacks), and the stream
 // function becomes a scriptedProvider.
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:121
 // upstream: "should emit events with AgentMessage types"
 func TestAgentLoop_EmitsEventsWithAgentMessageTypes(t *testing.T) {
 	rec := newEventRecorder(nil)
@@ -38,16 +38,23 @@ func TestAgentLoop_EmitsEventsWithAgentMessageTypes(t *testing.T) {
 	}
 }
 
-// upstream: "should handle custom message types via convertToLlm". PiG's
-// convertToLLM drops custom roles it does not know, as the upstream case's
-// convertToLlm drops "notification".
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:206
+// upstream: "should handle custom message types via convertToLlm".
 func TestAgentLoop_HandlesCustomMessageTypesViaConvertToLlm(t *testing.T) {
 	provider := &scriptedProvider{respond: replyText("Response")}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider)})
+	var convertedMessages []ai.Message
+	a := NewAgent(AgentOptions{Model: scriptedModel(provider), ConvertToLlm: func(messages []AgentMessage) ([]ai.Message, error) {
+		filtered := slices.DeleteFunc(slices.Clone(messages), func(message AgentMessage) bool { return message.Role() == "notification" })
+		convertedMessages = ConvertToLLM(filtered, nil)
+		return convertedMessages, nil
+	}})
 	a.SetMessages([]AgentMessage{{Custom: map[string]any{"role": "notification", "text": "This is a notification"}}})
 
 	mustSend(t, a, "Hello")
 
+	if len(convertedMessages) != 1 {
+		t.Fatalf("converter produced %d messages", len(convertedMessages))
+	}
 	converted := provider.request(1).transcript.Messages()
 	if len(converted) != 1 {
 		t.Fatalf("converted messages = %d, want only the user message", len(converted))
@@ -57,13 +64,21 @@ func TestAgentLoop_HandlesCustomMessageTypesViaConvertToLlm(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:260
 // upstream: "should apply transformContext before convertToLlm"
 func TestAgentLoop_AppliesTransformContextBeforeConvertToLlm(t *testing.T) {
 	provider := &scriptedProvider{respond: replyText("Response")}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider)})
-	a.SetMessages([]AgentMessage{userMessage("old message 1"), assistantText("old response 1"), userMessage("old message 2"), assistantText("old response 2")})
 	var transformed []AgentMessage
+	var converted []ai.Message
+	var order []string
+	a := NewAgent(AgentOptions{Model: scriptedModel(provider), ConvertToLlm: func(messages []AgentMessage) ([]ai.Message, error) {
+		order = append(order, "convert")
+		converted = ConvertToLLM(messages, nil)
+		return converted, nil
+	}})
+	a.SetMessages([]AgentMessage{userMessage("old message 1"), assistantText("old response 1"), userMessage("old message 2"), assistantText("old response 2")})
 	a.SetTransformContext(func(msgs []AgentMessage) []AgentMessage {
+		order = append(order, "transform")
 		transformed = msgs[len(msgs)-2:]
 		return transformed
 	})
@@ -73,15 +88,19 @@ func TestAgentLoop_AppliesTransformContextBeforeConvertToLlm(t *testing.T) {
 	if len(transformed) != 2 {
 		t.Fatalf("transformed = %d messages, want 2", len(transformed))
 	}
+	if len(converted) != 2 || !slices.Equal(order, []string{"transform", "convert"}) {
+		t.Fatalf("converted=%v order=%v", converted, order)
+	}
 	if got := len(provider.request(1).transcript.Messages()); got != 2 {
 		t.Fatalf("converted messages = %d, want the 2 transformed messages", got)
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:312
 // upstream: "should handle tool calls and results"
 func TestAgentLoop_HandlesToolCallsAndResults(t *testing.T) {
-	toolUsage := &ai.Usage{Input: 1, Output: 2, CacheRead: 3, CacheWrite: 4, TotalTokens: 10}
-	patchedUsage := &ai.Usage{Input: 5, Output: 6, CacheRead: 7, CacheWrite: 8, TotalTokens: 26}
+	toolUsage := &ai.Usage{Input: 1, Output: 2, CacheRead: 3, CacheWrite: 4, TotalTokens: 10, Cost: ai.UsageCost{Input: 0.1, Output: 0.2, CacheRead: 0.3, CacheWrite: 0.4, Total: 1}}
+	patchedUsage := &ai.Usage{Input: 5, Output: 6, CacheRead: 7, CacheWrite: 8, TotalTokens: 26, Cost: ai.UsageCost{Input: 0.5, Output: 0.6, CacheRead: 0.7, CacheWrite: 0.8, Total: 2.6}}
 	var executed []string
 	tool := valueEchoTool(ToolModeParallel, func(value string) { executed = append(executed, value) })
 	base := tool.execute
@@ -181,6 +200,7 @@ func TestAgentLoop_ToolCallContentControlsContinuationAcrossStopReasons(t *testi
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:408
 // upstream: "should not execute tool calls from a length-truncated assistant message"
 func TestAgentLoop_DoesNotExecuteToolCallsFromLengthTruncatedMessage(t *testing.T) {
 	var executed []string
@@ -208,7 +228,7 @@ func TestAgentLoop_DoesNotExecuteToolCallsFromLengthTruncatedMessage(t *testing.
 			break
 		}
 	}
-	if end == nil || !end.Result.IsError || !strings.Contains(end.Result.Content, "output token limit") {
+	if end == nil || !end.Result.IsError || !strings.Contains(end.Result.Text(), "output token limit") {
 		t.Fatalf("tool_execution_end = %+v, want an output-token-limit error", end)
 	}
 	if provider.calls() != 2 {
@@ -219,6 +239,7 @@ func TestAgentLoop_DoesNotExecuteToolCallsFromLengthTruncatedMessage(t *testing.
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:480
 // upstream: "should execute mutated beforeToolCall args without revalidation"
 func TestAgentLoop_ExecutesMutatedBeforeToolCallArgsWithoutRevalidation(t *testing.T) {
 	var executed []any
@@ -226,7 +247,7 @@ func TestAgentLoop_ExecutesMutatedBeforeToolCallArgsWithoutRevalidation(t *testi
 		var decoded map[string]any
 		_ = json.Unmarshal(args, &decoded)
 		executed = append(executed, decoded["value"])
-		return AgentToolResult{Content: "echoed"}, nil
+		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "echoed"}}}, nil
 	}}
 	a := NewAgent(AgentOptions{
 		Model: scriptedModel(&scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "echo", ai.JsonObject{"value": "hello"}))}),
@@ -263,6 +284,7 @@ func (t *preparingEditTool) PrepareArguments(raw json.RawMessage) (json.RawMessa
 	return json.Marshal(map[string]any{"edits": edits})
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:541
 // upstream: "should prepare tool arguments for validation"
 func TestAgentLoop_PreparesToolArgumentsForValidation(t *testing.T) {
 	replace := map[string]any{"type": "object", "properties": map[string]any{
@@ -270,13 +292,12 @@ func TestAgentLoop_PreparesToolArgumentsForValidation(t *testing.T) {
 	}, "required": []any{"oldText", "newText"}}
 	var executed []string
 	tool := &preparingEditTool{scriptTool{name: "edit", params: map[string]any{
-		"type":                 "object",
-		"properties":           map[string]any{"edits": map[string]any{"type": "array", "items": replace}},
-		"required":             []any{"edits"},
-		"additionalProperties": false,
+		"type":       "object",
+		"properties": map[string]any{"edits": map[string]any{"type": "array", "items": replace}},
+		"required":   []any{"edits"},
 	}, execute: func(_ context.Context, _ string, args json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
 		executed = append(executed, string(args))
-		return AgentToolResult{Content: "edited 1"}, nil
+		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "edited 1"}}}, nil
 	}}}
 	a := NewAgent(AgentOptions{
 		Model: scriptedModel(&scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "edit", ai.JsonObject{"oldText": "before", "newText": "after"}))}),
@@ -290,6 +311,7 @@ func TestAgentLoop_PreparesToolArgumentsForValidation(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:620
 // upstream: "should emit tool_execution_end in completion order but persist tool results in source order"
 func TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder(t *testing.T) {
 	var rec *eventRecorder
@@ -316,7 +338,7 @@ func TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder(
 			mu.Unlock()
 			secondExecuted.Do(func() { close(secondRan) })
 		}
-		return AgentToolResult{Content: "echoed: " + value}, nil
+		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "echoed: " + value}}}, nil
 	}}
 	rec = newEventRecorder(nil)
 	a := NewAgent(AgentOptions{
@@ -361,6 +383,7 @@ func TestAgentLoop_EmitsToolExecutionEndInCompletionOrderButPersistsSourceOrder(
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:714
 // upstream: "should inject queued messages after all tool calls complete"
 func TestAgentLoop_InjectsQueuedMessagesAfterAllToolCallsComplete(t *testing.T) {
 	var a *Agent
@@ -397,7 +420,7 @@ func TestAgentLoop_InjectsQueuedMessagesAfterAllToolCallsComplete(t *testing.T) 
 			if ev.Message.ToolResult != nil {
 				sequence = append(sequence, "tool:"+ev.Message.ToolResult.ToolCallID)
 			} else if ev.Message.User != nil {
-				sequence = append(sequence, ev.Message.User.Content[0].(ai.TextContent).Text)
+				sequence = append(sequence, ev.Message.User.Content.(ai.UserContentBlocks)[0].(ai.TextContent).Text)
 			}
 		}
 	}
@@ -451,10 +474,11 @@ func (p *overlapProbe) run(name, value string) {
 func (p *overlapProbe) tool(name string, mode ToolExecutionMode) *scriptTool {
 	return &scriptTool{name: name, params: valueSchema, mode: mode, execute: func(_ context.Context, _ string, args json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
 		p.run(name, argValue(args))
-		return AgentToolResult{Content: name + ": " + argValue(args)}, nil
+		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: name + ": " + argValue(args)}}}, nil
 	}}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:819
 // upstream: "should force sequential execution when a tool has executionMode=sequential even with default parallel config"
 func TestAgentLoop_ForcesSequentialWhenToolIsSequentialUnderParallelConfig(t *testing.T) {
 	probe := newOverlapProbe()
@@ -482,6 +506,7 @@ func TestAgentLoop_ForcesSequentialWhenToolIsSequentialUnderParallelConfig(t *te
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:901
 // upstream: "should force sequential execution when one of multiple tools has executionMode=sequential"
 func TestAgentLoop_ForcesSequentialWhenOneOfMultipleToolsIsSequential(t *testing.T) {
 	probe := newOverlapProbe()
@@ -501,6 +526,7 @@ func TestAgentLoop_ForcesSequentialWhenOneOfMultipleToolsIsSequential(t *testing
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:987
 // upstream: "should allow parallel execution when all tools have executionMode=parallel"
 func TestAgentLoop_AllowsParallelWhenAllToolsAreParallel(t *testing.T) {
 	probe := newOverlapProbe()
@@ -519,11 +545,12 @@ func TestAgentLoop_AllowsParallelWhenAllToolsAreParallel(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1060
 // upstream: "runs finishTurn after tool-result messages and before turn_end"
 func TestAgentLoop_RunsFinishTurnAfterToolResultMessagesAndBeforeTurnEnd(t *testing.T) {
 	var ordering orderLog
 	tool := &scriptTool{name: "echo", params: valueSchema, execute: func(_ context.Context, _ string, args json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
-		return AgentToolResult{Content: argValue(args), Terminate: true}, nil
+		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: argValue(args)}}, Terminate: true}, nil
 	}}
 	rec := newEventRecorder(func(ev AgentEvent) {
 		if _, ok := ev.(TurnEndEvent); ok {
@@ -539,7 +566,7 @@ func TestAgentLoop_RunsFinishTurnAfterToolResultMessagesAndBeforeTurnEnd(t *test
 			ordering.add("message_end:" + m.Role())
 			return nil
 		},
-		FinishTurn: func(_ context.Context, turn AgentTurnContext) *AgentTurnDecision {
+		FinishTurn: func(_ context.Context, turn AgentTurnContext) (*AgentTurnDecision, error) {
 			ordering.add("finishTurn")
 			if len(turn.ToolResults) != 1 {
 				t.Errorf("toolResults = %d, want 1", len(turn.ToolResults))
@@ -547,7 +574,7 @@ func TestAgentLoop_RunsFinishTurnAfterToolResultMessagesAndBeforeTurnEnd(t *test
 			if last := turn.Context[len(turn.Context)-1]; last.ToolResult == nil {
 				t.Errorf("context ends with %s, want toolResult", last.Role())
 			}
-			return nil
+			return nil, nil
 		},
 	})
 
@@ -560,6 +587,7 @@ func TestAgentLoop_RunsFinishTurnAfterToolResultMessagesAndBeforeTurnEnd(t *test
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1114
 // upstream: "runs finishTurn for a %s assistant before turn_end without changing the hard exit" (error, aborted)
 func TestAgentLoop_RunsFinishTurnForErrorOrAbortedAssistantBeforeTurnEnd(t *testing.T) {
 	for _, reason := range []ai.StopReason{ai.StopReasonError, ai.StopReasonAborted} {
@@ -574,12 +602,12 @@ func TestAgentLoop_RunsFinishTurnForErrorOrAbortedAssistantBeforeTurnEnd(t *test
 			a := NewAgent(AgentOptions{
 				Model:   scriptedModel(provider),
 				EventCh: rec.ch,
-				FinishTurn: func(_ context.Context, turn AgentTurnContext) *AgentTurnDecision {
+				FinishTurn: func(_ context.Context, turn AgentTurnContext) (*AgentTurnDecision, error) {
 					if turn.Message.StopReason != reason {
 						t.Errorf("finishTurn message stopReason = %q, want %q", turn.Message.StopReason, reason)
 					}
 					ordering.add("finishTurn")
-					return &AgentTurnDecision{Action: AgentTurnContinue}
+					return &AgentTurnDecision{Action: AgentTurnContinue}, nil
 				},
 			})
 			queues := &countingQueues{followUp: func(int) []AgentMessage { return []AgentMessage{userMessage("queued")} }}
@@ -602,10 +630,11 @@ func TestAgentLoop_RunsFinishTurnForErrorOrAbortedAssistantBeforeTurnEnd(t *test
 
 func noopTool() *scriptTool {
 	return &scriptTool{name: "noop", params: map[string]any{"type": "object"}, execute: func(context.Context, string, json.RawMessage, ToolUpdateCallback) (AgentToolResult, error) {
-		return AgentToolResult{Content: "done"}, nil
+		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}}}, nil
 	}}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1169
 // upstream: "action:end skips queue polling and next-turn preparation"
 func TestAgentLoop_ActionEndSkipsQueuePollingAndNextTurnPreparation(t *testing.T) {
 	provider := &scriptedProvider{respond: func(int, scriptedRequest) *ai.AssistantMessageEventStream {
@@ -615,12 +644,12 @@ func TestAgentLoop_ActionEndSkipsQueuePollingAndNextTurnPreparation(t *testing.T
 	a := NewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		Tools: []AgentTool{noopTool()},
-		FinishTurn: func(context.Context, AgentTurnContext) *AgentTurnDecision {
-			return &AgentTurnDecision{Action: AgentTurnEnd}
+		FinishTurn: func(context.Context, AgentTurnContext) (*AgentTurnDecision, error) {
+			return &AgentTurnDecision{Action: AgentTurnEnd}, nil
 		},
-		PrepareNextTurn: func(context.Context, PrepareNextTurnContext) *AgentLoopTurnUpdate {
+		PrepareNextTurn: func(context.Context, PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
 			prepareNextTurnCalls++
-			return nil
+			return nil, nil
 		},
 	})
 	queues := &countingQueues{followUp: func(int) []AgentMessage { return []AgentMessage{userMessage("queued")} }}
@@ -638,15 +667,16 @@ func TestAgentLoop_ActionEndSkipsQueuePollingAndNextTurnPreparation(t *testing.T
 
 // continueOnce is a FinishTurn that asks for continuation on its first call.
 func continueOnce(calls *int) FinishTurn {
-	return func(context.Context, AgentTurnContext) *AgentTurnDecision {
+	return func(context.Context, AgentTurnContext) (*AgentTurnDecision, error) {
 		*calls++
 		if *calls == 1 {
-			return &AgentTurnDecision{Action: AgentTurnContinue}
+			return &AgentTurnDecision{Action: AgentTurnContinue}, nil
 		}
-		return nil
+		return nil, nil
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1225
 // upstream: "makes exactly one context-only request when no natural request satisfies continuation"
 func TestAgentLoop_MakesExactlyOneContextOnlyRequestForContinuation(t *testing.T) {
 	var finishCalls int
@@ -660,6 +690,7 @@ func TestAgentLoop_MakesExactlyOneContextOnlyRequestForContinuation(t *testing.T
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1259
 // upstream: "lets a natural tool-result request satisfy continuation"
 func TestAgentLoop_NaturalToolResultRequestSatisfiesContinuation(t *testing.T) {
 	var finishCalls int
@@ -673,6 +704,7 @@ func TestAgentLoop_NaturalToolResultRequestSatisfiesContinuation(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1299
 // upstream: "lets a natural %s request satisfy continuation" (steering, follow-up)
 func TestAgentLoop_NaturalQueuedRequestSatisfiesContinuation(t *testing.T) {
 	for _, queueKind := range []string{"steering", "follow-up"} {
@@ -712,6 +744,7 @@ func TestAgentLoop_NaturalQueuedRequestSatisfiesContinuation(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1356
 // upstream: "prepares the initial request after pending messages and can replace request state"
 func TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState(t *testing.T) {
 	original := &scriptedProvider{respond: replyText("wrong model")}
@@ -728,7 +761,7 @@ func TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState(t 
 			completed = append(completed, m)
 			return nil
 		},
-		PrepareRequest: func(_ context.Context, request PrepareRequestContext) *AgentRequestUpdate {
+		PrepareRequest: func(_ context.Context, request PrepareRequestContext) (*AgentRequestUpdate, error) {
 			prepareCalls++
 			if !slices.ContainsFunc(completed, func(m AgentMessage) bool { return m.User == steering.User }) {
 				t.Error("prepareRequest ran before the steering message_end")
@@ -736,7 +769,7 @@ func TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState(t 
 			if !slices.ContainsFunc(request.Context, func(m AgentMessage) bool { return m.User == steering.User }) {
 				t.Error("prepareRequest context lacks the steering message")
 			}
-			return &AgentRequestUpdate{Context: []AgentMessage{canonical}, Model: replacementModel, ThinkingLevel: &high}
+			return &AgentRequestUpdate{Context: []AgentMessage{canonical}, Model: replacementModel, ThinkingLevel: &high}, nil
 		},
 	})
 	steeringDelivered := false
@@ -764,6 +797,7 @@ func TestAgentLoop_PreparesInitialRequestAfterPendingMessagesAndReplacesState(t 
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1410
 // upstream: "does not poll steering after prepareRequest"
 func TestAgentLoop_DoesNotPollSteeringAfterPrepareRequest(t *testing.T) {
 	late := userMessage("late steering")
@@ -776,12 +810,12 @@ func TestAgentLoop_DoesNotPollSteeringAfterPrepareRequest(t *testing.T) {
 	var preparations int
 	a := NewAgent(AgentOptions{
 		Model: scriptedModel(provider),
-		PrepareRequest: func(context.Context, PrepareRequestContext) *AgentRequestUpdate {
+		PrepareRequest: func(context.Context, PrepareRequestContext) (*AgentRequestUpdate, error) {
 			preparations++
 			if preparations == 1 {
 				queued = append(queued, late)
 			}
-			return nil
+			return nil, nil
 		},
 	})
 	queues := &countingQueues{steering: func(int) []AgentMessage {
@@ -801,9 +835,8 @@ func TestAgentLoop_DoesNotPollSteeringAfterPrepareRequest(t *testing.T) {
 	}
 }
 
-// upstream: "should use prepareNextTurn snapshot before continuing". Upstream
-// appends a system message; PiG's transcript has no system message variant,
-// so the appended guidance is a user message.
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1455
+// upstream: "should use prepareNextTurn snapshot before continuing".
 func TestAgentLoop_UsesPrepareNextTurnSnapshotBeforeContinuing(t *testing.T) {
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "echo", ai.JsonObject{"value": "hello"}))}
 	var prepareCalls int
@@ -811,13 +844,13 @@ func TestAgentLoop_UsesPrepareNextTurnSnapshotBeforeContinuing(t *testing.T) {
 	a := NewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		Tools: []AgentTool{valueEchoTool(ToolModeParallel, nil)},
-		PrepareNextTurn: func(_ context.Context, turn PrepareNextTurnContext) *AgentLoopTurnUpdate {
+		PrepareNextTurn: func(_ context.Context, turn PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
 			prepareCalls++
 			if prepared {
-				return nil
+				return nil, nil
 			}
 			prepared = true
-			return &AgentLoopTurnUpdate{Context: slices.Clone(turn.Context), Messages: []AgentMessage{userMessage("updated guidance")}}
+			return &AgentLoopTurnUpdate{Context: slices.Clone(turn.Context), Messages: []AgentMessage{{System: &ai.SystemMessage{Content: ai.SystemText("updated guidance"), Timestamp: 1}}}}, nil
 		},
 	})
 
@@ -826,11 +859,15 @@ func TestAgentLoop_UsesPrepareNextTurnSnapshotBeforeContinuing(t *testing.T) {
 	if provider.calls() != 2 || prepareCalls != 1 {
 		t.Fatalf("provider calls %d, prepareNextTurn calls %d; want 2, 1", provider.calls(), prepareCalls)
 	}
-	if !slices.Contains(userTexts(provider.request(2).transcript), "updated guidance") {
+	if !slices.ContainsFunc(provider.request(2).transcript.Messages(), func(message ai.Message) bool {
+		system, ok := message.(ai.SystemMessage)
+		return ok && system.Content == ai.SystemText("updated guidance")
+	}) {
 		t.Fatal("the second request lacks the prepared message")
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1532
 // upstream: "picks up steering queued during prepareNextTurn before the next request"
 func TestAgentLoop_PicksUpSteeringQueuedDuringPrepareNextTurn(t *testing.T) {
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "noop", nil))}
@@ -838,9 +875,9 @@ func TestAgentLoop_PicksUpSteeringQueuedDuringPrepareNextTurn(t *testing.T) {
 	a = NewAgent(AgentOptions{
 		Model: scriptedModel(provider),
 		Tools: []AgentTool{noopTool()},
-		PrepareNextTurn: func(context.Context, PrepareNextTurnContext) *AgentLoopTurnUpdate {
+		PrepareNextTurn: func(context.Context, PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
 			a.Steer(userMessage("late steering"))
-			return nil
+			return nil, nil
 		},
 	})
 
@@ -851,10 +888,8 @@ func TestAgentLoop_PicksUpSteeringQueuedDuringPrepareNextTurn(t *testing.T) {
 	}
 }
 
-// upstream: "action:end receives finalized turn context and stops before queue
-// polling". Upstream's context and events start with the system message that
-// declares the tool loadout; PiG's transcript does not carry system messages
-// (reported gap), so the expected lists omit it.
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1585
+// upstream: "action:end receives finalized turn context and stops before queue polling".
 func TestAgentLoop_ActionEndReceivesFinalizedTurnContext(t *testing.T) {
 	var executed []string
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "echo", ai.JsonObject{"value": "hello"}))}
@@ -864,7 +899,7 @@ func TestAgentLoop_ActionEndReceivesFinalizedTurnContext(t *testing.T) {
 		Model:   scriptedModel(provider),
 		Tools:   []AgentTool{valueEchoTool(ToolModeParallel, func(v string) { executed = append(executed, v) })},
 		EventCh: rec.ch,
-		FinishTurn: func(_ context.Context, turn AgentTurnContext) *AgentTurnDecision {
+		FinishTurn: func(_ context.Context, turn AgentTurnContext) (*AgentTurnDecision, error) {
 			if turn.Message == nil {
 				t.Error("finishTurn message is nil")
 			}
@@ -872,13 +907,15 @@ func TestAgentLoop_ActionEndReceivesFinalizedTurnContext(t *testing.T) {
 				callbackToolResultIDs = append(callbackToolResultIDs, result.ToolCallID)
 			}
 			callbackRoles = roles(turn.Context)
-			return &AgentTurnDecision{Action: AgentTurnEnd}
+			return &AgentTurnDecision{Action: AgentTurnEnd}, nil
 		},
 	})
 	queues := &countingQueues{followUp: func(int) []AgentMessage { return []AgentMessage{userMessage("follow up should stay queued")} }}
 	cfg := a.createLoopConfig(false)
 	queues.install(&cfg)
 
+	// The low-level loop starts without the constructor's tool baseline.
+	a.SetMessages(nil)
 	msgs := runPrompt(t, a, cfg, userMessage("echo something"))
 	events := rec.stop()
 
@@ -895,6 +932,7 @@ func TestAgentLoop_ActionEndReceivesFinalizedTurnContext(t *testing.T) {
 	}
 	want := []string{
 		"agent_start", "turn_start",
+		"message_start", "message_end",
 		"message_start", "message_end",
 		"message_start", "message_end",
 		"tool_execution_start", "tool_execution_end",
@@ -916,10 +954,11 @@ func assistantCount(msgs []AgentMessage) int {
 	return n
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1684
 // upstream: "should stop after a tool batch when every tool result sets terminate=true"
 func TestAgentLoop_StopsAfterBatchWhenEveryToolResultTerminates(t *testing.T) {
 	tool := &scriptTool{name: "echo", params: valueSchema, execute: func(_ context.Context, _ string, args json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
-		return AgentToolResult{Content: "echoed: " + argValue(args), Terminate: true}, nil
+		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "echoed: " + argValue(args)}}, Terminate: true}, nil
 	}}
 	provider := &scriptedProvider{respond: func(int, scriptedRequest) *ai.AssistantMessageEventStream {
 		return doneStream(toolUseMessage(toolCall("tool-1", "echo", ai.JsonObject{"value": "hello"})))
@@ -940,12 +979,13 @@ func TestAgentLoop_StopsAfterBatchWhenEveryToolResultTerminates(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1735
 // upstream: "should stop after a blocked tool call when beforeToolCall sets terminate=true"
 func TestAgentLoop_StopsAfterBlockedToolCallWithTerminate(t *testing.T) {
 	executed := false
 	tool := &scriptTool{name: "echo", params: valueSchema, execute: func(context.Context, string, json.RawMessage, ToolUpdateCallback) (AgentToolResult, error) {
 		executed = true
-		return AgentToolResult{Content: "should not execute"}, nil
+		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "should not execute"}}}, nil
 	}}
 	provider := &scriptedProvider{respond: toolCallsThenText(toolCall("tool-1", "echo", ai.JsonObject{"value": "hello"}))}
 	a := NewAgent(AgentOptions{
@@ -964,6 +1004,7 @@ func TestAgentLoop_StopsAfterBlockedToolCallWithTerminate(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1793
 // upstream: "should continue after a mixed batch with one terminating blocked call"
 func TestAgentLoop_ContinuesAfterMixedBatchWithOneTerminatingBlockedCall(t *testing.T) {
 	var mu sync.Mutex
@@ -995,10 +1036,11 @@ func TestAgentLoop_ContinuesAfterMixedBatchWithOneTerminatingBlockedCall(t *test
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1851
 // upstream: "should continue after parallel tool calls when not all tool results terminate"
 func TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate(t *testing.T) {
 	tool := &scriptTool{name: "echo", params: valueSchema, mode: ToolModeParallel, execute: func(_ context.Context, _ string, args json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
-		return AgentToolResult{Content: "echoed: " + argValue(args), Terminate: argValue(args) == "first"}, nil
+		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "echoed: " + argValue(args)}}, Terminate: argValue(args) == "first"}, nil
 	}}
 	provider := &scriptedProvider{respond: toolCallsThenText(
 		toolCall("tool-1", "echo", ai.JsonObject{"value": "first"}),
@@ -1013,6 +1055,7 @@ func TestAgentLoop_ContinuesWhenNotAllParallelResultsTerminate(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1916
 // upstream: "should allow afterToolCall to mark a tool batch as terminating"
 func TestAgentLoop_AfterToolCallMarksBatchTerminating(t *testing.T) {
 	provider := &scriptedProvider{respond: func(int, scriptedRequest) *ai.AssistantMessageEventStream {
@@ -1034,20 +1077,21 @@ func TestAgentLoop_AfterToolCallMarksBatchTerminating(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1965
 // upstream: agentLoopContinue "should throw when context has no messages".
-// Agent.Continue reports it as ErrNoMessagesToContinue.
 func TestAgentLoopContinue_ThrowsWhenContextHasNoMessages(t *testing.T) {
 	provider := &scriptedProvider{respond: replyText("unexpected")}
 	a := NewAgent(AgentOptions{Model: scriptedModel(provider)})
 
-	if _, err := a.Continue(context.Background()); !errors.Is(err, ErrNoMessagesToContinue) {
-		t.Fatalf("Continue error = %v, want ErrNoMessagesToContinue", err)
+	if _, err := a.runAgentLoopContinue(context.Background(), a.createLoopConfig(false)); err == nil || err.Error() != "Cannot continue: no messages in context" {
+		t.Fatalf("runAgentLoopContinue error = %v", err)
 	}
 	if provider.calls() != 0 {
 		t.Fatalf("provider calls = %d, want 0", provider.calls())
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:1983
 // upstream: agentLoopContinue "should continue from existing context without
 // emitting user message events". PiG's Continue returns the whole transcript,
 // so the new messages are the ones past the existing context.
@@ -1076,13 +1120,23 @@ func TestAgentLoopContinue_ContinuesWithoutEmittingUserMessageEvents(t *testing.
 	}
 }
 
+// .upstream/v0.87.1/packages/agent/test/agent-loop.test.ts:2024
 // upstream: agentLoopContinue "should allow custom message types as last
-// message (caller responsibility)". PiG's convertToLLM turns a "custom"
-// message into a user message, as the upstream case's convertToLlm does.
+// message (caller responsibility)". The caller maps its own text field.
 func TestAgentLoopContinue_AllowsCustomMessageAsLastMessage(t *testing.T) {
 	provider := &scriptedProvider{respond: replyText("Response to custom message")}
-	a := NewAgent(AgentOptions{Model: scriptedModel(provider)})
-	a.SetMessages([]AgentMessage{{Custom: map[string]any{"role": RoleCustom, "content": "Hook content"}}})
+	a := NewAgent(AgentOptions{Model: scriptedModel(provider), ConvertToLlm: func(messages []AgentMessage) ([]ai.Message, error) {
+		var converted []ai.Message
+		for _, message := range messages {
+			if message.Role() == RoleCustom {
+				converted = append(converted, ai.UserMessage{Content: ai.UserText(message.Custom["text"].(string)), Timestamp: message.Custom["timestamp"].(int64)})
+			} else {
+				converted = append(converted, ConvertToLLM([]AgentMessage{message}, nil)...)
+			}
+		}
+		return converted, nil
+	}})
+	a.SetMessages([]AgentMessage{{Custom: map[string]any{"role": RoleCustom, "text": "Hook content", "timestamp": time.Now().UnixMilli()}}})
 
 	msgs, err := a.Continue(context.Background())
 	if err != nil {
@@ -1091,6 +1145,9 @@ func TestAgentLoopContinue_AllowsCustomMessageAsLastMessage(t *testing.T) {
 
 	if got := roles(msgs[1:]); !reflect.DeepEqual(got, []string{"assistant"}) {
 		t.Fatalf("new messages = %v, want [assistant]", got)
+	}
+	if user, ok := provider.request(1).transcript.Messages()[0].(ai.UserMessage); !ok || user.Content != ai.UserText("Hook content") {
+		t.Fatalf("converted custom message = %#v", user)
 	}
 	if got := userTexts(provider.request(1).transcript); !reflect.DeepEqual(got, []string{"Hook content"}) {
 		t.Fatalf("request users = %v, want the custom message as user text", got)

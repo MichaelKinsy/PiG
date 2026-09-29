@@ -124,6 +124,7 @@ func runDiagnose(w io.Writer, binaryPath string) {
 	if servErr != nil {
 		_, _ = fmt.Fprintf(w, "  (could not load services: %v)\n", servErr)
 	} else {
+		defer services.Close()
 		settings := services.Settings()
 		switch {
 		case settings.DefaultProvider != "" && settings.DefaultModel != "":

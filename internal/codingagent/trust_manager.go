@@ -14,7 +14,8 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/gofrs/flock"
+	"github.com/MichaelKinsy/PiG/internal/jsonparse"
+	"github.com/MichaelKinsy/PiG/internal/pilock"
 
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
@@ -50,7 +51,7 @@ type ProjectTrustOption struct {
 }
 
 func normalizeTrustCwd(cwd string) string {
-	abs, err := filepath.Abs(cwd)
+	abs, err := ResolvePath(cwd, "")
 	if err != nil {
 		abs = cwd
 	}
@@ -118,7 +119,7 @@ func HasTrustRequiringProjectResources(cwd string) bool {
 	userAgentsSkills := filepath.Join(home, ".agents", "skills")
 	current := normalizeTrustCwd(cwd)
 
-	configDir := filepath.Join(current, CONFIG_DIR_NAME)
+	configDir := ProjectConfigDir(current)
 	for _, entry := range trustRequiringProjectConfigResources {
 		if _, err := os.Stat(filepath.Join(configDir, entry)); err == nil {
 			return true
@@ -148,7 +149,7 @@ type ProjectTrustStore struct {
 
 // NewProjectTrustStore opens the store rooted at agentDir.
 func NewProjectTrustStore(agentDir string) *ProjectTrustStore {
-	abs, err := filepath.Abs(agentDir)
+	abs, err := ResolvePath(agentDir, "")
 	if err != nil {
 		abs = agentDir
 	}
@@ -164,8 +165,12 @@ func (s *ProjectTrustStore) read() (map[string]*bool, error) {
 		return nil, fmt.Errorf("Failed to read trust store %s: %w", s.trustPath, err)
 	}
 
+	content := text.StripBomBytes(data)
+	if err := jsonparse.Validate(content); err != nil {
+		return nil, fmt.Errorf("Failed to read trust store %s: %w", s.trustPath, err)
+	}
 	var parsed any
-	if err := json.Unmarshal(text.StripBomBytes(data), &parsed); err != nil {
+	if err := json.Unmarshal(content, &parsed); err != nil {
 		return nil, fmt.Errorf("Failed to read trust store %s: %w", s.trustPath, err)
 	}
 	object, ok := parsed.(map[string]any)
@@ -207,16 +212,15 @@ func (s *ProjectTrustStore) withLock(fn func() error) (err error) {
 	if err := os.MkdirAll(filepath.Dir(s.trustPath), 0o755); err != nil {
 		return fmt.Errorf("create trust store directory: %w", err)
 	}
-	lock := flock.New(s.trustPath + ".lock")
-	locked, err := acquireSyncLockWithRetry(lock)
+	lock, err := pilock.AcquireSync(s.trustPath)
+	if errors.Is(err, pilock.ErrLocked) && !errors.Is(err, pilock.ErrLegacyLocked) {
+		return errors.New("failed to acquire trust store lock")
+	}
 	if err != nil {
 		return fmt.Errorf("acquire trust store lock: %w", err)
 	}
-	if !locked {
-		return errors.New("failed to acquire trust store lock")
-	}
 	defer func() {
-		if unlockErr := lock.Unlock(); unlockErr != nil {
+		if unlockErr := lock.Release(); unlockErr != nil {
 			err = errors.Join(err, fmt.Errorf("release trust store lock: %w", unlockErr))
 		}
 	}()

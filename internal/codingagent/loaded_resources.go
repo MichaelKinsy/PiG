@@ -6,14 +6,17 @@ package codingagent
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -65,14 +68,18 @@ func (m *InteractiveMode) startupExpansionState() bool {
 
 // showLoadedResources rebuilds the loaded-resources listing between the
 // header and the transcript: one expandable section per resource kind, each
-// followed by a blank line. Quiet startup omits it unless force is set.
-func (m *InteractiveMode) showLoadedResources(force bool) {
+// followed by a blank line, then the diagnostics blocks. Quiet startup omits
+// the listing unless force is set, and the diagnostics unless
+// showDiagnosticsWhenQuiet is set (interactive-mode.ts:1695-1707).
+func (m *InteractiveMode) showLoadedResources(force, showDiagnosticsWhenQuiet bool) {
 	if m.loadedResourcesContainer == nil {
 		return
 	}
 	m.loadedResourcesContainer.Clear()
 	m.loadedResourceSections = nil
-	if !force && !m.opts.Verbose && m.opts.Settings.QuietStartup {
+	showListing := force || m.opts.Verbose || !m.opts.Settings.QuietStartup
+	showDiagnostics := showListing || showDiagnosticsWhenQuiet
+	if !showDiagnostics {
 		return
 	}
 	theme := tui.ActiveTheme()
@@ -102,6 +109,43 @@ func (m *InteractiveMode) showLoadedResources(force bool) {
 		m.loadedResourcesContainer.Add(tui.NewSpacer(1))
 	}
 
+	sourceInfos := make(map[string]*PiSourceInfo)
+	for _, item := range m.loadedExtensionResources() {
+		sourceInfos[item.path] = item.info
+	}
+	for _, skill := range m.opts.Skills {
+		item := m.loadedResourceFor(skill.Path, "skills")
+		sourceInfos[item.path] = item.info
+	}
+	for _, prompt := range m.promptTemplates {
+		item := m.loadedResourceFor(prompt.FilePath, "prompts")
+		sourceInfos[item.path] = item.info
+	}
+	for _, loaded := range m.loadedThemes {
+		item := m.loadedResourceFor(loaded.path, "themes")
+		sourceInfos[item.path] = item.info
+	}
+	if showListing {
+		m.addLoadedListing(addLoadedSection, formatCompactList, theme, collator)
+	}
+	if showDiagnostics {
+		addDiagnostics := func(name string, diagnostics []extension.ResourceDiagnostic) {
+			if len(diagnostics) > 0 {
+				body := formatResourceDiagnostics(diagnostics, sourceInfos)
+				m.loadedResourcesContainer.Add(tui.NewPaddedText(theme.FgText("warning", "["+name+"]")+"\n"+body, 0, 0, nil))
+				m.loadedResourcesContainer.Add(tui.NewSpacer(1))
+			}
+		}
+		addDiagnostics("Skill conflicts", m.opts.SkillDiagnostics)
+		addDiagnostics("Prompt conflicts", m.promptDiagnostics)
+		addDiagnostics("Extension issues", m.extensionDiagnostics())
+		addDiagnostics("Theme conflicts", m.themeDiagnostics)
+	}
+}
+
+// addLoadedListing appends the Context, Skills, Prompts, Extensions and
+// Themes sections.
+func (m *InteractiveMode) addLoadedListing(addLoadedSection func(name, collapsedBody, expandedBody string), formatCompactList func([]string, bool) string, theme *tui.Theme, collator *collate.Collator) {
 	contextPaths := append(slices.Clone(m.opts.SystemPromptSourcePaths), contextFilePaths(m.opts.ContextFiles)...)
 	if len(contextPaths) > 0 {
 		m.loadedResourcesContainer.Add(tui.NewSpacer(1))
@@ -154,26 +198,16 @@ func (m *InteractiveMode) showLoadedResources(force bool) {
 		addLoadedSection("Extensions", formatCompactList(getCompactExtensionLabels(extensions), true), list)
 	}
 
-	if !m.opts.NoThemes {
-		registry := tui.ActiveThemeRegistry()
-		var themes []loadedResource
-		var names []string
-		for _, name := range registry.Names() {
-			sourcePath := registry.PathOf(name)
-			if sourcePath == "" {
-				continue
-			}
-			item := m.loadedResourceFor(sourcePath, "themes")
-			themes = append(themes, item)
-			if name == "" {
-				name = getCompactPathLabel(item.path, item.info)
-			}
-			names = append(names, name)
-		}
-		if len(themes) > 0 {
-			list := formatScopeGroups(theme, collator, buildScopeGroups(themes), formatDisplayPathItem, getShortPathItem)
-			addLoadedSection("Themes", formatCompactList(names, true), list)
-		}
+	var themes []loadedResource
+	var names []string
+	for _, loaded := range m.loadedThemes {
+		item := m.loadedResourceFor(loaded.path, "themes")
+		themes = append(themes, item)
+		names = append(names, loaded.theme.Name)
+	}
+	if len(themes) > 0 {
+		list := formatScopeGroups(theme, collator, buildScopeGroups(themes), formatDisplayPathItem, getShortPathItem)
+		addLoadedSection("Themes", formatCompactList(names, true), list)
 	}
 }
 
@@ -250,11 +284,14 @@ func formatExtensionDisplayPath(path string) string {
 }
 
 func (m *InteractiveMode) formatContextPath(path string) string {
-	cwd, err := filepath.Abs(m.opts.CWD)
+	cwd, err := nodepath.Resolve(m.opts.CWD)
 	if err != nil {
-		cwd = filepath.Clean(m.opts.CWD)
+		return formatDisplayPath(path)
 	}
-	absolute := resolveAgainstCwd(path, cwd)
+	absolute, err := resolveAgainstCwd(path, cwd)
+	if err != nil {
+		return formatDisplayPath(path)
+	}
 	if relative := GetCwdRelativePath(absolute, cwd); relative != "" {
 		return relative
 	}
@@ -269,9 +306,9 @@ func isPackageSource(info *PiSourceInfo) bool {
 }
 
 var (
-	npmRootPattern  = regexp.MustCompile(`^(.*/node_modules)/(@?[^/]+(?:/[^/]+)?)$`)
-	npmPathPattern  = regexp.MustCompile(`node_modules/(@?[^/]+(?:/[^/]+)?)/(.*)`)
-	gitPathPattern  = regexp.MustCompile(`git/[^/]+/[^/]+/(.*)`)
+	npmRootPattern  = lazyregexp.New(`^(.*/node_modules)/(@?[^/]+(?:/[^/]+)?)$`)
+	npmPathPattern  = lazyregexp.New(`node_modules/(@?[^/]+(?:/[^/]+)?)/(.*)`)
+	gitPathPattern  = lazyregexp.New(`git/[^/]+/[^/]+/(.*)`)
 	backslashSubber = strings.NewReplacer(`\`, "/")
 )
 
@@ -284,8 +321,8 @@ func getShortPath(fullPath string, info *PiSourceInfo) string {
 		if match := npmRootPattern.FindStringSubmatch(normalizedBaseDir); match != nil && match[1] != "" && strings.HasPrefix(normalizedFullPath, match[1]+"/") {
 			return posixRelative(normalizedBaseDir, normalizedFullPath)
 		}
-		base, baseErr := filepath.Abs(info.BaseDir)
-		full, fullErr := filepath.Abs(fullPath)
+		base, baseErr := nodepath.Resolve(info.BaseDir)
+		full, fullErr := nodepath.Resolve(fullPath)
 		if baseErr == nil && fullErr == nil {
 			if relative, err := filepath.Rel(base, full); err == nil && relative != "" && relative != "." && !strings.HasPrefix(relative, "..") && !filepath.IsAbs(relative) {
 				return filepath.ToSlash(relative)

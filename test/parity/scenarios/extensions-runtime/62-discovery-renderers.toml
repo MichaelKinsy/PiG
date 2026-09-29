@@ -1,0 +1,24 @@
+# Pi0.87.1 extensions-discovery.test.ts:374-397 registers these three callbacks in one source factory; loader.ts:327-340 retains each declaration.
+# This exact original case proves discovery and registration, not callback execution or terminal ordering. The registration-only tag deliberately limits that claim. Scenario33 and Mode callback-order regressions cover display separately.
+name = "62-discovery-renderers"
+description = "Discovery retains the combined Markdown, message and entry renderer declarations"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts"]
+tags = ["fast", "hermetic", "registration-only"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/discovery-renderers"]
+pi_args = ["node", "./test/parity/testdata/discovery-renderers-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['{"errors":0,"paths":["with-renderer.ts"],"markdown":true,"message":true,"entry":true}']
+runs = 3

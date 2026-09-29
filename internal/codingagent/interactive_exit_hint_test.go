@@ -11,10 +11,31 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
+func setStdoutTTY(t *testing.T, value bool) {
+	t.Helper()
+	previous := stdoutIsTTY
+	stdoutIsTTY = func() bool { return value }
+	t.Cleanup(func() { stdoutIsTTY = previous })
+}
+
+func runShutdownInputLoop(t *testing.T, m *InteractiveMode, source io.Reader) error {
+	t.Helper()
+	ctx, cancel := context.WithCancel(t.Context())
+	defer func() {
+		cancel()
+		// The tests call the inner loop directly and own its pump lifetime.
+		for range m.inputReadCh {
+		}
+	}()
+	return m.inputLoop(ctx, source)
+}
+
 // Pi's shutdown stops the renderer and restores cooked mode before writing one
 // resume hint. Drive both the key handler and the loop's exit branch: testing
 // either alone misses the duplicate Ctrl+D hint.
 func TestInteractiveQuitPrintsOneHintAfterTerminalRestore(t *testing.T) {
+	// upstream: packages/coding-agent/test/suite/regressions/5080-signal-shutdown-extension-cleanup.test.ts:143
+	setStdoutTTY(t, true)
 	for _, key := range []string{"\x04", "\x03\x03", "extension"} {
 		t.Run(fmt.Sprintf("%q", key), func(t *testing.T) {
 			session, err := tempSessionMgr(t).Create("exit-regression", "")
@@ -54,7 +75,7 @@ func TestInteractiveQuitPrintsOneHintAfterTerminalRestore(t *testing.T) {
 						}
 					}
 				}
-				if err := m.inputLoop(ctx, os.Stdin); err != nil {
+				if err := runShutdownInputLoop(t, m, os.Stdin); err != nil {
 					t.Fatal(err)
 				}
 				m.stopInteractiveTui() // Run's defer must be a no-op.

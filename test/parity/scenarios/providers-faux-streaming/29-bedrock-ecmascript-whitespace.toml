@@ -1,0 +1,23 @@
+# RP-003: Pi 0.87.1 api/bedrock-converse-stream.ts:912-918,970-1036,1085-1093 uses ECMAScript emptiness tests without trimming nonblank payload bytes.
+# Compare complete serialized HTTP message arrays for string/block users, assistant text and persisted unsigned signatures, and tool results across Claude and Nova. The 400 fixture response terminates capture; this is payload evidence, not live inference or auth proof.
+name = "29-bedrock-ecmascript-whitespace"
+description = "Bedrock keeps NEL, removes BOM-only text, and preserves signature fallback on the real Converse wire."
+covers = ["packages/ai/src/api/bedrock-converse-stream.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/bedrock-whitespace-pig"]
+pi_args = ["node", "./test/parity/testdata/bedrock-whitespace-pi.mjs"]
+# Runtime HOME changes inside each probe, after tool startup, so the shared compiler cache is not relocated.
+pig = ["BEDROCK_PROBE_HOME={{TEMP}}"]
+pi = ["BEDROCK_PROBE_HOME={{TEMP}}"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+[assert]
+exit_code = 0
+json_output_equal = true
+runs = 3

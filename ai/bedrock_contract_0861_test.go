@@ -29,7 +29,7 @@ func runBedrockEvents(t *testing.T, events ...btypes.ConverseStreamOutput) (*Ass
 	close(input)
 	builder := newAssistantStreamBuilder(context.Background(), APIBedrockConverseStream, "amazon-bedrock", "model")
 	provider := &BedrockProvider{}
-	go provider.parseBedrockEvents(context.Background(), &fakeBedrockEventStream{events: input}, builder)
+	go provider.parseBedrockEvents(context.Background(), &fakeBedrockEventStream{events: input}, builder, "")
 	result := builder.stream.Result()
 	var got []AssistantMessageEvent
 	for event := range builder.stream.Events(context.Background()) {
@@ -87,7 +87,7 @@ func TestBedrockRejectsUserMessageStart(t *testing.T) {
 	result, _ := runBedrockEvents(t,
 		&btypes.ConverseStreamOutputMemberMessageStart{Value: btypes.MessageStartEvent{Role: btypes.ConversationRoleUser}},
 	)
-	if result.StopReason != StopReasonError || result.ErrorMessage != "amazon-bedrock: Unexpected assistant message start but got user message start instead" {
+	if result.StopReason != StopReasonError || result.ErrorMessage != "Unexpected assistant message start but got user message start instead" {
 		t.Fatalf("result = %#v", result)
 	}
 }
@@ -102,7 +102,7 @@ func TestBedrockStreamWithoutStopReasonTerminatesWithError(t *testing.T) {
 			InputTokens: aws.Int32(7), OutputTokens: aws.Int32(2),
 		}}},
 	)
-	if result.StopReason != StopReasonError || result.ErrorMessage != "amazon-bedrock: Bedrock stream ended without a stop reason" {
+	if result.StopReason != StopReasonError || result.ErrorMessage != "Bedrock stream ended without a stop reason" {
 		t.Fatalf("result = %#v", result)
 	}
 	if result.Usage.Input != 7 || result.Usage.Output != 2 || result.Usage.TotalTokens != 9 {

@@ -1,0 +1,27 @@
+# Pi 0.87.1 session-file-invalid.test.ts:47 rejects an explicit non-session file
+# before runtime creation and prints a friendly error without stack frames.
+# The Go CLI regression separately checks that the file bytes remain unchanged.
+name = "17-invalid-session-file"
+description = "Explicit invalid session files fail with the same friendly diagnostic"
+covers = ["packages/coding-agent/src/core/session-manager.ts", "packages/coding-agent/src/main.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--offline", "--no-extensions", "--session", "./not-a-session.log", "-p", "hi"]
+cwd = "testdata/invalid-file"
+snapshot_cwd = true
+timeout_seconds = 30
+
+[assert]
+exit_code = 1
+both_contain = ["Error: Session file is not a valid pi session:", "/not-a-session.log"]
+both_not_contain = ["SessionManager.open", " at ", "panic:", "goroutine "]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: Independent writable cwd copies have random numeric suffixes. Only the generated directory suffix is replaced; the full invalid-file diagnostic, filename, exit status, and absence of stack frames remain asserted.
+[[assert.normalize_replace]]
+pattern = "parity-snap-cwd-[0-9]+"
+with = "parity-snap-cwd-<RUN>"
+reason = "Independent writable fixture copies receive random directory suffixes; only those digits differ, while the full diagnostic and filename remain asserted."

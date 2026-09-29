@@ -1,0 +1,30 @@
+# Pi 0.87.1 regression 9340: await the synchronous message_end subscriber before
+# post-run automatic compaction. Both probes execute the exact 200-token model,
+# seeded history, error response and subscriber abort. A second path asserts that
+# the public message_end listener precedes persistence and tool side effects.
+# Each probe repeats twenty
+# times to exercise scheduler interleavings; every result row is compared and any
+# failure fails the scenario. No retries or output de-duplication are used.
+# The Node flag resolves production dependencies relative to pinned Pi's package.
+name = "10-post-abort-no-auto-compaction"
+description = "Public subscribers complete before persistence, tools and post-run compaction"
+covers = ["packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-post-abort-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/session-post-abort-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["POST_ABORT compactions=0", "LISTENER_ORDER persisted=false effects=0 callbacks=1"]
+runs = 3

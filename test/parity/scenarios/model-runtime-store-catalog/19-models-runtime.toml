@@ -1,0 +1,24 @@
+# Real Pi Models/createProvider runs the same provider-owned catalog/auth/stream pipeline as the Go SDK fixture.
+# The fixtures retain complete persisted model records, request context/options and event order.
+# JSON objects use canonical key ordering; no values are normalized. checkedAt and generated response timestamps are not projected.
+name = "19-models-runtime"
+description = "Native Models restores and publishes catalogs, prepares auth, forwards streams and rejects obsolete publications."
+covers = ["packages/ai/src/models.ts", "packages/ai/src/auth/credential-store.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/models-runtime.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/models-runtime.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

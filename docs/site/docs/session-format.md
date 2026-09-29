@@ -110,7 +110,7 @@ Optional Bash fields are `fullOutputPath` (the file that holds output too long t
 {"type":"compaction","id":"e5f6a7b8","parentId":"d4e5f6a7","timestamp":"2026-01-15T14:10:00Z","summary":"Earlier work summary","firstKeptEntryId":"c3d4e5f6","tokensBefore":50000}
 ```
 
-Optional fields include `details`, `fromHook`, summary-generation `usage`, and `systemMessage`. `systemMessage` records the system prompt and tool declarations at the compaction boundary. It becomes the leading system message of the compacted context.
+Optional fields include `details`, `fromHook`, summary-generation `usage`, and `systemMessage`. `systemMessage` records the system prompt and tool declarations at the compaction boundary. It becomes the leading system message of the compacted context. Built-in `toolsAdded` parameter schemas retain Pi's declaration order, including nested properties, when saved and compacted again after loading.
 
 PiG builds post-compaction context from the summary, `firstKeptEntryId`, and later entries. The current format does not define a `retainedTail` field.
 
@@ -175,10 +175,10 @@ Do not reconstruct model context by reading every `message` line in file order.
 The Go extension SDK provides:
 
 ```go
-branch := ctx.GetBranch()      // []sdk.BranchEntry for the active branch
-entries := ctx.GetEntries()    // []json.RawMessage for all entries
-leafID := ctx.GetLeafID()
-file := ctx.GetSessionFile()
+branch, err := ctx.GetBranch()      // []sdk.BranchEntry for the active branch
+entries, err := ctx.GetEntries()    // []json.RawMessage for all entries
+leafID, err := ctx.GetLeafID()      // *string, nil for an empty session
+file, err := ctx.GetSessionFile()   // *string, nil for an in-memory session
 ```
 
 `GetBranch` provides a flattened reading view for common message fields. Use `GetEntries` when you need the exact entry JSON.

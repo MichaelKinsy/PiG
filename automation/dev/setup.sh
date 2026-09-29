@@ -12,7 +12,7 @@
 #   --background       run detached; progress goes to $PIG_DEV_HOME/setup.log
 #   --no-build         skip the final build of bin/pig
 #   --node             npm ci in extensions/sdk-ts (Pi mirror, parity, SDK tests)
-#   --harnesses=LIST   install eval harnesses from evals/harnesses.toml
+#   --harnesses=LIST   install eval harnesses from test/evals/harnesses.toml
 #                      (comma-separated names, or all)
 #   --all              --node --harnesses=all
 #
@@ -234,7 +234,7 @@ fi
 if [[ -n $harnesses ]]; then
 	mode=()
 	((check)) && mode=(--check)
-	if PYTHONPATH="$root/evals" python3 -m pigeval install --harnesses "$harnesses" --prefix "$dev_home/harnesses" ${mode[@]+"${mode[@]}"}; then
+	if PYTHONPATH="$root/test/evals" python3 -m pigeval install --harnesses "$harnesses" --prefix "$dev_home/harnesses" ${mode[@]+"${mode[@]}"}; then
 		row harnesses ok "$harnesses under $dev_home/harnesses"
 	else
 		need harnesses "see the lines above; rerun: make setup SETUP_ARGS=--harnesses=$harnesses"

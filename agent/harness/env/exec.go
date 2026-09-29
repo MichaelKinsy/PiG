@@ -12,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent/harness"
 	"github.com/MichaelKinsy/PiG/agent/harness/utils"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 const (
@@ -148,13 +149,23 @@ func (run *shellRun) start(command string, config shellConfig, cwd string) (*exe
 	}
 	cmd := exec.Command(config.shell, args...)
 	cmd.Dir = cwd
-	cmd.Env = getShellEnv(run.env.shellEnv, run.options.Env, run.options.InheritEnv)
+	nodespawn.SetEnvProperties(cmd, getShellEnv(run.env.shellEnv, run.options.Env, run.options.InheritEnv))
 	cmd.Stdout = stdoutWrite
 	cmd.Stderr = stderrWrite
 	cmd.SysProcAttr = detachedProcessAttributes()
+	stdin := nodespawn.Ignore
 	if config.commandFromStdin {
 		cmd.Stdin = strings.NewReader(command)
+		stdin = nodespawn.Pipe
 	}
+	// Upstream spawns with stdio [commandFromStdin ? "pipe" : "ignore",
+	// "pipe", "pipe"] and windowsHide: true.
+	nodespawn.HideWindow(cmd, stdin, nodespawn.Pipe, nodespawn.Pipe)
+	// Upstream starts the shell with Node's spawn, which finds it with libuv's
+	// search on Windows. The shell must receive that command line byte for
+	// byte: Git Bash parses it with MSYS2 rules, not the C runtime's.
+	nodespawn.SetProgram(cmd)
+	nodespawn.SetCommandLine(cmd)
 	startErr := run.env.startChild(cmd)
 	closeAll(stdoutWrite, stderrWrite)
 	if startErr != nil {

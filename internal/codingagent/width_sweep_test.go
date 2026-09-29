@@ -56,7 +56,7 @@ func TestCodingAgentRowWidthSweep(t *testing.T) {
 		check("diff", w, renderDiffString(diff, w))
 		for _, tool := range tools {
 			for _, isErr := range []bool{false, true} {
-				r := toolBodyRenderer(tool, agent.AgentToolResult{Content: all, IsError: isErr}, nil)
+				r := toolBodyRenderer(tool, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: all}}, IsError: isErr}, nil)
 				if r == nil {
 					continue
 				}

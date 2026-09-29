@@ -33,17 +33,13 @@ func (t *LsTool) Name() string  { return "ls" }
 func (t *LsTool) Label() string { return "" }
 
 func (t *LsTool) Schema() ai.ToolSchema {
-	return ai.ToolSchema{
+	return toolSchemaWithParameters(ai.ToolSchema{
 		Name:        "ls",
 		Description: "List directory contents. Returns entries sorted alphabetically, with '/' suffix for directories. Includes dotfiles. Output is truncated to 500 entries or 50KB (whichever is hit first).",
-		Parameters: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"path":  map[string]any{"type": "string", "description": "Directory to list (default: current directory)"},
-				"limit": map[string]any{"type": "number", "description": "Maximum number of entries to return (default: 500)"},
-			},
-		},
-	}
+	}, `{"type":"object","properties":{
+		"path":{"type":"string","description":"Directory to list (default: current directory)"},
+		"limit":{"type":"number","description":"Maximum number of entries to return (default: 500)"}
+	}}`)
 }
 
 func (t *LsTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolModeParallel }
@@ -61,7 +57,14 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 	if target == "" {
 		target = "."
 	}
-	dirPath := resolvePath(t.CWD, target)
+	cwd, err := toolCWD(ctx, t.CWD)
+	if err != nil {
+		return agent.AgentToolResult{}, err
+	}
+	dirPath, err := resolvePath(cwd, target)
+	if err != nil {
+		return agent.AgentToolResult{}, err
+	}
 	effectiveLimit := float64(lsDefaultLimit)
 	if p.Limit != nil {
 		effectiveLimit = *p.Limit
@@ -80,7 +83,7 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 		_ = dir.Close()
 	}
 	if err != nil {
-		return lsError("Cannot read directory: " + nodeFSError(err, "scandir", dirPath)), nil
+		return lsError("Cannot read directory: " + NodeFSError(err, "scandir", dirPath)), nil
 	}
 
 	// Sort alphabetically, case-insensitive (upstream ls.ts).
@@ -109,7 +112,7 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 		return lsError("Operation aborted"), nil
 	}
 	if len(results) == 0 {
-		return agent.AgentToolResult{Content: "(empty directory)"}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "(empty directory)"}}}, nil
 	}
 
 	// Byte truncation only; the entry count is already capped.
@@ -127,14 +130,15 @@ func (t *LsTool) Execute(ctx context.Context, _ string, rawParams json.RawMessag
 		trc := tr
 		details.Truncation = &trc
 	}
-	result := agent.AgentToolResult{Content: output}
+	result := agent.AgentToolResult{}
 	if len(notices) > 0 {
-		result.Content += "\n\n[" + strings.Join(notices, ". ") + "]"
+		output += "\n\n[" + strings.Join(notices, ". ") + "]"
 		result.Details = details
 	}
+	result.Content = []ai.ToolResultMessageContent{ai.TextContent{Text: output}}
 	return result, nil
 }
 
 func lsError(message string) agent.AgentToolResult {
-	return agent.AgentToolResult{Content: message, IsError: true}
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true}
 }

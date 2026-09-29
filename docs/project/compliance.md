@@ -43,7 +43,7 @@ Status values:
 | SAST | CodeQL (`security.yml`), Staticcheck, `go vet`, golangci-lint (`make lint`), Ruff, Bandit, ShellCheck | Activates when public; Scorecard reads the pull-request check history |
 | Vulnerabilities | `go tool govulncheck ./...` (`make compliance`); Grype over the source SBOM in `security.yml`; `npm audit` of every lock file | Verifiable now |
 | Dependency-Update-Tool | `.github/dependabot.yml`: gomod, npm, pip, cargo, github-actions | Verifiable now |
-| Security-Policy | `SECURITY.md`; `.github/security-insights.yml` | Verifiable now |
+| Security-Policy | `.github/SECURITY.md`; `.github/security-insights.yml` | Verifiable now |
 | License | `LICENSE`; `LICENSES/` | Verifiable now |
 | Maintained | Commit and issue activity within 90 days | Activates when public; Scorecard scores a repository younger than 90 days as not maintained |
 | Fuzzing | Native Go fuzz targets: `tui/render_state_test.go` `FuzzTUIRender_StateMachineInvariants`, `internal/mermaid/robust_test.go` `FuzzRender` | Activates when public |
@@ -55,19 +55,19 @@ Status values:
 | Criterion area | Evidence | Status |
 |---|---|---|
 | Project website and description | `README.md`; https://pi-in-go.dev, rendered from `docs/site/docs/` | Activates when public |
-| How to contribute | `CONTRIBUTING.md`; `CODE_OF_CONDUCT.md`; `GOVERNANCE.md`; `MAINTAINERS.md` | Verifiable now |
+| How to contribute | `.github/CONTRIBUTING.md`; `.github/CODE_OF_CONDUCT.md`; `docs/project/GOVERNANCE.md`; `docs/project/MAINTAINERS.md` | Verifiable now |
 | FLOSS license | `LICENSE` (MIT, OSI-approved); REUSE-compliant headers | Verifiable now |
 | Basic documentation | `README.md`; `docs/site/docs/`; the embedded agent docs under `internal/pigdocs/content/` | Verifiable now |
 | Public version-controlled source | GitHub repository with history | Activates when public |
 | Unique version numbering | `coding.PigVersion`; tags `vX.Y.Z` (`docs/project/RELEASING.md`) | Owner action: tag the first release |
 | Release notes | `CHANGELOG.md` | Verifiable now |
 | Bug-reporting process | `.github/ISSUE_TEMPLATE/`; `/bug` writes a report archive and links to the bug form (D62) | Activates when public |
-| Vulnerability reporting process | `SECURITY.md` (private vulnerability reporting) | Owner action: enable private vulnerability reporting |
+| Vulnerability reporting process | `.github/SECURITY.md` (private vulnerability reporting) | Owner action: enable private vulnerability reporting |
 | Working build system | `make build`; `make setup` | Verifiable now |
 | Automated test suite | `make test`, `make check`; CI runs them | Verifiable now |
-| Tests for new functionality | `CONTRIBUTING.md` requires tests derived from upstream behavior; `AGENTS.md` requires a regression guard for every bug fix; `.github/pull_request_template.md` | Verifiable now |
+| Tests for new functionality | `.github/CONTRIBUTING.md` requires tests derived from upstream behavior; `AGENTS.md` requires a regression guard for every bug fix; `.github/pull_request_template.md` | Verifiable now |
 | Compiler warnings and linters | `go vet`, golangci-lint (`make lint`), Staticcheck | Verifiable now |
-| Secure development knowledge | `SECURITY.md` threat model; `AGENTS.md` security-suppression rules | Verifiable now |
+| Secure development knowledge | `.github/SECURITY.md` threat model; `AGENTS.md` security-suppression rules | Verifiable now |
 | Good cryptographic practice | Go standard library crypto; no custom cryptography; checksum-verified downloads (`internal/toolchain`, `automation/dev/setup.sh`) | Verifiable now |
 | Delivery secured against MITM | HTTPS-only downloads with SHA-256 verification; Sigstore bundles and build provenance for releases | Verifiable now for toolchain downloads; release bundles activate with the first release |
 | Publicly known vulnerabilities fixed | `govulncheck` and Grype in CI; Dependabot | Verifiable now |
@@ -82,7 +82,7 @@ Status values:
 | SBOMs | SPDX and CycloneDX SBOMs from `anchore/sbom-action`, validated by `automation/release/validate-sbom.py`; source SBOMs in `security.yml` | Activates at release (release SBOMs); verifiable in CI (source SBOMs) |
 | govulncheck | `make compliance` | Verifiable now |
 | Secret scanning | Gitleaks and TruffleHog (`security.yml`); GitHub secret scanning with push protection | Verifiable in CI; owner action to enable GitHub secret scanning and push protection |
-| DCO | `automation/ci/check-dco.sh` in `ci.yml`; `CONTRIBUTING.md` requires `Signed-off-by` | Verifiable now |
+| DCO | `automation/ci/check-dco.sh` in `ci.yml`; `.github/CONTRIBUTING.md` requires `Signed-off-by` | Verifiable now |
 | CITATION.cff | `CITATION.cff`; `make compliance` checks CFF 1.2.0 fields, the repository URL from `go.mod`, and the license | Verifiable now |
 
 ## One source for each version pin
@@ -92,5 +92,5 @@ Status values:
 | Go toolchain | `go.mod` `toolchain` | Workflows read `go.mod` (`go-version-file`); devcontainer; CI image Dockerfiles and tags |
 | Node | `.node-version` | Workflows read it (`node-version-file`); devcontainer; CI parity image tag |
 | Rust | `ci.yml` `RUST_VERSION` | Devcontainer; CI parity image tag |
-| Pi | `coding/pigversion/pigversion.go` `UpstreamVersion` (re-exported as `coding.UpstreamVersion`) | `extensions/sdk-ts` dependencies; CI parity oracle image; `parity/known-gaps.toml`; `parity/behavior-contracts.toml`; README badge. `ci.yml` reads the source directly. |
+| Pi | `internal/coding/pigversion/pigversion.go` `UpstreamVersion` (re-exported as `coding.UpstreamVersion`) | `extensions/sdk-ts` dependencies; CI parity oracle image; `test/parity/known-gaps.toml`; `test/parity/behavior-contracts.toml`; README badge. `ci.yml` reads the source directly. |
 | Reviewed Pi baseline | `coding/upstream.go` `UpstreamReviewedVersion` | The Makefile derives the leap ledgers from it |

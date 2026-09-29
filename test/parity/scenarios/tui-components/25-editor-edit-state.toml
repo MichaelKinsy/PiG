@@ -1,0 +1,27 @@
+# Behavior family: tui-components
+# Pi 0.87.1 components/editor.ts:1112-1217,1251-1314,1462-1466,1995-2129.
+# Original KEEP editing cases pass in the pinned Pi implementation. This caller
+# probe captures complete text, expanded pastes, cursor, submission and rendered
+# rows after every transition. Hex preserves all ANSI and trailing whitespace.
+name = "25-editor-edit-state"
+description = "Editor undo, kill/yank, normalized insertion, history and sticky state survive complete editing transitions"
+covers = ["packages/tui/src/components/editor.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/editor-edit-state/pig"]
+pi_args = ["node", "./test/parity/testdata/editor-edit-state/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_contain = ["multiline yank-pop", "paste registry replacement undo and submit", "sticky line-start and undo reset"]

@@ -1,0 +1,22 @@
+[
+  {
+    "upstream": "packages/coding-agent/src/core/export-html/ansi-to-html.ts",
+    "package": "./internal/codingagent/export",
+    "tests": [
+      "TestAnsiToHTMLPiEscapingAndPalette",
+      "TestAnsiLinesToHTMLNoSourceWhitespace"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/export-html/ansi-to-html.ts:56-72,205-257; packages/coding-agent/test/export-html-whitespace.test.ts",
+    "mutation": "The original compiling Go implementation used html.EscapeString and clamped grayscale. TestAnsiToHTMLPiEscapingAndPalette failed on quote entities and palette index 257 before the fix; red-ansi.log in the fix-export-html evidence. See docs/findings/fix-export-html.md."
+  },
+  {
+    "upstream": "packages/coding-agent/src/core/export-html/tool-renderer.ts",
+    "package": "./internal/codingagent/export",
+    "tests": [
+      "TestCustomToolResultHTMLBlankLineSemantics",
+      "TestCustomToolResultHTMLTrimsSpacing"
+    ],
+    "upstream_reference": "packages/coding-agent/src/core/export-html/tool-renderer.ts:44-55,142-165; packages/coding-agent/test/export-html-whitespace.test.ts",
+    "mutation": "The original compiling implementation stripped all ANSI sequences and used Go TrimSpace. TestCustomToolResultHTMLBlankLineSemantics failed on BOM, NEL and OSC edge lines before the source fix; red-ansi.log in the fix-export-html evidence. See docs/findings/fix-export-html.md."
+  }
+]

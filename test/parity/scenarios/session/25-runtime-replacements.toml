@@ -1,0 +1,24 @@
+# Both adapters execute the original runtime assertions against real Session/Runtime production paths.
+# Markers identify successfully asserted cases, not startup/readiness. A dropped replacement/settlement/import/cancellation branch fails the Go test process before comparison.
+# The branching records retain native system roles, exact selected text and file presence; Pi's pinned implementation overrides the stale no-system test expectations.
+name = "25-runtime-replacements"
+description = "Factory-owned Session replacement, settlement, lifecycle cancellation, import collision and native-system branching"
+covers = ["packages/coding-agent/src/core/agent-session-runtime.ts", "packages/coding-agent/src/core/session-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-replacements-pig.sh"]
+pi_args = ["bash", "-c", "node --experimental-import-meta-resolve ./test/parity/testdata/session-runtime-pi.mjs runtime && node --experimental-import-meta-resolve ./test/parity/testdata/session-branching-oracle-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

@@ -24,7 +24,7 @@ func TestProcessCLIFileArguments_WrapsTextFiles(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `<file name="` + path + `">` + "\nhello\nworld\n</file>\n"
+	want := `<file name="` + path + `">` + "\nhello\nworld\n\n</file>\n"
 	if got.Text != want {
 		t.Fatalf("ProcessCLIFileArguments().Text = %q, want %q", got.Text, want)
 	}
@@ -44,7 +44,7 @@ func TestProcessCLIFileArguments_GIFPrefixedTextRemainsText(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `<file name="` + path + `">` + "\n" + content + "</file>\n"
+	want := `<file name="` + path + `">` + "\n" + content + "\n</file>\n"
 	if got.Text != want {
 		t.Fatalf("ProcessCLIFileArguments().Text = %q, want %q", got.Text, want)
 	}

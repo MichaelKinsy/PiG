@@ -259,11 +259,9 @@ func kimiCredentials(token kimiTokenResponse) (OAuthCredentials, error) {
 	if token.AccessToken == "" || token.RefreshToken == "" || token.ExpiresIn <= 0 {
 		return OAuthCredentials{}, errors.New("Kimi Code token response missing fields")
 	}
-	return OAuthCredentials{
-		Access:  token.AccessToken,
-		Refresh: token.RefreshToken,
-		Expires: time.Now().Add(time.Duration(token.ExpiresIn * float64(time.Second))).UnixMilli(),
-	}, nil
+	creds := OAuthCredentials{Access: token.AccessToken, Refresh: token.RefreshToken}
+	creds.SetExpiresMillis(float64(nowMillis()) + token.ExpiresIn*1000)
+	return creds, nil
 }
 
 func trustedHTTPURL(value string) bool {

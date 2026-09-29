@@ -15,9 +15,12 @@ func TestGetAllToolsAndGetCommandsDecodeUpstreamInfo(t *testing.T) {
 	var commands []CommandInfo
 	ext := New("info-test")
 	ext.Command("info", "read tool and command info", func(ctx Context, _ string) error {
-		tools = ctx.GetAllTools()
-		commands = ctx.GetCommands()
-		return nil
+		var err error
+		if tools, err = ctx.GetAllTools(); err != nil {
+			return err
+		}
+		commands, err = ctx.GetCommands()
+		return err
 	})
 	t.Setenv("PIG_EXT_SOCKET", host.sockPath)
 	done := make(chan error, 1)

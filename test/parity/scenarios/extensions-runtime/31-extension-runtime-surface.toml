@@ -1,0 +1,66 @@
+# Behavior family: extensions-runtime
+# Scenario: the runtime surface Pi hands every extension. pi-agent-core
+# resolves (Pi serves it as a virtual module), pi.events is one bus shared by
+# every extension and its on() returns an unsubscribe function, pi.on()
+# returns one too, pi.registerMarkdownTransformer exists, Pi's
+# create<Tool>ToolDefinition factories return working definitions at load,
+# and extension console output reaches the terminal (stderr in print mode,
+# where Pi has taken stdout over).
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-26):
+#   pi --no-extensions -e test-faux-provider.ts -e runtime-surface-a.mjs \
+#     -e runtime-surface-b.mjs --model test-faux/faux-1 --print /surface-probe
+#   surface-a: console.log at load
+#   surface-a: console.error at load
+#   surface-a: events.on returns function, on returns function, registerMarkdownTransformer is function
+#   surface-a: read definition has name,label,description,promptSnippet,promptGuidelines,parameters,constrainedSampling,execute,renderCall,renderResult
+#   surface-a: pi-agent-core Agent is function, agentLoop is function, uuidv7 is function
+#   surface-b: heard 1
+#   surface-b: heard 2
+#   surface-a: heard [1]
+#   surface-a: read [{"type":"text","text":"surface file\n"}]
+#   surface-a: new Agent has function prompt and 0 messages
+#
+# PiG failed to load any extension importing pi-agent-core
+# (ERR_MODULE_NOT_FOUND, pi-subagents), returned the emitter from
+# pi.events.on() (pi-goal-x, @henryqw/pi-task-models), lacked
+# registerMarkdownTransformer (pi-cc-extensions), threw from
+# createReadToolDefinition (gentle-pi) and dropped extension console output
+# Subscription removal preserves the admitted session_start snapshot; a handler registered during that event participates in session_shutdown (Pi loader.ts:256-271, runner.ts:265-267,992).
+# The diff and patch calls exercise Pi core/tools/edit-diff.ts:373-516, including a missing final newline. TestPiDiffHelpersMatchThePinnedPackage was red against the throwing exports before vendoring Pi's module.
+# (@raindrop-ai/pi-agent, pi-web-access).
+
+name = "31-extension-runtime-surface"
+description = "pi-agent-core, the shared pi.events bus with unsubscribe, tool definition factories and console output match Pi"
+covers = [
+  "packages/coding-agent/src/core/event-bus.ts",
+  "packages/coding-agent/src/core/extensions/loader.ts",
+  "packages/coding-agent/src/core/extensions/virtual-modules.ts",
+  "packages/coding-agent/src/core/output-guard.ts",
+  "packages/coding-agent/src/core/tools/edit-diff.ts",
+  "packages/coding-agent/src/core/tools/read.ts",
+  "packages/coding-agent/src/core/tools/write.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/ext/runtime-surface-a.mjs", "testdata/ext/runtime-surface-b.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/runtime-surface-a.mjs",
+  "testdata/ext/runtime-surface-b.mjs",
+]
+
+[print]
+prompt = "/surface-probe"
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+both_contain = ["surface-a: heard [1]", "surface-b: heard 2", "surface-a: console.log at load", "surface-a: diff", "surface-a: patch", "surface-a: snapshot second", "surface-a: dynamic shutdown", "surface-a: context spread retains ui true"]
+both_not_contain = ["Failed to load extension", "panic:"]
+output_equal = true
+runs = 3

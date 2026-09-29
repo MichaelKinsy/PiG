@@ -58,7 +58,7 @@ func (env authRunEnv) dim(text string) string {
 }
 
 func (env authRunEnv) printError(message string) {
-	_, _ = fmt.Fprintln(env.stderr, env.red("Error: "+message)) // Best effort: stderr has no fallback channel.
+	writeCLIError(env.stderr, message, env.color)
 }
 
 func authErrorMessage(err error, fallback string) string {

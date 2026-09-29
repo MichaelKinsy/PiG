@@ -1,0 +1,53 @@
+# Upstream evidence: Pi 0.87.1 extension-selector.ts:107-124 and extension-input.ts:94-104:
+# The host publishes authoritative state before the dialog result and the Node
+# receive loop applies earlier notifications before resolving the Promise (BR28).
+# An empty option does not submit, select.confirm overrides input.submit,
+# and key hints resolve the user's manager. No model request is made.
+# The strict crop includes every final dialog content row, not startup identity
+# or DynamicBorder (owned by the TUI rendering lane). Light-theme color and
+# scoped ANSI resets remain in the comparison; nothing is normalized.
+name = "12-extension-dialog-remapping"
+description = "Remapped extension select/input actions preserve empty choices and display the configured hints and light palette."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/extension-input.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Dialog results"
+capture_end = "ctrl+q cancel"
+
+[[tmux.steps]]
+keys = ["/rigidity-dialogs", "Enter"]
+wait_contains = ["Rigidity selection", "ctrl+s select", "ctrl+q cancel"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["C-e", "hex:13", "hex:18", "hex:13"]
+# The cancel hint is retained from the selector, so only the new input title and submit hint form this output barrier.
+wait_contains = ["Rigidity input", "ctrl+s submit"]
+
+[[tmux.steps]]
+keys = ["first", "Enter", "hex:2d 73 65 63 6f 6e 64", "hex:13"]
+wait_contains = ["Dialog results", '{"selected":"chosen","expanded":true,"entered":"first-second"}']
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/remapped-dialogs"]
+pi = ["PI_CODING_AGENT_DIR=testdata/remapped-dialogs"]
+pig_extensions = ["testdata/rigidity-dialogs.ts"]
+pi_extensions = ["testdata/rigidity-dialogs.ts"]
+pig_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ['{"selected":"chosen","expanded":true,"entered":"first-second"}', "ctrl+s select", "ctrl+q cancel"]
+escaped_output_equal = true
+runs = 3

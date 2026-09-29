@@ -1,0 +1,26 @@
+# Pi 0.87.1 system-prompt.ts:58 defaults omitted selectedTools to read/bash/edit/write, but preserves [].
+# system-prompt.ts:190 returns a present forceSystemPrompt verbatim, including an empty string, without sections.
+# Both probes call production builders. We compare the complete tools sections and forced prompts; the product/docs-only sections owned by D22 are outside these assertions.
+# Binary overrides invoke source-backed Go and published Pi module probes without duplicating production algorithms.
+name = "13-system-prompt-defaults-and-force"
+description = "Omitted tool defaults, explicit empty tools, and opaque forced prompts"
+covers = ["packages/coding-agent/src/core/system-prompt.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/system-prompt-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/system-prompt-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['- read: Read file contents\n- bash: Execute bash commands\n- edit: Make surgical edits\n- write: Create or overwrite files', '"exact",""]']
+runs = 3

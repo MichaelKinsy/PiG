@@ -1,0 +1,24 @@
+# Pinned Pi 0.87.1 executes the original boundary bodies before emitting their source-site and Provider-call records.
+# The Go adapter orders independent test records by upstream site, not messages or lifecycle events.
+# Both adapters also drive shared Node factories through Session/Host/Provider paths and retain drafts after a handler error and an abort during a suspended pre-settlement hook.
+name = "31-agent-session-boundaries"
+description = "Actionable boundaries, pending context, settlement and durable recovery"
+covers = ["packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-boundaries-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/session-boundaries-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

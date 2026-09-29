@@ -162,8 +162,9 @@ func modelConformanceContext() map[string]any {
 
 func modelConformanceOptions() map[string]any {
 	return map[string]any{
+		"timeoutMs": 0, "websocketConnectTimeoutMs": 1234, "maxRetries": 2, "maxRetryDelayMs": 3000,
 		"maxTokens": 321, "temperature": 0.65, "samplingParams": map[string]any{"topP": 0.8},
-		"thinkingBudgets": map[string]any{"minimal": 11, "low": 22, "medium": 33, "high": 44}, "thinking": "high", "isReasoning": true,
+		"thinkingBudgets": map[string]any{"minimal": 11, "low": 22, "medium": 33, "high": 44}, "reasoning": "high", "isReasoning": true,
 		"env": map[string]any{"WIRE_ENV": "request-value", "SECOND_ENV": "distinct-value"}, "headers": map[string]any{"X-Wire": "yes", "X-Remove": nil}, "sessionId": "conformance-session", "transport": "sse",
 	}
 }
@@ -375,14 +376,29 @@ func main() {
 	})
 
 	ext.Command("context-probe", "Report ctx.mode + ctx.getSystemPromptOptions()", func(ctx sdk.Context, args string) error {
-		opts := ctx.GetSystemPromptOptions()
+		opts, err := ctx.GetSystemPromptOptions()
+		if err != nil {
+			return err
+		}
+		trusted, err := ctx.IsProjectTrusted()
+		if err != nil {
+			return err
+		}
 		ctx.Notify(fmt.Sprintf("mode=%s trusted=%t spo_prompt=%s spo_cwd=%s spo_tools=%s",
-			ctx.Mode(), ctx.IsProjectTrusted(), opts.CustomPrompt, opts.Cwd, strings.Join(opts.SelectedTools, ",")), "info")
+			ctx.Mode(), trusted, opts.CustomPrompt, opts.Cwd, strings.Join(opts.SelectedTools, ",")), "info")
 		return nil
 	})
 
 	ext.Command("session-log-probe", "Read a paged session log", func(ctx sdk.Context, _ string) error {
-		ctx.Notify(fmt.Sprintf("session entries=%d branch=%d", len(ctx.GetEntries()), len(ctx.GetBranch())), "info")
+		entries, err := ctx.GetEntries()
+		if err != nil {
+			return err
+		}
+		branch, err := ctx.GetBranch()
+		if err != nil {
+			return err
+		}
+		ctx.Notify(fmt.Sprintf("session entries=%d branch=%d", len(entries), len(branch)), "info")
 		return nil
 	})
 
@@ -449,7 +465,10 @@ func main() {
 		if !reflect.DeepEqual(slash["inputLimits"], expectedLimits) {
 			return fmt.Errorf("find slash inputLimits = %#v", slash["inputLimits"])
 		}
-		active := ctx.GetModelInfo()
+		active, err := ctx.GetModelInfo()
+		if err != nil {
+			return err
+		}
 		if active == nil || !reflect.DeepEqual(active.InputLimits, expectedLimits) {
 			return fmt.Errorf("active inputLimits = %#v", active)
 		}
@@ -539,7 +558,10 @@ func main() {
 		_ = ctx.SetWidget("status", []string{"sdk-fixture: ui-probe"})
 		_ = ctx.SetWidget("status-call", []string{"sdk-fixture: ui-probe call"}, sdk.WidgetOptions{"position": "above"})
 
-		themes := ctx.GetAllThemes()
+		themes, themesErr := ctx.GetAllThemes()
+		if themesErr != nil {
+			return themesErr
+		}
 		theme, themeErr := ctx.GetTheme("dark")
 		_, customErr := ctx.Custom(nil, nil)
 		autoErr := ctx.AddAutocompleteProvider(nil)
@@ -562,8 +584,14 @@ func main() {
 	})
 
 	ext.Command("agent-probe", "Exercise SDK agent-control wrappers", func(ctx sdk.Context, args string) error {
-		idle := ctx.IsIdle()
-		pending := ctx.HasPendingMessages()
+		idle, err := ctx.IsIdle()
+		if err != nil {
+			return err
+		}
+		pending, err := ctx.HasPendingMessages()
+		if err != nil {
+			return err
+		}
 		ctx.Compact(nil)
 
 		summary, _ := json.Marshal(map[string]any{

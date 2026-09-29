@@ -163,9 +163,37 @@ func TestInvalidate_FirstWinsConcurrent(t *testing.T) {
 	}
 }
 
-// TestEmit_OnStaleReturnsErrStaleContext: any API method that calls
+// staleCWDError invalidates a runner with message and returns the error a
+// session_start handler gets from its ctx.CWD(): an invalidated runner still
+// delivers the event (upstream emit, runner.ts:988-1017) and the ctx getter
+// reports the stale runner (runner.ts:809-888).
+func staleCWDError(t *testing.T, message string) error {
+	t.Helper()
+	var cwdErr error
+	delivered := false
+	ext := newFakeExtension("/ext/a")
+	ext.Handlers["session_start"] = []extension.HandlerFn{func(args ...any) (any, error) {
+		delivered = true
+		ctx, _ := args[1].(context.Context)
+		if extCtx := extension.FromContext(ctx); extCtx != nil {
+			_, cwdErr = extCtx.CWD()
+		}
+		return nil, nil
+	}}
+	r := inproc.NewRunner([]extension.Extension{ext}, ".")
+	r.Invalidate(message)
+	if _, err := r.Emit(context.Background(), extension.SessionStartEvent{Type: "session_start"}); err != nil {
+		t.Fatalf("Emit on an invalidated runner: %v", err)
+	}
+	if !delivered {
+		t.Fatal("Emit on an invalidated runner did not deliver the event")
+	}
+	return cwdErr
+}
+
+// TestEmit_OnStaleReturnsErrStaleContext: any ctx getter or action that calls
 // assertActive must return an error that matches ErrStaleContext via
-// errors.Is. Emit is the canonical example.
+// errors.Is. The handler's ctx.CWD() is the canonical example.
 //
 // **Cross-package gate (Gap #1, F/B pass 2 fix).** This test deliberately
 // matches against `extension.ErrStaleContext` (the canonical sentinel
@@ -176,14 +204,11 @@ func TestInvalidate_FirstWinsConcurrent(t *testing.T) {
 // to in-package tests. There is now exactly one ErrStaleContext
 // (defined in coding/extension/errors.go); this test locks that property.
 //
-// upstream: runner.ts:467-471 (private assertActive throws Error(staleMessage))
+// upstream: runner.ts:688-692 (private assertActive throws Error(staleMessage))
 func TestEmit_OnStaleReturnsErrStaleContext(t *testing.T) {
-	r := inproc.NewRunner(nil, ".")
-	r.Invalidate("test reason")
-
-	_, err := r.Emit(context.Background(), extension.SessionStartEvent{Type: "session_start"})
+	err := staleCWDError(t, "test reason")
 	if err == nil {
-		t.Fatalf("Emit on stale runner: got nil err; want *StaleError")
+		t.Fatalf("stale ctx.CWD(): got nil err; want *StaleError")
 	}
 	if !errors.Is(err, extension.ErrStaleContext) {
 		t.Errorf("Emit on stale: err = %v; want errors.Is(_, ErrStaleContext)", err)
@@ -230,10 +255,7 @@ func TestStubSurfaces_AllReturnEmpty(t *testing.T) {
 // use extension.ErrStaleContext across package boundaries and preserve the
 // invalidation message.
 func TestStaleError_MatchesCanonicalSentinelOnly(t *testing.T) {
-	r := inproc.NewRunner(nil, ".")
-	r.Invalidate("custom reason")
-
-	_, err := r.Emit(context.Background(), extension.SessionStartEvent{Type: "session_start"})
+	err := staleCWDError(t, "custom reason")
 	if err == nil {
 		t.Fatal("want non-nil err on stale runner")
 	}

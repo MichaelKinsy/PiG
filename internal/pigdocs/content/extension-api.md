@@ -60,7 +60,7 @@ These are the call names the host accepts. SDK bindings wrap each into a method 
 - `getCommands()` - extension commands, prompt templates and skills, as Pi's `SlashCommandInfo`: `name`, `description`, `source` and `sourceInfo`.
 - `getThinkingLevel()` - `"none" | "low" | "medium" | "high" | "xhigh"`.
 - `setThinkingLevel(level)` - switch reasoning effort if the active model supports it.
-- `getContextUsage()` - `{ tokens, max, percent }`.
+- `getContextUsage()` - `{ tokens, contextWindow, percent }`, or absent when no usable model window exists. Counts can be null after compaction.
 - `getSystemPrompt()` - current system prompt text.
 - `getSessionName()` / `setSessionName(name)` - read or change the display name. Name changes emit `session_info_changed` to extensions that registered that event.
 - `getSessionID()`, `getSessionFile()` - session JSONL on disk.
@@ -133,7 +133,7 @@ concurrently.
 > Nothing downstream re-measures them.
 >
 > As in Pi, a line wider than the terminal is not corrected by the host. When it
-> reaches a differential render, Pig writes `pig-tui-crash.log`, restores the
+> reaches a differential render, Pig writes `pi-tui-crash.log`, restores the
 > terminal, and exits with `Rendered line N exceeds terminal width`, exactly as
 > Pi does for a component that does not truncate its output.
 >
@@ -229,6 +229,12 @@ extension entry.
 - `setEditorComponent(factory)` / `getEditorComponent()` - replace the editor widget.
 - `setToolsExpanded(bool)` / `getToolsExpanded()`.
 
+### Terminal string units
+
+Terminal-input callbacks preserve JavaScript UTF-16 units, including lone surrogate halves. The wire represents an unmatched unit with a standard JSON `\u` escape. Do not join input chunks before returning a verdict.
+
+Go callback strings use WTF-8 for unmatched units. Use `github.com/MichaelKinsy/PiG/extensions/sdk/json` for your own serialization of those strings. Python and Node retain unmatched units in their native strings. Rust terminal and focused-component input callbacks receive `&JsString`, and verdict `data` is `Option<JsString>`. Read `as_units()` or construct `JsString::from_units(...)` for lossless handling. `to_string_lossy()` is an explicit display conversion. Rust editor getters return `JsString`; setters accept ordinary strings or `JsString`. Serialize Rust `JsString` directly, not through `serde_json::Value`.
+
 ### Process & filesystem
 
 - `exec(command, args, options)` - run a command with stdin/stdout/stderr piped back. Subject to permissions.
@@ -239,6 +245,10 @@ extension entry.
 - `toolCallID()` - only meaningful inside a tool handler.
 
 ### Providers
+
+Provider-object access has documented 0.3.x known gaps (D78, owner decision 2026-09-28). Go, Rust and Python cannot yet retrieve every builtin/composed raw Provider. Foreign registered-configuration data is a snapshot, not an author-held live object. Implemented callable handles do not preserve arbitrary property identity or mutation. Same-process Node object semantics must remain Pi-exact.
+
+Partial-message observation across the process boundary is D82: retained snapshots do not acquire later producer revisions. The strict RPC33 comparison keeps its raw failure. Every Node extension, including strict isolation and exact standalones, shares one `pi.events` bus; a listener in another process receives the original payload by reference. D83 names the remaining cross-process boundaries: timing order of independent tasks, microtask order beyond a listener's first post-await continuation, cross-process reference cycles, brand checks and `util.types.isProxy` on foreign objects, an empty placeholder from `util.inspect` with `customInspect: false`, the Proxy wrapper from `showProxy: true`, and, on Node 26.0.0 and later, `Proxy(...)` around a non-extensible foreign payload in `util.inspect`. These known gaps do not waive event order, callback completion, cancellation, final results, persistence or cleanup. See [Divergences](divergences.md).
 
 Extensions may register additional inference providers. The registration payload is opaque to the host except for the name. Providers registered by an extension are torn down when the extension shuts down, fails to register on reload, or its quarantined packed cell fissions. Names registered by a replacement extension at reload are preserved across the swap.
 
@@ -296,6 +306,12 @@ require github.com/MichaelKinsy/PiG/extensions/sdk v0.0.0
 ```
 
 Run `pig reload --sdk-path` to print that directory. See `extensions.md` for the full quickstart.
+
+## Go SDK migration to 0.3.0
+
+Context usage keeps Pi's nullable values: `Tokens` is `*int`, and `Percent` is `*float64`. Check `usage != nil` and each field before dereferencing. For an explicit caller fallback, replace `usage.Tokens` arithmetic with `usage.TokensOr(0)` and `usage.Percent` arithmetic with `usage.PercentOr(0)`. Unknown usage after compaction is not a known zero; these helpers do not change the fields or JSON.
+
+Replace `sdk.SendMessageOptions{TriggerTurn: true}` with `sdk.SendMessageOptions{TriggerTurn: sdk.Bool(true)}`. Use `sdk.Bool(false)` only for explicit false; nil applies Pi's default. An omitted `triggerTurn` steers during an active turn, while false defers the message. The helpers are Go ergonomics for the shared SDK contract (D19), not a compatibility wire layer.
 
 ## SDK quickstart (Python)
 

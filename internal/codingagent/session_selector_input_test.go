@@ -42,7 +42,7 @@ func TestSessionSelectorSearchInputMatchesPi(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			loader := func() ([]SessionInfo, error) { return nil, nil }
-			selector := newSessionSelector(loader, loader, nil, nil, "", sessionSelectorInputBindings(t))
+			selector := newLoadedSessionSelector(loader, loader, nil, nil, "", sessionSelectorInputBindings(t))
 			for _, key := range tc.keys {
 				selector.HandleInput(key)
 			}
@@ -69,7 +69,7 @@ func TestSessionSelectorNoninvasiveDeleteEditsQueryBeforeDeletingSession(t *test
 	// forward it to Input with a query, and delete only with an empty query.
 	bindings.SetUserBindings(map[string][]KeyID{"tui.editor.deleteWordBackward": {"ctrl+backspace"}})
 	bindings.syncToTUI()
-	selector := newSessionSelector(loader, loader, nil, nil, "", bindings)
+	selector := newLoadedSessionSelector(loader, loader, nil, nil, "", bindings)
 	selector.HandleInput("alpha beta")
 	selector.HandleInput("\x1b[127;5u")
 	if selector.confirmDelete != "" {
@@ -88,7 +88,7 @@ func TestSessionSelectorNoninvasiveDeleteEditsQueryBeforeDeletingSession(t *test
 
 func BenchmarkStartupSessionSelectorRender(b *testing.B) {
 	loader := func() ([]SessionInfo, error) { return nil, nil }
-	selector := newSessionSelector(loader, loader, nil, nil, "", sessionSelectorInputBindings(b))
+	selector := newLoadedSessionSelector(loader, loader, nil, nil, "", sessionSelectorInputBindings(b))
 	selector.showRenameHint = false
 	b.ReportAllocs()
 	for b.Loop() {
@@ -103,7 +103,7 @@ func TestStartupSessionCancelParksFromSearchCursor(t *testing.T) {
 		retainStartupInput(previousInput)
 	})
 	loader := func() ([]SessionInfo, error) { return nil, nil }
-	selector := newSessionSelector(loader, loader, nil, nil, "", sessionSelectorInputBindings(t))
+	selector := newLoadedSessionSelector(loader, loader, nil, nil, "", sessionSelectorInputBindings(t))
 	selector.showRenameHint = false
 	terminal := &fakeStartupTerminal{}
 	var output bytes.Buffer
@@ -148,7 +148,7 @@ func TestSessionSelectorRenameExitKeepsSearchInputState(t *testing.T) {
 			loader := func() ([]SessionInfo, error) {
 				return []SessionInfo{{Path: "/session.jsonl", Name: "alpha beta"}}, nil
 			}
-			s := newSessionSelector(loader, loader, func(string, string) error { return nil }, nil, "", sessionSelectorInputBindings(t))
+			s := newLoadedSessionSelector(loader, loader, func(string, string) error { return nil }, nil, "", sessionSelectorInputBindings(t))
 			s.HandleInput("alpha")
 			s.HandleInput("\x1b[D")
 			before := s.renderList(30)[0]
@@ -157,6 +157,7 @@ func TestSessionSelectorRenameExitKeepsSearchInputState(t *testing.T) {
 				t.Fatal("rename did not start")
 			}
 			s.HandleInput(tc.exit)
+			s.drainLoadUpdates() // Await the fixture's resolved refresh Promise after save.
 			if s.renameMode {
 				t.Fatal("rename did not finish")
 			}

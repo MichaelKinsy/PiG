@@ -1,0 +1,29 @@
+# Pi 0.87.1 core/prompt-templates.ts:40,321 uses ECMAScript \s.
+# Probe: /unicode<U+2003>destination a<U+0085>b<U+FEFF>c expands to a<U+0085>b|c|.
+# The multibyte command separator must be consumed as a character, not one byte.
+# before_agent_start captures the prompt after the real CLI/Session expansion.
+# The first expanded line is the per-process artifact destination, not captured data.
+# The fixed PT_ARGS line selects the existing hermetic provider response.
+# The artifact compares the complete remaining JSON-encoded prompt without normalization.
+name = "09-prompt-template-unicode-whitespace"
+description = "Prompt arguments preserve U+0085 and split on U+FEFF as Pi does"
+covers = ["packages/coding-agent/src/core/prompt-templates.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["testdata/capture-prompt.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/capture-prompt.mjs"]
+
+[cli]
+args = ["--no-session", "--model", "test-faux/faux-1", "--prompt-template", "testdata/unicode.md", "-p", "/unicode\u2003{{TEMP}}/prompt.json a\u0085b\uFEFFc"]
+cwd = "."
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/prompt.json"
+
+[assert]
+exit_code = 0
+artifact_normalized_equal = true
+artifact_both_contain = ['"PT_ARGS:first|two words\nab|c|"']
+runs = 3

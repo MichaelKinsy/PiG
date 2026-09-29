@@ -24,7 +24,7 @@ load every document for an unrelated task.
 | reload transactions, quarantine/fission, or runtime reports | [Reload and operations](runtime-cell-reload.md) | [Runtime-cell overview](extension-runtime-cells.md) |
 | release inventory, SBOMs, vulnerability evidence, licensing, signing, or provenance | [Supply-chain evidence](supply-chain.md) | [Releasing](project/RELEASING.md), then [Third-party notices](../THIRD_PARTY_NOTICES.md) |
 | badges, OpenSSF Scorecard and Best Practices criteria, and version-pin sources | [Compliance evidence](project/compliance.md) | `make compliance`, then [Supply-chain evidence](supply-chain.md) |
-| security boundaries, assets, threats, or mitigations | [Threat model](threat-model.md) | [Security policy](../SECURITY.md) |
+| security boundaries, assets, threats, or mitigations | [Threat model](threat-model.md) | [Security policy](../.github/SECURITY.md) |
 
 ## Information hierarchy
 
@@ -61,8 +61,8 @@ topology as an artifact kind.
 
 - Public user documentation and website: `site/docs/` and `site/`.
 - Embedded binary and agent reference: `../internal/pigdocs/content/`.
-- Upstream Pi behavior: `.upstream/current/` plus `PORT_MAP.md`.
-- Intentional behavioral differences: `DIVERGENCES.md`.
+- Upstream Pi behavior: `.upstream/current/` plus `docs/parity/PORT_MAP.md`.
+- Intentional behavioral differences: `docs/parity/DIVERGENCES.md`.
 - Pig-only additions: `docs/additive-features.md`.
 - Extension protocol: `coding/extension/host/subprocess/protocol.go` and the
   conformance suite.

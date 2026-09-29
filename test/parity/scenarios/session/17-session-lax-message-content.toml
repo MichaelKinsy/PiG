@@ -1,0 +1,25 @@
+# Pi 0.87.1 lax-message-content.test.ts:29/62/86/105/140/156. All six case sites use the production Session, including direct sendCustomMessage with null content.
+# Published Pi preserves the valid user string at entry projection and convertToLlm. Go also drives resume -> next prompt with stopped, errored and aborted prior turns and a model switch.
+# Source-backed Session/Agent tests supply extension replacements, missing tool content and hand-built entries that stock CLI flags cannot express. The compared lines retain every role/content result without normalizing strings into arrays.
+name = "17-session-lax-message-content"
+description = "Empty content at extension and session ingestion, with lossless user string projection and provider conversion"
+covers = ["packages/coding-agent/src/core/session-manager.ts", "packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/messages.ts", "packages/agent/src/agent-loop.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-lax-content-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/session-lax-content-pi.mjs", "--ported"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['SESSION_USER_STRING_CONTEXT ["user","hello"]']
+runs = 3

@@ -19,8 +19,7 @@ type JsonValue = any
 
 // AgentToolResult is the harness tool result wire shape: text or image content
 // returned to the model, arbitrary details, optional usage, and an optional
-// termination hint. It replaces agent.AgentToolResult, whose legacy
-// coding-agent representation flattens content to one string.
+// termination hint.
 type AgentToolResult struct {
 	Content   []ai.ToolResultMessageContent `json:"content"`
 	Details   JsonValue                     `json:"details,omitempty"`
@@ -144,41 +143,7 @@ type AgentHarnessTool struct {
 
 // AgentHarnessDeferredOption is the curated deferred-generation request:
 // JSON `true`/`false` or an object with an optional window.
-type AgentHarnessDeferredOption struct {
-	// Object reports the object form; Enabled holds the boolean form.
-	Object  bool
-	Enabled bool
-	// Window is "15m", "1h", "24h", or empty when absent.
-	Window string
-}
-
-// MarshalJSON emits the boolean or object form.
-func (option AgentHarnessDeferredOption) MarshalJSON() ([]byte, error) {
-	if !option.Object {
-		return json.Marshal(option.Enabled)
-	}
-	type object struct {
-		Window string `json:"window,omitempty"`
-	}
-	return json.Marshal(object{Window: option.Window})
-}
-
-// UnmarshalJSON decodes the boolean or object form.
-func (option *AgentHarnessDeferredOption) UnmarshalJSON(data []byte) error {
-	var enabled bool
-	if err := json.Unmarshal(data, &enabled); err == nil {
-		*option = AgentHarnessDeferredOption{Enabled: enabled}
-		return nil
-	}
-	var object struct {
-		Window string `json:"window"`
-	}
-	if err := json.Unmarshal(data, &object); err != nil {
-		return fmt.Errorf("deferred option: %w", err)
-	}
-	*option = AgentHarnessDeferredOption{Object: true, Window: object.Window}
-	return nil
-}
+type AgentHarnessDeferredOption = ai.DeferredOption
 
 // AgentHarnessStreamOptions are the curated provider request options owned by
 // the harness and snapshotted per turn.

@@ -8,25 +8,71 @@
 package main
 
 import (
-	"encoding/json"
+	"bytes"
+	"errors"
 	"io"
+	"strconv"
+	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/rpcclient"
+	json "github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	codingcompaction "github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // ─── Commands (stdin) ─────────────────────────────────────────────────────────
 
-// RPCCommandEnvelope is the raw JSON wrapper. The Type field selects which
-// concrete command struct to unmarshal into.
+// rpcRequestID is a command's "id" member in the form Pi's serializeJsonLine re-emits it: the JSON.stringify text of the JSON.parse value, of any JSON type. A nil ID is an absent member, which responses omit.
+type rpcRequestID = json.RawMessage
+
+// RPCCommandEnvelope is the raw JSON wrapper. The Type field selects which concrete command struct to unmarshal into.
 type RPCCommandEnvelope struct {
-	ID   string          `json:"id,omitempty"`
-	Type string          `json:"type"`
-	Raw  json.RawMessage `json:"-"` // full original bytes, set by parseRPCCommand
+	ID rpcRequestID `json:"id,omitempty"`
+	// Type is the "type" member when it is a JSON string; TypeValue is that member as Pi re-emits it, nil when absent.
+	Type      string          `json:"type"`
+	TypeValue json.RawMessage `json:"-"`
+	Raw       json.RawMessage `json:"-"` // full original bytes, set by parseRPCCommand
+}
+
+// UnmarshalJSON reads the "id" and "type" members as rpc-mode.ts reads command.id and command.type from JSON.parse output: names match exactly, a later duplicate wins, and a non-object command has neither member.
+// Members alias data during the call, so an image-sized prompt member is scanned but never copied; the retained values are copies.
+func (e *RPCCommandEnvelope) UnmarshalJSON(data []byte) error {
+	*e = RPCCommandEnvelope{}
+	var members map[string]rpcMemberSpan
+	if json.Unmarshal(data, &members) != nil {
+		return nil
+	}
+	if raw, ok := members["id"]; ok {
+		id, err := jsonstringify.Canonicalize(raw)
+		if err != nil {
+			return err
+		}
+		e.ID = bytes.Clone(id)
+	}
+	if raw, ok := members["type"]; ok {
+		value, err := jsonstringify.Canonicalize(raw)
+		if err != nil {
+			return err
+		}
+		e.TypeValue = bytes.Clone(value)
+		if value[0] == '"' {
+			return json.Unmarshal(raw, &e.Type)
+		}
+	}
+	return nil
+}
+
+// rpcMemberSpan is one command member's JSON text. It aliases the decoder input and is valid only during the enclosing Unmarshal.
+type rpcMemberSpan []byte
+
+func (s *rpcMemberSpan) UnmarshalJSON(data []byte) error {
+	*s = data
+	return nil
 }
 
 // RPCPromptCommand sends a message to the agent.
@@ -42,7 +88,7 @@ func (i RPCImageContent) imageContent() ai.ImageContent {
 }
 
 type RPCPromptCommand struct {
-	ID                string            `json:"id,omitempty"`
+	ID                rpcRequestID      `json:"id,omitempty"`
 	Type              string            `json:"type"`
 	Message           string            `json:"message"`
 	Images            []RPCImageContent `json:"images,omitempty"`
@@ -52,58 +98,58 @@ type RPCPromptCommand struct {
 // RPCAbortCommand cancels the current operation.
 // Upstream: rpc-types.ts:28 { type: "abort" }
 type RPCAbortCommand struct {
-	ID   string `json:"id,omitempty"`
-	Type string `json:"type"`
+	ID   rpcRequestID `json:"id,omitempty"`
+	Type string       `json:"type"`
 }
 
 // RPCClearQueueCommand removes queued steering and follow-up messages.
 type RPCClearQueueCommand struct {
-	ID   string `json:"id,omitempty"`
-	Type string `json:"type"`
+	ID   rpcRequestID `json:"id,omitempty"`
+	Type string       `json:"type"`
 }
 
 type RPCNewSessionCommand struct {
-	ID            string `json:"id,omitempty"`
-	Type          string `json:"type"`
-	ParentSession string `json:"parentSession,omitempty"`
+	ID            rpcRequestID `json:"id,omitempty"`
+	Type          string       `json:"type"`
+	ParentSession string       `json:"parentSession,omitempty"`
 }
 
 type RPCCycleModelCommand struct {
-	ID   string `json:"id,omitempty"`
-	Type string `json:"type"`
+	ID   rpcRequestID `json:"id,omitempty"`
+	Type string       `json:"type"`
 }
 
 type RPCGetAvailableThinkingLevelsCommand struct {
-	ID   string `json:"id,omitempty"`
-	Type string `json:"type"`
+	ID   rpcRequestID `json:"id,omitempty"`
+	Type string       `json:"type"`
 }
 
 type RPCAbortRetryCommand struct {
-	ID   string `json:"id,omitempty"`
-	Type string `json:"type"`
+	ID   rpcRequestID `json:"id,omitempty"`
+	Type string       `json:"type"`
 }
 
 type RPCExportHTMLCommand struct {
-	ID         string `json:"id,omitempty"`
-	Type       string `json:"type"`
-	OutputPath string `json:"outputPath,omitempty"`
+	ID         rpcRequestID `json:"id,omitempty"`
+	Type       string       `json:"type"`
+	OutputPath string       `json:"outputPath,omitempty"`
 }
 
 type RPCSwitchSessionCommand struct {
-	ID          string `json:"id,omitempty"`
-	Type        string `json:"type"`
-	SessionPath string `json:"sessionPath"`
+	ID          rpcRequestID `json:"id,omitempty"`
+	Type        string       `json:"type"`
+	SessionPath string       `json:"sessionPath"`
 }
 
 type RPCForkCommand struct {
-	ID      string `json:"id,omitempty"`
-	Type    string `json:"type"`
-	EntryID string `json:"entryId"`
+	ID      rpcRequestID `json:"id,omitempty"`
+	Type    string       `json:"type"`
+	EntryID string       `json:"entryId"`
 }
 
 type RPCCloneCommand struct {
-	ID   string `json:"id,omitempty"`
-	Type string `json:"type"`
+	ID   rpcRequestID `json:"id,omitempty"`
+	Type string       `json:"type"`
 }
 
 type RPCExtensionUIResponse struct {
@@ -117,69 +163,69 @@ type RPCExtensionUIResponse struct {
 // RPCGetStateCommand returns current session state.
 // Upstream: rpc-types.ts:31 { type: "get_state" }
 type RPCGetStateCommand struct {
-	ID   string `json:"id,omitempty"`
-	Type string `json:"type"`
+	ID   rpcRequestID `json:"id,omitempty"`
+	Type string       `json:"type"`
 }
 
 // RPCGetCommandsCommand returns extension, prompt, and skill commands that are
 // invokable through the RPC prompt path.
 type RPCGetCommandsCommand struct {
-	ID   string `json:"id,omitempty"`
-	Type string `json:"type"`
+	ID   rpcRequestID `json:"id,omitempty"`
+	Type string       `json:"type"`
 }
 
 // RPCSetModelCommand changes the active model.
 // Upstream: rpc-types.ts { type: "set_model"; provider: string; modelId: string }
 type RPCSetModelCommand struct {
-	ID       string `json:"id,omitempty"`
-	Type     string `json:"type"`
-	Provider string `json:"provider"`
-	ModelID  string `json:"modelId"`
+	ID       rpcRequestID `json:"id,omitempty"`
+	Type     string       `json:"type"`
+	Provider string       `json:"provider"`
+	ModelID  string       `json:"modelId"`
 }
 
 // RPCCompactCommand triggers manual compaction.
 // Upstream: rpc-types.ts { type: "compact"; customInstructions?: string }
 type RPCCompactCommand struct {
-	ID                 string `json:"id,omitempty"`
-	Type               string `json:"type"`
-	CustomInstructions string `json:"customInstructions,omitempty"`
+	ID                 rpcRequestID `json:"id,omitempty"`
+	Type               string       `json:"type"`
+	CustomInstructions string       `json:"customInstructions,omitempty"`
 }
 
 // RPCSetAutoCompactionCommand enables/disables auto-compaction.
 // Upstream: rpc-types.ts { type: "set_auto_compaction"; enabled: boolean }
 type RPCSetAutoCompactionCommand struct {
-	ID      string `json:"id,omitempty"`
-	Type    string `json:"type"`
-	Enabled bool   `json:"enabled"`
+	ID      rpcRequestID `json:"id,omitempty"`
+	Type    string       `json:"type"`
+	Enabled bool         `json:"enabled"`
 }
 
 // RPCSetThinkingLevelCommand changes the thinking level.
 // Upstream: rpc-types.ts { type: "set_thinking_level"; level: ThinkingLevel }
 type RPCSetThinkingLevelCommand struct {
-	ID    string `json:"id,omitempty"`
-	Type  string `json:"type"`
-	Level string `json:"level"` // "off"|"minimal"|"low"|"medium"|"high"|"xhigh"|"max"
+	ID    rpcRequestID `json:"id,omitempty"`
+	Type  string       `json:"type"`
+	Level string       `json:"level"` // "off"|"minimal"|"low"|"medium"|"high"|"xhigh"|"max"
 }
 
 // ─── Responses / Events (stdout) ─────────────────────────────────────────────
 
-// RPCResponse wraps a command acknowledgement.
+// RPCResponse wraps a command acknowledgement and preserves the request ID's presence.
 // Upstream: rpc-types.ts:110 { type: "response"; command: ...; success: bool; data? }
 type RPCResponse struct {
-	ID      string `json:"id,omitempty"`
-	Type    string `json:"type"`    // always "response"
-	Command string `json:"command"` // mirrors the command type
-	Success bool   `json:"success"`
-	Data    any    `json:"data,omitempty"`
-	Error   string `json:"error,omitempty"`
+	ID      rpcRequestID `json:"id,omitempty"`
+	Type    string       `json:"type"`    // always "response"
+	Command string       `json:"command"` // mirrors the command type
+	Success bool         `json:"success"`
+	Data    any          `json:"data,omitempty"`
+	Error   string       `json:"error,omitempty"`
 }
 
 type rpcNullResponse struct {
-	ID      string `json:"id,omitempty"`
-	Type    string `json:"type"`
-	Command string `json:"command"`
-	Success bool   `json:"success"`
-	Data    any    `json:"data"`
+	ID      rpcRequestID `json:"id,omitempty"`
+	Type    string       `json:"type"`
+	Command string       `json:"command"`
+	Success bool         `json:"success"`
+	Data    any          `json:"data"`
 }
 
 type RPCClearQueueData struct {
@@ -325,7 +371,7 @@ type RPCErrorEvent struct {
 
 // RPCSteerCommand queues a steering message for the active agent turn.
 type RPCSteerCommand struct {
-	ID      string            `json:"id,omitempty"`
+	ID      rpcRequestID      `json:"id,omitempty"`
 	Type    string            `json:"type"`
 	Message string            `json:"message"`
 	Images  []RPCImageContent `json:"images,omitempty"`
@@ -333,7 +379,7 @@ type RPCSteerCommand struct {
 
 // RPCFollowUpCommand queues a message after the active turn settles.
 type RPCFollowUpCommand struct {
-	ID      string            `json:"id,omitempty"`
+	ID      rpcRequestID      `json:"id,omitempty"`
 	Type    string            `json:"type"`
 	Message string            `json:"message"`
 	Images  []RPCImageContent `json:"images,omitempty"`
@@ -342,77 +388,77 @@ type RPCFollowUpCommand struct {
 // RPCBashCommand executes a bash command outside the LLM agent loop.
 // Upstream: rpc-types.ts { type: "bash"; command: string; excludeFromContext?: boolean }
 type RPCBashCommand struct {
-	ID                 string `json:"id,omitempty"`
-	Type               string `json:"type"`
-	Command            string `json:"command"`
-	ExcludeFromContext bool   `json:"excludeFromContext,omitempty"`
+	ID                 rpcRequestID `json:"id,omitempty"`
+	Type               string       `json:"type"`
+	Command            string       `json:"command"`
+	ExcludeFromContext bool         `json:"excludeFromContext,omitempty"`
 }
 
 // RPCSetAutoRetryCommand enables/disables auto-retry.
 // Upstream: rpc-types.ts { type: "set_auto_retry"; enabled: boolean }
 type RPCSetAutoRetryCommand struct {
-	ID      string `json:"id,omitempty"`
-	Type    string `json:"type"`
-	Enabled bool   `json:"enabled"`
+	ID      rpcRequestID `json:"id,omitempty"`
+	Type    string       `json:"type"`
+	Enabled bool         `json:"enabled"`
 }
 
 // RPCSetSessionNameCommand sets the current session name.
 // Upstream: rpc-types.ts { type: "set_session_name"; name: string }
 type RPCSetSessionNameCommand struct {
-	ID   string `json:"id,omitempty"`
-	Type string `json:"type"`
-	Name string `json:"name"`
+	ID   rpcRequestID `json:"id,omitempty"`
+	Type string       `json:"type"`
+	Name string       `json:"name"`
 }
 
 // RPCGetEntriesCommand returns session entries, optionally after the supplied id.
 // Upstream: rpc-types.ts { type: "get_entries"; since?: string }
 type RPCGetEntriesCommand struct {
-	ID    string `json:"id,omitempty"`
-	Type  string `json:"type"`
-	Since string `json:"since,omitempty"`
+	ID    rpcRequestID `json:"id,omitempty"`
+	Type  string       `json:"type"`
+	Since string       `json:"since,omitempty"`
 }
 
 // RPCSetSteeringModeCommand sets the steering queue mode.
 type RPCSetSteeringModeCommand struct {
-	ID   string `json:"id,omitempty"`
-	Type string `json:"type"`
-	Mode string `json:"mode"`
+	ID   rpcRequestID `json:"id,omitempty"`
+	Type string       `json:"type"`
+	Mode string       `json:"mode"`
 }
 
 // RPCSetFollowUpModeCommand sets the follow-up queue mode.
 type RPCSetFollowUpModeCommand struct {
-	ID   string `json:"id,omitempty"`
-	Type string `json:"type"`
-	Mode string `json:"mode"`
+	ID   rpcRequestID `json:"id,omitempty"`
+	Type string       `json:"type"`
+	Mode string       `json:"mode"`
 }
 
 // RPCBashResult is the response payload for the bash command.
 // Mirrors coding.BashResult.
 type RPCBashResult struct {
 	Output         string `json:"output"`
-	ExitCode       int    `json:"exitCode"`
+	ExitCode       *int   `json:"exitCode,omitempty"`
 	Cancelled      bool   `json:"cancelled"`
 	Truncated      bool   `json:"truncated"`
 	FullOutputPath string `json:"fullOutputPath,omitempty"`
 }
 
 type RPCBashExecutionUpdate struct {
-	Type  string `json:"type"`
-	ID    string `json:"id,omitempty"`
-	Delta string `json:"delta"`
+	Type  string       `json:"type"`
+	ID    rpcRequestID `json:"id,omitempty"`
+	Delta string       `json:"delta"`
 }
 
 type RPCCompactionResult struct {
-	Summary              string         `json:"summary"`
-	FirstKeptEntryID     string         `json:"firstKeptEntryId"`
-	TokensBefore         int            `json:"tokensBefore"`
-	EstimatedTokensAfter int            `json:"estimatedTokensAfter"`
-	Usage                map[string]any `json:"usage,omitempty"`
-	Details              any            `json:"details,omitempty"`
+	Summary              string    `json:"summary"`
+	FirstKeptEntryID     string    `json:"firstKeptEntryId"`
+	TokensBefore         int       `json:"tokensBefore"`
+	EstimatedTokensAfter int       `json:"estimatedTokensAfter"`
+	Usage                *RPCUsage `json:"usage,omitempty"`
+	Details              any       `json:"details,omitempty"`
 }
 
 func rpcCompactionResult(result *coding.CompactionResult) RPCCompactionResult {
-	var usage map[string]any
+	var usage *RPCUsage
 	if result.Usage != nil {
 		usage = rpcUsage(result.Usage)
 	}
@@ -443,7 +489,7 @@ func rpcImages(images []RPCImageContent) []ai.ImageContent {
 	return out
 }
 
-// parseRPCCommand parses a JSON line from stdin into a typed command.
+// parseRPCCommand preserves JSON.parse's UTF-16 string units in the envelope and retains the original bytes for typed command decoding.
 // Returns the envelope (with Type and ID) and any parse error.
 func parseRPCCommand(line []byte) (RPCCommandEnvelope, error) {
 	var env RPCCommandEnvelope
@@ -455,17 +501,95 @@ func parseRPCCommand(line []byte) (RPCCommandEnvelope, error) {
 }
 
 // rpcSuccess builds a success response for a command.
-func rpcSuccess(id, command string, data any) RPCResponse {
+func rpcSuccess(id rpcRequestID, command string, data any) RPCResponse {
 	return RPCResponse{ID: id, Type: "response", Command: command, Success: true, Data: data}
 }
 
-func rpcSuccessNull(id, command string) rpcNullResponse {
+func rpcSuccessNull(id rpcRequestID, command string) rpcNullResponse {
 	return rpcNullResponse{ID: id, Type: "response", Command: command, Success: true, Data: nil}
 }
 
 // rpcError builds an error response for a command.
-func rpcError(id, command, message string) RPCResponse {
+func rpcError(id rpcRequestID, command, message string) RPCResponse {
 	return RPCResponse{ID: id, Type: "response", Command: command, Success: false, Error: message}
+}
+
+// rpcUnknownCommandResponse is rpc-mode.ts error(id, command.type, `Unknown command: ${command.type}`) for a type no case matches. The type may be absent or any JSON value.
+type rpcUnknownCommandResponse struct {
+	ID      rpcRequestID    `json:"id,omitempty"`
+	Type    string          `json:"type"`
+	Command json.RawMessage `json:"command,omitempty"`
+	Success bool            `json:"success"`
+	Error   string          `json:"error"`
+}
+
+// rpcBashUpdateID carries a request id through Session.ExecuteBashWithOperations, whose correlation identifier is opaque text. RPC mode is its only producer and passes the id's JSON text, which rpcAgentEvent emits unchanged as the bash_execution_update id.
+func rpcBashUpdateID(id rpcRequestID) *string {
+	if id == nil {
+		return nil
+	}
+	return new(string(id))
+}
+
+func rpcUnknownCommand(env RPCCommandEnvelope) rpcUnknownCommandResponse {
+	name := "undefined"
+	if env.TypeValue != nil {
+		var err error
+		name, err = rpcTemplateString(rpcMemberValue(env.Raw, "type"))
+		if err != nil {
+			return rpcUnknownCommandResponse{ID: env.ID, Type: "response", Command: env.TypeValue, Error: err.Error()}
+		}
+	}
+	return rpcUnknownCommandResponse{ID: env.ID, Type: "response", Command: env.TypeValue, Error: "Unknown command: " + name}
+}
+
+// rpcMemberValue returns the last named member of a JSON object command, as JSON.parse keeps it.
+func rpcMemberValue(command []byte, name string) json.RawMessage {
+	var members map[string]json.RawMessage
+	_ = json.Unmarshal(command, &members)
+	return members[name]
+}
+
+// rpcTemplateString is JavaScript `${value}` for a parsed JSON value. An object's own non-callable toString shadows Object.prototype.toString and makes ToPrimitive throw.
+func rpcTemplateString(raw json.RawMessage) (string, error) {
+	decoder := json.NewDecoder(bytes.NewReader(raw))
+	decoder.UseNumber()
+	var value any
+	if err := decoder.Decode(&value); err != nil {
+		return "", err
+	}
+	return rpcTemplateValue(value)
+}
+
+func rpcTemplateValue(value any) (string, error) {
+	switch value := value.(type) {
+	case nil:
+		return "null", nil
+	case bool:
+		return strconv.FormatBool(value), nil
+	case json.Number:
+		number, _ := strconv.ParseFloat(string(value), 64)
+		return tui.JSNumberString(number), nil
+	case string:
+		return value, nil
+	case []any:
+		parts := make([]string, len(value))
+		for i, item := range value {
+			if item != nil {
+				part, err := rpcTemplateValue(item)
+				if err != nil {
+					return "", err
+				}
+				parts[i] = part
+			}
+		}
+		return strings.Join(parts, ","), nil
+	case map[string]any:
+		if _, shadowed := value["toString"]; shadowed {
+			return "", errors.New("Cannot convert object to primitive value")
+		}
+	}
+	return "[object Object]", nil
 }
 
 func rpcModelValue(model *ai.Model) *RPCModel {
@@ -483,7 +607,9 @@ func rpcModelValue(model *ai.Model) *RPCModel {
 		provider = model.Provider.ID()
 	}
 	input := []string{"text"}
-	if model.Capabilities.SupportsImages {
+	if model.Input != nil {
+		input = append([]string{}, model.Input...)
+	} else if model.Capabilities.SupportsImages {
 		input = append(input, "image")
 	}
 	cost := RPCModelCost{

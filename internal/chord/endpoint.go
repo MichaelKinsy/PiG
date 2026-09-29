@@ -112,6 +112,11 @@ func (transport loopbackTransport) Invoke(ctx context.Context, call ServiceCall)
 	return transport.provider.Invoke(ctx, call)
 }
 
+// BeginInvoke preserves the provider implementation's admission boundary across the loopback, as loopback.ts forwards invoke unchanged.
+func (transport loopbackTransport) BeginInvoke(ctx context.Context, call ServiceCall) (*ServiceInvocation, error) {
+	return transport.provider.BeginInvoke(ctx, call)
+}
+
 func (transport loopbackTransport) Subscribe(_ context.Context, serviceId string, mode ServiceMode, listener UpdateListener) (ServiceSubscription, error) {
 	return transport.provider.Subscribe(serviceId, mode, listener)
 }

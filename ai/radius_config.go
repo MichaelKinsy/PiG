@@ -11,8 +11,9 @@ import (
 	"maps"
 	"net/http"
 	"net/url"
-	"regexp"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // DefaultRadiusGateway is the Radius gateway origin Pi uses by default.
@@ -127,7 +128,7 @@ func sanitizeRadiusGatewayConfig(raw json.RawMessage) (RadiusGatewayConfig, bool
 	return config, true
 }
 
-var radiusSchemePattern = regexp.MustCompile(`(?i)^https?://`)
+var radiusSchemePattern = lazyregexp.New(`(?i)^https?://`)
 
 // NormalizeRadiusGatewayURL adds an https scheme when absent and strips
 // trailing slashes. Mirrors upstream normalizeRadiusGatewayUrl.
@@ -178,7 +179,7 @@ func cloneRadiusGatewayModel(model RadiusGatewayModel) RadiusGatewayModel {
 }
 
 func truncateHTTPBody(body string) string {
-	trimmed := strings.TrimSpace(body)
+	trimmed := trimJSWhitespace(body)
 	if utf16Length(trimmed) <= 512 {
 		return trimmed
 	}

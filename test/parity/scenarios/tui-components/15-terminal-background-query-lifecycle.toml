@@ -1,0 +1,27 @@
+# Behavior family: tui-components
+# Upstream evidence: Pi 0.87.1 terminal-colors.test.ts defines nine original cases. This probe records the public query's exact write, timeout/FIFO late-reply ownership, ordinary/unsolicited input, malformed replies, and parser Number/trim/channel semantics against installed Pi.
+# This fixture compares query state and parser output. The original five caller cases in internal/codingagent/terminal_colors_upstream_test.go separately drive the real driver before listeners/focus; this crop does not claim whole input-handler closure.
+# Node's ExperimentalWarning is only the diagnostic from the fixture's MockTimers. No output bytes are normalized.
+name = "15-terminal-background-query-lifecycle"
+description = "Terminal background queries retain FIFO late-reply ownership and use Pi color parsing"
+covers = ["packages/tui/src/terminal-colors.ts", "packages/tui/src/tui.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/terminal-colors-pig"]
+pi_args = ["node", "--disable-warning=ExperimentalWarning", "./test/parity/testdata/terminal-colors-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_contain = ["parsed:0,128,255", "parsed:NaN,0,0", "second-pending:true", "second:255,255,255", "malformed:undefined", "consumed:false"]
+both_not_contain = ["panic:", "ERR_MODULE_NOT_FOUND"]

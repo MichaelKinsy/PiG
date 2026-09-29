@@ -9,7 +9,7 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
-// availableModelItems uses the composed runtime catalog and provider auth rather than a second interactive provider allowlist.
+// availableModelItems uses the runtime's available catalog, including account-specific model filters.
 func (m *InteractiveMode) availableModelItems() []tui.ModelSelectorItem {
 	var registry *ModelRegistry
 	agentDir := ""
@@ -25,17 +25,9 @@ func (m *InteractiveMode) availableModelItems() []tui.ModelSelectorItem {
 			}
 		}
 	}
-	auth := make(map[string]bool)
 	var items []tui.ModelSelectorItem
-	for _, model := range registry.RuntimeModels() {
-		ready, checked := auth[model.Provider]
-		if !checked {
-			ready = registry.HasConfiguredAuth(model.Provider)
-			auth[model.Provider] = ready
-		}
-		if ready {
-			items = append(items, tui.ModelSelectorItem{Provider: model.Provider, ID: model.ID, Name: model.Name})
-		}
+	for _, model := range registry.GetAvailable() {
+		items = append(items, tui.ModelSelectorItem{Provider: model.ProviderID, ID: model.ModelID, Name: model.DisplayName})
 	}
 	return items
 }

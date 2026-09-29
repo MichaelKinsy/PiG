@@ -19,6 +19,8 @@ import (
 // cmd.exe-only builtin.
 const execEchoHelperEnv = "PIG_TEST_EXEC_ECHO_HELPER"
 
+var fixtureRoot, fixtureSourceRoot string
+
 // TestMain isolates the config root and points the SDK roots at this tree.
 func TestMain(m *testing.M) {
 	if os.Getenv(execEchoHelperEnv) == "1" {
@@ -62,6 +64,14 @@ func TestMain(m *testing.M) {
 	} {
 		if err := os.Setenv(key, value); err != nil {
 			fmt.Fprintf(os.Stderr, "set isolated %s: %v\n", key, err)
+			_ = os.RemoveAll(testRoot)
+			os.Exit(2)
+		}
+	}
+	fixtureRoot, fixtureSourceRoot = testRoot, sourceRoot
+	if os.Getenv("CARGO_TARGET_DIR") == "" {
+		if err := os.Setenv("CARGO_TARGET_DIR", filepath.Join(testRoot, "cargo-target")); err != nil {
+			fmt.Fprintln(os.Stderr, "set package Cargo target:", err)
 			_ = os.RemoveAll(testRoot)
 			os.Exit(2)
 		}

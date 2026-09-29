@@ -11,25 +11,25 @@ func TestEditorStatusBorderOptInAndWidth(t *testing.T) {
 	editor := NewEditor()
 	indicator := &StatusIndicator{Kind: "working", Loader: NewStyledLoader(ActiveTheme().Accent, ActiveTheme().Muted, "Working", nil)}
 	editor.SetWorkingStatusIndicator(indicator)
-	if got := widthx.StripAnsi(editor.Render(20)[1]); got != strings.Repeat("─", 20) {
+	if got := widthx.StripAnsi(editor.Render(20)[0]); got != strings.Repeat("─", 20) {
 		t.Fatalf("opt-out border=%q", got)
 	}
 	editor.EmbedWorkingStatus = true
 	editor.ThinkingLevel = "high"
-	if got := widthx.StripAnsi(editor.Render(20)[1]); got != "── ⠋ Working ───────" {
+	if got := widthx.StripAnsi(editor.Render(20)[0]); got != "── ⠋ Working ───────" {
 		t.Fatalf("working border=%q", got)
 	}
 	labels := []string{"Working", "Compacting context... (escape to cancel)", "Auto-compacting... (escape to cancel)", "Context overflow detected, Auto-compacting... (escape to cancel)", "Summarizing branch... (escape to cancel)", "Retrying (1/3) in 3s... (escape to cancel)"}
 	for _, label := range labels {
 		indicator.Message = label
 		for _, width := range []int{1, 4, 10, 20, 80, 120} {
-			if got := widthx.VisibleWidth(editor.Render(width)[1]); got != width {
+			if got := widthx.VisibleWidth(editor.Render(width)[0]); got != width {
 				t.Fatalf("%q width %d rendered %d", label, width, got)
 			}
 		}
 	}
 	editor.SetWorkingStatusIndicator(nil)
-	if got := widthx.StripAnsi(editor.Render(20)[1]); got != strings.Repeat("─", 20) {
+	if got := widthx.StripAnsi(editor.Render(20)[0]); got != strings.Repeat("─", 20) {
 		t.Fatalf("cleared border=%q", got)
 	}
 }
@@ -95,7 +95,7 @@ func TestEditorStatusIndicatorChangeDefeatsChildCache(t *testing.T) {
 	indicator := &StatusIndicator{Kind: "working", Loader: NewLoader("Working")}
 	editor.SetWorkingStatusIndicator(indicator)
 	root := NewContainer(editor)
-	border := func() string { return widthx.StripAnsi(root.Render(40)[1]) }
+	border := func() string { return widthx.StripAnsi(root.Render(40)[0]) }
 
 	if got := border(); !strings.Contains(got, DefaultSpinnerFrames[0]+" Working") {
 		t.Fatalf("first border=%q", got)
@@ -129,7 +129,7 @@ func TestLoaderRelabelDefeatsChildCache(t *testing.T) {
 	indicator := &StatusIndicator{Kind: "retry", Loader: NewLoader("Retrying (1/3) in 3s...")}
 	editor.SetWorkingStatusIndicator(indicator)
 	root := NewContainer(editor)
-	border := func() string { return widthx.StripAnsi(root.Render(60)[1]) }
+	border := func() string { return widthx.StripAnsi(root.Render(60)[0]) }
 	border()
 
 	indicator.SetMessage("Retrying (1/3) in 2s...")

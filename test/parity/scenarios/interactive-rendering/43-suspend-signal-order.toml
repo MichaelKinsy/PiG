@@ -1,0 +1,23 @@
+# Pi 0.87.1 interactive-mode.ts:4287-4311 installs a userspace SIGINT listener, then removes it in the SIGCONT callback.
+# The upstream suspend test mocks signals and is deterministic. The implementation can exit130 when a pending SIGINT is dispatched after SIGCONT removes its listener.
+# Both probes use real SIGINT/SIGCONT delivery with explicit armed/ignored/render acknowledgements. Only SIGTSTP is replaced so each order can be forced without kernel scheduling assumptions. Scenario40 separately proves real stopped-job/TUI restart.
+# POSIX signal delivery does not apply to Windows; its status-only branch is covered by the upstream unit cases.
+name = "43-suspend-signal-order"
+description = "Temporary suspend listeners ignore SIGINT before continue cleanup and terminate on SIGINT delivered afterward."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui", "posix-signals"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["python3", "./test/parity/testdata/suspend-signal-order.py", "pig"]
+pi_args = ["python3", "./test/parity/testdata/suspend-signal-order.py", "pi"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SUSPEND_SIGNAL [\"interrupt-before-continue\",[\"stopped\",\"armed\",\"ignored\",\"resumed\",\"render:true\"],0]", "SUSPEND_SIGNAL [\"continue-before-interrupt\",[\"stopped\",\"armed\",\"resumed\",\"render:true\"],130]"]
+runs = 3

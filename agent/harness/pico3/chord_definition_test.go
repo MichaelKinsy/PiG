@@ -24,3 +24,32 @@ func TestDefineServiceRejectsReservedAndEmptyIds(t *testing.T) {
 		t.Fatal(got)
 	}
 }
+
+// DefineService keeps its published function type; the optional upstream options argument (chord/src/api.ts:70-82)
+// is DefineServiceWithOptions, which enforces the same identity rules.
+func TestDefineServiceKeepsPublishedFunctionTypeAndOptionsVariantMatchesUpstream(t *testing.T) {
+	if got := defineWith(DefineService[string], "test.remote"); got.Id() != "test.remote" || got.Local() {
+		t.Errorf("DefineService = %q local=%v", got.Id(), got.Local())
+	}
+	if got := DefineServiceWithOptions[string]("test.local", ServiceOptions{Local: true}); got.Id() != "test.local" || !got.Local() {
+		t.Errorf("DefineServiceWithOptions local = %q local=%v", got.Id(), got.Local())
+	}
+	if got := DefineServiceWithOptions[string]("test.remote", ServiceOptions{}); got.Local() {
+		t.Error("zero options defined a local service")
+	}
+	for _, id := range []string{"", "$chord.models"} {
+		func() {
+			defer func() {
+				if recover() == nil {
+					t.Errorf("DefineServiceWithOptions(%q) did not panic", id)
+				}
+			}()
+			DefineServiceWithOptions[string](id, ServiceOptions{Local: true})
+		}()
+	}
+}
+
+// defineWith fixes the parameter type, so passing DefineService[string] fails to compile if its published function type changes.
+func defineWith(define func(string) ServiceDefinition[string], id string) ServiceDefinition[string] {
+	return define(id)
+}

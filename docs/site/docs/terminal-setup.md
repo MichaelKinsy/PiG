@@ -19,8 +19,7 @@ Use `/hotkeys` to list the keys PiG has bound. `Ctrl+J` always inserts a new lin
 
 ## What PiG detects
 
-PiG reads environment variables to decide what your terminal accepts. It does not
-ask the terminal, because a terminal that does not answer would delay startup.
+PiG detects image, true-color, and hyperlink capabilities from environment variables, except for the tmux hyperlink check below. Keyboard negotiation and automatic theme detection also use terminal queries.
 
 | Terminal | Images | True color | Hyperlinks |
 |---|---|---|---|
@@ -51,6 +50,10 @@ these. A terminal it does not recognize gets true color only with
 To correct detection, set `PI_HYPERLINKS`, `PI_IMAGE_PROTOCOL` or `PI_TRUE_COLOR`
 (see [environment variables](/docs/latest/environment-variables)), or the matching
 `terminal.*` setting (see [settings](/docs/latest/settings)). The setting wins.
+
+## Automatic theme detection
+
+Without an explicit theme, PiG queries the terminal's default background with OSC 11. An automatic light/dark theme pair also queries the terminal's color-scheme preference. PiG consumes replies to its background queries before editor or extension input. A late OSC 11 reply does not replace a completed fallback or settle a newer query.
 
 ## Keys that do not respond
 
@@ -106,12 +109,6 @@ Kitty supports the Kitty keyboard protocol. It needs no setup.
 The regular layout needs no setup.
 
 In fullscreen mode (`--tui-mode fullscreen` or the `tuiMode` setting), PiG captures the mouse, so iTerm2 sends wheel events to PiG instead of scrolling its own history. Fast trackpad gestures can then scroll only one line at a time. To change this, open **iTerm2 > Settings > Advanced**, find **Trackpad scrolls fast?** and set it to **No**. The setting applies to all of iTerm2.
-
-### Apple Terminal
-
-Terminal.app can send a plain `Enter` for `Shift+Enter`. Use `Ctrl+J` to insert a new line there.
-
-Pi works around this on macOS by reading the modifier keys from the operating system. PiG does not include that workaround.
 
 ### Ghostty
 
@@ -238,9 +235,13 @@ them.
 
 ## Capability overrides
 
-PiG has no setting or environment variable that forces hyperlinks, images or true color on or off. It relies on the detection above. Pi 0.87.1 reads `PI_HYPERLINKS`, `PI_IMAGE_PROTOCOL` and `PI_TRUE_COLOR`, and the matching `terminal.hyperlinks`, `terminal.images` and `terminal.trueColor` settings. PiG ignores all of them.
+Set `PI_HYPERLINKS`, `PI_IMAGE_PROTOCOL`, or `PI_TRUE_COLOR` to override capability detection. The matching `terminal.hyperlinks`, `terminal.images`, and `terminal.trueColor` settings take precedence over environment variables. See [settings](/docs/latest/settings).
 
-For images, use the `showImages` setting or `/settings` to turn images off. For colors, set `COLORTERM=truecolor` when your terminal supports true color but PiG does not detect it.
+Use `showImages` or `/settings` to hide images without changing protocol detection.
+
+## Closing an interactive session
+
+On Unix, `SIGTERM` and `SIGHUP` request shutdown even when `/scoped-models`, `/settings`, or another selector has focus. PiG runs extension shutdown handlers before restoring the terminal. No additional keypress is needed to dismiss a selector during shutdown.
 
 ## Display problems
 
@@ -253,7 +254,7 @@ For images, use the `showImages` setting or `/settings` to turn images off. For 
 Set `PIG_RENDER_DEBUG` to any value to write render diagnostics. Use it when you
 report a display problem.
 
-As in Pi, a row wider than the terminal is fatal only when it reaches a differential render. PiG then writes `pig-tui-crash.log` to the agent directory (the system temp directory when there is none) with the terminal width, the offending row and its width, and every rendered row, restores the terminal, prints the error with the log path, and exits with status 1. The first render, a forced full render, and the full render after a resize emit an over-wide row unchanged.
+As in Pi, a row wider than the terminal is fatal only when it reaches a differential render. PiG then writes `pi-tui-crash.log` to the agent directory (the system temp directory when there is none) with the terminal width, the offending row and its width, and every rendered row, restores the terminal, prints the error with the log path, and exits with status 1. The first render, a forced full render, and the full render after a resize emit an over-wide row unchanged.
 
 ## Related
 

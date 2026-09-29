@@ -18,7 +18,7 @@ COUNT_FLAG=()
 HEAVY_PKGS=(
   ./cmd/pig
   ./coding/extension/host/subprocess
-  ./tests/extension-conformance
+  ./test/extension-conformance
 )
 SERIAL_PKGS=(
 )
@@ -56,6 +56,15 @@ if [[ "$MODE" != "report" ]]; then
   eval "$fixture_exports"
 fi
 
+# Tests that build Pig, a packed extension cell or a Piglet run their own `go build` in a child process. Those builds share no work with the `go test` action graph, so on a cold Go build cache (the first run after go.mod or go.sum changes) each one recompiles the whole dependency graph while the 12-way package pool competes for the same cores, and a build bounded by the 2-minute extension-validation deadline is killed. Compile each flag set once here so every child build links from the cache: -trimpath changes every package's action ID, and CGO_ENABLED changes every package that reaches net or os/user. The default set serves go test itself, the default-CGO -trimpath set serves `pig build` and native Piglet Binary builds (cmd/pig/build_command.go, coding/pigletbuild/native_build.go), and the CGO_ENABLED=0 -trimpath set serves extension and packed-cell builds (coding/extension/host/subprocess/builder.go, coding/extension/host/runtimecell/go_packed.go). An extension or packed-cell build compiles PiG as a dependency module, and -trimpath then maps its source directories to github.com/MichaelKinsy/PiG@<version>/... where the main-module builds above map them to github.com/MichaelKinsy/PiG/..., so those builds share no compiled PiG package with them (about 60 packages for the Porter extension). Building the in-repo Porter extension module with GOWORK=off (the packed build's setting) compiles that dependency-module set once.
+if [[ "$MODE" != "report" ]]; then
+  echo "[test-grouped] warming the Go build cache"
+  go build ./...
+  go build -trimpath ./...
+  CGO_ENABLED=0 go build -trimpath ./...
+  (cd piglets/porter/extensions/pig-porter && GOWORK=off CGO_ENABLED=0 go build -trimpath ./...)
+fi
+
 echo "[test-grouped] mode=$MODE"
 echo "[test-grouped] fast-parallel ($FAST_PARALLEL): ${#FAST_PKGS[@]} packages"
 echo "[test-grouped] subprocess-bounded ($SUBPROCESS_PARALLEL): ${#HEAVY_PKGS[@]} packages"
@@ -86,7 +95,7 @@ case "$MODE" in
     case "$MODE" in
       cli) selected=./cmd/pig ;;
       subprocess) selected=./coding/extension/host/subprocess ;;
-      conformance) selected=./tests/extension-conformance ;;
+      conformance) selected=./test/extension-conformance ;;
     esac
     selected=$(go list "$selected")
     run_group "$MODE" "$SUBPROCESS_PARALLEL" "$selected"

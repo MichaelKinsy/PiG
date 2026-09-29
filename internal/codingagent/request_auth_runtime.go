@@ -26,20 +26,22 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
-// RuntimeModel is the model identity request-auth resolution needs from
-// upstream Model<Api>.
+// RuntimeModel carries the model identity, reasoning flag, and intrinsic headers used by request-auth and CLI resolution.
 type RuntimeModel struct {
-	Provider string
-	ID       string
-	Name     string
+	// NativeModel retains the source model for native selection; it is not part of serialized metadata.
+	NativeModel *ai.Model `json:"-"`
+	Provider    string
+	ID          string
+	Name        string
+	Reasoning   bool
 	// Headers are the model's intrinsic catalog headers.
 	Headers ai.ProviderHeaders
 }
 
-// RuntimeProvider is a composed provider: its id and auth methods. Mirrors
-// the auth-bearing part of upstream Provider.
+// RuntimeProvider carries the composed provider's identity, display name, auth methods, and model catalog.
 type RuntimeProvider struct {
 	ID   string
+	Name string
 	Auth ai.ProviderAuth
 
 	models []RuntimeModel
@@ -183,21 +185,23 @@ func (r *RequestAuthRuntime) rebuildProviders() {
 func (r *RequestAuthRuntime) composeProvider(providerID string) *RuntimeProvider {
 	base, baseErr := ai.BuiltinProviderAuth(providerID)
 	hasBase := baseErr == nil
+	baseName := ai.ProviderDisplayName(providerID)
 	baseModels := builtinRuntimeModels(providerID)
 	if radius := r.radius[providerID]; radius != nil {
 		base, hasBase, baseModels = ai.RadiusProviderAuth(radius), true, radiusRuntimeModels(radius)
+		baseName = radius.Name()
 	}
 	config, hasConfig := r.configProvider(providerID)
 	if !hasBase && !hasConfig {
 		return nil
 	}
 	if !hasConfig {
-		return &RuntimeProvider{ID: providerID, Auth: base, models: baseModels}
+		return &RuntimeProvider{ID: providerID, Name: baseName, Auth: base, models: baseModels}
 	}
 	fallback := func(message string) *RuntimeProvider {
 		r.compositionErrors = append(r.compositionErrors, compositionError{providerID: providerID, message: message})
 		if hasBase {
-			return &RuntimeProvider{ID: providerID, Auth: base, models: baseModels}
+			return &RuntimeProvider{ID: providerID, Name: baseName, Auth: base, models: baseModels}
 		}
 		return nil
 	}
@@ -205,13 +209,17 @@ func (r *RequestAuthRuntime) composeProvider(providerID string) *RuntimeProvider
 		return fallback(fmt.Sprintf(`Provider %s: "baseUrl" is required when "oauth" is set.`, providerID))
 	}
 	auth := ai.ProviderAuth{
-		APIKey: r.composeAPIKeyAuth(providerID, base, config),
+		APIKey: composeAPIKeyAuth(providerID, base, config),
 		OAuth:  composeOAuthAuth(providerID, base.OAuth, config),
 	}
 	if auth.APIKey == nil && auth.OAuth == nil {
 		return fallback(fmt.Sprintf("Provider %s: no authentication method configured.", providerID))
 	}
-	return &RuntimeProvider{ID: providerID, Auth: auth, models: applyModelsJSONToRuntimeModels(providerID, baseModels, config)}
+	name := config.Name
+	if name == "" {
+		name = baseName
+	}
+	return &RuntimeProvider{ID: providerID, Name: name, Auth: auth, models: applyModelsJSONToRuntimeModels(providerID, baseModels, config)}
 }
 
 func builtinRuntimeModels(providerID string) []RuntimeModel {
@@ -219,10 +227,11 @@ func builtinRuntimeModels(providerID string) []RuntimeModel {
 	models := make([]RuntimeModel, 0, len(catalog))
 	for _, model := range catalog {
 		models = append(models, RuntimeModel{
-			Provider: model.Provider,
-			ID:       model.ID,
-			Name:     model.DisplayName,
-			Headers:  ai.ProviderHeadersFromStrings(model.Headers),
+			Provider:  model.Provider,
+			ID:        model.ID,
+			Name:      model.DisplayName,
+			Reasoning: model.Reasoning,
+			Headers:   ai.ProviderHeadersFromStrings(model.Headers),
 		})
 	}
 	return models
@@ -232,13 +241,13 @@ func radiusRuntimeModels(provider *ai.RadiusProvider) []RuntimeModel {
 	catalog := provider.GetModels()
 	models := make([]RuntimeModel, 0, len(catalog))
 	for _, model := range catalog {
-		models = append(models, RuntimeModel{Provider: model.Provider, ID: model.ID, Name: model.Name})
+		models = append(models, RuntimeModel{Provider: model.Provider, ID: model.ID, Name: model.Name, Reasoning: model.Reasoning})
 	}
 	return models
 }
 
 // applyModelsJSONToRuntimeModels upserts models.json definitions by id and
-// applies model override names. Mirrors upstream applyModelsJson,
+// applies model override names and reasoning. Mirrors upstream applyModelsJson,
 // modelFromJson, and applyModelOverride for model identity.
 func applyModelsJSONToRuntimeModels(providerID string, base []RuntimeModel, config providerConfig) []RuntimeModel {
 	models := slices.Clone(base)
@@ -247,7 +256,7 @@ func applyModelsJSONToRuntimeModels(providerID string, base []RuntimeModel, conf
 		if name == "" {
 			name = definition.ID
 		}
-		model := RuntimeModel{Provider: providerID, ID: definition.ID, Name: name}
+		model := RuntimeModel{Provider: providerID, ID: definition.ID, Name: name, Reasoning: definition.Reasoning != nil && *definition.Reasoning}
 		if index := slices.IndexFunc(models, func(existing RuntimeModel) bool { return existing.ID == definition.ID }); index >= 0 {
 			models[index] = model
 		} else {
@@ -255,8 +264,13 @@ func applyModelsJSONToRuntimeModels(providerID string, base []RuntimeModel, conf
 		}
 	}
 	for index, model := range models {
-		if override, ok := config.ModelOverrides[model.ID]; ok && override.Name != "" {
-			models[index].Name = override.Name
+		if override, ok := config.ModelOverrides[model.ID]; ok {
+			if override.Name != "" {
+				models[index].Name = override.Name
+			}
+			if override.Reasoning != nil {
+				models[index].Reasoning = *override.Reasoning
+			}
 		}
 	}
 	return models
@@ -380,7 +394,7 @@ func authHeaderEnabled(config providerConfig) bool {
 
 // composeAPIKeyAuth mirrors upstream composeApiKeyAuth for the built-in and
 // models.json layers.
-func (r *RequestAuthRuntime) composeAPIKeyAuth(providerID string, base ai.ProviderAuth, config providerConfig) *ai.APIKeyAuth {
+func composeAPIKeyAuth(providerID string, base ai.ProviderAuth, config providerConfig) *ai.APIKeyAuth {
 	inherited := base.APIKey
 	rawKey := config.APIKey
 	// OAuth-only providers get no fabricated API-key method.
@@ -409,8 +423,16 @@ func (r *RequestAuthRuntime) composeAPIKeyAuth(providerID string, base ai.Provid
 		}
 		return &ai.AuthCheck{Type: ai.CredentialAPIKey, Source: resolved.Source}, nil
 	}
+	login := func(ctx context.Context, interaction ai.AuthInteraction) (ai.Credential, error) {
+		key, err := interaction.Prompt(ctx, ai.AuthSecretPrompt{Message: "Enter API key"})
+		return ai.Credential{Type: ai.CredentialAPIKey, Key: key}, err
+	}
+	if inherited != nil && inherited.Login != nil {
+		login = inherited.Login
+	}
 	return &ai.APIKeyAuth{
-		Name: name,
+		Name:  name,
+		Login: login,
 		Check: func(ctx context.Context, input ai.APIKeyAuthInput) (*ai.AuthCheck, error) {
 			if input.Credential != nil {
 				if inherited != nil && inherited.Check != nil {

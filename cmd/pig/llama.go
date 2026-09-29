@@ -8,6 +8,7 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/llama"
+	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 )
 
 // catalogRefreshTimeout mirrors the 15 s abort upstream attaches to its
@@ -29,7 +30,7 @@ func startBuiltInLlama(ctx context.Context, services *coding.Services) *llama.Ho
 // refreshCatalogsInBackground mirrors main.ts's RPC-mode background catalog
 // refresh: skipped offline and abandoned after 15 s.
 func refreshCatalogsInBackground(ctx context.Context, host *llama.Host) {
-	if IsOfflineModeEnabled() {
+	if packagemanager.IsOfflineModeEnabled() {
 		return
 	}
 	go func() {

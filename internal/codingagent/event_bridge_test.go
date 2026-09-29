@@ -134,7 +134,7 @@ func TestEmitHelpers_HasHandlersShortCircuit(t *testing.T) {
 	emitSessionStart(fresh, "startup")
 	emitBeforeAgentStart(fresh, "x", "y", extension.BuildSystemPromptOptions{})
 	emitSessionShutdown(fresh, "quit")
-	_, _ = emitUserBash(fresh, "ls", "/", false)
+	_, _ = emitUserBash(t.Context(), fresh, "ls", "/", false)
 }
 
 func TestEmitAgentSettled_BridgesToRunner(t *testing.T) {
@@ -287,7 +287,7 @@ func TestEmitThinkingLevelSelect_BridgesToRunner(t *testing.T) {
 func TestEmitUserBash_BridgesToRunner(t *testing.T) {
 	var fired atomic.Int32
 	fresh := makeFreshWithHandler(t, EventUserBash, func() { fired.Add(1) })
-	if _, err := emitUserBash(fresh, "ls -la", "/tmp", false); err != nil {
+	if _, err := emitUserBash(t.Context(), fresh, "ls -la", "/tmp", false); err != nil {
 		t.Fatal(err)
 	}
 	if got := fired.Load(); got != 1 {
@@ -300,7 +300,7 @@ func TestEmitHelpers_NilRunnerIsNoOp(t *testing.T) {
 	emitSessionInfoChanged(nil, "work")
 	emitSessionShutdown(nil, "quit")
 	_ = emitBeforeAgentStart(nil, "x", "y", extension.BuildSystemPromptOptions{})
-	_, _ = emitUserBash(nil, "ls", "/", false)
+	_, _ = emitUserBash(t.Context(), nil, "ls", "/", false)
 	emitAgentStart(nil)
 	emitAgentEnd(nil, nil, false)
 	emitTurnStart(nil, 0)
@@ -309,7 +309,7 @@ func TestEmitHelpers_NilRunnerIsNoOp(t *testing.T) {
 	emitMessageEnd(nil, agent.AgentMessage{})
 	emitToolExecutionStart(nil, "id", "bash", nil)
 	emitToolExecutionUpdate(nil, "id", "bash", "partial", nil, nil)
-	emitToolExecutionEnd(nil, "id", "bash", agent.AgentToolResult{Content: "ok"})
+	emitToolExecutionEnd(nil, "id", "bash", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}})
 	emitMessageUpdate(nil, nil, nil)
 	emitThinkingLevelSelect(nil, "high", "medium")
 }
@@ -479,7 +479,7 @@ func TestEmitToolExecutionStart_BridgesToRunner(t *testing.T) {
 func TestEmitToolExecutionEnd_BridgesToRunner(t *testing.T) {
 	var fired atomic.Int32
 	fresh := makeFreshWithHandler(t, EventToolExecutionEnd, func() { fired.Add(1) })
-	emitToolExecutionEnd(fresh, "tc-1", "bash", agent.AgentToolResult{Content: "output text"})
+	emitToolExecutionEnd(fresh, "tc-1", "bash", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "output text"}}})
 	if got := fired.Load(); got != 1 {
 		t.Errorf("tool_execution_end handler fired %d times, want 1", got)
 	}
@@ -532,7 +532,7 @@ func TestEmitToolExecutionEnd_PayloadFields(t *testing.T) {
 		},
 	}
 	fresh := inproc.NewRunner([]extension.Extension{ext}, ".")
-	emitToolExecutionEnd(fresh, "tc-2", "read", agent.AgentToolResult{Content: "file contents", IsError: true})
+	emitToolExecutionEnd(fresh, "tc-2", "read", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "file contents"}}, IsError: true})
 	if got := capturedName.Load().(string); got != "read" {
 		t.Errorf("toolName = %q, want read", got)
 	}

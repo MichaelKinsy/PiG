@@ -1,0 +1,3056 @@
+[
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:354",
+    "line": 354,
+    "name": "Generate E2E Tests/Gemini Provider (gemini-2.5-flash)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "google",
+    "model": "gemini-2.5-flash",
+    "api": "google-generative-ai",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:358",
+    "line": 358,
+    "name": "Generate E2E Tests/Gemini Provider (gemini-2.5-flash)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "google",
+    "model": "gemini-2.5-flash",
+    "api": "google-generative-ai",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:362",
+    "line": 362,
+    "name": "Generate E2E Tests/Gemini Provider (gemini-2.5-flash)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "google",
+    "model": "gemini-2.5-flash",
+    "api": "google-generative-ai",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:366",
+    "line": 366,
+    "name": "Generate E2E Tests/Gemini Provider (gemini-2.5-flash)/should handle thinking",
+    "kind": "handleThinking",
+    "provider": "google",
+    "model": "gemini-2.5-flash",
+    "api": "google-generative-ai",
+    "hasCompat": false,
+    "options": {
+      "thinking": {
+        "enabled": true,
+        "budgetTokens": 1024
+      }
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:370",
+    "line": 370,
+    "name": "Generate E2E Tests/Gemini Provider (gemini-2.5-flash)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "google",
+    "model": "gemini-2.5-flash",
+    "api": "google-generative-ai",
+    "hasCompat": false,
+    "options": {
+      "thinking": {
+        "enabled": true,
+        "budgetTokens": 2048
+      }
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:374",
+    "line": 374,
+    "name": "Generate E2E Tests/Gemini Provider (gemini-2.5-flash)/should handle image input",
+    "kind": "handleImage",
+    "provider": "google",
+    "model": "gemini-2.5-flash",
+    "api": "google-generative-ai",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:387",
+    "line": 387,
+    "name": "Generate E2E Tests/Google Vertex Provider (gemini-3-flash-preview)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "google-vertex",
+    "model": "gemini-3-flash-preview",
+    "api": "google-vertex",
+    "hasCompat": false,
+    "options": {
+      "project": "fixture-GOOGLE_CLOUD_PROJECT",
+      "location": "fixture-GOOGLE_CLOUD_LOCATION"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:391",
+    "line": 391,
+    "name": "Generate E2E Tests/Google Vertex Provider (gemini-3-flash-preview)/should complete basic text generation with Vertex API key",
+    "kind": "basicTextGeneration",
+    "provider": "google-vertex",
+    "model": "gemini-3-flash-preview",
+    "api": "google-vertex",
+    "hasCompat": false,
+    "options": {
+      "apiKey": "fixture-GOOGLE_CLOUD_API_KEY"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:395",
+    "line": 395,
+    "name": "Generate E2E Tests/Google Vertex Provider (gemini-3-flash-preview)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "google-vertex",
+    "model": "gemini-3-flash-preview",
+    "api": "google-vertex",
+    "hasCompat": false,
+    "options": {
+      "project": "fixture-GOOGLE_CLOUD_PROJECT",
+      "location": "fixture-GOOGLE_CLOUD_LOCATION"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:399",
+    "line": 399,
+    "name": "Generate E2E Tests/Google Vertex Provider (gemini-3-flash-preview)/should handle thinking",
+    "kind": "handleThinking",
+    "provider": "google-vertex",
+    "model": "gemini-3-flash-preview",
+    "api": "google-vertex",
+    "hasCompat": false,
+    "options": {
+      "project": "fixture-GOOGLE_CLOUD_PROJECT",
+      "location": "fixture-GOOGLE_CLOUD_LOCATION",
+      "thinking": {
+        "enabled": true,
+        "budgetTokens": 1024,
+        "level": "LOW"
+      }
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:407",
+    "line": 407,
+    "name": "Generate E2E Tests/Google Vertex Provider (gemini-3-flash-preview)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "google-vertex",
+    "model": "gemini-3-flash-preview",
+    "api": "google-vertex",
+    "hasCompat": false,
+    "options": {
+      "project": "fixture-GOOGLE_CLOUD_PROJECT",
+      "location": "fixture-GOOGLE_CLOUD_LOCATION"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:411",
+    "line": 411,
+    "name": "Generate E2E Tests/Google Vertex Provider (gemini-3-flash-preview)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "google-vertex",
+    "model": "gemini-3-flash-preview",
+    "api": "google-vertex",
+    "hasCompat": false,
+    "options": {
+      "project": "fixture-GOOGLE_CLOUD_PROJECT",
+      "location": "fixture-GOOGLE_CLOUD_LOCATION",
+      "thinking": {
+        "enabled": true,
+        "budgetTokens": 1024,
+        "level": "MEDIUM"
+      }
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:419",
+    "line": 419,
+    "name": "Generate E2E Tests/Google Vertex Provider (gemini-3-flash-preview)/should handle image input",
+    "kind": "handleImage",
+    "provider": "google-vertex",
+    "model": "gemini-3-flash-preview",
+    "api": "google-vertex",
+    "hasCompat": false,
+    "options": {
+      "project": "fixture-GOOGLE_CLOUD_PROJECT",
+      "location": "fixture-GOOGLE_CLOUD_LOCATION"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:432",
+    "line": 432,
+    "name": "Generate E2E Tests/OpenAI Completions Provider (gpt-4o-mini)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "api": "openai-completions",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:436",
+    "line": 436,
+    "name": "Generate E2E Tests/OpenAI Completions Provider (gpt-4o-mini)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "api": "openai-completions",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:440",
+    "line": 440,
+    "name": "Generate E2E Tests/OpenAI Completions Provider (gpt-4o-mini)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "api": "openai-completions",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:444",
+    "line": 444,
+    "name": "Generate E2E Tests/OpenAI Completions Provider (gpt-4o-mini)/should handle image input",
+    "kind": "handleImage",
+    "provider": "openai",
+    "model": "gpt-4o-mini",
+    "api": "openai-completions",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:452",
+    "line": 452,
+    "name": "Generate E2E Tests/DeepSeek Provider (deepseek-flash via OpenAI Completions)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:456",
+    "line": 456,
+    "name": "Generate E2E Tests/DeepSeek Provider (deepseek-flash via OpenAI Completions)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:460",
+    "line": 460,
+    "name": "Generate E2E Tests/DeepSeek Provider (deepseek-flash via OpenAI Completions)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:464",
+    "line": 464,
+    "name": "Generate E2E Tests/DeepSeek Provider (deepseek-flash via OpenAI Completions)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:468",
+    "line": 468,
+    "name": "Generate E2E Tests/DeepSeek Provider (deepseek-flash via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "deepseek",
+    "model": "deepseek-flash",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:476",
+    "line": 476,
+    "name": "Generate E2E Tests/OpenAI Responses Provider (gpt-5.4)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "openai",
+    "model": "gpt-5.4",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:480",
+    "line": 480,
+    "name": "Generate E2E Tests/OpenAI Responses Provider (gpt-5.4)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "openai",
+    "model": "gpt-5.4",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:484",
+    "line": 484,
+    "name": "Generate E2E Tests/OpenAI Responses Provider (gpt-5.4)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "openai",
+    "model": "gpt-5.4",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:488",
+    "line": 488,
+    "name": "Generate E2E Tests/OpenAI Responses Provider (gpt-5.4)/should handle thinking",
+    "kind": "handleThinking",
+    "provider": "openai",
+    "model": "gpt-5.4",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:492",
+    "line": 492,
+    "name": "Generate E2E Tests/OpenAI Responses Provider (gpt-5.4)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "openai",
+    "model": "gpt-5.4",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:496",
+    "line": 496,
+    "name": "Generate E2E Tests/OpenAI Responses Provider (gpt-5.4)/should handle image input",
+    "kind": "handleImage",
+    "provider": "openai",
+    "model": "gpt-5.4",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:504",
+    "line": 504,
+    "name": "Generate E2E Tests/Anthropic Provider (claude-haiku-4-5)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:508",
+    "line": 508,
+    "name": "Generate E2E Tests/Anthropic Provider (claude-haiku-4-5)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:512",
+    "line": 512,
+    "name": "Generate E2E Tests/Anthropic Provider (claude-haiku-4-5)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:516",
+    "line": 516,
+    "name": "Generate E2E Tests/Anthropic Provider (claude-haiku-4-5)/should handle image input",
+    "kind": "handleImage",
+    "provider": "anthropic",
+    "model": "claude-haiku-4-5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:526",
+    "line": 526,
+    "name": "Generate E2E Tests/Azure OpenAI Responses Provider (gpt-4o-mini)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "azure-openai-responses",
+    "model": "gpt-4o-mini",
+    "api": "azure-openai-responses",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:530",
+    "line": 530,
+    "name": "Generate E2E Tests/Azure OpenAI Responses Provider (gpt-4o-mini)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "azure-openai-responses",
+    "model": "gpt-4o-mini",
+    "api": "azure-openai-responses",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:534",
+    "line": 534,
+    "name": "Generate E2E Tests/Azure OpenAI Responses Provider (gpt-4o-mini)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "azure-openai-responses",
+    "model": "gpt-4o-mini",
+    "api": "azure-openai-responses",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:538",
+    "line": 538,
+    "name": "Generate E2E Tests/Azure OpenAI Responses Provider (gpt-4o-mini)/should handle image input",
+    "kind": "handleImage",
+    "provider": "azure-openai-responses",
+    "model": "gpt-4o-mini",
+    "api": "azure-openai-responses",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:546",
+    "line": 546,
+    "name": "Generate E2E Tests/xAI Provider (grok-4.7 via OpenAI Responses)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "xai",
+    "model": "grok-4.7",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:550",
+    "line": 550,
+    "name": "Generate E2E Tests/xAI Provider (grok-4.7 via OpenAI Responses)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "xai",
+    "model": "grok-4.7",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:554",
+    "line": 554,
+    "name": "Generate E2E Tests/xAI Provider (grok-4.7 via OpenAI Responses)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "xai",
+    "model": "grok-4.7",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:558",
+    "line": 558,
+    "name": "Generate E2E Tests/xAI Provider (grok-4.7 via OpenAI Responses)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "xai",
+    "model": "grok-4.7",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:562",
+    "line": 562,
+    "name": "Generate E2E Tests/xAI Provider (grok-4.7 via OpenAI Responses)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "xai",
+    "model": "grok-4.7",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:570",
+    "line": 570,
+    "name": "Generate E2E Tests/Groq Provider (gpt-oss-20b via OpenAI Completions)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:574",
+    "line": 574,
+    "name": "Generate E2E Tests/Groq Provider (gpt-oss-20b via OpenAI Completions)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:578",
+    "line": 578,
+    "name": "Generate E2E Tests/Groq Provider (gpt-oss-20b via OpenAI Completions)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:582",
+    "line": 582,
+    "name": "Generate E2E Tests/Groq Provider (gpt-oss-20b via OpenAI Completions)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:586",
+    "line": 586,
+    "name": "Generate E2E Tests/Groq Provider (gpt-oss-20b via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "groq",
+    "model": "openai/gpt-oss-20b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:594",
+    "line": 594,
+    "name": "Generate E2E Tests/Cerebras Provider (gpt-oss-120b via OpenAI Completions)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "cerebras",
+    "model": "gpt-oss-120b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:598",
+    "line": 598,
+    "name": "Generate E2E Tests/Cerebras Provider (gpt-oss-120b via OpenAI Completions)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "cerebras",
+    "model": "gpt-oss-120b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:602",
+    "line": 602,
+    "name": "Generate E2E Tests/Cerebras Provider (gpt-oss-120b via OpenAI Completions)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "cerebras",
+    "model": "gpt-oss-120b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:606",
+    "line": 606,
+    "name": "Generate E2E Tests/Cerebras Provider (gpt-oss-120b via OpenAI Completions)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "cerebras",
+    "model": "gpt-oss-120b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:610",
+    "line": 610,
+    "name": "Generate E2E Tests/Cerebras Provider (gpt-oss-120b via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "cerebras",
+    "model": "gpt-oss-120b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:620",
+    "line": 620,
+    "name": "Generate E2E Tests/Cloudflare Workers AI Provider (Kimi K2.6 via OpenAI Completions)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "cloudflare-workers-ai",
+    "model": "@cf/moonshotai/kimi-k2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:624",
+    "line": 624,
+    "name": "Generate E2E Tests/Cloudflare Workers AI Provider (Kimi K2.6 via OpenAI Completions)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "cloudflare-workers-ai",
+    "model": "@cf/moonshotai/kimi-k2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:628",
+    "line": 628,
+    "name": "Generate E2E Tests/Cloudflare Workers AI Provider (Kimi K2.6 via OpenAI Completions)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "cloudflare-workers-ai",
+    "model": "@cf/moonshotai/kimi-k2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:632",
+    "line": 632,
+    "name": "Generate E2E Tests/Cloudflare Workers AI Provider (Kimi K2.6 via OpenAI Completions)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "cloudflare-workers-ai",
+    "model": "@cf/moonshotai/kimi-k2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:636",
+    "line": 636,
+    "name": "Generate E2E Tests/Cloudflare Workers AI Provider (Kimi K2.6 via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "cloudflare-workers-ai",
+    "model": "@cf/moonshotai/kimi-k2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:647",
+    "line": 647,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Workers AI (Kimi K2.6 via /compat)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "cloudflare-ai-gateway",
+    "model": "workers-ai/@cf/moonshotai/kimi-k2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:651",
+    "line": 651,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Workers AI (Kimi K2.6 via /compat)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "cloudflare-ai-gateway",
+    "model": "workers-ai/@cf/moonshotai/kimi-k2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:655",
+    "line": 655,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Workers AI (Kimi K2.6 via /compat)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "cloudflare-ai-gateway",
+    "model": "workers-ai/@cf/moonshotai/kimi-k2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:659",
+    "line": 659,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Workers AI (Kimi K2.6 via /compat)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "cloudflare-ai-gateway",
+    "model": "workers-ai/@cf/moonshotai/kimi-k2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:663",
+    "line": 663,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Workers AI (Kimi K2.6 via /compat)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "cloudflare-ai-gateway",
+    "model": "workers-ai/@cf/moonshotai/kimi-k2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:680",
+    "line": 680,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → OpenAI BYOK (gpt-5.1 via /openai responses)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "cloudflare-ai-gateway",
+    "model": "gpt-5.1",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "headers": {
+        "Authorization": "Bearer fixture-OPENAI_API_KEY"
+      }
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:684",
+    "line": 684,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → OpenAI BYOK (gpt-5.1 via /openai responses)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "cloudflare-ai-gateway",
+    "model": "gpt-5.1",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "headers": {
+        "Authorization": "Bearer fixture-OPENAI_API_KEY"
+      }
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:688",
+    "line": 688,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → OpenAI BYOK (gpt-5.1 via /openai responses)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "cloudflare-ai-gateway",
+    "model": "gpt-5.1",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "headers": {
+        "Authorization": "Bearer fixture-OPENAI_API_KEY"
+      }
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:692",
+    "line": 692,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → OpenAI BYOK (gpt-5.1 via /openai responses)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "cloudflare-ai-gateway",
+    "model": "gpt-5.1",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "headers": {
+        "Authorization": "Bearer fixture-OPENAI_API_KEY"
+      },
+      "thinkingEnabled": true,
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:696",
+    "line": 696,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → OpenAI BYOK (gpt-5.1 via /openai responses)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "cloudflare-ai-gateway",
+    "model": "gpt-5.1",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "headers": {
+        "Authorization": "Bearer fixture-OPENAI_API_KEY"
+      },
+      "thinkingEnabled": true,
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:713",
+    "line": 713,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4.5 via /anthropic messages)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "cloudflare-ai-gateway",
+    "model": "claude-sonnet-4.5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "headers": {
+        "Authorization": "Bearer fixture-ANTHROPIC_API_KEY"
+      }
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:717",
+    "line": 717,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4.5 via /anthropic messages)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "cloudflare-ai-gateway",
+    "model": "claude-sonnet-4.5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "headers": {
+        "Authorization": "Bearer fixture-ANTHROPIC_API_KEY"
+      }
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:721",
+    "line": 721,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4.5 via /anthropic messages)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "cloudflare-ai-gateway",
+    "model": "claude-sonnet-4.5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "headers": {
+        "Authorization": "Bearer fixture-ANTHROPIC_API_KEY"
+      }
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:725",
+    "line": 725,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4.5 via /anthropic messages)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "cloudflare-ai-gateway",
+    "model": "claude-sonnet-4.5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "headers": {
+        "Authorization": "Bearer fixture-ANTHROPIC_API_KEY"
+      },
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:729",
+    "line": 729,
+    "name": "Generate E2E Tests/Cloudflare AI Gateway → Anthropic BYOK (claude-sonnet-4.5 via /anthropic messages)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "cloudflare-ai-gateway",
+    "model": "claude-sonnet-4.5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "headers": {
+        "Authorization": "Bearer fixture-ANTHROPIC_API_KEY"
+      },
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:738",
+    "line": 738,
+    "name": "Generate E2E Tests/Hugging Face Provider (Kimi-K2.5 via OpenAI Completions)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "huggingface",
+    "model": "moonshotai/Kimi-K2.5",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:742",
+    "line": 742,
+    "name": "Generate E2E Tests/Hugging Face Provider (Kimi-K2.5 via OpenAI Completions)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "huggingface",
+    "model": "moonshotai/Kimi-K2.5",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:746",
+    "line": 746,
+    "name": "Generate E2E Tests/Hugging Face Provider (Kimi-K2.5 via OpenAI Completions)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "huggingface",
+    "model": "moonshotai/Kimi-K2.5",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:750",
+    "line": 750,
+    "name": "Generate E2E Tests/Hugging Face Provider (Kimi-K2.5 via OpenAI Completions)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "huggingface",
+    "model": "moonshotai/Kimi-K2.5",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:754",
+    "line": 754,
+    "name": "Generate E2E Tests/Hugging Face Provider (Kimi-K2.5 via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "huggingface",
+    "model": "moonshotai/Kimi-K2.5",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:762",
+    "line": 762,
+    "name": "Generate E2E Tests/Together AI Provider (Kimi-K2.6 via OpenAI Completions)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "together",
+    "model": "moonshotai/Kimi-K2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:766",
+    "line": 766,
+    "name": "Generate E2E Tests/Together AI Provider (Kimi-K2.6 via OpenAI Completions)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "together",
+    "model": "moonshotai/Kimi-K2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:770",
+    "line": 770,
+    "name": "Generate E2E Tests/Together AI Provider (Kimi-K2.6 via OpenAI Completions)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "together",
+    "model": "moonshotai/Kimi-K2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:774",
+    "line": 774,
+    "name": "Generate E2E Tests/Together AI Provider (Kimi-K2.6 via OpenAI Completions)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "together",
+    "model": "moonshotai/Kimi-K2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:778",
+    "line": 778,
+    "name": "Generate E2E Tests/Together AI Provider (Kimi-K2.6 via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "together",
+    "model": "moonshotai/Kimi-K2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:782",
+    "line": 782,
+    "name": "Generate E2E Tests/Together AI Provider (Kimi-K2.6 via OpenAI Completions)/should handle image input",
+    "kind": "handleImage",
+    "provider": "together",
+    "model": "moonshotai/Kimi-K2.6",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:791",
+    "line": 791,
+    "name": "Generate E2E Tests/Baseten Provider (GLM 5.2 via OpenAI Completions)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "baseten",
+    "model": "zai-org/GLM-5.2",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:795",
+    "line": 795,
+    "name": "Generate E2E Tests/Baseten Provider (GLM 5.2 via OpenAI Completions)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "baseten",
+    "model": "zai-org/GLM-5.2",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:799",
+    "line": 799,
+    "name": "Generate E2E Tests/Baseten Provider (GLM 5.2 via OpenAI Completions)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "baseten",
+    "model": "zai-org/GLM-5.2",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:803",
+    "line": 803,
+    "name": "Generate E2E Tests/Baseten Provider (GLM 5.2 via OpenAI Completions)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "baseten",
+    "model": "zai-org/GLM-5.2",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:807",
+    "line": 807,
+    "name": "Generate E2E Tests/Baseten Provider (GLM 5.2 via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "baseten",
+    "model": "zai-org/GLM-5.2",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:815",
+    "line": 815,
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Super via OpenAI Completions)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "nvidia",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:819",
+    "line": 819,
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Super via OpenAI Completions)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "nvidia",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:823",
+    "line": 823,
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Super via OpenAI Completions)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "nvidia",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:827",
+    "line": 827,
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Super via OpenAI Completions)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "nvidia",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:831",
+    "line": 831,
+    "name": "Generate E2E Tests/NVIDIA NIM Provider (Nemotron 3 Super via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "nvidia",
+    "model": "nvidia/nemotron-3-super-120b-a12b",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:839",
+    "line": 839,
+    "name": "Generate E2E Tests/OpenRouter Provider (glm-4.5v via OpenAI Completions)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "openrouter",
+    "model": "z-ai/glm-4.5v",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:843",
+    "line": 843,
+    "name": "Generate E2E Tests/OpenRouter Provider (glm-4.5v via OpenAI Completions)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "openrouter",
+    "model": "z-ai/glm-4.5v",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:847",
+    "line": 847,
+    "name": "Generate E2E Tests/OpenRouter Provider (glm-4.5v via OpenAI Completions)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "openrouter",
+    "model": "z-ai/glm-4.5v",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:851",
+    "line": 851,
+    "name": "Generate E2E Tests/OpenRouter Provider (glm-4.5v via OpenAI Completions)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "openrouter",
+    "model": "z-ai/glm-4.5v",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:855",
+    "line": 855,
+    "name": "Generate E2E Tests/OpenRouter Provider (glm-4.5v via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "openrouter",
+    "model": "z-ai/glm-4.5v",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:859",
+    "line": 859,
+    "name": "Generate E2E Tests/OpenRouter Provider (glm-4.5v via OpenAI Completions)/should handle image input",
+    "kind": "handleImage",
+    "provider": "openrouter",
+    "model": "z-ai/glm-4.5v",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:869",
+    "line": 869,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (google/gemini-2.5-flash via Anthropic Messages)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "vercel-ai-gateway",
+    "model": "google/gemini-2.5-flash",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:873",
+    "line": 873,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (google/gemini-2.5-flash via Anthropic Messages)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "vercel-ai-gateway",
+    "model": "google/gemini-2.5-flash",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:877",
+    "line": 877,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (google/gemini-2.5-flash via Anthropic Messages)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "vercel-ai-gateway",
+    "model": "google/gemini-2.5-flash",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:881",
+    "line": 881,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (google/gemini-2.5-flash via Anthropic Messages)/should handle image input",
+    "kind": "handleImage",
+    "provider": "vercel-ai-gateway",
+    "model": "google/gemini-2.5-flash",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:885",
+    "line": 885,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (google/gemini-2.5-flash via Anthropic Messages)/should handle multi-turn with tools",
+    "kind": "multiTurn",
+    "provider": "vercel-ai-gateway",
+    "model": "google/gemini-2.5-flash",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:896",
+    "line": 896,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (anthropic/claude-opus-4.5 via Anthropic Messages)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "vercel-ai-gateway",
+    "model": "anthropic/claude-opus-4.5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:900",
+    "line": 900,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (anthropic/claude-opus-4.5 via Anthropic Messages)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "vercel-ai-gateway",
+    "model": "anthropic/claude-opus-4.5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:904",
+    "line": 904,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (anthropic/claude-opus-4.5 via Anthropic Messages)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "vercel-ai-gateway",
+    "model": "anthropic/claude-opus-4.5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:908",
+    "line": 908,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (anthropic/claude-opus-4.5 via Anthropic Messages)/should handle image input",
+    "kind": "handleImage",
+    "provider": "vercel-ai-gateway",
+    "model": "anthropic/claude-opus-4.5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:912",
+    "line": 912,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (anthropic/claude-opus-4.5 via Anthropic Messages)/should handle multi-turn with tools",
+    "kind": "multiTurn",
+    "provider": "vercel-ai-gateway",
+    "model": "anthropic/claude-opus-4.5",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:923",
+    "line": 923,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (openai/gpt-5.1-codex-max via Anthropic Messages)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "vercel-ai-gateway",
+    "model": "openai/gpt-5.1-codex-max",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:927",
+    "line": 927,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (openai/gpt-5.1-codex-max via Anthropic Messages)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "vercel-ai-gateway",
+    "model": "openai/gpt-5.1-codex-max",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:931",
+    "line": 931,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (openai/gpt-5.1-codex-max via Anthropic Messages)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "vercel-ai-gateway",
+    "model": "openai/gpt-5.1-codex-max",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:935",
+    "line": 935,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (openai/gpt-5.1-codex-max via Anthropic Messages)/should handle image input",
+    "kind": "handleImage",
+    "provider": "vercel-ai-gateway",
+    "model": "openai/gpt-5.1-codex-max",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:939",
+    "line": 939,
+    "name": "Generate E2E Tests/Vercel AI Gateway Provider (openai/gpt-5.1-codex-max via Anthropic Messages)/should handle multi-turn with tools",
+    "kind": "multiTurn",
+    "provider": "vercel-ai-gateway",
+    "model": "openai/gpt-5.1-codex-max",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:948",
+    "line": 948,
+    "name": "Generate E2E Tests/zAI Provider (glm-5.2 via OpenAI Completions)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "zai",
+    "model": "glm-5.2",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:952",
+    "line": 952,
+    "name": "Generate E2E Tests/zAI Provider (glm-5.2 via OpenAI Completions)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "zai",
+    "model": "glm-5.2",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:956",
+    "line": 956,
+    "name": "Generate E2E Tests/zAI Provider (glm-5.2 via OpenAI Completions)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "zai",
+    "model": "glm-5.2",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:960",
+    "line": 960,
+    "name": "Generate E2E Tests/zAI Provider (glm-5.2 via OpenAI Completions)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "zai",
+    "model": "glm-5.2",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:964",
+    "line": 964,
+    "name": "Generate E2E Tests/zAI Provider (glm-5.2 via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "zai",
+    "model": "glm-5.2",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:968",
+    "line": 968,
+    "name": "Generate E2E Tests/zAI Provider (glm-5.2 via OpenAI Completions)/should handle image input",
+    "kind": "handleImage",
+    "provider": "zai",
+    "model": "glm-5.2",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:976",
+    "line": 976,
+    "name": "Generate E2E Tests/Mistral Provider (devstral-medium-latest)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "mistral",
+    "model": "devstral-medium-latest",
+    "api": "mistral-conversations",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:980",
+    "line": 980,
+    "name": "Generate E2E Tests/Mistral Provider (devstral-medium-latest)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "mistral",
+    "model": "devstral-medium-latest",
+    "api": "mistral-conversations",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:984",
+    "line": 984,
+    "name": "Generate E2E Tests/Mistral Provider (devstral-medium-latest)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "mistral",
+    "model": "devstral-medium-latest",
+    "api": "mistral-conversations",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:988",
+    "line": 988,
+    "name": "Generate E2E Tests/Mistral Provider (devstral-medium-latest)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "mistral",
+    "model": "mistral-small-2603",
+    "api": "mistral-conversations",
+    "hasCompat": false,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:993",
+    "line": 993,
+    "name": "Generate E2E Tests/Mistral Provider (devstral-medium-latest)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "mistral",
+    "model": "mistral-small-2603",
+    "api": "mistral-conversations",
+    "hasCompat": false,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1002",
+    "line": 1002,
+    "name": "Generate E2E Tests/Mistral Provider (pixtral-12b with image support)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "mistral",
+    "model": "pixtral-12b",
+    "api": "mistral-conversations",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1006",
+    "line": 1006,
+    "name": "Generate E2E Tests/Mistral Provider (pixtral-12b with image support)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "mistral",
+    "model": "pixtral-12b",
+    "api": "mistral-conversations",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1010",
+    "line": 1010,
+    "name": "Generate E2E Tests/Mistral Provider (pixtral-12b with image support)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "mistral",
+    "model": "pixtral-12b",
+    "api": "mistral-conversations",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1014",
+    "line": 1014,
+    "name": "Generate E2E Tests/Mistral Provider (pixtral-12b with image support)/should handle image input",
+    "kind": "handleImage",
+    "provider": "mistral",
+    "model": "pixtral-12b",
+    "api": "mistral-conversations",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1022",
+    "line": 1022,
+    "name": "Generate E2E Tests/MiniMax Provider (MiniMax-M2.7 via Anthropic Messages)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "minimax",
+    "model": "MiniMax-M2.7",
+    "api": "anthropic-messages",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1026",
+    "line": 1026,
+    "name": "Generate E2E Tests/MiniMax Provider (MiniMax-M2.7 via Anthropic Messages)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "minimax",
+    "model": "MiniMax-M2.7",
+    "api": "anthropic-messages",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1030",
+    "line": 1030,
+    "name": "Generate E2E Tests/MiniMax Provider (MiniMax-M2.7 via Anthropic Messages)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "minimax",
+    "model": "MiniMax-M2.7",
+    "api": "anthropic-messages",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1034",
+    "line": 1034,
+    "name": "Generate E2E Tests/MiniMax Provider (MiniMax-M2.7 via Anthropic Messages)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "minimax",
+    "model": "MiniMax-M2.7",
+    "api": "anthropic-messages",
+    "hasCompat": false,
+    "options": {
+      "thinkingEnabled": true,
+      "thinkingBudgetTokens": 2048
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1038",
+    "line": 1038,
+    "name": "Generate E2E Tests/MiniMax Provider (MiniMax-M2.7 via Anthropic Messages)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "minimax",
+    "model": "MiniMax-M2.7",
+    "api": "anthropic-messages",
+    "hasCompat": false,
+    "options": {
+      "thinkingEnabled": true,
+      "thinkingBudgetTokens": 2048
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1048",
+    "line": 1048,
+    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via Anthropic Messages)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "kimi-coding",
+    "model": "kimi-for-coding",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1052",
+    "line": 1052,
+    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via Anthropic Messages)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "kimi-coding",
+    "model": "kimi-for-coding",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1056",
+    "line": 1056,
+    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via Anthropic Messages)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "kimi-coding",
+    "model": "kimi-for-coding",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1060",
+    "line": 1060,
+    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via Anthropic Messages)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "kimi-coding",
+    "model": "kimi-for-coding",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "thinkingBudgetTokens": 2048
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1064",
+    "line": 1064,
+    "name": "Generate E2E Tests/Kimi For Coding Provider (kimi-for-coding via Anthropic Messages)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "kimi-coding",
+    "model": "kimi-for-coding",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "thinkingBudgetTokens": 2048
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1073",
+    "line": 1073,
+    "name": "Generate E2E Tests/Meta Provider (muse-spark-1.3 via OpenAI Responses)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "meta",
+    "model": "muse-spark-1.3",
+    "api": "openai-responses",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1077",
+    "line": 1077,
+    "name": "Generate E2E Tests/Meta Provider (muse-spark-1.3 via OpenAI Responses)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "meta",
+    "model": "muse-spark-1.3",
+    "api": "openai-responses",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1081",
+    "line": 1081,
+    "name": "Generate E2E Tests/Meta Provider (muse-spark-1.3 via OpenAI Responses)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "meta",
+    "model": "muse-spark-1.3",
+    "api": "openai-responses",
+    "hasCompat": false,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1085",
+    "line": 1085,
+    "name": "Generate E2E Tests/Meta Provider (muse-spark-1.3 via OpenAI Responses)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "meta",
+    "model": "muse-spark-1.3",
+    "api": "openai-responses",
+    "hasCompat": false,
+    "options": {
+      "thinkingEnabled": true,
+      "thinkingBudgetTokens": 2048
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1089",
+    "line": 1089,
+    "name": "Generate E2E Tests/Meta Provider (muse-spark-1.3 via OpenAI Responses)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "meta",
+    "model": "muse-spark-1.3",
+    "api": "openai-responses",
+    "hasCompat": false,
+    "options": {
+      "thinkingEnabled": true,
+      "thinkingBudgetTokens": 2048
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1103",
+    "line": 1103,
+    "name": "Generate E2E Tests/Xiaomi MiMo (API billing) Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "xiaomi",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1107",
+    "line": 1107,
+    "name": "Generate E2E Tests/Xiaomi MiMo (API billing) Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "xiaomi",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1111",
+    "line": 1111,
+    "name": "Generate E2E Tests/Xiaomi MiMo (API billing) Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "xiaomi",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1115",
+    "line": 1115,
+    "name": "Generate E2E Tests/Xiaomi MiMo (API billing) Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "xiaomi",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1119",
+    "line": 1119,
+    "name": "Generate E2E Tests/Xiaomi MiMo (API billing) Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "xiaomi",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1134",
+    "line": 1134,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, CN region)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "xiaomi-token-plan-cn",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1138",
+    "line": 1138,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, CN region)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "xiaomi-token-plan-cn",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1142",
+    "line": 1142,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, CN region)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "xiaomi-token-plan-cn",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1146",
+    "line": 1146,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, CN region)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "xiaomi-token-plan-cn",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1150",
+    "line": 1150,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, CN region)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "xiaomi-token-plan-cn",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1165",
+    "line": 1165,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, AMS region)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "xiaomi-token-plan-ams",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1169",
+    "line": 1169,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, AMS region)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "xiaomi-token-plan-ams",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1173",
+    "line": 1173,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, AMS region)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "xiaomi-token-plan-ams",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1177",
+    "line": 1177,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, AMS region)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "xiaomi-token-plan-ams",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1181",
+    "line": 1181,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, AMS region)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "xiaomi-token-plan-ams",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1196",
+    "line": 1196,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, SGP region)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "xiaomi-token-plan-sgp",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1200",
+    "line": 1200,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, SGP region)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "xiaomi-token-plan-sgp",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1204",
+    "line": 1204,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, SGP region)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "xiaomi-token-plan-sgp",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1208",
+    "line": 1208,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, SGP region)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "xiaomi-token-plan-sgp",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1212",
+    "line": 1212,
+    "name": "Generate E2E Tests/Xiaomi MiMo Token Plan Provider (Xiaomi MiMo-V2.5-Pro via Anthropic Messages, SGP region)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "xiaomi-token-plan-sgp",
+    "model": "mimo-v2.5-pro",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1227",
+    "line": 1227,
+    "name": "Generate E2E Tests/Qwen Token Plan Provider (Qwen3.7-Max, international)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "qwen-token-plan",
+    "model": "qwen3.7-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1231",
+    "line": 1231,
+    "name": "Generate E2E Tests/Qwen Token Plan Provider (Qwen3.7-Max, international)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "qwen-token-plan",
+    "model": "qwen3.7-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1235",
+    "line": 1235,
+    "name": "Generate E2E Tests/Qwen Token Plan Provider (Qwen3.7-Max, international)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "qwen-token-plan",
+    "model": "qwen3.7-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1239",
+    "line": 1239,
+    "name": "Generate E2E Tests/Qwen Token Plan Provider (Qwen3.7-Max, international)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "qwen-token-plan",
+    "model": "qwen3.7-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1243",
+    "line": 1243,
+    "name": "Generate E2E Tests/Qwen Token Plan Provider (Qwen3.7-Max, international)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "qwen-token-plan",
+    "model": "qwen3.7-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1258",
+    "line": 1258,
+    "name": "Generate E2E Tests/Qwen Token Plan Individual Provider (Qwen3.8-Max, international)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "qwen-token-plan-individual",
+    "model": "qwen3.8-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1262",
+    "line": 1262,
+    "name": "Generate E2E Tests/Qwen Token Plan Individual Provider (Qwen3.8-Max, international)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "qwen-token-plan-individual",
+    "model": "qwen3.8-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1266",
+    "line": 1266,
+    "name": "Generate E2E Tests/Qwen Token Plan Individual Provider (Qwen3.8-Max, international)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "qwen-token-plan-individual",
+    "model": "qwen3.8-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1270",
+    "line": 1270,
+    "name": "Generate E2E Tests/Qwen Token Plan Individual Provider (Qwen3.8-Max, international)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "qwen-token-plan-individual",
+    "model": "qwen3.8-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1274",
+    "line": 1274,
+    "name": "Generate E2E Tests/Qwen Token Plan Individual Provider (Qwen3.8-Max, international)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "qwen-token-plan-individual",
+    "model": "qwen3.8-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1287",
+    "line": 1287,
+    "name": "Generate E2E Tests/Qwen Token Plan Provider (Qwen3.7-Max, CN region)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "qwen-token-plan-cn",
+    "model": "qwen3.7-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1291",
+    "line": 1291,
+    "name": "Generate E2E Tests/Qwen Token Plan Provider (Qwen3.7-Max, CN region)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "qwen-token-plan-cn",
+    "model": "qwen3.7-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1295",
+    "line": 1295,
+    "name": "Generate E2E Tests/Qwen Token Plan Provider (Qwen3.7-Max, CN region)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "qwen-token-plan-cn",
+    "model": "qwen3.7-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1299",
+    "line": 1299,
+    "name": "Generate E2E Tests/Qwen Token Plan Provider (Qwen3.7-Max, CN region)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "qwen-token-plan-cn",
+    "model": "qwen3.7-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1303",
+    "line": 1303,
+    "name": "Generate E2E Tests/Qwen Token Plan Provider (Qwen3.7-Max, CN region)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "qwen-token-plan-cn",
+    "model": "qwen3.7-max",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "thinkingEnabled": true,
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1311",
+    "line": 1311,
+    "name": "Generate E2E Tests/Ant Ling Provider (Ling 2.6 Flash via OpenAI Completions)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "ant-ling",
+    "model": "Ling-2.6-flash",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1315",
+    "line": 1315,
+    "name": "Generate E2E Tests/Ant Ling Provider (Ling 2.6 Flash via OpenAI Completions)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "ant-ling",
+    "model": "Ling-2.6-flash",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1319",
+    "line": 1319,
+    "name": "Generate E2E Tests/Ant Ling Provider (Ling 2.6 Flash via OpenAI Completions)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "ant-ling",
+    "model": "Ling-2.6-flash",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1323",
+    "line": 1323,
+    "name": "Generate E2E Tests/Ant Ling Provider (Ling 2.6 Flash via OpenAI Completions)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "ant-ling",
+    "model": "Ring-2.6-1T",
+    "api": "openai-completions",
+    "hasCompat": true,
+    "options": {
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1337",
+    "line": 1337,
+    "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-sonnet-4-6)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:anthropic"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1341",
+    "line": 1341,
+    "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-sonnet-4-6)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:anthropic"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1345",
+    "line": 1345,
+    "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-sonnet-4-6)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:anthropic"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1349",
+    "line": 1349,
+    "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-sonnet-4-6)/should handle thinking",
+    "kind": "handleThinking",
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:anthropic",
+      "thinkingEnabled": true
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1353",
+    "line": 1353,
+    "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-sonnet-4-6)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:anthropic",
+      "thinkingEnabled": true
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1357",
+    "line": 1357,
+    "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-sonnet-4-6)/should handle image input",
+    "kind": "handleImage",
+    "provider": "anthropic",
+    "model": "claude-sonnet-4-6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:anthropic"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1365",
+    "line": 1365,
+    "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "anthropic",
+    "model": "claude-opus-4-6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:anthropic"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1369",
+    "line": 1369,
+    "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "anthropic",
+    "model": "claude-opus-4-6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:anthropic"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1373",
+    "line": 1373,
+    "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "anthropic",
+    "model": "claude-opus-4-6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:anthropic"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1377",
+    "line": 1377,
+    "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should handle adaptive thinking with effort high",
+    "kind": "handleThinking",
+    "provider": "anthropic",
+    "model": "claude-opus-4-6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:anthropic",
+      "thinkingEnabled": true,
+      "effort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1381",
+    "line": 1381,
+    "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should handle adaptive thinking with effort medium",
+    "kind": "handleThinking",
+    "provider": "anthropic",
+    "model": "claude-opus-4-6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:anthropic",
+      "thinkingEnabled": true,
+      "effort": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1385",
+    "line": 1385,
+    "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should handle multi-turn with adaptive thinking and tools",
+    "kind": "multiTurn",
+    "provider": "anthropic",
+    "model": "claude-opus-4-6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:anthropic",
+      "thinkingEnabled": true,
+      "effort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1393",
+    "line": 1393,
+    "name": "Generate E2E Tests/Anthropic OAuth Provider (claude-opus-4-6 with adaptive thinking)/should handle image input",
+    "kind": "handleImage",
+    "provider": "anthropic",
+    "model": "claude-opus-4-6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:anthropic"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1401",
+    "line": 1401,
+    "name": "Generate E2E Tests/GitHub Copilot Provider (gpt-5.3-codex via OpenAI Completions)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "github-copilot",
+    "model": "gpt-5.3-codex",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:github-copilot"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1405",
+    "line": 1405,
+    "name": "Generate E2E Tests/GitHub Copilot Provider (gpt-5.3-codex via OpenAI Completions)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "github-copilot",
+    "model": "gpt-5.3-codex",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:github-copilot"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1409",
+    "line": 1409,
+    "name": "Generate E2E Tests/GitHub Copilot Provider (gpt-5.3-codex via OpenAI Completions)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "github-copilot",
+    "model": "gpt-5.3-codex",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:github-copilot"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1413",
+    "line": 1413,
+    "name": "Generate E2E Tests/GitHub Copilot Provider (gpt-5.3-codex via OpenAI Completions)/should handle thinking",
+    "kind": "handleThinking",
+    "provider": "github-copilot",
+    "model": "gpt-5-mini",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:github-copilot",
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1418",
+    "line": 1418,
+    "name": "Generate E2E Tests/GitHub Copilot Provider (gpt-5.3-codex via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "github-copilot",
+    "model": "gpt-5-mini",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:github-copilot",
+      "reasoningEffort": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1423",
+    "line": 1423,
+    "name": "Generate E2E Tests/GitHub Copilot Provider (gpt-5.3-codex via OpenAI Completions)/should handle image input",
+    "kind": "handleImage",
+    "provider": "github-copilot",
+    "model": "gpt-5.3-codex",
+    "api": "openai-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:github-copilot"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1431",
+    "line": 1431,
+    "name": "Generate E2E Tests/GitHub Copilot Provider (claude-sonnet-4 via Anthropic Messages)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "github-copilot",
+    "model": "claude-sonnet-4.6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:github-copilot"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1435",
+    "line": 1435,
+    "name": "Generate E2E Tests/GitHub Copilot Provider (claude-sonnet-4 via Anthropic Messages)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "github-copilot",
+    "model": "claude-sonnet-4.6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:github-copilot"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1439",
+    "line": 1439,
+    "name": "Generate E2E Tests/GitHub Copilot Provider (claude-sonnet-4 via Anthropic Messages)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "github-copilot",
+    "model": "claude-sonnet-4.6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:github-copilot"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1443",
+    "line": 1443,
+    "name": "Generate E2E Tests/GitHub Copilot Provider (claude-sonnet-4 via Anthropic Messages)/should handle thinking",
+    "kind": "handleThinking",
+    "provider": "github-copilot",
+    "model": "claude-sonnet-4.6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:github-copilot",
+      "thinkingEnabled": true
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1447",
+    "line": 1447,
+    "name": "Generate E2E Tests/GitHub Copilot Provider (claude-sonnet-4 via Anthropic Messages)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "github-copilot",
+    "model": "claude-sonnet-4.6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:github-copilot",
+      "thinkingEnabled": true
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1451",
+    "line": 1451,
+    "name": "Generate E2E Tests/GitHub Copilot Provider (claude-sonnet-4 via Anthropic Messages)/should handle image input",
+    "kind": "handleImage",
+    "provider": "github-copilot",
+    "model": "claude-sonnet-4.6",
+    "api": "anthropic-messages",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:github-copilot"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1459",
+    "line": 1459,
+    "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-5.5)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "openai-codex",
+    "model": "gpt-5.5",
+    "api": "openai-codex-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:openai-codex"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1463",
+    "line": 1463,
+    "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-5.5)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "openai-codex",
+    "model": "gpt-5.5",
+    "api": "openai-codex-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:openai-codex"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1467",
+    "line": 1467,
+    "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-5.5)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "openai-codex",
+    "model": "gpt-5.5",
+    "api": "openai-codex-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:openai-codex"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1471",
+    "line": 1471,
+    "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-5.5)/should handle thinking with reasoningEffort xhigh",
+    "kind": "handleThinking",
+    "provider": "openai-codex",
+    "model": "gpt-5.5",
+    "api": "openai-codex-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:openai-codex",
+      "reasoningEffort": "xhigh"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1475",
+    "line": 1475,
+    "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-5.5)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "openai-codex",
+    "model": "gpt-5.5",
+    "api": "openai-codex-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:openai-codex",
+      "reasoningEffort": "xhigh"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1479",
+    "line": 1479,
+    "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-5.5)/should handle image input",
+    "kind": "handleImage",
+    "provider": "openai-codex",
+    "model": "gpt-5.5",
+    "api": "openai-codex-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:openai-codex"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1488",
+    "line": 1488,
+    "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-5.5 via WebSocket)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "openai-codex",
+    "model": "gpt-5.5",
+    "api": "openai-codex-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:openai-codex",
+      "transport": "websocket"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1492",
+    "line": 1492,
+    "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-5.5 via WebSocket)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "openai-codex",
+    "model": "gpt-5.5",
+    "api": "openai-codex-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:openai-codex",
+      "transport": "websocket"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1496",
+    "line": 1496,
+    "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-5.5 via WebSocket)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "openai-codex",
+    "model": "gpt-5.5",
+    "api": "openai-codex-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:openai-codex",
+      "transport": "websocket"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1500",
+    "line": 1500,
+    "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-5.5 via WebSocket)/should handle thinking with reasoningEffort xhigh",
+    "kind": "handleThinking",
+    "provider": "openai-codex",
+    "model": "gpt-5.5",
+    "api": "openai-codex-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:openai-codex",
+      "transport": "websocket",
+      "reasoningEffort": "xhigh"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1504",
+    "line": 1504,
+    "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-5.5 via WebSocket)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "openai-codex",
+    "model": "gpt-5.5",
+    "api": "openai-codex-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:openai-codex",
+      "transport": "websocket",
+      "reasoningEffort": "xhigh"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1508",
+    "line": 1508,
+    "name": "Generate E2E Tests/OpenAI Codex Provider (gpt-5.5 via WebSocket)/should handle image input",
+    "kind": "handleImage",
+    "provider": "openai-codex",
+    "model": "gpt-5.5",
+    "api": "openai-codex-responses",
+    "hasCompat": true,
+    "options": {
+      "apiKey": "oauth:openai-codex",
+      "transport": "websocket"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1516",
+    "line": 1516,
+    "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-sonnet-4-5)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "amazon-bedrock",
+    "model": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "api": "bedrock-converse-stream",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1520",
+    "line": 1520,
+    "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-sonnet-4-5)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "amazon-bedrock",
+    "model": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "api": "bedrock-converse-stream",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1524",
+    "line": 1524,
+    "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-sonnet-4-5)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "amazon-bedrock",
+    "model": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "api": "bedrock-converse-stream",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1528",
+    "line": 1528,
+    "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-sonnet-4-5)/should handle thinking",
+    "kind": "handleThinking",
+    "provider": "amazon-bedrock",
+    "model": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "api": "bedrock-converse-stream",
+    "hasCompat": true,
+    "options": {
+      "reasoning": "medium"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1532",
+    "line": 1532,
+    "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-sonnet-4-5)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "amazon-bedrock",
+    "model": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "api": "bedrock-converse-stream",
+    "hasCompat": true,
+    "options": {
+      "reasoning": "high"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1536",
+    "line": 1536,
+    "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-sonnet-4-5)/should handle image input",
+    "kind": "handleImage",
+    "provider": "amazon-bedrock",
+    "model": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "api": "bedrock-converse-stream",
+    "hasCompat": true,
+    "options": {}
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1544",
+    "line": 1544,
+    "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-opus-4-6 interleaved thinking)/should use adaptive thinking without anthropic_beta",
+    "kind": "bedrockSpecial",
+    "provider": "amazon-bedrock",
+    "model": "global.anthropic.claude-opus-4-6-v1",
+    "api": "bedrock-converse-stream",
+    "hasCompat": true,
+    "options": {
+      "reasoning": "xhigh",
+      "interleavedThinking": true
+    },
+    "request": {
+      "systemPrompt": "You are a helpful assistant that uses tools when asked.",
+      "messages": [
+        {
+          "role": "user",
+          "content": "Think first, then calculate 15 + 27 using the math_operation tool.",
+          "timestamp": 1
+        }
+      ],
+      "tools": [
+        {
+          "name": "math_operation",
+          "description": "Perform basic arithmetic operations",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "a": {
+                "type": "number",
+                "description": "First number"
+              },
+              "b": {
+                "type": "number",
+                "description": "Second number"
+              },
+              "operation": {
+                "type": "string",
+                "enum": [
+                  "add",
+                  "subtract",
+                  "multiply",
+                  "divide"
+                ],
+                "description": "The operation to perform. One of 'add', 'subtract', 'multiply', 'divide'."
+              }
+            },
+            "required": [
+              "a",
+              "b",
+              "operation"
+            ]
+          }
+        }
+      ]
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1587",
+    "line": 1587,
+    "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-opus-4-6 interleaved thinking)/should pass requestMetadata to the SDK payload",
+    "kind": "bedrockSpecial",
+    "provider": "amazon-bedrock",
+    "model": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "api": "bedrock-converse-stream",
+    "hasCompat": true,
+    "options": {
+      "requestMetadata": {
+        "app": "pi-test",
+        "env": "ci"
+      }
+    },
+    "request": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "Say hi.",
+          "timestamp": 1
+        }
+      ]
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1615",
+    "line": 1615,
+    "name": "Generate E2E Tests/Amazon Bedrock Provider (claude-opus-4-6 interleaved thinking)/should omit requestMetadata from payload when not provided",
+    "kind": "bedrockSpecial",
+    "provider": "amazon-bedrock",
+    "model": "global.anthropic.claude-sonnet-4-5-20250929-v1:0",
+    "api": "bedrock-converse-stream",
+    "hasCompat": true,
+    "options": {},
+    "request": {
+      "messages": [
+        {
+          "role": "user",
+          "content": "Say hi.",
+          "timestamp": 1
+        }
+      ]
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1721",
+    "line": 1721,
+    "name": "Generate E2E Tests/Ollama Provider (gpt-oss-20b via OpenAI Completions)/should complete basic text generation",
+    "kind": "basicTextGeneration",
+    "provider": "ollama",
+    "model": "gpt-oss:20b",
+    "api": "openai-completions",
+    "hasCompat": false,
+    "options": {
+      "apiKey": "test"
+    },
+    "customModel": {
+      "id": "gpt-oss:20b",
+      "api": "openai-completions",
+      "provider": "ollama",
+      "baseUrl": "http://localhost:11434/v1",
+      "reasoning": true,
+      "input": [
+        "text"
+      ],
+      "contextWindow": 128000,
+      "maxTokens": 16000,
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "name": "Ollama GPT-OSS 20B"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1725",
+    "line": 1725,
+    "name": "Generate E2E Tests/Ollama Provider (gpt-oss-20b via OpenAI Completions)/should handle tool calling",
+    "kind": "handleToolCall",
+    "provider": "ollama",
+    "model": "gpt-oss:20b",
+    "api": "openai-completions",
+    "hasCompat": false,
+    "options": {
+      "apiKey": "test"
+    },
+    "customModel": {
+      "id": "gpt-oss:20b",
+      "api": "openai-completions",
+      "provider": "ollama",
+      "baseUrl": "http://localhost:11434/v1",
+      "reasoning": true,
+      "input": [
+        "text"
+      ],
+      "contextWindow": 128000,
+      "maxTokens": 16000,
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "name": "Ollama GPT-OSS 20B"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1729",
+    "line": 1729,
+    "name": "Generate E2E Tests/Ollama Provider (gpt-oss-20b via OpenAI Completions)/should handle streaming",
+    "kind": "handleStreaming",
+    "provider": "ollama",
+    "model": "gpt-oss:20b",
+    "api": "openai-completions",
+    "hasCompat": false,
+    "options": {
+      "apiKey": "test"
+    },
+    "customModel": {
+      "id": "gpt-oss:20b",
+      "api": "openai-completions",
+      "provider": "ollama",
+      "baseUrl": "http://localhost:11434/v1",
+      "reasoning": true,
+      "input": [
+        "text"
+      ],
+      "contextWindow": 128000,
+      "maxTokens": 16000,
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "name": "Ollama GPT-OSS 20B"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1733",
+    "line": 1733,
+    "name": "Generate E2E Tests/Ollama Provider (gpt-oss-20b via OpenAI Completions)/should handle thinking mode",
+    "kind": "handleThinking",
+    "provider": "ollama",
+    "model": "gpt-oss:20b",
+    "api": "openai-completions",
+    "hasCompat": false,
+    "options": {
+      "apiKey": "test",
+      "reasoningEffort": "medium"
+    },
+    "customModel": {
+      "id": "gpt-oss:20b",
+      "api": "openai-completions",
+      "provider": "ollama",
+      "baseUrl": "http://localhost:11434/v1",
+      "reasoning": true,
+      "input": [
+        "text"
+      ],
+      "contextWindow": 128000,
+      "maxTokens": 16000,
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "name": "Ollama GPT-OSS 20B"
+    }
+  },
+  {
+    "source": ".upstream/v0.87.1/packages/ai/test/stream.test.ts:1737",
+    "line": 1737,
+    "name": "Generate E2E Tests/Ollama Provider (gpt-oss-20b via OpenAI Completions)/should handle multi-turn with thinking and tools",
+    "kind": "multiTurn",
+    "provider": "ollama",
+    "model": "gpt-oss:20b",
+    "api": "openai-completions",
+    "hasCompat": false,
+    "options": {
+      "apiKey": "test",
+      "reasoningEffort": "medium"
+    },
+    "customModel": {
+      "id": "gpt-oss:20b",
+      "api": "openai-completions",
+      "provider": "ollama",
+      "baseUrl": "http://localhost:11434/v1",
+      "reasoning": true,
+      "input": [
+        "text"
+      ],
+      "contextWindow": 128000,
+      "maxTokens": 16000,
+      "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0
+      },
+      "name": "Ollama GPT-OSS 20B"
+    }
+  }
+]

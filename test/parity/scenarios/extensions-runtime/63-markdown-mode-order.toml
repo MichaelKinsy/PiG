@@ -1,0 +1,24 @@
+# Pi0.87.1 components/markdown-transform.ts:18-29 invokes the complete chain synchronously. Its first chain cannot be interrupted by a later render. Probe the installed Pi function against the actual Go Mode pipeline plus fused SDK; the Go adapter exposes the private package-test boundary, not a duplicate renderer. It requires both tests to succeed and compares both complete traces.
+# The independent controller releases the first remote callback only after ordinary replacement has been admitted. No timeout, disconnect or shutdown is involved; D56 abandonment remains separate.
+name = "63-markdown-mode-order"
+description = "Ordinary Markdown replacement waits for admitted callback bodies and preserves cross-component render order"
+covers = ["packages/coding-agent/src/modes/interactive/components/markdown-transform.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/markdown-mode-order"]
+pi_args = ["node", "./test/parity/testdata/markdown-mode-order-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['replacement:["B first","A first entered","A first returned","C first","B second","A second entered","C second"]', 'components:["A1","B1","A2"]']
+runs = 3

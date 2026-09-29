@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
-"""Fail when parity/coverage.md or the coverage badge no longer matches
-PORT_MAP.md and the scenarios.
+"""Fail when test/parity/coverage.md or the coverage badge no longer matches
+docs/parity/PORT_MAP.md and the scenarios.
 
 coverage.md is generated, so a scenario added without regenerating it silently
 understates coverage. The report mixes two kinds of data: facts derived from
-PORT_MAP.md and parity/scenarios (scenario counts, which scenarios cover which
+docs/parity/PORT_MAP.md and test/parity/scenarios (scenario counts, which scenarios cover which
 upstream file), and the "last run" column, which comes from a transient parity
 results file. Only the derived facts can be checked here, so the run column is
 excluded from the comparison on both sides.
@@ -18,19 +18,24 @@ import sys
 import tempfile
 
 ROW_PREFIX = "| `"
-COLUMNS = 5
 REPAIR = "run: make generate (or: make coverage RESULTS=), then commit the result"
 
 
 def strip_run_column(text: str) -> list[str]:
-    """Drop the trailing "last run" cell from report rows, keep everything else."""
+    """Drop only the upstream table's last-run cell, preserving unit evidence."""
     stripped: list[str] = []
+    run_column = None
+    column_count = None
     for line in text.splitlines():
-        if line.startswith(ROW_PREFIX):
+        if line.startswith("| upstream |"):
+            header = [cell.strip() for cell in line.split("|")]
+            run_column = header.index("last run")
+            column_count = len(header)
+        elif line.startswith(ROW_PREFIX) and run_column is not None:
             cells = line.split("|")
-            # "| a | b | c | d | e |" splits to ['', ' a ', ..., ' e ', '']
-            if len(cells) == COLUMNS + 2:
-                line = "|".join(cells[:-2]) + "|"
+            if len(cells) == column_count:
+                del cells[run_column]
+                line = "|".join(cells)
         stripped.append(line)
     return stripped
 
@@ -40,9 +45,9 @@ def generate(pig_root: pathlib.Path) -> tuple[str, str]:
         badge = pathlib.Path(directory) / "parity-coverage.svg"
         proc = subprocess.run(
             [
-                "go", "run", "./parity/cmd/coverage", "-out", "-",
-                "-port-map", "PORT_MAP.md",
-                "-scenarios", "parity/scenarios",
+                "go", "run", "./test/parity/cmd/coverage", "-out", "-",
+                "-port-map", "docs/parity/PORT_MAP.md",
+                "-scenarios", "test/parity/scenarios",
                 "-badge", str(badge),
             ],
             cwd=pig_root,
@@ -57,7 +62,7 @@ def generate(pig_root: pathlib.Path) -> tuple[str, str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--coverage", default="parity/coverage.md")
+    parser.add_argument("--coverage", default="test/parity/coverage.md")
     parser.add_argument("--badge", default=".github/badges/parity-coverage.svg")
     args = parser.parse_args()
 

@@ -1,0 +1,43 @@
+# Upstream evidence: Pi 0.87.1 theme-controller.ts:159-173 follows CSI ? 997 reports only for a theme pair.
+# tui.ts:912-919 enables DEC 2031; terminal-colors.ts:67-73 parses 2 as light.
+# Probe: real Pi under tmux, black background, light/dark setting, resumed transcript.
+# Send a light notification after readiness; compare every escaped conversation row,
+# including cached user backgrounds and thinking foregrounds, not just the editor.
+name = "36-auto-theme-light-notification"
+description = "An automatic theme follows a terminal light-scheme notification and redraws the resumed conversation."
+covers = [
+  "packages/coding-agent/src/modes/interactive/theme/theme-controller.ts",
+  "packages/tui/src/terminal-colors.ts",
+]
+# Serial: the initial detection uses Pi's fixed 100 ms terminal deadline.
+tags = ["fast", "hermetic", "tui", "serial"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/auto-color-agent", "TERM=screen-256color", "COLORTERM=", "COLORFGBG=15;0"]
+pi = ["PI_CODING_AGENT_DIR=testdata/auto-color-agent", "PI_SKIP_VERSION_CHECK=1", "TERM=screen-256color", "COLORTERM=", "COLORFGBG=15;0"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 100
+height = 35
+window_style = "bg=black"
+ready_pattern_pig = "Resume marker end"
+ready_pattern_pi = "Resume marker end"
+ready_timeout_seconds = 30
+cwd = "testdata/thinking-cwd"
+capture_start = "Pick a color"
+capture_end = "Resume marker end"
+
+[[tmux.steps]]
+keys = ["hex:1b 5b 3f 39 39 37 3b 32 6e"]
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["Resumed reasoning alpha", "Resumed answer charlie", "Resume marker end"]
+escaped_output_equal = true
+runs = 3

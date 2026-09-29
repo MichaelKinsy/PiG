@@ -1,0 +1,25 @@
+# Pi 0.87.1 extensions-discovery.test.ts:399 requires the factory's own error.
+# Pi catches the thrown value directly. PiG has D19 subprocess transport context
+# around the error, so complete output equality is not a valid comparator here.
+# The required sentinel must come from the failed factory, not from a trailing
+# Node stripTypeScriptTypes warning or a generic socket-close message.
+name = "31-typescript-factory-error"
+description = "TypeScript factory errors survive Node warnings in startup diagnostics"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["testdata/ext/factory-failure.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/factory-failure.ts"]
+
+[cli]
+args = ["--no-session", "--model", "test-faux/faux-1", "-p", "ignored"]
+timeout_seconds = 30
+
+[assert]
+exit_code = 1
+both_contain = ["Failed to load extension", "PT_DISCOVERY_FACTORY_FAILURE"]
+both_not_contain = ["Use `node --trace-warnings", "ExperimentalWarning"]
+runs = 3

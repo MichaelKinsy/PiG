@@ -94,7 +94,7 @@ func TestBashPathStartsWithAgentBinDir(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("execute: %v %+v", err, res)
 	}
-	assertBinDirLeadsInheritedPath(t, "tool", binDir, res.Content)
+	assertBinDirLeadsInheritedPath(t, "tool", binDir, res.Text())
 	sh, err := defaultShellConfig()
 	if err != nil {
 		t.Fatal(err)

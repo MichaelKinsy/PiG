@@ -29,6 +29,7 @@ type Index struct {
 	Version    string            `json:"version"`
 	PigVersion string            `json:"pigVersion"`
 	SourceRef  string            `json:"sourceRef"`
+	GitHub     *GitHubRelease    `json:"github,omitempty"`
 	Signer     signature.Signer  `json:"signer"`
 	Binaries   map[string]Binary `json:"binaries"`
 }
@@ -116,6 +117,11 @@ func Validate(index Index) error {
 	}
 	if index.SourceRef == "" || index.SourceRef != strings.TrimSpace(index.SourceRef) {
 		return fmt.Errorf("Piglet release index has invalid sourceRef %q", index.SourceRef)
+	}
+	if index.GitHub != nil {
+		if err := index.GitHub.validate(index.Piglet); err != nil {
+			return err
+		}
 	}
 	if index.Signer.KeyID == "" || index.Signer.PublicKey == "" {
 		return fmt.Errorf("Piglet release index signer is required")

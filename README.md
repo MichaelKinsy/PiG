@@ -19,13 +19,15 @@ SPDX-License-Identifier: MIT
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Latest release](https://img.shields.io/github/v/release/MichaelKinsy/PiG?sort=semver)](https://github.com/MichaelKinsy/PiG/releases)
 [![Pi pin 0.87.1](https://img.shields.io/badge/Pi%20pin-0.87.1-8A2BE2)](https://github.com/earendil-works/pi/releases/tag/v0.87.1)
-[![Parity coverage](.github/badges/parity-coverage.svg)](parity/coverage.md)
+[![Pi port progress](.github/badges/parity-coverage.svg)](test/parity/coverage.md)
 [![Follow PiG on X](https://img.shields.io/badge/X-%40PiGCodingAgent-000000?logo=x&logoColor=white)](https://x.com/PiGCodingAgent)
 [![Join r/PiGCodingAgent](https://img.shields.io/badge/Reddit-r%2FPiGCodingAgent-FF4500?logo=reddit&logoColor=white)](https://www.reddit.com/r/PiGCodingAgent/)
 
 PiG is [Pi](https://github.com/earendil-works/pi), the minimal and extensible coding agent for the terminal, rebuilt in Go as one native binary. It starts quickly, needs no Node.js, and runs Pi's TypeScript extensions unchanged. You can also write extensions in Go, Rust, or Python, and bundle extensions, skills, and prompts into a Piglet: one named agent you can share or build into its own executable.
 
-PiG follows Pi 0.87.1 closely. If PiG behaves differently from Pi, that is either a bug or a documented divergence. Windows support is a preview.
+PiG is a pre-stable 0.x release. Core paths are ported and checked against Pi 0.87.1 with paired parity scenarios; edge cases are still hardening. See the [port status](test/parity/coverage.md) and [file map](docs/parity/PORT_MAP.md) for current scope and evidence.
+
+If PiG behaves differently from Pi, that is either a bug or a documented divergence. Windows support is a preview.
 
 ## Install
 
@@ -85,7 +87,7 @@ PiG is not an official Pi release. The Pi maintainers do not endorse PiG.
 
 Michael Kinsy created PiG working at Hewlett Packard Enterprise.
 
-PiG is maintained as an independent open-source project. Project decisions, issues, and contributions belong in this repository. See [GOVERNANCE.md](GOVERNANCE.md) and [MAINTAINERS.md](MAINTAINERS.md).
+PiG is maintained as an independent open-source project. Project decisions, issues, and contributions belong in this repository. See [docs/project/GOVERNANCE.md](docs/project/GOVERNANCE.md) and [docs/project/MAINTAINERS.md](docs/project/MAINTAINERS.md).
 
 ## Compatibility philosophy
 
@@ -98,12 +100,12 @@ PiG adds a Go implementation to the Pi ecosystem and follows the Pi reference im
 - Prefer changes that reduce the cost of the next upstream sync.
 - Share generally useful findings with the broader ecosystem when the contribution route permits it.
 
-The pinned Pi release is 0.87.1 at commit `f07218c4d4bbc12bef056a7058c3dd49dfe41abe`. The pin names the behavior oracle. It does not claim that every upstream change is already ported: [`parity/coverage.md`](parity/coverage.md) reports verified behavior, and the upgrade ledgers under [`parity/upstream-sync/`](parity/upstream-sync/) list each upstream change and its disposition.
+The pinned Pi release is 0.87.1 at commit `f07218c4d4bbc12bef056a7058c3dd49dfe41abe`. The pin names the behavior oracle. It does not claim that every upstream change is already ported: [`test/parity/coverage.md`](test/parity/coverage.md) reports verified behavior, and the upgrade ledgers under [`test/parity/upstream-sync/`](test/parity/upstream-sync/) list each upstream change and its disposition.
 
 PiG's current package scope covers Pi's agent, AI, coding-agent, and TUI
 packages. It does not implement Pi's experimental remote Session packages or
 its standalone telemetry and evaluation packages. See
-[`PORT_MAP.md`](PORT_MAP.md) for the exact boundary.
+[`docs/parity/PORT_MAP.md`](docs/parity/PORT_MAP.md) for the exact boundary.
 
 ## Project facts
 
@@ -111,7 +113,7 @@ its standalone telemetry and evaluation packages. See
 - Go module: `github.com/MichaelKinsy/PiG`
 - Configuration root: `~/.pig/`, or `PIG_HOME`
 - Agent directory: `~/.pig/agent`, or `PIG_CODING_AGENT_DIR`
-- Pi version pin: [`coding/pigversion/pigversion.go`](coding/pigversion/pigversion.go)
+- Pi version pin: [`internal/coding/pigversion/pigversion.go`](internal/coding/pigversion/pigversion.go)
 - Local upstream mirror: `.upstream/current/`
 - Main verification gate: `make check`
 - Full verification and coverage refresh: `make verify`
@@ -130,16 +132,15 @@ its standalone telemetry and evaluation packages. See
 | `internal/`   | Private implementation used by Stock PiG. External modules cannot import it.       |
 | `extensions/` | Go, Rust, Python, and declaration-only TypeScript extension SDKs.                  |
 | `piglets/`    | Explicit agent compositions such as PiG Standard and Pig Porter.                   |
-| `parity/`     | Pinned Pi correspondence, scenarios, inventories, and generated evidence.          |
-| `tests/`      | Integration, extension-conformance, clean-repository, and upstream-contract tests. |
+| `test/parity/`     | Pinned Pi correspondence, scenarios, inventories, and generated evidence.          |
+| `test/`      | Integration, extension-conformance, clean-repository, and upstream-contract tests. |
 | `docs/`       | Maintainer references and the static public documentation site.                    |
 | `examples/`   | Small extension and embedding examples.                                            |
-| `automation/` | Reproducible CI image definitions.                                                 |
-| `scripts/`    | Checked development, parity, and release-support commands.                         |
+| `automation/` | Build, generation, CI, release, layout, and maintainer tooling. |
 
 PiG aligns public package boundaries with Pi's `agent`, `ai`, `coding-agent`,
 and `tui` packages. Go files within a package follow cohesive implementation
-responsibilities instead of mirroring TypeScript file mechanics. `PORT_MAP.md`
+responsibilities instead of mirroring TypeScript file mechanics. `docs/parity/PORT_MAP.md`
 records every source correspondence.
 
 ## Stock PiG and compositions
@@ -168,7 +169,7 @@ See [CONTEXT.md](docs/project/CONTEXT.md) and [docs/README.md](docs/README.md) f
 
 PiG runs with the permissions of the user who starts it. PiG does not provide a security sandbox for model output, tools, extensions, skills, hooks, or shell commands.
 
-Use a container, virtual machine, or another operating-system boundary when you need isolation. Load extensions and project instructions only from sources you trust. See [SECURITY.md](SECURITY.md).
+Use a container, virtual machine, or another operating-system boundary when you need isolation. Load extensions and project instructions only from sources you trust. See [.github/SECURITY.md](.github/SECURITY.md).
 
 ## Install with npm
 
@@ -246,16 +247,16 @@ Run the main local gate:
 make check
 ```
 
-The `upstream-mirror` target installs the lockfile-pinned Pi package. It retrieves the exact tagged Pi source and verifies its commit against [`coding/pigversion/pigversion.go`](coding/pigversion/pigversion.go).
+The `upstream-mirror` target installs the lockfile-pinned Pi package. It retrieves the exact tagged Pi source and verifies its commit against [`internal/coding/pigversion/pigversion.go`](internal/coding/pigversion/pigversion.go).
 
 ## Contract model
 
 - `.upstream/current/` is the local source-language mirror.
 - Go code is the target implementation.
-- [`PORT_MAP.md`](PORT_MAP.md) maps tracked upstream files.
-- `parity/scenarios/` records observed behavior.
-- [`parity/coverage.md`](parity/coverage.md) reports generated verification status.
-- [`DIVERGENCES.md`](DIVERGENCES.md) records intentional differences.
+- [`docs/parity/PORT_MAP.md`](docs/parity/PORT_MAP.md) maps tracked upstream files.
+- `test/parity/scenarios/` records observed behavior.
+- [`test/parity/coverage.md`](test/parity/coverage.md) reports generated verification status.
+- [`docs/parity/DIVERGENCES.md`](docs/parity/DIVERGENCES.md) records intentional differences.
 - [`AGENTS.md`](AGENTS.md) defines maintenance rules.
 - [`Makefile`](Makefile) defines build, test, parity, and release gates.
 
@@ -285,14 +286,18 @@ See [docs/supply-chain.md](docs/supply-chain.md) for the inventory, SBOM, vulner
 
 ## Project policies
 
-- Read [CONTRIBUTING.md](CONTRIBUTING.md) before proposing a change.
-- Read [SECURITY.md](SECURITY.md) before reporting a vulnerability.
-- Read [SUPPORT.md](SUPPORT.md) before requesting support.
-- Read [GOVERNANCE.md](GOVERNANCE.md) and [MAINTAINERS.md](MAINTAINERS.md) for project ownership.
+- Read [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md) before proposing a change.
+- Read [.github/SECURITY.md](.github/SECURITY.md) before reporting a vulnerability.
+- Read [.github/SUPPORT.md](.github/SUPPORT.md) before requesting support.
+- Read [docs/project/GOVERNANCE.md](docs/project/GOVERNANCE.md) and [docs/project/MAINTAINERS.md](docs/project/MAINTAINERS.md) for project ownership.
 - Read [LICENSE](LICENSE), [NOTICE](NOTICE), and [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) for licensing and attribution.
 
 ## Acknowledgements
 
 PiG would not exist without Pi and the work of its maintainers and contributors. Their design and open-source work provide the reference that PiG follows.
 
-Thank you to everyone who contributes to Pi and PiG. Maintainers are listed in [`MAINTAINERS.md`](MAINTAINERS.md), every contributor appears on [GitHub's contributors page](https://github.com/MichaelKinsy/PiG/graphs/contributors), and the [changelog](CHANGELOG.md) credits each fix to the person who reported or contributed it.
+Thank you to everyone who contributes to Pi and PiG. Maintainers are listed in [`docs/project/MAINTAINERS.md`](docs/project/MAINTAINERS.md), every contributor appears on [GitHub's contributors page](https://github.com/MichaelKinsy/PiG/graphs/contributors), and the [changelog](CHANGELOG.md) credits each fix to the person who reported or contributed it.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/chart?repos=MichaelKinsy/PiG&type=timeline&legend=top-left)](https://www.star-history.com/?repos=MichaelKinsy%2FPiG&type=timeline&legend=top-left)

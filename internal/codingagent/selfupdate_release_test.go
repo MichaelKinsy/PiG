@@ -147,24 +147,28 @@ func TestFetchUpdateManifestFindsTheSignatureBesideAQueriedManifest(t *testing.T
 	t.Setenv("PIG_UPDATE_TRUST_ROOT", trustPath)
 	body := []byte(`{"version":"9.9.9","packageName":"pig","binaries":{}}`)
 	signature := base64.StdEncoding.EncodeToString(ed25519.Sign(private, body))
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Query().Get("token") != "abc" {
-			http.Error(w, "missing token", http.StatusForbidden)
-			return
-		}
-		switch r.URL.Path {
-		case "/update.json":
-			_, _ = w.Write(body)
-		case "/update.json.sig":
-			_, _ = fmt.Fprintln(w, signature)
-		default:
-			http.NotFound(w, r)
-		}
-	}))
-	defer srv.Close()
-	manifest, err := FetchUpdateManifest(context.Background(), srv.Client(), srv.URL+"/update.json?token=abc")
-	if err != nil || manifest.Version != "9.9.9" {
-		t.Fatalf("manifest = %#v, err = %v", manifest, err)
+	for _, manifestPath := range []string{"/update.json", "/slot%2Fblue/update.json", "/update%3Fchannel.json"} {
+		t.Run(manifestPath, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Query().Get("token") != "abc" {
+					http.Error(w, "missing token", http.StatusForbidden)
+					return
+				}
+				switch r.URL.EscapedPath() {
+				case manifestPath:
+					_, _ = w.Write(body)
+				case manifestPath + ".sig":
+					_, _ = fmt.Fprintln(w, signature)
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+			defer srv.Close()
+			manifest, err := FetchUpdateManifest(t.Context(), srv.Client(), srv.URL+manifestPath+"?token=abc")
+			if err != nil || manifest.Version != "9.9.9" {
+				t.Fatalf("manifest = %#v, err = %v", manifest, err)
+			}
+		})
 	}
 }
 
@@ -237,7 +241,7 @@ func TestBuiltInTrustRootAcceptsBase64EncodedPEM(t *testing.T) {
 }
 
 // docs/site/public/install.sh writes this receipt after a verified install;
-// keep the two in step (tests/ci-images covers the installer side).
+// keep the two in step (test/ci-images covers the installer side).
 func TestInstallerReceiptFormatValidates(t *testing.T) {
 	requireStandaloneSelfUpdateTier(t)
 	home := t.TempDir()

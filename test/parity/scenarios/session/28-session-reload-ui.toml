@@ -1,0 +1,24 @@
+# Pi0.87.1 original #5943 sites418/451/475, re-probed against published production modules.
+# Records follow complete assertions over reload render ordering, display settings and independently released completion barriers.
+# Go uses a real Session and the interactive owner, not a replacement success facade. The terminal frame is not normalized or claimed here.
+name = "28-session-reload-ui"
+description = "Reload rebuilds chat before session_start, applies display settings and retains blocker focus through completion"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-reload-ui-pig.sh"]
+pi_args = ["bash", "./test/parity/testdata/session-reload-ui-pi.sh"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

@@ -1,9 +1,10 @@
 package sdk
 
 import (
-	"encoding/json"
 	"errors"
 	"sync"
+
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // ToolRenderShell mirrors upstream ToolDefinition.renderShell.
@@ -66,6 +67,9 @@ type ToolRenderers struct {
 
 // SetToolRenderers sets the renderers of the registered tool name.
 func (e *Extension) SetToolRenderers(name string, renderers ToolRenderers) {
+	e.toolMu.Lock()
+	defer e.toolMu.Unlock()
+	var updated *toolDef
 	for i := range e.tools {
 		if e.tools[i].Name != name {
 			continue
@@ -76,13 +80,17 @@ func (e *Extension) SetToolRenderers(name string, renderers ToolRenderers) {
 		}
 		e.tools[i].RendersCall = renderers.Call != nil
 		e.tools[i].RendersResult = renderers.Result != nil
+		updated = &e.tools[i]
 	}
 	e.toolRenderMu.Lock()
-	defer e.toolRenderMu.Unlock()
 	if e.toolRenderers == nil {
 		e.toolRenderers = make(map[string]ToolRenderers)
 	}
 	e.toolRenderers[name] = renderers
+	e.toolRenderMu.Unlock()
+	if updated != nil {
+		e.publishTool(*updated)
+	}
 }
 
 // toolRenderCard is one tool card's renderer state. Renders of one card run

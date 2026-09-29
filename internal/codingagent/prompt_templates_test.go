@@ -6,6 +6,8 @@ import (
 	"strings"
 	"testing"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // file-based prompt templates.
@@ -318,20 +320,22 @@ func templateNames(ts []PromptTemplate) []string {
 	return names
 }
 
-func TestLoadPromptTemplatesDoesNotImportGlobalPigRootAsProject(t *testing.T) {
+// loadPromptTemplates loads <cwd>/<CONFIG_DIR_NAME>/prompts whatever the user config root is (prompt-templates.ts:236).
+func TestLoadPromptTemplatesLoadsProjectDirThatIsTheConfigRoot(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("PIG_HOME", filepath.Join(home, ".pig"))
-	projectPrompt := filepath.Join(home, ".pig", "prompts", "stale.md")
+	projectPrompt := filepath.Join(home, ".pig", "prompts", "project.md")
 	if err := os.MkdirAll(filepath.Dir(projectPrompt), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(projectPrompt, []byte("stale"), 0o644); err != nil {
+	if err := os.WriteFile(projectPrompt, []byte("body"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
-	if got := LoadPromptTemplates(home, filepath.Join(home, ".pig", "agent")).Templates; len(got) != 0 {
-		t.Fatalf("global Pig root imported as project prompts: %+v", got)
+	got := LoadPromptTemplates(home, filepath.Join(home, ".pig", "agent")).Templates
+	if len(got) != 1 || got[0].Name != "project" {
+		t.Fatalf("templates = %+v, want the project prompt", got)
 	}
 }
 
@@ -378,6 +382,7 @@ func TestInteractivePromptLoadingUsesPreResolvedPathsOnly(t *testing.T) {
 }
 
 func TestPromptDiagnosticsReachInteractiveReload(t *testing.T) {
+	isolateDisplayHome(t)
 	m, _ := newExtensionDialogProbe(t)
 	path := filepath.Join(t.TempDir(), "broken.md")
 	if err := os.WriteFile(path, []byte("---\ndescription: [unterminated\n---\nBody"), 0o600); err != nil {
@@ -388,8 +393,9 @@ func TestPromptDiagnosticsReachInteractiveReload(t *testing.T) {
 	if len(m.promptDiagnostics) != 1 || m.promptDiagnostics[0].Type != "warning" || m.promptDiagnostics[0].Path != path {
 		t.Fatalf("diagnostics = %#v", m.promptDiagnostics)
 	}
-	m.showPromptDiagnostics()
-	output := stripANSITest(strings.Join(m.chatContainer.Render(300), "\n"))
+	m.loadedResourcesContainer = tui.NewContainer()
+	m.showLoadedResources(false, true)
+	output := stripANSITest(strings.Join(m.loadedResourcesContainer.Render(300), "\n"))
 	if !strings.Contains(output, "[Prompt conflicts]") || !strings.Contains(output, path) || !strings.Contains(output, m.promptDiagnostics[0].Message) {
 		t.Fatalf("warning missing: %q", output)
 	}

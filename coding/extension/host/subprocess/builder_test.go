@@ -570,11 +570,11 @@ func TestHashSourceDirFollowsSymlinkedRoot(t *testing.T) {
 	source := filepath.Join(target, "extension.go")
 	mustWriteForHash(t, source, "package extension\nconst version = 1\n")
 	absoluteLink := filepath.Join(base, "extension-absolute")
-	testenv.Symlink(t, target, absoluteLink)
+	testenv.RequireDirectoryLink(t, target, absoluteLink)
 	relativeLink := filepath.Join(base, "extension-relative")
-	testenv.Symlink(t, "extension", relativeLink)
+	testenv.RequireDirectoryLink(t, "extension", relativeLink)
 	chainedLink := filepath.Join(base, "extension-chained")
-	testenv.Symlink(t, "extension-relative", chainedLink)
+	testenv.RequireDirectoryLink(t, "extension-relative", chainedLink)
 	links := map[string]string{
 		"absolute": absoluteLink,
 		"relative": relativeLink,
@@ -621,7 +621,7 @@ func TestHashSourceDirFollowsSymlinkedLocalReplace(t *testing.T) {
 	sdkSource := filepath.Join(sdkTarget, "protocol.go")
 	mustWriteForHash(t, sdkSource, "package sdk\nconst protocol = 1\n")
 	sdkLink := filepath.Join(base, "sdk-link")
-	testenv.Symlink(t, "sdk", sdkLink)
+	testenv.RequireDirectoryLink(t, "sdk", sdkLink)
 	extensionRoot := filepath.Join(base, "extension")
 	mustWriteForHash(t, filepath.Join(extensionRoot, "go.mod"),
 		"module example.com/extension\ngo 1.26\nrequire example.com/sdk v0.0.0\nreplace example.com/sdk => "+modfile.AutoQuote(sdkLink)+"\n")
@@ -653,7 +653,7 @@ func TestHashSourceDirFollowsRelativeReplaceFromSymlinkedExtensionRoot(t *testin
 		"module example.com/extension\ngo 1.26\nrequire example.com/sdk v0.0.0\nreplace example.com/sdk => ../sdk\n")
 	mustWriteForHash(t, filepath.Join(extensionRoot, "extension.go"), "package extension\n")
 	link := filepath.Join(base, "selected-extension")
-	testenv.Symlink(t, extensionRoot, link)
+	testenv.RequireDirectoryLink(t, extensionRoot, link)
 
 	before, err := hashSourceDir(link, "go")
 	if err != nil {
@@ -676,7 +676,7 @@ func TestHashSourceDirFollowsNestedSymlinkedLocalReplace(t *testing.T) {
 	mustWriteForHash(t, sdkSource, "package sdk\nconst protocol = 1\n")
 
 	extensionRoot := t.TempDir()
-	testenv.Symlink(t, outside, filepath.Join(extensionRoot, "linked-sdk"))
+	testenv.RequireDirectoryLink(t, outside, filepath.Join(extensionRoot, "linked-sdk"))
 	mustWriteForHash(t, filepath.Join(extensionRoot, "go.mod"),
 		"module example.com/extension\ngo 1.26\nrequire example.com/sdk v0.0.0\nreplace example.com/sdk => ./linked-sdk\n")
 	mustWriteForHash(t, filepath.Join(extensionRoot, "extension.go"), "package extension\n")
@@ -722,11 +722,11 @@ func TestHashSourceDirFollowsHiddenLocalReplace(t *testing.T) {
 func TestHashSourceDirRejectsBrokenAndCyclicRootSymlinks(t *testing.T) {
 	base := t.TempDir()
 	broken := filepath.Join(base, "broken")
-	testenv.Symlink(t, "missing", broken)
+	testenv.RequireDirectoryLink(t, "missing", broken)
 	cycleA := filepath.Join(base, "cycle-a")
 	cycleB := filepath.Join(base, "cycle-b")
-	testenv.Symlink(t, "cycle-b", cycleA)
-	testenv.Symlink(t, "cycle-a", cycleB)
+	testenv.RequireDirectoryLink(t, "cycle-b", cycleA)
+	testenv.RequireDirectoryLink(t, "cycle-a", cycleB)
 	for name, root := range map[string]string{"broken": broken, "cyclic": cycleA} {
 		if _, err := hashSourceDir(root, "go"); err == nil {
 			t.Errorf("%s root hash succeeded, want resolution error", name)
@@ -741,7 +741,7 @@ func TestHashSourceDirDoesNotTraverseNestedDirectorySymlink(t *testing.T) {
 	outside := t.TempDir()
 	outsideSource := filepath.Join(outside, "outside.go")
 	mustWriteForHash(t, outsideSource, "package outside\nconst version = 1\n")
-	testenv.Symlink(t, outside, filepath.Join(root, "nested"))
+	testenv.RequireDirectoryLink(t, outside, filepath.Join(root, "nested"))
 	before, err := hashSourceDir(root, "go")
 	if err != nil {
 		t.Fatal(err)

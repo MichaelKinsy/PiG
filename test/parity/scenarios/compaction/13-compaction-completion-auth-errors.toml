@@ -1,0 +1,30 @@
+# Derived from Pi 0.87.1 suite/agent-session-compaction.test.ts:238-439.
+# Compare exact preflight diagnostics, completion/listener ordering, native
+# bearer-auth resolution, a caller-owned stream without registry credentials,
+# and a thrown custom stream error without normalization.
+# Node's resolution flag binds upstream test helpers to unchanged installed Pi.
+# Error fixtures point Pi's package dir and Pig's materialized-docs root at the
+# same read-only repository root after constructing isolated Services. No path
+# replacement or output normalization is needed.
+name = "13-compaction-completion-auth-errors"
+description = "Manual compaction preflight and completion boundaries match Pi"
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/compaction/compaction.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/compaction-boundaries-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/compaction-boundaries-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["beforeReturn=true idle=true", "bearer requests=1 resolved=1", "Auto-compaction failed: summary generator blew up", "custom requests=1"]
+runs = 3

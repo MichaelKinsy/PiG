@@ -1,0 +1,31 @@
+# Pi 0.87.1 session-selector.ts:726,794,885 and input.ts:60-63 retain the rename Input and its UTF-16 cursor.
+# The Pi adapter executes all three original selector, 36 Input and 19 word-navigation bodies against published production imports.
+# Go preserves the same inputs/assertions. Both adapters also assert and print raw UTF-16 units for retained, clamped and surrogate-half cursors.
+# Markers appear only after assertions pass; no string, ANSI or whitespace normalization runs.
+# Binary overrides select source-backed component probes, not replacement implementations.
+name = "10-session-selector-rename"
+description = "Session rename hints, retained Input and exact UTF-16 cursor editing"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/session-selector.ts",
+  "packages/tui/src/components/input.ts",
+  "packages/tui/src/word-navigation.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-rename-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/session-rename-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['SESSION_RENAME [79,"enters rename mode on Ctrl+R and submits with Enter"]', 'INPUT_UTF16 ["split pair",[55357,88,56832]]']
+runs = 3

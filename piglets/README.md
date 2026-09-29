@@ -50,7 +50,7 @@ The deterministic engine contract is also callable without a session:
 
 ```bash
 printf '%s\n' '{"operation":"status","root":".","database":"tmp/closure/graph.db"}' \
-  | go run ./parity/cmd/porter
+  | go run ./test/parity/cmd/porter
 ```
 
 The same contract covers correspondence inventory and planning, read-only work

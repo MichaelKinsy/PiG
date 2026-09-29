@@ -1,0 +1,28 @@
+# Pi 0.87.1 session-manager.ts:277-284,1202-1452,1633-1738.
+# Probe both real RPC processes. Compare complete get_entries response records,
+# including leaf references, original label timestamps, and compaction boundaries.
+# Generated IDs are injectively aliased only after checking eight lowercase hex
+# characters and uniqueness. Generated timestamps must be exact millisecond ISO;
+# imported timestamps are fixed and never replaced. No fields are dropped.
+name = "09-session-entry-wire"
+description = "Session entry identity and cloned labels match complete Pi records"
+covers = ["packages/coding-agent/src/core/session-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+# The probe defaults to PIG_PARITY_PIG_BIN so it cannot execute a stale unrelated build.
+pig_args = ["python3", "test/parity/testdata/session-wire.py", "--case", "session"]
+pi_args = ["python3", "test/parity/testdata/session-wire.py", "--bin", "extensions/sdk-ts/node_modules/.bin/pi", "--case", "session"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

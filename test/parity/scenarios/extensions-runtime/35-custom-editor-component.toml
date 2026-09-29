@@ -1,0 +1,80 @@
+# Behavior family: extensions-runtime
+# Surface: ctx.ui.setEditorComponent with a CustomEditor subclass, the pattern
+# of pi-vim's ModalEditor.
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-26 with pi-vim 0.14.2 and
+# modal-editor.mjs): setCustomEditorComponent puts the factory's editor in the
+# editor container, so every key reaches its handleInput and its render()
+# output, including the mode label on the bottom border, is the editor on
+# screen. Keys it passes to CustomEditor.handleInput run Pi's editing, and
+# Enter submits through the default editor's onSubmit. The extension reads its
+# label through SettingsManager.create(cwd).getGlobalSettings().
+# PiG failed pi-vim with "SettingsManager.create is not a function", and its
+# CustomEditor was a decoration stand-in that never received a key.
+
+name = "35-custom-editor-component"
+description = "An extension's CustomEditor subclass receives the keys, renders the editor and submits"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/custom-editor.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/settings-manager.ts",
+  "packages/tui/src/components/editor.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/editor-pig-home/agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/editor-pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/modal-editor.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/modal-editor.mjs",
+]
+
+[tmux]
+width = 100
+height = 40
+ready_pattern_pig = "PROBE:INSERT"
+ready_pattern_pi = "PROBE:INSERT"
+ready_timeout_seconds = 30
+capture_start = "reply with exactly"
+capture_end = "(auto)"
+
+[[tmux.steps]]
+keys = ["xreply with exactly: modal-okZ"]
+# Typing changes the buffer, not the already-visible insert-mode label.
+wait_contains = ["xreply with exactly: modal-okZ"]
+wait_visible_contains = ["PROBE:INSERT"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["PROBE:NORMAL"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["0", "x", "$", "h", "x"]
+# This substring existed inside the previous buffer. The state check plus both absence checks establishes completion of the deletes.
+wait_visible_contains = ["reply with exactly: modal-ok"]
+wait_not_contains = ["xreply", "modal-okZ"]
+wait_timeout_seconds = 10
+
+# A leading "!" is bash mode: Pi recolors the editor border.
+[[tmux.steps]]
+keys = ["0", "i", "!"]
+wait_contains = ["!reply with exactly: modal-ok", "PROBE:INSERT"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["BSpace", "Enter"]
+settle_seconds = 3
+
+[assert]
+both_reach_ready = true
+both_contain = ["reply with exactly: modal-ok", "PROBE:INSERT"]
+both_not_contain = ["PROBE:NORMAL", "panic:", "goroutine ", "SettingsManager.create is not a function"]
+escaped_output_equal = true
+runs = 3

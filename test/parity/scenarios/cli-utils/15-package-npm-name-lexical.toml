@@ -1,0 +1,31 @@
+# Pi 0.87.1 package-manager.ts:1760-1764 derives the manager name from argv without running --version.
+# The fake npm reports pnpm only to an unexpected version probe. Both real CLIs must still pass npm's exact install flags.
+name = "15-package-npm-name-lexical"
+description = "Package manager flags follow the configured command spelling rather than executing a version probe"
+covers = ["packages/coding-agent/src/core/package-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig = ["PIG_CODING_AGENT_DIR=testdata/package-npm-name/agent", "PIG_HOME=testdata/empty-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/package-npm-name/agent"]
+
+[cli]
+cwd = "testdata/package-npm-name/project"
+snapshot_cwd = true
+args = ["install", "npm:@scope/pkg"]
+timeout_seconds = 15
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"--legacy-peer-deps"', 'Installed npm:@scope/pkg']
+both_not_contain = ['"--config.auto-install-peers=false"']
+runs = 3
+
+# normalize-rationale: npm receives independent agent-directory snapshots. Preserve every argument and its order, replacing only that directory prefix.
+[[assert.normalize_replace]]
+pattern = '"[^"\r\n]*/parity-snap-(PI|PIG)_CODING_AGENT_DIR-[^/"\r\n]+/npm"'
+with = '"AGENT/npm"'
+reason = "The binaries receive separate temporary agent directories."

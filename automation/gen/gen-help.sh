@@ -28,13 +28,14 @@ fs.writeFileSync(file, JSON.stringify(pkg, null, 2));
 # pig divergence (D64): /share prints the PiG gateway's URL, so PI_SHARE_VIEWER_URL is unused.
 # The patched app name selects PIG_CODING_AGENT_DIR, not PI_CODING_AGENT_DIR.
 # Never load the invoking agent's state or let terminal color enter the artifact.
+# Pi exits immediately after printing help. Node writes regular files synchronously, so capture before filtering rather than giving it a pipe that can lose queued bytes.
 (
   cd "$work"
   HOME="$work/home" PIG_CODING_AGENT_DIR="$work/agent" PI_CODING_AGENT_DIR="$work/agent" \
     PI_PACKAGE_DIR="$work/node_modules/@earendil-works/pi-coding-agent" FORCE_COLOR=0 \
     "$node_bin" "$work/node_modules/@earendil-works/pi-coding-agent/dist/cli.js" --help
-) \
-  | grep -v 'PI_PACKAGE_DIR' \
+) >"$work/help.raw"
+grep -v 'PI_PACKAGE_DIR' "$work/help.raw" \
   | grep -v 'PI_SHARE_VIEWER_URL' \
   | sed 's/^  pig update \[source|self|pi\]   Update pi, extensions, or model catalogs$/  pig update [source|self]      Update pig, extensions, or model catalogs/' \
   >"$output"

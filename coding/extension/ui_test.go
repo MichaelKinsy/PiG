@@ -201,7 +201,9 @@ func TestNoopUIContext_AllMethodsReturnUpstreamDefaults(t *testing.T) {
 	ui.SetTitle("title")
 	ui.PasteToEditor("x")
 	ui.SetEditorText("x")
-	ui.AddAutocompleteProvider(nil)
+	if err := ui.AddAutocompleteProvider(nil); err != nil {
+		t.Fatal(err)
+	}
 	ui.SetEditorComponent(nil)
 	ui.SetToolsExpanded(true)
 }
@@ -273,29 +275,31 @@ func (*fakeUIContext) Confirm(context.Context, string, string, extension.Extensi
 func (*fakeUIContext) Input(context.Context, string, string, extension.ExtensionUIDialogOptions) (string, error) {
 	panic("unreached")
 }
-func (*fakeUIContext) Notify(string, string)                                         {}
-func (*fakeUIContext) OnTerminalInput(extension.TerminalInputHandler) func()         { return func() {} }
-func (*fakeUIContext) SetStatus(string, string)                                      {}
-func (*fakeUIContext) SetWorkingMessage(string)                                      {}
-func (*fakeUIContext) SetWorkingVisible(bool)                                        {}
-func (*fakeUIContext) SetWorkingIndicator(extension.WorkingIndicatorOptions)         {}
-func (*fakeUIContext) SetHiddenThinkingLabel(string)                                 {}
-func (*fakeUIContext) SetWidget(string, any, extension.ExtensionWidgetOptions)       {}
-func (*fakeUIContext) SetFooter(any)                                                 {}
-func (*fakeUIContext) SetHeader(any)                                                 {}
-func (*fakeUIContext) SetLogin(extension.LoginDefinition) error                      { return nil }
-func (*fakeUIContext) SetTitle(string)                                               {}
-func (*fakeUIContext) Custom(context.Context, any, any) (any, error)                 { return nil, nil }
-func (*fakeUIContext) PasteToEditor(string)                                          {}
-func (*fakeUIContext) SetEditorText(string)                                          {}
-func (*fakeUIContext) GetEditorText() string                                         { return "" }
-func (*fakeUIContext) Editor(context.Context, string, string) (string, error)        { return "", nil }
-func (*fakeUIContext) AddAutocompleteProvider(extension.AutocompleteProviderFactory) {}
-func (*fakeUIContext) SetEditorComponent(any)                                        {}
-func (*fakeUIContext) GetEditorComponent() any                                       { return nil }
-func (*fakeUIContext) Theme() extension.Theme                                        { return nil }
-func (*fakeUIContext) GetAllThemes() []extension.ThemeMeta                           { return nil }
-func (*fakeUIContext) GetTheme(string) (extension.Theme, error)                      { return nil, nil }
+func (*fakeUIContext) Notify(string, string)                                   {}
+func (*fakeUIContext) OnTerminalInput(extension.TerminalInputHandler) func()   { return func() {} }
+func (*fakeUIContext) SetStatus(string, string)                                {}
+func (*fakeUIContext) SetWorkingMessage(string)                                {}
+func (*fakeUIContext) SetWorkingVisible(bool)                                  {}
+func (*fakeUIContext) SetWorkingIndicator(extension.WorkingIndicatorOptions)   {}
+func (*fakeUIContext) SetHiddenThinkingLabel(string)                           {}
+func (*fakeUIContext) SetWidget(string, any, extension.ExtensionWidgetOptions) {}
+func (*fakeUIContext) SetFooter(any)                                           {}
+func (*fakeUIContext) SetHeader(any)                                           {}
+func (*fakeUIContext) SetLogin(extension.LoginDefinition) error                { return nil }
+func (*fakeUIContext) SetTitle(string)                                         {}
+func (*fakeUIContext) Custom(context.Context, any, any) (any, error)           { return nil, nil }
+func (*fakeUIContext) PasteToEditor(string)                                    {}
+func (*fakeUIContext) SetEditorText(string)                                    {}
+func (*fakeUIContext) GetEditorText() string                                   { return "" }
+func (*fakeUIContext) Editor(context.Context, string, string) (string, error)  { return "", nil }
+func (*fakeUIContext) AddAutocompleteProvider(extension.AutocompleteProviderFactory) error {
+	return nil
+}
+func (*fakeUIContext) SetEditorComponent(any)                   {}
+func (*fakeUIContext) GetEditorComponent() any                  { return nil }
+func (*fakeUIContext) Theme() extension.Theme                   { return nil }
+func (*fakeUIContext) GetAllThemes() []extension.ThemeMeta      { return nil }
+func (*fakeUIContext) GetTheme(string) (extension.Theme, error) { return nil, nil }
 func (*fakeUIContext) SetTheme(any) extension.SetThemeResult {
 	return extension.SetThemeResult{Success: true}
 }

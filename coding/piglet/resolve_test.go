@@ -439,7 +439,7 @@ agentEnv:
 	if err := os.MkdirAll(outside, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	testenv.Symlink(t, outside, filepath.Join(workspace, "escape"))
+	testenv.RequireDirectoryLink(t, outside, filepath.Join(workspace, "escape"))
 	escaping := filepath.Join(piglets, "escaping.yaml")
 	if err := os.WriteFile(escaping, []byte("name: escaping\nagentEnv:\n  devContainer: workspace:escape/devcontainer.json\n"), 0o644); err != nil {
 		t.Fatal(err)

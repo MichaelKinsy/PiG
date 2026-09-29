@@ -38,7 +38,7 @@ func (probeTool) Description() string                    { return "probe" }
 func (probeTool) Schema() ai.ToolSchema                  { return ai.ToolSchema{Name: "probe"} }
 func (probeTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolModeSequential }
 func (probeTool) Execute(context.Context, string, json.RawMessage, agent.ToolUpdateCallback) (agent.AgentToolResult, error) {
-	return agent.AgentToolResult{Content: "LOCK ACQUIRED"}, nil
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "LOCK ACQUIRED"}}}, nil
 }
 
 // A run that stops with a tool result unanswered must not leave the UI idle

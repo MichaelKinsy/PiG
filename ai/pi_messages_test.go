@@ -111,10 +111,21 @@ func TestPiMessagesStreamsTextAndToolCalls(t *testing.T) {
 	}})
 	provider := newTestPiMessagesProvider(baseURL, nil)
 
-	events, message := collectPiMessages(t, provider, StreamOptions{SessionID: "session-1", MaxTokens: 100, Headers: ProviderHeaders{"x-custom": new("1")}})
-
-	if start, ok := events[0].(StartEvent); !ok || start.Partial.StopReason != StopReasonPending {
-		t.Fatalf("first event = %#v", events[0])
+	stream, err := provider.Stream(t.Context(), piMessagesTestContext(), StreamOptions{SessionID: "session-1", MaxTokens: 100, Headers: ProviderHeaders{"x-custom": new("1")}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	var events []AssistantMessageEvent
+	var initialStopReason StopReason
+	for event := range stream.Events(t.Context()) {
+		if start, ok := event.(StartEvent); ok {
+			initialStopReason = start.Partial.Observe().StopReason
+		}
+		events = append(events, event)
+	}
+	message := stream.Result()
+	if _, ok := events[0].(StartEvent); !ok || initialStopReason != StopReasonPending {
+		t.Fatalf("first event = %#v, initial stop reason=%s", events[0], initialStopReason)
 	}
 	if message.StopReason != StopReasonToolUse || message.Usage != piMessagesWantUsage || message.ResponseID != "resp_1" || message.ProviderThinkingLevel != "high" || message.Model != "auto" || message.Provider != "radius" {
 		t.Fatalf("message = %+v", message)
@@ -359,5 +370,43 @@ func TestPiMessagesIsRegisteredBuiltinAPI(t *testing.T) {
 	}
 	if provider := factory("key", "auto", "http://127.0.0.1:1/v1"); provider == nil || provider.ID() != string(APIPiMessages) {
 		t.Fatalf("factory provider = %#v", provider)
+	}
+}
+
+// pi-messages.ts:272 returns `{ ...event, partial }` for text_end and thinking_end, so the backend's contentSignature and redacted reach the event a consumer serializes.
+func TestPiMessagesEndEventsForwardBackendFields(t *testing.T) {
+	baseURL, _ := startPiMessagesServer(t, piMessagesResponder{events: []any{
+		map[string]any{"type": "text_start", "contentIndex": 0},
+		map[string]any{"type": "text_end", "contentIndex": 0, "content": "hi", "contentSignature": "tsig"},
+		map[string]any{"type": "thinking_start", "contentIndex": 1},
+		map[string]any{"type": "thinking_end", "contentIndex": 1, "content": "hmm", "contentSignature": "sig", "redacted": true},
+		map[string]any{"type": "text_start", "contentIndex": 2},
+		map[string]any{"type": "text_end", "contentIndex": 2, "content": "bare"},
+		map[string]any{"type": "done", "reason": "stop", "usage": piMessagesTestUsage},
+	}})
+	events, _ := collectPiMessages(t, newTestPiMessagesProvider(baseURL, nil), StreamOptions{})
+	var ends []map[string]any
+	for _, event := range events {
+		switch event.(type) {
+		case TextEndEvent, ThinkingEndEvent:
+			encoded, err := json.Marshal(event)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var decoded map[string]any
+			if err := json.Unmarshal(encoded, &decoded); err != nil {
+				t.Fatal(err)
+			}
+			delete(decoded, "partial")
+			ends = append(ends, decoded)
+		}
+	}
+	want := []map[string]any{
+		{"type": "text_end", "contentIndex": 0.0, "content": "hi", "contentSignature": "tsig"},
+		{"type": "thinking_end", "contentIndex": 1.0, "content": "hmm", "contentSignature": "sig", "redacted": true},
+		{"type": "text_end", "contentIndex": 2.0, "content": "bare"},
+	}
+	if !reflect.DeepEqual(ends, want) {
+		t.Fatalf("end events = %v, want %v", ends, want)
 	}
 }

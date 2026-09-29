@@ -35,10 +35,10 @@ func TestEditUniqueMatchGuard(t *testing.T) {
 		t.Fatalf("execute: %v", err)
 	}
 	if !res.IsError {
-		t.Fatalf("expected error on ambiguous edit, got success: %s", res.Content)
+		t.Fatalf("expected error on ambiguous edit, got success: %s", res.Text())
 	}
-	if !strings.Contains(res.Content, "Found 3 occurrences") {
-		t.Errorf("expected match count in error, got: %s", res.Content)
+	if !strings.Contains(res.Text(), "Found 3 occurrences") {
+		t.Errorf("expected match count in error, got: %s", res.Text())
 	}
 	got, _ := os.ReadFile(path)
 	if string(got) != content {
@@ -60,7 +60,7 @@ func TestEditUniqueMatchSuccess(t *testing.T) {
 	})
 	res, err := et.Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("unique edit failed: err=%v res=%s", err, res.Content)
+		t.Fatalf("unique edit failed: err=%v res=%s", err, res.Text())
 	}
 	got, _ := os.ReadFile(path)
 	if string(got) != "hello pig\n" {
@@ -79,8 +79,8 @@ func TestEditNotFound(t *testing.T) {
 	et := &EditTool{CWD: dir}
 	args, _ := json.Marshal(editParams{Path: "x.txt", Edits: []editEntry{{OldText: "missing", NewText: "x"}}})
 	res, _ := et.Execute(context.Background(), "", args, nil)
-	if !res.IsError || !strings.Contains(res.Content, "Could not find") {
-		t.Errorf("expected not-found error, got %v / %q", res.IsError, res.Content)
+	if !res.IsError || !strings.Contains(res.Text(), "Could not find") {
+		t.Errorf("expected not-found error, got %v / %q", res.IsError, res.Text())
 	}
 }
 
@@ -104,23 +104,23 @@ func TestReadTruncationContinuationNotice(t *testing.T) {
 	args, _ := json.Marshal(readParams{Path: "big.txt"})
 	res, err := rt.Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("read failed: %v %s", err, res.Content)
+		t.Fatalf("read failed: %v %s", err, res.Text())
 	}
-	if !strings.Contains(res.Content, "[Showing lines 1-") {
-		t.Errorf("missing continuation notice for line-truncation: %q", res.Content[max(0, len(res.Content)-200):])
+	if !strings.Contains(res.Text(), "[Showing lines 1-") {
+		t.Errorf("missing continuation notice for line-truncation: %q", res.Text()[max(0, len(res.Text())-200):])
 	}
-	if !strings.Contains(res.Content, "Use offset=") {
-		t.Errorf("missing offset hint: %q", res.Content[max(0, len(res.Content)-200):])
+	if !strings.Contains(res.Text(), "Use offset=") {
+		t.Errorf("missing offset hint: %q", res.Text()[max(0, len(res.Text())-200):])
 	}
 
 	// Read with user limit that stops early: should append "[N more lines" notice.
 	args, _ = json.Marshal(map[string]any{"path": "big.txt", "limit": 5})
 	res, err = rt.Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("read with limit failed: %v %s", err, res.Content)
+		t.Fatalf("read with limit failed: %v %s", err, res.Text())
 	}
-	if !strings.Contains(res.Content, "more lines in file") {
-		t.Errorf("missing 'more lines' notice for user-limit: %q", res.Content)
+	if !strings.Contains(res.Text(), "more lines in file") {
+		t.Errorf("missing 'more lines' notice for user-limit: %q", res.Text())
 	}
 }
 
@@ -144,10 +144,10 @@ func TestLsToolFormat(t *testing.T) {
 	args, _ := json.Marshal(lsParams{})
 	res, err := lt.Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("ls failed: %v %s", err, res.Content)
+		t.Fatalf("ls failed: %v %s", err, res.Text())
 	}
 	// Entries should be alphabetical (afile, mfile, zdir)
-	lines := strings.Split(strings.TrimRight(res.Content, "\n"), "\n")
+	lines := strings.Split(strings.TrimRight(res.Text(), "\n"), "\n")
 	if lines[0] != "afile.go" {
 		t.Errorf("expected afile.go first, got %q", lines[0])
 	}
@@ -158,8 +158,8 @@ func TestLsToolFormat(t *testing.T) {
 		t.Errorf("expected zdir/ third (dirs after files alphabetically), got %q", lines[2])
 	}
 	// No size columns
-	if strings.Contains(res.Content, "KB") || strings.Contains(res.Content, "B ") {
-		t.Errorf("ls output should not contain size columns: %q", res.Content)
+	if strings.Contains(res.Text(), "KB") || strings.Contains(res.Text(), "B ") {
+		t.Errorf("ls output should not contain size columns: %q", res.Text())
 	}
 }
 
@@ -212,7 +212,7 @@ func TestLookupSystemToolPathUsesAlternateSystemBinaryNamesInOrder(t *testing.T)
 	}
 
 	fdfindPath := filepath.Join(secondDir, executableName("fdfind"))
-	if err := os.WriteFile(fdfindPath, executableScript("fdfind"), 0o755); err != nil {
+	if err := os.WriteFile(fdfindPath, executableScript(t, "fdfind"), 0o755); err != nil {
 		t.Fatalf("WriteFile fdfind: %v", err)
 	}
 
@@ -221,7 +221,7 @@ func TestLookupSystemToolPathUsesAlternateSystemBinaryNamesInOrder(t *testing.T)
 	}
 
 	fdPath := filepath.Join(firstDir, executableName("fd"))
-	if err := os.WriteFile(fdPath, executableScript("fd"), 0o755); err != nil {
+	if err := os.WriteFile(fdPath, executableScript(t, "fd"), 0o755); err != nil {
 		t.Fatalf("WriteFile fd: %v", err)
 	}
 
@@ -230,16 +230,25 @@ func TestLookupSystemToolPathUsesAlternateSystemBinaryNamesInOrder(t *testing.T)
 	}
 }
 
+// executableName names a tool file upstream's commandExists can spawn. On
+// Windows Node's spawn finds only .com and .exe programs.
 func executableName(base string) string {
 	if runtime.GOOS == "windows" {
-		return base + ".bat"
+		return base + ".exe"
 	}
 	return base
 }
 
-func executableScript(name string) []byte {
+// executableScript is a program that runs as the named tool: a shell script,
+// or on Windows a copy of HOSTNAME.EXE.
+func executableScript(t *testing.T, name string) []byte {
+	t.Helper()
 	if runtime.GOOS == "windows" {
-		return []byte("@echo off\r\nif \"%1\"==\"--version\" echo " + name + " version 1.0\r\n")
+		program, err := os.ReadFile(filepath.Join(os.Getenv("SystemRoot"), "System32", "HOSTNAME.EXE"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return program
 	}
 	return []byte("#!/bin/sh\nif [ \"$1\" = \"--version\" ]; then\n  echo \"" + name + " version 1.0\"\nfi\n")
 }
@@ -268,7 +277,7 @@ func TestEditFuzzyMatchSmartQuotes(t *testing.T) {
 		t.Fatal(err)
 	}
 	if result.IsError {
-		t.Fatalf("expected success but got error: %s", result.Content)
+		t.Fatalf("expected success but got error: %s", result.Text())
 	}
 
 	got, _ := os.ReadFile(filePath)
@@ -295,7 +304,7 @@ func TestEditFuzzyMatchTrailingWhitespace(t *testing.T) {
 		t.Fatal(err)
 	}
 	if result.IsError {
-		t.Fatalf("expected success but got error: %s", result.Content)
+		t.Fatalf("expected success but got error: %s", result.Text())
 	}
 
 	got, _ := os.ReadFile(filePath)
@@ -345,17 +354,17 @@ func TestReadImageReturnsMultiModal(t *testing.T) {
 		t.Fatal(err)
 	}
 	if result.IsError {
-		t.Fatalf("unexpected error: %s", result.Content)
+		t.Fatalf("unexpected error: %s", result.Text())
 	}
 	// Should have a text description.
-	if !strings.Contains(result.Content, "image/png") {
-		t.Errorf("Content = %q, expected to contain 'image/png'", result.Content)
+	if !strings.Contains(result.Text(), "image/png") {
+		t.Errorf("Content = %q, expected to contain 'image/png'", result.Text())
 	}
 	// Should have image data.
-	if len(result.Images) != 1 {
-		t.Fatalf("Images len = %d, want 1", len(result.Images))
+	if len(result.Images()) != 1 {
+		t.Fatalf("Images len = %d, want 1", len(result.Images()))
 	}
-	img := result.Images[0]
+	img := result.Images()[0]
 	if img.MimeType != "image/png" {
 		t.Errorf("MediaType = %q, want image/png", img.MimeType)
 	}
@@ -375,11 +384,11 @@ func TestReadGIFPrefixedTextRemainsText(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if result.IsError || result.Content != content {
+	if result.IsError || result.Text() != content {
 		t.Fatalf("read result = %#v, want text content", result)
 	}
-	if len(result.Images) != 0 {
-		t.Fatalf("Images len = %d, want 0", len(result.Images))
+	if len(result.Images()) != 0 {
+		t.Fatalf("Images len = %d, want 0", len(result.Images()))
 	}
 }
 
@@ -394,7 +403,7 @@ func TestReadBinaryNonImageDecodesLossily(t *testing.T) {
 	if err != nil || result.IsError {
 		t.Fatalf("err=%v result=%+v", err, result)
 	}
-	if result.Content != "\x00\x01\x02\x03\ufffd\ufffd" || len(result.Images) != 0 {
+	if result.Text() != "\x00\x01\x02\x03\ufffd\ufffd" || len(result.Images()) != 0 {
 		t.Errorf("result = %+v", result)
 	}
 }

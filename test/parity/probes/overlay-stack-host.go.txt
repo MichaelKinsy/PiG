@@ -1,0 +1,48 @@
+package subprocess
+
+import (
+	"context"
+	"testing"
+	"testing/synctest"
+
+	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
+)
+
+// Pi 0.87.1 interactive-mode.ts:2918 mounts each concurrent overlay independently.
+// The editor-slot focus lease must not serialize overlay:true calls.
+func TestCustomOverlaysStackWithoutWaitingForFocus(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		ui := &serialFocusedUI{UIContext: extension.NoopUIContext, entered: make(chan string, 3), release: make(chan struct{}, 3)}
+		bridge := NewUIBridge(func() {})
+		bridge.SetUIContext(ui)
+		done := make(chan error, 3)
+		for _, key := range []string{"back", "middle", "front"} {
+			args, err := json.Marshal(RemoteOverlayOpenPayload{Key: key, Title: key, Overlay: true})
+			if err != nil {
+				t.Fatal(err)
+			}
+			go func() {
+				result, err := bridge.handleCall(context.Background(), "ext", nil, &CallPayload{Method: CallUICustom, Args: args})
+				if err == nil && result.Error != nil {
+					err = result.Error.ToError()
+				}
+				done <- err
+			}()
+			synctest.Wait()
+		}
+		// Release all waiters even when the admission assertion fails.
+		got := len(ui.entered)
+		for range 3 {
+			ui.release <- struct{}{}
+		}
+		for range 3 {
+			if err := <-done; err != nil {
+				t.Error(err)
+			}
+		}
+		if got != 3 {
+			t.Fatalf("mounted %d overlays before any closed; want back, middle, and front", got)
+		}
+	})
+}

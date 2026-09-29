@@ -3,11 +3,42 @@ package codingagent
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 )
+
+// resource-loader.ts normalizeExtensionPaths resolves all three resource kinds before extendResources publishes any paths or metadata.
+func TestNormalizeExtensionPaths(t *testing.T) {
+	cwd := t.TempDir()
+	input := &extension.ResourcesDiscoverAggregateResult{
+		SkillPaths:  []extension.AttributedResourcePath{{Path: "\uFEFF  extra skills/skill  \uFEFF", ExtensionPath: "/extra.ts"}},
+		PromptPaths: []extension.AttributedResourcePath{{Path: fileURLForTest(filepath.Join(cwd, "extra prompts", "prompt.md")).String(), ExtensionPath: "/extra.ts"}},
+		ThemePaths:  []extension.AttributedResourcePath{{Path: "themes/theme.json", ExtensionPath: "/extra.ts"}},
+	}
+	want := &extension.ResourcesDiscoverAggregateResult{
+		SkillPaths:  []extension.AttributedResourcePath{{Path: filepath.Join(cwd, "extra skills", "skill"), ExtensionPath: "/extra.ts"}},
+		PromptPaths: []extension.AttributedResourcePath{{Path: filepath.Join(cwd, "extra prompts", "prompt.md"), ExtensionPath: "/extra.ts"}},
+		ThemePaths:  []extension.AttributedResourcePath{{Path: filepath.Join(cwd, "themes", "theme.json"), ExtensionPath: "/extra.ts"}},
+	}
+	got, err := NormalizeExtensionPaths(cwd, input)
+	if err != nil || !reflect.DeepEqual(got, want) {
+		t.Fatalf("normalized paths=%#v, error=%v; want=%#v", got, err, want)
+	}
+	if input.SkillPaths[0].Path != "\uFEFF  extra skills/skill  \uFEFF" {
+		t.Fatal("normalization mutated the extension result")
+	}
+	input.ThemePaths[0].Path = "file:///%2Fbad"
+	if got, err := NormalizeExtensionPaths(cwd, input); err == nil || got != nil {
+		t.Fatalf("invalid URL returned partial result: %#v, %v", got, err)
+	}
+	if got, err := NormalizeExtensionPaths(cwd, nil); err != nil || got != nil {
+		t.Fatalf("absent resources = %#v, %v", got, err)
+	}
+}
 
 func TestDedupBySymlinkBasic(t *testing.T) {
 	dir := t.TempDir()
@@ -96,7 +127,7 @@ func TestListSkillsDedupsSymlinkedDirs(t *testing.T) {
 		t.Fatalf("seed: %v", err)
 	}
 	aliasDir := filepath.Join(root, "commit-alias")
-	testenv.Symlink(t, realDir, aliasDir)
+	testenv.RequireDirectoryLink(t, realDir, aliasDir)
 
 	names, err := ListSkills(root)
 	if err != nil {

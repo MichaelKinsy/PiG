@@ -1,0 +1,115 @@
+[
+  {
+    "name": "nested-duplicate",
+    "upstreamLine": 1010,
+    "cwd": "outer/main/worktrees/feat/src",
+    "linkedWorktree": "outer/main/worktrees/feat",
+    "main": "outer/main",
+    "files": {"outer/main/AGENTS.md": "main repo instructions", "outer/main/worktrees/feat/AGENTS.md": "worktree instructions"},
+    "want": [{"path": "outer/main/worktrees/feat/AGENTS.md", "content": "worktree instructions"}]
+  },
+  {
+    "name": "nested-inherit",
+    "upstreamLine": 1020,
+    "cwd": "outer/main/worktrees/feat/src",
+    "linkedWorktree": "outer/main/worktrees/feat",
+    "main": "outer/main",
+    "files": {"outer/main/AGENTS.md": "main repo instructions"},
+    "want": [{"path": "outer/main/AGENTS.md", "content": "main repo instructions"}]
+  },
+  {
+    "name": "different-filename",
+    "upstreamLine": 1029,
+    "cwd": "outer/main/worktrees/feat/src",
+    "linkedWorktree": "outer/main/worktrees/feat",
+    "main": "outer/main",
+    "files": {"outer/main/CLAUDE.md": "main repo instructions", "outer/main/worktrees/feat/AGENTS.md": "worktree instructions"},
+    "want": [{"path": "outer/main/CLAUDE.md", "content": "main repo instructions"}, {"path": "outer/main/worktrees/feat/AGENTS.md", "content": "worktree instructions"}]
+  },
+  {
+    "name": "bare-container",
+    "upstreamLine": 1042,
+    "cwd": "proj/main",
+    "files": {"proj/.bare/HEAD": "ref: refs/heads/main\n", "proj/.bare/worktrees/main/HEAD": "ref: refs/heads/main\n", "proj/.bare/worktrees/main/commondir": "../..", "proj/main/.git": "gitdir: {{ROOT}}/proj/.bare/worktrees/main\n", "proj/AGENTS.md": "container instructions", "proj/main/AGENTS.md": "worktree instructions"},
+    "want": [{"path": "proj/AGENTS.md", "content": "container instructions"}, {"path": "proj/main/AGENTS.md", "content": "worktree instructions"}]
+  },
+  {
+    "name": "ancestors-above-main",
+    "upstreamLine": 1065,
+    "cwd": "outer/main/worktrees/feat/src",
+    "linkedWorktree": "outer/main/worktrees/feat",
+    "main": "outer/main",
+    "files": {"outer/AGENTS.md": "outer instructions", "outer/main/AGENTS.md": "main repo instructions", "outer/main/worktrees/feat/AGENTS.md": "worktree instructions"},
+    "want": [{"path": "outer/AGENTS.md", "content": "outer instructions"}, {"path": "outer/main/worktrees/feat/AGENTS.md", "content": "worktree instructions"}]
+  },
+  {
+    "name": "sibling-worktree",
+    "upstreamLine": 1077,
+    "cwd": "outer/sib-feat/src",
+    "linkedWorktree": "outer/sib-feat",
+    "worktreeName": "sib",
+    "main": "outer/main",
+    "files": {"outer/AGENTS.md": "outer instructions", "outer/sib-feat/AGENTS.md": "sibling worktree instructions"},
+    "want": [{"path": "outer/AGENTS.md", "content": "outer instructions"}, {"path": "outer/sib-feat/AGENTS.md", "content": "sibling worktree instructions"}]
+  },
+  {
+    "name": "submodule",
+    "upstreamLine": 1095,
+    "cwd": "super/vendor/lib/src",
+    "files": {"super/.git/modules/vendor/lib/HEAD": "ref: refs/heads/main\n", "super/vendor/lib/.git": "gitdir: {{ROOT}}/super/.git/modules/vendor/lib\n", "super/AGENTS.md": "superproject instructions", "super/vendor/lib/AGENTS.md": "submodule instructions"},
+    "want": [{"path": "super/AGENTS.md", "content": "superproject instructions"}, {"path": "super/vendor/lib/AGENTS.md", "content": "submodule instructions"}]
+  },
+  {
+    "name": "ordinary-repo",
+    "upstreamLine": 1114,
+    "cwd": "outer/repo/src",
+    "files": {"outer/repo/.git/HEAD": "ref: refs/heads/main\n", "outer/AGENTS.md": "outer instructions", "outer/repo/AGENTS.md": "repo instructions", "outer/repo/src/AGENTS.md": "leaf instructions"},
+    "want": [{"path": "outer/AGENTS.md", "content": "outer instructions"}, {"path": "outer/repo/AGENTS.md", "content": "repo instructions"}, {"path": "outer/repo/src/AGENTS.md", "content": "leaf instructions"}]
+  },
+  {
+    "name": "missing-gitdir-target",
+    "upstreamLine": 1130,
+    "cwd": "corrupt/src",
+    "files": {"corrupt/.git": "gitdir: /nonexistent/path/worktrees/feat\n", "corrupt/AGENTS.md": "repo instructions", "corrupt/src/AGENTS.md": "src instructions"},
+    "want": [{"path": "corrupt/AGENTS.md", "content": "repo instructions"}, {"path": "corrupt/src/AGENTS.md", "content": "src instructions"}]
+  },
+  {
+    "name": "override-layering",
+    "upstreamLine": 380,
+    "cwd": "project/service",
+    "files": {"agent/AGENTS.md": "global instructions", "agent/AGENTS.override.md": "global override", "project/AGENTS.md": "project instructions", "project/service/AGENTS.md": "service instructions", "project/service/AGENTS.override.md": "service override"},
+    "want": [{"path": "agent/AGENTS.override.md", "content": "global override"}, {"path": "project/AGENTS.md", "content": "project instructions"}, {"path": "project/service/AGENTS.override.md", "content": "service override"}]
+  },
+  {
+    "name": "directory-candidates",
+    "upstreamLine": 399,
+    "cwd": "project",
+    "dirs": ["project/AGENTS.override.md", "project/AGENTS.md"],
+    "files": {"project/CLAUDE.md": "Fallback instructions"},
+    "want": [{"path": "project/CLAUDE.md", "content": "Fallback instructions"}]
+  },
+  {
+    "name": "absolute-commondir",
+    "cwd": "outer/main/worktrees/feat/src",
+    "linkedWorktree": "outer/main/worktrees/feat",
+    "main": "outer/main",
+    "files": {"outer/main/.git/worktrees/feat/commondir": "{{ROOT}}/outer/main/.git\n", "outer/main/AGENTS.md": "main repo instructions", "outer/main/worktrees/feat/AGENTS.md": "worktree instructions"},
+    "want": [{"path": "outer/main/worktrees/feat/AGENTS.md", "content": "worktree instructions"}]
+  },
+  {
+    "name": "relative-inputs",
+    "relativeInputs": true,
+    "cwd": "project/src",
+    "files": {"AGENTS.md": "outer instructions", "agent/AGENTS.md": "global instructions", "project/AGENTS.md": "project instructions", "project/src/AGENTS.md": "leaf instructions"},
+    "want": [{"path": "agent/AGENTS.md", "content": "global instructions"}, {"path": "AGENTS.md", "content": "outer instructions"}, {"path": "project/AGENTS.md", "content": "project instructions"}, {"path": "project/src/AGENTS.md", "content": "leaf instructions"}]
+  },
+  {
+    "name": "nested-uninitialized-repo",
+    "cwd": "outer/main/worktrees/feat/nested/src",
+    "linkedWorktree": "outer/main/worktrees/feat",
+    "main": "outer/main",
+    "dirs": ["outer/main/worktrees/feat/nested/.git"],
+    "files": {"outer/main/AGENTS.md": "main repo instructions", "outer/main/worktrees/feat/AGENTS.md": "worktree instructions"},
+    "want": [{"path": "outer/main/AGENTS.md", "content": "main repo instructions"}, {"path": "outer/main/worktrees/feat/AGENTS.md", "content": "worktree instructions"}]
+  }
+]

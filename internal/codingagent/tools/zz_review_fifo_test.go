@@ -18,6 +18,6 @@ func TestReviewWriteQueueErrorVisible(t *testing.T) {
 	args, _ := json.Marshal(map[string]string{"path": "a", "content": "never written"})
 	result, err := tool.Execute(t.Context(), "test", args, nil)
 	if err == nil && !result.IsError {
-		t.Fatalf("write falsely succeeded after canonical-key error: %v", result.Content)
+		t.Fatalf("write falsely succeeded after canonical-key error: %v", result.Text())
 	}
 }

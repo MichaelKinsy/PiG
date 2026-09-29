@@ -7,7 +7,8 @@
 //      the user's editor highlights markdown).
 //   2. Restores cooked-mode terminal so the editor can take over the
 //      TTY. (Done by caller, not this helper.)
-//   3. Spawns $VISUAL || $EDITOR (split on whitespace; first token is
+//   3. Resolves the configured command, VISUAL, EDITOR, or the platform default,
+//      then spawns it (split on literal spaces; first token is
 //      the binary, rest are arguments) with the tempfile path appended,
 //      stdio inherited.
 //   4. On exit code 0, reads the file back, strips one trailing newline
@@ -32,8 +33,7 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
 
-// OpenExternalEditor writes initial into a tempfile, runs the user's
-// editor on it (stdio inherited), and returns the file contents on
+// OpenExternalEditor resolves the command with SettingsManager's precedence, writes initial into a tempfile, runs the editor with inherited stdio, and returns the file contents on
 // success. On editor non-zero exit OR read error, returns initial
 // unchanged plus a non-nil error.
 //
@@ -46,20 +46,7 @@ import (
 //
 // Reference: upstream openExternalEditor() in modes/interactive/interactive-mode.ts.
 func OpenExternalEditor(ctx context.Context, initial string, configuredEditor string) (string, error) {
-	editorCmd := strings.TrimSpace(configuredEditor)
-	if editorCmd == "" {
-		editorCmd = os.Getenv("VISUAL")
-	}
-	if editorCmd == "" {
-		editorCmd = os.Getenv("EDITOR")
-	}
-	if editorCmd == "" {
-		// Upstream getExternalEditorCommand's platform default.
-		editorCmd = "nano"
-		if runtime.GOOS == "windows" {
-			editorCmd = "notepad"
-		}
-	}
+	editorCmd := resolveExternalEditorCommand(configuredEditor, os.Getenv("VISUAL"), os.Getenv("EDITOR"), runtime.GOOS)
 
 	tmp, err := os.CreateTemp("", "pig-editor-*.md")
 	if err != nil {
@@ -76,10 +63,8 @@ func OpenExternalEditor(ctx context.Context, initial string, configuredEditor st
 		return initial, fmt.Errorf("external editor: close tmp: %w", err)
 	}
 
-	// Split editorCmd on whitespace so users can configure
-	// "code --wait" or "nvim -c 'set ft=markdown'". The first token is
-	// the binary, the rest are leading args.
-	parts := strings.Fields(editorCmd)
+	// Pi splits on literal spaces, preserving empty arguments. Quoting and tab expansion are left to cmd.exe only on Windows.
+	parts := strings.Split(editorCmd, " ")
 	args := append([]string{}, parts[1:]...)
 	args = append(args, tmpPath)
 
@@ -88,7 +73,7 @@ func OpenExternalEditor(ctx context.Context, initial string, configuredEditor st
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
-	_, _ = fmt.Fprintf(os.Stdout, "Launching external editor: %s\npig will resume when the editor exits.\n", editorCmd)
+	_, _ = fmt.Fprintf(os.Stdout, "Launching external editor: %s\nPi will resume when the editor exits.\n", editorCmd)
 
 	if err := cmd.Run(); err != nil {
 		// Editor exited non-zero (or failed to spawn). Match upstream:

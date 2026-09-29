@@ -71,6 +71,10 @@ func segmentIndex(segment any) (int, bool) {
 	if !ok || number < 0 || number != math.Trunc(number) {
 		return 0, false
 	}
+	// Array.prototype.splice clamps and Object.hasOwn misses an index beyond the array, so an integer beyond int range saturates instead of wrapping negative.
+	if number >= float64(math.MaxInt) {
+		return math.MaxInt, true
+	}
 	return int(number), true
 }
 
@@ -310,8 +314,8 @@ func spliceOp(items []any, op Op) ([]any, error) {
 		return nil, errors.New("p shape")
 	}
 	index = min(index, len(items))
-	end := min(index+remove, len(items))
-	next := make([]any, 0, len(items)-(end-index)+len(inserted))
+	end := index + min(remove, len(items)-index)
+	next := make([]any, 0, len(items))
 	next = append(next, items[:index]...)
 	next = append(next, inserted...)
 	return append(next, items[end:]...), nil

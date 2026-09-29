@@ -1,0 +1,10 @@
+﻿lane: pt-tools-builtin; ref: 4f5e1c075c0f8799e2ac4efd30dab749b46be4e6; modified: 0; go version go1.27.1 windows/amd64; node v24.19.0
+go test ./internal/codingagent/tools -run ^Test(TaskkillSpawnFailurePort|WindowsTaskkillSpawnOptions)$ -count=1 -v -timeout 10m
+=== RUN   TestTaskkillSpawnFailurePort
+TASKKILL ["C:\\CustomWindows\\System32\\taskkill.exe",["/F","/T","/PID","1234"],1]
+--- PASS: TestTaskkillSpawnFailurePort (0.00s)
+=== RUN   TestWindowsTaskkillSpawnOptions
+--- PASS: TestWindowsTaskkillSpawnOptions (0.00s)
+PASS
+ok  	github.com/MichaelKinsy/PiG/internal/codingagent/tools	0.093s
+===== exit 0 (1s)

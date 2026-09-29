@@ -1,0 +1,36 @@
+# Pi 0.87.1 print-mode.ts:80-101 delegates command replacements to runtimeHost.
+# agent-session-runtime.ts:197-353 orders before -> shutdown -> start -> result,
+# honors cancellation, and implements fork at versus before a user message.
+# The artifact contains no volatile IDs/paths; normalized comparison leaves
+# its JSONL unchanged. The stdout comparator also checks the command-only path.
+#
+# pig divergence (D70): the fixture's replace-probe command sets
+# process.env.FIN_REPLACEMENT_LOG so the replacement's session_start handler can
+# find the log. Pi re-runs the extension factory inside the same Node process, so
+# the assignment survives into the replacement Session. Pig starts a fresh
+# extension process for each replacement Session, and a process environment
+# change does not cross that boundary. Pig's side receives the log path at
+# startup; Pi keeps the fixture's own assignment.
+name = "39-extension-session-replacement"
+description = "Extension commands replace sessions in print mode with ordered lifecycle and fork positions"
+covers = ["packages/coding-agent/src/modes/print-mode.ts", "packages/coding-agent/src/core/agent-session-runtime.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "/replace-probe resume {{TEMP}}/trace.jsonl", "/replace-probe at {{TEMP}}/trace.jsonl", "/replace-probe before {{TEMP}}/trace.jsonl", "/replace-probe cancel {{TEMP}}/trace.jsonl", "/replace-probe new {{TEMP}}/trace.jsonl"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/trace.jsonl"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "FIN_REPLACEMENT_LOG={{TEMP}}/trace.jsonl"]
+pig_extensions = ["testdata/ext/session-replacement.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/session-replacement.mjs"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+artifact_normalized_equal = true
+artifact_both_contain = ['["result","resume",false]', '["result","at",false]', '["result","before",false]', '["result","cancel",true]', '["result","new",false]']
+both_not_contain = ["unsupported", "Extension error"]

@@ -23,19 +23,19 @@ func TestStderrCausePicksTheRuntimeErrorLine(t *testing.T) {
 			if err := os.WriteFile(path, []byte(tc.log), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			if got := stderrCause(path); got != tc.want {
+			if got := stderrCause(path, ""); got != tc.want {
 				t.Fatalf("stderrCause = %q, want %q", got, tc.want)
 			}
 		})
 	}
-	if got := stderrCause(filepath.Join(t.TempDir(), "missing.log")); got != "" {
+	if got := stderrCause(filepath.Join(t.TempDir(), "missing.log"), ""); got != "" {
 		t.Fatalf("missing log cause = %q", got)
 	}
 	long := filepath.Join(t.TempDir(), "long.log")
 	if err := os.WriteFile(long, []byte(strings.Repeat("x", stderrCauseLimit*2)+"\nError: tail cause\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if got := stderrCause(long); got != "Error: tail cause" {
+	if got := stderrCause(long, ""); got != "Error: tail cause" {
 		t.Fatalf("large log cause = %q", got)
 	}
 }

@@ -1,3 +1,4 @@
+// Ports packages/coding-agent/src/core/resource-loader.ts
 package codingagent
 
 import (
@@ -34,8 +35,18 @@ var contextCandidates = []string{"AGENTS.override.md", "AGENTS.md", "AGENTS.MD",
 // AGENTS/CLAUDE candidate while ancestor layering remains intact.
 // Duplicate paths are skipped by their loaded path. In a nested linked
 // worktree, the main checkout's same-named context file is skipped when the
-// worktree root supplies its own copy.
+// worktree root supplies its own copy. Nonempty input paths resolve against the process working directory before discovery.
 func LoadProjectContextFiles(cwd, agentDir string) []ContextFile {
+	if cwd != "" {
+		if absolute, err := ResolvePath(cwd, ""); err == nil {
+			cwd = absolute
+		}
+	}
+	if agentDir != "" {
+		if absolute, err := ResolvePath(agentDir, ""); err == nil {
+			agentDir = absolute
+		}
+	}
 	var result []ContextFile
 	seen := make(map[string]struct{})
 
@@ -97,12 +108,12 @@ func loadContextFileFromDir(dir string) *ContextFile {
 }
 
 func findShadowedContextFile(cwd string) string {
-	repoDir, commonGitDir, ok := findContextGitPaths(cwd)
+	paths, ok := findGitPaths(cwd)
 	if !ok {
 		return ""
 	}
-	commonGitDir = canonicalPath(commonGitDir)
-	worktreeRoot := canonicalPath(repoDir)
+	commonGitDir := canonicalPath(paths.commonGitDir)
+	worktreeRoot := canonicalPath(paths.repoDir)
 	mainRepoRoot := filepath.Dir(commonGitDir)
 	if !strings.HasPrefix(worktreeRoot, mainRepoRoot+string(filepath.Separator)) {
 		return ""
@@ -117,47 +128,7 @@ func findShadowedContextFile(cwd string) string {
 	return canonicalPath(filepath.Join(mainRepoRoot, filepath.Base(worktreeContext.Path)))
 }
 
-func findContextGitPaths(cwd string) (repoDir, commonGitDir string, ok bool) {
-	for dir := cwd; ; dir = filepath.Dir(dir) {
-		gitPath := filepath.Join(dir, ".git")
-		info, err := os.Stat(gitPath)
-		if err == nil {
-			switch {
-			case info.IsDir():
-				if _, err := os.Stat(filepath.Join(gitPath, "HEAD")); err == nil {
-					return dir, gitPath, true
-				}
-			case info.Mode().IsRegular():
-				data, err := os.ReadFile(gitPath)
-				gitDirText, found := strings.CutPrefix(strings.TrimSpace(string(data)), "gitdir: ")
-				if err != nil || !found {
-					return "", "", false
-				}
-				gitDir := gitDirText
-				if !filepath.IsAbs(gitDir) {
-					gitDir = filepath.Join(dir, gitDir)
-				}
-				if _, err := os.Stat(filepath.Join(gitDir, "HEAD")); err != nil {
-					return "", "", false
-				}
-				commonDir := gitDir
-				if data, err := os.ReadFile(filepath.Join(gitDir, "commondir")); err == nil {
-					commonDir = filepath.Join(gitDir, strings.TrimSpace(string(data)))
-				}
-				return dir, commonDir, true
-			}
-		}
-		parent := filepath.Dir(dir)
-		if parent == dir {
-			return "", "", false
-		}
-	}
-}
-
 // canonicalPath resolves symlinks for worktree comparisons.
 func canonicalPath(p string) string {
-	if abs, err := filepath.EvalSymlinks(p); err == nil {
-		return abs
-	}
-	return p
+	return CanonicalizePath(p)
 }

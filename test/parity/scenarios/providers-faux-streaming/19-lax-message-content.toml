@@ -1,0 +1,24 @@
+# Exact input/output from Pi 0.87.1 lax-message-content.test.ts:31-65. Null user/assistant and omitted tool-result content normalize to empty arrays.
+# This probes the provider-input boundary, not Agent's separately documented D48 orphan filtering.
+name = "19-lax-message-content"
+description = "Null and omitted message content normalize to arrays before provider conversion."
+covers = ["packages/ai/src/api/transform-messages.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/lax-message-content/pig"]
+pi_args = ["node", "./test/parity/testdata/lax-message-content/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["[[],[],[]]"]
+runs = 3

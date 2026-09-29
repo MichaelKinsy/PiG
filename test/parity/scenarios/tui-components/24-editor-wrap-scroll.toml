@@ -1,0 +1,31 @@
+# Behavior family: tui-components
+# Pi 0.87.1 editor.ts:123-219,276-295,508-626: word/atomic wrapping, cursor
+# placement, viewport counts, centered and truncated color-preserving borders.
+# Probe: node test/parity/testdata/editor-wrap-helper/upstream-tests.mjs runs all
+# 32 original editor.test.ts:707-1197 bodies unchanged (TypeScript erased).
+# This caller probe captures every full Editor row, including all ANSI and
+# whitespace, after SetText and each input; hex preserves complete row bytes.
+# Pure wordWrapLine cases use render width+1 for the reserved cursor column.
+# Atomic cases use real bracketed paste input, not an injected segment registry.
+name = "24-editor-wrap-scroll"
+description = "Editor wrapping and scroll borders retain exact content, cursor, width and color through input and render"
+covers = ["packages/tui/src/components/editor.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/editor-wrap-helper/pig"]
+pi_args = ["node", "./test/parity/testdata/editor-wrap-helper/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_contain = ["scroll narrow", "cursor in padding", "consecutive atomic segments", "wide overflow after backtrack"]

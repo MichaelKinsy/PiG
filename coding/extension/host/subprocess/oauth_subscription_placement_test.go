@@ -41,8 +41,17 @@ func TestOAuthSubscriptionSDKPlacements(t *testing.T) {
 					t.Fatalf("shared cell = %t, want %t", shared, packed)
 				}
 				for _, config := range configs {
-					if _, ok := ai.GetOAuthProvider(config.Name); !ok {
+					provider, ok := ai.GetOAuthProvider(config.Name)
+					if !ok {
 						t.Fatalf("provider %s missing", config.Name)
+					}
+					credentials, err := provider.Login(ai.OAuthLoginCallbacks{})
+					if err != nil || credentials.AccountID != config.Name || credentials.Scope != "scope-"+config.Name {
+						t.Fatalf("login metadata %s: %#v %v", config.Name, credentials, err)
+					}
+					refreshed, err := provider.RefreshToken(ai.OAuthCredentials{AccountID: "updated-" + config.Name, Scope: "request-" + config.Name})
+					if err != nil || refreshed.AccountID != "updated-"+config.Name || refreshed.Scope != "request-"+config.Name {
+						t.Fatalf("refresh metadata %s: %#v %v", config.Name, refreshed, err)
 					}
 					if got, want := ai.IsOAuthSubscriptionProvider(config.Name), config.Name == "subscription_yes"; got != want {
 						t.Errorf("%s subscription=%t, want %t", config.Name, got, want)
@@ -89,10 +98,10 @@ func writeSubscriptionFactory(t *testing.T, root, language, name string, subscri
 import "github.com/MichaelKinsy/PiG/extensions/sdk"
 func Extension() *sdk.Extension {
  e := sdk.New(%q)
- e.RegisterProvider(%q, sdk.ProviderConfig{"oauth": &sdk.OAuthProvider{IsSubscription: %t, Login: func(*sdk.OAuthLoginCallbacks) (sdk.OAuthCredentials, error) { return sdk.OAuthCredentials{}, nil }}})
+ e.RegisterProvider(%q, sdk.ProviderConfig{"oauth": &sdk.OAuthProvider{IsSubscription: %t, Login: func(*sdk.OAuthLoginCallbacks) (sdk.OAuthCredentials, error) { return sdk.OAuthCredentials{AccountID:%q, Scope:%q}, nil }, RefreshToken: func(c sdk.OAuthCredentials) (sdk.OAuthCredentials,error) { return c,nil }}})
  return e
 }
-`, name, name, subscription))
+`, name, name, subscription, name, "scope-"+name))
 		return packedFactoryConfig(name, dir, module, name)
 	case "python":
 		value := "False"
@@ -102,9 +111,9 @@ func Extension() *sdk.Extension {
 		write(name+".py", fmt.Sprintf(`import pig_sdk
 def new_extension():
     ext = pig_sdk.Extension(%q)
-    ext.register_oauth_provider(%q, {}, pig_sdk.OAuthProvider(is_subscription=%s, login=lambda cb: pig_sdk.OAuthCredentials()))
+    ext.register_oauth_provider(%q, {}, pig_sdk.OAuthProvider(is_subscription=%s, login=lambda cb: pig_sdk.OAuthCredentials(account_id=%q,scope=%q), refresh_token=lambda c: c))
     return ext
-`, name, name, value))
+`, name, name, value, name, "scope-"+name))
 		return packedPythonFactoryConfig(name, dir, name, name)
 	case "rust":
 		manifest := strings.Replace(sdkManifest("sdk-rs", "Cargo.toml"), `name = "pig-sdk"`, fmt.Sprintf("name = %q", name), 1)
@@ -113,12 +122,12 @@ def new_extension():
 pub fn new_extension() -> Extension {
  let mut ext = Extension::new(%q);
  ext.register_oauth_provider(%q, serde_json::json!({}), OAuthProvider {
-  name: String::new(), is_subscription: %t, login: Box::new(|_| Ok(OAuthCredentials::default())),
-  refresh_token: None, get_api_key: None, credential_store: None,
+  name: String::new(), is_subscription: %t, login: Box::new(|_| Ok(OAuthCredentials { account_id: %q.to_string(), scope: %q.to_string(), ..OAuthCredentials::default() })),
+  refresh_token: Some(Box::new(|c| Ok(c))), get_api_key: None, credential_store: None,
  });
  ext
 }
-`, name, name, subscription))
+`, name, name, subscription, name, "scope-"+name))
 		return packedRustFactoryConfig(name, dir, name, name)
 	default:
 		t.Fatalf("unsupported test language %s", language)

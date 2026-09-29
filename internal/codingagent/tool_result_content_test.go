@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"encoding/json"
+	"reflect"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
@@ -9,19 +10,53 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
 
+// Pi's tool_result content includes an empty text block, unlike content:[] or image-only content.
+func TestToolResultEmptyTextHookRoundTrip(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		result  agent.AgentToolResult
+		want    []any
+		present bool
+	}{
+		{"empty text", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: ""}}}, []any{map[string]any{"type": "text", "text": ""}}, true},
+		{"empty array", agent.AgentToolResult{}, []any{}, false},
+		{"image only", agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.ImageContent{Data: "aW1n", MimeType: "image/png"}}}, []any{map[string]any{"type": "image", "data": "aW1n", "mimeType": "image/png"}}, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			content := ToolResultEventContent(tc.result)
+			if !reflect.DeepEqual(content, tc.want) {
+				t.Fatalf("event content = %#v, want %#v", content, tc.want)
+			}
+			if got := extensionToolResult(tc.result)["content"]; !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("execution-end content = %#v, want %#v", got, tc.want)
+			}
+			override := ToolResultEventOverride(&extension.ToolResultEventResult{Content: content})
+			present := false
+			for _, block := range override.Content {
+				if _, ok := block.(ai.TextContent); ok {
+					present = true
+				}
+			}
+			if present != tc.present || !reflect.DeepEqual(ToolResultEventContent(agent.AgentToolResult{Content: override.Content}), tc.want) {
+				t.Fatalf("override lost text presence: %#v", override)
+			}
+		})
+	}
+}
+
 func TestToolResultExtensionContentPreservesAndClearsImages(t *testing.T) {
-	original := agent.AgentToolResult{Content: "before", Images: []ai.ImageContent{{Data: "original", MimeType: "image/png"}}}
+	original := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "before"}, ai.ImageContent{Data: "original", MimeType: "image/png"}}}
 	content := ToolResultEventContent(original)
 	if len(content) != 2 || content[1].(map[string]any)["data"] != "original" {
 		t.Fatalf("extension content=%#v", content)
 	}
 	override := ToolResultEventOverride(&extension.ToolResultEventResult{Content: []any{ai.TextContent{Text: "after"}, map[string]any{"type": "image", "data": "replacement", "mimeType": "image/jpeg"}}, IsError: new(true)})
-	if override.Content == nil || *override.Content != "after" || override.Images == nil || len(*override.Images) != 1 || (*override.Images)[0].Data != "replacement" || override.IsError == nil || !*override.IsError {
+	if !reflect.DeepEqual(override.Content, []ai.ToolResultMessageContent{ai.TextContent{Text: "after"}, ai.ImageContent{Data: "replacement", MimeType: "image/jpeg"}}) || override.IsError == nil || !*override.IsError {
 		t.Fatalf("override=%#v", override)
 	}
 	cleared := ToolResultEventOverride(&extension.ToolResultEventResult{Content: []any{map[string]any{"type": "text", "text": "only text"}}})
-	if cleared.Images == nil || len(*cleared.Images) != 0 {
-		t.Fatalf("text-only replacement retained images=%#v", cleared.Images)
+	if !reflect.DeepEqual(cleared.Content, []ai.ToolResultMessageContent{ai.TextContent{Text: "only text"}}) {
+		t.Fatalf("text-only replacement retained images=%#v", cleared.Content)
 	}
 }
 
@@ -35,11 +70,9 @@ func TestToolResultEventOverridePreservesNonStringFields(t *testing.T) {
 		json.RawMessage(`{"type":"text","text":{"nested":1}}`),
 		map[string]any{"type": "image", "data": "abc", "mimeType": 7.0},
 	}})
-	if got := *override.Content; got != "42true[object Object]" {
-		t.Fatalf("content = %q", got)
-	}
-	if images := *override.Images; len(images) != 1 || images[0].Data != "abc" || images[0].MimeType != "7" {
-		t.Fatalf("images = %#v", images)
+	want := []ai.ToolResultMessageContent{ai.TextContent{Text: "42"}, ai.TextContent{Text: "true"}, ai.TextContent{Text: "[object Object]"}, ai.ImageContent{Data: "abc", MimeType: "7"}}
+	if !reflect.DeepEqual(override.Content, want) {
+		t.Fatalf("content = %#v, want %#v", override.Content, want)
 	}
 }
 

@@ -1,0 +1,48 @@
+# Behavior family: extensions-runtime
+# Upstream evidence (Pi 0.87.1, tmux 100x35, 2026-09-26):
+# custom-editor.ts:137-141 invokes an app action before returning.
+# interactive-mode.ts:2994 binds app.clear to handleCtrlC (:4116-4123), whose
+# clearEditor (:4458-4461) calls the selected editor's setText synchronously.
+# Probe: type seed, then Ctrl+C. The custom editor reads its text immediately
+# after super.handleInput returns and prints editor-action-result:"":end.
+# The notification-only handoff failed this synchronous read even with a
+# between-key acknowledgement. Keep this same-turn observation explicit.
+# The custom render marker proves the editor is installed. Pi's generic footer
+# can appear before installation, so it is not readiness for this feature.
+
+name = "35b-editor-action-sync"
+description = "CustomEditor observes the clear action before handleInput returns"
+covers = ["packages/coding-agent/src/modes/interactive/components/custom-editor.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/editor-action-sync.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/editor-action-sync.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "editor-action-ready"
+ready_pattern_pi = "editor-action-ready"
+ready_timeout_seconds = 30
+capture_start = "editor-action-result:"
+capture_end = ":end"
+
+[[tmux.steps]]
+keys = ["seed", "C-c"]
+wait_contains = ["editor-action-result:"]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ['editor-action-result:"":end']
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

@@ -1,0 +1,27 @@
+# Pi openai-completions.ts:870-977,1004-1025 selects a named budget field and
+# shares one answer-room-clamped budget with chat-template kwargs. The Go probe
+# drives custom models.json metadata through Model Runtime so catalog fallback
+# cannot silently change the logical thinking level. Both probes assert the
+# original test's budget/kwargs fields, including omitted-reasoning behavior.
+name = "19-completions-thinking-budgets"
+description = "Custom Completions thinking budgets honor model metadata, named fields, off state and shared answer-room clamping."
+covers = ["packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/simple-options.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/completions-thinking-budgets-pig"]
+pi_args = ["node", "./test/parity/testdata/completions-thinking-budgets-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"case":"medium","budget":4096', '"case":"alias-wins","budget":null,"alias":4096', '"thinking_budget":15360', '"kwargs":{"enable_thinking":false}']
+runs = 3

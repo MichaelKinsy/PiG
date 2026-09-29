@@ -1,0 +1,23 @@
+# Pi 0.87.1 package-manager-cli.ts:378-379 maps uninstall to remove before parsing flags.
+# package-manager.ts:1038 emits Removing even when settings contain no match.
+# Probe: fresh HOME/agent, pi uninstall ./missing --no-approve => the two lines below, exit 1.
+name = "11-package-uninstall-alias"
+description = "Uninstall uses package removal, never chat startup, including the missing-source path."
+covers = ["packages/coding-agent/src/package-manager-cli.ts", "packages/coding-agent/src/core/package-manager.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/empty-home/agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/empty-home/agent"]
+override_base_args = true
+
+[cli]
+args = ["uninstall", "./missing", "--no-approve"]
+timeout_seconds = 25
+
+[assert]
+exit_code = 1
+output_equal = true
+both_contain = ["Removing ./missing...\nNo matching package found for ./missing"]
+runs = 3

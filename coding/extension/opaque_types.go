@@ -119,7 +119,7 @@ type RemoteTerminalInputHandler = func(ctx context.Context, data string) Termina
 type ExtensionWidgetOptions = any
 
 // AutocompleteProviderFactory mirrors upstream AutocompleteProviderFactory.
-type AutocompleteProviderFactory = any
+type AutocompleteProviderFactory func(context.Context, *AutocompleteProvider) (*AutocompleteProvider, error)
 
 // SetThemeResult mirrors the inline return type of
 // `ExtensionUIContext.setTheme` (types.ts:262: `{ success, error? }`).
@@ -140,7 +140,19 @@ type ThemeMeta struct {
 }
 
 // AutocompleteProvider mirrors @earendil-works/pi-tui AutocompleteProvider.
-type AutocompleteProvider = any
+type AutocompleteProvider struct {
+	TriggerCharacters           []string
+	GetSuggestions              func(context.Context, []string, int, int, bool) (*AutocompleteSuggestions, error)
+	ApplyCompletion             func(context.Context, []string, int, int, AutocompleteItem, string) (AutocompleteCompletion, error)
+	ShouldTriggerFileCompletion func(context.Context, []string, int, int) (bool, error)
+}
+
+// AutocompleteCompletion carries the complete replacement and UTF-16 cursor position returned by a provider.
+type AutocompleteCompletion struct {
+	Lines      []string `json:"lines"`
+	CursorLine int      `json:"cursorLine"`
+	CursorCol  int      `json:"cursorCol"`
+}
 
 // ─── coding-agent internals ───────────────────────────────────────────────
 
@@ -177,15 +189,15 @@ type KeybindingsManager = any
 // ReadonlyFooterDataProvider mirrors core/footer-data-provider.
 type ReadonlyFooterDataProvider = any
 
-// BashResult mirrors core/bash-executor.BashResult.
+// BashResult mirrors core/bash-executor.BashResult. A native result must contain exitCode; its nil value represents undefined, not JSON null. A nil optional fullOutputPath is also undefined. Pre-encoded JSON retains its own null values.
 type BashResult = any
 
 // ExecOptions configures a shell command execution.
 //
 // upstream: core/exec.ts ExecOptions
 type ExecOptions struct {
-	// Timeout in milliseconds. Zero means no timeout.
-	Timeout int `json:"timeout,omitempty"`
+	// Timeout in milliseconds. Pi's timeout is a JavaScript number: a positive value starts a timer and anything else starts none.
+	Timeout float64 `json:"timeout,omitempty"`
 	// CWD overrides the working directory. Empty uses the extension's CWD.
 	CWD string `json:"cwd,omitempty"`
 }
@@ -227,7 +239,7 @@ type LsToolInput = any
 // ─── Cancellation ─────────────────────────────────────────────────────────
 
 // AbortSignal was the upstream cancellation primitive (DOM AbortSignal).
-// Pig uses context.Context for cancellation (see DIVERGENCES.md D3). This
+// Pig uses context.Context for cancellation (see docs/parity/DIVERGENCES.md D3). This
 // deprecated alias preserves source compatibility while giving callers the real
 // cancellation contract instead of an untyped value.
 //
@@ -254,20 +266,6 @@ type AutocompleteItem struct {
 type AutocompleteSuggestions struct {
 	Items  []AutocompleteItem `json:"items"`
 	Prefix string             `json:"prefix"`
-}
-
-// AsyncSuggestionSource is the pig-side surface for an extension-supplied
-// autocomplete provider. The subprocess bridge installs an implementation
-// that fans the query out to an extension process via the
-// "autocomplete.suggest" request method; the host editor calls Suggest
-// from a goroutine and merges the response into the popup.
-//
-// pig-specific: upstream installs in-process AutocompleteProvider
-// objects directly into a chain. pig cannot run a synchronous chain
-// across the subprocess boundary, so the bridge adapts the chain
-// pattern to this out-of-band source interface.
-type AsyncSuggestionSource interface {
-	Suggest(ctx context.Context, lines []string, cursorLine, cursorCol int) *AutocompleteSuggestions
 }
 
 // SlashCommandInfo mirrors core/slash-commands.SlashCommandInfo.

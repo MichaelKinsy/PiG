@@ -8,27 +8,59 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
+	"syscall"
 	"time"
+
+	"golang.org/x/term"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
+
+// exitIfDeadTerminal bypasses terminal restoration on a disconnected terminal. A PTY master close can surface as EOF from the input reader; querying the terminal then reports the dead-device error without writing restore sequences.
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts (emergencyTerminalExit).
+func exitIfDeadTerminal(err error) {
+	if errors.Is(err, io.EOF) {
+		_, _, err = term.GetSize(int(os.Stdout.Fd()))
+	}
+	if errors.Is(err, syscall.EIO) || errors.Is(err, syscall.EPIPE) || errors.Is(err, syscall.ENOTCONN) {
+		os.Exit(129)
+	}
+}
 
 // inputLoop reads terminal input from source and dispatches to the editor or
 // agent.
 func (m *InteractiveMode) inputLoop(ctx context.Context, source io.Reader) error {
-	readCh := make(chan inputChunk)
-	errCh := make(chan error, 1)
-	go m.pumpTerminalInput(ctx, source, readCh, errCh)
+	return m.inputLoopUntil(ctx, source, nil)
+}
 
-	// dispatchInput handles one routed sequence and reports whether the rest
-	// of the same terminal read follows it on readCh.
+func (m *InteractiveMode) inputLoopUntil(ctx context.Context, source io.Reader, until <-chan struct{}) (resultErr error) {
+	m.startTerminalInput(ctx, source)
+	if until == nil {
+		defer func() {
+			if err := m.stopTerminalInput(); err != nil {
+				resultErr = errors.Join(resultErr, err)
+			}
+		}()
+	}
+	readCh, errCh := m.inputReadCh, m.inputErrCh
+	var userInput <-chan string
+	if until == nil {
+		defer func() {
+			m.onInputCallback = nil
+			m.pendingUserInputs = nil
+		}()
+	}
+
+	// dispatchInput handles one routed sequence and reports whether to await its terminal-read completion before painting.
 	dispatchInput := func(input inputChunk) (bool, error) {
 		defer input.ticket.settle()
 		if chunk := string(input.data); chunk != "" {
 			if os.Getenv("PIG_DEBUG_KEYS") != "" {
-				debugLog("key %q -> %d", chunk, classifyKey(chunk))
+				debugLog("key %q -> %d", chunk, classifyKeyWithBindings(chunk, m.keybindings))
 			}
 			if err := m.dispatchInputChunk(ctx, chunk, input.ticket); err != nil {
 				return false, err
@@ -38,7 +70,7 @@ func (m *InteractiveMode) inputLoop(ctx context.Context, source io.Reader) error
 		// A chunk still waiting on a remote listener's verdict holds the
 		// pump, and a modal takes the next sequence itself, so neither
 		// continues the read here.
-		if !input.more || !input.ticket.settled() || m.inputLoopErr != nil || m.requestExit.Load() {
+		if input.readDone == nil || !input.ticket.settled() || m.inputLoopErr != nil || m.requestExit.Load() {
 			return false, nil
 		}
 		modalCh, _, _ := m.modalRouteWatch()
@@ -68,8 +100,15 @@ func (m *InteractiveMode) inputLoop(ctx context.Context, source io.Reader) error
 			if dispatchErr != nil || !continues {
 				return dispatchErr
 			}
+			select {
+			case <-input.readDone:
+				return nil
+			default:
+			}
 			_, _, changed := m.modalRouteWatch()
 			select {
+			case <-input.readDone:
+				return nil
 			case <-ctx.Done():
 				return nil
 			case readErr := <-errCh:
@@ -90,17 +129,31 @@ func (m *InteractiveMode) inputLoop(ctx context.Context, source io.Reader) error
 	}
 
 	for {
+		if ctx.Err() != nil {
+			m.ShutdownFromSignal()
+			return nil
+		}
+		select {
+		case <-until:
+			return nil
+		default:
+		}
 		if err := m.inputLoopErr; err != nil {
 			return err
 		}
 		if m.requestExit.Load() {
-			m.stopInteractiveTui()
-			if err := m.requestedExitError(); err != nil {
-				return err
-			}
-			emitSessionShutdown(m.newRunner, "quit")
-			m.printResumeHint()
-			return nil
+			return m.finishInteractiveShutdown()
+		}
+		if until == nil && userInput == nil && m.initialMessagesDone == nil && !m.hasActiveAgentTurn() {
+			userInput = m.getUserInput()
+		}
+		// Pi resumes the resolved getUserInput promise after this read's synchronous sequences, before another terminal-read event.
+		select {
+		case text := <-userInput:
+			userInput = nil
+			m.handleSubmit(ctx, text)
+			continue
+		default:
 		}
 		// Prioritize terminal input over agent/render events. During tool output or
 		// streaming, eventCh/uiTaskCh can stay hot; without this pre-check a waiting
@@ -131,8 +184,15 @@ func (m *InteractiveMode) inputLoop(ctx context.Context, source io.Reader) error
 			// cancellations that do not arrive through that path.
 			m.ShutdownFromSignal()
 			return nil
+		case <-m.initialMessagesDone:
+			m.initialMessagesDone = nil
+		case text := <-userInput:
+			userInput = nil
+			m.handleSubmit(ctx, text)
 		case err := <-errCh:
 			return err
+		case <-until:
+			return nil
 		case fn := <-m.uiTaskCh:
 			// A background worker posted a UI mutation (e.g. async autocomplete
 			// results). Run it here so editor/component state is touched only on
@@ -165,18 +225,70 @@ func (m *InteractiveMode) inputLoop(ctx context.Context, source io.Reader) error
 	}
 }
 
+func (m *InteractiveMode) finishInteractiveShutdown() error {
+	m.shutdownMu.Lock()
+	defer m.shutdownMu.Unlock()
+	fromSignal := m.signalShutdownDone.Swap(true)
+	inputErr := m.stopTerminalInput()
+	m.remoteEditorEvents.drain()
+	m.stopInteractiveTui()
+	if err := m.requestedExitError(); err != nil {
+		if inputErr != nil {
+			return errors.Join(inputErr, err)
+		}
+		return err
+	}
+	if !fromSignal {
+		m.emitQuitShutdown()
+		m.printResumeHint()
+	}
+	return inputErr
+}
+
+type terminalInputOwner struct {
+	cancel context.CancelFunc
+	done   chan struct{}
+	reader *interactiveTerminalReader
+	err    error
+}
+
+// startTerminalInput starts one owned decoder shared by theme detection and the interactive loop. Temporary UI loops keep that owner; final shutdown cancels and joins it before terminal teardown.
+func (m *InteractiveMode) startTerminalInput(ctx context.Context, source io.Reader) {
+	if m.inputReadCh != nil {
+		return
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	owner := &terminalInputOwner{cancel: cancel, done: make(chan struct{})}
+	if file, ok := source.(*os.File); ok {
+		owner.reader = newInteractiveTerminalReader(ctx, file)
+		m.inputReader = owner.reader
+	}
+	m.inputOwner = owner
+	m.inputReadCh = make(chan inputChunk)
+	m.inputErrCh = make(chan error, 1)
+	go func() {
+		defer close(owner.done)
+		owner.err = m.pumpTerminalInput(ctx, source, m.inputReadCh, m.inputErrCh)
+	}()
+}
+
+func (m *InteractiveMode) stopTerminalInput() error {
+	owner := m.inputOwner
+	if owner == nil {
+		return nil
+	}
+	owner.cancel()
+	if owner.reader != nil {
+		owner.reader.pause()
+	}
+	<-owner.done
+	m.inputOwner = nil
+	return owner.err
+}
+
 // normalizeInputSequence applies upstream ProcessTerminal.forwardInputSequence's
 // native Shift+Enter normalization to one complete StdinBuffer sequence.
 var normalizeInputSequence = tui.NormalizeProcessInputSequence
-
-// normalizeInputSequences normalizes freshly read sequences in place. Input
-// retained across a startup prompt was normalized when it was read.
-func normalizeInputSequences(sequences []string) []string {
-	for i, sequence := range sequences {
-		sequences[i] = normalizeInputSequence(sequence)
-	}
-	return sequences
-}
 
 // pumpTerminalInput owns the one StdinBuffer for the process input stream and
 // routes only complete sequences. Upstream ProcessTerminal parses input before
@@ -184,104 +296,117 @@ func normalizeInputSequences(sequences []string) []string {
 // terminal read differently or lose a partial escape sequence.
 //
 // Upstream's terminal-input listeners answer synchronously before anything else sees a chunk. A chunk routed to the main loop therefore holds all input after it until its listeners settle, including a subprocess listener whose verdict the main loop awaits without blocking. Ctrl+C follows the same ordering as every other key. While a verdict is pending the pump stops receiving raw input, leaving at most one read ahead in the reader worker.
-func (m *InteractiveMode) pumpTerminalInput(ctx context.Context, source io.Reader, readCh chan<- inputChunk, errCh chan<- error) {
-	rawCh := make(chan []byte)
-	rawErrCh := make(chan error, 1)
-	go func() {
-		for {
-			buf, err := tui.ReadInput(source)
-			if err != nil {
-				rawErrCh <- err
-				return
-			}
-			select {
-			case rawCh <- append([]byte(nil), buf...):
-			case <-ctx.Done():
-				return
-			}
-		}
-	}()
-
-	stdinBuf := newProcessStdinBuffer()
-	var flush stdinFlushTimer
-	var backlog inputBacklog
-	route := func(chunks []string) {
-		for _, chunk := range chunks {
-			if chunk == "" || tui.HandleKeyboardProtocolNegotiationSequence(chunk) {
-				continue
-			}
-			backlog.held = append(backlog.held, chunk)
-		}
-		for ctx.Err() == nil && backlog.waiting == nil {
-			if len(backlog.held) == 0 {
-				backlog.held = nil
-				return
-			}
-			chunk := backlog.held[0]
-			backlog.held[0] = ""
-			backlog.held = backlog.held[1:]
-			backlog.waiting = m.routeInputSequence(ctx, []byte(chunk), len(backlog.held) > 0, readCh)
-		}
-	}
-	process := func(buf []byte) {
-		route(normalizeInputSequences(stdinBuf.ProcessTerminalBytes(buf)))
-		flush.sync(stdinBuf)
-	}
-	flushPending := func() {
-		flush.stop()
-		route(normalizeInputSequences(stdinBuf.Flush()))
-	}
-
-	// Startup dialogs (notably project trust) can finish in the middle of one
-	// decoded terminal read. Deliver the type-ahead after the main editor takes
-	// focus instead of letting terminal teardown discard it.
-	route(takeStartupInput())
-
+func (m *InteractiveMode) pumpTerminalInput(ctx context.Context, source io.Reader, readCh chan<- inputChunk, errCh chan<- error) (cleanupErr error) {
 	defer close(readCh)
-	var readErr error
+	rawCh, rawErrCh, closeRaw := m.rawInputChannels(ctx, source)
+	defer func() { cleanupErr = closeRaw() }()
+
+	var input *tui.TerminalInput
+	var readDone chan struct{}
+	deliver := func(sequence string) {
+		ticket := m.routeInputSequence(ctx, []byte(sequence), readDone, readCh)
+		if ticket != nil {
+			select {
+			case <-ctx.Done():
+				input.Close()
+			case <-ticket.done:
+			}
+		}
+	}
+	input = tui.NewTerminalInput(func(sequence string) { deliver(normalizeInputSequence(sequence)) })
+	defer input.Close()
+	batch := func(run func()) {
+		readDone = make(chan struct{})
+		defer close(readDone)
+		run()
+	}
+	process := func(buf []byte) { batch(func() { input.Process(buf) }) }
+	flush := func() { batch(input.Flush) }
+	// Startup type-ahead was already framed and normalized by its terminal owner.
+	batch(func() {
+		for _, sequence := range takeStartupInput() {
+			deliver(sequence)
+		}
+	})
 	for {
-		if backlog.waiting != nil {
-			select {
-			case <-ctx.Done():
-				flush.stop()
-				return
-			case <-backlog.waiting.done:
-				backlog.waiting = nil
-				route(nil)
-				continue
-			}
-		}
-		if readErr != nil && len(backlog.held) == 0 {
-			select {
-			case errCh <- readErr:
-			case <-ctx.Done():
-			}
-			return
-		}
-		switch kind, buf := priorityInput(rawCh, flush.C); kind {
+		switch kind, buf := priorityInput(rawCh, input.C); kind {
 		case priorityInputRead:
 			process(buf)
 			continue
 		case priorityInputFlush:
-			flushPending()
+			flush()
 			continue
 		case priorityInputClosed, priorityInputNone:
 		}
 		select {
 		case <-ctx.Done():
-			flush.stop()
 			return
 		case err := <-rawErrCh:
-			// Everything read before the error is still delivered in order.
-			rawErrCh = nil
-			readErr = err
-			flushPending()
+			exitIfDeadTerminal(err)
+			batch(input.FlushPending)
+			select {
+			case errCh <- err:
+			case <-ctx.Done():
+			}
+			return
 		case buf := <-rawCh:
 			process(buf)
-		case <-flush.C:
-			flushPending()
+		case <-input.C:
+			flush()
 		}
 	}
+}
+
+// rawInputChannels retains the existing byte-read contract and joins its worker. Files remain open; cancellation closes other ReadClosers. Non-closable readers must finish each Read without waiting for external input.
+func (m *InteractiveMode) rawInputChannels(ctx context.Context, source io.Reader) (<-chan []byte, <-chan error, func() error) {
+	if m.inputReader != nil {
+		return m.inputReader.data, m.inputReader.errors, func() error { return nil }
+	}
+	if file, ok := source.(*os.File); ok {
+		reader := newInteractiveTerminalReader(ctx, file)
+		return reader.data, reader.errors, func() error { reader.pause(); return nil }
+	}
+	ctx, cancel := context.WithCancel(ctx)
+	data, readErrors := make(chan []byte), make(chan error, 1)
+	done := make(chan struct{})
+	var closeErr error
+	var stopClose func() bool
+	closeDone := make(chan struct{})
+	if closer, ok := source.(io.ReadCloser); ok {
+		stopClose = context.AfterFunc(ctx, func() {
+			closeErr = closer.Close()
+			close(closeDone)
+		})
+	}
+	go func() {
+		defer close(done)
+		disarmClose := func() {
+			if stopClose != nil {
+				stop := stopClose
+				stopClose = nil
+				if !stop() {
+					<-closeDone
+				}
+			}
+		}
+		defer disarmClose()
+		for ctx.Err() == nil {
+			buf, err := tui.ReadInputChunk(source)
+			if len(buf) != 0 {
+				select {
+				case data <- buf:
+				case <-ctx.Done():
+					return
+				}
+			}
+			if err != nil {
+				disarmClose()
+				readErrors <- err
+				return
+			}
+		}
+	}()
+	return data, readErrors, func() error { cancel(); <-done; return closeErr }
 }
 
 type priorityInputKind int
@@ -326,13 +451,45 @@ func (m *InteractiveMode) dispatchKey(ctx context.Context, data string) error {
 // subprocess terminal-input listener must answer first, it returns before the
 // keystroke is handled, and handling resumes on the main loop with the verdict.
 func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, ticket *inputTicket) error {
+	if m.consumeTerminalThemeInput(data) {
+		return nil
+	}
+	if pending := m.autocompletePending; pending != nil {
+		ticket.await()
+		m.backgroundTasks.Go(func() {
+			select {
+			case <-pending:
+			case <-ctx.Done():
+				ticket.resume()
+				ticket.settle()
+				return
+			}
+			if err := m.postToMain(ctx, func() {
+				ticket.resume()
+				defer ticket.settle()
+				m.failInputLoop(m.dispatchInputChunk(ctx, data, ticket))
+			}); err != nil {
+				ticket.resume()
+				ticket.settle()
+			}
+		})
+		return nil
+	}
+	if m.externalEditorActive {
+		ticket.await()
+		m.externalEditorInput = func() {
+			ticket.resume()
+			defer ticket.settle()
+			m.failInputLoop(m.dispatchInputChunk(ctx, data, ticket))
+		}
+		return nil
+	}
 	// In fullscreen mode, viewport input (mouse wheel/click, focus events) is
 	// handled by the alt-screen renderer and must not reach the editor. Mirrors
 	// upstream's addInputListener(handleViewportInput) on the alt-screen; pig is
 	// driver-owned, so the driver routes it explicitly.
 	if m.altScreen != nil {
 		consumed := m.altScreen.HandleViewportInput(data)
-		m.syncEditorFocusWithSearch()
 		if consumed {
 			return nil
 		}
@@ -355,7 +512,12 @@ func (m *InteractiveMode) dispatchInputChunk(ctx context.Context, data string, t
 	// Notify extension terminal-input listeners first. If any consume
 	// the input, skip normal dispatch. Mirrors upstream
 	// ui.addInputListener (interactive-mode.ts:1875).
-	return m.passTerminalInput(ctx, data, ticket, m.handleKey)
+	return m.passTerminalInput(ctx, data, ticket, func(ctx context.Context, data string) error {
+		previous := m.currentInputTicket
+		m.currentInputTicket = ticket
+		defer func() { m.currentInputTicket = previous }()
+		return m.handleKey(ctx, data)
+	})
 }
 
 // handleKey handles a keystroke the terminal-input listeners passed on.
@@ -374,17 +536,17 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 		return nil
 	}
 
-	// Generic overlays and mouse-focused nested controls use the renderer's
-	// focus target. The application editor keeps the driver-owned action routing
-	// below; every other focused component receives input directly, as TuiBase
-	// does upstream.
+	// Refresh overlay visibility and eligible focus restoration before choosing the input target. An active replacement keeps input until it changes focus. The application editor uses the driver-owned action routing below; other focused components receive input directly.
 	if m.tuiInst != nil {
-		focused := m.tuiInst.FocusedComponent()
+		focused := m.tuiInst.ActiveOverlay()
+		if focused == nil {
+			focused = m.tuiInst.FocusedComponent()
+		}
 		if focused != nil && focused != m.editor {
 			if tui.ShouldDeliverKey(focused, data) {
 				if input, ok := focused.(tui.InputHandler); ok {
 					input.HandleInput(data)
-					m.tuiInst.RequestRender()
+					m.tuiInst.RequestImmediateRender()
 				}
 			}
 			return nil
@@ -402,7 +564,23 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 		return nil
 	}
 
-	action := classifyKeyWithBindings(data, m.keybindings)
+	// An extension's editor component (ctx.ui.setEditorComponent) is Pi's
+	// focused editor: every key goes to its handleInput, and Pi's CustomEditor
+	// there runs the app actions through the handlers the host bound to it
+	// (remote_editor.go).
+	if m.editor.IsRemote() {
+		m.editor.HandleInput(data)
+		return nil
+	}
+
+	return m.handleEditorAction(ctx, classifyKeyWithBindings(data, m.keybindings), data)
+}
+
+// handleEditorAction runs what Pi's editor handlers do for one classified
+// key: the app actions bound on the default editor (onEscape, onCtrlD,
+// onAction, onPasteImage), submit, and editing. data is the key, delivered to
+// the editor for the editing actions.
+func (m *InteractiveMode) handleEditorAction(ctx context.Context, action keyAction, data string) error {
 	// Upstream CustomEditor gates app.exit on getText().length === 0. Spaces
 	// and newlines are editor content: Ctrl+D must fall through to the editor's
 	// delete-char-forward binding rather than exit.
@@ -428,14 +606,19 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 			m.tuiInst.Render()
 			return nil
 		case actionSubmit:
-			submit := m.editor.AutocompleteAccept()
-			if submit {
-				text := strings.TrimSpace(m.editor.Text())
-				if text != "" {
-					m.editor.Clear()
-					m.handleSubmit(ctx, text)
+			m.editor.AcceptAutocomplete(func(submit bool) {
+				if submit {
+					text := widthx.JSTrim(m.editor.Text())
+					if text != "" {
+						m.editor.Clear()
+						if m.editor.OnSubmit != nil {
+							m.editor.OnSubmit(text)
+						} else {
+							m.handleSubmit(ctx, text)
+						}
+					}
 				}
-			}
+			})
 			// An accepted argument completion stays in the editor
 			// (upstream editor.ts tui.select.confirm returns after
 			// applying a completion whose prefix does not start with "/").
@@ -526,7 +709,7 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 		m.tuiInst.Render()
 
 	case outcomeSuspend:
-		m.handleSuspend()
+		return m.handleSuspend()
 
 	case outcomeCycleThinking:
 		m.cycleThinkingLevel()
@@ -579,8 +762,13 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 		return nil
 
 	case outcomeSubmit:
-		text := strings.TrimSpace(m.editor.GetExpandedText())
+		text := widthx.JSTrim(m.editor.GetExpandedText())
 		if text == "" {
+			return nil
+		}
+		if m.editor.OnSubmit != nil {
+			m.editor.Clear()
+			m.editor.OnSubmit(text)
 			return nil
 		}
 		m.editor.AddToHistory(text)
@@ -599,9 +787,15 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 		// as follow-up (delivered after the agent has no more tool calls
 		// or steering messages).
 		// upstream: interactive-mode.ts:3258-3270
-		text := m.editor.GetExpandedText()
+		text := widthx.JSTrim(m.editor.GetExpandedText())
 		if text == "" {
 			break
+		}
+		if !m.isCompacting && !m.runStreaming() && m.editor.OnSubmit != nil {
+			m.editor.Clear()
+			m.editor.OnSubmit(text)
+			m.tuiInst.Render()
+			return nil
 		}
 		m.editor.AddToHistory(text)
 		m.editor.SetText("")
@@ -611,7 +805,7 @@ func (m *InteractiveMode) handleKey(ctx context.Context, data string) error {
 		// active, prompt(text, { streamingBehavior: "followUp" }) runs an
 		// extension command or queues the text as a follow-up; otherwise
 		// Alt+Enter acts like Enter.
-		trimmed := strings.TrimSpace(text)
+		trimmed := widthx.JSTrim(text)
 		switch {
 		case m.isExtensionCommand(trimmed) && (m.isCompacting || m.runStreaming()):
 			m.dispatchSlash(ctx, trimmed)
@@ -699,7 +893,11 @@ func (m *InteractiveMode) expandSkillCommand(prompt string) (string, bool) {
 	if len(m.opts.Skills) == 0 {
 		return "", false
 	}
-	return ExpandSkillCommand(prompt, m.opts.Skills)
+	expanded, ok, err := ExpandSkillCommand(prompt, m.opts.Skills)
+	if err != nil && m.newRunner != nil {
+		m.newRunner.EmitError(err)
+	}
+	return expanded, ok
 }
 
 // syncExtensionSlashCommands makes the slash registry's extension commands
@@ -769,7 +967,7 @@ func (m *InteractiveMode) restoreQueuedMessagesToEditor(abort bool) int {
 		}
 		m.compactionQueue = nil
 		combined := strings.Join(texts, "\n\n")
-		if current := m.editor.Text(); strings.TrimSpace(current) != "" {
+		if current := m.editor.Text(); widthx.JSTrim(current) != "" {
 			combined += "\n\n" + current
 		}
 		m.editor.SetText(combined)
@@ -781,9 +979,12 @@ func (m *InteractiveMode) restoreQueuedMessagesToEditor(abort bool) int {
 	return len(texts)
 }
 
-// abortRun cancels the active run, its retry delay and compaction included,
-// and arms a fresh abort context for the next run.
+// abortRun requests the Session's owned abort without cancelling its caller lifetime. Raw-agent modes cancel and renew their local run context.
 func (m *InteractiveMode) abortRun(ctx context.Context) {
+	if session, ok := m.opts.SessionHandle.(interface{ RequestAbort() }); ok {
+		session.RequestAbort()
+		return
+	}
 	m.abortFn()
 	if ctx == nil {
 		ctx = context.Background()
@@ -801,20 +1002,34 @@ func (m *InteractiveMode) abortRun(ctx context.Context) {
 func (m *InteractiveMode) settleActiveRun() error {
 	m.queueMu.Lock()
 	settled := m.turnSettled
+	session := m.opts.SessionHandle
 	m.queueMu.Unlock()
-	if settled == nil {
+	if settled != nil || session != nil && !session.IsIdle() {
+		m.abortRun(m.runCtx)
+	}
+	if err := m.settleUserBash(); err != nil {
+		return err
+	}
+	if settled == nil && (session == nil || session.IsIdle()) {
 		return nil
 	}
-	m.abortRun(m.runCtx)
-	done := context.Background().Done()
-	if m.runCtx != nil {
-		done = m.runCtx.Done()
+	owner := m.runCtx
+	if owner == nil {
+		owner = context.Background()
 	}
+	ctx, cancel := context.WithCancel(owner)
+	var workers sync.WaitGroup
+	idle := make(chan error, 1)
+	workers.Go(func() { idle <- waitForSessionIdle(ctx, settled, session) })
+	defer func() { cancel(); workers.Wait() }()
 	for {
 		select {
-		case <-settled:
-			return nil
-		case <-done:
+		case err := <-idle:
+			if ctx.Err() != nil {
+				return errors.New("interactive mode shut down before the active run settled")
+			}
+			return err
+		case <-ctx.Done():
 			return errors.New("interactive mode shut down before the active run settled")
 		case ev, ok := <-m.eventCh:
 			if !ok {
@@ -874,12 +1089,3 @@ func (m *InteractiveMode) hasActiveAgentTurn() bool {
 }
 
 // handleSubmit fires before_agent_start, then starts the agent in a goroutine.
-
-// syncEditorFocusWithSearch mirrors upstream setFocus toggling the editor's
-// Focusable flag: while fullscreen transcript search holds focus the editor
-// emits no hardware-cursor marker, so the cursor lands in the search box.
-func (m *InteractiveMode) syncEditorFocusWithSearch() {
-	if m.editor != nil && m.altScreen != nil {
-		m.editor.Focused = !m.altScreen.IsSearchFocused()
-	}
-}

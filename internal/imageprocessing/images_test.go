@@ -72,17 +72,16 @@ func decodeBoundsJPEG(t *testing.T, b []byte) (w, h int) {
 func TestNormalizeToolResultImagesResizesBeforeHistory(t *testing.T) {
 	input := makePNGImage(t, 2200, 1100, color.RGBA{10, 20, 30, 255})
 	result := agent.AgentToolResult{
-		Content: "screenshot",
-		Images: []ai.ImageContent{{
+		Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "screenshot"}, ai.ImageContent{
 			MimeType: "image/png",
 			Data:     base64.StdEncoding.EncodeToString(input),
 		}},
 	}
 	normalized := NormalizeToolResultImages(result, true)
-	if len(normalized.Images) != 1 {
-		t.Fatalf("normalized images = %d", len(normalized.Images))
+	if len(normalized.Images()) != 1 {
+		t.Fatalf("normalized images = %d", len(normalized.Images()))
 	}
-	decoded, err := base64.StdEncoding.DecodeString(normalized.Images[0].Data)
+	decoded, err := base64.StdEncoding.DecodeString(normalized.Images()[0].Data)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,15 +92,15 @@ func TestNormalizeToolResultImagesResizesBeforeHistory(t *testing.T) {
 	if width := image.Bounds().Dx(); width > MaxLongestSide {
 		t.Fatalf("normalized width = %d, want <= %d", width, MaxLongestSide)
 	}
-	if !strings.Contains(normalized.Content, "original 2200x1100, displayed at 2000x1000") {
-		t.Fatalf("normalization hint missing: %q", normalized.Content)
+	if !strings.Contains(normalized.Text(), "original 2200x1100, displayed at 2000x1000") {
+		t.Fatalf("normalization hint missing: %q", normalized.Text())
 	}
-	if strings.Contains(normalized.Content, "converted from") {
-		t.Fatalf("supported PNG resize must not report a format conversion: %q", normalized.Content)
+	if strings.Contains(normalized.Text(), "converted from") {
+		t.Fatalf("supported PNG resize must not report a format conversion: %q", normalized.Text())
 	}
 
 	unchanged := NormalizeToolResultImages(result, false)
-	if unchanged.Images[0].Data != result.Images[0].Data || unchanged.Content != result.Content {
+	if unchanged.Images()[0].Data != result.Images()[0].Data || unchanged.Text() != result.Text() {
 		t.Fatal("disabled normalization changed the tool result")
 	}
 }
@@ -114,21 +113,17 @@ func TestNormalizeToolResultImagesResizesBeforeHistory(t *testing.T) {
 func TestNormalizeToolResultImagesConvertsWhenAutoResizeDisabled(t *testing.T) {
 	bmpBytes := makeBMPImage(t, 6, 6, color.RGBA{200, 50, 50, 255})
 	result := agent.AgentToolResult{
-		Content: "shot",
-		Images: []ai.ImageContent{{
-			MimeType: "image/bmp",
-			Data:     base64.StdEncoding.EncodeToString(bmpBytes),
-		}},
+		Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "shot"}, ai.ImageContent{MimeType: "image/bmp", Data: base64.StdEncoding.EncodeToString(bmpBytes)}},
 	}
 	got := NormalizeToolResultImages(result, false)
-	if got.Images[0].MimeType != "image/png" {
-		t.Fatalf("autoResize=false: output MIME = %q, want image/png", got.Images[0].MimeType)
+	if got.Images()[0].MimeType != "image/png" {
+		t.Fatalf("autoResize=false: output MIME = %q, want image/png", got.Images()[0].MimeType)
 	}
-	if got.Images[0].Data == result.Images[0].Data {
+	if got.Images()[0].Data == result.Images()[0].Data {
 		t.Fatal("autoResize=false: BMP bytes were not converted")
 	}
-	if !strings.Contains(got.Content, "[Image converted from image/bmp to image/png.]") {
-		t.Fatalf("autoResize=false: conversion hint missing from %q", got.Content)
+	if !strings.Contains(got.Text(), "[Image converted from image/bmp to image/png.]") {
+		t.Fatalf("autoResize=false: conversion hint missing from %q", got.Text())
 	}
 }
 
@@ -141,18 +136,14 @@ func TestNormalizeToolResultImagesConvertsWhenAutoResizeDisabled(t *testing.T) {
 func TestNormalizeToolResultImagesEmitsConversionHint(t *testing.T) {
 	bmpBytes := makeBMPImage(t, 6, 6, color.RGBA{200, 50, 50, 255})
 	result := agent.AgentToolResult{
-		Content: "shot",
-		Images: []ai.ImageContent{{
-			MimeType: "image/bmp",
-			Data:     base64.StdEncoding.EncodeToString(bmpBytes),
-		}},
+		Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "shot"}, ai.ImageContent{MimeType: "image/bmp", Data: base64.StdEncoding.EncodeToString(bmpBytes)}},
 	}
 	got := NormalizeToolResultImages(result, true)
-	if got.Images[0].MimeType != "image/png" {
-		t.Fatalf("output MIME = %q, want image/png", got.Images[0].MimeType)
+	if got.Images()[0].MimeType != "image/png" {
+		t.Fatalf("output MIME = %q, want image/png", got.Images()[0].MimeType)
 	}
-	if !strings.Contains(got.Content, "[Image converted from image/bmp to image/png.]") {
-		t.Fatalf("conversion hint missing from %q", got.Content)
+	if !strings.Contains(got.Text(), "[Image converted from image/bmp to image/png.]") {
+		t.Fatalf("conversion hint missing from %q", got.Text())
 	}
 }
 
@@ -671,16 +662,16 @@ func makeBMPImage(t *testing.T, w, h int, c color.RGBA) []byte {
 func TestNormalizeToolResultImagesUsesProfileAndRetainsFailures(t *testing.T) {
 	data := makePNGImage(t, 80, 40, color.RGBA{255, 0, 0, 255})
 	original := ai.ImageContent{Data: base64.StdEncoding.EncodeToString(data), MimeType: "image/png"}
-	result := agent.AgentToolResult{Content: "read", Images: []ai.ImageContent{original}}
+	result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "read"}, original}}
 	got := NormalizeToolResultImagesWithOptions(result, true, &ai.ModelImageResizeOptions{MaxWidth: 20})
-	if len(got.Images) != 1 || !strings.Contains(got.Content, "displayed at 20x10") {
+	if len(got.Images()) != 1 || !strings.Contains(got.Text(), "displayed at 20x10") {
 		t.Fatalf("normalized=%#v", got)
 	}
 	failed := NormalizeToolResultImagesWithOptions(result, true, &ai.ModelImageResizeOptions{MaxBytes: 1})
-	if len(failed.Images) != 1 || failed.Images[0] != original || failed.Content != "read" {
+	if len(failed.Images()) != 1 || failed.Images()[0] != original || failed.Text() != "read" {
 		t.Fatalf("failed processing did not retain original=%#v", failed)
 	}
-	if result.Images[0] != original || result.Content != "read" {
+	if result.Images()[0] != original || result.Text() != "read" {
 		t.Fatal("normalizer mutated caller")
 	}
 }
@@ -688,11 +679,11 @@ func TestNormalizeToolResultImagesUsesProfileAndRetainsFailures(t *testing.T) {
 func TestToolImageInputLimitsAcceptNodeBase64(t *testing.T) {
 	data := base64.StdEncoding.EncodeToString(makePNGImage(t, 40, 20, color.RGBA{255, 0, 0, 255}))
 	wrapped := " \t" + data[:10] + "#" + data[10:]
-	result := NormalizeToolResultImagesWithOptions(agent.AgentToolResult{Content: "tool", Images: []ai.ImageContent{{Data: wrapped, MimeType: "image/png"}}}, true, &ai.ModelImageResizeOptions{MaxWidth: 10})
-	if len(result.Images) != 1 || !strings.Contains(result.Content, "displayed at 10x5") {
+	result := NormalizeToolResultImagesWithOptions(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "tool"}, ai.ImageContent{Data: wrapped, MimeType: "image/png"}}}, true, &ai.ModelImageResizeOptions{MaxWidth: 10})
+	if len(result.Images()) != 1 || !strings.Contains(result.Text(), "displayed at 10x5") {
 		t.Fatalf("Node-compatible tool attachment not resized: %#v", result)
 	}
-	decoded, err := base64.StdEncoding.DecodeString(result.Images[0].Data)
+	decoded, err := base64.StdEncoding.DecodeString(result.Images()[0].Data)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -1,0 +1,24 @@
+# Upstream evidence: Pi 0.87.1 runner.ts:522-525,811-826,889-897 and the actual published runner probe preserve live UI/mode getters in event and command contexts.
+# Records retain the complete state matrix, object identity checks, the default print mode, supplied no-op wrapping, and stale-context failures. No normalization.
+name = "42-runner-context-modes"
+description = "Captured event and command contexts follow the current UI and mode binding"
+covers = ["packages/coding-agent/src/core/extensions/runner.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/runner-modes"]
+pi_args = ["node", "./test/parity/testdata/runner-modes-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['["default",["print",true,true],["print",true,true]]', '["rpc",["rpc",true,true],["rpc",true,true]]', '["tui:clear",["tui",false,true],["tui",false,true]]', '[["replaced","replaced","replaced"],["replaced","replaced","replaced"]]']
+runs = 3

@@ -1,17 +1,9 @@
 package ai
 
-// Mirrors upstream pi-ai:
-//   - utils/oauth/github-copilot.js     (device flow, refresh, model enablement)
-//   - providers/github-copilot-headers.js (X-Initiator, vision flag, intent)
-//   - models.generated.js                (static User-Agent / Editor-Version headers)
-//
-// The Copilot provider speaks the OpenAI Completions API on top of the
-// per-user proxy endpoint advertised in the access token's `proxy-ep` claim.
-// We implement it as a thin wrapper around openAIProvider, plumbing in:
-//   - GetAPIKey:    auto-refresh when the cached access token is near expiry
-//   - GetBaseURL:   parse proxy-ep from the (post-refresh) access token
-//   - DynamicHeaders: X-Initiator (user/agent), Openai-Intent, optional
-//     Copilot-Vision-Request when any image content is present
+// Ports packages/ai/src/auth/oauth/github-copilot.ts.
+// Ports packages/ai/src/api/github-copilot-headers.ts.
+
+// The Copilot provider routes requests through the per-account proxy endpoint advertised by the access token.
 
 import (
 	"bytes"
@@ -24,12 +16,15 @@ import (
 	"math"
 	"net/http"
 	"net/url"
-	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 	"unicode"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // CopilotClientID is the OAuth client ID used by the upstream pi-ai package
@@ -71,30 +66,33 @@ type CopilotLoginCallbacks struct {
 	// OnAuth is invoked once with the verification URL and user code that
 	// the user must visit and enter.
 	OnAuth func(verificationURL, userCode string)
+	// OnDeviceCode receives the complete device notification and takes precedence over OnAuth.
+	OnDeviceCode func(OAuthDeviceCodeInfo)
 	// OnProgress is invoked with status messages (e.g. "Enabling models...").
 	OnProgress func(msg string)
 }
 
 type deviceCodeResponse struct {
-	DeviceCode      string `json:"device_code"`
-	UserCode        string `json:"user_code"`
-	VerificationURI string `json:"verification_uri"`
-	Interval        int    `json:"interval"`
-	ExpiresIn       int    `json:"expires_in"`
+	DeviceCode      string   `json:"device_code"`
+	UserCode        string   `json:"user_code"`
+	VerificationURI string   `json:"verification_uri"`
+	Interval        *float64 `json:"interval"`
+	ExpiresIn       float64  `json:"expires_in"`
 }
 
 type accessTokenResponse struct {
-	AccessToken           string `json:"access_token,omitempty"`
-	RefreshToken          string `json:"refresh_token,omitempty"`
-	RefreshTokenExpiresIn int    `json:"refresh_token_expires_in,omitempty"` // seconds
-	Error                 string `json:"error,omitempty"`
-	ErrorDescription      string `json:"error_description,omitempty"`
-	Interval              int    `json:"interval,omitempty"`
+	AccessToken           *string  `json:"access_token,omitempty"`
+	RefreshToken          string   `json:"refresh_token,omitempty"`
+	RefreshTokenExpiresIn int      `json:"refresh_token_expires_in,omitempty"` // seconds
+	Error                 string   `json:"error,omitempty"`
+	ErrorDescription      string   `json:"error_description,omitempty"`
+	Interval              *float64 `json:"interval,omitempty"`
 }
 
+// copilotTokenResponse keeps the raw fields that Pi validates with typeof checks (github-copilot.ts:335-340).
 type copilotTokenResponse struct {
-	Token     string `json:"token"`
-	ExpiresAt int64  `json:"expires_at"` // seconds since epoch
+	Token     json.RawMessage `json:"token"`
+	ExpiresAt json.RawMessage `json:"expires_at"` // seconds since epoch
 }
 
 // LoginGitHubCopilot runs the OAuth device code flow against github.com (or
@@ -109,7 +107,7 @@ func LoginGitHubCopilot(ctx context.Context, cb CopilotLoginCallbacks) (Credenti
 		if err != nil {
 			return Credential{}, fmt.Errorf("github-copilot: prompt: %w", err)
 		}
-		input = strings.TrimSpace(input)
+		input = trimJSWhitespace(input)
 		if input != "" {
 			d, ok := normalizeDomain(input)
 			if !ok {
@@ -124,7 +122,13 @@ func LoginGitHubCopilot(ctx context.Context, cb CopilotLoginCallbacks) (Credenti
 	if err != nil {
 		return Credential{}, fmt.Errorf("github-copilot: device flow: %w", err)
 	}
-	if cb.OnAuth != nil {
+	if cb.OnDeviceCode != nil {
+		interval := float64(0)
+		if device.Interval != nil {
+			interval = *device.Interval
+		}
+		cb.OnDeviceCode(OAuthDeviceCodeInfo{UserCode: device.UserCode, VerificationURI: device.VerificationURI, IntervalSeconds: interval, ExpiresInSeconds: device.ExpiresIn})
+	} else if cb.OnAuth != nil {
 		cb.OnAuth(device.VerificationURI, device.UserCode)
 	}
 
@@ -133,7 +137,7 @@ func LoginGitHubCopilot(ctx context.Context, cb CopilotLoginCallbacks) (Credenti
 		return Credential{}, fmt.Errorf("github-copilot: poll: %w", err)
 	}
 
-	cred, err := refreshCopilotToken(ctx, githubAccessToken, enterprise)
+	cred, err := refreshCopilotAccessToken(ctx, githubAccessToken, enterprise)
 	if err != nil {
 		return Credential{}, fmt.Errorf("github-copilot: exchange: %w", err)
 	}
@@ -150,22 +154,34 @@ func LoginGitHubCopilot(ctx context.Context, cb CopilotLoginCallbacks) (Credenti
 	// before they can be used; enabled/disabled/absent models are left
 	// alone. Mirrors upstream loginGitHubCopilot (github-copilot.ts:471-480),
 	// which prints "Enabling models..." only when that list is non-empty.
+	availableModelIDs := make([]string, 0, len(catalog.AvailableModelIDs)+len(catalog.PolicyModelIDs))
+	for _, id := range catalog.AvailableModelIDs {
+		if !slices.Contains(availableModelIDs, id) {
+			availableModelIDs = append(availableModelIDs, id)
+		}
+	}
 	if len(catalog.PolicyModelIDs) > 0 {
 		if cb.OnProgress != nil {
 			cb.OnProgress("Enabling models...")
 		}
 		// Best-effort: enableGitHubCopilotModels swallows ordinary POST
 		// failures per model and only propagates a caller cancellation.
-		if _, err := enableGitHubCopilotModels(ctx, cred.Access, catalog.PolicyModelIDs, enterprise); err != nil {
+		enabled, err := enableGitHubCopilotModels(ctx, cred.Access, catalog.PolicyModelIDs, enterprise)
+		if err != nil {
 			return Credential{}, fmt.Errorf("github-copilot: enable models: %w", err)
 		}
+		for _, id := range enabled {
+			if !slices.Contains(availableModelIDs, id) {
+				availableModelIDs = append(availableModelIDs, id)
+			}
+		}
 	}
-
-	return cred, nil
+	cred.AvailableModelIDs, err = json.Marshal(availableModelIDs)
+	return cred, err
 }
 
 func normalizeDomain(input string) (string, bool) {
-	t := strings.TrimSpace(input)
+	t := trimJSWhitespace(input)
 	if t == "" {
 		return "", false
 	}
@@ -176,7 +192,7 @@ func normalizeDomain(input string) (string, bool) {
 	if err != nil || u.Host == "" {
 		return "", false
 	}
-	return u.Host, true
+	return strings.ToLower(u.Hostname()), true
 }
 
 func startDeviceFlow(ctx context.Context, domain string) (*deviceCodeResponse, error) {
@@ -198,92 +214,101 @@ func startDeviceFlow(ctx context.Context, domain string) (*deviceCodeResponse, e
 	if err != nil {
 		return nil, err
 	}
-	var dc deviceCodeResponse
-	if err := json.Unmarshal(body, &dc); err != nil {
+	var raw any
+	if err := json.Unmarshal(body, &raw); err != nil {
 		return nil, fmt.Errorf("decode device code: %w", err)
 	}
-	if dc.DeviceCode == "" || dc.UserCode == "" {
-		return nil, errors.New("invalid device code response")
+	if raw == nil {
+		return nil, errors.New("Invalid device code response")
 	}
-	return &dc, nil
+	fields, object := raw.(map[string]any)
+	if !object {
+		if _, array := raw.([]any); !array {
+			return nil, errors.New("Invalid device code response")
+		}
+	}
+	deviceCode, deviceOK := fields["device_code"].(string)
+	userCode, userOK := fields["user_code"].(string)
+	verificationURI, uriOK := fields["verification_uri"].(string)
+	expiresIn, expiresOK := fields["expires_in"].(float64)
+	interval, intervalOK := fields["interval"].(float64)
+	_, hasInterval := fields["interval"]
+	if !deviceOK || !userOK || !uriOK || !expiresOK || hasInterval && !intervalOK {
+		return nil, errors.New("Invalid device code response fields")
+	}
+	verificationURI, err = normalizeCopilotVerificationURI(verificationURI)
+	if err != nil {
+		return nil, err
+	}
+	dc := &deviceCodeResponse{DeviceCode: deviceCode, UserCode: userCode, VerificationURI: verificationURI, ExpiresIn: expiresIn}
+	if hasInterval {
+		dc.Interval = &interval
+	}
+	return dc, nil
 }
 
-// pollForGitHubAccessToken polls the device flow until the user authorizes.
-// Returns the GitHub user-to-server access token (ghu_).
-// Mirrors upstream pollForGitHubAccessToken (github-copilot.ts:170-235).
+// pollForGitHubAccessToken uses the shared RFC 8628 loop, including server intervals and the device deadline.
 func pollForGitHubAccessToken(ctx context.Context, domain string, dc *deviceCodeResponse) (string, error) {
-	deadline := time.Now().Add(time.Duration(dc.ExpiresIn) * time.Second)
-	intervalMs := max(dc.Interval*1000, 1000)
-	multiplier := 1.2
-	const slowDownMultiplier = 1.4
-
-	tokenURL := fmt.Sprintf("https://%s/login/oauth/access_token", domain)
-
-	for time.Now().Before(deadline) {
-		wait := time.Duration(float64(intervalMs)*multiplier) * time.Millisecond
-		if remaining := time.Until(deadline); wait > remaining {
-			wait = remaining
-		}
-		select {
-		case <-ctx.Done():
-			return "", ctx.Err()
-		case <-time.After(wait):
-		}
-
-		form := url.Values{
-			"client_id":   {copilotClientID},
-			"device_code": {dc.DeviceCode},
-			"grant_type":  {"urn:ietf:params:oauth:grant-type:device_code"},
-		}
-		req, err := http.NewRequestWithContext(ctx, http.MethodPost, tokenURL,
-			strings.NewReader(form.Encode()))
-		if err != nil {
-			return "", err
-		}
-		req.Header.Set("Accept", "application/json")
-		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-		req.Header.Set("User-Agent", copilotStaticHeaders["User-Agent"])
-
-		body, err := doJSON(req)
-		if err != nil {
-			return "", err
-		}
-		var resp accessTokenResponse
-		if err := json.Unmarshal(body, &resp); err != nil {
-			return "", fmt.Errorf("decode access token: %w", err)
-		}
-		if resp.AccessToken != "" {
-			return resp.AccessToken, nil
-		}
-		switch resp.Error {
-		case "authorization_pending":
-			continue
-		case "slow_down":
-			if resp.Interval > 0 {
-				intervalMs = resp.Interval * 1000
-			} else {
-				intervalMs += 5000
+	return PollOAuthDeviceCodeFlow(ctx, DeviceCodePollOptions[string]{
+		IntervalSeconds: dc.Interval, ExpiresInSeconds: &dc.ExpiresIn, WaitBeforeFirstPoll: true,
+		Poll: func() (DeviceCodePollResult[string], error) {
+			form := url.Values{
+				"client_id": {copilotClientID}, "device_code": {dc.DeviceCode},
+				"grant_type": {"urn:ietf:params:oauth:grant-type:device_code"},
 			}
-			multiplier = slowDownMultiplier
-			continue
-		case "":
-			// no token, no error: just retry
-			continue
-		default:
-			suffix := ""
-			if resp.ErrorDescription != "" {
-				suffix = ": " + resp.ErrorDescription
+			req, err := http.NewRequestWithContext(ctx, http.MethodPost, fmt.Sprintf("https://%s/login/oauth/access_token", domain), strings.NewReader(form.Encode()))
+			if err != nil {
+				return DeviceCodePollResult[string]{}, err
 			}
-			return "", fmt.Errorf("device flow failed: %s%s", resp.Error, suffix)
-		}
-	}
-	return "", errors.New("device flow timed out")
+			req.Header.Set("Accept", "application/json")
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			req.Header.Set("User-Agent", copilotStaticHeaders["User-Agent"])
+			body, err := doJSON(req)
+			if err != nil {
+				return DeviceCodePollResult[string]{}, err
+			}
+			var response accessTokenResponse
+			if err := json.Unmarshal(body, &response); err != nil {
+				return DeviceCodePollResult[string]{}, fmt.Errorf("decode access token: %w", err)
+			}
+			if response.AccessToken != nil {
+				return DeviceCodePollResult[string]{Status: DevicePollComplete, Value: *response.AccessToken}, nil
+			}
+			switch response.Error {
+			case "authorization_pending":
+				return DeviceCodePollResult[string]{Status: DevicePollPending}, nil
+			case "slow_down":
+				return DeviceCodePollResult[string]{Status: DevicePollSlowDown, IntervalSeconds: response.Interval}, nil
+			case "":
+				return DeviceCodePollResult[string]{Status: DevicePollFailed, Message: "Invalid device token response"}, nil
+			default:
+				suffix := ""
+				if response.ErrorDescription != "" {
+					suffix = ": " + response.ErrorDescription
+				}
+				return DeviceCodePollResult[string]{Status: DevicePollFailed, Message: "Device flow failed: " + response.Error + suffix}, nil
+			}
+		},
+	})
 }
 
-// refreshCopilotToken exchanges a GitHub access token (the one from device
-// flow, stored as `refresh` in auth.json) for a short-lived Copilot API
-// token (stored as `access`).
+// refreshCopilotToken refreshes the token and the account's picker catalog without retrying catalog throttling.
 func refreshCopilotToken(ctx context.Context, githubToken, enterpriseDomain string) (Credential, error) {
+	domain, _ := normalizeDomain(enterpriseDomain)
+	credential, err := refreshCopilotAccessToken(ctx, githubToken, domain)
+	if err != nil {
+		return Credential{}, err
+	}
+	catalog, err := fetchGitHubCopilotModels(ctx, credential.Access, domain, copilotRetryPolicy{})
+	if err != nil {
+		return Credential{}, err
+	}
+	credential.AvailableModelIDs, err = json.Marshal(catalog.AvailableModelIDs)
+	return credential, err
+}
+
+// refreshCopilotAccessToken exchanges a GitHub access token for a short-lived Copilot API token.
+func refreshCopilotAccessToken(ctx context.Context, githubToken, enterpriseDomain string) (Credential, error) {
 	domain := "github.com"
 	if enterpriseDomain != "" {
 		domain = enterpriseDomain
@@ -303,21 +328,35 @@ func refreshCopilotToken(ctx context.Context, githubToken, enterpriseDomain stri
 	if err != nil {
 		return Credential{}, err
 	}
-	var resp copilotTokenResponse
-	if err := json.Unmarshal(body, &resp); err != nil {
+	var raw json.RawMessage
+	if err := json.Unmarshal(body, &raw); err != nil {
 		return Credential{}, fmt.Errorf("decode copilot token: %w", err)
 	}
-	if resp.Token == "" || resp.ExpiresAt == 0 {
-		return Credential{}, errors.New("invalid copilot token response")
+	// Pi rejects a falsy or non-object body before it reads the fields; an array is an object without them.
+	var resp copilotTokenResponse
+	switch raw[0] {
+	case '{':
+		if err := json.Unmarshal(raw, &resp); err != nil {
+			return Credential{}, fmt.Errorf("decode copilot token: %w", err)
+		}
+	case '[':
+	default:
+		return Credential{}, errors.New("Invalid Copilot token response")
 	}
+	var token string
+	if !bytes.HasPrefix(bytes.TrimSpace(resp.Token), []byte(`"`)) || json.Unmarshal(resp.Token, &token) != nil || !jsonNumberToken(resp.ExpiresAt) {
+		return Credential{}, errors.New("Invalid Copilot token response fields")
+	}
+	expiresAt := jsnumber.FromJSON(resp.ExpiresAt)
 	// Mirror upstream: subtract 5min from expires for safety margin, store as ms.
-	return Credential{
+	credential := Credential{
 		Type:             CredentialOAuth,
 		Refresh:          githubToken,
-		Access:           resp.Token,
-		Expires:          resp.ExpiresAt*1000 - 5*60*1000,
+		Access:           token,
 		EnterpriseDomain: enterpriseDomain,
-	}, nil
+	}
+	credential.SetExpiresMillis(expiresAt*1000 - 5*60*1000)
+	return credential, nil
 }
 
 // ─── Model catalog and policy enablement ───────────────────────────────────────
@@ -538,7 +577,7 @@ func copilotRetryDelay(retryAfter string, retry int) (float64, bool) {
 	return math.Max(0, delayMs), true
 }
 
-var copilotFloatPrefix = regexp.MustCompile(`^[+-]?(?:Infinity|(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?)`)
+var copilotFloatPrefix = lazyregexp.New(`^[+-]?(?:Infinity|(?:[0-9]+(?:\.[0-9]*)?|\.[0-9]+)(?:[eE][+-]?[0-9]+)?)`)
 
 func copilotParseFloat(value string) float64 {
 	value = strings.TrimLeftFunc(value, func(r rune) bool { return r == '\ufeff' || r != '\u0085' && unicode.IsSpace(r) })
@@ -662,8 +701,7 @@ type CopilotProviderConfig struct {
 	// Required for the Responses API to include reasoning.effort/summary and
 	// stream thinking deltas.
 	Reasoning bool
-	// EnvToken is the env-resolved API key (COPILOT_GITHUB_TOKEN, then
-	// GH_TOKEN/GITHUB_TOKEN). When auth.json has no github-copilot OAuth
+	// EnvToken is the env-resolved API key (COPILOT_GITHUB_TOKEN). When auth.json has no github-copilot OAuth
 	// credential, it is used directly as the bearer, mirroring upstream
 	// auth-storage.getApiKey step 4 (the env fallback returns getEnvApiKey
 	// verbatim). The base URL is derived from the token's proxy-ep claim.
@@ -672,6 +710,18 @@ type CopilotProviderConfig struct {
 	// reports one, it is the bearer ahead of the stored credential and
 	// EnvToken, as upstream's RuntimeCredentials overlay masks auth.json.
 	RuntimeToken func() (string, bool)
+	// BaseURL is the request model's base URL. It applies when a resolved key
+	// (RuntimeToken) owns the request: upstream ModelRuntime sends the model
+	// with resolution.auth.baseUrl when the credential's toAuth derives one
+	// (an OAuth token's proxy-ep endpoint), and otherwise the catalog or
+	// models.json baseUrl. Empty falls back to the individual endpoint.
+	BaseURL string
+	// ModelMetadata is the selected model (catalog, refreshed catalog or
+	// models.json), carrying its compat and thinking metadata. Every API leaf
+	// reads model.compat as upstream anthropic-messages, openai-completions and
+	// openai-responses do. Nil resolves the generated github-copilot catalog
+	// entry by id.
+	ModelMetadata *Model
 }
 
 // NewCopilotProvider builds a Provider that streams via the Copilot proxy.
@@ -684,7 +734,21 @@ func NewCopilotProvider(cfg CopilotProviderConfig) (Provider, error) {
 	if cfg.Model == "" {
 		return nil, errors.New("github-copilot: missing model")
 	}
-	mgr := &copilotTokenManager{auth: cfg.Auth, envToken: cfg.EnvToken, runtimeToken: cfg.RuntimeToken}
+	mgr := &copilotTokenManager{auth: cfg.Auth, envToken: cfg.EnvToken, runtimeToken: cfg.RuntimeToken, baseURL: cfg.BaseURL}
+	// upstream: packages/ai/src/api/openai-completions.ts:getCompat
+	// Each leaf reads the selected model's compat (github-copilot.json carries
+	// forceAdaptiveThinking, supportsEagerToolInputStreaming, supportsStore,
+	// supportsDeveloperRole, supportsReasoningEffort, supportsStrictMode, ...).
+	metadata := cfg.ModelMetadata
+	if metadata == nil {
+		if generated, ok := LookupModelExact("github-copilot/" + cfg.Model); ok {
+			metadata = generated.ToModel()
+		}
+	}
+	var compat *OpenAICompat
+	if metadata != nil {
+		compat = metadata.ProviderMeta.Compat
+	}
 
 	dynamicHeaders := func(transcript TranscriptContext, _ StreamOptions) map[string]string {
 		messages := transcript.Messages()
@@ -703,11 +767,8 @@ func NewCopilotProvider(cfg CopilotProviderConfig) (Provider, error) {
 	// Anthropic provider has a github-copilot branch that uses Bearer auth
 	// instead of x-api-key, plus Copilot dynamic headers.
 	if cfg.API == APIAnthropicMessages {
-		// Copilot's Anthropic proxy does not support all native Anthropic
-		// API features (e.g. eager_input_streaming on tool definitions).
-		// Disable features that the proxy rejects.
-		eagerStreaming := false
 		inner := NewAnthropicProvider(AnthropicConfig{
+			ModelMetadata:  metadata,
 			Model:          cfg.Model,
 			ProviderID:     "github-copilot",
 			ExtraHeaders:   copilotStaticHeaders,
@@ -715,9 +776,7 @@ func NewCopilotProvider(cfg CopilotProviderConfig) (Provider, error) {
 			GetBaseURL:     mgr.getBaseURL,
 			DynamicHeaders: dynamicHeaders,
 			UseBearerAuth:  true,
-			Compat: &AnthropicMessagesCompat{
-				SupportsEagerToolInputStreaming: &eagerStreaming,
-			},
+			Compat:         compat,
 		})
 		return inner, nil
 	}
@@ -734,8 +793,10 @@ func NewCopilotProvider(cfg CopilotProviderConfig) (Provider, error) {
 			}
 		}
 		inner := NewOpenAIResponsesProvider(OpenAIResponsesConfig{
+			ModelMetadata:  metadata,
 			Model:          cfg.Model,
 			ProviderID:     "github-copilot",
+			Compat:         compat,
 			ExtraHeaders:   copilotStaticHeaders,
 			IsReasoning:    isReasoning,
 			GetAPIKey:      mgr.getAccessToken,
@@ -747,8 +808,10 @@ func NewCopilotProvider(cfg CopilotProviderConfig) (Provider, error) {
 
 	// Default: Chat Completions API.
 	inner := NewOpenAIProvider(OpenAIConfig{
+		ModelMetadata:  metadata,
 		Model:          cfg.Model,
 		ProviderID:     "github-copilot",
+		Compat:         compat,
 		ExtraHeaders:   copilotStaticHeaders,
 		GetAPIKey:      mgr.getAccessToken,
 		GetBaseURL:     mgr.getBaseURL,
@@ -762,6 +825,7 @@ type copilotTokenManager struct {
 	auth         *AuthStorage
 	envToken     string
 	runtimeToken func() (string, bool)
+	baseURL      string
 	mu           sync.Mutex
 }
 
@@ -807,7 +871,7 @@ func (m *copilotTokenManager) getAccessToken(ctx context.Context) (string, error
 	if err != nil {
 		// No usable stored OAuth credential. Mirror upstream
 		// auth-storage.getApiKey priority: fall back to the env API key
-		// (COPILOT_GITHUB_TOKEN/GH_TOKEN/GITHUB_TOKEN) and use it directly as
+		// (COPILOT_GITHUB_TOKEN) and use it directly as
 		// the bearer. Used as-is, not refreshed, matching upstream which
 		// returns getEnvApiKey() verbatim from the env fallback.
 		if m.envToken != "" {
@@ -816,7 +880,7 @@ func (m *copilotTokenManager) getAccessToken(ctx context.Context) (string, error
 		return "", err
 	}
 	now := time.Now().UnixMilli()
-	if cred.Access != "" && cred.Expires > now+60_000 {
+	if cred.Access != "" && cred.ExpiresMillis() > float64(now+60_000) {
 		return cred.Access, nil
 	}
 	// Copilot API token expired: refresh using the stored GitHub access
@@ -851,9 +915,14 @@ func (m *copilotTokenManager) getBaseURL(ctx context.Context) (string, error) {
 	// Resolve the bearer first (refreshes a stored credential when needed, or
 	// returns the env token). The base URL is derived from that token's
 	// proxy-ep claim, mirroring upstream getGitHubCopilotBaseUrl(token).
-	// A runtime key (--api-key) is API-key auth: upstream keeps the model's
-	// base URL and interprets only an OAuth token's proxy-ep claim.
+	// A resolved key (--api-key, or the ModelRuntime's getAuth result) owns
+	// the request with the request model's base URL: upstream applies
+	// resolution.auth.baseUrl (an OAuth token's proxy-ep endpoint) to the
+	// model and otherwise keeps the model's base URL.
 	if _, runtime := m.runtimeKey(); runtime {
+		if m.baseURL != "" {
+			return m.baseURL, nil
+		}
 		return getCopilotBaseURL("", ""), nil
 	}
 	tok, err := m.getAccessToken(ctx)

@@ -18,13 +18,13 @@
 //     declaration order. Section dividers mirror upstream comments.
 //   - Every field on every event struct carries a json:"camelCaseName" tag
 //     matching upstream's TS field name. The parity gates in
-//     tests/upstream-parity/ enforce this on every CI run.
+//     test/upstream-parity/ enforce this on every CI run.
 //   - Field names use idiomatic Go casing with terminal initialism uplift
 //     (Id→ID, Url→URL, Api→API, Json→JSON). For example, upstream
 //     `toolCallId` becomes Go `ToolCallID`. The parity reflection check
 //     uses [parity.CamelToGoField] which knows the closed initialism set;
 //     extending it requires a coordinated update to that helper plus a
-//     DIVERGENCES.md U1 sync-ritual entry.
+//     docs/parity/DIVERGENCES.md U1 sync-ritual entry.
 //   - Observable differences use a numbered source marker and ledger record.
 //
 // # Opaque compatibility types

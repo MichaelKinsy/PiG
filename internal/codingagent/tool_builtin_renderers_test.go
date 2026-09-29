@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
@@ -28,15 +29,15 @@ func TestBuiltInOverrideWithoutRenderersMatchesBuiltInCard(t *testing.T) {
 		name, args string
 		result     agent.AgentToolResult
 	}{
-		{"bash", `{"command":"echo hi"}`, agent.AgentToolResult{Content: "l1\nl2\nl3\nl4\nl5\nl6\nl7"}},
-		{"bash", `{"command":"false"}`, agent.AgentToolResult{Content: "boom", IsError: true}},
-		{"read", `{"path":"x.go"}`, agent.AgentToolResult{Content: "package x\n\tfunc\n", Details: &tools.ReadDetails{Path: "x.go"}}},
-		{"read", `{"path":"x.go","offset":2,"limit":3}`, agent.AgentToolResult{Content: "nope", IsError: true, Details: &tools.ReadDetails{Path: "x.go"}}},
-		{"write", `{"path":"x.txt","content":"a\nb"}`, agent.AgentToolResult{Content: "ok", Details: &tools.WriteDetails{Path: "x.txt", Content: "a\nb"}}},
-		{"write", `{"path":"x.txt","content":"a\nb"}`, agent.AgentToolResult{Content: "denied", IsError: true, Details: &tools.WriteDetails{Path: "x.txt", Content: "a\nb"}}},
-		{"grep", `{"pattern":"foo"}`, agent.AgentToolResult{Content: "a.go:1: foo\nb.go:2: foo"}},
-		{"find", `{"pattern":"*.go"}`, agent.AgentToolResult{Content: "a.go\nb.go"}},
-		{"ls", `{}`, agent.AgentToolResult{Content: "a\nb/"}},
+		{"bash", `{"command":"echo hi"}`, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "l1\nl2\nl3\nl4\nl5\nl6\nl7"}}}},
+		{"bash", `{"command":"false"}`, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "boom"}}, IsError: true}},
+		{"read", `{"path":"x.go"}`, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "package x\n\tfunc\n"}}, Details: &tools.ReadDetails{Path: "x.go"}}},
+		{"read", `{"path":"x.go","offset":2,"limit":3}`, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "nope"}}, IsError: true, Details: &tools.ReadDetails{Path: "x.go"}}},
+		{"write", `{"path":"x.txt","content":"a\nb"}`, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}, Details: &tools.WriteDetails{Path: "x.txt", Content: "a\nb"}}},
+		{"write", `{"path":"x.txt","content":"a\nb"}`, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "denied"}}, IsError: true, Details: &tools.WriteDetails{Path: "x.txt", Content: "a\nb"}}},
+		{"grep", `{"pattern":"foo"}`, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "a.go:1: foo\nb.go:2: foo"}}}},
+		{"find", `{"pattern":"*.go"}`, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "a.go\nb.go"}}}},
+		{"ls", `{}`, agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "a\nb/"}}}},
 	}
 	for _, expanded := range []bool{false, true} {
 		for _, c := range cases {

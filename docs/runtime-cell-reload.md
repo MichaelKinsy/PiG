@@ -22,18 +22,18 @@ Like upstream reload, every extension factory runs again even when its source an
 
 ## Quarantine and fission
 
-A packed process can fail without identifying the member at fault. Pig records
-that packed composition as quarantined. On a later reload, the planner fissions
-its members into isolated cells:
+Native packed cells retain their quarantine/fission fallback. Node cells preserve cooperating healthy extensions:
 
 ```text
-packed cell: A + B + C
-        crash/quarantine
-next plan:  A | B | C
+attributable failure:  A + culprit + C -> (A + C) | culprit
+first unknown failure: A + B + C + D -> A + B + C + D
+repeated unknown:      A + B + C + D -> (A + B) | (C + D)
+culprit identified:    (A + B) | C | D -> (A + B + D) | C
 ```
 
-A member that still fails can then be isolated without taking healthy members
-down. Quarantine is host runtime state and never changes the author's source.
+The host attributes a crash to the factory being admitted, an extension path in the bounded stderr stack tail, or the last dispatched owner. With no attribution, it restarts the whole group once. Repeated unknown failures split diagnostic groups in halves until the culprit is isolated. Healthy members then rejoin one shared Node bus. Only the culprit's recurrent singleton failure can trip its restart circuit breaker.
+
+Recovery reruns factories, not interrupted tools or callbacks. Current invocations fail on their original dead connections. Subsequent named capability calls can use the recovered instance. Generation checks reject stale crash reports; old connection-owned UI state cannot mutate the replacement. Original owner cancellation and Host shutdown cancel and drain recovery. Every restart, diagnostic split and quarantine is reported through the existing crash-notice callback. Quarantine is host runtime state and never changes authored isolation.
 
 ## Diagnostic logs
 
@@ -108,8 +108,9 @@ remains generic and does not own Piglet schema or product transport.
 
 - reload success swaps all registries together;
 - a failed build/start/register drops only that extension and reports it;
-- packed crash quarantines the exact composition;
-- next plan fissions quarantined members;
+- Node factory admission preserves interleaved native order without splitting the Node bus;
+- a Node crash restarts healthy members together, with one whole-group retry and then bisection when attribution is unavailable;
+- native quarantine retains its explicit fission policy;
 - report getters return copies and are race-safe;
 - oversized results return a small structured error;
 - SDK conformance compares isolated, packed, and fused paths where applicable;
@@ -120,4 +121,4 @@ Primary sources/tests:
 - `coding/extension/host/subprocess/host.go`
 - `reload_cells.go`, `packed_quarantine.go`, `reload_report.go`
 - `coding/extension/host/runtimecell/`
-- `tests/extension-conformance/`
+- `test/extension-conformance/`

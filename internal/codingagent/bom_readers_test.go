@@ -72,7 +72,7 @@ func TestProcessCLIFileArgumentsStripsBOM(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := `<file name="` + path + `">` + "\nhello\n</file>\n"
+	want := `<file name="` + path + `">` + "\nhello\n\n</file>\n"
 	if got.Text != want {
 		t.Fatalf("Text = %q, want %q", got.Text, want)
 	}

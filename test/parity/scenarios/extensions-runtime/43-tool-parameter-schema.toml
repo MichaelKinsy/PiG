@@ -1,0 +1,24 @@
+# Upstream evidence: actual Pi 0.87.1 loadExtensions rejects missing/undefined/null/array/scalar schemas, accepts objects, and lets a factory catch the exception and continue. loader.ts:273-285 validates before insertion.
+# Both drivers load the same source path. Complete error strings and the final schema are compared without normalization; transport failure context is not substituted for the source exception.
+name = "43-tool-parameter-schema"
+description = "Tool registration rejects non-object schemas before mutating declarations"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/tool-schema"]
+pi_args = ["node", "./test/parity/testdata/tool-schema-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['must define an object parameter schema.', '["empty-object","accepted"]', '{"type":"object","properties":{"text":{"type":"string"}}}']
+runs = 3

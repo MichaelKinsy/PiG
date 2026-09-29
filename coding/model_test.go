@@ -31,7 +31,7 @@ func TestBuildModelUsesGeneratedProviderAPI(t *testing.T) {
 		{"openai-codex/gpt-5.3-codex-spark", "*ai.openAIResponsesProvider"},
 		{"anthropic/claude-haiku-4-5", "*ai.anthropicProvider"},
 		{"google/gemini-2.5-flash", "*ai.googleProvider"},
-		{"google-vertex/gemini-2.5-flash", "*ai.googleProvider"},
+		{"google-vertex/gemini-2.5-flash", "*ai.googleVertexProvider"},
 		{"mistral/codestral-latest", "*ai.mistralProvider"},
 		{"amazon-bedrock/amazon.nova-2-lite-v1:0", "*ai.BedrockProvider"},
 		{"xai/grok-4.3", "*ai.openAIResponsesProvider"},

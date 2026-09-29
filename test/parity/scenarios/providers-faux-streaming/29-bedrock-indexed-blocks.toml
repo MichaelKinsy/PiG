@@ -1,0 +1,29 @@
+# Pi 0.87.1 bedrock-converse-stream.ts:602-700,737-764 correlates deltas and stops by contentBlockIndex and checks the block kind.
+# Both real AWS SDKs receive the same event frames, including interleaved indices and missing block stops.
+# Compare complete final content and every emitted event type/content index. Object keys are sorted in both fixture projections; array order and field presence are retained.
+# RP-004 also checks unsigned reasoning's explicit empty thinkingSignature through the actual SDK decoder and serializer.
+name = "29-bedrock-indexed-blocks"
+description = "Bedrock preserves indexed text and encrypted reasoning and does not invent terminal block stops."
+covers = ["packages/ai/src/api/bedrock-converse-stream.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+# Defined-empty bearer tokens select a Node auth scheme, so remove this variable for both probes.
+pig_args = ["-u", "AWS_BEARER_TOKEN_BEDROCK", "go", "run", "./test/parity/testdata/bedrock-indexed-pig"]
+pi_args = ["-u", "AWS_BEARER_TOKEN_BEDROCK", "node", "./test/parity/testdata/bedrock-indexed-pi.mjs"]
+pig = ["AWS_PROFILE=", "AWS_DEFAULT_PROFILE=", "AWS_CONFIG_FILE={{TEMP}}/config", "AWS_SHARED_CREDENTIALS_FILE={{TEMP}}/credentials", "AWS_EC2_METADATA_DISABLED=true"]
+pi = ["AWS_PROFILE=", "AWS_DEFAULT_PROFILE=", "AWS_CONFIG_FILE={{TEMP}}/config", "AWS_SHARED_CREDENTIALS_FILE={{TEMP}}/credentials", "AWS_EC2_METADATA_DISABLED=true"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"unsigned-thinking"', '"thinkingSignature":""', '"text":"A1"', '"text":"B2"', '"thinkingSignature":"Zmlyc3Q="', '"thinkingSignature":"c2Vjb25k"', '"tool-unfinished"']
+runs = 3

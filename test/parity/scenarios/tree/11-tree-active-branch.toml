@@ -1,0 +1,34 @@
+# Upstream evidence: W3 C3: Pi 0.87.1 tree-selector.ts:181-195, 243-286, 436-562, 742-743.
+# The fixture stores the inactive branch first and the active leaf last.
+# Compare the complete tree body, including order, connectors, bullets, and cursor.
+name = "11-tree-active-branch"
+description = "Tree orders the active branch first and marks only the active path."
+covers = ["packages/coding-agent/src/modes/interactive/components/tree-selector.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--session", "sessions/branch.jsonl"]
+pi_args = ["--session", "sessions/branch.jsonl"]
+
+[tmux]
+width = 120
+height = 35
+cwd = "testdata/w3-branch"
+ready_pattern_pig = "active 12345"
+ready_pattern_pi = "active 12345"
+capture_start = "Type to search:"
+capture_end = "(3/5)"
+
+[[tmux.steps]]
+keys = ["/tree", "Enter"]
+wait_visible_contains = ["(3/5)"]
+
+[assert]
+runs = 3
+both_contain = ["• user: common", "• user: active 12345", "• assistant: active 12345", "└⊟ user: old", "(3/5)"]
+both_not_contain = ["• user: old", "• assistant: old"]
+output_equal = true

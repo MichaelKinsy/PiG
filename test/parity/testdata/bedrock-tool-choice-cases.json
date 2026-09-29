@@ -1,0 +1,8 @@
+[
+  {"name":"omitted","choice":null,"tools":true},
+  {"name":"auto","choice":"auto","tools":true},
+  {"name":"any","choice":"any","tools":true},
+  {"name":"none","choice":"none","tools":true},
+  {"name":"named","choice":{"type":"tool","name":"read"},"tools":true},
+  {"name":"no-tools","choice":"any","tools":false}
+]

@@ -69,17 +69,8 @@ func TestResponsesConvertMessages_ForeignCopilotToolCallIDHashedToFcShape(t *tes
 	}
 }
 
-// Characterizes and locks pig's fc_-prefix proxy for isForeignToolCall. pig's
-// Message model carries no source.provider, so normalizeResponsesToolCallID keys
-// foreign-vs-same on whether the stored item id is already fc_-prefixed. On
-// poisoned/migrated same-origin history (a stored item id that is not
-// fc_-prefixed), pig hashes it where upstream: which knows
-// source.provider === model.provider: would sanitize-and-preserve it. Both are
-// valid, deterministically paired, non-persisted ids, so there is no observable
-// or interop difference (not a divergence). This test pins the boundary: if pig
-// ever preserves here (fc_toolu_abc123), the proxy has silently become structural
-// without threading source.provider, and this expectation must be revisited.
-func TestResponsesToolCallID_SameOriginNonFcItemIsHashed(t *testing.T) {
+// Without provider/API metadata, a stored call belongs to a foreign namespace. Its original item prefix cannot establish source identity.
+func TestResponsesToolCallID_UnattributedItemIsHashed(t *testing.T) {
 	p := &openAIResponsesProvider{cfg: OpenAIResponsesConfig{ProviderID: "openai-codex", Model: "gpt-5-codex"}}
 	messages := []Message{AssistantMessage{Content: []AssistantContentBlock{
 		ToolCall{ID: "call_1|toolu_abc123", Name: "bash", Arguments: JsonObject{}},
@@ -98,10 +89,6 @@ func TestResponsesToolCallID_SameOriginNonFcItemIsHashed(t *testing.T) {
 
 	// Independent oracle: upstream JS shortHash("toolu_abc123") -> fc_1j9q39ppfzy2f.
 	const wantHashed = "fc_1j9q39ppfzy2f"
-	const upstreamPreserved = "fc_toolu_abc123"
-	if fc.ID == upstreamPreserved {
-		t.Fatalf("item id = %q: pig now preserves a same-origin non-fc_ id like upstream: the fc_ proxy became structural without threading source.provider; revisit the boundary comment", fc.ID)
-	}
 	if fc.ID != wantHashed {
 		t.Errorf("item id = %q, want hashed %q", fc.ID, wantHashed)
 	}

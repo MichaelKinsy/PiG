@@ -34,6 +34,42 @@ func hdr(pairs ...string) http.Header {
 	return h
 }
 
+func TestIndependentProviderRetryPolicyDoesNotInheritGlobalSettings(t *testing.T) {
+	resetProviderRetry(t)
+	if err := ConfigureProviderRetry(3, 60000); err != nil {
+		t.Fatal(err)
+	}
+	for _, test := range []struct {
+		name      string
+		retries   int
+		delay     *int
+		wantError bool
+	}{{"default zero budget", 0, nil, false}, {"caller delay cap", 1, new(1000), true}} {
+		t.Run(test.name, func(t *testing.T) {
+			server, attempts := retryTestServer(t, []int{503, 200}, map[string]string{"retry-after": "3"})
+			ctx := WithProviderRequestRetry(t.Context(), test.retries, test.delay)
+			request, err := http.NewRequestWithContext(ctx, http.MethodGet, server.URL, nil)
+			if err != nil {
+				t.Fatal(err)
+			}
+			response, err := retryClient().Do(request)
+			if response != nil {
+				_ = response.Body.Close()
+			}
+			if test.wantError {
+				if err == nil || !strings.Contains(err.Error(), "Server requested 3s retry delay (max: 1s)") {
+					t.Fatalf("request error = %v", err)
+				}
+			} else if err != nil || response.StatusCode != http.StatusServiceUnavailable {
+				t.Fatalf("request = %v, %v", response, err)
+			}
+			if attempts.Load() != 1 {
+				t.Fatalf("another Session's retry policy was applied: %d requests", attempts.Load())
+			}
+		})
+	}
+}
+
 func TestIsRetryableProviderResponse(t *testing.T) {
 	cases := []struct {
 		name    string

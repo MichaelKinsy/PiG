@@ -10,18 +10,22 @@ package tools
 import (
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+
 	"golang.org/x/text/unicode/norm"
+
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
 // unicodeSpacesRE matches non-standard spaces that LLMs sometimes emit
 // when quoting file paths (NBSP, en-space, em-space, etc.).
 //
 // upstream: path-utils.ts UNICODE_SPACES regex
-var unicodeSpacesRE = regexp.MustCompile(
+var unicodeSpacesRE = lazyregexp.New(
 	`[\x{00A0}\x{2000}-\x{200A}\x{202F}\x{205F}\x{3000}]`,
 )
 
@@ -65,59 +69,32 @@ func expandPath(filePath string) string {
 	return normalized
 }
 
-// windowsShellDrivePath matches /c, /c/rest, /mnt/c/rest and /cygdrive/c/rest.
-var windowsShellDrivePath = regexp.MustCompile(`(?i)^/(?:mnt/|cygdrive/)?([a-z])(?:/(.*))?$`)
-
 // NormalizeWindowsShellPath converts a Git Bash, MSYS, Cygwin or WSL drive
 // path to the form native Windows APIs accept.
 //
 // upstream: utils/paths.ts normalizeWindowsShellPath
 func NormalizeWindowsShellPath(filePath string) string {
-	if !strings.HasPrefix(filePath, "/") || strings.HasPrefix(filePath, "//") || strings.Contains(filePath, `\`) {
-		return filePath
-	}
-	match := windowsShellDrivePath.FindStringSubmatch(filePath)
-	if match == nil {
-		return filePath
-	}
-	return strings.ToUpper(match[1]) + `:\` + strings.ReplaceAll(match[2], "/", `\`)
+	return resolvepath.NormalizeWindowsShellPath(filePath)
 }
 
 // resolveToCwd resolves a file path relative to cwd with ~ expansion
 // and unicode normalization. Like Node's path.resolve, the result is
 // absolute and clean; on Windows a path rooted at '\' or '/' lands on the
-// cwd's drive and a drive-relative path such as C:rel resolves on its drive.
+// process's drive, not the cwd's, and keeps a trailing dot in its last segment.
 //
 // upstream: path-utils.ts resolveToCwd, utils/paths.ts resolvePath
-func resolveToCwd(filePath, cwd string) string {
+func resolveToCwd(filePath, cwd string) (string, error) {
 	expanded := expandPath(filePath)
-	if filepath.IsAbs(expanded) {
-		return filepath.Clean(expanded)
+	if nodepath.IsAbsolute(expanded) {
+		return nodepath.Resolve(expanded)
 	}
-	base := cwd
-	if abs, err := filepath.Abs(cwd); err == nil {
-		base = abs
-	}
-	if runtime.GOOS == "windows" {
-		if volume := filepath.VolumeName(expanded); volume != "" {
-			if !strings.EqualFold(volume, filepath.VolumeName(base)) {
-				if abs, err := filepath.Abs(expanded); err == nil {
-					return abs
-				}
-			}
-			return filepath.Join(base, expanded[len(volume):])
-		}
-		if strings.HasPrefix(expanded, `\`) || strings.HasPrefix(expanded, "/") {
-			return filepath.Clean(filepath.VolumeName(base) + expanded)
-		}
-	}
-	return filepath.Join(base, expanded)
+	return nodepath.Resolve(cwd, expanded)
 }
 
 // isNodeAbsolute reports whether Node's path.isAbsolute accepts p. On
 // Windows that includes a path rooted at '\' or '/' without a drive.
 func isNodeAbsolute(p string) bool {
-	return filepath.IsAbs(p) || runtime.GOOS == "windows" && (strings.HasPrefix(p, `\`) || strings.HasPrefix(p, "/"))
+	return nodepath.IsAbsolute(p)
 }
 
 // resolveReadPath resolves a path for reading, trying macOS filename
@@ -131,38 +108,41 @@ func isNodeAbsolute(p string) bool {
 //  4. Combined NFD + curly quote
 //
 // upstream: path-utils.ts resolveReadPath
-func resolveReadPath(filePath, cwd string) string {
-	resolved := resolveToCwd(filePath, cwd)
+func resolveReadPath(filePath, cwd string) (string, error) {
+	resolved, err := resolveToCwd(filePath, cwd)
+	if err != nil {
+		return "", err
+	}
 
 	if fileExists(resolved) {
-		return resolved
+		return resolved, nil
 	}
 
 	// Try macOS AM/PM variant (narrow no-break space before AM/PM)
 	amPmVariant := tryMacOSScreenshotPath(resolved)
 	if amPmVariant != resolved && fileExists(amPmVariant) {
-		return amPmVariant
+		return amPmVariant, nil
 	}
 
 	// Try NFD variant (macOS stores filenames in NFD form)
 	nfdVariant := tryNFDVariant(resolved)
 	if nfdVariant != resolved && fileExists(nfdVariant) {
-		return nfdVariant
+		return nfdVariant, nil
 	}
 
 	// Try curly quote variant (macOS uses U+2019 in screenshot names)
 	curlyVariant := tryCurlyQuoteVariant(resolved)
 	if curlyVariant != resolved && fileExists(curlyVariant) {
-		return curlyVariant
+		return curlyVariant, nil
 	}
 
 	// Try combined NFD + curly quote (for French macOS screenshots)
 	nfdCurlyVariant := tryCurlyQuoteVariant(nfdVariant)
 	if nfdCurlyVariant != resolved && fileExists(nfdCurlyVariant) {
-		return nfdCurlyVariant
+		return nfdCurlyVariant, nil
 	}
 
-	return resolved
+	return resolved, nil
 }
 
 // fileExists returns true if the path exists (regular file or dir).
@@ -172,7 +152,7 @@ func fileExists(path string) bool {
 }
 
 // amPmRE matches " AM." or " PM." (case-insensitive) in screenshot filenames.
-var amPmRE = regexp.MustCompile(`(?i) (AM|PM)\.`)
+var amPmRE = lazyregexp.New(`(?i) (AM|PM)\.`)
 
 // tryMacOSScreenshotPath replaces the regular space before AM/PM with
 // a narrow no-break space, matching macOS's screenshot naming convention.
@@ -197,4 +177,4 @@ func tryCurlyQuoteVariant(filePath string) string {
 }
 
 // ResolveToCwd is upstream path-utils.ts resolveToCwd for other packages.
-func ResolveToCwd(filePath, cwd string) string { return resolveToCwd(filePath, cwd) }
+func ResolveToCwd(filePath, cwd string) (string, error) { return resolveToCwd(filePath, cwd) }

@@ -2,7 +2,6 @@
 package frontmatter
 
 import (
-	"fmt"
 	"strings"
 
 	"go.yaml.in/yaml/v3"
@@ -34,12 +33,13 @@ func Parse(content string) Doc {
 		return Doc{Frontmatter: map[string]any{}, Body: s}
 	}
 	end += 3
-	body := strings.TrimSpace(s[end+4:])
+	// upstream: packages/coding-agent/src/utils/frontmatter.ts:extractFrontmatter
+	body := strings.Trim(s[end+4:], "\t\n\v\f\r \u00a0\u1680\u2000\u2001\u2002\u2003\u2004\u2005\u2006\u2007\u2008\u2009\u200a\u2028\u2029\u202f\u205f\u3000\ufeff")
 	fields := map[string]any{}
 	if end > 3 {
 		var parsed any
 		if err := yaml.Unmarshal([]byte(s[4:end]), &parsed); err != nil {
-			return Doc{Frontmatter: map[string]any{}, Body: body, Err: fmt.Errorf("parse frontmatter: %w", err)}
+			return Doc{Frontmatter: map[string]any{}, Body: body, Err: compactMappingError(s[4:end], err)}
 		}
 		if parsedFields, ok := parsed.(map[string]any); ok {
 			fields = parsedFields

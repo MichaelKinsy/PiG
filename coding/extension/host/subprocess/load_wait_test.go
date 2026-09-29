@@ -8,24 +8,21 @@ import (
 	"os/exec"
 	"path/filepath"
 	"testing"
+	"testing/synctest"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/internal/testbudget"
 )
 
-// Upstream loader.ts awaits an extension factory with no deadline. A Node
-// factory runs before the runtime connects, so a factory that takes longer
-// than any fixed connect deadline must still load.
+// upstream: packages/coding-agent/src/core/extensions/loader.ts:546-553 awaits the factory without a deadline before committing registration. The real 12-second Node factory must outlast a fixed 10-second connect deadline.
 func TestSlowNodeFactoryLoads(t *testing.T) {
+	t.Parallel()
 	if testing.Short() {
 		t.Skip("waits out a slow extension factory")
 	}
 	if _, err := exec.LookPath("node"); err != nil {
 		t.Fatalf("node is required for the slow-factory fixture: %v", err)
 	}
-	// The product deadline this replaces was 10 s, overridable only by a test
-	// environment variable; clear it so the product path is what runs.
-	t.Setenv("PIG_TEST_CONNECT_TIMEOUT_SEC", "")
 	dir := t.TempDir()
 	source := `export default async function (pi) {
   await new Promise((resolve) => setTimeout(resolve, 12000));
@@ -35,7 +32,8 @@ func TestSlowNodeFactoryLoads(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, "index.mjs"), []byte(source), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	host := NewHost(t.TempDir())
+	// Keep the writable config/cache root private without changing the process environment.
+	host := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
 	defer host.Shutdown("test done")
 	ext, err := host.Load(testbudget.Context(t), ExtConfig{Name: "slow-factory", Source: filepath.Join(dir, "index.mjs"), Enabled: true})
 	if err != nil {
@@ -49,12 +47,14 @@ func TestSlowNodeFactoryLoads(t *testing.T) {
 // After connecting, an extension that registers later than any fixed register
 // deadline still loads.
 func TestLateRegistrationLoads(t *testing.T) {
-	if testing.Short() {
-		t.Skip("waits out a late registration")
-	}
-	host := NewHost(t.TempDir())
+	t.Parallel()
+	synctest.Test(t, testLateRegistrationLoads)
+}
+
+func testLateRegistrationLoads(t *testing.T) {
+	host := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
 	defer host.Shutdown("test done")
-	ext, err := host.LoadInProcess(testbudget.Context(t), ExtConfig{Name: "late-register", Enabled: true}, func(conn net.Conn) error {
+	ext, err := host.LoadInProcess(t.Context(), ExtConfig{Name: "late-register", Enabled: true}, func(conn net.Conn) error {
 		time.Sleep(6 * time.Second)
 		if err := writeEnvelopeTo(conn, &Envelope{Type: MsgRegister, Register: &RegisterPayload{Name: "late-register"}}); err != nil {
 			return err
@@ -80,7 +80,12 @@ func TestLateRegistrationLoads(t *testing.T) {
 // With no deadline, the caller's context still ends a load that never
 // connects, and the error names the cancellation.
 func TestLoadWaitEndsWithCallerContext(t *testing.T) {
-	host := NewHost(t.TempDir())
+	t.Parallel()
+	synctest.Test(t, testLoadWaitEndsWithCallerContext)
+}
+
+func testLoadWaitEndsWithCallerContext(t *testing.T) {
+	host := NewHostWithConfigRoot(t.TempDir(), t.TempDir())
 	defer host.Shutdown("test done")
 	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()

@@ -1,0 +1,314 @@
+{
+  "piVersion": "0.87.1",
+  "node": "24.19.0",
+  "apis": {
+    "openai-completions": {
+      "api": "openai-completions",
+      "content": [
+        {
+          "arguments": {
+            "path": "parity-read-target.txt"
+          },
+          "id": "strictread1",
+          "name": "read",
+          "partialArgs": "{\"path\":\"parity-read-target.txt\"}",
+          "streamIndex": 0,
+          "type": "toolCall"
+        }
+      ],
+      "model": "strict",
+      "provider": "p",
+      "rawStopReason": "tool_calls",
+      "responseId": "chatcmpl-strict",
+      "role": "assistant",
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "usage": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "cost": {
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "input": 0,
+          "output": 0,
+          "total": 0
+        },
+        "input": 10,
+        "output": 3,
+        "reasoning": 0,
+        "totalTokens": 13
+      }
+    },
+    "openai-responses": {
+      "api": "openai-responses",
+      "content": [],
+      "model": "strict",
+      "provider": "p",
+      "responseId": "resp_1",
+      "role": "assistant",
+      "stopReason": "pending",
+      "timestamp": 0,
+      "usage": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "cost": {
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "input": 0,
+          "output": 0,
+          "total": 0
+        },
+        "input": 0,
+        "output": 0,
+        "totalTokens": 0
+      }
+    },
+    "anthropic-messages": {
+      "api": "anthropic-messages",
+      "content": [
+        {
+          "arguments": {},
+          "id": "toolu_1",
+          "index": 0,
+          "name": "read",
+          "partialJson": "",
+          "type": "toolCall"
+        }
+      ],
+      "model": "strict",
+      "provider": "p",
+      "responseId": "msg_1",
+      "role": "assistant",
+      "stopReason": "pending",
+      "timestamp": 0,
+      "usage": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "cacheWrite1h": 0,
+        "cost": {
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "input": 0,
+          "output": 0,
+          "total": 0
+        },
+        "input": 10,
+        "output": 1,
+        "totalTokens": 11
+      }
+    },
+    "google-generative-ai": {
+      "api": "google-generative-ai",
+      "content": [
+        {
+          "arguments": {
+            "path": "parity-read-target.txt"
+          },
+          "id": "read_<ms>_<n>",
+          "name": "read",
+          "type": "toolCall"
+        }
+      ],
+      "model": "strict",
+      "provider": "p",
+      "rawStopReason": "STOP",
+      "responseId": "g1",
+      "role": "assistant",
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "usage": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "cost": {
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "input": 0,
+          "output": 0,
+          "total": 0
+        },
+        "input": 10,
+        "output": 3,
+        "reasoning": 0,
+        "totalTokens": 13
+      }
+    },
+    "mistral-conversations": {
+      "api": "mistral-conversations",
+      "content": [
+        {
+          "arguments": {
+            "path": "parity-read-target.txt"
+          },
+          "id": "strictread1",
+          "name": "read",
+          "type": "toolCall"
+        }
+      ],
+      "model": "strict",
+      "provider": "p",
+      "rawStopReason": "tool_calls",
+      "responseId": "chatcmpl-strict",
+      "role": "assistant",
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "usage": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "cost": {
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "input": 0,
+          "output": 0,
+          "total": 0
+        },
+        "input": 10,
+        "output": 3,
+        "totalTokens": 13
+      }
+    },
+    "test-faux": {
+      "api": "test-faux",
+      "content": [],
+      "model": "faux-1",
+      "provider": "test-faux",
+      "role": "assistant",
+      "stopReason": "pending",
+      "timestamp": 0,
+      "usage": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "cost": {
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "input": 0,
+          "output": 0,
+          "total": 0
+        },
+        "input": 0,
+        "output": 0,
+        "totalTokens": 0
+      }
+    },
+    "azure-openai-responses": {
+      "api": "azure-openai-responses",
+      "content": [],
+      "model": "strict",
+      "provider": "p",
+      "responseId": "resp_1",
+      "role": "assistant",
+      "stopReason": "pending",
+      "timestamp": 0,
+      "usage": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "cost": {
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "input": 0,
+          "output": 0,
+          "total": 0
+        },
+        "input": 0,
+        "output": 0,
+        "totalTokens": 0
+      }
+    },
+    "openai-codex-responses": {
+      "api": "openai-codex-responses",
+      "content": [
+        {
+          "arguments": {},
+          "id": "call_1|fc_1",
+          "name": "read",
+          "partialJson": "",
+          "type": "toolCall"
+        }
+      ],
+      "model": "strict",
+      "provider": "p",
+      "responseId": "resp_1",
+      "role": "assistant",
+      "stopReason": "pending",
+      "timestamp": 0,
+      "usage": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "cost": {
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "input": 0,
+          "output": 0,
+          "total": 0
+        },
+        "input": 0,
+        "output": 0,
+        "totalTokens": 0
+      }
+    },
+    "pi-messages": {
+      "api": "pi-messages",
+      "content": [
+        {
+          "arguments": {
+            "path": "parity-read-target.txt"
+          },
+          "id": "strictread1",
+          "name": "read",
+          "type": "toolCall"
+        }
+      ],
+      "model": "strict",
+      "provider": "p",
+      "responseId": "msg-strict",
+      "role": "assistant",
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "usage": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "cost": {
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "input": 0,
+          "output": 0,
+          "total": 0
+        },
+        "input": 10,
+        "output": 3,
+        "totalTokens": 13
+      }
+    },
+    "bedrock-converse-stream": {
+      "api": "bedrock-converse-stream",
+      "content": [
+        {
+          "arguments": {},
+          "id": "toolu_1",
+          "index": 0,
+          "name": "read",
+          "partialJson": "",
+          "type": "toolCall"
+        }
+      ],
+      "model": "strict",
+      "provider": "p",
+      "role": "assistant",
+      "stopReason": "pending",
+      "timestamp": 0,
+      "usage": {
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "cost": {
+          "cacheRead": 0,
+          "cacheWrite": 0,
+          "input": 0,
+          "output": 0,
+          "total": 0
+        },
+        "input": 0,
+        "output": 0,
+        "totalTokens": 0
+      }
+    }
+  }
+}

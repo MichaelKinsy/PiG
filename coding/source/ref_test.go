@@ -15,7 +15,7 @@ func TestParseCanonicalIdentity(t *testing.T) {
 		wantID   string
 	}{
 		{name: "npm", input: "npm:@scope/pkg@1.2.3", wantKind: KindNPM, wantID: "npm:@scope/pkg"},
-		{name: "bare npm at install boundary", input: "@scope/pkg", bare: BareNPM, wantKind: KindNPM, wantID: "npm:@scope/pkg"},
+		{name: "bare npm when requested", input: "@scope/pkg", bare: BareNPM, wantKind: KindNPM, wantID: "npm:@scope/pkg"},
 		{name: "git shorthand", input: "git:github.com/acme/tools@v2", wantKind: KindGit, wantID: "git:github.com/acme/tools"},
 		{name: "git https", input: "https://github.com/acme/tools.git@v2", wantKind: KindGit, wantID: "git:github.com/acme/tools"},
 		{name: "git ssh prefixed", input: "git:git@github.com:acme/tools@v2", wantKind: KindGit, wantID: "git:github.com/acme/tools"},

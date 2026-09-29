@@ -1,0 +1,32 @@
+# Pi 0.87.1 core/export-html/index.ts:144-177, template.js:1188-1245.
+# Probe: pi --export testdata/sessions/skills.jsonl <isolated>/out.html.
+# The complete HTML includes the skill renderer, pinned vendors, and base64 JSON.stringify payload.
+# Skill-only, skill plus prompt/image, markup, and an errored assistant remain intact.
+name = "06-export-cli-skills"
+description = "CLI skill-session export preserves markup in its payload and embeds Pi's current renderer"
+covers = ["packages/coding-agent/src/core/export-html/index.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_HOME=testdata/pig-home"]
+pig_args = ["--export", "testdata/sessions/skills.jsonl", "{{TEMP}}/out.html"]
+pi_args = ["--export", "testdata/sessions/skills.jsonl", "{{TEMP}}/out.html"]
+
+[cli]
+timeout_seconds = 15
+cwd = "."
+artifact_path = "{{TEMP}}/out.html"
+
+[assert]
+exit_code = 0
+both_contain = ["Exported to:"]
+output_equal = true
+artifact_equal = true
+runs = 3
+
+# normalize-rationale: only the independently allocated destination root varies; no artifact content is normalized.
+[[assert.normalize_replace]]
+pattern = '(?m)^(Exported to: )/[^\r\n]*/parity-cli-06-export-cli-skills-(pig|pi)-[0-9]+'
+with = '${1}<TEMP>'
+reason = "D2: replace only this scenario's allocated temporary root, preserving the destination suffix and the full HTML artifact."

@@ -304,7 +304,7 @@ func TestRPCModePromptRejectsWhileCompactionWaitsOnExtensionUI(t *testing.T) {
 	}
 	for i := range 3 {
 		if _, err := session.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{
-			Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: fmt.Sprintf("question %d", i)}}, Timestamp: int64(i*2 + 1),
+			Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("question %d", i)}}, Timestamp: int64(i*2 + 1),
 		}}); err != nil {
 			t.Fatal(err)
 		}

@@ -87,7 +87,7 @@ func TestShowLoadedResourcesListsEachSectionUnderItsHeading(t *testing.T) {
 		}
 		return strings.Join(lines, "\n")
 	}
-	m.showLoadedResources(false)
+	m.showLoadedResources(false, false)
 	if got, want := render(), "[Skills]\n  alpha, zeta\n\n[Extensions]\n  pi-lens:dist\n"; got != want {
 		t.Fatalf("listing = %q, want %q", got, want)
 	}
@@ -122,7 +122,7 @@ func upstreamMixedExtensionFixtures() []upstreamExtensionFixture {
 	}
 }
 
-func upstreamListingMode(t *testing.T, expanded bool, fixtures []upstreamExtensionFixture) *InteractiveMode {
+func upstreamListingMode(t testing.TB, expanded bool, fixtures []upstreamExtensionFixture) *InteractiveMode {
 	t.Helper()
 	extensions := make([]extension.Extension, len(fixtures))
 	for i, fixture := range fixtures {
@@ -140,13 +140,29 @@ func upstreamListingMode(t *testing.T, expanded bool, fixtures []upstreamExtensi
 	}
 }
 
+// renderedListing uses the upstream snapshot width and path-separator normalization. Context guards also retain the leading spacer instead of trimming it away.
 func renderedListing(m *InteractiveMode) string {
-	m.showLoadedResources(false)
-	lines := m.loadedResourcesContainer.Render(200)
+	m.showLoadedResources(false, false)
+	lines := m.loadedResourcesContainer.Render(220)
 	for i, line := range lines {
-		lines[i] = strings.TrimRight(stripANSITest(line), " ")
+		lines[i] = strings.ReplaceAll(strings.TrimRight(stripANSITest(line), " "), `\`, "/")
 	}
 	return strings.TrimRight(strings.Join(lines, "\n"), "\n")
+}
+
+func BenchmarkLoadedResourcesOriginalMixedLayouts(b *testing.B) {
+	for _, expanded := range []bool{false, true} {
+		b.Run(fmt.Sprint(expanded), func(b *testing.B) {
+			mode := upstreamListingMode(b, expanded, upstreamMixedExtensionFixtures())
+			b.ReportAllocs()
+			for b.Loop() {
+				mode.showLoadedResources(false, false)
+				if len(mode.loadedResourcesContainer.Render(220)) == 0 {
+					b.Fatal("listing disappeared")
+				}
+			}
+		})
+	}
 }
 
 func TestLoadedResourcesExtensionLabelsMatchUpstream(t *testing.T) {
@@ -165,27 +181,38 @@ func TestLoadedResourcesExtensionLabelsMatchUpstream(t *testing.T) {
 		fixtures []upstreamExtensionFixture
 		want     string
 	}{
+		// Pi interactive-mode-status.test.ts:769.
 		{"captures mixed extension layouts in compact output", upstreamMixedExtensionFixtures(),
 			"@scope/pi-scoped, answer.ts, cli-extension.ts, HazAT/pi-interactive-subagents, HazAT/pi-interactive-subagents:subagents, local-index, pi-markdown-preview, user-index"},
+		// Pi interactive-mode-status.test.ts:785.
 		{"adds more parent folders until local extension labels are unique", []upstreamExtensionFixture{
 			cli("/tmp/alpha/one/index.ts", "/tmp/alpha"), cli("/tmp/beta/one/index.ts", "/tmp/beta"), cli("/tmp/gamma/one/index.ts", "/tmp/gamma"),
 		}, "alpha/one, beta/one, gamma/one"},
+		// Pi interactive-mode-status.test.ts:831.
 		{"strips index.ts from local extension label, showing parent dir", []upstreamExtensionFixture{local("/tmp/extensions/plan-mode/index.ts", "/tmp/extensions")}, "plan-mode"},
+		// Pi interactive-mode-status.test.ts:859.
 		{"strips index.js from local extension label, showing parent dir", []upstreamExtensionFixture{local("/tmp/extensions/plan-mode/index.js", "/tmp/extensions")}, "plan-mode"},
+		// Pi interactive-mode-status.test.ts:887.
 		{"mixed single-file and subdirectory index.ts extensions strip index.ts", []upstreamExtensionFixture{
 			local("/tmp/extensions/webfetch.ts", "/tmp/extensions"), local("/tmp/extensions/plan-mode/index.ts", "/tmp/extensions"),
 		}, "plan-mode, webfetch.ts"},
+		// Pi interactive-mode-status.test.ts:924.
 		{"multiple index.ts with unique parent dirs need no disambiguation", []upstreamExtensionFixture{
 			local("/tmp/extensions/foo/index.ts", "/tmp/extensions"), local("/tmp/extensions/bar/index.ts", "/tmp/extensions"),
 		}, "bar, foo"},
+		// Pi interactive-mode-status.test.ts:961.
 		{"multiple index.ts with same parent dir name disambiguated with grandparent", []upstreamExtensionFixture{
 			cli("/tmp/alpha/tools/index.ts", "/tmp/alpha"), cli("/tmp/beta/tools/index.ts", "/tmp/beta"),
 		}, "alpha/tools, beta/tools"},
+		// Pi interactive-mode-status.test.ts:998.
 		{"non-index file in subdirectory stays as filename", []upstreamExtensionFixture{local("/tmp/extensions/my-ext/main.ts", "/tmp/extensions")}, "main.ts"},
-		{"package extensions still strip index.ts correctly", []upstreamExtensionFixture{upstreamMixedExtensionFixtures()[3]}, "pi-markdown-preview"},
+		// Pi interactive-mode-status.test.ts:1026.
+		{"package extensions still strip index.ts correctly (regression guard)", []upstreamExtensionFixture{upstreamMixedExtensionFixtures()[3]}, "pi-markdown-preview"},
+		// Pi interactive-mode-status.test.ts:1054.
 		{"labels npm sibling extensions relative to the declaring package", []upstreamExtensionFixture{
 			npm("/tmp/project/.pi/npm/node_modules/primary-package/index.ts"), npm("/tmp/project/.pi/npm/node_modules/sibling-package/index.ts"),
 		}, "primary-package, primary-package:../sibling-package"},
+		// Pi interactive-mode-status.test.ts:1091.
 		{"labels Windows npm sibling extensions relative to the declaring package", []upstreamExtensionFixture{
 			{windowsBase + `\index.ts`, "npm:primary-package", "user", "package", windowsBase},
 			{`C:\Users\me\.pi\agent\npm\node_modules\sibling-package\index.ts`, "npm:primary-package", "user", "package", windowsBase},
@@ -199,6 +226,7 @@ func TestLoadedResourcesExtensionLabelsMatchUpstream(t *testing.T) {
 	}
 }
 
+// Pi interactive-mode-status.test.ts:1131.
 func TestLoadedResourcesExpandedExtensionsMatchUpstream(t *testing.T) {
 	want := `[Extensions]
   project
@@ -223,31 +251,35 @@ func TestLoadedResourcesExpandedExtensionsMatchUpstream(t *testing.T) {
 func TestLoadedResourcesContextMatchesUpstream(t *testing.T) {
 	home, err := os.UserHomeDir()
 	if err != nil {
-		t.Skip("no home directory")
+		t.Fatal(err)
 	}
 	cwd := filepath.Join(home, "Development", "pi-mono")
 	context := []ContextFile{{Path: filepath.Join(home, ".pi", "agent", "AGENTS.md")}, {Path: filepath.Join(cwd, "AGENTS.md")}}
-	m := &InteractiveMode{opts: InteractiveOptions{CWD: cwd, NoThemes: true, ContextFiles: context}, loadedResourcesContainer: tui.NewContainer()}
-	// Pi keeps the platform separator: formatDisplayPath replaces only the
-	// home prefix, and getCwdRelativePath returns path.relative's result.
-	// shows context paths relative to cwd while preserving full external paths
-	if got, want := renderedListing(m), filepath.FromSlash("\n[Context]\n  ~/.pi/agent/AGENTS.md, AGENTS.md"); got != want {
-		t.Fatalf("compact context = %q, want %q", got, want)
-	}
-	// shows full context paths when expanded
-	m.toolsExpanded = true
-	if got, want := renderedListing(m), filepath.FromSlash("\n[Context]\n  ~/.pi/agent/AGENTS.md\n  ~/Development/pi-mono/AGENTS.md"); got != want {
-		t.Fatalf("expanded context = %q, want %q", got, want)
-	}
-	// shows system prompt context paths before project context files
-	project := &InteractiveMode{opts: InteractiveOptions{
-		CWD: "/tmp/project", NoThemes: true,
-		SystemPromptSourcePaths: []string{"/tmp/project/.pi/SYSTEM.md", "/tmp/project/.pi/APPEND_SYSTEM.md"},
-		ContextFiles:            []ContextFile{{Path: "/tmp/project/AGENTS.md"}},
-	}, loadedResourcesContainer: tui.NewContainer()}
-	if got, want := renderedListing(project), filepath.FromSlash("\n[Context]\n  .pi/SYSTEM.md, .pi/APPEND_SYSTEM.md, AGENTS.md"); got != want {
-		t.Fatalf("system prompt context = %q, want %q", got, want)
-	}
+	// Pi interactive-mode-status.test.ts:1161.
+	t.Run("shows context paths relative to cwd while preserving full external paths", func(t *testing.T) {
+		m := &InteractiveMode{opts: InteractiveOptions{CWD: cwd, NoThemes: true, ContextFiles: context}, loadedResourcesContainer: tui.NewContainer()}
+		if got := renderedListing(m); got != "\n[Context]\n  ~/.pi/agent/AGENTS.md, AGENTS.md" {
+			t.Fatalf("compact context = %q", got)
+		}
+	})
+	// Pi interactive-mode-status.test.ts:1180.
+	t.Run("shows system prompt context paths before project context files", func(t *testing.T) {
+		project := &InteractiveMode{opts: InteractiveOptions{
+			CWD: "/tmp/project", NoThemes: true,
+			SystemPromptSourcePaths: []string{"/tmp/project/.pi/SYSTEM.md", "/tmp/project/.pi/APPEND_SYSTEM.md"},
+			ContextFiles:            []ContextFile{{Path: "/tmp/project/AGENTS.md"}},
+		}, loadedResourcesContainer: tui.NewContainer()}
+		if got := renderedListing(project); got != "\n[Context]\n  .pi/SYSTEM.md, .pi/APPEND_SYSTEM.md, AGENTS.md" {
+			t.Fatalf("system prompt context = %q", got)
+		}
+	})
+	// Pi interactive-mode-status.test.ts:1199.
+	t.Run("shows full context paths when expanded", func(t *testing.T) {
+		m := &InteractiveMode{opts: InteractiveOptions{CWD: cwd, NoThemes: true, ContextFiles: context}, loadedResourcesContainer: tui.NewContainer(), toolsExpanded: true}
+		if got := renderedListing(m); got != "\n[Context]\n  ~/.pi/agent/AGENTS.md\n  ~/Development/pi-mono/AGENTS.md" {
+			t.Fatalf("expanded context = %q", got)
+		}
+	})
 }
 
 // Upstream showLoadedResources omits the listing on quiet startup unless the

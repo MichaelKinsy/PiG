@@ -1,0 +1,20 @@
+# Pi 0.87.1 stdin-buffer.ts:410-423 returns early from an empty flush without clearing the pending Kitty printable duplicate. Nonempty flush and clear reset it.
+# The Go adapter renders nil event slices as empty JSON arrays; it does not alter event values or ordering.
+name = "16-stdin-empty-flush-dedup"
+description = "Empty flush retains Kitty printable deduplication while nonempty flush and clear reset it."
+covers = ["packages/tui/src/stdin-buffer.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/stdin-empty-flush-pig"]
+pi_args = ["node", "./test/parity/testdata/stdin-empty-flush-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+[assert]
+exit_code = 0
+json_output_equal = true
+runs = 3

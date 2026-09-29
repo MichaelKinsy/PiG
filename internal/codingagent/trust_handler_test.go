@@ -2,6 +2,7 @@ package codingagent
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -10,7 +11,7 @@ import (
 // the selector presents the project-trust options, and the chosen option's
 // decision is persisted to the trust store (or nothing is saved on cancel).
 // trustHandler is the production /trust path; here it is driven with a fake
-// ShowExtensionSelector instead of the TUI.
+// ShowTrustSelector instead of the TUI.
 func TestTrustHandler_SavesSelectedDecision(t *testing.T) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -34,21 +35,23 @@ func TestTrustHandler_SavesSelectedDecision(t *testing.T) {
 			sc := &SlashContext{
 				AgentDir:   agentDir,
 				ShowStatus: func(m string) { status = m },
-				ShowExtensionSelector: func(title string, options []string, _ string) (string, bool) {
+				ShowTrustSelector: func(options TrustSelectorOptions) (TrustSelection, bool) {
 					selectorShown = true
-					if !strings.Contains(title, cwd) {
-						t.Errorf("selector title %q does not name cwd %q", title, cwd)
+					if options.Cwd != cwd {
+						t.Errorf("selector cwd %q, want %q", options.Cwd, cwd)
 					}
 					if c.pick == "" {
-						return "", false
+						return TrustSelection{}, false
 					}
-					for _, o := range options {
-						if strings.HasPrefix(o, c.pick) {
-							return o, true
+					for _, o := range GetProjectTrustOptions(options.Cwd, false) {
+						if strings.HasPrefix(o.Label, c.pick) {
+							selection := TrustSelection{Trusted: o.Trusted, Updates: o.Updates}
+							options.OnSelect(selection)
+							return selection, true
 						}
 					}
-					t.Fatalf("no option with prefix %q in %v", c.pick, options)
-					return "", false
+					t.Fatalf("no option with prefix %q", c.pick)
+					return TrustSelection{}, false
 				},
 			}
 
@@ -82,13 +85,50 @@ func TestTrustHandler_UnavailableSelectorIsGraceful(t *testing.T) {
 	sc := &SlashContext{
 		AgentDir: t.TempDir(),
 		Append:   func(s string) { appended += s },
-		// ShowExtensionSelector nil: no TUI selector available.
+		// ShowTrustSelector nil: no TUI selector available.
 	}
 	if err := trustHandler(sc); err != nil {
 		t.Fatalf("trustHandler: %v", err)
 	}
 	if !strings.Contains(appended, "unavailable") {
 		t.Fatalf("expected an unavailable notice, got %q", appended)
+	}
+}
+
+func TestTrustHandlerSurfacesStorageFailures(t *testing.T) {
+	// Pi interactive-mode.ts:5160,5168 does not discard trust store read/write errors.
+	for _, phase := range []string{"read", "save"} {
+		t.Run(phase, func(t *testing.T) {
+			agentDir := t.TempDir()
+			blockStore := func() {
+				t.Helper()
+				if err := os.Mkdir(filepath.Join(agentDir, "trust.json"), 0o700); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if phase == "read" {
+				blockStore()
+			}
+			shown, status := false, false
+			sc := &SlashContext{
+				AgentDir:   agentDir,
+				ShowStatus: func(string) { status = true },
+				ShowTrustSelector: func(options TrustSelectorOptions) (TrustSelection, bool) {
+					shown = true
+					blockStore()
+					option := GetProjectTrustOptions(options.Cwd, false)[0]
+					selection := TrustSelection{Trusted: option.Trusted, Updates: option.Updates}
+					options.OnSelect(selection)
+					return selection, true
+				},
+			}
+			if err := trustHandler(sc); err == nil || !strings.Contains(err.Error(), "trust.json") {
+				t.Fatalf("%s error=%v, want actionable trust store failure", phase, err)
+			}
+			if shown != (phase == "save") || status {
+				t.Fatalf("%s: shown=%v status=%v", phase, shown, status)
+			}
+		})
 	}
 }
 

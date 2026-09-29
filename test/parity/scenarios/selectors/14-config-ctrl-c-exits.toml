@@ -1,0 +1,60 @@
+# Behavior family: selectors
+# Surface: `pi config` / `pig config` Ctrl-C closes the resource selector (issue #89)
+#
+# Upstream evidence (Pi 0.87.1): config-selector.ts:487-493 maps tui.select.cancel
+# (escape, ctrl+c by default) to onCancel and matchesKey(data, "ctrl+c") to
+# onExit; cli/config-selector.ts:23-49 stops the UI (parking the cursor below the
+# selector) and package-manager-cli.ts:852-862 ends with process.exit(0).
+# Under tmux (extended-keys csi-u) the terminal reports Ctrl-C as CSI-u, so a
+# raw "\x03" comparison never fires: this is the regression for #89.
+#
+# The assertion is the exit status (0 for both) and the screen left behind: the
+# last capture after exit is the selector followed by the shell-side cursor
+# park, compared byte-for-byte after the documented D2 path folding.
+
+name = "14-config-ctrl-c-exits"
+description = "Ctrl-C closes pi config / pig config with status 0 and leaves the same screen."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/config-selector.ts",
+  "packages/coding-agent/src/cli/config-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "sample-skill"
+ready_pattern_pi = "sample-skill"
+ready_timeout_seconds = 15
+keys = ["C-c"]
+settle_seconds = 1
+capture_start = "Global Resources"
+cwd = "testdata/empty-project"
+
+[env]
+override_base_args = true
+pig = ["PIG_HOME=testdata/pig-home-full", "HOME=testdata/home-empty"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent-full", "HOME=testdata/home-empty"]
+pig_args = ["config"]
+pi_args = ["config"]
+
+[assert]
+both_reach_ready = true
+exit_code = 0
+both_not_contain = ["panic:", "goroutine "]
+both_contain = ["Global Resources", "sample-skill"]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: D2 config-root names and isolated snapshot suffixes differ by binary.
+[[assert.normalize_replace]]
+pattern = '~/\.pig/agent/'
+with    = '~/.pi/agent/'
+reason = "D2: the selector subtitle names the host configuration directory."
+
+# normalize-rationale: Replace only a complete allocated agent-root path inside the User label. Never consume its closing parenthesis, trailing text or a wrapped row.
+[[assert.normalize_replace]]
+pattern = '(User \()/[^\n)]*/parity-snap-(?:PIG_HOME-[0-9]+/agent|PI_CODING_AGENT_DIR-[0-9]+)/'
+with = '${1}<agent>/'
+reason = "D2: separate agent roots vary by host and run. Preserve the complete label suffix, row structure and resource names."

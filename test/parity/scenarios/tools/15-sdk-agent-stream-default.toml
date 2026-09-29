@@ -1,0 +1,29 @@
+# Pi 0.87.1 agent.test.ts:107 and agent-loop.test.ts:87 install a host default
+# and omit streamFn. The additional descriptor probes exercise the same public
+# Agent.prompt path with a successful and a throwing explicit stream function.
+# agent-loop.test.ts:2024 converts the caller's custom text field during continuation.
+# The oracle imports the exact published Pi package; it does not extract or
+# rewrite production code. --experimental-import-meta-resolve resolves imports
+# relative to the pinned package rather than this fixture directory.
+name = "15-sdk-agent-stream-default"
+description = "Agent host defaults and explicit streams work without a native provider runtime"
+covers = ["packages/agent/src/agent.ts", "packages/agent/src/agent-loop.ts", "packages/agent/src/stream-fn.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/agent-stream-pig"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/agent-stream-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["AGENT_STREAM default 1", 'AGENT_STREAM descriptor ["stop","fallback"]', 'AGENT_STREAM descriptor ["error","provider exploded"]', 'AGENT_STREAM converter "Hook content"']
+runs = 3

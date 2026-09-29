@@ -17,6 +17,8 @@ import (
 	"unsafe"
 
 	"golang.org/x/sys/windows"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 const consoleReadResultEnv = "PIG_TUI_CONSOLE_READ_RESULT"
@@ -41,7 +43,10 @@ func TestReadInputDeliversCtrlZFromTheConsole(t *testing.T) {
 	if err != nil {
 		t.Fatalf("read the helper result: %v\nconsole output: %q", err, console.output())
 	}
-	if string(got) != keys {
+	// Pi's StdinBuffer emits text one UTF-16 unit at a time, so the emoji
+	// arrives as two lone-surrogate (WTF-8) events; joined, they are the
+	// same JavaScript string as the keys.
+	if jsstring.Canonical(string(got)) != keys {
 		t.Fatalf("ReadInput delivered %q, want %q", got, keys)
 	}
 }
@@ -306,7 +311,7 @@ func readConsoleUntil(t *testing.T, result string, last byte) {
 	}
 	var got []byte
 	for !bytes.Contains(got, []byte{last}) {
-		data, err := ReadInput(os.Stdin)
+		data, err := readTestInput(os.Stdin)
 		if err != nil {
 			got = append(got, "error: "+err.Error()...)
 			break

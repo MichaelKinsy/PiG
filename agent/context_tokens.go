@@ -90,7 +90,7 @@ func EstimateTokens(msg AgentMessage) int {
 	chars := 0
 	switch {
 	case msg.User != nil:
-		for _, blk := range msg.User.Content {
+		for _, blk := range msg.ContentBlocks() {
 			if t, ok := blk.(ai.TextContent); ok {
 				chars += len(t.Text)
 			}

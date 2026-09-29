@@ -76,6 +76,28 @@ SPDX-FileCopyrightText = [
 ]
 SPDX-License-Identifier = "Apache-2.0 AND MIT"
 
+# internal/nodesemver translates semver 7.8.5, the version library Pi's package
+# manager uses.
+[[annotations]]
+path = "internal/nodesemver/**"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright (c) Isaac Z. Schlueter and Contributors",
+]
+SPDX-License-Identifier = "MIT AND ISC"
+
+# internal/nodespawn translates libuv's Windows command-line quoting, which
+# Node's child_process.spawn uses.
+[[annotations]]
+path = "internal/nodespawn/**"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Hewlett Packard Enterprise Development LP",
+  "Copyright Joyent, Inc. and other Node contributors",
+]
+SPDX-License-Identifier = "MIT"
+
 # Tests covering these translated utilities retain the same upstream notices
 # as their implementations. In-file declarations take precedence where present.
 [[annotations]]
@@ -102,6 +124,30 @@ SPDX-FileCopyrightText = [
   "Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (https://sindresorhus.com)",
 ]
 SPDX-License-Identifier = "MIT"
+
+# The unmodified Pi interactive announcement asset is covered by Pi's package MIT license.
+[[annotations]]
+path = "internal/codingagent/assets/clankolas.png"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2025 Mario Zechner"
+SPDX-License-Identifier = "MIT"
+
+# Pinned export vendor assets remain unmodified so the complete exported page matches Pi.
+[[annotations]]
+path = "internal/codingagent/export/assets/vendor/highlight.min.js"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2006, Ivan Sagalaev"
+SPDX-License-Identifier = "BSD-3-Clause"
+
+[[annotations]]
+path = "internal/codingagent/export/assets/vendor/marked.min.js"
+precedence = "override"
+SPDX-FileCopyrightText = [
+  "Copyright (c) 2018+, MarkedJS",
+  "Copyright (c) 2011-2018, Christopher Jeffrey",
+  "Copyright 2004 John Gruber",
+]
+SPDX-License-Identifier = "MIT AND BSD-3-Clause"
 
 # Unicode character data embedded in the generated width tables.
 [[annotations]]
@@ -160,3 +206,150 @@ path = "coding/extension/host/subprocess/runtime-node/shims/partial-json/**"
 precedence = "override"
 SPDX-FileCopyrightText = "Copyright (c) 2023 Promplate Dev Team"
 SPDX-License-Identifier = "MIT"
+
+# Packages used by Pi's agent core and diff helpers.
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/ignore/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2013 Kael Zhang <i@kael.me>, contributors"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/diff/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2009-2015, Kevin Decker <kpdecker@gmail.com>"
+SPDX-License-Identifier = "BSD-3-Clause"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/cross-spawn/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2018 Made With MOXY Lda <hello@moxy.studio>"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/cross-spawn/node_modules/path-key/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com)"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/cross-spawn/node_modules/shebang-command/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) Kevin Mårtensson <kevinmartensson@gmail.com> (github.com/kevva)"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/cross-spawn/node_modules/shebang-command/node_modules/shebang-regex/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> (sindresorhus.com)"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/cross-spawn/node_modules/which/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) Isaac Z. Schlueter and Contributors"
+SPDX-License-Identifier = "ISC"
+
+# The unmodified lib/ and dist/ of jiti 2.7.0, the loader Pi 0.87.1 loads
+# extensions with. Its dist/ bundles jiti's dependencies (Babel 7 and others,
+# MIT; semver 6, ISC).
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/jiti/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) Pooya Parsa <pooya@pi0.io>"
+SPDX-License-Identifier = "MIT AND ISC"
+
+# Locked dependencies of the independent Node coding-agent SDK closure.
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/chalk/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) Sindre Sorhus <sindresorhus@gmail.com>"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/undici/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) Matteo Collina and Undici contributors"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/semver/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) Isaac Z. Schlueter and Contributors"
+SPDX-License-Identifier = "ISC"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/minimatch/**"
+precedence = "override"
+SPDX-FileCopyrightText = "minimatch contributors"
+SPDX-License-Identifier = "BlueOak-1.0.0"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/minimatch/node_modules/brace-expansion/**"
+precedence = "override"
+SPDX-FileCopyrightText = ["Copyright Julian Gruber <julian@juliangruber.com>", "TypeScript port Copyright Isaac Z. Schlueter <i@izs.me>"]
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/hosted-git-info/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2015, Rebecca Turner"
+SPDX-License-Identifier = "ISC"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/hosted-git-info/node_modules/lru-cache/**"
+precedence = "override"
+SPDX-FileCopyrightText = "lru-cache contributors"
+SPDX-License-Identifier = "BlueOak-1.0.0"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/grok-mermaid/**"
+precedence = "override"
+SPDX-FileCopyrightText = ["Copyright 2023-2026 SpaceXAI", "Copyright 2026 Alexey Zaytsev"]
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/photon-node/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright 2023, Silvia O'Dwyer"
+SPDX-License-Identifier = "Apache-2.0"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/proper-lockfile/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2018 Made With MOXY Lda <hello@moxy.studio>"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/proper-lockfile/node_modules/retry/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2011 Tim Koschützki and Felix Geisendörfer"
+SPDX-License-Identifier = "MIT"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/proper-lockfile/node_modules/graceful-fs/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2011-2022 Isaac Z. Schlueter, Ben Noordhuis, and Contributors"
+SPDX-License-Identifier = "ISC"
+
+[[annotations]]
+path = "coding/extension/host/subprocess/runtime-node/shims/proper-lockfile/node_modules/signal-exit/**"
+precedence = "override"
+SPDX-FileCopyrightText = "Copyright (c) 2015, Contributors"
+SPDX-License-Identifier = "ISC"
+
+# The word segmenter translates ICU's dictionary engines and embeds their pinned data.
+# Dictionary notices are reproduced in LICENSES/LicenseRef-ICU-{CJK,SEA}.txt.
+[[annotations]]
+path = "internal/wordsegmenter/**"
+precedence = "closest"
+SPDX-FileCopyrightText = [
+  "Copyright Hewlett Packard Enterprise Development LP",
+  "© 2016 and later: Unicode, Inc. and others.",
+  "Copyright (C) 2006-2016, International Business Machines Corporation and others.",
+  "Copyright (C) 1999-2016, International Business Machines Corporation and others.",
+  "Copyright (c) 2006-2015 International Business Machines Corporation, Apple Inc., and others.",
+  "Copyright (C) 2013 Brian Eugene Wilson, Robert Martin Campbell.",
+  "Copyright (c) 2013, LeRoy Benjamin Sharon",
+]
+SPDX-License-Identifier = "MIT AND Unicode-3.0 AND LicenseRef-ICU-CJK AND LicenseRef-ICU-SEA"

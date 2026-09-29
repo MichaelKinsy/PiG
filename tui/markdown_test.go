@@ -154,14 +154,9 @@ func TestMarkdownTaskListMarkerStyleAndContinuation(t *testing.T) {
 	}
 }
 
-// Pig's line-based markdown renderer preserves user-authored ordered-list
-// markers verbatim rather than renumbering them from the list start. This is
-// the behavior upstream opts into for user-message transcripts via
-// preserveOrderedListMarkers:true (markdown.ts:576, user-message.ts:26, #5013).
-// UserMessageBlock renders through NewMarkdown, so user-authored "3. 5. 7."
-// survives in the transcript.
+// Source marker preservation is an explicit Markdown option, enabled by UserMessageBlock.
 func TestMarkdownPreservesSourceOrderedListMarkers(t *testing.T) {
-	m := NewMarkdown("3. three\n5. five\n7. seven")
+	m := NewMarkdownWithOptions("3. three\n5. five\n7. seven", 0, 0, nil, nil, &MarkdownOptions{PreserveOrderedListMarkers: true})
 	out := markdownPlainLines(m.Render(80))
 	if len(out) != 3 {
 		t.Fatalf("expected 3 items, got %d: %v", len(out), out)
@@ -224,7 +219,7 @@ func TestMarkdownSpacingAfterHeading(t *testing.T) {
 func TestMarkdownSpacingAfterCodeBlock(t *testing.T) {
 	m := NewMarkdown("hello this is text\n```\ncode block\n```\nmore text")
 	got := markdownPlainLines(m.Render(80))
-	want := []string{"hello this is text", "", "```code", "  code block", "```", "", "more text"}
+	want := []string{"hello this is text", "", "```", "  code block", "```", "", "more text"}
 	if strings.Join(got, "\n") != strings.Join(want, "\n") {
 		t.Fatalf("got %v want %v", got, want)
 	}
@@ -347,6 +342,14 @@ func TestMarkdownStrikethroughStrictSyntax(t *testing.T) {
 	}
 	if strings.Contains(joined, "\033[9m") {
 		t.Fatalf("single-tilde text should not use strikethrough styling: %q", joined)
+	}
+}
+
+func TestMarkdownParagraphBeforeTableSpacing(t *testing.T) {
+	// Pi markdown.ts:491-498 inserts a blank after a paragraph followed by a table, even without a source blank line.
+	rows := markdownPlainLines(NewMarkdown("**Navigation**\n| Key | Action |\n|---|---|\n| Enter | Send | ").Render(80))
+	if len(rows) < 3 || rows[0] != "Navigation" || rows[1] != "" || !strings.HasPrefix(rows[2], "┌") {
+		t.Fatalf("paragraph/table boundary = %q", rows)
 	}
 }
 

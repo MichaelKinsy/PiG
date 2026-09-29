@@ -19,7 +19,11 @@ const (
 // opening the executable's directory for adding entries and traversal runs
 // the DACL access check without changing the directory.
 func replacementDirectoryWritable(path string) bool {
-	dir, err := windows.UTF16PtrFromString(filepath.Dir(path))
+	return directoryWritable(filepath.Dir(path))
+}
+
+func directoryWritable(path string) bool {
+	dir, err := windows.UTF16PtrFromString(path)
 	if err != nil {
 		return false
 	}

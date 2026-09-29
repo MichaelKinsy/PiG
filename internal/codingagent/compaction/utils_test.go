@@ -197,7 +197,7 @@ func TestExtractFileOpsFromMessage_NonAssistant(t *testing.T) {
 	msg := agent.AgentMessage{
 		User: &agent.UserMessage{
 			Role:    "user",
-			Content: []ai.UserContentBlock{ai.TextContent{Text: "hi"}},
+			Content: ai.UserContentBlocks{ai.TextContent{Text: "hi"}},
 		},
 	}
 	ops := NewFileOps()

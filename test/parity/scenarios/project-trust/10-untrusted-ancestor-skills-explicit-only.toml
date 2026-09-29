@@ -1,0 +1,42 @@
+# Behavior family: project-trust
+# Upstream evidence: Pi 0.87.1 trust-manager.ts:185-213 detects ancestor
+# .agents/skills even with no current-directory .pi. project-trust.ts:50-87
+# denies undecided noninteractive projects; package-manager.ts:2397-2401 then
+# excludes their ancestor skills. resource-loader.ts:468-470 still loads
+# --skill. Probe: the trusted sibling scenario without --approve yields only
+# only-explicit and shared (explicit), with no ancestor command.
+name = "10-untrusted-ancestor-skills-explicit-only"
+description = "Undecided RPC trust excludes ancestor .agents skills without suppressing explicit --skill resources."
+covers = [
+  "packages/coding-agent/src/core/trust-manager.ts",
+  "packages/coding-agent/src/core/project-trust.ts",
+  "packages/coding-agent/src/core/package-manager.ts",
+]
+tags = ["hermetic", "fast", "security"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent", "PIG_TEST_FAUX=1", "PIG_OFFLINE=1"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1"]
+pig_extensions = ["testdata/ancestor-skill-info.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ancestor-skill-info.mjs"]
+override_base_args = true
+
+[cli]
+args = ["--mode", "rpc", "--model", "test-faux/faux-1", "--no-extensions", "--session", "sessions/nested.jsonl", "--skill", "explicit"]
+cwd = "testdata/ancestor-skills"
+snapshot_cwd = true
+input_lines = ['{"id":"info","type":"prompt","message":"/ancestor-info {{TEMP}}/skills.json"}']
+# The extension writes the artifact before its prompt response. Keep stdin
+# open while RPC processes the command, as in extensions-runtime/21.
+settle_seconds = 3
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/skills.json"
+
+[assert]
+exit_code = 0
+runs = 3
+both_contain = ['"id":"info","type":"response","command":"prompt","success":true']
+artifact_normalized_equal = true
+artifact_both_contain = ['[{"name":"skill:only-explicit","description":"explicit-only skill","source":"local","scope":"temporary"},{"name":"skill:shared","description":"explicit wins only without ambient skills","source":"local","scope":"temporary"}]']
+artifact_both_not_contain = ["only-ancestor", "ancestor wins"]

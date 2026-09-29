@@ -1,14 +1,6 @@
 package tui
 
-// @<file> autocomplete using fd for fuzzy file search.
-//
-// Mirrors upstream autocomplete.ts CombinedAutocompleteProvider (783 LOC).
-// Upstream uses fd for fuzzy @-prefix file search and readdirSync for
-// direct path completion. pig implements both fd-based fuzzy search
-// (for @prefix) and os.ReadDir path completion (for naked paths when fd is
-// unavailable).
-//
-// Reference: .upstream/current/packages/tui/src/autocomplete.ts
+// Attachment autocomplete uses fd for fuzzy search. Direct path completion uses os.ReadDir.
 
 import (
 	"context"
@@ -17,6 +9,10 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 
 	"golang.org/x/text/collate"
 	"golang.org/x/text/language"
@@ -54,13 +50,7 @@ type CombinedProvider struct {
 // Interactive mode enables this so a slow tree walk cannot block keystrokes.
 func (p *CombinedProvider) SetAsyncFileSearch(v bool) { p.asyncFileSearch = v }
 
-var autocompleteCollator = collate.New(language.Und)
-
-// NewCombinedProvider creates a provider that handles both slash commands
-// and @-file autocomplete. If fdPath is empty, @-file completion uses
-// os.ReadDir fallback (prefix match in target directory only, no fuzzy
-// tree walk). Mirrors upstream CombinedAutocompleteProvider constructor
-// (autocomplete.ts:244-248).
+// NewCombinedProvider creates a provider for slash commands, attachment search, and direct paths. An empty fdPath disables attachment suggestions without affecting direct path completion.
 func NewCombinedProvider(cmds []SlashCommand, baseDir, fdPath string) *CombinedProvider {
 	return &CombinedProvider{
 		slash:   NewSlashOnlyProvider(cmds),
@@ -69,9 +59,7 @@ func NewCombinedProvider(cmds []SlashCommand, baseDir, fdPath string) *CombinedP
 	}
 }
 
-// GetSuggestions implements AutocompleteProvider. Tries @ prefix first,
-// then slash. Naked-path completion is force-only in shipped upstream UX:
-// the popup opens on Tab, not while typing `./foo`.
+// GetSuggestions implements upstream command, attachment and path matching. The Editor decides which contexts trigger queries automatically.
 func (p *CombinedProvider) GetSuggestions(lines []string, cursorLine, cursorCol int) *AutocompleteSuggestions {
 	return p.getSuggestions(lines, cursorLine, cursorCol, false)
 }
@@ -113,19 +101,6 @@ func (p *CombinedProvider) getSuggestions(lines []string, cursorLine, cursorCol 
 	if !force && strings.HasPrefix(before, "/") {
 		return p.slash.GetSuggestions(lines, cursorLine, cursorCol)
 	}
-	if strings.HasPrefix(before, "/") {
-		// In force mode, still delegate to slash for /<name> popups
-		// because the path branch can't fire on a leading slash anyway.
-		return p.slash.GetSuggestions(lines, cursorLine, cursorCol)
-	}
-
-	// Naked path branch is force-only in the interactive shipped behavior:
-	// Tab triggers file completion, while ordinary typing does not open the
-	// popup for `./`/`~/` paths. Keep the source-shaped helper, but only use
-	// it from the force path so tmux parity stays aligned with upstream UX.
-	if !force {
-		return nil
-	}
 
 	// Mirrors upstream autocomplete.ts:358 + editor.ts forceFileAutocomplete.
 	pathPrefix, ok := extractPathPrefix(before, force)
@@ -141,12 +116,47 @@ func (p *CombinedProvider) getSuggestions(lines []string, cursorLine, cursorCol 
 	// completions don't accidentally turn a `./` into `@./`.
 	for i := range items {
 		items[i].Value = strings.TrimPrefix(items[i].Value, "@")
+		items[i].Description = ""
 	}
 	return &AutocompleteSuggestions{Items: items, Prefix: pathPrefix}
 }
 
-// ApplyCompletion implements AutocompleteProvider. Routes to @ or slash
-// completion based on prefix shape.
+// SuggestionTask defers filesystem access and awaited command arguments while preserving the combined provider's branch precedence.
+func (p *CombinedProvider) SuggestionTask(lines []string, line, col int, force bool) (string, func(context.Context) ([]AutocompleteItem, error), bool) {
+	if line < 0 || line >= len(lines) || col < 0 {
+		return "", nil, false
+	}
+	before := lines[line][:min(col, len(lines[line]))]
+	prefix := extractAtPrefix(before)
+	pathPrefix, pathMatch := extractPathPrefix(before, force)
+	if prefix != "" || force || (pathMatch && !strings.HasPrefix(before, "/")) {
+		lines = slices.Clone(lines)
+		if prefix == "" {
+			if !pathMatch {
+				return "", nil, false
+			}
+			prefix = pathPrefix
+		}
+		return prefix, func(ctx context.Context) ([]AutocompleteItem, error) {
+			if err := ctx.Err(); err != nil {
+				return nil, err
+			}
+			if _, run, ok := p.FileSearchTask(lines, line, col); ok {
+				return run(ctx), ctx.Err()
+			}
+			local := *p
+			local.asyncFileSearch = false
+			result := local.getSuggestions(lines, line, col, force)
+			if result == nil {
+				return nil, ctx.Err()
+			}
+			return result.Items, ctx.Err()
+		}, true
+	}
+	return p.slash.SuggestionTask(lines, line, col, force)
+}
+
+// ApplyCompletion preserves path prefixes and surrounding text, consumes an existing closing quote, and leaves directory cursors inside quotes. Only slash commands and file attachments append a space.
 func (p *CombinedProvider) ApplyCompletion(lines []string, cursorLine, cursorCol int, item AutocompleteItem, prefix string) ([]string, int, int) {
 	if cursorLine < 0 || cursorLine >= len(lines) {
 		return lines, cursorLine, cursorCol
@@ -158,78 +168,27 @@ func (p *CombinedProvider) ApplyCompletion(lines []string, cursorLine, cursorCol
 	if len(prefix) > cursorCol {
 		return lines, cursorLine, cursorCol
 	}
-	beforePrefix := line[:cursorCol-len(prefix)]
-	afterCursor := line[cursorCol:]
-
-	out := make([]string, len(lines))
-	copy(out, lines)
-
-	// @ file completion: prefix starts with "@".
-	// Directories don't get trailing space (user continues typing path).
-	// Files get trailing space. Mirrors upstream applyCompletion @-branch
-	// (autocomplete.ts:395-420).
-	if strings.HasPrefix(prefix, "@") || strings.HasPrefix(prefix, `@"`) {
-		isDirectory := strings.HasSuffix(item.Label, "/")
-		suffix := ""
-		if !isDirectory {
-			suffix = " "
-		}
-		// Handle quoted completion: if item.Value ends with `"` and
-		// afterCursor starts with `"`, consume the existing quote.
-		adjustedAfter := afterCursor
-		if strings.HasSuffix(item.Value, `"`) && strings.HasPrefix(afterCursor, `"`) {
-			adjustedAfter = afterCursor[1:]
-		}
-		newLine := beforePrefix + item.Value + suffix + adjustedAfter
-		out[cursorLine] = newLine
-
-		cursorOffset := len(item.Value)
-		// For directories inside quotes, place cursor before closing quote.
-		if isDirectory && strings.HasSuffix(item.Value, `"`) {
-			cursorOffset = len(item.Value) - 1
-		}
-		return out, cursorLine, len(beforePrefix) + cursorOffset + len(suffix)
+	beforePrefix, afterCursor := line[:cursorCol-len(prefix)], line[cursorCol:]
+	isQuoted := strings.HasPrefix(prefix, `"`) || strings.HasPrefix(prefix, `@"`)
+	if isQuoted && strings.HasSuffix(item.Value, `"`) && strings.HasPrefix(afterCursor, `"`) {
+		afterCursor = afterCursor[1:]
 	}
-
-	// Naked path completion: prefix is a path-like token without "@" and
-	// not a slash-command name. Mirrors upstream applyCompletion's final
-	// path branch (autocomplete.ts:445-460): directories keep the cursor
-	// adjacent so the user can continue typing; files don't get a
-	// trailing space (only @-completions do).
-	isPathPrefix := strings.HasPrefix(prefix, `"`) ||
-		strings.HasPrefix(prefix, "./") ||
-		strings.HasPrefix(prefix, "../") ||
-		strings.HasPrefix(prefix, "~/") ||
-		strings.HasPrefix(prefix, "/") ||
-		strings.Contains(prefix, "/")
-	if !strings.HasPrefix(prefix, "/") && isPathPrefix {
-		// (slash-command names start with `/`; naked paths starting
-		// with `/` are absolute paths and handled below.)
-		newLine := beforePrefix + item.Value + afterCursor
-		out[cursorLine] = newLine
-		isDirectory := strings.HasSuffix(item.Label, "/")
-		cursorOffset := len(item.Value)
-		if isDirectory && strings.HasSuffix(item.Value, `"`) {
-			cursorOffset = len(item.Value) - 1
-		}
-		return out, cursorLine, len(beforePrefix) + cursorOffset
+	out := slices.Clone(lines)
+	if strings.HasPrefix(prefix, "/") && widthx.JSTrim(beforePrefix) == "" && !strings.Contains(prefix[1:], "/") {
+		out[cursorLine] = beforePrefix + "/" + item.Value + " " + afterCursor
+		return out, cursorLine, len(beforePrefix) + len(item.Value) + 2
 	}
-	if strings.HasPrefix(prefix, "/") && !strings.Contains(prefix[1:], "/") {
-		// Slash-command name: keep delegating to the slash provider.
-	} else if strings.HasPrefix(prefix, "/") {
-		// Absolute path like /usr/lo…: treat as naked path.
-		newLine := beforePrefix + item.Value + afterCursor
-		out[cursorLine] = newLine
-		isDirectory := strings.HasSuffix(item.Label, "/")
-		cursorOffset := len(item.Value)
-		if isDirectory && strings.HasSuffix(item.Value, `"`) {
-			cursorOffset = len(item.Value) - 1
-		}
-		return out, cursorLine, len(beforePrefix) + cursorOffset
+	isDirectory := strings.HasSuffix(item.Label, "/")
+	suffix := ""
+	if strings.HasPrefix(prefix, "@") && !isDirectory {
+		suffix = " "
 	}
-
-	// Slash-command completion: delegate.
-	return p.slash.ApplyCompletion(lines, cursorLine, cursorCol, item, prefix)
+	out[cursorLine] = beforePrefix + item.Value + suffix + afterCursor
+	cursorOffset := len(item.Value)
+	if isDirectory && strings.HasSuffix(item.Value, `"`) {
+		cursorOffset--
+	}
+	return out, cursorLine, len(beforePrefix) + cursorOffset + len(suffix)
 }
 
 // extractQuotedPrefix returns the text starting at the last unclosed " in
@@ -275,7 +234,7 @@ func extractPathPrefix(text string, force bool) (string, bool) {
 		strings.HasPrefix(prefix, "~/") {
 		return prefix, true
 	}
-	if prefix == "" && strings.HasSuffix(text, " ") {
+	if prefix == "" && text != "" && isTokenStart(text, len(text)) {
 		return prefix, true
 	}
 	return "", false
@@ -317,15 +276,15 @@ func extractAtPrefix(text string) string {
 	return ""
 }
 
-// findLastDelimiter returns the index of the last PATH_DELIMITER in text,
-// or -1 if none found. Mirrors upstream findLastDelimiter (autocomplete.ts:50).
+// findLastDelimiter returns the final byte of the last path separator, or -1. Provider columns count bytes, so callers add one to find the following token.
 func findLastDelimiter(text string) int {
-	for i := len(text) - 1; i >= 0; i-- {
-		if pathDelimiters[text[i]] {
-			return i
+	last := -1
+	for i, r := range text {
+		if (r < utf8.RuneSelf && pathDelimiters[byte(r)]) || autocompleteSeparator(r) {
+			last = i + utf8.RuneLen(r) - 1
 		}
 	}
-	return -1
+	return last
 }
 
 // findUnclosedQuoteStart returns the index of the opening " that is still
@@ -352,7 +311,11 @@ func findUnclosedQuoteStart(text string) int {
 // (index 0 or preceded by a delimiter).
 // Mirrors upstream isTokenStart (autocomplete.ts:70).
 func isTokenStart(text string, index int) bool {
-	return index == 0 || pathDelimiters[text[index-1]]
+	if index == 0 {
+		return true
+	}
+	previous, _ := utf8.DecodeLastRuneInString(text[:index])
+	return (previous < utf8.RuneSelf && pathDelimiters[byte(previous)]) || autocompleteSeparator(previous)
 }
 
 // parseAtPrefix extracts the raw path and quote state from an @ prefix.
@@ -372,7 +335,7 @@ func parseAtPrefix(prefix string) (raw string, isQuoted bool) {
 // Handles quoting for paths with spaces. Mirrors upstream
 // buildCompletionValue (autocomplete.ts:109-122).
 func buildCompletionValue(path string, isDirectory, isQuoted bool) string {
-	needsQuotes := isQuoted || strings.Contains(path, " ")
+	needsQuotes := isQuoted || strings.ContainsFunc(path, autocompleteSeparator)
 	if !needsQuotes {
 		return "@" + path
 	}
@@ -382,18 +345,12 @@ func buildCompletionValue(path string, isDirectory, isQuoted bool) string {
 	return `@"` + path + `"`
 }
 
-// getFileSuggestions returns file completion suggestions for the given
-// raw query. When fd is available, it uses fd for the same fuzzy tree walk as
-// upstream. Without fd, it uses os.ReadDir prefix matching in the resolved
-// directory. Mirrors upstream getFuzzyFileSuggestions + getFileSuggestions
-// (autocomplete.ts:489-794).
+// getFileSuggestions returns fd-backed attachment suggestions, or none when fd is unavailable.
 func (p *CombinedProvider) getFileSuggestions(rawQuery string, isQuoted bool) []AutocompleteItem {
-	// fd provides fuzzy search for @ queries, including recursively within a
-	// scoped directory. os.ReadDir is used only when fd is unavailable.
-	if p.fdPath != "" {
-		return p.fdFileSuggestions(rawQuery, isQuoted)
+	if p.fdPath == "" {
+		return nil
 	}
-	return p.readdirFileSuggestions(rawQuery, isQuoted)
+	return p.fdFileSuggestions(rawQuery, isQuoted)
 }
 
 // FileSearchTask returns a deferred, cancellable fd-backed @-file search
@@ -581,7 +538,10 @@ func (p *CombinedProvider) walkDirectoryWithFd(ctx context.Context, baseDir, que
 		args = append(args, buildFdPathQuery(query))
 	}
 
-	out, err := exec.CommandContext(ctx, p.fdPath, args...).Output()
+	cmd := exec.CommandContext(ctx, p.fdPath, args...)
+	// Upstream's spawn finds fd with libuv's search on Windows.
+	nodespawn.SetProgram(cmd)
+	out, err := cmd.Output()
 	if err != nil || len(out) == 0 {
 		return nil
 	}
@@ -629,9 +589,7 @@ func utf16Length(s string) int {
 	return length
 }
 
-// readdirFileSuggestions uses os.ReadDir for synchronous directory listing.
-// Used as fallback when fd is not available, or for scoped queries.
-// Mirrors upstream getFileSuggestions (autocomplete.ts:489-618).
+// readdirFileSuggestions lists direct path matches, including .git, with directories first and request-owned collation state.
 func (p *CombinedProvider) readdirFileSuggestions(rawQuery string, isQuoted bool) []AutocompleteItem {
 	query := toDisplayPath(rawQuery)
 
@@ -677,6 +635,9 @@ func (p *CombinedProvider) readdirFileSuggestions(rawQuery string, isQuoted bool
 		case strings.HasPrefix(query, "../"):
 			displayBase = "../"
 		}
+		if strings.HasPrefix(query, "./") && !strings.HasPrefix(displayBase, "./") {
+			displayBase = "./" + displayBase
+		}
 		switch {
 		case strings.HasPrefix(query, "~/"):
 			home, _ := os.UserHomeDir()
@@ -702,9 +663,6 @@ func (p *CombinedProvider) readdirFileSuggestions(rawQuery string, isQuoted bool
 
 	for _, de := range dirEntries {
 		name := de.Name()
-		if name == ".git" {
-			continue
-		}
 		if lowerPrefix != "" && !strings.HasPrefix(strings.ToLower(name), lowerPrefix) {
 			continue
 		}
@@ -732,14 +690,14 @@ func (p *CombinedProvider) readdirFileSuggestions(rawQuery string, isQuoted bool
 		value := buildCompletionValue(completionPath, isDir, isQuoted)
 
 		items = append(items, AutocompleteItem{
-			Value:       value,
-			Label:       label,
-			Description: relPath,
+			Value: value,
+			Label: label,
 		})
 	}
 
 	// Directories first, then alphabetical. Mirrors upstream sort
 	// (autocomplete.ts:607-614).
+	autocompleteCollator := collate.New(language.Und)
 	slices.SortFunc(items, func(a, b AutocompleteItem) int {
 		aDir := strings.HasSuffix(a.Label, "/")
 		bDir := strings.HasSuffix(b.Label, "/")

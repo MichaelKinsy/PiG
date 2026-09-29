@@ -1,0 +1,79 @@
+# Upstream evidence: Pi 0.87.1 agent-session-runtime.ts:133-164 awaits
+# session_before_switch and session_before_fork with the event loop live, so a
+# handler's ctx.ui dialog shows and takes keys. /fork emits position "before"
+# and /clone position "at" (262-269, interactive-mode.ts:5351-5399), and /new
+# emits reason "new". A cancel result ends each command without output
+# (handleClearCommand, showUserMessageSelector, handleCloneCommand).
+# Pi's own examples/extensions/confirm-destructive.ts froze PiG here before.
+# The wait barriers observe each dialog in both binaries. Pi clears transient
+# notifications when the next command opens, so the fixture accumulates the
+# cancellation trace and reports it again after each refusal. The strict crop
+# holds the complete trace, from the /fork notice to the /new notice.
+name = "65-session-before-dialogs"
+description = "Extension dialogs in session_before_switch and session_before_fork run during /fork, /clone and /new, and a refusal cancels each"
+covers = ["packages/coding-agent/src/core/agent-session-runtime.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/session-before-dialogs.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/session-before-dialogs.mjs"]
+
+[tmux]
+width = 100
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Fork cancelled position=before"
+capture_end = "Switch cancelled reason=new"
+
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+wait_contains = ["42"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["/fork", "Enter"]
+wait_contains = ["Fork from Message"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Fork position=before?", "Yes, create fork"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["Fork cancelled position=before"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["/clone", "Enter"]
+wait_contains = ["Fork position=at?"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["Fork cancelled position=at"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["/new", "Enter"]
+wait_contains = ["Clear session?", "reason=new"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["Switch cancelled reason=new"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["Fork cancelled position=before", "Fork cancelled position=at", "Switch cancelled reason=new"]
+escaped_output_equal = true
+runs = 3

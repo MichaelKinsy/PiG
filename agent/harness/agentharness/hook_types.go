@@ -3,9 +3,9 @@ package agentharness
 import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/agent/harness"
+	harnesscompaction "github.com/MichaelKinsy/PiG/agent/harness/compaction"
 	"github.com/MichaelKinsy/PiG/agent/harness/session"
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/compaction"
 )
 
 // HookName names a harness hook (upstream keyof HookMap).
@@ -194,7 +194,7 @@ const (
 type BeforeCompactionEvent struct {
 	HookScope
 	Reason             string
-	Preparation        compaction.CompactionPreparation
+	Preparation        harnesscompaction.CompactionPreparation
 	CustomInstructions *string
 }
 
@@ -202,14 +202,14 @@ type BeforeCompactionEvent struct {
 // reported as a hook error and ignored.
 type BeforeCompactionResult struct {
 	Decline    bool
-	Compaction *compaction.CompactionResult
+	Compaction *harnesscompaction.CompactResult
 }
 
 // BeforeNavigationEvent may decline or supply a branch summary.
 type BeforeNavigationEvent struct {
 	HookScope
 	TargetID           string
-	Preparation        compaction.BranchPreparation
+	Preparation        harnesscompaction.BranchPreparation
 	CustomInstructions *string
 }
 
@@ -217,7 +217,7 @@ type BeforeNavigationEvent struct {
 // reported as a hook error and ignored.
 type BeforeNavigationResult struct {
 	Decline bool
-	Summary *compaction.BranchSummaryResult
+	Summary *harnesscompaction.BranchSummaryResult
 }
 
 // Hooks registers ordered hook handlers (upstream Hooks.on). Each method

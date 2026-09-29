@@ -13,7 +13,7 @@ import (
 // behavior pig's test-faux stands in for (GUARD-03). Upstream's own faux.ts
 // provider (maxTokens ?? 16384) is a different provider.
 func TestTestFauxLimitsMatchParityOracle(t *testing.T) {
-	source, err := os.ReadFile(filepath.Join("..", "parity", "testdata", "test-faux-provider.ts"))
+	source, err := os.ReadFile(filepath.Join("..", "test/parity", "testdata", "test-faux-provider.ts"))
 	if err != nil {
 		t.Fatal(err)
 	}

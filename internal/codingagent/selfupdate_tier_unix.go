@@ -12,6 +12,9 @@ import (
 // rename. It intentionally does not open the running executable: Linux rejects
 // that with ETXTBSY even though replacing it in a writable directory is valid.
 func replacementDirectoryWritable(path string) bool {
-	dir := filepath.Dir(path)
+	return directoryWritable(filepath.Dir(path))
+}
+
+func directoryWritable(dir string) bool {
 	return unix.Access(dir, unix.W_OK|unix.X_OK) == nil
 }

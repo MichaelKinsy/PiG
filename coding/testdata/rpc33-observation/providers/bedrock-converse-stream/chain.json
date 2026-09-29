@@ -1,0 +1,424 @@
+{
+ "piVersion": "0.87.1",
+ "awsSdkClientBedrockRuntime": "3.1127.0",
+ "smithyCore": "3.33.3",
+ "node": "v24.19.0",
+ "cases": {
+  "h1/buffered/hooks": [
+   {
+    "epoch": 1,
+    "tick": 3,
+    "what": "middleware: next() returned"
+   },
+   {
+    "epoch": 1,
+    "tick": 4,
+    "what": "middleware: onResponse awaited"
+   },
+   {
+    "epoch": 1,
+    "tick": 6,
+    "what": "Readable[Symbol.asyncIterator] on IncomingMessage"
+   },
+   {
+    "epoch": 1,
+    "tick": 37,
+    "what": "send resolved"
+   },
+   {
+    "epoch": 1,
+    "tick": 39,
+    "what": "item messageStart"
+   },
+   {
+    "epoch": 1,
+    "tick": 51,
+    "what": "item contentBlockStart"
+   },
+   {
+    "epoch": 1,
+    "tick": 63,
+    "what": "item contentBlockDelta"
+   },
+   {
+    "epoch": 1,
+    "tick": 75,
+    "what": "item contentBlockStop"
+   },
+   {
+    "epoch": 1,
+    "tick": 87,
+    "what": "item messageStop"
+   },
+   {
+    "epoch": 1,
+    "tick": 99,
+    "what": "item metadata"
+   },
+   {
+    "epoch": 1,
+    "tick": 105,
+    "what": "stream done"
+   }
+  ],
+  "h1/buffered/nohooks": [
+   {
+    "epoch": 1,
+    "tick": 4,
+    "what": "Readable[Symbol.asyncIterator] on IncomingMessage"
+   },
+   {
+    "epoch": 1,
+    "tick": 36,
+    "what": "send resolved"
+   },
+   {
+    "epoch": 1,
+    "tick": 38,
+    "what": "item messageStart"
+   },
+   {
+    "epoch": 1,
+    "tick": 50,
+    "what": "item contentBlockStart"
+   },
+   {
+    "epoch": 1,
+    "tick": 62,
+    "what": "item contentBlockDelta"
+   },
+   {
+    "epoch": 1,
+    "tick": 74,
+    "what": "item contentBlockStop"
+   },
+   {
+    "epoch": 1,
+    "tick": 86,
+    "what": "item messageStop"
+   },
+   {
+    "epoch": 1,
+    "tick": 98,
+    "what": "item metadata"
+   },
+   {
+    "epoch": 1,
+    "tick": 104,
+    "what": "stream done"
+   }
+  ],
+  "h1/pending/hooks": [
+   {
+    "epoch": 1,
+    "tick": 3,
+    "what": "middleware: next() returned"
+   },
+   {
+    "epoch": 1,
+    "tick": 4,
+    "what": "middleware: onResponse awaited"
+   },
+   {
+    "epoch": 1,
+    "tick": 6,
+    "what": "Readable[Symbol.asyncIterator] on IncomingMessage"
+   },
+   {
+    "epoch": 1,
+    "tick": 37,
+    "what": "send resolved"
+   },
+   {
+    "epoch": 1,
+    "tick": 39,
+    "what": "item messageStart"
+   },
+   {
+    "epoch": 2,
+    "tick": 15,
+    "what": "item contentBlockStart"
+   },
+   {
+    "epoch": 2,
+    "tick": 27,
+    "what": "item contentBlockDelta"
+   },
+   {
+    "epoch": 2,
+    "tick": 39,
+    "what": "item contentBlockStop"
+   },
+   {
+    "epoch": 2,
+    "tick": 51,
+    "what": "item messageStop"
+   },
+   {
+    "epoch": 2,
+    "tick": 63,
+    "what": "item metadata"
+   },
+   {
+    "epoch": 2,
+    "tick": 69,
+    "what": "stream done"
+   }
+  ],
+  "h1/pending/nohooks": [
+   {
+    "epoch": 1,
+    "tick": 4,
+    "what": "Readable[Symbol.asyncIterator] on IncomingMessage"
+   },
+   {
+    "epoch": 1,
+    "tick": 36,
+    "what": "send resolved"
+   },
+   {
+    "epoch": 1,
+    "tick": 38,
+    "what": "item messageStart"
+   },
+   {
+    "epoch": 2,
+    "tick": 15,
+    "what": "item contentBlockStart"
+   },
+   {
+    "epoch": 2,
+    "tick": 27,
+    "what": "item contentBlockDelta"
+   },
+   {
+    "epoch": 2,
+    "tick": 39,
+    "what": "item contentBlockStop"
+   },
+   {
+    "epoch": 2,
+    "tick": 51,
+    "what": "item messageStop"
+   },
+   {
+    "epoch": 2,
+    "tick": 63,
+    "what": "item metadata"
+   },
+   {
+    "epoch": 2,
+    "tick": 69,
+    "what": "stream done"
+   }
+  ],
+  "h2/buffered/hooks": [
+   {
+    "epoch": 1,
+    "tick": 3,
+    "what": "middleware: next() returned"
+   },
+   {
+    "epoch": 1,
+    "tick": 4,
+    "what": "middleware: onResponse awaited"
+   },
+   {
+    "epoch": 1,
+    "tick": 6,
+    "what": "Readable[Symbol.asyncIterator] on ClientHttp2Stream"
+   },
+   {
+    "epoch": 2,
+    "tick": 31,
+    "what": "send resolved"
+   },
+   {
+    "epoch": 2,
+    "tick": 33,
+    "what": "item messageStart"
+   },
+   {
+    "epoch": 2,
+    "tick": 45,
+    "what": "item contentBlockStart"
+   },
+   {
+    "epoch": 2,
+    "tick": 57,
+    "what": "item contentBlockDelta"
+   },
+   {
+    "epoch": 2,
+    "tick": 69,
+    "what": "item contentBlockStop"
+   },
+   {
+    "epoch": 2,
+    "tick": 81,
+    "what": "item messageStop"
+   },
+   {
+    "epoch": 2,
+    "tick": 93,
+    "what": "item metadata"
+   },
+   {
+    "epoch": 3,
+    "tick": 6,
+    "what": "stream done"
+   }
+  ],
+  "h2/buffered/nohooks": [
+   {
+    "epoch": 1,
+    "tick": 4,
+    "what": "Readable[Symbol.asyncIterator] on ClientHttp2Stream"
+   },
+   {
+    "epoch": 2,
+    "tick": 32,
+    "what": "send resolved"
+   },
+   {
+    "epoch": 2,
+    "tick": 34,
+    "what": "item messageStart"
+   },
+   {
+    "epoch": 2,
+    "tick": 46,
+    "what": "item contentBlockStart"
+   },
+   {
+    "epoch": 2,
+    "tick": 58,
+    "what": "item contentBlockDelta"
+   },
+   {
+    "epoch": 2,
+    "tick": 70,
+    "what": "item contentBlockStop"
+   },
+   {
+    "epoch": 2,
+    "tick": 82,
+    "what": "item messageStop"
+   },
+   {
+    "epoch": 2,
+    "tick": 94,
+    "what": "item metadata"
+   },
+   {
+    "epoch": 3,
+    "tick": 6,
+    "what": "stream done"
+   }
+  ],
+  "h2/pending/hooks": [
+   {
+    "epoch": 1,
+    "tick": 3,
+    "what": "middleware: next() returned"
+   },
+   {
+    "epoch": 1,
+    "tick": 4,
+    "what": "middleware: onResponse awaited"
+   },
+   {
+    "epoch": 1,
+    "tick": 6,
+    "what": "Readable[Symbol.asyncIterator] on ClientHttp2Stream"
+   },
+   {
+    "epoch": 2,
+    "tick": 31,
+    "what": "send resolved"
+   },
+   {
+    "epoch": 2,
+    "tick": 33,
+    "what": "item messageStart"
+   },
+   {
+    "epoch": 3,
+    "tick": 15,
+    "what": "item contentBlockStart"
+   },
+   {
+    "epoch": 3,
+    "tick": 27,
+    "what": "item contentBlockDelta"
+   },
+   {
+    "epoch": 3,
+    "tick": 39,
+    "what": "item contentBlockStop"
+   },
+   {
+    "epoch": 3,
+    "tick": 51,
+    "what": "item messageStop"
+   },
+   {
+    "epoch": 3,
+    "tick": 63,
+    "what": "item metadata"
+   },
+   {
+    "epoch": 4,
+    "tick": 6,
+    "what": "stream done"
+   }
+  ],
+  "h2/pending/nohooks": [
+   {
+    "epoch": 1,
+    "tick": 4,
+    "what": "Readable[Symbol.asyncIterator] on ClientHttp2Stream"
+   },
+   {
+    "epoch": 2,
+    "tick": 32,
+    "what": "send resolved"
+   },
+   {
+    "epoch": 2,
+    "tick": 34,
+    "what": "item messageStart"
+   },
+   {
+    "epoch": 3,
+    "tick": 15,
+    "what": "item contentBlockStart"
+   },
+   {
+    "epoch": 3,
+    "tick": 27,
+    "what": "item contentBlockDelta"
+   },
+   {
+    "epoch": 3,
+    "tick": 39,
+    "what": "item contentBlockStop"
+   },
+   {
+    "epoch": 3,
+    "tick": 51,
+    "what": "item messageStop"
+   },
+   {
+    "epoch": 3,
+    "tick": 63,
+    "what": "item metadata"
+   },
+   {
+    "epoch": 4,
+    "tick": 6,
+    "what": "stream done"
+   }
+  ]
+ }
+}

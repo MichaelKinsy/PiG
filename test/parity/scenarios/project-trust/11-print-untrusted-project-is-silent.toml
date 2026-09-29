@@ -1,0 +1,27 @@
+# Behavior family: project-trust
+# Pi 0.87.1 core/project-trust.ts:46-94, main.ts:756-773, 930-969:
+# --print with no messages silently declines undecided trust and exits 0.
+# Probe used an explicit catalog model to isolate trust from model selection.
+# Combined stdout/stderr equality rejects any added trust prompt or warning.
+name = "11-print-untrusted-project-is-silent"
+description = "Print mode silently declines an undecided project with extensions disabled."
+covers = ["packages/coding-agent/src/core/project-trust.ts"]
+tags = ["hermetic", "fast", "security"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/warning-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/warning-agent"]
+override_base_args = true
+
+[cli]
+args = ["--offline", "--no-extensions", "--no-session", "--model", "openai/gpt-4.1", "--print"]
+cwd = "testdata/warning-project"
+snapshot_cwd = true
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_not_contain = ["Trust project folder?", "This project is not trusted."]
+output_equal = true
+runs = 3

@@ -96,7 +96,7 @@ func EstimateTokens(message agent.AgentMessage) int {
 	case message.System != nil:
 		return estimateSystemTokens(*message.System)
 	case message.User != nil:
-		return ceilQuarter(contentBlocksChars(message.User.Content))
+		return ceilQuarter(contentBlocksChars(message.ContentBlocks()))
 	case message.Assistant != nil:
 		chars := 0
 		for _, block := range message.Assistant.Content {

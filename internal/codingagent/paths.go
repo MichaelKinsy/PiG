@@ -7,19 +7,34 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
+	"github.com/MichaelKinsy/PiG/internal/resolvepath"
 )
 
-// AppName is the binary/CLI name. Distinct from upstream pi to avoid
-// PATH collisions and shared-config corruption.
+// AppName is the binary/CLI name, independent of the selected configuration directories.
 const AppName = "pig"
 
 // PackageName identifies the installed package/binary for self-update messaging.
 // Mirrors upstream PACKAGE_NAME export.
 const PackageName = "pig"
 
-// CONFIG_DIR_NAME is the per-project config directory name.
-// Mirrors upstream's CONFIG_DIR_NAME export.
+// CONFIG_DIR_NAME is the default per-project config directory name.
 const CONFIG_DIR_NAME = "." + AppName
+
+// UsePiDirs reports whether the user explicitly selected Pi's configuration directories.
+func UsePiDirs() bool {
+	// pig divergence (D2): sharing Pi state requires an explicit process-level opt-in.
+	return os.Getenv("PIG_USE_PI_DIRS") == "1"
+}
+
+// ConfigDirName returns the selected per-project configuration directory name.
+func ConfigDirName() string {
+	if UsePiDirs() {
+		return ".pi"
+	}
+	return CONFIG_DIR_NAME
+}
 
 // ENV_AGENT_DIR overrides the config directory.
 // Mirrors upstream ENV_AGENT_DIR export.
@@ -32,18 +47,21 @@ const ENV_SESSION_DIR = "PIG_CODING_AGENT_SESSION_DIR"
 // pig divergence (D2): title says "PiG", not "pi": separate binary and config root.
 const APP_TITLE = "PiG"
 
-// AgentDir returns the configured writable agent directory. The environment
-// override matches the directory selected by the main CLI and RPC mode.
+// AgentDir returns the writable agent directory. Shared mode uses Pi's environment override; otherwise it uses PiG's. Both expand a leading tilde.
 func AgentDir() string {
-	if configured := os.Getenv(ENV_AGENT_DIR); configured != "" {
-		return configured
+	envName := ENV_AGENT_DIR
+	if UsePiDirs() {
+		envName = "PI_CODING_AGENT_DIR"
+	}
+	if configured := os.Getenv(envName); configured != "" {
+		return ExpandTildePath(configured)
 	}
 	return DefaultAgentDir()
 }
 
-// ProjectConfigDir returns the workspace-local Pig configuration root.
+// ProjectConfigDir returns the selected workspace-local configuration root.
 func ProjectConfigDir(cwd string) string {
-	return filepath.Join(cwd, CONFIG_DIR_NAME)
+	return filepath.Join(cwd, ConfigDirName())
 }
 
 // NPMInstallRoot returns the managed npm project for one settings scope.
@@ -100,9 +118,7 @@ func PigletsDir() string {
 	return filepath.Join(ConfigRoot(), "piglets")
 }
 
-// SelfUpdateCommand describes the command a managed install would run to
-// update itself. pig returns nil because it ships as a standalone binary, not
-// a global npm/pnpm/yarn package.
+// SelfUpdateCommand describes the command a proven package-manager installation runs to update itself.
 //
 // Mirrors upstream SelfUpdateCommand (config.ts). Steps holds an optional
 // sequence of sub-commands (e.g. uninstall old name, then install new name).
@@ -117,13 +133,15 @@ type SelfUpdateCommand struct {
 
 func makeSelfUpdateCommandStep(command string, args []string) *SelfUpdateCommand {
 	var display strings.Builder
-	display.WriteString(command)
-	for _, arg := range args {
-		if strings.ContainsAny(arg, " \t\n\r") {
-			display.WriteString(` "` + arg + `"`)
+	for i, arg := range append([]string{command}, args...) {
+		if i > 0 {
+			display.WriteByte(' ')
+		}
+		if strings.ContainsFunc(arg, isJSWhitespace) {
+			display.WriteString(`"` + arg + `"`)
 			continue
 		}
-		display.WriteString(" " + arg)
+		display.WriteString(arg)
 	}
 	return &SelfUpdateCommand{Command: command, Args: args, Display: display.String()}
 }
@@ -159,7 +177,7 @@ func normalizeSelfUpdatePackageTarget(target SelfUpdatePackageTarget) SelfUpdate
 // command construction, including --ignore-scripts and package-manager release
 // age controls. It uninstalls installedPackageName first only when target
 // renames the package.
-func packageManagerSelfUpdateCommand(installedPackageName string, npmCommand []string, target SelfUpdatePackageTarget) *SelfUpdateCommand {
+func packageManagerSelfUpdateCommand(owner PackageManagerOwner, installedPackageName string, npmCommand []string, target SelfUpdatePackageTarget) *SelfUpdateCommand {
 	if installedPackageName == "" {
 		return nil
 	}
@@ -175,18 +193,18 @@ func packageManagerSelfUpdateCommand(installedPackageName string, npmCommand []s
 		baseArgs = append(baseArgs, npmCommand[1:]...)
 	}
 
-	switch command {
-	case "pnpm":
+	switch owner {
+	case ownerPNPM:
 		return makeSelfUpdateCommand(
 			makeSelfUpdateCommandStep("pnpm", []string{"install", "-g", "--ignore-scripts", "--config.minimumReleaseAge=0", target.InstallSpec}),
 			selfUpdateUninstallStep("pnpm", []string{"remove", "-g"}, installedPackageName, target.PackageName),
 		)
-	case "yarn":
+	case ownerYarn:
 		return makeSelfUpdateCommand(
 			makeSelfUpdateCommandStep("yarn", []string{"global", "add", "--ignore-scripts", target.InstallSpec}),
 			selfUpdateUninstallStep("yarn", []string{"global", "remove"}, installedPackageName, target.PackageName),
 		)
-	case "bun":
+	case ownerBun:
 		return makeSelfUpdateCommand(
 			makeSelfUpdateCommandStep("bun", []string{"install", "-g", "--ignore-scripts", "--minimum-release-age=0", target.InstallSpec}),
 			selfUpdateUninstallStep("bun", []string{"uninstall", "-g"}, installedPackageName, target.PackageName),
@@ -218,8 +236,7 @@ func selfUpdateUninstallStep(command string, argsPrefix []string, installedPacka
 //  2. $XDG_CONFIG_HOME/pig if XDG_CONFIG_HOME is set
 //  3. ~/.pig (default)
 //
-// All pig state: agent dir, auth.json, sessions, agents, subagent output -
-// lives under this root. Never touches ~/.pi/.
+// PiG-owned state stays here even when the agent and project directories are shared with Pi.
 func ConfigRoot() string {
 	if v := os.Getenv("PIG_HOME"); v != "" {
 		return ExpandTildePath(v)
@@ -231,16 +248,39 @@ func ConfigRoot() string {
 	return filepath.Join(home, ".pig")
 }
 
-// CanonicalizePath resolves a path to its canonical filesystem form,
-// following symlinks. If resolution fails (for example because the path
-// does not exist yet), it falls back to the raw path.
+// CanonicalizePath resolves a nonempty path to its absolute canonical filesystem form, following symlinks and drive junctions while preserving Windows volume mount points as directories. It preserves the raw input if resolution fails, including an empty or missing path.
 // Mirrors upstream canonicalizePath.
 func CanonicalizePath(path string) string {
-	canonical, err := filepath.EvalSymlinks(path)
+	if path == "" {
+		return path
+	}
+	absolute, err := nodepath.Resolve(path)
+	if err != nil {
+		return path
+	}
+	canonical, err := evalCanonicalPath(absolute)
 	if err != nil {
 		return path
 	}
 	return canonical
+}
+
+// IsLocalPath reports whether value is a local path rather than a package source or remote URL. Bare names, relative paths, and file URLs are local.
+// Ports packages/coding-agent/src/utils/paths.ts:50-64.
+func IsLocalPath(value string) bool {
+	trimmed := jsTrim(value)
+	for _, prefix := range []string{"npm:", "git:", "github:", "http:", "https:", "ssh:"} {
+		if strings.HasPrefix(trimmed, prefix) {
+			return false
+		}
+	}
+	return true
+}
+
+// ResolvePath normalizes input and baseDir, then resolves the input to an absolute path. An empty baseDir uses the process working directory. Invalid file URLs return an error.
+// Ports packages/coding-agent/src/utils/paths.ts:102-106.
+func ResolvePath(input, baseDir string) (string, error) {
+	return resolvepath.Resolve(input, baseDir)
 }
 
 // ExpandTildePath expands a leading ~ in a filesystem path.
@@ -257,24 +297,26 @@ func ExpandTildePath(path string) string {
 	return path
 }
 
-// resolveAgainstCwd is Node's path.resolve(cwd, filePath). On Windows Node
-// treats a rooted path without a drive (/x or \x) as absolute, on cwd's drive.
-func resolveAgainstCwd(filePath, cwd string) string {
-	if filepath.IsAbs(filePath) {
-		return filepath.Clean(filePath)
+// resolveAgainstCwd is Pi's resolvePath(filePath, cwd) without input normalization. On Windows Node's isAbsolute accepts a rooted path without a drive (/x or \x), which then resolves on the process's drive, not cwd's.
+func resolveAgainstCwd(filePath, cwd string) (string, error) {
+	if nodepath.IsAbsolute(filePath) {
+		return nodepath.Resolve(filePath)
 	}
-	if runtime.GOOS == "windows" && filepath.VolumeName(filePath) == "" && strings.HasPrefix(filepath.ToSlash(filePath), "/") {
-		return filepath.Clean(filepath.VolumeName(cwd) + filePath)
-	}
-	return filepath.Clean(filepath.Join(cwd, filePath))
+	return nodepath.Resolve(cwd, filePath)
 }
 
 // GetCwdRelativePath returns the path relative to cwd, with the platform
 // separator as Pi's path.relative gives it, when filePath resolves inside
 // cwd, or "" when it is outside cwd.
 func GetCwdRelativePath(filePath, cwd string) string {
-	resolvedCwd := filepath.Clean(cwd)
-	resolvedPath := resolveAgainstCwd(filePath, resolvedCwd)
+	resolvedCwd, err := nodepath.Resolve(cwd)
+	if err != nil {
+		return ""
+	}
+	resolvedPath, err := resolveAgainstCwd(filePath, resolvedCwd)
+	if err != nil {
+		return ""
+	}
 	relativePath, err := filepath.Rel(resolvedCwd, resolvedPath)
 	if err != nil {
 		return ""
@@ -289,7 +331,10 @@ func GetCwdRelativePath(filePath, cwd string) string {
 // FormatPathRelativeToCwdOrAbsolute returns a slash-normalized path relative to
 // cwd when possible, otherwise the cleaned absolute path.
 func FormatPathRelativeToCwdOrAbsolute(filePath, cwd string) string {
-	absolutePath := resolveAgainstCwd(filePath, cwd)
+	absolutePath, err := resolveAgainstCwd(filePath, cwd)
+	if err != nil {
+		return filepath.ToSlash(filePath)
+	}
 	if relativePath := GetCwdRelativePath(absolutePath, cwd); relativePath != "" {
 		return filepath.ToSlash(relativePath)
 	}
@@ -317,31 +362,4 @@ func MarkPathIgnoredByCloudSync(path string) {
 		cmd.Stderr = io.Discard
 		_ = cmd.Run()
 	}
-}
-
-// GetSelfUpdateCommand returns nil without a resolved provenance and exact
-// release. The self-update tier resolver supplies those facts before invoking
-// PackageManagerUpdateCommand; this generic path must not invent an unpinned
-// package-manager mutation.
-//
-// updatePackageName is the new package name when renaming a package during
-// update (mirrors upstream getSelfUpdateCommand updatePackageName param, v0.73.1).
-func GetSelfUpdateCommand(_ string, _ []string, _ ...string) *SelfUpdateCommand {
-	return nil
-}
-
-// GetSelfUpdateUnavailableInstruction returns the fallback self-update hint.
-// pig divergence (D39): pig is a standalone binary, so the instruction points at
-// `pig update self` (configured update source) or the download/container ladder,
-// not an npm package-manager command.
-func GetSelfUpdateUnavailableInstruction(_ string, _ []string, _ ...string) string {
-	return SelfUpdateFallback()
-}
-
-// GetUpdateInstruction returns the user-facing self-update instruction.
-func GetUpdateInstruction(packageName string, npmCommand []string) string {
-	if cmd := GetSelfUpdateCommand(packageName, npmCommand); cmd != nil {
-		return "Run: " + cmd.Display
-	}
-	return GetSelfUpdateUnavailableInstruction(packageName, npmCommand)
 }

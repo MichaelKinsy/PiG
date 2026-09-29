@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"sync/atomic"
 )
@@ -32,6 +33,26 @@ type instanceDirectory struct {
 	reportError func(error)
 	ready       bool
 	disposed    bool
+	// starts holds handler invocations admitted under the keyed mutex. The
+	// caller that admitted them takes and runs them after unlocking, before
+	// its own operation returns.
+	starts []func()
+}
+
+// takeStarts returns the handler invocations admitted by the caller's
+// current critical section.
+func (directory *instanceDirectory) takeStarts() []func() {
+	starts := directory.starts
+	directory.starts = nil
+	return starts
+}
+
+// runObservationStarts invokes admitted keyed observation handlers in
+// admission order on the calling goroutine.
+func runObservationStarts(starts []func()) {
+	for _, start := range starts {
+		start()
+	}
 }
 
 func (directory *instanceDirectory) replace(entry *instanceEntry) error {
@@ -137,6 +158,7 @@ func (directory *instanceDirectory) startAll(entry *instanceEntry) {
 	}
 }
 
+// start runs the observer's handler on its own goroutine with a context cancelled when the instance is removed or the observer closes. instances.ts:#start runs the handler's synchronous prefix inline; Go cannot split one function into a prefix and a tail, and running it inline would hold the directory's locks across consumer code, so callers order on their own handler's signal.
 func (directory *instanceDirectory) start(observer *instanceObserver, entry *instanceEntry) {
 	if observer.closed {
 		return
@@ -147,14 +169,50 @@ func (directory *instanceDirectory) start(observer *instanceObserver, entry *ins
 	ctx, cancel := context.WithCancel(context.Background())
 	observer.tasks[entry] = cancel
 	service := &RemoteService{facade: entry.facade, guard: observer.guard(ctx)}
-	report := directory.reportError
+	directory.starts = append(directory.starts, observationStart(ctx, func(ctx context.Context) error {
+		return observer.handler(ctx, service)
+	}, directory.reportError))
+}
+
+// observationStart ports packages/chord/src/services/instances.ts
+// InstanceDirectory.#start: the handler runs synchronously as part of the
+// delivery that admitted the instance, and its failure is reported unless the
+// observation was already cancelled. Work that outlives the handler belongs
+// to a task the handler owns and ties to ctx. An observation cancelled
+// between admission and invocation is not started.
+func observationStart(ctx context.Context, handler func(context.Context) error, report func(error)) func() {
+	ctx = context.WithValue(ctx, observationReportKey{}, report)
+	return func() {
+		if ctx.Err() != nil {
+			return
+		}
+		var err error
+		func() {
+			defer recoverInto(&err)
+			err = handler(ctx)
+		}()
+		if err != nil && ctx.Err() == nil {
+			report(err)
+		}
+	}
+}
+
+type observationReportKey struct{}
+
+// ContinueObservation runs the settlement of a keyed observation handler's
+// returned Promise: instances.ts#start leaves that Promise unawaited and
+// reports its rejection unless the observation was cancelled. ctx must be the
+// observation Context passed to the handler; it cancels nothing by itself, so
+// continuation must stop when ctx is done.
+func ContinueObservation(ctx context.Context, continuation func() error) {
+	report, _ := ctx.Value(observationReportKey{}).(func(error))
 	go func() {
 		var err error
 		func() {
 			defer recoverInto(&err)
-			err = observer.handler(ctx, service)
+			err = continuation()
 		}()
-		if err != nil && ctx.Err() == nil {
+		if err != nil && ctx.Err() == nil && report != nil {
 			report(err)
 		}
 	}()
@@ -208,10 +266,12 @@ func (keyed *keyedBinding) observe(handler func(context.Context, *RemoteService)
 		keyed.mu.Unlock()
 		return nil, err
 	}
+	starts := keyed.instances.takeStarts()
 	if keyed.bound && keyed.starting == nil {
 		keyed.launchLocked(keyed.revision)
 	}
 	keyed.mu.Unlock()
+	runObservationStarts(starts)
 	var once sync.Once
 	return func() {
 		once.Do(func() {
@@ -234,6 +294,7 @@ func (parent *RemoteServiceBinding) releaseKeyed(keyed *keyedBinding) {
 		return
 	}
 	delete(parent.keyed, keyed.serviceId)
+	parent.keyedOrder = slices.DeleteFunc(parent.keyedOrder, func(id string) bool { return id == keyed.serviceId })
 	parent.readinessRevision++
 	parent.mu.Unlock()
 	go func() {
@@ -267,32 +328,36 @@ func (keyed *keyedBinding) ready() *task {
 	return keyed.starting
 }
 
-func (keyed *keyedBinding) rebind(ctx context.Context, bound bool) error {
+func (keyed *keyedBinding) beginRebind(ctx context.Context, bound bool) *task {
 	keyed.mu.Lock()
 	if keyed.closed {
 		keyed.mu.Unlock()
-		return nil
+		return settledTask()
 	}
 	keyed.bound = bound
 	keyed.revision++
 	revision := keyed.revision
+	keyed.instances.reset()
+	keyed.starting = nil
+	subscription := keyed.subscription
+	keyed.subscription = nil
 	keyed.mu.Unlock()
-	if err := keyed.reset(ctx, false); err != nil {
-		return err
-	}
-	keyed.mu.Lock()
-	if keyed.closed || keyed.revision != revision || keyed.bound != bound {
+	return startTask(func() error {
+		if subscription != nil {
+			if err := subscription.Close(ctx); err != nil {
+				return err
+			}
+		}
+		keyed.mu.Lock()
+		if keyed.closed || keyed.revision != revision || keyed.bound != bound || !bound || keyed.instances.observers.Len() == 0 {
+			keyed.mu.Unlock()
+			return nil
+		}
+		keyed.launchLocked(revision)
+		starting := keyed.starting
 		keyed.mu.Unlock()
-		return nil
-	}
-	if !bound || keyed.instances.observers.Len() == 0 {
-		keyed.mu.Unlock()
-		return nil
-	}
-	keyed.launchLocked(revision)
-	starting := keyed.starting
-	keyed.mu.Unlock()
-	return starting.wait(context.Background())
+		return starting.wait(context.Background())
+	})
 }
 
 func (keyed *keyedBinding) close(ctx context.Context) error {
@@ -363,7 +428,9 @@ func (keyed *keyedBinding) start(revision int) error {
 	}
 	keyed.mu.Lock()
 	keyed.instances.markReady()
+	starts := keyed.instances.takeStarts()
 	keyed.mu.Unlock()
+	runObservationStarts(starts)
 	return nil
 }
 
@@ -417,13 +484,13 @@ func (keyed *keyedBinding) spawn(ctx context.Context, snapshot ServiceInstanceSn
 		return err
 	}
 	keyed.mu.Lock()
-	defer keyed.mu.Unlock()
 	if keyed.closed || keyed.revision != revision {
+		keyed.mu.Unlock()
 		// A rebind or close fenced this start/update after it began; the
 		// fresh facade was never published, so discard it.
 		return nil
 	}
-	return keyed.instances.replace(&instanceEntry{
+	err := keyed.instances.replace(&instanceEntry{
 		key:        address.Key,
 		generation: address.Generation,
 		facade:     facade,
@@ -432,4 +499,8 @@ func (keyed *keyedBinding) spawn(ctx context.Context, snapshot ServiceInstanceSn
 			facade.fence()
 		},
 	})
+	starts := keyed.instances.takeStarts()
+	keyed.mu.Unlock()
+	runObservationStarts(starts)
+	return err
 }

@@ -41,7 +41,7 @@ func poisonedAgentHistory() []AgentMessage {
 	// persisted. After normalization the errored turn is dropped and its result
 	// is orphaned; D48 strips the orphan so the provider request stays valid.
 	return []AgentMessage{
-		{User: &UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "run it"}}}},
+		{User: &UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "run it"}}}},
 		{Assistant: &AssistantMessage{
 			Role:         "assistant",
 			Content:      []ai.AssistantContentBlock{ai.ToolCall{ID: "call_x", Name: "bash", Arguments: ai.JsonObject{"command": "expr 20 + 22"}}},
@@ -57,7 +57,7 @@ func cleanToolCycleHistory() []AgentMessage {
 	// tool_use ("call_y") and matching tool_result must both reach the wire: the
 	// D48 strip must be inert here.
 	return []AgentMessage{
-		{User: &UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "run it"}}}},
+		{User: &UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "run it"}}}},
 		{Assistant: &AssistantMessage{
 			Role:       "assistant",
 			Content:    []ai.AssistantContentBlock{ai.ToolCall{ID: "call_y", Name: "bash", Arguments: ai.JsonObject{"command": "expr 20 + 22"}}},

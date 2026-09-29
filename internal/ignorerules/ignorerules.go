@@ -10,11 +10,11 @@ import (
 	"strings"
 )
 
-// Rule is one pattern from a .gitignore, .ignore, or .fdignore file, already
-// prefixed with the directory that holds the file relative to the walk root.
+// Rule is one pattern from a .gitignore, .ignore, or .fdignore file, prefixed with its directory relative to the walk root. Its immutable matcher belongs to that walk; a reload constructs fresh rules.
 type Rule struct {
 	pattern string
 	negated bool
+	matcher *regexp.Regexp
 }
 
 // Append adds the rules from dir's .gitignore, .ignore, and .fdignore files,
@@ -43,8 +43,26 @@ func Append(rules []Rule, dir, root string) []Rule {
 				trimmed = strings.TrimPrefix(trimmed, "!")
 			}
 			trimmed = strings.TrimPrefix(trimmed, "/")
-			rules = append(rules, Rule{pattern: prefix + trimmed, negated: negated})
+			rules = append(rules, newRule(prefix+trimmed, negated))
 		}
+	}
+	return rules
+}
+
+// AppendPatterns appends already root-relative ignore patterns without filesystem access. It preserves negation and escaping for environment-backed resource loaders.
+func AppendPatterns(rules []Rule, patterns []string) []Rule {
+	for _, pattern := range patterns {
+		for strings.HasSuffix(pattern, " ") && !strings.HasSuffix(pattern, `\ `) {
+			pattern = strings.TrimSuffix(pattern, " ")
+		}
+		if pattern == "" || strings.HasPrefix(pattern, "#") {
+			continue
+		}
+		negated := strings.HasPrefix(pattern, "!")
+		if negated {
+			pattern = pattern[1:]
+		}
+		rules = append(rules, newRule(pattern, negated))
 	}
 	return rules
 }
@@ -58,10 +76,9 @@ func Ignored(candidate string, directory bool, root string, rules []Rule) bool {
 	rel = filepath.ToSlash(rel)
 	ignored := false
 	for _, rule := range rules {
-		pattern := strings.TrimSuffix(rule.pattern, "/")
-		matched := match(pattern, rel)
+		matched := rule.match(rel)
 		if directory && !matched {
-			matched = match(pattern, rel+"/")
+			matched = rule.match(rel + "/")
 		}
 		if matched {
 			ignored = !rule.negated
@@ -70,21 +87,30 @@ func Ignored(candidate string, directory bool, root string, rules []Rule) bool {
 	return ignored
 }
 
-func match(pattern, candidate string) bool {
+func newRule(pattern string, negated bool) Rule {
+	pattern = strings.TrimSuffix(pattern, "/")
+	rule := Rule{pattern: pattern, negated: negated}
 	if pattern == "" {
-		return false
-	}
-	if !strings.Contains(pattern, "/") {
-		for part := range strings.SplitSeq(candidate, "/") {
-			if matched, _ := path.Match(pattern, part); matched {
-				return true
-			}
-		}
+		return rule
 	}
 	re := regexp.QuoteMeta(pattern)
 	re = strings.ReplaceAll(re, `\*\*`, `.*`)
 	re = strings.ReplaceAll(re, `\*`, `[^/]*`)
 	re = strings.ReplaceAll(re, `\?`, `[^/]`)
-	matched, _ := regexp.MatchString(`^`+re+`(?:/.*)?$`, candidate)
-	return matched
+	rule.matcher, _ = regexp.Compile(`^` + re + `(?:/.*)?$`)
+	return rule
+}
+
+func (rule Rule) match(candidate string) bool {
+	if rule.pattern == "" {
+		return false
+	}
+	if !strings.Contains(rule.pattern, "/") {
+		for part := range strings.SplitSeq(candidate, "/") {
+			if matched, _ := path.Match(rule.pattern, part); matched {
+				return true
+			}
+		}
+	}
+	return rule.matcher != nil && rule.matcher.MatchString(candidate)
 }

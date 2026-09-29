@@ -1,0 +1,39 @@
+# Behavior family: selectors
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:5724-5775 builds the top-level authentication method selector with account/API-key labels. The provider selector is not rendered at this stage.
+# Both binaries use the same agent fixture. The former normalized comparison used different seeded themes and claimed oauth-selector.ts even though only the method selector was visible.
+name = "06-oauth-selector"
+description = "/login opens the top-level authentication method selector"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "Select authentication method"
+capture_end = "cancel"
+settle_seconds = 2
+
+[[tmux.steps]]
+keys = ["/login", "Enter"]
+wait_contains = ["Select authentication method:", "Sign in with an account", "Sign in with an API key"]
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pig-home/agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[assert]
+both_reach_ready = true
+escaped_output_equal = true
+both_contain = ["Select authentication method", "Sign in with an account", "Sign in with an API key", "navigate"]
+runs = 3

@@ -15,7 +15,7 @@ set -euo pipefail
 
 repo=$(cd "$(dirname "$0")/../../.." && pwd)
 work=${1:-$(mktemp -d "${TMPDIR:-/tmp}/pig-npm-e2e.XXXXXX")}
-version=$(sed -nE 's/^const PigVersion = "([^"]+)"$/\1/p' "$repo/coding/pigversion/pigversion.go")
+version=$(sed -nE 's/^const PigVersion = "([^"]+)"$/\1/p' "$repo/internal/coding/pigversion/pigversion.go")
 release="$work/release"
 stage="$work/stage"
 npm_out="$work/npm"

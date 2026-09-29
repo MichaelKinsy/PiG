@@ -12,7 +12,7 @@ import (
 // tunes reserveTokens from that page, so a stale number sends them to change a
 // value that is already what they wanted.
 
-const compactionDocPath = "../../internal/pigdocs/content/compaction.md"
+const compactionDocPath = "../pigdocs/content/compaction.md"
 
 func compactionDoc(t *testing.T) string {
 	t.Helper()

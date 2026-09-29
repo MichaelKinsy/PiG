@@ -1,0 +1,30 @@
+# Pi 0.87.1 #5998 and #8935 use the suite's real AgentSession with faux responses.
+# The oracle transpiles only Pi's test setup helpers and imports unchanged
+# production code from the exact published package. Go drives NewSession.Send
+# through the Extension Host reference runner; this is SDK Session proof, not
+# subprocess-topology proof. Both probes assert event/result ID relationships
+# internally, then compare deterministic result text, errors, effects and order.
+# --experimental-import-meta-resolve selects the published package as the parent
+# for ESM-only dependency exports; it does not modify Pi behavior.
+name = "16-sdk-tool-admission"
+description = "SDK Session hooks terminate blocked calls and abort all prepared parallel tool effects"
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/agent/src/agent-loop.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/tool-admission-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/tool-admission-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["TOOL_ADMISSION blocked [\"Blocked by terminating policy\",true,true,1]", "TOOL_ADMISSION abort [[\"first\",\"second\"],[],[],[\"Operation aborted\",\"Operation aborted\"]]"]
+runs = 3

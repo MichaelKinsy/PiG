@@ -1,0 +1,21 @@
+# Upstream regression8964 registers an extension-owned provider and invokes both modelRegistry stream methods from another extension command.
+# Real print-mode CLIs persist the complete command proof. The producer validates the resolved key, the consumer checks text deltas/final content and absence of global API registration.
+# The session path is per-run temporary state, not normalized behavior; only the typed proof entry is selected for exact JSON comparison.
+name = "22-extension-provider-stream"
+description = "Separate producer and consumer extensions stream through the Session Model Runtime."
+covers = ["packages/coding-agent/src/core/model-runtime.ts", "packages/coding-agent/src/core/provider-composer.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["python3", "./test/parity/testdata/provider-stream-command.py", "pig"]
+pi_args = ["python3", "./test/parity/testdata/provider-stream-command.py", "pi"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

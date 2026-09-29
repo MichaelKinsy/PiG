@@ -1,0 +1,25 @@
+# Pi 0.87.1 core/skills.ts requires string names/descriptions and literal true
+# for disable-model-invocation. The actual Go and published Pi loaders produce
+# ordered records; only the independently allocated temp-root prefix is removed.
+name = "35-core-skill-metadata"
+description = "Skill metadata retains YAML types, source scope and validation diagnostics"
+covers = ["packages/coding-agent/src/core/skills.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/core-skills", "{{TEMP}}"]
+pi_args = ["node", "./test/parity/testdata/core-skills-pi.mjs", "{{TEMP}}"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['["skill","renamed","valid",false,"renamed/SKILL.md","local","temporary"]', '["warning","warning","description is required","invalid/SKILL.md"]']
+runs = 3

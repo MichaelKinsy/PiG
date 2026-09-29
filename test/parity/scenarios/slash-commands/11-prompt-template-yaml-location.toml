@@ -1,0 +1,36 @@
+# Upstream evidence: Pi 0.87.1 prompt-templates.test.ts:628 and interactive-mode.ts:1642-1694.
+# The crop excludes the per-machine resource path but includes the complete
+# compact-mapping diagnostic, source line, and caret without text normalization.
+name = "11-prompt-template-yaml-location"
+description = "Interactive prompt warnings identify the same YAML scalar and source location"
+covers = ["packages/coding-agent/src/core/prompt-templates.ts", "packages/coding-agent/src/utils/frontmatter.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-session", "--prompt-template", "."]
+pi_args = ["--no-session", "--prompt-template", "."]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[tmux]
+cwd = "testdata/yaml-prompts"
+width = 160
+height = 50
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Nested mappings are not allowed"
+capture_end = "^"
+
+# The warning is already visible when the editor is ready; no action in this step emits a new warning.
+[[tmux.steps]]
+wait_visible_contains = ["Nested mappings are not allowed"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+output_equal = true
+both_contain = ["line 1, column 14", "description: Broken: unquoted colon", "^"]
+runs = 3

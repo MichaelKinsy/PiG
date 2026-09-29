@@ -1,9 +1,10 @@
 package tui
 
 import (
-	"regexp"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/internal/latex"
 )
@@ -15,16 +16,16 @@ import (
 // streaming) behavior. Rendering delegates to internal/latex (RenderLatex).
 
 var (
-	reMdPendingDollarMath = regexp.MustCompile(`\\[A-Za-z]+|[_^=+*/<>()[\]|±≤≥≠≈∈→⇒∞∫∑√-]`)
-	reMdInlineDollarSpace = regexp.MustCompile(`^\$\s`)
-	reMdTrailingSpace     = regexp.MustCompile(`\s$`)
-	reMdLeadingDigit      = regexp.MustCompile(`^\d`)
-	reMdEnvVarInner       = regexp.MustCompile(`^[A-Z_][A-Z0-9_]*(?:[^A-Za-z0-9_\s])?$`)
-	reMdIdentAfter        = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*`)
-	reMdBlockDollar       = regexp.MustCompile(`(?s)^ {0,3}\$\$[ \t]*(?:\n)?(.*?)\$\$[ \t]*(?:\n|$)`)
-	reMdBlockBracket      = regexp.MustCompile(`(?s)^ {0,3}\\\[[ \t]*(?:\n)?(.*?)\\\][ \t]*(?:\n|$)`)
-	reMdPendingBracket    = regexp.MustCompile(`(?s)^ {0,3}\\\[[ \t]*(?:\n)?(.*)$`)
-	reMdPendingDollar     = regexp.MustCompile(`(?s)^ {0,3}\$\$[ \t]*(?:\n)?(.*)$`)
+	reMdPendingDollarMath = lazyregexp.New(`\\[A-Za-z]+|[_^=+*/<>()[\]|±≤≥≠≈∈→⇒∞∫∑√-]`)
+	reMdInlineDollarSpace = lazyregexp.New(`^\$\s`)
+	reMdTrailingSpace     = lazyregexp.New(`\s$`)
+	reMdLeadingDigit      = lazyregexp.New(`^\d`)
+	reMdEnvVarInner       = lazyregexp.New(`^[A-Z_][A-Z0-9_]*(?:[^A-Za-z0-9_\s])?$`)
+	reMdIdentAfter        = lazyregexp.New(`^[A-Za-z_][A-Za-z0-9_]*`)
+	reMdBlockDollar       = lazyregexp.New(`(?s)^ {0,3}\$\$[ \t]*(?:\n)?(.*?)\$\$[ \t]*(?:\n|$)`)
+	reMdBlockBracket      = lazyregexp.New(`(?s)^ {0,3}\\\[[ \t]*(?:\n)?(.*?)\\\][ \t]*(?:\n|$)`)
+	reMdPendingBracket    = lazyregexp.New(`(?s)^ {0,3}\\\[[ \t]*(?:\n)?(.*)$`)
+	reMdPendingDollar     = lazyregexp.New(`(?s)^ {0,3}\$\$[ \t]*(?:\n)?(.*)$`)
 )
 
 // latexToken mirrors the upstream LatexToken shape.

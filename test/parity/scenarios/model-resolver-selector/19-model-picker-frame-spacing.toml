@@ -1,0 +1,43 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:2400-2422 keeps the above-editor spacer
+# when showSelector (4719-4741) replaces the editor. model-selector.ts:99-159
+# owns its borders and internal spacers. The anchor includes the outer gap.
+name = "19-model-picker-frame-spacing"
+description = "Model picker preserves the above-editor spacer and complete frame styling"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/modes/interactive/components/model-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 20
+capture_start = "Session name set: selector-anchor"
+capture_end = "to cancel"
+
+[[tmux.steps]]
+keys = ["/name selector-anchor", "Enter"]
+wait_contains = ["Session name set: selector-anchor"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["/model", "Enter"]
+wait_contains = ["Model catalogs refreshed."]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/model-picker-defaults"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-picker-defaults"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+escaped_output_equal = true
+runs = 3

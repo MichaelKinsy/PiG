@@ -8,7 +8,7 @@ import (
 )
 
 // goldenCase is one line of internal/latex/testdata/golden.jsonl, captured from
-// pi's own renderLatex by parity/testdata/latex-pi.mjs. A null inline/display is
+// pi's own renderLatex by test/parity/testdata/latex-pi.mjs. A null inline/display is
 // pi's `undefined`, i.e. RenderLatex must return ok=false.
 type goldenCase struct {
 	Input   string  `json:"input"`

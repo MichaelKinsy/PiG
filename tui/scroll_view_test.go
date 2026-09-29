@@ -3,6 +3,7 @@ package tui
 import (
 	"sync/atomic"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -137,48 +138,53 @@ func TestScrollViewMutatorsPanic(t *testing.T) {
 	}
 }
 
-// TestScrollViewTransientScrollbarAutoHides exercises the owned hide timer: auto
-// scrollbar shows on activity, then the timer fires off-goroutine, hides it, and
-// invokes the render callback.
+// Pi components/scroll-view.ts:97-110 hides the transient scrollbar and requests a render in one timer callback. Wait for the complete callback, not just its earlier visibility write.
 func TestScrollViewTransientScrollbarAutoHides(t *testing.T) {
-	var renders atomic.Int64
-	sv := NewScrollView(&stubComponent{lines: []string{"x"}}, ScrollViewOptions{
-		Scrollbar:            "auto",
-		ScrollbarHideDelayMs: new(20),
-	})
-	t.Cleanup(sv.Dispose)
-	sv.UpdateLayout(100, 10, func() { renders.Add(1) }) // content > viewport
-	sv.ScrollBy(5)                                      // activity -> transient shows + arms timer
-	if !sv.IsScrollbarVisible() {
-		t.Fatal("auto scrollbar should be visible right after activity")
-	}
-	// Wait for the timer to fire and hide it (generous bound).
-	deadline := time.Now().Add(2 * time.Second)
-	for sv.IsScrollbarVisible() {
-		if time.Now().After(deadline) {
-			t.Fatal("transient scrollbar never auto-hid")
+	synctest.Test(t, func(t *testing.T) {
+		var renders atomic.Int64
+		sv := NewScrollView(&stubComponent{lines: []string{"x"}}, ScrollViewOptions{
+			Scrollbar:            "auto",
+			ScrollbarHideDelayMs: new(20),
+		})
+		t.Cleanup(sv.Dispose)
+		sv.UpdateLayout(100, 10, func() { renders.Add(1) })
+		sv.ScrollBy(5)
+		if !sv.IsScrollbarVisible() || renders.Load() != 1 {
+			t.Fatalf("scroll activity: visible=%v renders=%d, want visible and one render", sv.IsScrollbarVisible(), renders.Load())
 		}
-		time.Sleep(5 * time.Millisecond)
-	}
-	if renders.Load() < 2 {
-		t.Errorf("render callback count = %d, want >=2 (scrollBy + timer hide)", renders.Load())
-	}
+		time.Sleep(19 * time.Millisecond)
+		synctest.Wait()
+		if !sv.IsScrollbarVisible() || renders.Load() != 1 {
+			t.Fatal("scrollbar hid or rendered before its configured deadline")
+		}
+		time.Sleep(time.Millisecond)
+		synctest.Wait()
+		if sv.IsScrollbarVisible() {
+			t.Fatal("transient scrollbar did not hide at its configured deadline")
+		}
+		// One ScrollBy callback plus one completed hide callback.
+		if renders.Load() != 2 {
+			t.Errorf("render callback count = %d, want 2 (scrollBy + timer hide)", renders.Load())
+		}
+	})
 }
 
-// TestScrollViewDisposeStopsTimer proves Dispose cancels a pending hide so no
-// callback fires afterward.
+// TestScrollViewDisposeStopsTimer proves Dispose cancels a pending hide so no callback fires afterward, with fake time and joined timer work.
 func TestScrollViewDisposeStopsTimer(t *testing.T) {
-	var renders atomic.Int64
-	sv := NewScrollView(&stubComponent{lines: []string{"x"}}, ScrollViewOptions{
-		Scrollbar:            "auto",
-		ScrollbarHideDelayMs: new(50),
+	synctest.Test(t, func(t *testing.T) {
+		var renders atomic.Int64
+		sv := NewScrollView(&stubComponent{lines: []string{"x"}}, ScrollViewOptions{
+			Scrollbar:            "auto",
+			ScrollbarHideDelayMs: new(50),
+		})
+		sv.UpdateLayout(100, 10, func() { renders.Add(1) })
+		sv.ScrollBy(5)
+		before := renders.Load()
+		sv.Dispose()
+		time.Sleep(120 * time.Millisecond)
+		synctest.Wait()
+		if got := renders.Load(); got != before {
+			t.Errorf("render fired after Dispose: %d != %d", got, before)
+		}
 	})
-	sv.UpdateLayout(100, 10, func() { renders.Add(1) })
-	sv.ScrollBy(5)
-	before := renders.Load()
-	sv.Dispose()
-	time.Sleep(120 * time.Millisecond)
-	if got := renders.Load(); got != before {
-		t.Errorf("render fired after Dispose: %d != %d", got, before)
-	}
 }

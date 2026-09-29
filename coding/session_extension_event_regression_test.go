@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -11,6 +13,75 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )
+
+// Ports packages/coding-agent/test/suite/regressions/1717-2113-agent-session-event-settlement.test.ts:29.
+// Pi awaits a yielding message_end handler and persists the assistant before either tool result.
+func TestSessionEventSettlementPreservesMessageOrderUpstream(t *testing.T) {
+	ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{
+		"message_end": {func(args ...any) (any, error) {
+			message := args[0].(extension.MessageEndEvent).Message.(agent.AgentMessage)
+			if message.Assistant != nil {
+				// The upstream handler deliberately yields for 20ms; this is the stimulus, not a wait for test completion.
+				time.Sleep(20 * time.Millisecond)
+			}
+			return nil, nil
+		}},
+	}}
+	tools := &modelExtensionEchoTool{}
+	h := newRecoveryHarness(t, harnessOptions{tools: []agent.AgentTool{tools}, extension: ext},
+		func([]ai.Message) *ai.AssistantMessage {
+			return &ai.AssistantMessage{Provider: "faux", Model: "faux-1", StopReason: ai.StopReasonToolUse,
+				Content: []ai.AssistantContentBlock{
+					ai.ToolCall{ID: "echo-one", Name: "echo", Arguments: ai.JsonObject{"text": "one"}},
+					ai.ToolCall{ID: "echo-two", Name: "echo", Arguments: ai.JsonObject{"text": "two"}},
+				}}
+		}, fauxReply("done", ai.StopReasonStop, 0))
+	if _, err := h.session.Prompt(t.Context(), "run tools"); err != nil {
+		t.Fatal(err)
+	}
+	roles := settlementBranchRoles(h.session)
+	want := []string{"system", "user", "assistant", "toolResult", "toolResult", "assistant"}
+	if !slices.Equal(roles, want) {
+		t.Fatalf("persisted branch roles = %v, want %v", roles, want)
+	}
+	firstToolResult := slices.Index(roles, "toolResult")
+	if firstToolResult <= 0 || roles[firstToolResult-1] != "assistant" {
+		t.Fatalf("first toolResult at %d must immediately follow its assistant: %v", firstToolResult, roles)
+	}
+}
+
+// Ports packages/coding-agent/test/suite/regressions/1717-2113-agent-session-event-settlement.test.ts:69.
+// tool_call observes the already-settled assistant tool-use message in the persisted branch.
+func TestSessionEventSettlementPrecedesToolCallUpstream(t *testing.T) {
+	var session *Session
+	var branchRolesAtToolCall [][]string
+	ext := extension.Extension{Handlers: map[string][]extension.HandlerFn{
+		"tool_call": {func(...any) (any, error) {
+			branchRolesAtToolCall = append(branchRolesAtToolCall, settlementBranchRoles(session))
+			return nil, nil
+		}},
+	}}
+	h := newRecoveryHarness(t, harnessOptions{tools: []agent.AgentTool{&modelExtensionEchoTool{}}, extension: ext},
+		modelExtensionToolCall, fauxReply("done", ai.StopReasonStop, 0))
+	session = h.session
+	if _, err := session.Prompt(t.Context(), "run tool"); err != nil {
+		t.Fatal(err)
+	}
+	want := [][]string{{"system", "user", "assistant"}}
+	if !reflect.DeepEqual(branchRolesAtToolCall, want) {
+		t.Fatalf("branch roles at tool_call = %v, want %v", branchRolesAtToolCall, want)
+	}
+}
+
+func settlementBranchRoles(session *Session) []string {
+	var roles []string
+	for _, entry := range session.Inner().GetBranch() {
+		if message, ok := entry.AsMessage(); ok {
+			roles = append(roles, message.Message.Role())
+		}
+	}
+	return roles
+}
 
 func TestTurnEndIncludesPersistedEntryIDs(t *testing.T) {
 	turns := make(chan extension.TurnEndEvent, 2)

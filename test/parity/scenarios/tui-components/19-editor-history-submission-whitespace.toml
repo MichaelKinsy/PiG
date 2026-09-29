@@ -1,0 +1,27 @@
+# Behavior family: tui-components
+# Pi 0.87.1 components/editor.ts:440-450,1359-1375 applies String.trim before
+# storing history and invoking onSubmit: FEFF trims; NEL does not. The fixtures
+# drive real Editor input/history methods and retain each callback and history
+# result. Hex exposes the complete UTF-8 values without JSON escaping differences.
+name = "19-editor-history-submission-whitespace"
+description = "Editor history, duplicate suppression and submission use JavaScript whitespace rules"
+covers = ["packages/tui/src/components/editor.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/editor-trim-pig"]
+pi_args = ["node", "./test/parity/testdata/editor-trim-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_contain = ["BOM edges", "NEL only", "deduplicated"]

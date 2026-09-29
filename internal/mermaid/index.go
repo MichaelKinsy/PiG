@@ -17,69 +17,11 @@ import "strings"
 // that exceeds the space is the caller's (the Mermaid transformer falls back to
 // the raw source, matching upstream mermaid.ts).
 func Render(src string) (Art, bool) {
-	return renderAt(src, wrapWidth)
-}
-
-// RenderWithin renders src as narrow as it needs to be to fit maxWidth columns.
-//
-// Diagram width is driven by how wide node labels are allowed to run before they
-// wrap. The natural layout is tried first and returned untouched when it fits,
-// so a diagram that already fits is byte-identical to a plain Render. When it
-// does not fit, the label width that produces the widest art still inside
-// maxWidth is found by measuring candidate layouts, not by guessing: each
-// candidate is a real layout and its real width.
-//
-// The narrowest result is returned when nothing fits, since a diagram has a
-// structural floor below which shrinking labels no longer helps: boxes, arrows
-// and parallel branches occupy columns of their own. Callers compare Art.Width
-// against their own space and decide what to do, exactly as with Render.
-func RenderWithin(src string, maxWidth int) (Art, bool) {
-	art, ok := renderAt(src, wrapWidth)
-	if !ok || maxWidth <= 0 || art.Width <= maxWidth {
-		return art, ok
-	}
-
-	// Binary search the largest label width whose layout fits. Width is
-	// non-decreasing in label width, and the best fitting candidate seen is
-	// kept rather than assumed, so a layout that breaks that ordering costs
-	// accuracy of the search and never correctness of the result.
-	best, found := Art{}, false
-	lo, hi := minWrapWidth, wrapWidth-1
-	narrowest := art
-	for lo <= hi {
-		mid := (lo + hi) / 2
-		candidate, candidateOK := renderAt(src, mid)
-		if !candidateOK {
-			break
-		}
-		if candidate.splitWord {
-			// This width is below the diagram's longest word, so the layout
-			// slices words to fit its boxes and every narrower one slices more.
-			// Search wider: a grid of fragments is less readable than the source
-			// it would replace.
-			lo = mid + 1
-			continue
-		}
-		narrowest = candidate
-		if candidate.Width <= maxWidth {
-			best, found = candidate, true
-			lo = mid + 1
-			continue
-		}
-		hi = mid - 1
-	}
-	if found {
-		return best, true
-	}
-	return narrowest, true
-}
-
-func renderAt(src string, wrap int) (Art, bool) {
 	src = stripControls(src)
 	if trimJS(src) == "" {
 		return Art{}, false
 	}
-	c, warnings, ok := attempt(src, wrap)
+	c, warnings, ok := attempt(src, wrapWidth)
 	if !ok {
 		return Art{}, false
 	}
@@ -87,12 +29,8 @@ func renderAt(src string, wrap int) (Art, bool) {
 	if warnings == nil {
 		warnings = []string{}
 	}
-	return Art{Plain: plain, Styled: styled, Width: width, Warnings: warnings, splitWord: c.splitWord}, true
+	return Art{Plain: plain, Styled: styled, Width: width, Warnings: warnings}, true
 }
-
-// DiagramKind returns the kind src declares ("flowchart"/"state"/"class"/"er"/
-// "sequence"), or "" if its header names no type this renderer draws.
-func DiagramKind(src string) string { return diagramKind(src) }
 
 // attempt draws src, retrying once without its last line if the grammar rejects
 // it (keeps a streaming diagram on screen while its final line is half-typed).

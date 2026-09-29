@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // The paired oracle executes Pi 0.87.1's published create*Tool functions with the same fixtures and arguments.
@@ -59,10 +60,10 @@ func TestBuiltinToolDetailsParityProbe(t *testing.T) {
 			if err := os.Remove(d.FullOutputPath); err != nil {
 				t.Fatal(err)
 			}
-			r.Content = strings.ReplaceAll(r.Content, d.FullOutputPath, "OUTPUT_FILE")
+			r.Content = []ai.ToolResultMessageContent{ai.TextContent{Text: strings.ReplaceAll(r.Text(), d.FullOutputPath, "OUTPUT_FILE")}}
 			d.FullOutputPath = "OUTPUT_FILE"
 		}
-		result := map[string]any{"content": []any{map[string]any{"type": "text", "text": r.Content}}}
+		result := map[string]any{"content": r.Content}
 		if r.Details != nil {
 			result["details"] = r.Details
 		}
@@ -87,7 +88,7 @@ func TestBuiltinToolDetailsParityProbe(t *testing.T) {
 	if err != nil || r.IsError {
 		t.Fatalf("wide ls: %+v %v", r, err)
 	}
-	printToolWire(t, "ls byte truncated", map[string]any{"content": []any{map[string]any{"type": "text", "text": r.Content}}, "details": r.Details})
+	printToolWire(t, "ls byte truncated", map[string]any{"content": r.Content, "details": r.Details})
 }
 
 func printToolWire(t *testing.T, name string, result any) {

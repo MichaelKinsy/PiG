@@ -22,7 +22,7 @@ const (
 	// CellStrategyPackedNode hosts every packable TS/JS extension in one Node
 	// process, the way upstream pi loads all its extensions in one process
 	// (N8). Unlike the other packed strategies this needs no compiled runner:
-	// the type-stripping loader reads each member's source fresh at start.
+	// the jiti loader reads each member's source fresh at start.
 	CellStrategyPackedNode CellStrategy = "packed-node"
 )
 
@@ -39,32 +39,12 @@ type CellSpec struct {
 	Isolation  string
 	Order      int
 	Extensions []ExtConfig
+	// Group names the plan group whose factories share one runtime process; a Node cell re-invokes its factories in the process that already ran the group.
+	Group string
 }
 
-// PlanCells groups extension configs into runtime cells. Today explicit
-// factory-style Go, Rust, Python, and Node SDK extensions are packable.
-// Everything else remains an isolated subprocess. Quarantined packed cell
-// keys are fissioned back to isolated cells.
-//
-// A pack group only ever spans a *contiguous* run of the same packGroupKey
-// in configured order (CNEO-001). Upstream loader.ts activates each
-// extension strictly in path order (loader.ts:613-627): pig only starts a
-// later cell's process once every earlier cell has committed
-// (stageCellsInOrder), so activation order across cells matches configured
-// order exactly when, and only when, a cell's Order is the index of the
-// earliest configured extension that ends up in it *and no other cell sits
-// between that extension and the next one configured*. Grouping by key alone
-// (ignoring what sits between two same-key extensions) breaks that: [NodeA,
-// GoB(isolated), NodeC] would otherwise pack NodeA+NodeC into one cell
-// ordered at NodeA's index, activating NodeC (in the same process, same
-// install loop) before GoB even though NodeC was configured after GoB. This
-// splits at every interleaving boundary instead, giving up packing NodeA
-// with NodeC in that case (they land in two separate Node cells, so two Node
-// processes) in exchange for exact activation order: the common case, a run
-// of same-language extensions actually configured together, still packs
-// into one cell/process exactly as before.
-// pig additive (D20): packed runtime cells are Pig's downstream-only
-// subprocess process-sharing optimizer; each extension still speaks the current subprocess wire.
+// PlanCells groups compatible factories. Native packed factories form contiguous runs because their runners execute all factories together. Node members share one process across intervening native cells; host admission runs each Node factory in configured order.
+// pig additive (D20): process sharing preserves one registration per extension.
 func PlanCells(configs []ExtConfig, quarantined map[string]string) []CellSpec {
 	type indexedConfig struct {
 		config ExtConfig
@@ -95,15 +75,49 @@ func PlanCells(configs []ExtConfig, quarantined map[string]string) []CellSpec {
 		cells = append(cells, cell)
 	}
 
+	nodes := map[string]*packRun{}
 	var current *packRun
 	for index, cfg := range configs {
 		if !cfg.Enabled || cfg.resolveErr != nil {
 			continue
 		}
 		cfg = normalizeUnresolvedNodeConfig(cfg)
-		if isPackableGoFactory(cfg) || isPackableRustFactory(cfg) || isPackablePythonFactory(cfg) || isPackableNode(cfg) {
+		if isPackableNode(cfg) {
+			flush(current)
+			current = nil
+			key := cfg.nodeRecoveryGroup
+			node := nodes[key]
+			if node == nil {
+				node = &packRun{key: packGroupKey(cfg) + ":" + key, first: index}
+				nodes[key] = node
+			}
+			node.configs = append(node.configs, indexedConfig{config: cfg, index: index})
+			continue
+		}
+		if isPackableGoFactory(cfg) || isPackableRustFactory(cfg) || isPackablePythonFactory(cfg) {
 			key := packGroupKey(cfg)
-			if current != nil && current.key == key {
+			compatible := current != nil && current.key == key
+			if compatible && cfg.RuntimeLanguage == "go" {
+				for _, previous := range current.configs {
+					// pig additive (D20): a Go build resolves one source root per module path. Distinct copies cannot share that build.
+					if cfg.ModulePath != "" && cfg.ModulePath == previous.config.ModulePath && cfg.Source != previous.config.Source {
+						compatible = false
+						break
+					}
+				}
+			}
+			if compatible && cfg.RuntimeLanguage == "python" {
+				module, _, _ := strings.Cut(cfg.Package, ".")
+				for _, previous := range current.configs {
+					other, _, _ := strings.Cut(previous.config.Package, ".")
+					// pig additive (D20): Python caches imports by module name, so independent roots for one module need separate interpreters.
+					if module == other && cfg.Source != previous.config.Source {
+						compatible = false
+						break
+					}
+				}
+			}
+			if compatible {
 				current.configs = append(current.configs, indexedConfig{config: cfg, index: index})
 				continue
 			}
@@ -116,6 +130,9 @@ func PlanCells(configs []ExtConfig, quarantined map[string]string) []CellSpec {
 		cells = append(cells, isolatedCellAt(cfg, "not-packable", index))
 	}
 	flush(current)
+	for _, node := range nodes {
+		flush(node)
+	}
 
 	sort.SliceStable(cells, func(i, j int) bool {
 		if cells[i].Order != cells[j].Order {
@@ -258,6 +275,7 @@ func packedCellAt(groupKey string, configs []ExtConfig, order int) CellSpec {
 		Isolation:  "shared-ok",
 		Order:      order,
 		Extensions: configs,
+		Group:      groupKey,
 	}
 }
 

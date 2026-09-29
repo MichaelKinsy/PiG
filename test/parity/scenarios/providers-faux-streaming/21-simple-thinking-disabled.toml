@@ -1,0 +1,28 @@
+# Pi's streamSimple adapters explicitly disable thinking when reasoning is
+# omitted. Anthropic distinguishes an omitted thinking option from disabled;
+# Google/Vertex choose their minimum supported wire control. The Go Model
+# Runtime and Pi compat.streamSimple produce the same controls for all nine
+# models from google-thinking-disable.test.ts. This proves request lowering,
+# not live provider obedience or model reasoning quality.
+name = "21-simple-thinking-disabled"
+description = "Simple model requests lower omitted reasoning to explicit disabled controls across the upstream model matrix."
+covers = ["packages/ai/src/api/anthropic-messages.ts", "packages/ai/src/api/google-generative-ai.ts", "packages/ai/src/api/google-vertex.ts", "packages/ai/src/api/openai-responses.ts", "packages/ai/src/api/openai-completions.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/thinking-disable-pig"]
+pi_args = ["node", "./test/parity/testdata/thinking-disable-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['anthropic/claude-sonnet-4-5 {"type":"disabled"}', 'anthropic/claude-sonnet-4-6 {"type":"disabled"}', 'google/gemini-3.1-pro-preview {"thinkingLevel":"LOW"}']
+runs = 3

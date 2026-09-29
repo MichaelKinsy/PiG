@@ -158,6 +158,10 @@ func TestCloudflareProductionRequestsUseExplicitEnv(t *testing.T) {
 						messagesKey, maxTokensKey = "input", "max_output_tokens"
 						content = []any{map[string]any{"type": "input_text", "text": "hello"}}
 					}
+					if api == APIAnthropicMessages {
+						// anthropic-messages.ts:60-84: ambient env=none retains the short-cache breakpoint.
+						content = []any{map[string]any{"type": "text", "text": "hello", "cache_control": map[string]any{"type": "ephemeral"}}}
+					}
 					if !reflect.DeepEqual(body[messagesKey], []any{map[string]any{"role": "user", "content": content}}) || body[maxTokensKey] != float64(options.MaxTokens) {
 						t.Errorf("context/options not forwarded: %v", body)
 					}

@@ -52,10 +52,10 @@ func TestBashKillsProcessGroupOnCancel(t *testing.T) {
 	select {
 	case res := <-resultCh:
 		if !res.IsError {
-			t.Errorf("expected IsError after cancel, got success: %s", res.Content)
+			t.Errorf("expected IsError after cancel, got success: %s", res.Text())
 		}
-		if !strings.Contains(res.Content, "aborted") {
-			t.Errorf("expected abort message, got: %s", res.Content)
+		if !strings.Contains(res.Text(), "aborted") {
+			t.Errorf("expected abort message, got: %s", res.Text())
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("bash didn't return within 5s after cancel \u2014 process group kill is broken (children still hold pipes)")
@@ -72,10 +72,10 @@ func TestBashSucceedsWithSimpleCommand(t *testing.T) {
 		t.Fatalf("execute: %v", err)
 	}
 	if res.IsError {
-		t.Errorf("simple echo should succeed, got: %s", res.Content)
+		t.Errorf("simple echo should succeed, got: %s", res.Text())
 	}
-	if !strings.Contains(res.Content, "hello") {
-		t.Errorf("missing output: %q", res.Content)
+	if !strings.Contains(res.Text(), "hello") {
+		t.Errorf("missing output: %q", res.Text())
 	}
 }
 
@@ -103,7 +103,7 @@ func TestBashStreamsLiveOutput(t *testing.T) {
 		t.Fatalf("execute: %v", err)
 	}
 	if res.IsError {
-		t.Fatalf("unexpected error: %s", res.Content)
+		t.Fatalf("unexpected error: %s", res.Text())
 	}
 
 	mu.Lock()
@@ -117,8 +117,8 @@ func TestBashStreamsLiveOutput(t *testing.T) {
 		t.Errorf("snapshots must be cumulative; first=%q not a prefix of last=%q", first, last)
 	}
 	for i := 1; i <= 5; i++ {
-		if !strings.Contains(res.Content, fmt.Sprintf("line%d", i)) {
-			t.Errorf("final output missing line%d: %q", i, res.Content)
+		if !strings.Contains(res.Text(), fmt.Sprintf("line%d", i)) {
+			t.Errorf("final output missing line%d: %q", i, res.Text())
 		}
 	}
 }
@@ -152,7 +152,7 @@ func TestBashFirstUpdateFiresImmediately(t *testing.T) {
 		t.Fatalf("execute: %v", err)
 	}
 	if res.IsError {
-		t.Fatalf("unexpected error: %s", res.Content)
+		t.Fatalf("unexpected error: %s", res.Text())
 	}
 
 	mu.Lock()
@@ -213,13 +213,13 @@ func TestBashNoDeadlockWithSlowConsumer(t *testing.T) {
 	}
 	if res.IsError {
 		// Could be a timeout-caused error; that's OK as long as we didn't deadlock.
-		t.Logf("got error (OK if not a timeout): %s", res.Content)
+		t.Logf("got error (OK if not a timeout): %s", res.Text())
 	}
 	if ctx.Err() != nil {
 		t.Fatal("timed out: deadlock: bash hung because read goroutine was blocked on slow consumer")
 	}
-	if !strings.Contains(res.Content, "10000") {
-		t.Errorf("expected output to contain '10000', got %q", res.Content[:min(200, len(res.Content))])
+	if !strings.Contains(res.Text(), "10000") {
+		t.Errorf("expected output to contain '10000', got %q", res.Text()[:min(200, len(res.Text()))])
 	}
 }
 
@@ -236,8 +236,8 @@ func TestBashTimeoutMessage(t *testing.T) {
 	if !res.IsError {
 		t.Error("timeout should produce IsError=true")
 	}
-	if !strings.Contains(res.Content, "timed out") {
-		t.Errorf("missing timeout message in: %q", res.Content)
+	if !strings.Contains(res.Text(), "timed out") {
+		t.Errorf("missing timeout message in: %q", res.Text())
 	}
 }
 
@@ -254,8 +254,8 @@ func TestBashRejectsOverlargeTimeout(t *testing.T) {
 	if !res.IsError {
 		t.Fatal("over-large timeout should produce IsError=true")
 	}
-	if !strings.Contains(res.Content, "Invalid timeout") {
-		t.Errorf("missing invalid-timeout message in: %q", res.Content)
+	if !strings.Contains(res.Text(), "Invalid timeout") {
+		t.Errorf("missing invalid-timeout message in: %q", res.Text())
 	}
 }
 
@@ -275,7 +275,7 @@ func TestEditDetailsAttached(t *testing.T) {
 	})
 	res, err := et.Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("edit failed: %v %s", err, res.Content)
+		t.Fatalf("edit failed: %v %s", err, res.Text())
 	}
 	d, ok := res.Details.(*EditToolDetails)
 	if !ok || d == nil {
@@ -311,10 +311,10 @@ func TestBashCommandPrefixApplied(t *testing.T) {
 	args, _ := json.Marshal(bashParams{Command: "echo $PREFIX_VAR"})
 	res, err := bt.Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("execute: err=%v IsError=%v content=%s", err, res.IsError, res.Content)
+		t.Fatalf("execute: err=%v IsError=%v content=%s", err, res.IsError, res.Text())
 	}
-	if !strings.Contains(res.Content, "set_by_prefix") {
-		t.Errorf("prefix not applied; content=%q", res.Content)
+	if !strings.Contains(res.Text(), "set_by_prefix") {
+		t.Errorf("prefix not applied; content=%q", res.Text())
 	}
 }
 
@@ -336,10 +336,10 @@ func TestBashShellPathHonored(t *testing.T) {
 	args, _ := json.Marshal(bashParams{Command: "echo from-sh"})
 	res, err := bt.Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("execute: err=%v content=%s", err, res.Content)
+		t.Fatalf("execute: err=%v content=%s", err, res.Text())
 	}
-	if !strings.Contains(res.Content, "from-sh") {
-		t.Errorf("output: %q", res.Content)
+	if !strings.Contains(res.Text(), "from-sh") {
+		t.Errorf("output: %q", res.Text())
 	}
 }
 
@@ -350,10 +350,10 @@ func TestBashToolOutputIsRaw(t *testing.T) {
 	args, _ := json.Marshal(bashParams{Command: `printf '\033[31mERR\033[0m\r\x01'`})
 	res, err := bt.Execute(context.Background(), "", args, nil)
 	if err != nil || res.IsError {
-		t.Fatalf("execute: %v %s", err, res.Content)
+		t.Fatalf("execute: %v %s", err, res.Text())
 	}
-	if res.Content != "\x1b[31mERR\x1b[0m\r\x01" {
-		t.Errorf("tool output = %q, want the raw bytes", res.Content)
+	if res.Text() != "\x1b[31mERR\x1b[0m\r\x01" {
+		t.Errorf("tool output = %q, want the raw bytes", res.Text())
 	}
 }
 
@@ -379,8 +379,8 @@ func TestBashExitCodeAsError(t *testing.T) {
 	if !res.IsError {
 		t.Errorf("non-zero exit must be IsError")
 	}
-	if !strings.Contains(res.Content, "Command exited with code 7") {
-		t.Errorf("missing 'Command exited with code 7' message; got %q", res.Content)
+	if !strings.Contains(res.Text(), "Command exited with code 7") {
+		t.Errorf("missing 'Command exited with code 7' message; got %q", res.Text())
 	}
 }
 
@@ -407,12 +407,12 @@ func TestBashTempFileOverflow(t *testing.T) {
 	if len(full) < 50_000 {
 		t.Errorf("tempfile too small (%d bytes); should hold full untruncated output", len(full))
 	}
-	if !strings.Contains(res.Content, "[Showing lines") {
-		t.Errorf("expected '[Showing lines ...]' annotation in content; got %q", res.Content[:min(200, len(res.Content))])
+	if !strings.Contains(res.Text(), "[Showing lines") {
+		t.Errorf("expected '[Showing lines ...]' annotation in content; got %q", res.Text()[:min(200, len(res.Text()))])
 	}
-	if !strings.Contains(res.Content, d.FullOutputPath) {
+	if !strings.Contains(res.Text(), d.FullOutputPath) {
 		t.Errorf("annotation should mention tempfile path %s; content=%q",
-			d.FullOutputPath, res.Content[max(0, len(res.Content)-300):])
+			d.FullOutputPath, res.Text()[max(0, len(res.Text())-300):])
 	}
 }
 
@@ -442,11 +442,11 @@ func TestBashAbortReturnsBufferedOutput(t *testing.T) {
 		if !res.IsError {
 			t.Errorf("expected IsError after abort")
 		}
-		if !strings.Contains(res.Content, "started") {
-			t.Errorf("buffered output 'started' must survive abort; got %q", res.Content)
+		if !strings.Contains(res.Text(), "started") {
+			t.Errorf("buffered output 'started' must survive abort; got %q", res.Text())
 		}
-		if !strings.Contains(res.Content, "Command aborted") {
-			t.Errorf("expected 'Command aborted' message; got %q", res.Content)
+		if !strings.Contains(res.Text(), "Command aborted") {
+			t.Errorf("expected 'Command aborted' message; got %q", res.Text())
 		}
 	case <-time.After(5 * time.Second):
 		t.Fatal("abort didn't return within 5s")
@@ -461,8 +461,8 @@ func TestBashCwdDoesNotPersistMatchingUpstream(t *testing.T) {
 	// Call 1: cd /tmp.
 	args1, _ := json.Marshal(bashParams{Command: "cd /tmp && pwd"})
 	res1, _ := bt.Execute(context.Background(), "", args1, nil)
-	if !strings.Contains(res1.Content, "/tmp") {
-		t.Fatalf("first call: cd /tmp should report /tmp; got %q", res1.Content)
+	if !strings.Contains(res1.Text(), "/tmp") {
+		t.Fatalf("first call: cd /tmp should report /tmp; got %q", res1.Text())
 	}
 
 	// Call 2: pwd (no cd). Should report the original CWD, NOT /tmp. Git Bash
@@ -474,10 +474,10 @@ func TestBashCwdDoesNotPersistMatchingUpstream(t *testing.T) {
 	}
 	args2, _ := json.Marshal(bashParams{Command: pwd})
 	res2, _ := bt.Execute(context.Background(), "", args2, nil)
-	if strings.Contains(strings.TrimSpace(res2.Content), "/tmp\n") || strings.TrimSpace(res2.Content) == "/tmp" {
-		t.Errorf("second call cwd persisted from first (pig must match upstream's one-shot semantics); got %q", res2.Content)
+	if strings.Contains(strings.TrimSpace(res2.Text()), "/tmp\n") || strings.TrimSpace(res2.Text()) == "/tmp" {
+		t.Errorf("second call cwd persisted from first (pig must match upstream's one-shot semantics); got %q", res2.Text())
 	}
-	if !strings.Contains(res2.Content, wantCWD) {
-		t.Errorf("second call should report tool's CWD %q; got %q", wantCWD, res2.Content)
+	if !strings.Contains(res2.Text(), wantCWD) {
+		t.Errorf("second call should report tool's CWD %q; got %q", wantCWD, res2.Text())
 	}
 }

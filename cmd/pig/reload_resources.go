@@ -11,6 +11,9 @@ import (
 
 func reloadResourceSnapshotProvider(cwd, agentDir string, sm *codingagent.SettingsManager, flags CLIFlags, skillScopes *[]string) func() codingagent.ReloadResourceSnapshot {
 	return func() codingagent.ReloadResourceSnapshot {
+		if err := validateConfiguredResourceEntries(cwd, agentDir, sm, sm.IsProjectTrusted()); err != nil {
+			return codingagent.ReloadResourceSnapshot{Err: err}
+		}
 		promptPaths := collectPromptPaths(cwd, agentDir, sm, flags, sm.IsProjectTrusted())
 		themePaths := collectThemePaths(cwd, agentDir, sm, flags, sm.IsProjectTrusted())
 		skillPaths := collectSkillInputs(cwd, agentDir, sm, flags, skillScopes)
@@ -28,7 +31,7 @@ func reloadResourceSnapshotProvider(cwd, agentDir string, sm *codingagent.Settin
 }
 
 func systemPromptRebuilder(cwd, agentDir string, projectTrusted bool, flags CLIFlags, startupToolNames []string) func(skills []*codingagent.SkillDef, contextFiles []codingagent.ContextFile) (string, extension.BuildSystemPromptOptions) {
-	toolNames := append([]string(nil), startupToolNames...)
+	toolNames := append([]string{}, startupToolNames...)
 	return func(skills []*codingagent.SkillDef, contextFiles []codingagent.ContextFile) (string, extension.BuildSystemPromptOptions) {
 		toolHints := prompts.DefaultToolSnippets()
 		toolGuidelines := tools.DefaultToolGuidelines()
@@ -56,20 +59,10 @@ func systemPromptRebuilder(cwd, agentDir string, projectTrusted bool, flags CLIF
 		for _, contextFile := range promptCtxFiles {
 			extContextFiles = append(extContextFiles, extension.SystemPromptContextFile{Path: contextFile.Path, Content: contextFile.Content})
 		}
-		extSkills := make([]extension.SystemPromptSkill, 0, len(skills))
-		for _, skill := range skills {
-			extSkills = append(extSkills, extension.SystemPromptSkill{
-				Name: skill.Name, Description: skill.Description, FilePath: skill.Path,
-				DisableModelInvocation: skill.DisableModelInvocation,
-			})
-		}
-		var flatToolGuidelines []string
-		for _, name := range toolNames {
-			flatToolGuidelines = append(flatToolGuidelines, toolGuidelines[name]...)
-		}
+		extSkills := extensionPromptSkills(skills)
 		return systemPrompt, extension.BuildSystemPromptOptions{
-			CustomPrompt: resolvedPrompts.custom, SelectedTools: append([]string(nil), toolNames...),
-			ToolSnippets: toolHints, PromptGuidelines: flatToolGuidelines,
+			CustomPrompt: resolvedPrompts.custom, CustomPromptSet: resolvedPrompts.customSet, SelectedTools: append([]string{}, toolNames...),
+			ToolSnippets: toolHints, ToolGuidelines: toolGuidelines,
 			AppendSystemPrompt: resolvedPrompts.append, Cwd: cwd,
 			ContextFiles: extContextFiles, Skills: extSkills,
 		}

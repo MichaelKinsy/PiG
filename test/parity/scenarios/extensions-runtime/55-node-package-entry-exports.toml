@@ -1,0 +1,31 @@
+# Pi 0.87.1: package-manager.ts:557-595 selects pi.extensions before index.ts.
+# loader.ts:479-509 imports with jiti and checks the evaluated default, not source text.
+# The declared directory contains a bundled-style default export and an enum.
+# The command invokes calculateCost and observes the CancellableLoader export.
+# This is a reduced hermetic guard; the published-package corpus has its own pins
+# and compares full load/print traces (test/parity/corpus/issues-65-71).
+name = "55-node-package-entry-exports"
+description = "Declared package directory, bundled default, and Pi SDK exports load through print mode"
+covers = [
+  "packages/coding-agent/src/core/package-manager.ts",
+  "packages/coding-agent/src/core/extensions/loader.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["testdata/issue-package"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/issue-package"]
+
+[print]
+prompt = "/issue-package"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['{"phase":"loaded","loader":"function","cost":{"input":2,"output":4,"cacheRead":0.19999999999999998,"cacheWrite":0.3,"total":6.5}}']
+runs = 3

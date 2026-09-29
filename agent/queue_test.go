@@ -11,16 +11,16 @@ func userMsg(text string) AgentMessage {
 	return AgentMessage{
 		User: &UserMessage{
 			Role:    RoleUser,
-			Content: []ai.UserContentBlock{ai.TextContent{Text: text}},
+			Content: ai.UserContentBlocks{ai.TextContent{Text: text}},
 		},
 	}
 }
 
 func userMsgText(m AgentMessage) string {
-	if m.User == nil || len(m.User.Content) == 0 {
+	if m.User == nil || len(m.User.Content.(ai.UserContentBlocks)) == 0 {
 		return ""
 	}
-	if tc, ok := m.User.Content[0].(ai.TextContent); ok {
+	if tc, ok := m.User.Content.(ai.UserContentBlocks)[0].(ai.TextContent); ok {
 		return tc.Text
 	}
 	return ""

@@ -21,8 +21,8 @@ func TestAssetNameAddsExeOnlyForWindows(t *testing.T) {
 	}
 }
 
-// Publication must accept exactly the repositories that a github: pull
-// reference accepts, or a published release could not be pulled by name.
+// Publication and named pulls validate the same owner/repo pair. The optional
+// third pull component selects a Piglet, not part of the repository name.
 func TestValidGitHubRepositoryMatchesPullReferences(t *testing.T) {
 	for repository, want := range map[string]bool{
 		"acme/porter":        true,
@@ -38,9 +38,9 @@ func TestValidGitHubRepositoryMatchesPullReferences(t *testing.T) {
 		if got := ValidGitHubRepository(repository); got != want {
 			t.Errorf("ValidGitHubRepository(%q) = %v, want %v", repository, got, want)
 		}
-		_, _, err := resolveIndexURL("github:"+repository+"@1.2.3", "")
-		if (err == nil) != want {
-			t.Errorf("pull reference github:%s@1.2.3 error = %v, publication validity %v", repository, err, want)
+		ref, err := parseReleaseReference("github:"+repository+"/porter@1.2.3", "")
+		if got := err == nil && ref.github != nil && ref.github.Repository == repository && ref.piglet == "porter"; got != want {
+			t.Errorf("named pull reference github:%s/porter@1.2.3 = %+v, error %v, publication validity %v", repository, ref, err, want)
 		}
 	}
 }

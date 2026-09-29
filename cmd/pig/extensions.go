@@ -9,6 +9,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/ai"
@@ -69,6 +70,12 @@ func resolveAppMode(mode string, print, stdinIsTTY, stdoutIsTTY bool) appMode {
 	}
 }
 
+// isPlainRuntimeMetadataCommand preserves stdout only for metadata without explicit mode/print options.
+// Ports packages/coding-agent/src/main.ts:129-130.
+func isPlainRuntimeMetadataCommand(flags CLIFlags) bool {
+	return flags.Print == "" && !flags.modeSet && (flags.Help || flags.ListModelsAll || flags.ListModels != "")
+}
+
 // processAppMode resolves the app mode for this process's flags and standard
 // streams.
 func processAppMode(flags CLIFlags) appMode {
@@ -120,7 +127,7 @@ func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, regist
 	// running pig already fixed.
 	host.Builder().SetStagedSDKVerifier(pigsdk.VerifyStaged(codingagent.ConfigRoot()))
 	if registry != nil {
-		host.SetProviderCallbacks(registry.RegisterProvider, registry.UnregisterProvider)
+		bindProviderRegistry(host, registry)
 	}
 	// Log crashes to stderr. Suppress during shutdown to avoid
 	// "connection closed" noise when extensions are torn down.
@@ -131,6 +138,32 @@ func newSubprocessExtensionHost(cwd string, mode extension.ExtensionMode, regist
 		fmt.Fprintln(os.Stderr, subprocess.FormatCrashNotice(name, delay, disabled, reason))
 	})
 	return host, bridge
+}
+
+// startupRegistrationRefreshReady is set when startup makes Pi's awaited local refresh. Pi queues the provider registrations of the extensions it loads at startup and flushes them only after every factory has finished, immediately before that awaited refresh (agent-session-services.ts:158-182), so no Provider callback runs while startup loads extensions. Until then a host registration only queues its refresh, and the startup refresh yields to it.
+var startupRegistrationRefreshReady atomic.Bool
+
+// bindProviderRegistry binds an extension host's provider registrations to the registry. Pi's registerProvider, registerNativeProvider and unregisterProvider return and the JavaScript event loop then runs their unawaited local refresh (model-runtime.ts:744-797). After startup, a host registration returns to its extension when the callback returns, so each callback ends its caller's turn by starting the queued refresh; nothing else would run it until an unrelated awaited model-runtime call.
+func bindProviderRegistry(host *subprocess.Host, registry *codingagent.ModelRegistry) {
+	host.SetProviderCallbacks(func(name string, config extension.ProviderConfig) error {
+		defer startRegistrationRefresh(registry)
+		return registry.RegisterProvider(name, config)
+	}, func(name string) {
+		defer startRegistrationRefresh(registry)
+		registry.UnregisterProvider(name)
+	})
+	host.SetNativeProviderCallback(func(ctx context.Context, provider *extension.NativeProvider) error {
+		defer startRegistrationRefresh(registry)
+		return registry.RegisterNativeProvider(ctx, provider)
+	})
+}
+
+// startRegistrationRefresh starts the queued registration refresh without waiting for it. Services.Close cancels and drains the pass.
+func startRegistrationRefresh(registry *codingagent.ModelRegistry) {
+	if !startupRegistrationRefreshReady.Load() {
+		return
+	}
+	registry.StartRegistrationRefresh(context.Background())
 }
 
 // setExtensionConfigLoader makes reloadConfigs the host's reload resolver, or

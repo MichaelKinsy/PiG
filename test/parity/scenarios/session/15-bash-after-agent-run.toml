@@ -1,0 +1,26 @@
+# Pi 0.87.1 agent-session.ts:3496-3517 uses active-run state, not a state lock,
+# to defer bash records. Both probes hold a provider response, record a shell
+# result, abort, and assert deferred persistence and the final transcript tail.
+# Node's flag resolves unchanged Pi dependencies from the pinned package.
+name = "15-bash-after-agent-run"
+description = "Shell records wait for the active agent run before persistence"
+covers = ["packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-bash-order-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/session-bash-order-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["BASH_ORDER tail=bashExecution"]
+runs = 3

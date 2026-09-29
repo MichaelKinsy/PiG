@@ -1,0 +1,23 @@
+# Pi0.87.1 AgentSession._emitAgentSettled awaits extension handlers before public settlement publication.
+# The same custom-message batch is observed through real Session subscriptions and through PiG's mode event channel. A batch larger than the former channel capacity also detects self-deadlocking dispatch.
+name = "30-custom-settlement-publication"
+description = "Custom messages emitted by agent_settled handlers precede the settlement event on every subscriber path"
+covers = ["packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/custom-settlement-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/custom-settlement-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

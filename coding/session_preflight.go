@@ -18,6 +18,9 @@ type PreparedPrompt struct {
 	content      []ai.UserContentBlock
 	messages     []extension.CustomMessageRef
 	systemPrompt *string
+	sections     ai.OrderedSections
+	// selectedTools is an explicit before_agent_start loadout edit; nil keeps the live active tools.
+	selectedTools []string
 }
 
 // PreparePrompt awaits before_agent_start without holding the Session run lock. Hosts normalize images and admit the result after that await, so another prompt or queue operation may proceed while a handler is suspended.
@@ -29,9 +32,6 @@ func (s *Session) PreparePrompt(ctx context.Context, content []ai.UserContentBlo
 	default:
 	}
 	runner := s.currentRunner()
-	if runner == nil || !runner.HasHandlers("before_agent_start") {
-		return p, nil
-	}
 	var text string
 	var images []extension.ImageContent
 	for _, block := range content {
@@ -45,20 +45,34 @@ func (s *Session) PreparePrompt(ctx context.Context, content []ai.UserContentBlo
 			images = append(images, block)
 		}
 	}
-	result, err := runner.EmitBeforeAgentStart(ctx, text, images, s.systemPrompt(), extension.BuildSystemPromptOptions{})
+	options := *s.GetSystemPromptOptions()
+	sections := ai.OrderedSections{}
+	if options.Sections != nil {
+		sections = cloneSystemSections(*options.Sections)
+	}
+	options.Sections = &sections
+	var result *extension.BeforeAgentStartCombinedResult
+	if runner != nil && runner.HasHandlers("before_agent_start") {
+		var err error
+		result, err = runner.EmitBeforeAgentStart(ctx, text, images, s.systemPrompt(), options)
+		if err != nil {
+			return nil, err
+		}
+	}
+	// Interactive mode applies the same rule to its own prompt and loadout.
+	run, err := icodingagent.ResolveBeforeAgentStartRun(options, result)
 	if err != nil {
+		// agent-session.ts:1409-1419 admits the loadout before buildSystemPromptSections rejects an invalid section name.
+		s.applyPromptToolLoadout(s.admittedToolNames(run.SelectedTools))
 		return nil, err
 	}
-	if result != nil {
-		p.systemPrompt = result.SystemPrompt
-		p.messages = result.Messages
-	}
+	p.sections, p.selectedTools, p.systemPrompt, p.messages = run.Sections, run.SelectedTools, run.SystemPrompt, run.Messages
 	return p, nil
 }
 
 // NormalizeImages applies the current model's image profile after before_agent_start has completed.
 func (p *PreparedPrompt) NormalizeImages() {
-	p.content = icodingagent.NormalizePromptContent(p.content, p.session.services.SettingsManager().GetImageAutoResize(), p.session.agent.Model())
+	p.content = icodingagent.NormalizePromptContent(p.content, p.session.services.SettingsManager().GetImageAutoResize(), p.session.agent.Model(), p.session.processImage)
 }
 
 // PreparedPromptRun owns an admitted Session prompt across its first event and the remainder of execution.
@@ -76,7 +90,7 @@ func (r *PreparedPromptRun) Start() error {
 	if r.agentRun == nil {
 		return nil
 	}
-	return r.agentRun.Start(r.ctx)
+	return r.agentRun.Start()
 }
 
 // Run completes execution, recovery and settlement and releases the admitted run.
@@ -100,27 +114,76 @@ func (s *Session) BeginPreparedPrompt(ctx context.Context, p *PreparedPrompt) (*
 	if p.sessionID != s.ID() {
 		return nil, context.Canceled
 	}
-	run, err := s.agent.BeginSendContent(p.content)
+	// Keep claim and streaming publication atomic with the shell queue decision.
+	runCtx, cancel := context.WithCancel(ctx)
+	s.pendingBashMu.Lock()
+	s.runState.active.Store(true)
+	run, err := s.agent.BeginSendContent(runCtx, p.content)
 	if err != nil {
+		s.pendingBashMu.Unlock()
+		cancel()
 		return &PreparedPromptRun{session: s, err: err}, nil
 	}
+	finish := s.ownAgentRun(cancel)
+	s.pendingBashMu.Unlock()
+	s.applyPromptToolLoadout(s.admittedToolNames(p.selectedTools))
 	if p.systemPrompt != nil {
 		s.agent.SetSystemPrompt(*p.systemPrompt)
 	}
+	s.runSystemSections.Store(&p.sections)
 	s.QueueAgentStartMessages(p.messages)
-	runCtx, finish := s.beginAgentRun(ctx)
 	return &PreparedPromptRun{session: s, prompt: p, agentRun: run, ctx: runCtx, finish: finish}, nil
 }
 
-func (s *Session) runPreparedPrompt(ctx context.Context, p *PreparedPrompt, run func(context.Context) ([]agent.AgentMessage, error)) ([]agent.AgentMessage, error) {
+// admittedToolNames returns an explicit selectedTools edit, or the live active tools when handlers left the list unchanged (agent-session.ts:1714).
+func (s *Session) admittedToolNames(selected []string) []string {
+	if selected == nil {
+		return s.ActiveToolNames()
+	}
+	return selected
+}
+
+// applyPromptToolLoadout makes an edited selectedTools list the executable and provider loadout before the run declares its tools. Like agent-session.ts:1409-1415 it leaves the base prompt options that before_agent_start receives unchanged.
+func (s *Session) applyPromptToolLoadout(names []string) {
+	s.toolRegistryMu.Lock()
+	defer s.toolRegistryMu.Unlock()
+	s.agent.SetTools(s.selectToolsByName(names))
+}
+
+func (s *Session) selectToolsByName(names []string) []agent.AgentTool {
+	registry := make(map[string]agent.AgentTool, len(s.tools))
+	for _, tool := range s.tools {
+		registry[tool.Name()] = tool
+	}
+	active := make([]agent.AgentTool, 0, len(names))
+	seen := make(map[string]bool, len(names))
+	for _, name := range names {
+		if tool := registry[name]; tool != nil && !seen[name] {
+			seen[name] = true
+			active = append(active, s.bindTool(tool))
+		}
+	}
+	return active
+}
+
+func (s *Session) runPreparedPrompt(ctx context.Context, p *PreparedPrompt, run func() ([]agent.AgentMessage, error)) ([]agent.AgentMessage, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	defer s.flushPendingBashLocked()
-	messages, err := run(ctx)
+	messages, err := func() ([]agent.AgentMessage, error) {
+		s.mu.Unlock()
+		defer s.mu.Lock()
+		return run()
+	}()
 	messages, err = s.runPostAgentRuns(ctx, messages, err)
+	if flushErr := s.flushPendingBashLocked(); flushErr != nil {
+		err = errors.Join(err, flushErr)
+	} else {
+		err = errors.Join(err, s.flushPendingCustomMessages())
+	}
 	if p.systemPrompt != nil {
 		s.agent.ClearSystemPrompt()
 	}
+	s.runSystemSections.Store(nil)
 	s.emitAgentSettled()
 	return messages, err
 }

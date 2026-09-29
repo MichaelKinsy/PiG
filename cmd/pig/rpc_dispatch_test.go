@@ -120,7 +120,7 @@ func TestRPCCycleResultSamplesThinkingAfterAwait(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, name := range []string{"models.json", "settings.json"} {
-		data, err := os.ReadFile(filepath.Join("..", "..", "parity", "scenarios", "rpc", "testdata", "cycle-thinking", "agent", name))
+		data, err := os.ReadFile(filepath.Join("..", "..", "test/parity", "scenarios", "rpc", "testdata", "cycle-thinking", "agent", name))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -163,8 +163,8 @@ func BenchmarkRPCResponseTurn(b *testing.B) {
 	for b.Loop() {
 		turn := &rpcResponseTurn{write: write}
 		turn.begin()
-		turn.complete(rpcSuccessNull("cycle", "cycle_model"))
-		write(rpcSuccess("abort-retry", "abort_retry", nil))
+		turn.complete(rpcSuccessNull(rpcStringID("cycle"), "cycle_model"))
+		write(rpcSuccess(rpcStringID("abort-retry"), "abort_retry", nil))
 		turn.end()
 	}
 }

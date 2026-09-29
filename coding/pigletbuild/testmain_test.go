@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -52,7 +53,8 @@ func runFakeGH(state string, args []string) int {
 	}
 	switch {
 	case len(args) >= 2 && args[0] == "release" && args[1] == "view":
-		if _, err := os.Stat(filepath.Join(state, "exists")); err == nil {
+		_, published := os.Stat(filepath.Join(state, "releases", url.PathEscape(args[2])))
+		if _, err := os.Stat(filepath.Join(state, "exists")); err == nil || published == nil {
 			_, _ = fmt.Println(`{"tagName":"` + args[2] + `"}`)
 			return 0
 		}
@@ -63,7 +65,15 @@ func runFakeGH(state string, args []string) int {
 			_, _ = fmt.Fprintln(os.Stderr, "HTTP 422: Validation Failed")
 			return 1
 		}
+		if err := os.RemoveAll(filepath.Join(state, "assets")); err != nil {
+			_, _ = fmt.Fprintln(os.Stderr, err)
+			return 1
+		}
 		for _, asset := range fakeGHCreateAssets(args[3:]) {
+			if err := copyFakeGHAsset(asset, filepath.Join(state, "releases", url.PathEscape(args[2]), filepath.Base(asset))); err != nil {
+				_, _ = fmt.Fprintln(os.Stderr, "fake gh upload:", err)
+				return 1
+			}
 			if err := copyFakeGHAsset(asset, filepath.Join(state, "assets", filepath.Base(asset))); err != nil {
 				_, _ = fmt.Fprintln(os.Stderr, "fake gh upload:", err)
 				return 1

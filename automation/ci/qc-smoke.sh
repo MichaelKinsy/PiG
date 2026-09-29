@@ -22,7 +22,7 @@ grep -q 'providers.md' "$out"/docs-list.txt
 grep -q '"valid": true' "$out"/go-factory.json
 grep -q '"hello"' "$out"/go-factory.json
 
-PIG_PARITY_PIG_BIN="$PIG_BIN" go test -tags=parity ./parity/runner \
+PIG_PARITY_PIG_BIN="$PIG_BIN" go test -tags=parity ./test/parity/runner \
   -run 'TestParity/(01-version-flag|10-login-subscription-providers|01-register-handshake)$' \
   -count=1 -v -timeout 5m
 

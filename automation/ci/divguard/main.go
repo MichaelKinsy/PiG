@@ -3,7 +3,7 @@
 
 // Command divguard fails CI on hidden, arbitrary divergences from Pi: invented
 // limits, timeouts and defaults, silent exits, swallowed errors and dropped
-// events that no DIVERGENCES.md entry records. It exists because a silent
+// events that no docs/parity/DIVERGENCES.md entry records. It exists because a silent
 // MaxTurns=100 cap once shipped with nothing flagging it.
 //
 // Each check is a syntactic pattern over the Go sources. Every current hit is
@@ -15,8 +15,7 @@
 // A hit is allowed at the source by a recorded divergence marker,
 // `// pig divergence (D<N>): ...`, on the flagged line or the line above.
 // A literal that matches upstream is allowed by `// upstream: <file>:<symbol>`
-// in the same place; the file must exist in .upstream/current, the symbol must
-// appear in it, and the literal's value must appear in it too.
+// in the same place; the file must exist in .upstream/current or in a digest-verified dependency snapshot tied to an exact pin in that mirror. The symbol and literal value must appear in that source.
 //
 // Run it with `make divergence-guard`; -list prints every hit, and -print
 // prints them as baseline entries.

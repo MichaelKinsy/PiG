@@ -1,6 +1,6 @@
 package ai
 
-// Mirrors upstream .upstream/current/packages/ai/src/utils/oauth/anthropic.ts.
+// Ports packages/ai/src/auth/oauth/anthropic.ts.
 
 import (
 	"context"
@@ -10,8 +10,13 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 const (
@@ -24,9 +29,9 @@ const (
 	anthropicScopes       = "org:create_api_key user:profile user:inference user:sessions:claude_code user:mcp_servers user:file_upload"
 )
 
-// parseAuthorizationInput extracts code and state from user-pasted input.
+// parseAuthorizationInput ECMAScript-trims user-pasted input and extracts its code and state.
 func parseAuthorizationInput(input string) (code, state string) {
-	v := strings.TrimSpace(input)
+	v := trimJSWhitespace(input)
 	if v == "" {
 		return "", ""
 	}
@@ -58,7 +63,7 @@ type callbackResult struct {
 }
 
 // startCallbackServer starts a local HTTP server for the OAuth callback.
-func startCallbackServer(expectedState string) (srv *http.Server, listener net.Listener, resultCh chan *callbackResult, err error) {
+func startCallbackServer(expectedState string) (srv *http.Server, listener net.Listener, resultCh chan *callbackResult, serveDone chan struct{}, err error) {
 	resultCh = make(chan *callbackResult, 1)
 
 	mux := http.NewServeMux()
@@ -93,22 +98,24 @@ func startCallbackServer(expectedState string) (srv *http.Server, listener net.L
 	})
 
 	srv = &http.Server{Handler: mux}
-	listener, err = net.Listen("tcp", fmt.Sprintf("127.0.0.1:%d", anthropicCallbackPort))
+	listener, err = net.Listen("tcp", net.JoinHostPort(firstNonEmptyString(os.Getenv("PI_OAUTH_CALLBACK_HOST"), "127.0.0.1"), strconv.Itoa(anthropicCallbackPort)))
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("listen on port %d: %w", anthropicCallbackPort, err)
+		return nil, nil, nil, nil, fmt.Errorf("listen on port %d: %w", anthropicCallbackPort, err)
 	}
 
+	serveDone = make(chan struct{})
 	go func() {
+		defer close(serveDone)
 		_ = srv.Serve(listener) // returns on Shutdown
 	}()
 
-	return srv, listener, resultCh, nil
+	return srv, listener, resultCh, serveDone, nil
 }
 
 type anthropicTokenResponse struct {
-	AccessToken  string `json:"access_token"`
-	RefreshToken string `json:"refresh_token"`
-	ExpiresIn    int64  `json:"expires_in"`
+	AccessToken  string          `json:"access_token"`
+	RefreshToken string          `json:"refresh_token"`
+	ExpiresIn    json.RawMessage `json:"expires_in"`
 }
 
 func exchangeAnthropicCode(ctx context.Context, code, state, verifier, redirectURI string) (OAuthCredentials, error) {
@@ -147,29 +154,40 @@ func exchangeAnthropicCode(ctx context.Context, code, state, verifier, redirectU
 		return OAuthCredentials{}, fmt.Errorf("token exchange invalid JSON: %w", err)
 	}
 
-	return OAuthCredentials{
-		Refresh: tok.RefreshToken,
-		Access:  tok.AccessToken,
-		Expires: time.Now().UnixMilli() + tok.ExpiresIn*1000 - 5*60*1000,
-	}, nil
+	creds := OAuthCredentials{Refresh: tok.RefreshToken, Access: tok.AccessToken}
+	creds.SetExpiresMillis(float64(nowMillis()) + jsnumber.FromJSON(tok.ExpiresIn)*1000 - 5*60*1000)
+	return creds, nil
 }
 
 // LoginAnthropic runs the Anthropic OAuth authorization code + PKCE flow.
+// Authorization cleanup cancels and joins contextual manual prompts and closes the callback listener while the token exchange is pending.
 func LoginAnthropic(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuthCredentials, error) {
 	pkce, err := GeneratePKCE()
 	if err != nil {
 		return OAuthCredentials{}, fmt.Errorf("generate PKCE: %w", err)
 	}
 
-	srv, _, resultCh, err := startCallbackServer(pkce.Verifier)
+	srv, listener, resultCh, serveDone, err := startCallbackServer(pkce.Verifier)
 	if err != nil {
 		return OAuthCredentials{}, err
 	}
-	defer func() {
+	var cancelManual context.CancelFunc
+	var manualDone chan struct{}
+	finishAuthorization := sync.OnceFunc(func() {
+		if cancelManual != nil {
+			cancelManual()
+			if callbacks.OnManualCodeInputContext != nil {
+				<-manualDone
+			}
+		}
 		shutCtx, shutCancel := context.WithTimeout(context.Background(), 2*time.Second)
 		defer shutCancel()
+		// Shutdown can precede Serve registering its listener; close the owned listener explicitly.
+		_ = listener.Close()
 		_ = srv.Shutdown(shutCtx)
-	}()
+		<-serveDone
+	})
+	defer finishAuthorization()
 
 	params := url.Values{
 		"code":                  {"true"},
@@ -192,13 +210,24 @@ func LoginAnthropic(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuthCr
 	redirectURI := anthropicRedirectURI
 
 	// Wait for callback or manual input
-	if callbacks.OnManualCodeInput != nil {
+	if callbacks.OnManualCodeInput != nil || callbacks.OnManualCodeInputContext != nil {
+		var manualCtx context.Context
+		manualCtx, cancelManual = context.WithCancel(ctx)
+		defer cancelManual()
+		manualDone = make(chan struct{})
 		manualCh := make(chan struct {
 			val string
 			err error
 		}, 1)
 		go func() {
-			v, e := callbacks.OnManualCodeInput()
+			defer close(manualDone)
+			var v string
+			var e error
+			if callbacks.OnManualCodeInputContext != nil {
+				v, e = callbacks.OnManualCodeInputContext(manualCtx)
+			} else {
+				v, e = callbacks.OnManualCodeInput()
+			}
 			manualCh <- struct {
 				val string
 				err error
@@ -257,7 +286,17 @@ func LoginAnthropic(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuthCr
 	if callbacks.OnProgress != nil {
 		callbacks.OnProgress("Exchanging authorization code for tokens...")
 	}
-	return exchangeAnthropicCode(ctx, code, state, pkce.Verifier, redirectURI)
+	// upstream: packages/ai/src/auth/oauth/anthropic.ts:loginAnthropic returns the exchange Promise without awaiting it, so finally runs before the exchange settles.
+	var credential OAuthCredentials
+	var exchangeErr error
+	exchangeDone := make(chan struct{})
+	go func() {
+		defer close(exchangeDone)
+		credential, exchangeErr = exchangeAnthropicCode(ctx, code, state, pkce.Verifier, redirectURI)
+	}()
+	finishAuthorization()
+	<-exchangeDone
+	return credential, exchangeErr
 }
 
 // RefreshAnthropicToken refreshes an Anthropic OAuth token.
@@ -294,11 +333,9 @@ func RefreshAnthropicToken(ctx context.Context, refreshToken string) (OAuthCrede
 		return OAuthCredentials{}, fmt.Errorf("token refresh invalid JSON: %w", err)
 	}
 
-	return OAuthCredentials{
-		Refresh: tok.RefreshToken,
-		Access:  tok.AccessToken,
-		Expires: time.Now().UnixMilli() + tok.ExpiresIn*1000 - 5*60*1000,
-	}, nil
+	creds := OAuthCredentials{Refresh: tok.RefreshToken, Access: tok.AccessToken}
+	creds.SetExpiresMillis(float64(nowMillis()) + jsnumber.FromJSON(tok.ExpiresIn)*1000 - 5*60*1000)
+	return creds, nil
 }
 
 // AnthropicOAuthDisplayName is the OAuth method label upstream renders for

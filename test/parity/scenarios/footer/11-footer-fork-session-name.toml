@@ -1,0 +1,46 @@
+# Upstream evidence: Pi 0.87.1 probe: submit ORIGINAL_A and ORIGINAL_B, /name Smoke Current, then /fork at the second user message. The new file has no session_info and the footer drops the name (footer.ts:124-128; session-manager.ts:createBranchedSession).
+# The release smoke flow and all four Go fork-name regressions failed before the fix. Compare the complete escaped footer, not the status message or old transcript name.
+name = "11-footer-fork-session-name"
+description = "Forking before the source name refreshes the footer from the unnamed destination."
+covers = ["packages/coding-agent/src/modes/interactive/components/footer.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[tmux]
+width = 120
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+capture_start = "parity-snap-cwd-"
+capture_start_last = true
+
+[[tmux.steps]]
+keys = ["reply with exactly: ORIGINAL_A", "Enter"]
+wait_visible_contains = [" ORIGINAL_A"]
+
+[[tmux.steps]]
+keys = ["reply with exactly: ORIGINAL_B", "Enter"]
+wait_visible_contains = [" ORIGINAL_B"]
+
+[[tmux.steps]]
+keys = ["/name Smoke Current", "Enter"]
+wait_visible_contains = ["Session name set: Smoke Current", "• Smoke Current"]
+
+[[tmux.steps]]
+keys = ["/fork", "Enter"]
+wait_visible_contains = ["Fork from Message"]
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_visible_contains = ["Forked to new session"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["Smoke Current"]
+escaped_output_equal = true
+runs = 3

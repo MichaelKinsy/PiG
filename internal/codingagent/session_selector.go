@@ -1,3 +1,4 @@
+// Ports packages/coding-agent/src/modes/interactive/components/session-selector.ts.
 package codingagent
 
 import (
@@ -7,8 +8,13 @@ import (
 	"regexp"
 	"slices"
 	"strings"
-	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -32,10 +38,15 @@ const (
 )
 
 type sessionSelector struct {
-	currentLoader func() ([]SessionInfo, error)
-	allLoader     func() ([]SessionInfo, error)
+	currentLoader sessionsLoader
+	allLoader     sessionsLoader
+	work          sessionSelectorWork
+	currentLoad   *sessionLoad
+	allLoad       *sessionLoad
+	loading       bool
+	loadProgress  *[2]int
 	renameSession func(path, name string) error
-	deleteSession func(path string) error
+	deleteSession func(path string) sessionDeleteResult
 	currentPath   string
 	keybindings   *KeybindingsManager
 
@@ -45,18 +56,19 @@ type sessionSelector struct {
 	showPath       bool
 	showRenameHint bool
 
-	searchInput  *tui.TextInput
-	current      []SessionInfo
-	all          []SessionInfo
-	filtered     []sessionDisplayNode
-	selected     int
-	done         bool
-	cancelled    bool
-	selectedPath string
+	searchInput      *tui.TextInput
+	current          []SessionInfo
+	all              []SessionInfo
+	filtered         []sessionDisplayNode
+	selected         int
+	selectionTouched bool
+	done             bool
+	cancelled        bool
+	selectedPath     string
+	operationError   error
 
 	confirmDelete string
-	status        string
-	statusError   bool
+	statusState   sessionSelectorStatus
 
 	renameMode  bool
 	renamePath  string
@@ -82,11 +94,12 @@ type searchToken struct {
 	value string
 }
 
-func newSessionSelector(currentLoader, allLoader func() ([]SessionInfo, error), renameSession func(path, name string) error, deleteSession func(path string) error, currentPath string, kb *KeybindingsManager) *sessionSelector {
+func newSessionSelectorWithLoaders(currentLoader, allLoader sessionsLoader, renameSession func(path, name string) error, deleteSession func(path string) sessionDeleteResult, currentPath string, kb *KeybindingsManager) *sessionSelector {
 	if kb == nil {
 		kb = DefaultKeybindingsManager()
 	}
 	s := &sessionSelector{
+		work:           sessionSelectorWork{updates: make(chan func()), ready: make(chan struct{}, 1)},
 		currentLoader:  currentLoader,
 		allLoader:      allLoader,
 		renameSession:  renameSession,
@@ -97,14 +110,19 @@ func newSessionSelector(currentLoader, allLoader func() ([]SessionInfo, error), 
 		sortMode:       sessionSortThreaded,
 		nameFilter:     sessionNameAll,
 		searchInput:    tui.NewInput(tui.InputOptions{}),
-		renameInput:    tui.NewTextInput("Rename Session"),
+		renameInput:    tui.NewInput(tui.InputOptions{}),
 		showRenameHint: true,
 	}
+	s.searchInput.Focused = true
+	s.renameInput.OnSubmit = func(value string) {
+		s.operationError = s.confirmRename(value)
+	}
+	s.renameInput.OnEscape = s.exitRenameMode
 	s.loadScope(sessionScopeCurrent)
 	return s
 }
 
-func (s *sessionSelector) Done() bool      { return s.done }
+func (s *sessionSelector) Done() bool      { return s.done || s.operationError != nil }
 func (s *sessionSelector) Cancelled() bool { return s.cancelled }
 func (s *sessionSelector) SelectedPath() string {
 	return s.selectedPath
@@ -169,12 +187,20 @@ func (s *sessionSelector) renderList(width int) []string {
 // title with right-aligned scope, name filter and sort, then two hint rows
 // that a delete confirmation or status message replaces.
 func sessionSelectorHeader(s *sessionSelector, width int) []string {
+	s.expireStatusMessage()
 	th := tui.ActiveTheme()
 	title := "Resume Session (All)"
 	scopeText := sessionFg(th.Muted, "○ Current Folder | ") + sessionFg(th.Accent, "◉ All")
 	if s.scope == sessionScopeCurrent {
 		title = "Resume Session (Current Folder)"
 		scopeText = sessionFg(th.Accent, "◉ Current Folder") + sessionFg(th.Muted, " | ○ All")
+	}
+	if s.loading {
+		progressText := "..."
+		if s.loadProgress != nil {
+			progressText = fmt.Sprintf("%d/%d", s.loadProgress[0], s.loadProgress[1])
+		}
+		scopeText = sessionFg(th.Muted, "○ Current Folder | ") + sessionFg(th.Accent, "Loading "+progressText)
 	}
 	sortLabel := map[sessionSortMode]string{sessionSortThreaded: "Threaded", sessionSortRecent: "Recent", sessionSortRelevance: "Fuzzy"}[s.sortMode]
 	nameLabel := map[sessionNameFilter]string{sessionNameAll: "All", sessionNameNamed: "Named"}[s.nameFilter]
@@ -189,12 +215,12 @@ func sessionSelectorHeader(s *sessionSelector, width int) []string {
 	case s.confirmDelete != "":
 		hint := "Delete session? " + sessionKeyHint(s, tui.KBSelectConfirm, "confirm") + " · " + sessionKeyHint(s, tui.KBSelectCancel, "cancel")
 		return []string{line1, sessionFg(th.Error, widthx.TruncateToWidth(hint, width, "…", false)), ""}
-	case s.status != "":
+	case s.statusState.message != "":
 		color := th.Accent
-		if s.statusError {
+		if s.statusState.error {
 			color = th.Error
 		}
-		return []string{line1, sessionFg(color, widthx.TruncateToWidth(s.status, width, "…", false)), ""}
+		return []string{line1, sessionFg(color, widthx.TruncateToWidth(s.statusState.message, width, "…", false)), ""}
 	}
 	sep := sessionFg(th.Muted, " · ")
 	hint1 := sessionKeyHint(s, tui.KBInputTab, "scope") + sep + sessionFg(th.Muted, `re:<pattern> regex · "phrase" exact`)
@@ -247,46 +273,41 @@ func sessionFg(color, text string) string {
 func sessionBold(text string) string { return "\x1b[1m" + text + tui.SGRBoldDimReset }
 
 func (s *sessionSelector) HandleInput(data string) {
+	s.drainLoadUpdates()
 	if s.done {
 		return
 	}
 	if s.renameMode {
 		s.renameInput.HandleInput(data)
-		if s.renameInput.Done() {
-			if s.renameInput.Cancelled() {
-				s.exitRenameMode()
-				return
-			}
-			next := strings.TrimSpace(s.renameInput.Text())
-			if next != "" && s.renameSession != nil && s.renamePath != "" {
-				if err := s.renameSession(s.renamePath, next); err != nil {
-					s.status = "Rename failed: " + err.Error()
-					s.statusError = true
-				} else {
-					s.status = "Session renamed"
-					s.statusError = false
-					s.refreshCurrentScope()
-				}
-			}
-			s.exitRenameMode()
-		}
 		return
 	}
 	if s.confirmDelete != "" {
 		kb := tui.GetTUIKeybindings()
 		switch {
 		case kb.Matches(data, tui.KBSelectConfirm):
+			pathToDelete := s.confirmDelete
+			s.confirmDelete = ""
 			if s.deleteSession != nil {
-				if err := s.deleteSession(s.confirmDelete); err != nil {
-					s.status = "Delete failed: " + err.Error()
-					s.statusError = true
+				if result := s.deleteSession(pathToDelete); !result.ok {
+					errorMessage := result.error
+					if errorMessage == "" {
+						errorMessage = "Unknown error"
+					}
+					s.setStatusMessage("Failed to delete: "+errorMessage, true, sessionSelectorErrorTimeout)
 				} else {
-					s.status = "Session deleted"
-					s.statusError = false
+					// Pi session-selector.ts:845-859 publishes the deletion before awaiting a refresh, so stale rows cannot be selected while loading.
+					deleted := func(session SessionInfo) bool { return session.Path == pathToDelete }
+					s.current = slices.DeleteFunc(slices.Clone(s.current), deleted)
+					s.all = slices.DeleteFunc(slices.Clone(s.all), deleted)
+					s.refilterLoadedSessions()
+					msg := "Session deleted"
+					if result.method == sessionDeleteTrash {
+						msg = "Session moved to trash"
+					}
+					s.setStatusMessage(msg, false, sessionSelectorInfoTimeout)
 					s.refreshCurrentScope()
 				}
 			}
-			s.confirmDelete = ""
 			return
 		case kb.Matches(data, tui.KBSelectCancel):
 			s.confirmDelete = ""
@@ -324,15 +345,19 @@ func (s *sessionSelector) HandleInput(data string) {
 		}
 		return
 	case tui.GetTUIKeybindings().Matches(data, tui.KBSelectCancel):
+		s.clearStatusMessage()
 		s.cancelled = true
 		s.done = true
+		s.cancelLoads()
 		return
 	case tui.GetTUIKeybindings().Matches(data, tui.KBSelectConfirm):
 		if len(s.filtered) == 0 {
 			return
 		}
+		s.clearStatusMessage()
 		s.selectedPath = s.filtered[s.selected].Session.Path
 		s.done = true
+		s.cancelLoads()
 		return
 	case tui.GetTUIKeybindings().Matches(data, tui.KBSelectUp):
 		s.move(-1)
@@ -347,54 +372,9 @@ func (s *sessionSelector) HandleInput(data string) {
 		s.move(sessionSelectorMaxVisible)
 		return
 	default:
+		s.selectionTouched = true
 		s.searchInput.HandleInput(data)
 		s.refilter()
-	}
-}
-
-func (s *sessionSelector) loadScope(scope sessionScope) {
-	var infos []SessionInfo
-	var err error
-	if scope == sessionScopeAll {
-		if s.all == nil {
-			infos, err = s.allLoader()
-			if err != nil {
-				s.status = "Failed to load sessions: " + err.Error()
-				s.statusError = true
-				infos = nil
-			}
-			s.all = infos
-		}
-	} else {
-		if s.current == nil {
-			infos, err = s.currentLoader()
-			if err != nil {
-				s.status = "Failed to load sessions: " + err.Error()
-				s.statusError = true
-				infos = nil
-			}
-			s.current = infos
-		}
-	}
-	s.scope = scope
-	s.refilter()
-}
-
-func (s *sessionSelector) refreshCurrentScope() {
-	if s.scope == sessionScopeCurrent {
-		s.current = nil
-	} else {
-		s.all = nil
-		s.current = nil
-	}
-	s.loadScope(s.scope)
-}
-
-func (s *sessionSelector) toggleScope() {
-	if s.scope == sessionScopeCurrent {
-		s.loadScope(sessionScopeAll)
-	} else {
-		s.loadScope(sessionScopeCurrent)
 	}
 }
 
@@ -425,22 +405,45 @@ func (s *sessionSelector) startDeleteConfirmation() {
 	}
 	selected := s.filtered[s.selected].Session
 	if canonicalSessionPath(selected.Path) == s.currentPath {
-		s.status = "Cannot delete the currently active session"
-		s.statusError = true
+		s.setStatusMessage("Cannot delete the currently active session", true, sessionSelectorErrorTimeout)
 		return
 	}
 	s.confirmDelete = selected.Path
 }
 
 func (s *sessionSelector) enterRenameMode() {
-	if len(s.filtered) == 0 || s.renameSession == nil {
+	if s.scopeLoad(s.scope) != nil || len(s.filtered) == 0 || s.renameSession == nil {
 		return
 	}
 	selected := s.filtered[s.selected].Session
 	s.renameMode = true
 	s.renamePath = selected.Path
-	s.renameInput = tui.NewTextInput("Rename Session")
 	s.renameInput.SetText(selected.Name)
+	s.renameInput.Focused = true
+}
+
+// confirmRename preserves header status, exits on rejection, and keeps the panel mounted until a successful refresh settles. The owner surfaces input-callback errors.
+func (s *sessionSelector) confirmRename(value string) error {
+	next := jsTrim(value)
+	if next == "" {
+		return nil
+	}
+	exitImmediately := true
+	defer func() {
+		if exitImmediately {
+			s.exitRenameMode()
+		}
+	}()
+	if s.renameSession == nil || s.renamePath == "" {
+		return nil
+	}
+	if err := s.renameSession(s.renamePath, next); err != nil {
+		return err
+	}
+	load := s.refreshCurrentScope()
+	load.complete = s.exitRenameMode
+	exitImmediately = false
+	return nil
 }
 
 // exitRenameMode mirrors upstream SessionSelectorComponent.exitRenameMode
@@ -449,11 +452,11 @@ func (s *sessionSelector) enterRenameMode() {
 func (s *sessionSelector) exitRenameMode() {
 	s.renameMode = false
 	s.renamePath = ""
-	s.renameInput = tui.NewTextInput("Rename Session")
 	s.refilter()
 }
 
 func (s *sessionSelector) move(delta int) {
+	s.selectionTouched = true
 	if len(s.filtered) == 0 {
 		s.selected = 0
 		return
@@ -467,6 +470,7 @@ func (s *sessionSelector) move(delta int) {
 	}
 }
 
+// refilter applies the scope, name filter, query, and sort without excluding the active session.
 func (s *sessionSelector) refilter() {
 	var base []SessionInfo
 	if s.scope == sessionScopeAll {
@@ -474,26 +478,16 @@ func (s *sessionSelector) refilter() {
 	} else {
 		base = s.current
 	}
-	if s.currentPath != "" {
-		filteredBase := make([]SessionInfo, 0, len(base))
-		for _, sess := range base {
-			if canonicalSessionPath(sess.Path) == s.currentPath {
-				continue
-			}
-			filteredBase = append(filteredBase, sess)
-		}
-		base = filteredBase
-	}
 	if s.nameFilter == sessionNameNamed {
 		filtered := make([]SessionInfo, 0, len(base))
 		for _, sess := range base {
-			if strings.TrimSpace(sess.Name) != "" {
+			if jsTrim(sess.Name) != "" {
 				filtered = append(filtered, sess)
 			}
 		}
 		base = filtered
 	}
-	trimmed := strings.TrimSpace(s.searchInput.Text())
+	trimmed := jsTrim(s.searchInput.Text())
 	if s.sortMode == sessionSortThreaded && trimmed == "" {
 		roots := buildSessionTree(base)
 		s.filtered = flattenSessionTree(roots)
@@ -517,10 +511,12 @@ func canonicalSessionPath(path string) string {
 }
 
 type sessionTreeNode struct {
-	Session  SessionInfo
-	Children []*sessionTreeNode
+	Session        SessionInfo
+	Children       []*sessionTreeNode
+	LatestActivity int64
 }
 
+// buildSessionTree groups canonical paths and stably orders each subtree by its most recent millisecond timestamp.
 func buildSessionTree(sessions []SessionInfo) []*sessionTreeNode {
 	byPath := make(map[string]*sessionTreeNode, len(sessions))
 	for _, sess := range sessions {
@@ -539,10 +535,22 @@ func buildSessionTree(sessions []SessionInfo) []*sessionTreeNode {
 		}
 		roots = append(roots, node)
 	}
+	var updateLatestActivity func(*sessionTreeNode) int64
+	updateLatestActivity = func(node *sessionTreeNode) int64 {
+		latest := node.Session.Modified.UnixMilli()
+		for _, child := range node.Children {
+			latest = max(latest, updateLatestActivity(child))
+		}
+		node.LatestActivity = latest
+		return latest
+	}
+	for _, root := range roots {
+		updateLatestActivity(root)
+	}
 	var sortNodes func([]*sessionTreeNode)
 	sortNodes = func(nodes []*sessionTreeNode) {
-		slices.SortFunc(nodes, func(a, b *sessionTreeNode) int {
-			return compareTimeDesc(a.Session.Modified, b.Session.Modified)
+		slices.SortStableFunc(nodes, func(a, b *sessionTreeNode) int {
+			return cmp.Compare(b.LatestActivity, a.LatestActivity)
 		})
 		for _, n := range nodes {
 			sortNodes(n.Children)
@@ -571,19 +579,16 @@ func flattenSessionTree(roots []*sessionTreeNode) []sessionDisplayNode {
 	return out
 }
 
-func compareTimeDesc(a, b time.Time) int {
-	return cmp.Compare(b.UnixNano(), a.UnixNano())
-}
-
+// Ports packages/coding-agent/src/modes/interactive/components/session-selector-search.ts.
 func parseSearchQuery(query string) parsedSearchQuery {
-	trimmed := strings.TrimSpace(query)
+	trimmed := jsTrim(query)
 	if trimmed == "" {
 		return parsedSearchQuery{mode: "tokens"}
 	}
 	if after, ok := strings.CutPrefix(trimmed, "re:"); ok {
-		pattern := strings.TrimSpace(after)
+		pattern := jsTrim(after)
 		if pattern == "" {
-			return parsedSearchQuery{mode: "regex", error: "empty regex"}
+			return parsedSearchQuery{mode: "regex", error: "Empty regex"}
 		}
 		re, err := regexp.Compile("(?i)" + pattern)
 		if err != nil {
@@ -595,7 +600,7 @@ func parseSearchQuery(query string) parsedSearchQuery {
 	var buf strings.Builder
 	inQuote := false
 	flush := func(kind string) {
-		v := strings.TrimSpace(buf.String())
+		v := jsTrim(buf.String())
 		buf.Reset()
 		if v != "" {
 			tokens = append(tokens, searchToken{kind: kind, value: v})
@@ -611,7 +616,7 @@ func parseSearchQuery(query string) parsedSearchQuery {
 				flush("fuzzy")
 				inQuote = true
 			}
-		case !inQuote && (r == ' ' || r == '\t' || r == '\n'):
+		case !inQuote && isJSWhitespace(r):
 			flush("fuzzy")
 		default:
 			buf.WriteRune(r)
@@ -619,7 +624,7 @@ func parseSearchQuery(query string) parsedSearchQuery {
 	}
 	if inQuote {
 		// fallback: plain tokens on unclosed quote
-		parts := strings.Fields(trimmed)
+		parts := strings.FieldsFunc(trimmed, isJSWhitespace)
 		tokens = tokens[:0]
 		for _, p := range parts {
 			tokens = append(tokens, searchToken{kind: "fuzzy", value: p})
@@ -634,14 +639,11 @@ func sessionSearchText(session SessionInfo) string {
 	return fmt.Sprintf("%s %s %s %s", session.ID, session.Name, session.AllMessagesText, session.CWD)
 }
 
+// filterAndSortSessions preserves incoming order for empty queries and Recent mode; otherwise it ranks by Pi's fuzzy/phrase scores, with stable modified-time ties.
 func filterAndSortSessions(sessions []SessionInfo, query string, sortMode sessionSortMode) []SessionInfo {
-	trimmed := strings.TrimSpace(query)
+	trimmed := jsTrim(query)
 	if trimmed == "" {
-		out := slices.Clone(sessions)
-		if sortMode != sessionSortThreaded {
-			slices.SortFunc(out, func(a, b SessionInfo) int { return compareTimeDesc(a.Modified, b.Modified) })
-		}
-		return out
+		return slices.Clone(sessions)
 	}
 	parsed := parseSearchQuery(query)
 	if parsed.error != "" {
@@ -663,17 +665,16 @@ func filterAndSortSessions(sessions []SessionInfo, query string, sortMode sessio
 		for i, m := range matches {
 			out[i] = m.Session
 		}
-		slices.SortFunc(out, func(a, b SessionInfo) int { return compareTimeDesc(a.Modified, b.Modified) })
 		return out
 	}
-	slices.SortFunc(matches, func(a, b scored) int {
+	slices.SortStableFunc(matches, func(a, b scored) int {
 		if a.Score < b.Score {
 			return -1
 		}
 		if a.Score > b.Score {
 			return 1
 		}
-		return compareTimeDesc(a.Session.Modified, b.Session.Modified)
+		return cmp.Compare(b.Session.Modified.UnixMilli(), a.Session.Modified.UnixMilli())
 	})
 	out := make([]SessionInfo, len(matches))
 	for i, m := range matches {
@@ -684,7 +685,6 @@ func filterAndSortSessions(sessions []SessionInfo, query string, sortMode sessio
 
 func matchSession(session SessionInfo, parsed parsedSearchQuery) (bool, float64) {
 	text := sessionSearchText(session)
-	lower := strings.ToLower(strings.Join(strings.Fields(text), " "))
 	if parsed.mode == "regex" {
 		if parsed.regex == nil {
 			return false, 0
@@ -693,46 +693,40 @@ func matchSession(session SessionInfo, parsed parsedSearchQuery) (bool, float64)
 		if idx == nil {
 			return false, 0
 		}
-		return true, float64(idx[0]) * 0.1
+		return true, float64(jsstring.Length(text[:idx[0]])) * 0.1
 	}
 	if len(parsed.tokens) == 0 {
 		return true, 0
 	}
 	var total float64
+	var normalizedText string
 	for _, tok := range parsed.tokens {
-		needle := strings.ToLower(strings.TrimSpace(tok.value))
-		if needle == "" {
+		if tok.kind == "phrase" {
+			if normalizedText == "" {
+				normalizedText = normalizeWhitespaceLower(text)
+			}
+			phrase := normalizeWhitespaceLower(tok.value)
+			if phrase == "" {
+				continue
+			}
+			idx := strings.Index(normalizedText, phrase)
+			if idx < 0 {
+				return false, 0
+			}
+			total += float64(jsstring.Length(normalizedText[:idx])) * 0.1
 			continue
 		}
-		idx := strings.Index(lower, needle)
-		if idx >= 0 {
-			total += float64(idx) * 0.1
-			continue
+		match := tui.FuzzyMatchScore(tok.value, text)
+		if !match.Matches {
+			return false, 0
 		}
-		if tok.kind == "fuzzy" && fuzzyContains(lower, needle) {
-			total += float64(len(needle))
-			continue
-		}
-		return false, 0
+		total += match.Score
 	}
 	return true, total
 }
 
-func fuzzyContains(haystack, needle string) bool {
-	if needle == "" {
-		return true
-	}
-	n := []rune(needle)
-	j := 0
-	for _, r := range haystack {
-		if r == n[j] {
-			j++
-			if j == len(n) {
-				return true
-			}
-		}
-	}
-	return false
+func normalizeWhitespaceLower(text string) string {
+	return strings.Join(strings.FieldsFunc(cases.Lower(language.Und).String(text), isJSWhitespace), " ")
 }
 
 // renderNode mirrors one upstream SessionList row: cursor, dim tree prefix,
@@ -786,7 +780,7 @@ func (s *sessionSelector) renderNode(node sessionDisplayNode, selected bool, wid
 	return widthx.TruncateToWidth(line, width, "…", false)
 }
 
-var sessionControlChars = regexp.MustCompile(`[\x00-\x1f\x7f]`)
+var sessionControlChars = lazyregexp.New(`[\x00-\x1f\x7f]`)
 
 func (s *sessionSelector) buildTreePrefix(node sessionDisplayNode) string {
 	if node.Depth == 0 {

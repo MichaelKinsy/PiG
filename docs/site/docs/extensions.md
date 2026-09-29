@@ -23,6 +23,14 @@ This design has four goals:
 
 Execution placement must not change extension behavior. An extension uses the same registration and host-call contract in source, packed, and fused modes.
 
+## Known cross-process gaps
+
+The owner approves three visible known gaps for 0.3.x on 2026-09-28: the remaining SDK Provider surface and foreign configuration identity (D78), partial-message observation (D82), and event-bus scheduling boundaries across processes (D83, narrowed 2026-09-29). These are not claims of parity or general lifecycle waivers. See [Providers](/docs/latest/providers) and [RPC mode](/docs/latest/rpc).
+
+Every Node extension shares one `pi.events` bus, including explicitly isolated extensions and exact standalones. A listener in another process receives the emitter's original payload by reference: synchronous mutations, reentrant emits, retained and post-await aliases, and callbacks behave as in Pi. D83 names what differs across processes: independent tasks in different processes are ordered by timing, only a listener's first post-await continuation is ordered with the emitter's microtasks, reference cycles that cross processes are released when a process exits, and brand checks such as `util.types.isMap` fail on a foreign object, where `util.types.isProxy` also returns true. `util.inspect` with `customInspect: false` prints an empty placeholder object instead of a foreign payload, `util.inspect` with `showProxy: true` shows the Proxy wrapper, and on Node 26.0.0 and later `util.inspect` of a non-extensible foreign payload prints it inside `Proxy(...)`, because V8 offers no hook. Node 25 and earlier print that payload as Pi does. A listener that never returns blocks its emitter, as in Pi.
+
+Same-process configuration roots, children, callbacks and receivers must also remain Pi-exact. A foreign configuration snapshot is not a live author-held object (D78). A retained remote partial message does not advance with its producer (D82). Event order, cancellation, final results, persistence and cleanup remain required. The strict RPC33 comparison retains its raw failure.
+
 ## Extension responsibilities
 
 An extension owns one executable capability or a cohesive group of capabilities. It can contribute:
@@ -107,6 +115,22 @@ extensions:
 
 Use a Package when you need to distribute the extension to other applications. Installing the Package does not activate a Piglet.
 
+## Markdown transformers
+
+Register a display-only Markdown transformer with `pi.registerMarkdownTransformer` in Node, `MarkdownTransformer` in Go, or `markdown_transformer` in Rust and Python. Transformers receive the message type, streaming state, and current content width. They change the displayed user, assistant, and visible-thinking text, not the stored message or provider input. A string replaces the current Markdown, including an empty string. Node Promise results and other non-string results are ignored, as in Pi.
+
+PiG runs the complete chain off the render loop through its multi-language bridge (D19). Normal updates preserve render-admission order across components. A replacement discards obsolete output without ending an admitted callback's wait early. Equal-text content updates rerun stateful transformers. Removing a message removes its queued work and prevents late publication.
+
+Renderer inactivity, disconnect, and shutdown retain the subprocess isolation boundary (D56). Cancellation of a host request does not prove that the extension callback body has returned. Keep synchronous transformers short and do not depend on side effects from an abandoned callback.
+
+## Final tool-result content
+
+Return an ordered `content` array when a tool produces text and images. Each text block uses `{ "type": "text", "text": "..." }`. Each image block uses `{ "type": "image", "data": "...", "mimeType": "image/png" }`, where `data` contains base64-encoded image bytes.
+
+PiG preserves the blocks and their order in final tool events, provider context, Session history, and custom-renderer input. An empty text block remains distinct from `content: []`. Text signatures remain attached to their text blocks.
+
+After `tool_result` handlers run, PiG normalizes images before storing the result. A conversion or resize note appears immediately after the affected image. Disabling `images.autoResize` prevents resizing but still permits conversion of unsupported formats, such as BMP, to PNG. If image processing fails, PiG retains the original image block instead of dropping tool output.
+
 ## Subprocess realization
 
 Source extensions normally run through PiG's subprocess host.
@@ -131,7 +155,9 @@ Source extensions normally run through PiG's subprocess host.
 
 Compatible factories in one language can share a generated runtime process. Each extension keeps its own logical connection and registration.
 
-Packing reduces process count. It does not create a shared extension identity.
+Packing reduces process count. It does not create a shared extension identity. Copies selected from distinct folders retain their original registration names and separate host identities. Go copies with the same module path build in separate cells so each runs its own source (D20). Tool and flag conflicts are reported after loading, as in Pi.
+
+Cold native builds print `Building extensions...` only in interactive mode with a terminal stderr (D19). Cached builds, Node loads, print, JSON, and RPC do not print this notice.
 
 A stalled logical member is isolated from healthy members where the process remains healthy. If the shared process dies, PiG quarantines the affected cell. The next plan can separate failed members from healthy members.
 
@@ -197,6 +223,10 @@ Tools, commands, events, and shortcuts can perform long operations until they
 finish or are cancelled. Renderers use generation-scoped inactivity and retain
 the last valid frame when a new generation stalls.
 
+## Custom messages
+
+`pi.sendMessage(message, options)` uses the current Session in print, JSON, and RPC as well as interactive mode. An idle message with `triggerTurn: false` is persisted without starting a model turn. RPC emits its `message_start` and `message_end` before acknowledging the command that sent it. `deliverAs: "nextTurn"` defers delivery until a later prompt. Preserve omission of `triggerTurn` separately from explicit false when a run is active. The Session owns triggered work and shutdown; the bridge does not create another run owner.
+
 ## Session context
 
 PiG loads session history for an extension only when the extension reads it. A
@@ -237,6 +267,16 @@ PiG:
 
 A failed extension is removed and reported while other extensions load.
 
+If a Node factory throws or rejects, its captured `pi` API becomes inactive. Later registration, action, getter, and event-bus calls throw `Extension "<path>" failed to load and its API is no longer active.` synchronously, even when the method normally returns a Promise. Event-bus subscriptions made by that factory are removed. Healthy extensions keep their APIs.
+
+Node extensions keep Jiti's compiled-source cache under `<config-root>/cache/jiti` (D20). The loader checks source contents on each load and separates compiler and runtime versions, so a changed source is compiled again. Changing the temporary directory does not discard this cache. The cache does not retain evaluated factories between loads. `JITI_FS_CACHE=false` disables it. The transform cache is disposable and is separate from the published artifacts managed by `pig extensions cache prune`.
+
+Node also keeps native bytecode under `<config-root>/cache/node-compile` when a virtual SDK library is imported (D20). Node validates source bytes and VM compatibility before reuse. This cache contains compiled code, not evaluated factories or extension state. `NODE_DISABLE_COMPILE_CACHE=1` disables it independently of Jiti. Existing Node cache configuration remains authoritative. Like the Jiti cache, it is disposable and is not managed by `pig extensions cache prune`.
+
+## Session replacement
+
+`/new`, `/resume`, `/fork`, `/clone`, `ctx.newSession()`, `ctx.fork()`, `ctx.switchSession()` and the RPC commands `new_session`, `switch_session`, `fork` and `clone` build the replacement Session's extensions from scratch: a new runner, new extension processes and a new `session_start`. PiG starts a fresh process where Pi calls the extension factory again inside the same Node process, so module-level state and process-wide state such as `process.env` do not carry over to the next Session (D70). The extension that requested the replacement keeps its process until its command handler returns. A `ctx` or `pi` that an extension captured before the replacement still answers local getters with the old Session's values, and its host calls are rejected with Pi's stale message without throwing at the call site: the SDK returns or raises an error or writes it to stderr, depending on the language (D30).
+
 ## Cancellation
 
 A handler receives request cancellation through its language SDK.
@@ -244,6 +284,32 @@ A handler receives request cancellation through its language SDK.
 In Go, use `sdk.Context.Done()` and return the cancellation error from owned work. Do not detach a goroutine from the handler unless the upstream operation is intentionally unawaited and another lifecycle owns it.
 
 An awaited handler must return only after its work finishes. Returning early changes completion ordering and loses errors.
+
+Python custom-provider callbacks and the SDK's event forwarding share the request Context's cancellation signal. Check `ctx.is_cancelled()` while doing provider work. Cancellation before forwarding, during iteration, or after the iterator ends produces an aborted-operation error instead of forwarding further events.
+
+Interactive shutdown cancels and joins its input reader and decoder before stopping the renderer or restoring the terminal. Temporary dialogs keep the shared input owner alive. External-editor handoffs pause the terminal reader without closing stdin, so the next owner can receive unread input.
+
+## Retained callback contexts
+
+A callback may retain its extension Context after its originating command or event handler finishes normally. Later host calls use the same live extension connection, not the completed request. This applies to retained terminal-input callbacks that read current editor text and tool-expansion state, including empty/reset values. Editor text includes the full contents of compact pastes, not their `[paste #…]` markers. Node callbacks receive the same owner-published expanded text that host-query SDKs read.
+
+Keep cancellation and connection retirement separate from normal completion. A cancelled originating request does not become a new runtime-owned request. Calls through a closed or replaced connection fail; they do not move to the latest handler or a replacement connection. Obtain a fresh Context after reload or Session replacement. Await work that belongs to the current handler instead of detaching it and relying on a retained Context to keep it alive.
+
+These lifetime rules belong to the multi-language bridge (D19). They do not replay interrupted operations or change the renderer inactivity policy (D56).
+
+## Terminal strings
+
+Terminal listeners receive JavaScript UTF-16 strings. A printable character outside the BMP can arrive as separate high- and low-surrogate chunks, with an unmatched unit visible in the editor between them. Do not join chunks before returning a verdict. The wire uses valid JSON `\u` escapes for unmatched units.
+
+Go SDK strings use the native editor's WTF-8 convention for unmatched units. Use `github.com/MichaelKinsy/PiG/extensions/sdk/json` instead of `encoding/json` when serializing callback text yourself. Node and Python strings retain these units naturally. Rust terminal and focused-component input callbacks receive `&JsString`, verdict `data` is `Option<JsString>`, and `get_editor_text` returns `JsString`. Use `as_units()` for lossless access, `from_units(...)` to construct a string, and `to_string_lossy()` only for display. Rust editor setters accept ordinary strings or `JsString`.
+
+## Registration inputs
+
+Every tool must supply an object parameter schema, including a tool with no arguments. Use an empty object schema rather than omitting the schema or passing null. Invalid schemas fail before registration changes; a later valid declaration does not hide an earlier invalid one.
+
+Flag values preserve false and empty strings. Clearing an override restores its registered default instead of keeping a stale value in an SDK snapshot.
+
+Provider configuration is validated before it replaces an existing registry entry. Supply `api` with a `streamSimple` callback and supply an API at the provider or model level for each new model. A failed registration does not remove the previous provider. See [Provider extensions](/docs/latest/providers#provider-extensions) for binding and removal behavior.
 
 ## Focused UI
 
@@ -285,6 +351,64 @@ Before you install an extension:
 - verify its origin and digest;
 - understand its required files, commands, network access, and secrets;
 - use a container or virtual machine when you need a security boundary.
+
+## Breaking changes / Go SDK migration to 0.3.0
+
+Pi 0.87.1 represents unknown context usage as null, not zero. Go therefore keeps `ContextUsage.Tokens` as `*int` and `Percent` as `*float64`. `GetContextUsage()` returns nil when there is no usable model window, and a host failure as an error in every SDK (Go `error`, Rust `io::Result`, Python `HostCallError`). After compaction, a non-nil usage can contain nil counts. Rust uses `Option`; Python uses `None` for the same states.
+
+Before:
+
+```go
+if usage != nil && usage.Tokens > 0 {
+    fmt.Printf("%d tokens (%.1f%%)", usage.Tokens, usage.Percent)
+}
+sdk.SendMessageOptions{TriggerTurn: true}
+```
+
+After:
+
+```go
+if usage != nil && usage.Tokens != nil && usage.Percent != nil {
+    fmt.Printf("%d tokens (%.1f%%)", *usage.Tokens, *usage.Percent)
+}
+sdk.SendMessageOptions{TriggerTurn: sdk.Bool(true)}
+```
+
+Use `usage.TokensOr(0)` or `usage.PercentOr(0)` only when the caller intentionally selects zero for unknown usage. Check `usage != nil` first. The helpers do not change the nullable fields. `sdk.Bool(false)` explicitly selects false; nil leaves an option unset. For `TriggerTurn`, unset steers during an active turn while false defers the custom message. Do not replace omitted options with false automatically. These helpers are Go ergonomics for the shared SDK contract (D19).
+
+### Host-backed getters report failures and Pi's undefined
+
+Pi's getters throw when the host call fails and return `undefined` for absent state. Every SDK now does the same: a failure is an error, never an empty value, an assumed default or a cached name. Pi's `undefined` is a nil pointer in Go, `Option::None` in Rust and `None` in Python.
+
+Go `Context` methods (each returns the error last):
+
+| Method | Before | After |
+|---|---|---|
+| `GetEditorText` | `string` | `(string, error)` |
+| `GetSessionName` | `string` | `(*string, error)`, nil when unnamed |
+| `GetSessionID` | `string` | `(string, error)` |
+| `GetSessionFile` | `string` | `(*string, error)`, nil for an in-memory session |
+| `GetLeafID` | `string` | `(*string, error)`, nil for an empty session |
+| `GetFlag` | `any` | `(any, error)`; a failure no longer answers the registered default |
+| `GetThinkingLevel`, `GetSystemPrompt`, `GetToolsExpanded` | value | `(value, error)` |
+| `GetActiveTools`, `GetAllTools`, `GetCommands`, `GetAllThemes` | slice | `(slice, error)` |
+| `GetSystemPromptOptions` | `SystemPromptOptions` | `(SystemPromptOptions, error)`; collections are always present |
+| `GetContextUsage`, `GetModelInfo` | pointer | `(pointer, error)`, nil when absent |
+| `GetModelAuth` | `json.RawMessage` | `(json.RawMessage, error)` |
+| `IsIdle`, `HasPendingMessages`, `IsProjectTrusted` | `bool` | `(bool, error)`; no assumed idle or trusted state |
+| `GetBranch`, `GetEntries` | slice | `(slice, error)`; a failed session-log subscription is returned on every read |
+
+Rust `Context` methods return `io::Result<T>` (`io::Result<Option<T>>` for `get_session_name`, `get_session_file`, `get_leaf_id`, `get_flag`, `get_context_usage` and `get_model_info`); `get_branch` and `get_entries` return `io::Result<Vec<_>>`. Python methods raise `HostCallError`; `get_session_name`, `get_session_file` and `get_leaf_id` return `None` when absent, and `get_branch` and `get_entries` raise the subscription failure.
+
+### Timeouts are JavaScript numbers
+
+Pi's exec and dialog `timeout` is a number, so fractional and very large values are meaningful. Go `ExecOptions.Timeout` and `DialogOptions.Timeout` change from `int` to `float64` (an `int` variable no longer compiles; convert it). Rust `ExecOptions.timeout` and `DialogOptions.timeout` change from `Option<u64>` to `Option<f64>`, and both types lose `Eq`. Python accepts a float. Exec timeouts and interactive dialog countdowns start only for a positive value, as in Pi. In RPC mode a dialog arms Node's timer for any non-zero value, negative included (rpc-mode.ts), and a timed-out dialog resolves like a cancelled one: `undefined` for select and input, `false` for confirm.
+
+### System prompt options
+
+`getSystemPromptOptions` returns Pi's collection-complete shape: `selectedTools`, `toolSnippets`, `toolGuidelines`, `promptGuidelines`, `appendSystemPrompt`, `sections`, `contextFiles` and `skills` are always present, empty when unset. Go `SystemPromptOptions` gains `ToolGuidelines`.
+
+Legacy `github.com/mainstai/pig/extensions/sdk` imports remain buildable in factories and exact standalones. PiG creates a private alias of the current SDK, including its subpackages and self-imports, without editing authored files (D19). Use the current `github.com/MichaelKinsy/PiG/extensions/sdk` path for new or fused extensions.
 
 ## SDKs
 

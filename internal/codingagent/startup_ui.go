@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"regexp"
 	"slices"
 	"sync"
 	"time"
@@ -65,16 +64,13 @@ type StartupUIOptions struct {
 	ThemePaths []string
 }
 
-// SelectStartupSession runs the same session selector used by /resume before
-// cwd-bound runtime services exist. It returns selected=false on cancellation.
+// SelectStartupSession runs the same session selector used by /resume before cwd-bound runtime services exist. Loaders run off the input owner, receive cancellation and progress options, and settle before teardown returns. Confirmed deletion tries trash before unlink; renaming is unavailable. It returns selected=false on cancellation.
 func SelectStartupSession(
-	currentLoader func() ([]SessionInfo, error),
-	allLoader func() ([]SessionInfo, error),
+	currentLoader func(SessionListOptions) ([]SessionInfo, error),
+	allLoader func(SessionListOptions) ([]SessionInfo, error),
 	opts StartupUIOptions,
 ) (path string, selected bool, err error) {
-	keybindings := NewKeybindingsManager(opts.AgentDir)
-	selector := newSessionSelector(currentLoader, allLoader, nil, nil, "", keybindings)
-	selector.showRenameHint = false
+	selector := newStartupSessionSelector(currentLoader, allLoader, NewKeybindingsManager(opts.AgentDir))
 	completed, err := runStartupComponent(selector, opts, false)
 	if err != nil {
 		return "", false, err
@@ -84,6 +80,13 @@ func SelectStartupSession(
 	}
 	path = selector.SelectedPath()
 	return path, path != "", nil
+}
+
+// newStartupSessionSelector mirrors Pi's --resume picker: deletion operates on the path returned by the loaders, without rename or its hint.
+func newStartupSessionSelector(currentLoader, allLoader func(SessionListOptions) ([]SessionInfo, error), keybindings *KeybindingsManager) *sessionSelector {
+	selector := newSessionSelector(currentLoader, allLoader, nil, deleteSessionFile, "", keybindings)
+	selector.showRenameHint = false
+	return selector
 }
 
 // ShowStartupSelector displays a small pre-runtime choice list. It returns
@@ -135,6 +138,15 @@ func runStartupComponent(component startupComponent, opts StartupUIOptions, clea
 // are never delivered as input. env overrides the environment consulted
 // when the terminal does not answer.
 func runStartupComponentWith(component startupComponent, opts StartupUIOptions, clear bool, ui *tui.TUI, terminal startupTerminal, env map[string]string) (bool, error) {
+	asyncSelector, _ := component.(*sessionSelector)
+	var updates <-chan func()
+	var ready <-chan struct{}
+	if asyncSelector != nil {
+		defer asyncSelector.close()
+		updates = asyncSelector.work.updates
+		ready = asyncSelector.work.ready
+		asyncSelector.drainLoadUpdates()
+	}
 	// Mirrors upstream createStartupTui, which applies the terminal
 	// capability overrides before the prompt renders.
 	tui.SetCapabilityOverrides(opts.Settings.GetTerminalCapabilityOverrides())
@@ -163,9 +175,9 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 	ui.Render()
 
 	var themeTimeout <-chan time.Time
-	detection := newStartupThemeDetection(opts.Settings.Theme, env)
+	detection := newStartupThemeDetection(opts.Settings.themeSetting(), env, ui)
 	if detection != nil {
-		terminal.Write(detection.start())
+		detection.start(func(sequence string) error { terminal.Write(sequence); return nil })
 		timer := time.NewTimer(startupThemeQueryTimeout)
 		defer timer.Stop()
 		themeTimeout = timer.C
@@ -175,9 +187,6 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 		ui.Render()
 	}
 
-	buffer := newProcessStdinBuffer()
-	var flush stdinFlushTimer
-	defer flush.stop()
 	dispatch := func(chunks []string) {
 		input := chunks[:0:0]
 		for _, chunk := range chunks {
@@ -212,14 +221,14 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 			select {
 			case data := <-inputCh:
 				if preserve {
-					dispatch(normalizeInputSequences(buffer.ProcessTerminalBytes(data)))
+					dispatch([]string{string(data)})
 				}
 			case <-done:
 				for {
 					select {
 					case data := <-inputCh:
 						if preserve {
-							dispatch(normalizeInputSequences(buffer.ProcessTerminalBytes(data)))
+							dispatch([]string{string(data)})
 						}
 					default:
 						stopped = true
@@ -231,19 +240,26 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 	}
 	defer stopAndDrain(false)
 	dispatch(takeStartupInput())
-	// Mirrors StdinBuffer's timeout for an incomplete sequence.
-	scheduleFlush := func() {
-		flush.sync(buffer)
-	}
 
 	for !component.Done() {
 		select {
+		case <-ready:
+			asyncSelector.drainLoadUpdates()
+			ui.Render()
+		case result := <-asyncSelector.loadResult(sessionScopeCurrent):
+			asyncSelector.finishLoad(sessionScopeCurrent, result)
+			ui.Render()
+		case result := <-asyncSelector.loadResult(sessionScopeAll):
+			asyncSelector.finishLoad(sessionScopeAll, result)
+			ui.Render()
+		case update := <-updates:
+			update()
+			ui.Render()
+		case <-asyncSelector.statusTimeout():
+			asyncSelector.clearStatusMessage()
+			ui.Render()
 		case data := <-inputCh:
-			dispatch(normalizeInputSequences(buffer.ProcessTerminalBytes(data)))
-			scheduleFlush()
-		case <-flush.C:
-			flush.stop()
-			dispatch(normalizeInputSequences(buffer.Flush()))
+			dispatch([]string{string(data)})
 		case <-themeTimeout:
 			themeTimeout = nil
 			if detection.timeout() {
@@ -259,12 +275,12 @@ func runStartupComponentWith(component startupComponent, opts StartupUIOptions, 
 		}
 	}
 
-	// Stop waits until the startup reader can no longer consume stdin. Drain
-	// anything it delivered before cancellation through the same decoder, then
-	// preserve unread OS bytes for the next terminal owner.
+	if asyncSelector != nil && asyncSelector.operationError != nil {
+		return false, asyncSelector.operationError
+	}
+
+	// Stop joins the terminal's decoder before retaining its final events for the next owner.
 	stopAndDrain(true)
-	dispatch(normalizeInputSequences(buffer.Flush()))
-	flush.stop()
 
 	if clear {
 		ui.Clear()
@@ -289,11 +305,11 @@ func configureStartupTheme(settings Settings, paths []string) {
 			continue
 		}
 		if theme, err := tui.LoadThemeFile(path); err == nil {
-			registry.Add(theme)
+			registry.AddFile(theme, path)
 		}
 	}
 	tui.SetThemeRegistry(registry)
-	tui.SetThemeSetting(settings.Theme)
+	tui.SetThemeSettingPresence(settings.themeSetting())
 }
 
 // Startup theme detection. Mirrors applyDetectedStartupTheme in upstream
@@ -307,73 +323,51 @@ const (
 	// terminalColorSchemeQuery is DSR `CSI ? 996 n`; terminals reply
 	// `CSI ? 997 ; 1 n` (dark) or `CSI ? 997 ; 2 n` (light).
 	terminalColorSchemeQuery = "\x1b[?996n"
-	// terminalBackgroundQuery is OSC 11 `ESC ] 11 ; ? BEL`.
-	terminalBackgroundQuery = "\x1b]11;?\x07"
 )
 
-var (
-	osc11BackgroundResponsePattern = regexp.MustCompile(`(?i)^\x1b\]11;([^\x07\x1b]*)(?:\x07|\x1b\\)$`)
-	colorSchemeReportPattern       = regexp.MustCompile(`^(?:\x1b\[\?997;(1|2)n)+$`)
-)
-
-// parseTerminalColorSchemeReport mirrors upstream
-// parseTerminalColorSchemeReport.
-func parseTerminalColorSchemeReport(data string) tui.TerminalTheme {
-	match := colorSchemeReportPattern.FindStringSubmatch(data)
-	if match == nil {
-		return ""
-	}
-	if match[1] == "2" {
-		return tui.TerminalTheme("light")
-	}
-	return tui.TerminalTheme("dark")
-}
-
-// startupThemeDetection tracks the concurrent color-scheme and OSC 11
-// queries a startup prompt sends. The color-scheme reply wins; at the
-// timeout the OSC 11 background, then the environment, decides.
+// startupThemeDetection tracks initial appearance queries for startup prompts and the interactive mode. Background-only detection settles on OSC 11; automatic detection prefers the color-scheme reply and falls back to OSC 11 or the environment at the deadline.
 type startupThemeDetection struct {
-	themeSetting string
+	themeSetting *string
 	env          map[string]string
 
-	pendingBackgroundReplies int
-	backgroundAnswered       bool
-	background               *tui.RgbColor
-	scheme                   tui.TerminalTheme
-	settled                  bool
+	renderer           tui.Renderer
+	backgroundQuery    <-chan tui.TerminalBackgroundColorResult
+	backgroundAnswered bool
+	background         *tui.RgbColor
+	scheme             tui.TerminalTheme
+	settled            bool
+	schemeUnavailable  bool
+	backgroundOnly     bool
 }
 
-// newStartupThemeDetection returns nil when the theme setting names a fixed
-// theme, which upstream applies without querying the terminal.
-func newStartupThemeDetection(themeSetting string, env map[string]string) *startupThemeDetection {
-	if themeSetting != "" {
-		if _, _, auto := tui.ParseAutoThemeSetting(themeSetting); !auto {
+// newStartupThemeDetection returns nil when the theme setting names a nonempty
+// fixed theme, which startup prompts apply without querying the terminal. An
+// unset or empty setting still queries; the empty name then resolves to itself.
+func newStartupThemeDetection(themeSetting *string, env map[string]string, renderer tui.Renderer) *startupThemeDetection {
+	if themeSetting != nil && *themeSetting != "" {
+		if _, _, auto := tui.ParseAutoThemeSetting(*themeSetting); !auto {
 			return nil
 		}
 	}
-	return &startupThemeDetection{themeSetting: themeSetting, env: env}
+	return &startupThemeDetection{themeSetting: themeSetting, env: env, renderer: renderer}
 }
 
-// start returns the query bytes to write, color scheme first as upstream
-// issues them.
-func (d *startupThemeDetection) start() string {
-	d.pendingBackgroundReplies++
-	return terminalColorSchemeQuery + terminalBackgroundQuery
+// start issues OSC 11 through the renderer's shared FIFO after the optional color-scheme query.
+func (d *startupThemeDetection) start(writeScheme func(string) error) {
+	if !d.backgroundOnly {
+		d.schemeUnavailable = writeScheme(terminalColorSchemeQuery) != nil
+	}
+	d.backgroundQuery = d.renderer.QueryTerminalBackgroundColor(tui.TerminalColorQueryOptions{TimeoutMs: float64(startupThemeQueryTimeout / time.Millisecond)})
 }
 
 // consume reports whether chunk is a terminal color reply, which is never
 // delivered as input, and whether it settled detection.
 func (d *startupThemeDetection) consume(chunk string) (consumed, settled bool) {
-	if d.pendingBackgroundReplies > 0 && osc11BackgroundResponsePattern.MatchString(chunk) {
-		d.pendingBackgroundReplies--
-		if !d.settled && !d.backgroundAnswered {
-			d.backgroundAnswered = true
-			d.background = tui.ParseOsc11BackgroundColor(chunk)
-		}
-		return true, false
+	if d.renderer.ConsumeOsc11BackgroundResponse(chunk) {
+		return true, d.readBackground()
 	}
-	if scheme := parseTerminalColorSchemeReport(chunk); scheme != "" {
-		if d.settled {
+	if scheme := tui.ParseTerminalColorSchemeReport(chunk); scheme != "" {
+		if d.settled || d.backgroundOnly || d.schemeUnavailable {
 			return true, false
 		}
 		d.scheme = scheme
@@ -383,13 +377,33 @@ func (d *startupThemeDetection) consume(chunk string) (consumed, settled bool) {
 	return false, false
 }
 
+// readBackground observes completion without blocking the input owner. Timed-out reply slots remain renderer-owned after this detection finishes.
+func (d *startupThemeDetection) readBackground() bool {
+	select {
+	case result := <-d.backgroundQuery:
+		d.backgroundQuery = nil
+		d.backgroundAnswered = true
+		if d.settled {
+			return false
+		}
+		if result.Err == nil {
+			d.background = result.Color
+		}
+		if d.backgroundOnly || d.schemeUnavailable {
+			d.settled = true
+			return true
+		}
+	default:
+	}
+	return false
+}
+
 // timeout settles detection with whatever arrived before the deadline.
 func (d *startupThemeDetection) timeout() bool {
-	if d.settled {
-		return false
-	}
+	wasSettled := d.settled
+	d.readBackground()
 	d.settled = true
-	return true
+	return !wasSettled
 }
 
 // terminalTheme mirrors detectTerminalThemeForAuto's result.
@@ -406,7 +420,7 @@ func (d *startupThemeDetection) terminalTheme() tui.TerminalTheme {
 // themeName resolves the setting against the detected appearance.
 func (d *startupThemeDetection) themeName() string {
 	terminalTheme := d.terminalTheme()
-	if name, ok := tui.ResolveThemeSetting(d.themeSetting, terminalTheme); ok {
+	if name, ok := tui.ResolveThemeSettingPresence(d.themeSetting, terminalTheme); ok {
 		return name
 	}
 	return string(terminalTheme)

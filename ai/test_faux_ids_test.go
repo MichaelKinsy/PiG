@@ -12,7 +12,7 @@ import (
 
 func TestTestFauxParityOracleToolCallIDs(t *testing.T) {
 	// Exercise Pi's actual extension with the installed pinned pi-ai event stream, not a source-text approximation of the counter.
-	cmd := exec.CommandContext(t.Context(), "node", "--test", filepath.Join("..", "parity", "testdata", "test-faux-provider.test.mjs"))
+	cmd := exec.CommandContext(t.Context(), "node", "--test", filepath.Join("..", "test/parity", "testdata", "test-faux-provider.test.mjs"))
 	if output, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("parity oracle ID contract: %v\n%s", err, output)
 	}

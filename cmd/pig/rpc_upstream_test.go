@@ -438,6 +438,25 @@ func TestRPCModeUpstream(t *testing.T) {
 		}
 		f.finish()
 	})
+	// Upstream exportSessionToHtml throws for an in-memory session and for one
+	// whose file is not written yet; RPC returns that message as the error.
+	for _, tc := range []struct {
+		name string
+		args []string
+		want string
+	}{
+		{"should reject HTML export of an in-memory session", []string{"--no-session"}, "Cannot export in-memory session to HTML"},
+		{"should reject HTML export before the session is written", nil, "Nothing to export yet - start a conversation first"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			f := newUpstreamRPC(t, false, tc.args...)
+			f.p.sendJSON(rpcRecord{"id": "export", "type": "export_html"})
+			if r := f.response("export"); r["success"] != false || r["error"] != tc.want {
+				t.Fatalf("export_html response = %#v, want error %q", r, tc.want)
+			}
+			f.finish()
+		})
+	}
 	// .upstream/v0.87.1/packages/coding-agent/test/rpc.test.ts:293
 	t.Run("should get last assistant text", func(t *testing.T) {
 		f := newUpstreamRPC(t, false)

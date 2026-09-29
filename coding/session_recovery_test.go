@@ -27,15 +27,18 @@ type scriptedResponse func(request []ai.Message) *ai.AssistantMessage
 // scriptedProvider answers each model call with the next scripted response,
 // like the upstream faux harness. It records every request.
 type scriptedProvider struct {
-	mu        sync.Mutex
-	responses []scriptedResponse
-	requests  []string
+	mu            sync.Mutex
+	responses     []scriptedResponse
+	requests      []string
+	estimateUsage func(ai.TranscriptContext, ai.StreamOptions, *ai.AssistantMessage)
+	// streamDeltas replays each scripted message through the real faux provider so subscribers see block and delta events.
+	streamDeltas bool
 }
 
 func (p *scriptedProvider) ID() string   { return "faux" }
 func (p *scriptedProvider) Close() error { return nil }
 
-func (p *scriptedProvider) Stream(_ context.Context, request ai.TranscriptContext, _ ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+func (p *scriptedProvider) Stream(ctx context.Context, request ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 	p.mu.Lock()
 	messages := request.Messages()
 	raw, _ := json.Marshal(messages)
@@ -45,6 +48,12 @@ func (p *scriptedProvider) Stream(_ context.Context, request ai.TranscriptContex
 	message := &ai.AssistantMessage{Provider: "faux", Model: "faux-1", StopReason: ai.StopReasonStop, ErrorMessage: "no scripted response", Timestamp: time.Now().UnixMilli()}
 	if index < len(p.responses) {
 		message = p.responses[index](messages)
+	}
+	if p.streamDeltas {
+		return streamScriptedMessageWithDeltas(ctx, request, options, message)
+	}
+	if p.estimateUsage != nil {
+		p.estimateUsage(request, options, message)
 	}
 	if message.StopReason == ai.StopReasonError {
 		return newSessionTestStream(ai.StartEvent{Partial: message}, ai.ErrorEvent{Reason: ai.StopReasonError, Error: message}), nil
@@ -84,11 +93,15 @@ func fauxToolCall(name string) scriptedResponse {
 }
 
 type harnessOptions struct {
-	settings      string
-	contextWindow int
-	maxTokens     int
-	tools         []agent.AgentTool
-	extension     extension.Extension
+	withConfiguredAuth  *bool
+	emptySessionManager bool
+	defaultTools        bool
+	settings            string
+	contextWindow       int
+	maxTokens           int
+	tools               []agent.AgentTool
+	extension           extension.Extension
+	resources           *SystemPromptResources
 }
 
 type recoveryHarness struct {
@@ -118,6 +131,11 @@ func newRecoveryHarness(t *testing.T, opts harnessOptions, responses ...scripted
 	if err != nil {
 		t.Fatal(err)
 	}
+	if opts.withConfiguredAuth == nil || *opts.withConfiguredAuth {
+		if err := services.Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
+			t.Fatal(err)
+		}
+	}
 	provider := &scriptedProvider{responses: responses}
 	contextWindow := opts.contextWindow
 	if contextWindow == 0 {
@@ -128,14 +146,25 @@ func newRecoveryHarness(t *testing.T, opts harnessOptions, responses ...scripted
 	if opts.extension.Handlers != nil {
 		runner = inproc.NewRunner([]extension.Extension{opts.extension}, t.TempDir())
 	}
-	session, err := NewSession(services, SessionOptions{Model: model, SkipBuiltinTools: true, Tools: opts.tools, Runner: runner})
+	options := SessionOptions{Model: model, SkipBuiltinTools: !opts.defaultTools, Tools: opts.tools, Runner: runner, SystemPromptResources: opts.resources}
+	if opts.emptySessionManager {
+		options.existing = icodingagent.NewSession("suite-session", services.CWD())
+	}
+	session, err := NewSession(services, options)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if opts.emptySessionManager {
+		// A supplied in-memory manager is not a clone; bind its fresh reference runner explicitly.
+		session.bindExtensionCommandActions(runner)
 	}
 	h := &recoveryHarness{session: session, provider: provider, done: make(chan struct{})}
 	go func() {
 		defer close(h.done)
 		for event := range session.Events() {
+			if AcknowledgeEvent(event) {
+				continue
+			}
 			h.mu.Lock()
 			h.events = append(h.events, event)
 			h.mu.Unlock()
@@ -235,7 +264,7 @@ func summaryFromPreparation(summary string) extension.Extension {
 func TestBoundaryDoesNotTriggerThresholdCompactionFromPostEditUsageCapturedBeforeALaterCompaction(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{settings: `{"compaction":{"enabled":true,"keepRecentTokens":1,"reserveTokens":0}}`, contextWindow: 10_000, maxTokens: 100})
 	inner := h.session.Inner()
-	userID, err := inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "small input"}}, Timestamp: time.Now().UnixMilli() - 3}})
+	userID, err := inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "small input"}}, Timestamp: time.Now().UnixMilli() - 3}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +377,7 @@ func TestDurableRecoveryOmitsARecoverableProjectedReplacementByItsSourceEntryID(
 		contextWindow: 1_000, maxTokens: 100, extension: cancel,
 	}, fauxReply("new answer", ai.StopReasonStop, 0))
 	inner := h.session.Inner()
-	if _, err := inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: strings.Repeat("x", 5_000)}}, Timestamp: time.Now().UnixMilli() - 2}}); err != nil {
+	if _, err := inner.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: strings.Repeat("x", 5_000)}}, Timestamp: time.Now().UnixMilli() - 2}}); err != nil {
 		t.Fatal(err)
 	}
 	partial := &agent.AssistantMessage{Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "original partial"}}, Provider: "faux", ModelID: "faux-1",
@@ -492,7 +521,7 @@ func TestQueuedUserMessageResetsRecoveryBudget(t *testing.T) {
 	h := newRecoveryHarness(t, harnessOptions{})
 	h.session.overflowRecoveryAttempted.Store(true)
 	if err := h.session.persistMessage(agent.AgentMessage{User: &agent.UserMessage{
-		Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "queued follow-up"}},
+		Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "queued follow-up"}},
 	}}); err != nil {
 		t.Fatalf("persist queued user message: %v", err)
 	}

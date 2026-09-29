@@ -312,6 +312,7 @@ func TestTreeSelectEnterCommitsCurrentID(t *testing.T) {
 		&fakeNode{id: "b", label: "B"},
 	}}
 	ts := NewTreeSelect("", root)
+	ts.SetInitialCursor("a", "")
 	ts.HandleInput("\x1b[B")
 	ts.HandleInput("\r")
 	if !ts.Done() {

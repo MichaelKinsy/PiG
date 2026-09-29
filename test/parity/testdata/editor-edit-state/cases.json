@@ -1,0 +1,14 @@
+[
+ {"name":"same-text replacement invalidates atomic wrapping", "width":15, "steps":[["key","prefix"],["bigPaste","alpha"],["key","suffix"],["set","prefix[paste #1 +12 lines]suffix"]]},
+ {"name":"word-space-newline undo", "steps":[["type","hello world"],["key","\u001b[45;5u"],["key","\u001b[45;5u"],["type","hello"],["key","\n"],["type","world"],["key","\u001b[45;5u"],["key","\u001b[45;5u"],["key","\u001b[45;5u"]]},
+ {"name":"cursor restored before kill", "steps":[["type","hello world"],["key","\u0001"],["right","6"],["key","\u000b"],["key","\u001b[45;5u"],["key","|"]]},
+ {"name":"SetText breaks kill and yank rotation persists", "steps":[["set","first"],["key","\u0017"],["set","second"],["key","\u0017"],["set","third"],["key","\u0017"],["key","\u0019"],["key","\u001by"],["key","\u001by"],["key","\u001by"],["set",""],["key","\u0019"]]},
+ {"name":"multiline yank-pop", "steps":[["set","SINGLE"],["key","\u0017"],["set","A\nB"],["key","\u0015"],["key","\u0015"],["key","\u0015"],["set","hello world"],["key","\u0001"],["right","6"],["key","\u0019"],["key","\u001by"],["key","\u001b[45;5u"]]},
+ {"name":"normalized programmatic insertion and replacement", "steps":[["set","a\r\nb\rc\t"],["key","\u001b[45;5u"],["insert","x\r\ny\rz\t"],["key","\u001b[45;5u"],["set","hello world"],["set",""],["key","\u001b[45;5u"]]},
+ {"name":"atomic paste restores cursor", "steps":[["set","hello world"],["key","\u0001"],["right","5"],["paste","line1\nline2\nline3"],["key","\u001b[45;5u"],["key","|"]]},
+ {"name":"paste registry replacement undo and submit", "steps":[["bigPaste","alpha"],["set","replacement"],["key","\u001b[45;5u"],["key","\r"],["key","\u001b[45;5u"]]},
+ {"name":"paste registry deletion undo", "steps":[["bigPaste","alpha"],["bigPaste","beta"],["key","\u0001"],["key","\u001b[C"],["key","\u007f"],["key","\u001b[45;5u"],["key","\r"]]},
+ {"name":"history undo owns the draft", "steps":[["history","first"],["history","second"],["type","current"],["key","\u0017"],["key","\u001b[A"],["key","\u001b[A"],["key","\u001b[45;5u"],["key","\u001b[45;5u"]]},
+ {"name":"sticky line-start and undo reset", "steps":[["set","1234567890\n\n1234567890"],["key","\u0001"],["right","8"],["key","\u001b[A"],["key","\u0001"],["key","\u001b[A"],["key","\u001b[B"],["key","\u001b[B"],["right","8"],["key","X"],["key","\u001b[A"],["key","\u001b[A"],["key","\u001b[45;5u"],["key","\u001b[A"],["key","\u001b[A"]]},
+ {"name":"jump cancels and splits undo", "steps":[["set","hello world"],["key","\u0001"],["key","x"],["key","\u001d"],["key","o"],["key","Y"],["key","\u001b[45;5u"],["key","\u001d"],["key","\u001b"],["key","o"]]}
+]

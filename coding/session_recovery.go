@@ -68,6 +68,14 @@ func (s *Session) refreshProjectedContext(preserveInstructionBaseline bool) {
 		}
 	}
 	s.entryIDsMu.Lock()
+	// Projection creates new message objects. Preserve the observed turn's IDs only until post-run recovery consumes it.
+	observed := append([]agent.AgentMessage{{Assistant: s.lastAssistantMessage}}, s.lastAssistantToolResults...)
+	for _, message := range observed {
+		key := messageIdentity(message)
+		if id, found := s.entryIDsByMessage[key]; key != nil && found {
+			ids[key] = id
+		}
+	}
 	s.entryIDsByMessage = ids
 	s.entryIDsMu.Unlock()
 	if preserveInstructionBaseline {
@@ -172,38 +180,23 @@ func (s *Session) omitRecoveryAttempt(message *agent.AssistantMessage, toolResul
 		if targetID == "" {
 			continue
 		}
-		if _, err := s.inner.AppendContextEdit(targetID, nil); err != nil {
+		editID, err := s.inner.AppendContextEdit(targetID, nil)
+		if err != nil {
 			return err
+		}
+		if entry, ok := s.inner.EntryByID(editID); ok {
+			s.emitOrderedEvent(agent.EntryAppendedEvent{Entry: entry.Raw()})
 		}
 	}
 	s.refreshContext()
 	return nil
 }
 
-// lastAssistantAndToolResults returns a run's final assistant message and the
-// tool results that follow it, the state Pi records from message_end and
-// turn_end for post-run handling.
-func lastAssistantAndToolResults(messages []agent.AgentMessage) (*agent.AssistantMessage, []agent.AgentMessage) {
-	for i, message := range slices.Backward(messages) {
-		if message.Assistant == nil {
-			continue
-		}
-		var toolResults []agent.AgentMessage
-		for _, after := range messages[i+1:] {
-			if after.ToolResult != nil {
-				toolResults = append(toolResults, after)
-			}
-		}
-		return message.Assistant, toolResults
-	}
-	return nil, nil
-}
-
-// runPostAgentRuns repeats post-run handling and continuations until the run
-// settles (agent-session.ts _runAgentPrompt loop). Cancelling ctx is Pi's
-// abort request. The caller holds s.mu.
+// runPostAgentRuns repeats post-run handling and continuations until the run settles (agent-session.ts _runAgentPrompt loop). Session abort and caller cancellation both stop continuation. The caller holds s.mu.
 func (s *Session) runPostAgentRuns(ctx context.Context, messages []agent.AgentMessage, runErr error) ([]agent.AgentMessage, error) {
 	return s.runPostAgentRunsWith(ctx, messages, runErr, func(ctx context.Context) ([]agent.AgentMessage, error) {
+		s.mu.Unlock()
+		defer s.mu.Lock()
 		return s.agent.Continue(ctx)
 	})
 }
@@ -211,25 +204,23 @@ func (s *Session) runPostAgentRuns(ctx context.Context, messages []agent.AgentMe
 // runPostAgentRunsWith is runPostAgentRuns with the continuation supplied by
 // the caller, which decides whether the Session lock is held across it.
 func (s *Session) runPostAgentRunsWith(ctx context.Context, messages []agent.AgentMessage, runErr error, resume func(context.Context) ([]agent.AgentMessage, error)) ([]agent.AgentMessage, error) {
-	for ctx.Err() == nil {
-		continueRun, err := s.handlePostAgentRun(ctx, messages)
+	for !s.agentRunAborted(ctx) {
+		continueRun, err := s.handlePostAgentRun(ctx)
 		if err != nil {
 			return messages, err
 		}
-		if !continueRun {
-			continueRun, err = icodingagent.RunAgentBeforeSettle(
-				ctx, s.inner, s.agent, s.currentRunner(), icodingagent.AgentActivityOutcome(messages, runErr),
-			)
+		if !continueRun && !s.agentRunAborted(ctx) {
+			continueRun, err = s.runBeforeSettleBoundary(ctx)
 			if err != nil {
 				return messages, err
 			}
 		}
-		if !continueRun || ctx.Err() != nil {
+		if !continueRun || s.agentRunAborted(ctx) {
 			break
 		}
 		messages, runErr = resume(ctx)
 	}
-	if ctx.Err() != nil {
+	if s.agentRunAborted(ctx) {
 		s.finishCancelledRetry()
 	}
 	return messages, runErr
@@ -238,9 +229,10 @@ func (s *Session) runPostAgentRunsWith(ctx context.Context, messages []agent.Age
 // handlePostAgentRun applies retry, recovery, and compaction to one finished
 // low-level run and reports whether the agent should continue
 // (agent-session.ts _handlePostAgentRun).
-func (s *Session) handlePostAgentRun(ctx context.Context, messages []agent.AgentMessage) (bool, error) {
-	message, toolResults := lastAssistantAndToolResults(messages)
-	if ctx.Err() != nil {
+func (s *Session) handlePostAgentRun(ctx context.Context) (bool, error) {
+	message, toolResults := s.lastAssistantMessage, s.lastAssistantToolResults
+	s.lastAssistantMessage, s.lastAssistantToolResults = nil, nil
+	if s.agentRunAborted(ctx) {
 		s.finishCancelledRetry()
 		return false, nil
 	}
@@ -253,13 +245,13 @@ func (s *Session) handlePostAgentRun(ctx context.Context, messages []agent.Agent
 			return false, err
 		}
 		if retrying {
-			if ctx.Err() != nil {
+			if s.agentRunAborted(ctx) {
 				s.finishCancelledRetry()
 			}
-			return ctx.Err() == nil, nil
+			return !s.agentRunAborted(ctx), nil
 		}
 	}
-	if ctx.Err() != nil {
+	if s.agentRunAborted(ctx) {
 		s.finishCancelledRetry()
 		return false, nil
 	}
@@ -273,9 +265,9 @@ func (s *Session) handlePostAgentRun(ctx context.Context, messages []agent.Agent
 		return false, err
 	}
 	if compacted {
-		return ctx.Err() == nil, nil
+		return !s.agentRunAborted(ctx), nil
 	}
-	return ctx.Err() == nil && s.agent.HasQueuedMessages(), nil
+	return !s.agentRunAborted(ctx) && s.agent.HasQueuedMessages(), nil
 }
 
 // prepareRetry schedules one automatic retry of a retryable error: it emits
@@ -283,52 +275,52 @@ func (s *Session) handlePostAgentRun(ctx context.Context, messages []agent.Agent
 // (agent-session.ts _prepareRetry). It reports false when retries are
 // disabled or exhausted, or when the wait is cancelled.
 func (s *Session) prepareRetry(ctx context.Context, message *agent.AssistantMessage) (bool, error) {
-	cfg := s.services.SettingsManager().GetRetrySettings()
-	if !cfg.Enabled {
-		return false, nil
-	}
-	attempt := int(s.retryAttempt.Add(1))
-	if attempt > cfg.MaxRetries {
-		// Keep the completed attempt count for the final failure event.
-		s.retryAttempt.Add(-1)
-		return false, nil
-	}
-	delayMs := ai.RetryDelayMs(cfg.BaseDelayMs, &cfg.MaxDelayMs, attempt)
-	errorMessage := message.ErrorMessage
-	if errorMessage == "" {
-		errorMessage = "Unknown error"
-	}
-	s.emitEvent(agent.AutoRetryStartEvent{
-		Attempt:      attempt,
-		MaxAttempts:  cfg.MaxRetries,
-		DelayMs:      delayMs,
-		ErrorMessage: errorMessage,
+	s.retryMu.Lock()
+	schedule := s.retrySchedule
+	s.retryMu.Unlock()
+	wait, err := s.retryPrefix(schedule, func() (*sessionRetryWait, error) {
+		cfg := s.services.SettingsManager().GetRetrySettings()
+		if !cfg.Enabled || s.agentRunAborted(ctx) {
+			return nil, nil
+		}
+		attempt := int(s.retryAttempt.Add(1))
+		if attempt > cfg.MaxRetries {
+			s.retryAttempt.Add(-1)
+			return nil, nil
+		}
+		delayMs := ai.RetryDelayMs(cfg.BaseDelayMs, &cfg.MaxDelayMs, attempt)
+		errorMessage := message.ErrorMessage
+		if errorMessage == "" {
+			errorMessage = "Unknown error"
+		}
+		retryCtx, cancel := context.WithCancel(ctx)
+		wait := &sessionRetryWait{session: s, ctx: retryCtx, cancel: cancel, schedule: schedule, done: make(chan retryWaitResult, 1)}
+		// Publish the cancellation owner before another Go goroutine can observe auto_retry_start. The queued host prefix still emits start and omission in Pi's order.
+		s.retryMu.Lock()
+		s.retryCancel = wait
+		s.retryMu.Unlock()
+		s.emitEvent(agent.AutoRetryStartEvent{Attempt: attempt, MaxAttempts: cfg.MaxRetries, DelayMs: delayMs, ErrorMessage: errorMessage})
+		if err := s.omitRecoveryAttempt(message, nil); err != nil {
+			cancel()
+			s.retryMu.Lock()
+			if s.retryCancel == wait {
+				s.retryCancel = nil
+			}
+			s.retryMu.Unlock()
+			return nil, err
+		}
+		wait.timer = time.NewTimer(time.Duration(delayMs) * time.Millisecond)
+		return wait, nil
 	})
-	if err := s.omitRecoveryAttempt(message, nil); err != nil {
+	if err != nil || wait == nil {
 		return false, err
 	}
-
-	retryCtx, cancel := context.WithCancel(ctx)
-	s.retryMu.Lock()
-	s.retryCancel = cancel
-	s.retryMu.Unlock()
-	defer func() {
-		s.clearRetryCancel()
-		cancel()
-	}()
-	// Release the run lock during the wait so abort and queue operations proceed.
+	defer wait.cancel()
+	defer wait.timer.Stop()
 	s.mu.Unlock()
-	timer := time.NewTimer(time.Duration(delayMs) * time.Millisecond)
-	select {
-	case <-retryCtx.Done():
-		timer.Stop()
-		s.mu.Lock()
-		s.finishCancelledRetry()
-		return false, nil
-	case <-timer.C:
-	}
+	retry, err := wait.await()
 	s.mu.Lock()
-	return true, nil
+	return retry, err
 }
 
 // finishCancelledRetry ends an in-progress retry sequence after an abort.
@@ -399,17 +391,20 @@ func (s *Session) currentBranch() []icodingagent.SessionEntry {
 // compactionSettings returns the compaction settings for the current model,
 // with its compaction.modelOverrides entry applied (upstream
 // getCompactionSettings(this.model)).
-func (s *Session) compactionSettings() compaction.CompactionSettings {
+func (s *Session) compactionSettings() (compaction.CompactionSettings, error) {
 	provider, modelID := "", ""
 	if model := s.Model(); model != nil {
 		provider, modelID = providerID(model), model.ID
 	}
-	cfg := s.services.SettingsManager().GetModelCompactionSettings(provider, modelID)
+	cfg, err := s.services.SettingsManager().GetModelCompactionSettings(provider, modelID)
+	if err != nil {
+		return compaction.CompactionSettings{}, err
+	}
 	return compaction.CompactionSettings{
 		Enabled:          cfg.Enabled,
 		ReserveTokens:    cfg.ReserveTokens,
 		KeepRecentTokens: cfg.KeepRecentTokens,
-	}
+	}, nil
 }
 
 func estimateMessagesTokens(messages []agent.AgentMessage) int {

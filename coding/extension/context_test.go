@@ -108,32 +108,32 @@ func (*fakeForHasUI) Confirm(context.Context, string, string, ExtensionUIDialogO
 func (*fakeForHasUI) Input(context.Context, string, string, ExtensionUIDialogOptions) (string, error) {
 	panic("unreached")
 }
-func (*fakeForHasUI) Notify(string, string)                                  {}
-func (*fakeForHasUI) OnTerminalInput(TerminalInputHandler) func()            { return func() {} }
-func (*fakeForHasUI) SetStatus(string, string)                               {}
-func (*fakeForHasUI) SetWorkingMessage(string)                               {}
-func (*fakeForHasUI) SetWorkingVisible(bool)                                 {}
-func (*fakeForHasUI) SetWorkingIndicator(WorkingIndicatorOptions)            {}
-func (*fakeForHasUI) SetHiddenThinkingLabel(string)                          {}
-func (*fakeForHasUI) SetWidget(string, any, ExtensionWidgetOptions)          {}
-func (*fakeForHasUI) SetFooter(any)                                          {}
-func (*fakeForHasUI) SetHeader(any)                                          {}
-func (*fakeForHasUI) SetLogin(LoginDefinition) error                         { return nil }
-func (*fakeForHasUI) SetTitle(string)                                        {}
-func (*fakeForHasUI) Custom(context.Context, any, any) (any, error)          { return nil, nil }
-func (*fakeForHasUI) PasteToEditor(string)                                   {}
-func (*fakeForHasUI) SetEditorText(string)                                   {}
-func (*fakeForHasUI) GetEditorText() string                                  { return "" }
-func (*fakeForHasUI) Editor(context.Context, string, string) (string, error) { return "", nil }
-func (*fakeForHasUI) AddAutocompleteProvider(AutocompleteProviderFactory)    {}
-func (*fakeForHasUI) SetEditorComponent(any)                                 {}
-func (*fakeForHasUI) GetEditorComponent() any                                { return nil }
-func (*fakeForHasUI) Theme() Theme                                           { return nil }
-func (*fakeForHasUI) GetAllThemes() []ThemeMeta                              { return nil }
-func (*fakeForHasUI) GetTheme(string) (Theme, error)                         { return nil, nil }
-func (*fakeForHasUI) SetTheme(any) SetThemeResult                            { return SetThemeResult{} }
-func (*fakeForHasUI) GetToolsExpanded() bool                                 { return false }
-func (*fakeForHasUI) SetToolsExpanded(bool)                                  {}
+func (*fakeForHasUI) Notify(string, string)                                     {}
+func (*fakeForHasUI) OnTerminalInput(TerminalInputHandler) func()               { return func() {} }
+func (*fakeForHasUI) SetStatus(string, string)                                  {}
+func (*fakeForHasUI) SetWorkingMessage(string)                                  {}
+func (*fakeForHasUI) SetWorkingVisible(bool)                                    {}
+func (*fakeForHasUI) SetWorkingIndicator(WorkingIndicatorOptions)               {}
+func (*fakeForHasUI) SetHiddenThinkingLabel(string)                             {}
+func (*fakeForHasUI) SetWidget(string, any, ExtensionWidgetOptions)             {}
+func (*fakeForHasUI) SetFooter(any)                                             {}
+func (*fakeForHasUI) SetHeader(any)                                             {}
+func (*fakeForHasUI) SetLogin(LoginDefinition) error                            { return nil }
+func (*fakeForHasUI) SetTitle(string)                                           {}
+func (*fakeForHasUI) Custom(context.Context, any, any) (any, error)             { return nil, nil }
+func (*fakeForHasUI) PasteToEditor(string)                                      {}
+func (*fakeForHasUI) SetEditorText(string)                                      {}
+func (*fakeForHasUI) GetEditorText() string                                     { return "" }
+func (*fakeForHasUI) Editor(context.Context, string, string) (string, error)    { return "", nil }
+func (*fakeForHasUI) AddAutocompleteProvider(AutocompleteProviderFactory) error { return nil }
+func (*fakeForHasUI) SetEditorComponent(any)                                    {}
+func (*fakeForHasUI) GetEditorComponent() any                                   { return nil }
+func (*fakeForHasUI) Theme() Theme                                              { return nil }
+func (*fakeForHasUI) GetAllThemes() []ThemeMeta                                 { return nil }
+func (*fakeForHasUI) GetTheme(string) (Theme, error)                            { return nil, nil }
+func (*fakeForHasUI) SetTheme(any) SetThemeResult                               { return SetThemeResult{} }
+func (*fakeForHasUI) GetToolsExpanded() bool                                    { return false }
+func (*fakeForHasUI) SetToolsExpanded(bool)                                     {}
 func (*fakeForHasUI) RunRemoteOverlay(RemoteOverlayOptions, RemoteOverlayHost, func(RemoteOverlayHandle)) (any, bool) {
 	return nil, false
 }

@@ -52,6 +52,9 @@ func TestVendoredTypeBoxMatchesThePinnedDependency(t *testing.T) {
 // automation/gen/vendor-pi-dist.sh points at a vendored third-party copy.
 // Every other vendored Pi file is the pinned release byte for byte.
 var vendoredImportRewrites = map[string][2]string{
+	"pi-coding-agent/core/tools/edit-diff.js": {`import * as Diff from "diff";`, `import * as Diff from "../../../../diff/libesm/index.js";`},
+	"pi-coding-agent/utils/child-process.js":  {`import crossSpawn from "cross-spawn";`, `import crossSpawn from "../../../cross-spawn/index.js";`},
+	"pi-tui/index.js":                         {`export { Marked } from "marked";`, `export { Marked } from "../../marked/lib/marked.esm.js";`},
 	"pi-tui/utils.js": {`import { eastAsianWidth } from "get-east-asian-width";`,
 		`import { eastAsianWidth } from "../../get-east-asian-width/index.js";`},
 	"pi-tui/components/markdown.js": {`import { Marked, Tokenizer } from "marked";`,
@@ -62,8 +65,22 @@ var vendoredImportRewrites = map[string][2]string{
 		`import { Type } from "../../../typebox.mjs";`},
 	"pi-ai/index.js": {`export { Type } from "typebox";`,
 		`export { Type } from "../../typebox.mjs";`},
+	"pi-coding-agent/utils/shell.js": {`import { getBinDir } from "../config.js";`,
+		`import { getBinDir } from "../../../pig-config.mjs";`},
 	"pi-coding-agent/utils/frontmatter.js": {`import { parse } from "yaml";`,
 		`import { parse } from "../../../yaml/index.js";`},
+	"pi-coding-agent/modes/interactive/components/custom-editor.js": {`import { Editor, visibleWidth } from "@earendil-works/pi-tui";`,
+		`import { Editor, visibleWidth } from "../../../../../pi-tui.mjs";`},
+}
+
+// settings-manager.js rewrites three imports: PiG's config paths (D2), the
+// settings lock PiG's host shares, and pi-ai from the vendored root.
+var vendoredSettingsManagerRewrites = [][2]string{
+	{`import { DEFAULT_MAX_AGENT_RETRY_DELAY_MS } from "@earendil-works/pi-ai";`,
+		`import { DEFAULT_MAX_AGENT_RETRY_DELAY_MS } from "../../pi-ai/index.js";`},
+	{`import lockfile from "proper-lockfile";`, `import lockfile from "../../../proper-lockfile.mjs";`},
+	{`import { CONFIG_DIR_NAME, getAgentDir } from "../config.js";`,
+		`import { CONFIG_DIR_NAME, getAgentDir } from "../../../pig-config.mjs";`},
 }
 
 // vendoredBridgeStubs are pi-ai's builtin API implementations, which import
@@ -93,12 +110,48 @@ var pinnedPackageDist = map[string][]string{
 	"pi-tui":          {"node_modules", "@earendil-works", "pi-tui", "dist"},
 	"pi-ai":           {"node_modules", "@earendil-works", "pi-ai", "dist"},
 	"pi-coding-agent": {"dist"},
+	"pi-agent-core":   {"node_modules", "@earendil-works", "pi-agent-core", "dist"},
+	"chord":           {"node_modules", "@earendil-works", "chord", "dist"},
+	"pi-telemetry":    {"node_modules", "@earendil-works", "pi-telemetry", "dist"},
+}
+
+// closureVendoredPackages are copied as the module graph reachable from
+// pi-agent-core's entry (automation/gen/vendor-pi-closure.mjs): verbatim
+// except that each bare import specifier names the vendored copy by a
+// relative path.
+var closureVendoredPackages = map[string]bool{"pi-agent-core": true, "chord": true, "pi-telemetry": true}
+
+var importSpecifierLine = regexp.MustCompile(`^((?:.*?\bfrom\s*|.*\bimport\(\s*|import\s*))"([^"]+)"(.*)$`)
+
+// sameExceptBareImports reports whether got is want with only bare import
+// specifiers rewritten to relative paths of files that exist beside the
+// vendored module at path.
+func sameExceptBareImports(t *testing.T, path string, got, want []byte) bool {
+	t.Helper()
+	gotLines, wantLines := strings.Split(string(got), "\n"), strings.Split(string(want), "\n")
+	if len(gotLines) != len(wantLines) {
+		return false
+	}
+	for i := range gotLines {
+		if gotLines[i] == wantLines[i] {
+			continue
+		}
+		g, w := importSpecifierLine.FindStringSubmatch(gotLines[i]), importSpecifierLine.FindStringSubmatch(wantLines[i])
+		if g == nil || w == nil || g[1] != w[1] || g[3] != w[3] || strings.HasPrefix(w[2], ".") || !strings.HasPrefix(g[2], ".") {
+			return false
+		}
+		if _, err := os.Stat(filepath.Join(filepath.Dir(path), filepath.FromSlash(g[2]))); err != nil {
+			t.Errorf("%s imports %q for %q, which does not exist: %v", path, g[2], w[2], err)
+			return false
+		}
+	}
+	return true
 }
 
 // The runtime's Pi modules re-export Pi's own code copied from the pinned
 // release: shims/pi-dist mirrors each package's dist/, and shims/yaml,
-// shims/marked, shims/get-east-asian-width and shims/partial-json are the
-// third-party releases Pi depends on. A pin change must re-vendor them.
+// shims/marked, shims/get-east-asian-width, shims/partial-json, shims/ignore
+// and shims/diff are the third-party releases Pi depends on. A pin change must re-vendor them.
 func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 	for pkg, dist := range pinnedPackageDist {
 		var manifest struct{ Version string }
@@ -136,8 +189,12 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 			}
 			continue
 		}
-		if rel == "pi-coding-agent/core/session-manager.js" {
-			continue // a section, checked below
+		if strings.HasPrefix(rel, "pi-ai/sdk-bundle/") || strings.HasPrefix(rel, "pi-tui/sdk-bundle/") {
+			continue // TestNodeLibraryBundlesRegenerateExactly verifies these compiler outputs.
+		}
+		if file, ok := strings.CutPrefix(rel, "pi-coding-agent/"); ok {
+			checkCodingAgentVendor(t, root, file, got)
+			continue
 		}
 		if stub, ok := vendoredBridgeStubs[rel]; ok {
 			// The pinned implementation imports a vendor SDK; PiG's host runs
@@ -154,13 +211,65 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 			t.Errorf("shims/pi-dist/%s is not under a vendored Pi package", rel)
 			continue
 		}
-		want := readPinned(t, append(append([]string{}, dist...), strings.Split(file, "/")...)...)
+		var want []byte
+		if pkg == "pi-tui" && strings.HasPrefix(file, "native/") {
+			want = readPinned(t, append(append([]string{}, dist[:len(dist)-1]...), strings.Split(file, "/")...)...)
+		} else {
+			want = readPinned(t, append(append([]string{}, dist...), strings.Split(file, "/")...)...)
+		}
+		if rel == "pi-tui/utils.js" {
+			declaration := regexp.MustCompile(`(?m)^const rgiEmojiRegex = (.+);$`).FindSubmatch(want)
+			if declaration == nil {
+				t.Fatal("pinned RGI emoji expression declaration changed")
+			}
+			expression, err := os.ReadFile(filepath.Join(shims, "pi-tui-emoji.mjs"))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if string(expression) != "export const rgiEmojiRegex = "+string(declaration[1])+";\n" {
+				t.Fatal("deferred emoji expression differs from Pi")
+			}
+			want = bytes.ReplaceAll(want, declaration[0], []byte(`import { rgiEmojiRegex } from "../../pi-tui-emoji-lazy.mjs";`))
+			want = bytes.ReplaceAll(want, []byte("const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: \"grapheme\" });\nconst wordSegmenter = new Intl.Segmenter(undefined, { granularity: \"word\" });"), []byte(`import { graphemeSegmenter, wordSegmenter, getGraphemeSegmenter as nativeGraphemeSegmenter, getWordSegmenter as nativeWordSegmenter } from "../../pi-tui-segmenters.mjs";`))
+			want = bytes.ReplaceAll(want, []byte("return graphemeSegmenter;"), []byte("return nativeGraphemeSegmenter();"))
+			want = bytes.ReplaceAll(want, []byte("return wordSegmenter;"), []byte("return nativeWordSegmenter();"))
+		}
+		if pkg == "pi-tui" && file != "utils.js" {
+			captures := regexp.MustCompile(`(?m)^const (\w+) = get(Grapheme|Word)Segmenter\(\);$`)
+			want = captures.ReplaceAllFunc(want, func(line []byte) []byte {
+				match := captures.FindSubmatch(line)
+				binding := strings.ToLower(string(match[2])) + "Segmenter"
+				if binding != string(match[1]) {
+					binding += " as " + string(match[1])
+				}
+				specifier, err := filepath.Rel(filepath.Dir(filepath.Join(root, rel)), filepath.Join(shims, "pi-tui-segmenters.mjs"))
+				if err != nil {
+					t.Fatal(err)
+				}
+				return []byte(`import { ` + binding + ` } from "` + filepath.ToSlash(specifier) + `";`)
+			})
+		}
+		if closureVendoredPackages[pkg] {
+			if !sameExceptBareImports(t, filepath.Join(root, filepath.FromSlash(rel)), got, want) {
+				t.Errorf("shims/pi-dist/%s differs from the pinned release beyond its import specifiers: run automation/gen/vendor-pi-dist.sh", rel)
+			}
+			continue
+		}
 		rewrites := [][2]string{}
 		if rw, ok := vendoredImportRewrites[rel]; ok {
 			rewrites = append(rewrites, rw)
 		}
 		if rel == "pi-ai/utils/validation.js" {
 			rewrites = append(rewrites, vendoredValidationRewrites...)
+		}
+		if rel == "pi-coding-agent/core/session-manager.js" {
+			rewrites = append(rewrites, [2]string{`import { getCurrentSystemMessage, uuidv7, } from "@earendil-works/pi-ai";`, `import { getCurrentSystemMessage, uuidv7, } from "../../../pi-ai.mjs";`}, [2]string{`import { APP_NAME, getAgentDir as getDefaultAgentDir, getSessionsDir } from "../config.js";`, `import { APP_NAME, getAgentDir as getDefaultAgentDir, getSessionsDir } from "../../../pig-config.mjs";`})
+		}
+		if rel == "pi-coding-agent/core/provider-composer.js" {
+			rewrites = append(rewrites, [2]string{`import { lazyStream, } from "@earendil-works/pi-ai";`, `import { lazyStream, } from "../../../pi-ai.mjs";`}, [2]string{`import { getApiProvider } from "@earendil-works/pi-ai/compat";`, `import { getApiProvider } from "../../../pi-ai.mjs";`})
+		}
+		if rel == "pi-coding-agent/core/settings-manager.js" {
+			rewrites = append(rewrites, vendoredSettingsManagerRewrites...)
 		}
 		if rel == "pi-coding-agent/utils/syntax-highlight.js" {
 			// Every highlight.js specifier points at the vendored package.
@@ -178,29 +287,6 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 		}
 		if !bytes.Equal(got, want) {
 			t.Errorf("shims/pi-dist/%s differs from the pinned release: run automation/gen/vendor-pi-dist.sh", rel)
-		}
-	}
-
-	// session-manager.js keeps the pure section and the imports it uses.
-	session, err := os.ReadFile(filepath.Join(root, "pi-coding-agent", "core", "session-manager.js"))
-	if err != nil {
-		t.Fatalf("%v: run automation/gen/vendor-pi-dist.sh", err)
-	}
-	pinnedSession := readPinned(t, "dist", "core", "session-manager.js")
-	start := bytes.Index(pinnedSession, []byte("export const CURRENT_SESSION_VERSION"))
-	fn := bytes.Index(pinnedSession, []byte("export function buildSessionContext"))
-	if start < 0 || fn < start {
-		t.Fatal("pinned session-manager.js lacks the vendored section")
-	}
-	end := fn + bytes.Index(pinnedSession[fn:], []byte("\n}\n")) + len("\n}\n")
-	imports, body, found := bytes.Cut(session, []byte("export const CURRENT_SESSION_VERSION"))
-	if !found || !bytes.Equal(append([]byte("export const CURRENT_SESSION_VERSION"), body...), pinnedSession[start:end]) {
-		t.Error("shims/pi-dist/pi-coding-agent/core/session-manager.js section differs from the pinned release: run automation/gen/vendor-pi-dist.sh")
-	}
-	for line := range bytes.SplitSeq(bytes.TrimSpace(imports), []byte("\n")) {
-		line = bytes.Replace(line, []byte(`from "../../../pi-ai.mjs";`), []byte(`from "@earendil-works/pi-ai";`), 1)
-		if !bytes.Contains(pinnedSession, append(line, '\n')) {
-			t.Errorf("session-manager.js import %q is not in the pinned release", line)
 		}
 	}
 
@@ -238,12 +324,53 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 	}); err != nil {
 		t.Fatalf("read the pinned highlight.js (run npm ci in extensions/sdk-ts): %v", err)
 	}
+	jiti := filepath.Join(nodeModules, "jiti")
+	jitiFiles := map[string]string{
+		"package.json": filepath.Join(jiti, "package.json"),
+		"LICENSE":      filepath.Join(jiti, "LICENSE"),
+	}
+	for _, dir := range []string{"lib", "dist"} {
+		base := filepath.Join(jiti, dir)
+		if err := filepath.WalkDir(base, func(path string, d os.DirEntry, err error) error {
+			if err != nil || d.IsDir() {
+				return err
+			}
+			rel, err := filepath.Rel(jiti, path)
+			jitiFiles[filepath.ToSlash(rel)] = path
+			return err
+		}); err != nil {
+			t.Fatalf("read the pinned jiti (run npm ci in extensions/sdk-ts): %v", err)
+		}
+	}
+	jsdiff := filepath.Join(nodeModules, "diff")
+	diffFiles := map[string]string{
+		"package.json": filepath.Join(jsdiff, "package.json"),
+		"LICENSE":      filepath.Join(jsdiff, "LICENSE"),
+	}
+	diffLib := filepath.Join(jsdiff, "libesm")
+	if err := filepath.WalkDir(diffLib, func(path string, d os.DirEntry, err error) error {
+		if err != nil || d.IsDir() || strings.HasSuffix(path, ".d.ts") || strings.HasSuffix(path, ".d.ts.map") {
+			return err
+		}
+		rel, err := filepath.Rel(diffLib, path)
+		diffFiles[filepath.ToSlash(filepath.Join("libesm", rel))] = path
+		return err
+	}); err != nil {
+		t.Fatalf("read the pinned diff (run npm ci in extensions/sdk-ts): %v", err)
+	}
+	ignore := filepath.Join(nodeModules, "ignore")
 	marked := filepath.Join(nodeModules, "marked")
 	eaw := filepath.Join(nodeModules, "get-east-asian-width")
 	partial := filepath.Join(nodeModules, "partial-json")
 	for dir, files := range map[string]map[string]string{
 		"yaml":         yamlFiles,
 		"highlight.js": hljsFiles,
+		"jiti":         jitiFiles,
+		"diff":         diffFiles,
+		"ignore": {
+			"index.js": filepath.Join(ignore, "index.js"), "package.json": filepath.Join(ignore, "package.json"),
+			"LICENSE-MIT": filepath.Join(ignore, "LICENSE-MIT"),
+		},
 		"get-east-asian-width": {
 			"index.js": filepath.Join(eaw, "index.js"), "lookup.js": filepath.Join(eaw, "lookup.js"),
 			"lookup-data.js": filepath.Join(eaw, "lookup-data.js"), "utilities.js": filepath.Join(eaw, "utilities.js"),
@@ -316,10 +443,7 @@ func runPinnedComparison(t *testing.T, pinnedEntry []string, shim, script string
 func TestPiTuiComponentsMatchThePinnedPackage(t *testing.T) {
 	runPinnedComparison(t, []string{"node_modules", "@earendil-works", "pi-tui", "dist", "index.js"}, "pi-tui.mjs", `
 const [pi, pig] = await Promise.all([import(process.argv[1]), import(process.argv[2])]);
-// The runtime seeds pi-tui's capability cache in its vendored terminal-image
-// module; the shim's setCapabilities is a host-only stand-in.
-const pigImage = await import(new URL("./pi-dist/pi-tui/terminal-image.js", process.argv[2]).href);
-const setCaps = (m, caps) => (m === pi ? pi.setCapabilities(caps) : pigImage.setCapabilities(caps));
+const setCaps = (m, caps) => m.setCapabilities(caps);
 const bg = (s) => "\x1b[44m" + s + "\x1b[49m";
 const bold = (s) => "\x1b[1m" + s + "\x1b[22m";
 const dim = (s) => "\x1b[2m" + s + "\x1b[22m";
@@ -615,5 +739,109 @@ assert.deepEqual(themeScene(shim), themeScene(piTheme.theme));
 const got = scene(pig, pig);
 if (!got.some((v) => JSON.stringify(v).includes("\\u001b[38;2;"))) throw new Error("theme helpers drew no truecolor text: " + JSON.stringify(got).slice(0, 300));
 assert.deepEqual(got, scene(piTheme, piHints));
+`)
+}
+
+// Pi's extension loader requires the jiti its package depends on; the
+// runtime's copy must be that release.
+func TestVendoredJitiIsThePinnedDependency(t *testing.T) {
+	var manifest struct {
+		Dependencies map[string]string `json:"dependencies"`
+	}
+	if err := json.Unmarshal(readPinned(t, "package.json"), &manifest); err != nil {
+		t.Fatal(err)
+	}
+	var vendored struct{ Version string }
+	data, err := os.ReadFile(filepath.Join("runtime-node", "shims", "jiti", "package.json"))
+	if err != nil {
+		t.Fatalf("%v: run automation/gen/vendor-pi-dist.sh", err)
+	}
+	if err := json.Unmarshal(data, &vendored); err != nil {
+		t.Fatal(err)
+	}
+	if want := manifest.Dependencies["jiti"]; vendored.Version != want {
+		t.Fatalf("vendored jiti %s, pinned Pi depends on jiti %s: run automation/gen/vendor-pi-dist.sh", vendored.Version, want)
+	}
+}
+
+// The harness entry an extension re-launches is named like Pi's CLI package
+// and carries the Pi version PiG ports, as process.argv[1] does in Pi.
+func TestHarnessEntryIsNamedLikePinnedPi(t *testing.T) {
+	var pinned, harness struct {
+		Name    string
+		Version string
+		Bin     map[string]string
+	}
+	if err := json.Unmarshal(readPinned(t, "package.json"), &pinned); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join("runtime-node", "harness", "package.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal(data, &harness); err != nil {
+		t.Fatal(err)
+	}
+	if harness.Name != pinned.Name || harness.Version != coding.UpstreamVersion || pinned.Version != coding.UpstreamVersion {
+		t.Fatalf("harness package %s@%s, pinned Pi %s@%s, UpstreamVersion %s", harness.Name, harness.Version, pinned.Name, pinned.Version, coding.UpstreamVersion)
+	}
+	if _, ok := pinned.Bin["pi"]; !ok || harness.Bin["pi"] != "cli.mjs" {
+		t.Fatalf("harness bin %v, pinned bin %v", harness.Bin, pinned.Bin)
+	}
+	if _, err := os.Stat(filepath.Join("runtime-node", "harness", "cli.mjs")); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// Pi's tool factories run the tool in the extension's own process, and
+// extensions build on their definitions at load (gentle-pi registers
+// createReadToolDefinition's spread with its own renderers). The runtime's
+// factories return the pinned package's shape and metadata, and the
+// definitions' execute gives Pi's results at ctx.cwd.
+func TestPiToolFactoriesMatchThePinnedPackage(t *testing.T) {
+	runPinnedComparison(t, []string{"dist", "core", "tools", "index.js"}, "builtin-tools.mjs", `
+import { mkdtempSync, mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+const [pi, pig] = await Promise.all([import(process.argv[1]), import(process.argv[2])]);
+const fail = (message) => { console.log(message); process.exitCode = 1; };
+const describe = (value) => typeof value === "function" ? "function" : JSON.stringify(value);
+for (const tool of ["Read", "Bash", "Edit", "Write", "Grep", "Find", "Ls"]) {
+  for (const suffix of ["Tool", "ToolDefinition"]) {
+    const name = "create" + tool + suffix;
+    const want = pi[name]("/tmp"), got = pig[name]("/tmp");
+    if (Object.keys(want).join() !== Object.keys(got).join()) fail(name + " keys: pi " + Object.keys(want) + " pig " + Object.keys(got));
+    for (const key of Object.keys(want)) {
+      if (describe(want[key]) !== describe(got[key])) fail(name + "." + key + ": pi " + describe(want[key]) + " pig " + describe(got[key]));
+    }
+  }
+}
+const run = async (mod, dir) => {
+  const other = mkdtempSync(join(tmpdir(), "pig-tools-other-"));
+  const ctx = { cwd: dir };
+  const results = [];
+  const call = async (factory, params) => {
+    try {
+      const result = await mod[factory](other).execute("id", params, undefined, undefined, ctx);
+      results.push(JSON.stringify({ content: result.content, details: result.details }));
+    } catch (error) {
+      results.push("error: " + error.message);
+    }
+  };
+  await call("createWriteToolDefinition", { path: "notes/a.txt", content: "one\ntwo\nthree\n" });
+  await call("createReadToolDefinition", { path: "notes/a.txt" });
+  await call("createReadToolDefinition", { path: "notes/a.txt", offset: 2, limit: 1 });
+  await call("createEditToolDefinition", { path: "notes/a.txt", edits: [{ oldText: "two", newText: "TWO" }] });
+  await call("createReadToolDefinition", { path: "notes/a.txt" });
+  await call("createLsToolDefinition", { path: "notes" });
+  await call("createReadToolDefinition", { path: "missing.txt" });
+  return results;
+};
+const piDir = mkdtempSync(join(tmpdir(), "pig-tools-pi-")), pigDir = mkdtempSync(join(tmpdir(), "pig-tools-pig-"));
+const [want, got] = [await run(pi, piDir), await run(pig, pigDir)];
+for (let i = 0; i < want.length; i++) {
+  const normalize = (text, dir) => text.split(dir).join("<dir>");
+  if (normalize(want[i], piDir) !== normalize(got[i], pigDir)) fail("call " + i + ":\npi:  " + want[i] + "\npig: " + got[i]);
+}
 `)
 }

@@ -35,7 +35,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-UPSTREAM_VERSION="${UPSTREAM_VERSION:-$(sed -n 's/^const UpstreamVersion = "\([^"]*\)"/\1/p' "$ROOT/coding/pigversion/pigversion.go" 2>/dev/null)}"
+UPSTREAM_VERSION="${UPSTREAM_VERSION:-$(sed -n 's/^const UpstreamVersion = "\([^"]*\)"/\1/p' "$ROOT/internal/coding/pigversion/pigversion.go" 2>/dev/null)}"
 PI_BIN="${PI_BIN:-$ROOT/extensions/sdk-ts/node_modules/.bin/pi}"
 PIG_BIN="${PIG_BIN:-$HOME/.local/bin/pig}"
 

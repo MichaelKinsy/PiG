@@ -217,9 +217,14 @@ func TestSessionManagerLoadResolvesAbsoluteSessionPath(t *testing.T) {
 func TestSessionManager_Load_NonExistent(t *testing.T) {
 	dir := t.TempDir()
 	sm := NewSessionManagerWithDir("/tmp/test", dir)
-	_, err := sm.Load(filepath.Join(dir, "nope.jsonl"))
-	if err == nil {
-		t.Fatal("expected error loading non-existent file")
+	path := filepath.Join(dir, "nope.jsonl")
+	// Pi SessionManager._setSessionFile opens a missing path as a fresh, unflushed session.
+	session, err := sm.Load(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session.Path() != path || sm.Current() != session {
+		t.Fatalf("missing path was not selected: %v", session)
 	}
 }
 

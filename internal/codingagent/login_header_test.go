@@ -476,15 +476,35 @@ func TestSuccessfulReloadRestoresBuiltInHeaderAndFailedReloadPreservesCurrentLog
 	})
 	m.extHeader = newSpecialLinesComponent(func() {})
 	m.extHeader.SetLines([]string{"old extension login"})
-	m.buildSlashContext(context.Background()).Reload()
+	if err := m.buildSlashContext(t.Context()).Reload(); err != nil {
+		t.Fatal(err)
+	}
 	if got := strings.Join(m.extHeader.Render(65), "\n"); !strings.Contains(got, builtInHeader) || strings.Contains(got, "old extension login") {
 		t.Fatalf("successful reload did not restore stock header before session_start: %q", got)
 	}
 
 	m.extHeader.SetLines([]string{"active login after failed reload"})
 	host.err = errors.New("reload failed")
-	m.buildSlashContext(context.Background()).Reload()
+	if err := m.buildSlashContext(t.Context()).Reload(); err != nil {
+		t.Fatal(err)
+	}
 	if got := m.extHeader.Render(65); len(got) != 1 || got[0] != "active login after failed reload" {
 		t.Fatalf("failed reload replaced active login: %q", got)
+	}
+}
+
+// D60: SetLogin and SetHeader share one slot and the last successful call wins. A quiet startup accepts the login but keeps the slot hidden, so it replaces an earlier extension header instead of leaving that header visible. The bridge already treats the login as newer than that header (a delayed older setHeader is dropped), so in-order application must agree.
+func TestQuietLoginReplacesEarlierExtensionHeaderWithHiddenSlot(t *testing.T) {
+	m := &InteractiveMode{opts: InteractiveOptions{LoginVisible: false}, extHeader: newSpecialLinesComponent(func() {})}
+	ui := &ExtUIContext{m: m}
+	ui.SetHeader(extension.WidthLines{Lines: []string{"earlier header"}, Width: 80})
+	if got := m.extHeader.Render(80); len(got) == 0 {
+		t.Fatal("setup: extension header not shown")
+	}
+	if err := ui.SetLogin(loginHeaderDefinition("Quiet Pig")); err != nil {
+		t.Fatal(err)
+	}
+	if got := m.extHeader.Render(80); len(got) != 0 || m.extHeader.HasContent() {
+		t.Fatalf("quiet login left the earlier header visible: %q", got)
 	}
 }

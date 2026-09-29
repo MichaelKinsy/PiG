@@ -35,7 +35,8 @@ func BenchmarkAutoLinkProbeTail(b *testing.B) {
 			input := []rune("ordinary " + tail.text)
 			b.ReportAllocs()
 			for b.Loop() {
-				if _, _, _, ok := parseAutoLink(input, 0); ok {
+				var scanner autoLinkScanner
+				if _, _, _, ok := scanner.parseAutoLink(input, 0); ok {
 					b.Fatal("ordinary word became an autolink")
 				}
 			}

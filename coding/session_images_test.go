@@ -51,7 +51,7 @@ func TestSessionPromptImagesUseModelSelectedByBeforeHook(t *testing.T) {
 	}
 	for _, msg := range messages {
 		if msg.User != nil {
-			if !seen || len(msg.User.Content) != 2 || !strings.Contains(msg.User.Content[0].(ai.TextContent).Text, "displayed at 20x10") {
+			if !seen || len(msg.User.Content.(ai.UserContentBlocks)) != 2 || !strings.Contains(msg.User.Content.(ai.UserContentBlocks)[0].(ai.TextContent).Text, "displayed at 20x10") {
 				t.Fatalf("prompt=%#v", msg.User.Content)
 			}
 			return
@@ -71,6 +71,7 @@ func TestSessionToolImagesUseModelAfterLateHook(t *testing.T) {
 			}
 			defer func(s *Session) { _ = s.Close() }(sess)
 			if clone {
+				appendAsst(t, sess, "saved reply")
 				sess, err = sess.Clone()
 				if err != nil {
 					t.Fatal(err)
@@ -83,7 +84,7 @@ func TestSessionToolImagesUseModelAfterLateHook(t *testing.T) {
 			sess.agent.AddAfterToolCallHook(func(context.Context, string, string, json.RawMessage, agent.AgentToolResult) agent.AfterToolCallResult {
 				sess.agent.SetModel(&strict)
 				images := []ai.ImageContent{original}
-				return agent.AfterToolCallResult{Images: &images}
+				return agent.AfterToolCallResult{Content: []ai.ToolResultMessageContent{images[0]}}
 			})
 			messages, err := sess.Send(context.Background(), "read")
 			if err != nil {
@@ -117,8 +118,8 @@ func TestSessionModelSwitchPreservesHistoricalImageBytes(t *testing.T) {
 	}
 	var stored ai.ImageContent
 	for _, message := range messages {
-		if message.User != nil && len(message.User.Content) == 2 {
-			stored = message.User.Content[1].(ai.ImageContent)
+		if message.User != nil && len(message.User.Content.(ai.UserContentBlocks)) == 2 {
+			stored = message.User.Content.(ai.UserContentBlocks)[1].(ai.ImageContent)
 		}
 	}
 	if stored.Data == "" || stored.Data == original.Data {
@@ -131,12 +132,77 @@ func TestSessionModelSwitchPreservesHistoricalImageBytes(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, message := range sess.agent.Messages() {
-		if message.User != nil && len(message.User.Content) == 2 {
-			if image := message.User.Content[1].(ai.ImageContent); image != stored {
+		if message.User != nil && len(message.User.Content.(ai.UserContentBlocks)) == 2 {
+			if image := message.User.Content.(ai.UserContentBlocks)[1].(ai.ImageContent); image != stored {
 				t.Fatal("model switch rewrote earlier image")
 			}
 			return
 		}
 	}
 	t.Fatal("historical image missing")
+}
+
+type screenshotTool struct{ image ai.ImageContent }
+
+func (t screenshotTool) Name() string          { return "env_probe" }
+func (t screenshotTool) Label() string         { return "Screenshot" }
+func (t screenshotTool) Schema() ai.ToolSchema { return ai.ToolSchema{Name: "env_probe"} }
+func (t screenshotTool) ExecutionMode() agent.ToolExecutionMode {
+	return agent.ToolModeParallel
+}
+func (t screenshotTool) Execute(context.Context, string, json.RawMessage, agent.ToolUpdateCallback) (agent.AgentToolResult, error) {
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "captured"}, t.image}}, nil
+}
+
+// packages/coding-agent/test/suite/agent-session-tool-result-images.test.ts:37 "passes image settings and the current model profile to tool result normalization". Upstream mocks normalizeToolResultImages and asserts {autoResizeImages, resizeOptions}. Go has no module mock, so the same two inputs are observed through the real normalization: the active model profile's MaxWidth resizes the image only while the images.autoResize setting is on, and the setting off leaves the bytes untouched.
+func TestSessionToolResultImagesUseSettingsAndModelProfile(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		autoResize bool
+		resized    bool
+	}{
+		{"auto resize disabled passes the setting through", false, false},
+		{"auto resize enabled applies the model profile", true, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			svcs := newTestServices(t)
+			if err := svcs.SettingsManager().SetImageAutoResize(tc.autoResize); err != nil {
+				t.Fatal(err)
+			}
+			original := sessionImageFixture(t)
+			model := fakeModelWithProvider(&toolCallProvider{})
+			model.InputLimits = &ai.ModelInputLimits{Images: &ai.ModelImageInputLimits{Resize: &ai.ModelImageResizeOptions{MaxWidth: 20}}}
+			sess, err := NewSession(svcs, SessionOptions{Model: model, Tools: []agent.AgentTool{screenshotTool{image: original}}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer func(s *Session) { _ = s.Close() }(sess)
+			messages, err := sess.Send(context.Background(), "take a screenshot")
+			if err != nil {
+				t.Fatal(err)
+			}
+			for _, msg := range messages {
+				if msg.ToolResult == nil {
+					continue
+				}
+				var image *ai.ImageContent
+				for _, block := range msg.ToolResult.Content {
+					if img, ok := block.(ai.ImageContent); ok {
+						image = &img
+					}
+				}
+				if image == nil {
+					t.Fatalf("tool result lost its image: %#v", msg.ToolResult)
+				}
+				if got := image.Data != original.Data; got != tc.resized {
+					t.Fatalf("image changed=%v, want %v", got, tc.resized)
+				}
+				if hint := strings.Contains(msg.ToolResult.Text(), "displayed at 20x10"); hint != tc.resized {
+					t.Fatalf("resize hint=%v, want %v: %q", hint, tc.resized, msg.ToolResult.Text())
+				}
+				return
+			}
+			t.Fatal("tool result missing")
+		})
+	}
 }

@@ -5,8 +5,9 @@ import (
 	"bytes"
 	"io"
 	"os"
-	"regexp"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // stderrCauseLimit bounds how much of an extension's stderr log is read to
@@ -22,33 +23,35 @@ const maxStderrCauseLength = 500
 // the extension runtimes: JavaScript and Python "<Name>Error: message" and
 // "Error [CODE]: message" lines, Go "panic:" and "fatal error:" lines, and
 // Rust "panicked at" lines.
-var stderrCausePattern = regexp.MustCompile(`^([A-Za-z_][A-Za-z0-9_.]*(Error|Exception)(\s*\[[A-Z0-9_]+\])?:\s|panic:\s|fatal error:\s|thread '.*' panicked at\s|Error:\s)`)
+var stderrCausePattern = lazyregexp.New(`^([A-Za-z_][A-Za-z0-9_.]*(Error|Exception)(\s*\[[A-Z0-9_]+\])?:\s|panic:\s|fatal error:\s|thread '.*' panicked at\s|Error:\s)`)
 
-// stderrCause returns the error line an extension process wrote before
-// exiting, so a load error states the loader's cause the way upstream's
-// "Failed to load extension: <message>" does. It reads at most the last
-// stderrCauseLimit bytes of the log and returns the last matching line, or the
-// last non-empty line that is not a stack frame. It returns "" when the log is
-// missing or empty.
-func stderrCause(path string) string {
+// readStderrTail bounds diagnostic reads even when an extension produces a large log.
+func readStderrTail(path string) []byte {
 	if path == "" {
-		return ""
+		return nil
 	}
 	file, err := os.Open(path)
 	if err != nil {
-		return ""
+		return nil
 	}
 	defer func() { _ = file.Close() }()
 	if info, statErr := file.Stat(); statErr == nil && info.Size() > stderrCauseLimit {
 		if _, seekErr := file.Seek(-stderrCauseLimit, io.SeekEnd); seekErr != nil {
-			return ""
+			return nil
 		}
 	}
 	data, err := io.ReadAll(io.LimitReader(file, stderrCauseLimit))
 	if err != nil {
-		return ""
+		return nil
 	}
-	var matched, fallback string
+	return data
+}
+
+// stderrCause returns the error line belonging to an extension's failed start. A packed Node error block can start with a source location before its named error line; the selected member's error takes precedence over warnings and sibling blocks. It reads at most stderrCauseLimit bytes and returns an empty string for a missing or empty log.
+func stderrCause(path, extensionName string) string {
+	data := readStderrTail(path)
+	var owned, matched, fallback string
+	inOwnedBlock, ownedError := false, false
 	scanner := bufio.NewScanner(bytes.NewReader(data))
 	scanner.Buffer(make([]byte, 0, 4096), stderrCauseLimit)
 	for scanner.Scan() {
@@ -57,14 +60,29 @@ func stderrCause(path string) string {
 		if trimmed == "" || strings.HasPrefix(trimmed, "at ") {
 			continue
 		}
+		if cause, ok := strings.CutPrefix(trimmed, `extension "`+extensionName+`" failed to load: `); ok {
+			owned = cause
+			inOwnedBlock, ownedError = true, stderrCausePattern.MatchString(cause)
+			continue
+		}
+		if strings.HasPrefix(trimmed, `extension "`) && strings.Contains(trimmed, `" failed to load: `) {
+			inOwnedBlock = false
+			continue
+		}
 		if stderrCausePattern.MatchString(trimmed) {
 			matched = trimmed
+			if inOwnedBlock && !ownedError {
+				owned, ownedError = trimmed, true
+			}
 		}
 		if line == trimmed {
 			fallback = trimmed
 		}
 	}
-	cause := matched
+	cause := owned
+	if cause == "" {
+		cause = matched
+	}
 	if cause == "" {
 		cause = fallback
 	}

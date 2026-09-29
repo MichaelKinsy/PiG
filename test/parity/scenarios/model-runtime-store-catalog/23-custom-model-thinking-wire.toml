@@ -1,0 +1,23 @@
+# Pi 0.87.1 model-resolver.ts:571-595 marks custom models as reasoning-capable for non-off requested thinking. sdk.ts:231-255 honors the selected level, and model-runtime.ts preserves selected model metadata through provider dispatch.
+# Both fixtures invoke the real CLI with a local HTTP server, require a completed response, and assert the model ID and reasoning value on both OpenAI API paths. No network credentials or output normalization are used.
+name = "23-custom-model-thinking-wire"
+description = "Custom-model thinking survives CLI resolution, Session construction, and both OpenAI request paths."
+covers = ["packages/coding-agent/src/core/model-resolver.ts", "packages/coding-agent/src/core/model-runtime.ts", "packages/coding-agent/src/core/sdk.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/custom-model-thinking.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/custom-model-thinking.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

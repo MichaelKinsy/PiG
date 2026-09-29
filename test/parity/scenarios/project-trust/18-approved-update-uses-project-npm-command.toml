@@ -1,0 +1,31 @@
+# Pi 0.87.1 package-manager-cli.ts:750-756; package-manager.ts:1747-1782.
+# Probe: update --extensions --approve uses the project's npmCommand even for a user package.
+# Artifact equality compares command ownership and the verb, not package-progress presentation.
+# This positive control forbids a global-only override masquerading as a trust fix.
+name = "18-approved-update-uses-project-npm-command"
+description = "Explicit trust permits the project's npmCommand for user package updates."
+covers = ["packages/coding-agent/src/package-manager-cli.ts", "packages/coding-agent/src/core/package-manager.ts", "packages/coding-agent/src/core/settings-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/npm-command/agent", "NPM_TRUST_RECORD={{TEMP}}", "PIG_OFFLINE=", "PI_OFFLINE="]
+pi = ["PI_CODING_AGENT_DIR=testdata/npm-command/agent", "NPM_TRUST_RECORD={{TEMP}}", "PI_OFFLINE=", "PI_SKIP_VERSION_CHECK=1"]
+# The subcommand must precede startup flags.
+override_base_args = true
+
+[cli]
+args = ["update", "--extensions", "--approve"]
+cwd = "testdata/npm-command/project"
+snapshot_cwd = true
+artifact_path = "{{TEMP}}/npm-calls.txt"
+timeout_seconds = 20
+
+[assert]
+exit_code = 0
+both_contain = ["Updated packages"]
+# The recorder writes the same complete LF-delimited artifact in both hosts; compare it without normalization.
+artifact_equal = true
+artifact_both_contain = ["project install"]
+artifact_both_not_contain = ["global"]
+runs = 3

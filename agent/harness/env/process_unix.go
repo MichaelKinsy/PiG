@@ -15,8 +15,6 @@ func detachedProcessAttributes() *syscall.SysProcAttr {
 	return &syscall.SysProcAttr{Setpgid: true}
 }
 
-func hiddenProcessAttributes() *syscall.SysProcAttr { return nil }
-
 // killProcessTree sends SIGKILL to the process group, falling back to the
 // process itself.
 var killProcessTree = func(pid int) error {

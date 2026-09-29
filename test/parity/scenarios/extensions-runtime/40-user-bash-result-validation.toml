@@ -1,0 +1,29 @@
+# Pi 0.87.1 runner.ts:136-159 requires an exitCode property, rejects null fields
+# and rejects operations + result even when operations is null. The Pi program
+# uses the published runner/factory loader. PiG loads the SAME source through
+# its Node subprocess host and dispatches through the production runner. The
+# complete results, rejection messages and error-listener records are compared.
+# The undefined exit-code row compares property presence and its array value;
+# JSON arrays encode undefined as null, while preserving the separate presence bit.
+name = "40-user-bash-result-validation"
+description = "User bash overrides reject malformed fields and preserve valid results across the subprocess boundary"
+covers = ["packages/coding-agent/src/core/extensions/runner.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/user-bash-validation"]
+pi_args = ["node", "./test/parity/testdata/user-bash-validation-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['["valid",{"result":{"cancelled":false,"exitCode":0,"output":"handled","truncated":false}},"",[]]', '["observe",null,"",[]]', '["undefined-exit",true,null,"",[]]']
+runs = 3

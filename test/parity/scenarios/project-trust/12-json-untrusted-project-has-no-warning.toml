@@ -1,0 +1,42 @@
+# Behavior family: project-trust
+# Pi 0.87.1 core/project-trust.ts:46-94, main.ts:756-773, 930-969:
+# JSON mode with no messages declines undecided trust and emits only a session
+# header. Combined stdout/stderr comparison rejects a trust prompt or warning.
+name = "12-json-untrusted-project-has-no-warning"
+description = "JSON mode emits only its session header for an undecided project."
+covers = ["packages/coding-agent/src/core/project-trust.ts"]
+tags = ["hermetic", "fast", "security"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/warning-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/warning-agent"]
+override_base_args = true
+
+[cli]
+args = ["--offline", "--no-extensions", "--no-session", "--model", "openai/gpt-4.1", "--mode", "json"]
+cwd = "testdata/warning-project"
+snapshot_cwd = true
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ['"type":"session"']
+both_not_contain = ["Trust project folder?", "This project is not trusted."]
+json_output_equal = true
+stderr_equal = true
+runs = 3
+
+[[assert.json_aliases]]
+paths = ["/*/id"]
+kind = "id"
+group = "session"
+reason = "Each process creates a session identity; keep one-to-one correspondence."
+[[assert.json_aliases]]
+paths = ["/*/timestamp"]
+kind = "timestamp"
+reason = "Session header wall clocks vary; retain timestamp presence and type."
+[[assert.json_aliases]]
+paths = ["/*/cwd"]
+kind = "path"
+reason = "D2: only the exact isolated project root differs; retain its suffix."

@@ -9,10 +9,10 @@ Only a maintainer with release authority can start a PiG release. Complete every
 
 ## Release prerequisites
 
-1. Select the release commit from the protected default branch.
+1. Select the release commit from a protected branch. Keep unpublished nested-module requirements off `main`.
 2. Confirm that the source tree is clean.
 3. Confirm that `reuse lint` passes.
-4. Confirm that required checks pass on the release commit.
+4. Confirm that required checks pass on the release commit. A candidate with unpublished nested modules must pass the publication gate after the approved nested tags are published and before it reaches `main` or receives the root release tag.
 5. Confirm each supported operating system and architecture through its approved native verification path.
 6. Build release artifacts only in the protected release workflow.
 7. Generate an inventory and artifact-specific SPDX SBOMs.
@@ -29,6 +29,24 @@ PiG uses semantic versions and annotated tags in the form `vMAJOR.MINOR.PATCH`. 
 
 The release metadata identifies both the PiG version and the Pi version that defines the parity target.
 
+Change the version only with `make set-version VERSION=x.y.z`.
+
+`internal/coding/pigversion/pigversion.go` is the version authority. The command updates its PiG pin, the Standard development version, and the newest changelog heading. An ordinary version bump preserves every `go.mod` and `go.sum`. Dependency versions describe published modules, not the next PiG release. Workspace builds use the developing SDK through `go.work`.
+
+```bash
+make set-version VERSION=0.3.0 SET_VERSION_ARGS=--dry-run
+make set-version VERSION=0.3.0
+make set-version VERSION=0.3.0 SET_VERSION_ARGS=--move-unreleased
+```
+
+The default adds a dated release heading below the Unreleased entries without moving them. `--move-unreleased` moves those entries into the selected release. The date is today in UTC. Repeating the same command preserves the date and produces no diff. Lower versions and non-`x.y.z` inputs are rejected.
+
+Use `SET_VERSION_ARGS=--release-modules` only to prepare an unpublished release on a protected release branch. This option also advances requirements on local modules in every tracked `go.mod` and computes nested-module entries in every existing `go.sum` from tracked files with working-tree contents. Stage new module files before running it. The hash implementation is `automation/release/modulehash`. Repeat this option after SDK edits only while that module version remains unpublished. Never replace a published version's checksums with hashes of developing source. Do not merge this candidate to `main` until its nested tags are published and `make module-publication` passes.
+
+Use `SET_VERSION_ARGS=--rename-current` only to rename an unpublished candidate. It replaces the newest heading that matches the current pin instead of retaining that heading as a past release. It does not rewrite release prose or historical evidence. Combine options in one quoted value, for example `SET_VERSION_ARGS='--rename-current --dry-run'`. Never rename a published release.
+
+Dry-run prints the planned diff without writing or running consistency tests. An apply runs `go test ./test/gomodule -count=1` and `go test ./internal/codingagent -run '^TestParseChangelog_RealFile$' -count=1`. A failed check returns a nonzero status and retains the changes for inspection. The command does not stage files, commit, tag, or publish.
+
 ## Go module publication
 
 PiG publishes two Go modules from one release commit:
@@ -37,25 +55,13 @@ PiG publishes two Go modules from one release commit:
 - `github.com/MichaelKinsy/PiG/extensions/sdk`, tagged
   `extensions/sdk/vMAJOR.MINOR.PATCH`.
 
-`go install github.com/MichaelKinsy/PiG/cmd/pig@vMAJOR.MINOR.PATCH` refuses a
-module whose `go.mod` has a `replace` or `exclude` directive. The root
-`go.mod` therefore has neither: it requires the SDK at the release version
-(`github.com/MichaelKinsy/PiG/extensions/sdk vMAJOR.MINOR.PATCH`), and a
-checkout resolves that requirement to `./extensions/sdk` through `go.work`.
-The root `go.sum` pins the SDK zip hash the checksum database will record for
-that tag; `tests/gomodule` recomputes it from the tracked SDK files and prints
-the replacement lines whenever the SDK changes. When the PiG version changes,
-bump the SDK requirement and its `go.sum` lines with it.
+`go install github.com/MichaelKinsy/PiG/cmd/pig@vMAJOR.MINOR.PATCH` refuses a module whose `go.mod` has a `replace` or `exclude` directive. The root `go.mod` therefore has neither. On `main`, keep nested requirements and checksums at published versions while the PiG version advances. A checkout resolves the SDK to `./extensions/sdk` through `go.work`; this does not prove that an external Go install can resolve the dependency.
 
-Both tags name the same commit. `automation/release/module-tags.sh VERSION`
-prints the full tag set (`vVERSION`, then `<dir>/vVERSION` for every nested
-PiG module the root requires) and fails closed on a `replace` or `exclude`
-directive or a nested requirement at any other version. The release workflow
-runs it twice: the `source` job refuses a release commit that fails it, and
-the `publish` job creates each nested module tag as an annotated tag on
-`$GITHUB_SHA` before it creates the draft release whose publication creates
-`vVERSION` on that same commit. Tag the nested modules by hand only with the
-same rule: `git tag -a extensions/sdk/vVERSION <release commit>`.
+`make module-publication` runs in the Linux build CI shard and in `make check`. It reads the root manifest with `GOWORK=off`, checks each required nested tag with `git ls-remote` against the public repository, and downloads only those modules into a fresh cache to verify the committed checksums. It rejects missing tags, unavailable downloads, incorrect checksums, and root replacement or exclusion directives. It does not modify the checkout. It does not prove API compatibility with a developing SDK. When main starts using a new SDK capability, publish the required SDK before merging the consumer.
+
+Prepare release dependency pins with `make set-version VERSION=x.y.z SET_VERSION_ARGS=--release-modules` on the release branch. The release workflow retains the same-commit rule: both tags name the final candidate commit. `automation/release/module-tags.sh VERSION` prints the full tag set (`vVERSION`, then `<dir>/vVERSION` for every nested PiG module the root requires). It rejects replacement or exclusion directives and nested requirements at another version. The `source` job validates this plan and requires an empty `set-version --release-modules --dry-run` diff, so stale SDK hashes fail before an immutable tag is created. After candidate validation and release approval, the `publish` job creates each nested tag as an annotated tag on `$GITHUB_SHA` before creating the draft root release. An existing tag must already name that commit. Run `make module-publication` after nested publication, before merging the candidate to `main` or publishing the draft root release.
+
+For `0.3.0`, publish `extensions/sdk/v0.3.0` first on the final release commit, then publish `v0.3.0` on that same commit. Do not downgrade the current dependency to `v0.2.0`: that published SDK lacks `extensions/sdk/json`, which the current host imports. After release, ordinary version bumps retain this published SDK pin.
 
 After the draft release is published:
 
@@ -123,7 +129,7 @@ The job:
 1. downloads every platform's uploaded archive (skipping the source candidate, which is not a platform archive and which GitHub Releases attaches automatically);
 2. combines their digests into one `SHA256SUMS` with `automation/release/combine-checksums.py` and cross-checks it with `sha256sum -c`, so `install.sh` and pi-in-go.dev's installer API (`/api/installer/releases`) see one combined manifest instead of the five separate per-platform ones each matrix job writes as its own evidence;
 3. writes `update.json`, the self-update manifest naming each macOS and Linux archive with its SHA-256 from `SHA256SUMS` (`automation/release/gen-update-manifest.py --sha256sums`), signs it with each Ed25519 key in the `release` environment secret `PIG_UPDATE_SIGNING_KEY` (`automation/release/sign-update-manifest.sh`), checks every signature against the keys in `automation/release/update-trust.pem`, and attaches both `update.json` and `update.json.sig` (the signatures as comma-separated base64). The job fails if the secret is missing or holds a key whose public key is not in `update-trust.pem`;
-4. creates each nested Go module tag (`extensions/sdk/v<version>`) as an annotated tag on the release commit `$GITHUB_SHA`, after `automation/release/module-tags.sh` confirms the root `go.mod` is installable with `go install` (see "Go module publication"); a nested tag that already exists must name that same commit. A nested module tag alone installs nothing: `go install .../cmd/pig@v<version>` resolves only once the root tag exists;
+4. creates each nested Go module tag (`extensions/sdk/v<version>`) as an annotated tag on the release commit `$GITHUB_SHA`, after `automation/release/module-tags.sh` validates the release dependency pins; an existing nested tag must name that same commit. It then runs `automation/ci/check-module-publication.py` to verify the published tags and downloaded checksums before creating the draft root release. A nested module tag alone installs no PiG executable: `go install .../cmd/pig@v<version>` resolves only once the root tag exists;
 5. creates a **draft** GitHub Release on tag `v<version>` (the tag pattern from "Version and tag" above) with every archive and the combined `SHA256SUMS` attached. A draft never becomes visible, and its tag is never created, until a maintainer reviews the evidence and presses Publish; this is the explicit approval "Publication controls" requires.
 
 ### Self-update

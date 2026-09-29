@@ -1,0 +1,26 @@
+# Behavior family: tools
+# Pi 0.87.1 tools/renderers/grep.ts:58-66, find.ts:55-60 and ls.ts:48-55 interpolate numeric limits with JavaScript Number formatting.
+# The Pi probe calls the real renderResult implementations with an unstyled fixture theme and extracts the complete text inside their warning brackets. The Go probe also asserts the complete themed body rows. This comparator owns number/notice text, not layout or ANSI styling.
+name = "23-list-limit-number-format"
+description = "Grep, find and ls limit warnings preserve JavaScript exponent boundaries"
+covers = [
+  "packages/coding-agent/src/core/tools/renderers/grep.ts",
+  "packages/coding-agent/src/core/tools/renderers/find.ts",
+  "packages/coding-agent/src/core/tools/renderers/ls.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "../../testdata/list-limit-number-pig.sh"
+pi_bin = "../../testdata/list-limit-number-pi.mjs"
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

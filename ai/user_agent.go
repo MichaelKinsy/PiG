@@ -3,7 +3,7 @@ package ai
 import (
 	"runtime"
 
-	"github.com/MichaelKinsy/PiG/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
 // ProductVersion is PiG's composite release version for outbound identifiers.

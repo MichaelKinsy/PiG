@@ -15,15 +15,13 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
 
 	pig "github.com/MichaelKinsy/PiG"
-	"github.com/MichaelKinsy/PiG/internal/codingagent/export"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -34,16 +32,13 @@ func nameHandler(sc *SlashContext) error {
 	}
 	args := strings.TrimSpace(sc.Args)
 	if args == "" {
-		// Mirrors upstream interactive-mode.ts:4737-4748: empty args
-		// shows the current name (dim-styled) when one is set, else a
-		// usage hint.
 		if sc.GetSessionName != nil {
 			if cur := sc.GetSessionName(); cur != "" {
-				sc.Append("\033[2mSession name: " + cur + "\033[0m")
+				appendNameText(sc, "Session name: "+cur)
 				return nil
 			}
 		}
-		sc.Append("Usage: /name <name>")
+		showWarningOrAppend(sc, "Usage: /name <name>")
 		return nil
 	}
 	if sc.SetSessionName == nil {
@@ -53,13 +48,22 @@ func nameHandler(sc *SlashContext) error {
 	if err := sc.SetSessionName(args); err != nil {
 		return err
 	}
-	// Match upstream verbatim (interactive-mode.ts:4754): "Session name set: <n>".
-	sc.Append(fmt.Sprintf("Session name set: %s", args))
+	appendNameText(sc, "Session name set: "+args)
 	// Update terminal title + status-line footer.
 	if sc.OnNameChange != nil {
 		sc.OnNameChange(args)
 	}
 	return nil
+}
+
+// appendNameText preserves literal names with the theme's dim foreground.
+func appendNameText(sc *SlashContext, text string) {
+	text = tui.ActiveTheme().FgText("dim", text)
+	if sc.AppendText != nil {
+		sc.AppendText(text)
+	} else {
+		sc.Append(text)
+	}
 }
 
 // debugHandler backs /debug and the ctrl+shift+d hotkey: it writes a debug
@@ -74,11 +78,18 @@ func debugHandler(sc *SlashContext) error {
 	if err != nil {
 		return err
 	}
-	sc.Append("\033[32m✓ Debug log written\033[0m")
-	sc.Append("\033[2m" + path + "\033[0m")
+	th := tui.ActiveTheme()
+	confirmation := th.FgText("accent", "✓ Debug log written") + "\n" + th.FgText("muted", path)
+	if sc.AppendBlock == nil {
+		sc.Append(confirmation)
+		return nil
+	}
+	sc.AppendBlock(confirmation)
 	return nil
 }
 
+// forkHandler implements /fork. A session_before_fork cancel ends it without
+// output, as upstream showUserMessageSelector does.
 func forkHandler(sc *SlashContext) error {
 	if sc.ForkToNewSession == nil {
 		sc.Append("Fork unavailable in this build.")
@@ -91,7 +102,6 @@ func forkHandler(sc *SlashContext) error {
 		if sc.PickUserMessage != nil {
 			picked, ok := sc.PickUserMessage()
 			if !ok {
-				sc.Append("Fork cancelled.")
 				return nil
 			}
 			id = picked
@@ -102,6 +112,9 @@ func forkHandler(sc *SlashContext) error {
 		}
 	}
 	if err := sc.ForkToNewSession(id); err != nil {
+		if errors.Is(err, errSessionReplacementCancelled) {
+			return nil
+		}
 		return err
 	}
 	// Mirrors upstream showStatus("Forked to new session")
@@ -110,34 +123,55 @@ func forkHandler(sc *SlashContext) error {
 	return nil
 }
 
+// cloneHandler implements /clone. A session_before_fork cancel ends it without
+// output, as upstream handleCloneCommand does.
 func cloneHandler(sc *SlashContext) error {
 	if sc.CloneCurrent == nil {
 		sc.Append("Clone unavailable in this build.")
 		return nil
 	}
-	path, err := sc.CloneCurrent()
+	if sc.CurrentSession != nil && sc.CurrentSession() != nil && sc.CurrentSession().LeafID() == nil {
+		showStatusOrAppend(sc, "Nothing to clone yet")
+		return nil
+	}
+	_, err := sc.CloneCurrent()
+	if errors.Is(err, errSessionReplacementCancelled) {
+		return nil
+	}
 	if err != nil {
 		return err
 	}
-	sc.Append(fmt.Sprintf("Cloned current path to:\n  %s\n\nThis session has been switched to the new file.", path))
+	if sc.SetEditorText != nil {
+		sc.SetEditorText("")
+	}
+	showStatusOrAppend(sc, "Cloned to new session")
 	return nil
 }
 
+// resumeHandler implements /resume. With the interactive picker, a resumed
+// session reports "Resumed session", while a cancelled picker or a
+// session_before_switch cancel reports nothing, as upstream
+// handleResumeSession and the selector's onCancel do.
 func resumeHandler(sc *SlashContext) error {
 	// Prefer interactive picker; fall back to text listing.
 	if sc.PickSession != nil && sc.LoadSessionPath != nil {
 		path, ok := sc.PickSession()
 		if !ok {
-			sc.Append("Resume cancelled.")
 			return nil
 		}
-		if err := sc.LoadSessionPath(path); err != nil {
+		if err := sc.LoadSessionPath(path); errors.Is(err, errSessionReplacementCancelled) {
+			return nil
+		} else if err != nil {
 			if sc.FatalRuntimeError != nil {
 				return sc.FatalRuntimeError("Failed to resume session", err)
 			}
 			return err
 		}
-		sc.Append(fmt.Sprintf("Resumed session from %s", path))
+		status := statusResumed
+		if sc.ResumeStatus != nil {
+			status = sc.ResumeStatus()
+		}
+		showStatusOrAppend(sc, status)
 		return nil
 	}
 	if sc.ListSessions == nil {
@@ -176,52 +210,47 @@ func treeHandler(sc *SlashContext) error {
 	return treeHandlerWithInitial(sc, "")
 }
 
-// trustHandler implements /trust: presents the project-trust options and
-// saves the chosen decision to <agentDir>/trust.json. Mirrors upstream
-// showTrustSelector (interactive-mode.ts:4222). The saved decision takes
-// effect on the next startup (the startup gating that consumes it is tracked
-// separately; see the bump spec #50 gating).
+// trustHandler shows current and saved trust decisions, persists the selection before closing and leaves activation to the next startup.
 func trustHandler(sc *SlashContext) error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		cwd = "."
-	}
-	options := GetProjectTrustOptions(cwd, false)
-	labels := make([]string, len(options))
-	for i, o := range options {
-		labels[i] = o.Label
-	}
-	if sc.ShowExtensionSelector == nil {
+	if sc.ShowTrustSelector == nil {
 		sc.Append("Project trust selector unavailable.")
 		return nil
 	}
-	chosen, ok := sc.ShowExtensionSelector("Project trust ("+cwd+")", labels, "")
+	var cwd string
+	if sc.CurrentSession != nil {
+		if session := sc.CurrentSession(); session != nil {
+			cwd = session.CWD()
+		}
+	}
+	if cwd == "" {
+		var err error
+		cwd, err = os.Getwd()
+		if err != nil {
+			return err
+		}
+	}
+	store := NewProjectTrustStore(sc.AgentDir)
+	saved, err := store.GetEntry(cwd)
+	if err != nil {
+		return err
+	}
+	trusted := sc.SettingsManager != nil && sc.SettingsManager.IsProjectTrusted()
+	var saveErr error
+	selection, ok := sc.ShowTrustSelector(TrustSelectorOptions{
+		Cwd: cwd, SavedDecision: saved, ProjectTrusted: trusted,
+		OnSelect: func(selection TrustSelection) { saveErr = store.SetMany(selection.Updates) },
+	})
+	if saveErr != nil {
+		return saveErr
+	}
 	if !ok {
 		return nil
 	}
-	var selected *ProjectTrustOption
-	for i := range options {
-		if options[i].Label == chosen {
-			selected = &options[i]
-			break
-		}
+	state := "untrusted"
+	if selection.Trusted {
+		state = "trusted"
 	}
-	if selected == nil {
-		return nil
-	}
-	if len(selected.Updates) > 0 {
-		if err := NewProjectTrustStore(sc.AgentDir).SetMany(selected.Updates); err != nil {
-			sc.Append("Failed to save trust decision: " + err.Error())
-			return nil
-		}
-	}
-	if sc.ShowStatus != nil {
-		state := "untrusted"
-		if selected.Trusted {
-			state = "trusted"
-		}
-		sc.ShowStatus("Saved trust decision: " + state + ". Restart " + AppName + " for this to take effect.")
-	}
+	showStatusOrAppend(sc, "Saved trust decision: "+state+". Restart "+AppName+" for this to take effect.")
 	return nil
 }
 
@@ -285,6 +314,9 @@ func treeHandlerWithInitial(sc *SlashContext, initialSelectedID string) error {
 	// Fallback: simple fork (no summarize dialog).
 	if sc.ForkAtEntry != nil {
 		if err := sc.ForkAtEntry(id); err != nil {
+			if errors.Is(err, errSessionReplacementCancelled) {
+				return nil
+			}
 			return err
 		}
 		showStatusOrAppend(sc, "Navigated to selected point")
@@ -458,62 +490,19 @@ func showWarningOrAppend(sc *SlashContext, msg string) {
 	sc.Append("Warning: " + msg)
 }
 
-// changelogHandler renders the bundled CHANGELOG.md as an inline chat
-// block. Mirrors upstream `handleChangelogCommand`
-// (.upstream/v0.69.0/packages/coding-agent/src/modes/interactive/interactive-mode.ts:4795-4814)
-// verbatim in shape: NOT a modal overlay: a bordered "What's New"
-// markdown block appended to the chat container, like /cost or
-// /session output.
-//
-// `## [Unreleased]` is skipped by the parser; only released versions
-// are shown so the user sees what's actually in the binary they're
-// running. Entries are reversed before rendering so newest appears
-// at the bottom of the inline block (matches upstream).
-//
-// The collapse-changelog setting applies to startup notices only.
-// `/changelog` always renders the full parsed changelog block upstream,
-// so this handler must ignore that setting.
+// changelogHandler shows the full inline changelog, independently of the startup collapse setting.
 func changelogHandler(sc *SlashContext) error {
+	if sc.ShowChangelog != nil {
+		sc.ShowChangelog()
+		return nil
+	}
 	entries := ParseChangelog(pig.Changelog)
 	sc.Append(FormatChangelogForChat(entries))
 	return nil
 }
 
-// compactHandler implements /compact [custom instructions].
-//
-// Guard: if the session has fewer than 2 messages (nothing meaningful
-// to summarize), flash "Nothing to compact (no messages yet)" and return.
-//
-// On success, calls sc.CompactSession which fires off the compaction
-// asynchronously via coding.Session.Compact; events (CompactionStartEvent,
-// CompactionEndEvent) flow through the session event channel and are handled
-// by the interactive layer. Errors surface there as
-// CompactionEndEvent{ErrorMessage: ...}, so we ignore the return value.
-//
-// Mirrors upstream handleCompactCommand
-// (.upstream/current/packages/coding-agent/src/modes/interactive/interactive-mode.ts).
+// compactHandler delegates every /compact request to the Session, including empty or small Sessions. Completion and errors arrive through compaction events.
 func compactHandler(sc *SlashContext) error {
-	// Guard: at least 2 message-type entries to compact. Mirrors upstream
-	// handleCompactCommand (interactive-mode.ts:5700-5704):
-	//   getEntries().filter((e) => e.type === "message").length < 2
-	// Counting the live agent context instead (SessionInfo's msgCount =
-	// len(agent.Messages())) falsely reports "nothing to compact" in long,
-	// already-compacted sessions whose post-compaction context is small.
-	msgCount := 0
-	if sc.CurrentSession != nil {
-		if s := sc.CurrentSession(); s != nil {
-			for _, e := range s.Entries() {
-				if e.Base.Type == "message" {
-					msgCount++
-				}
-			}
-		}
-	}
-	if msgCount < 2 {
-		showWarningOrAppend(sc, "Nothing to compact (no messages yet)")
-		return nil
-	}
-
 	if sc.CompactSession == nil {
 		sc.Append("Compaction unavailable in this build.")
 		return nil
@@ -1101,34 +1090,67 @@ func settingsHandler(sc *SlashContext) error {
 }
 
 // settingsHandlerTUI uses the dedicated two-column SettingsList component
-// that matches upstream's SettingsSelectorComponent layout.
+// that matches upstream's SettingsSelectorComponent layout. The list stays
+// open until Esc and applies each change in place without a status line, as
+// upstream's selector callbacks do; only a failed save is reported.
 func settingsHandlerTUI(sc *SlashContext) error {
 	items := settingsItemsVisible()
-
-	for {
-		s := sc.SettingsManager.Get()
-
-		// Build tui.SettingItem slice from the internal settingsItems.
-		tuiItems := make([]tui.SettingItem, len(items))
-		for i, item := range items {
-			tuiItems[i] = tui.SettingItem{
-				ID:           item.id,
-				Label:        item.label,
-				Description:  item.desc,
-				CurrentValue: item.get(s),
-				Values:       item.values,
-			}
-			if item.id == "model-thinking" {
-				tuiItems[i].Submenu = sc.ModelThinkingSubmenu
-			}
+	s := sc.SettingsManager.Get()
+	tuiItems := make([]tui.SettingItem, len(items))
+	for i, item := range items {
+		tuiItems[i] = tui.SettingItem{
+			ID:           item.id,
+			Label:        item.label,
+			Description:  item.desc,
+			CurrentValue: item.get(s),
+			Values:       item.values,
 		}
-
-		changedID, changedValue, ok := sc.ShowSettingsList(tuiItems)
-		if !ok {
-			break // Esc pressed
+		if item.id == "tui-mode" && sc.CurrentTuiMode != nil {
+			tuiItems[i].CurrentValue = sc.CurrentTuiMode()
 		}
+		if item.id == "model-thinking" {
+			tuiItems[i].Submenu = sc.ModelThinkingSubmenu
+		}
+	}
 
-		// Find the matching settingItem and persist.
+	// The Warnings row opens a nested settings list whose changes save
+	// immediately, as upstream WarningSettingsSubmenu does.
+	configureWarnings := func() {
+		warnings := sc.SettingsManager.GetWarnings()
+		warningItems := []tui.SettingItem{{
+			ID:           "anthropic-extra-usage",
+			Label:        "Anthropic extra usage",
+			Description:  "Warn when Anthropic subscription auth may use paid extra usage",
+			CurrentValue: warningBoolString(warnings.AnthropicExtraUsage),
+			Values:       []string{"true", "false"},
+		}}
+		onWarningChange := func(id, value string) string {
+			if id != "anthropic-extra-usage" {
+				return value
+			}
+			next := warnings
+			next.AnthropicExtraUsage = value == "true"
+			if err := sc.SettingsManager.SetWarnings(next); err != nil {
+				showStatusOrAppend(sc, fmt.Sprintf("Failed to save settings: %v", err))
+			} else {
+				warnings = next
+				if sc.OnSettingApplied != nil {
+					sc.OnSettingApplied("warnings", "configure")
+				}
+			}
+			return warningBoolString(warnings.AnthropicExtraUsage)
+		}
+		if sc.ShowSettingsSubmenu != nil {
+			sc.ShowSettingsSubmenu(warningItems, onWarningChange)
+			return
+		}
+		sc.ShowSettingsList(warningItems, onWarningChange)
+	}
+
+	// onChange saves one change and returns the value its row shows
+	// afterwards: the new value, as upstream's SettingsList keeps it, or the
+	// saved value when the change was cancelled or could not be saved.
+	onChange := func(changedID, changedValue string) string {
 		var selected *settingItem
 		for i := range items {
 			if items[i].id == changedID {
@@ -1137,48 +1159,23 @@ func settingsHandlerTUI(sc *SlashContext) error {
 			}
 		}
 		if selected == nil {
-			continue
+			return changedValue
+		}
+		saved := func() string {
+			if changedID == "tui-mode" && sc.CurrentTuiMode != nil {
+				return sc.CurrentTuiMode()
+			}
+			return selected.get(sc.SettingsManager.Get())
 		}
 
-		if changedID == "warnings" && sc.ShowSettingsList != nil {
-			warnings := sc.SettingsManager.GetWarnings()
-			items := []tui.SettingItem{{
-				ID:           "anthropic-extra-usage",
-				Label:        "Anthropic extra usage",
-				Description:  "Warn when Anthropic subscription auth may use paid extra usage",
-				CurrentValue: warningBoolString(warnings.AnthropicExtraUsage),
-				Values:       []string{"true", "false"},
-			}}
-			for {
-				id, newValue, ok := sc.ShowSettingsList(items)
-				if !ok {
-					changedID = ""
-					break
-				}
-				if id == "anthropic-extra-usage" {
-					warnings.AnthropicExtraUsage = newValue == "true"
-					changedValue = "configure"
-					if err := sc.SettingsManager.SetWarnings(warnings); err != nil {
-						showStatusOrAppend(sc, fmt.Sprintf("Failed to save settings: %v", err))
-					} else {
-						showStatusOrAppend(sc, "Warnings: configured")
-						if sc.OnSettingApplied != nil {
-							sc.OnSettingApplied("warnings", "configure")
-						}
-					}
-				}
-				items[0].CurrentValue = warningBoolString(warnings.AnthropicExtraUsage)
-			}
-			if changedID == "" {
-				continue
-			}
-			continue
+		if changedID == "warnings" {
+			configureWarnings()
+			return saved()
 		}
-
 		if changedID == "theme" && sc.ShowThemeSelector != nil {
-			chosen, ok := sc.ShowThemeSelector(selected.get(s))
+			chosen, ok := sc.ShowThemeSelector(saved())
 			if !ok || chosen == "" {
-				continue
+				return saved()
 			}
 			changedValue = chosen
 		}
@@ -1188,23 +1185,31 @@ func settingsHandlerTUI(sc *SlashContext) error {
 			timeoutMs, ok := parseHTTPIdleTimeoutLabel(changedValue)
 			if !ok {
 				showStatusOrAppend(sc, fmt.Sprintf("Failed to save settings: invalid HTTP idle timeout %q", changedValue))
-				continue
+				return saved()
 			}
 			appliedValue = strconv.Itoa(timeoutMs)
+		}
+
+		// Pi's onTuiModeChange saves the mode only after the renderer switches; a refused switch keeps the running mode and the saved default.
+		if changedID == "tui-mode" && sc.SwitchTuiMode != nil && !sc.SwitchTuiMode(changedValue) {
+			return saved()
 		}
 
 		if err := sc.SettingsManager.UpdateGlobal(func(gs *Settings) {
 			selected.apply(gs, changedValue)
 		}); err != nil {
 			showStatusOrAppend(sc, fmt.Sprintf("Failed to save settings: %v", err))
-			continue
+			return saved()
 		}
-
-		showStatusOrAppend(sc, fmt.Sprintf("%s: %s", selected.label, changedValue))
 		if sc.OnSettingApplied != nil {
 			sc.OnSettingApplied(selected.id, appliedValue)
 		}
+		if changedID == "tui-mode" && sc.CurrentTuiMode != nil {
+			return sc.CurrentTuiMode()
+		}
+		return changedValue
 	}
+	sc.ShowSettingsList(tuiItems, onChange)
 	return nil
 }
 
@@ -1236,7 +1241,10 @@ func reloadHandler(sc *SlashContext) error {
 		}
 		return nil
 	}
-	sc.Reload()
+	if err := sc.Reload(); err != nil {
+		// interactive-mode.ts:6250-6254 shows "Reload failed: <error.message>".
+		return fmt.Errorf("Reload failed: %w", err)
+	}
 
 	// Build a diagnostic summary. Mirrors upstream showLoadedResources
 	// with showDiagnosticsWhenQuiet:true (interactive-mode.ts:4518).
@@ -1331,12 +1339,11 @@ func shortHash(hash, fallback string) string {
 	return h
 }
 
-// exportHandler implements /export [path].
-// When path ends in .jsonl, writes the current branch as a standalone session
-// (upstream session.exportToJsonl → exportSessionToJsonl).
-// When path ends in .html (or no extension given), exports as HTML.
-// Without a path, exports as HTML to session-<timestamp>.html in cwd.
-// Mirrors upstream handleExportCommand (interactive-mode.ts:4533).
+// exportHandler implements /export [path]. The first argument, which may be
+// quoted, selects the output: a .jsonl path writes the current branch
+// (upstream session.exportToJsonl), and any other path, or none, writes HTML
+// (upstream session.exportToHtml). A failure returns upstream's "Failed to
+// export session" error. Mirrors upstream handleExportCommand.
 func exportHandler(sc *SlashContext) error {
 	if sc.CurrentSession == nil {
 		sc.Append("Session unavailable in this build.")
@@ -1347,157 +1354,95 @@ func exportHandler(sc *SlashContext) error {
 		sc.Append("No active session.")
 		return nil
 	}
-	arg := strings.TrimSpace(sc.Args)
-	if strings.HasSuffix(arg, ".jsonl") {
-		filePath, err := ExportSessionToJsonl(s, arg, nil)
-		if err != nil {
-			return fmt.Errorf("Failed to export session: %w", err)
+	outputPath := pathCommandArgument(sc.Args)
+	var filePath string
+	var err error
+	if strings.HasSuffix(outputPath, ".jsonl") {
+		filePath, err = ExportSessionToJsonl(s, outputPath, nil)
+	} else {
+		var tools []extension.RegisteredTool
+		if sc.RegisteredTools != nil {
+			tools = sc.RegisteredTools()
 		}
-		showStatusOrAppend(sc, "Session exported to: "+filePath)
-		return nil
+		filePath, err = ExportSessionToHTML(s.Path(), outputPath, tools, s.CWD())
 	}
-	src := s.Path()
-	if src == "" {
-		sc.Append("Session has no file path (in-memory session).")
-		return nil
-	}
-
-	var dst string
-	switch {
-	case arg == "":
-		// Default: HTML export (matches upstream default).
-		ts := fmt.Sprintf("%d", time.Now().UnixMilli())
-		dst = filepath.Join(".", "session-"+ts+".html")
-	case strings.HasSuffix(arg, ".html"):
-		dst = arg
-	default:
-		// Default to HTML for unrecognized extension.
-		dst = arg + ".html"
-	}
-
-	// Read session JSONL and convert to HTML.
-	data, err := os.ReadFile(src)
 	if err != nil {
-		sc.Append(fmt.Sprintf("Export failed: %v", err))
-		return nil
+		return fmt.Errorf("Failed to export session: %w", err)
 	}
-	sd, err := export.FromJSONL(data)
-	if err != nil {
-		sc.Append(fmt.Sprintf("Export parse failed: %v", err))
-		return nil
-	}
-	if sc.RegisteredTools != nil {
-		export.RenderCustomTools(&sd, sc.RegisteredTools(), s.CWD(), 100)
-	}
-	htmlContent := export.ToHTML(sd)
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		sc.Append(fmt.Sprintf("Export failed: %v", err))
-		return nil
-	}
-	if err := os.WriteFile(dst, []byte(htmlContent), 0o644); err != nil {
-		sc.Append(fmt.Sprintf("Export failed: %v", err))
-		return nil
-	}
-	showStatusOrAppend(sc, fmt.Sprintf("Session exported to: %s", dst))
+	showStatusOrAppend(sc, "Session exported to: "+filePath)
 	return nil
 }
 
-// copyFile copies src to dst, creating directories as needed.
-func copyFile(src, dst string) error {
-	if err := os.MkdirAll(filepath.Dir(dst), 0o755); err != nil {
-		return fmt.Errorf("mkdir: %w", err)
+// pathCommandArgument returns the path argument of /export or /import as upstream
+// getPathCommandArgument does: a quoted argument runs to its closing quote and
+// is absent when the quote is unclosed, and an unquoted one ends at the first
+// whitespace.
+func pathCommandArgument(args string) string {
+	args = strings.TrimLeftFunc(args, isJSWhitespace)
+	if args == "" {
+		return ""
 	}
-	in, err := os.Open(src)
-	if err != nil {
-		return fmt.Errorf("open src: %w", err)
+	if quote := args[0]; quote == '"' || quote == '\'' {
+		closing := strings.IndexByte(args[1:], quote)
+		if closing < 0 {
+			return ""
+		}
+		return args[1 : 1+closing]
 	}
-	defer func() { _ = in.Close() }()
-	out, err := os.Create(dst)
-	if err != nil {
-		return fmt.Errorf("create dst: %w", err)
+	if end := strings.IndexFunc(args, isJSWhitespace); end >= 0 {
+		return args[:end]
 	}
-	defer func() { _ = out.Close() }()
-	if _, err := io.Copy(out, in); err != nil {
-		return fmt.Errorf("copy: %w", err)
-	}
-	return nil
+	return args
 }
 
-// importHandler implements /import <path.jsonl>.
-// Copies the specified JSONL file into the session directory and loads it
-// as the active session. Mirrors upstream handleImportCommand
-// (interactive-mode.ts:4578-4626).
+// importHandler implements /import <path.jsonl>. After a confirmation it
+// imports through the Session, which copies the file into the session
+// directory without replacing a stored session. A stored working directory
+// that no longer exists is offered for replacement by the current one. A
+// missing source is a non-fatal error; any other failure is fatal. Mirrors
+// upstream handleImportCommand.
 func importHandler(sc *SlashContext) error {
-	arg := strings.TrimSpace(sc.Args)
-	if arg == "" {
-		sc.Append("Usage: /import <path.jsonl>")
+	inputPath := pathCommandArgument(sc.Args)
+	if inputPath == "" {
+		return errors.New("Usage: /import <path.jsonl>")
+	}
+	if sc.ShowExtensionSelector == nil || sc.ImportSession == nil {
+		return errors.New("Session import is not available in this context.")
+	}
+	if !confirmSlash(sc, "Import session", "Replace current session with "+inputPath+"?") {
+		showStatusOrAppend(sc, "Import cancelled")
 		return nil
 	}
-	if !strings.HasSuffix(arg, ".jsonl") {
-		sc.Append("Only .jsonl files can be imported.")
-		return nil
-	}
-
-	// Resolve path (absolute or relative to cwd).
-	srcPath := arg
-	if !filepath.IsAbs(srcPath) {
-		// Use session's CWD if available, otherwise rely on process CWD.
-		var cwd string
-		if sc.CurrentSession != nil {
-			if s := sc.CurrentSession(); s != nil {
-				cwd = s.CWD()
-			}
-		}
-		if cwd != "" {
-			srcPath = filepath.Join(cwd, srcPath)
-		}
-	}
-
-	// Check file exists.
-	if _, err := os.Stat(srcPath); err != nil {
-		sc.Append(fmt.Sprintf("File not found: %s", srcPath))
-		return nil
-	}
-
-	// Copy into session directory (mirrors upstream importFromJsonl:
-	// copies to sessionDir so the session registry can manage it).
-	var dstPath string
-	if sc.CurrentSession != nil {
-		if s := sc.CurrentSession(); s != nil && s.Path() != "" {
-			dstPath = filepath.Join(filepath.Dir(s.Path()), filepath.Base(srcPath))
-		}
-	}
-	if dstPath == "" {
-		// Fallback: load directly from source path.
-		dstPath = srcPath
-	}
-
-	if dstPath != srcPath {
-		if err := copyFile(srcPath, dstPath); err != nil {
-			sc.Append(fmt.Sprintf("Import failed (copy): %v", err))
+	cancelled, err := sc.ImportSession(inputPath, "")
+	if missing, ok := errors.AsType[*MissingSessionCwdError](err); ok {
+		if !confirmSlash(sc, "Session cwd not found", FormatMissingSessionCwdPrompt(missing.Issue)) {
+			showStatusOrAppend(sc, "Import cancelled")
 			return nil
 		}
+		cancelled, err = sc.ImportSession(inputPath, missing.Issue.FallbackCwd)
 	}
-
-	// Load as active session.
-	if sc.LoadSessionPath == nil {
-		sc.Append("Session loading is not available in this context.")
-		return nil
+	if notFound, ok := errors.AsType[*SessionImportFileNotFoundError](err); ok {
+		return fmt.Errorf("Failed to import session: %w", notFound)
 	}
-	if err := sc.LoadSessionPath(dstPath); err != nil {
+	if err != nil {
 		if sc.FatalRuntimeError != nil {
 			return sc.FatalRuntimeError("Failed to import session", err)
 		}
-		sc.Append(fmt.Sprintf("Import failed: %v", err))
+		return err
+	}
+	if cancelled {
+		showStatusOrAppend(sc, "Import cancelled")
 		return nil
 	}
-
-	// Clear and rebuild chat display.
-	if sc.Clear != nil {
-		sc.Clear()
-	}
-	showStatusOrAppend(sc, fmt.Sprintf("Session imported from: %s", arg))
+	showStatusOrAppend(sc, "Session imported from: "+inputPath)
 	return nil
+}
+
+// confirmSlash asks a yes/no question as upstream showExtensionConfirm does:
+// a Yes/No selector headed by the title and message.
+func confirmSlash(sc *SlashContext, title, message string) bool {
+	choice, ok := sc.ShowExtensionSelector(title+"\n"+message, []string{"Yes", "No"}, "")
+	return ok && choice == "Yes"
 }
 
 // shareHandler implements /share: export the active branch with the pi.share
@@ -1512,10 +1457,6 @@ func shareHandler(sc *SlashContext) error {
 	session := sc.CurrentSession()
 	if session == nil {
 		sc.Append("No active session.")
-		return nil
-	}
-	if session.Path() == "" {
-		sc.Append("Session has no file path (in-memory).")
 		return nil
 	}
 	if sc.ShareSession == nil {

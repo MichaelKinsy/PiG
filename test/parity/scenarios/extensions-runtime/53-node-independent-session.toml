@@ -1,0 +1,30 @@
+# Pi 0.87.1 core/sdk.ts:175-439 creates a separate Agent/Session and uses the
+# supplied ModelRuntime, ResourceLoader, tools and SessionManager. AgentSession
+# prompt/abort await completion; bindExtensions routes provider hooks to that child.
+# The provider is registered only in the child's runtime, not the parent catalog.
+name = "53-node-independent-session"
+description = "Node SDK sessions execute private tools, provider hooks, persistence and cancellation without changing the parent"
+covers = ["packages/coding-agent/src/core/sdk.ts", "packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--mode", "rpc"]
+cwd = "."
+input_lines = ['{"id":"child","type":"prompt","message":"/child-sdk {{TEMP}}/child/result.json"}']
+# The input pipe stays open for the awaited command and its artifact write.
+settle_seconds = 3
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/child/result.json"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["testdata/ext/child-session.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/child-session.mjs"]
+
+[assert]
+exit_code = 0
+runs = 3
+both_contain = ['"id":"child","type":"response","command":"prompt","success":true']
+artifact_normalized_equal = true
+artifact_both_contain = ['"answer": "independent answer"', '"abort": "aborted"', '"parentUnchanged": true', '"persisted": true', '"progress": true']

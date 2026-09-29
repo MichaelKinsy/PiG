@@ -14,7 +14,7 @@ import (
 // on a subscription-capable provider (footer.ts, model-runtime.ts).
 func TestExtensionOAuthSubscriptionFooter(t *testing.T) {
 	t.Setenv("PIG_HOME", t.TempDir())
-	fixture, err := filepath.Abs("../../parity/scenarios/footer/testdata/subscription.mjs")
+	fixture, err := filepath.Abs("../../test/parity/scenarios/footer/testdata/subscription.mjs")
 	if err != nil {
 		t.Fatal(err)
 	}

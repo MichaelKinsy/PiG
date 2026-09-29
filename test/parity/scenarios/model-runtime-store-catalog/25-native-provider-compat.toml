@@ -1,0 +1,23 @@
+# Pi 0.87.1 model-runtime-modify-models-compat.test.ts:33-339 defines these native auth, deferred, overlay and legacy publication cases.
+# The Pi fixture asserts the upstream cases before emitting observations. Both fixtures use the real core ModelRuntime and shared credentials/ModelsStore; no generated timestamps are projected.
+name = "25-native-provider-compat"
+description = "Native provider auth, deferred methods, user overrides and credential-dependent legacy catalogs reach the coding runtime."
+covers = ["packages/coding-agent/src/core/model-runtime.ts", "packages/coding-agent/src/core/model-registry.ts", "packages/coding-agent/src/core/provider-composer.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/native-provider-compat.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/native-provider-compat.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

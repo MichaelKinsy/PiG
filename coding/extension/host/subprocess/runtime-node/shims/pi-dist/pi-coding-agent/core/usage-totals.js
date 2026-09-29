@@ -1,0 +1,56 @@
+export function createUsageTotals() {
+    return {
+        input: 0,
+        output: 0,
+        cacheRead: 0,
+        cacheWrite: 0,
+        cost: 0,
+    };
+}
+export function addUsageToTotals(totals, usage) {
+    totals.input += usage.input;
+    totals.output += usage.output;
+    totals.cacheRead += usage.cacheRead;
+    totals.cacheWrite += usage.cacheWrite;
+    totals.cost += usage.cost.total;
+}
+/** Group model-attributed usage by model and all other usage into a separate bucket. */
+export function getUsageCostBreakdown(entries) {
+    const totalsByKey = new Map();
+    for (const entry of entries) {
+        let key;
+        let usage;
+        if (entry.type === "message" && entry.message.role === "assistant") {
+            key = `${entry.message.provider}/${entry.message.responseModel ?? entry.message.model}`;
+            usage = entry.message.usage;
+        }
+        else if (entry.type === "usage") {
+            key = `${entry.provider}/${entry.model}`;
+            usage = entry.usage;
+        }
+        else if (entry.type === "message" && entry.message.role === "toolResult" && entry.message.usage) {
+            key = "Tools/summaries";
+            usage = entry.message.usage;
+        }
+        else if ((entry.type === "branch_summary" || entry.type === "compaction") && entry.usage) {
+            key = "Tools/summaries";
+            usage = entry.usage;
+        }
+        if (!key || !usage)
+            continue;
+        let totals = totalsByKey.get(key);
+        if (!totals) {
+            totals = createUsageTotals();
+            totalsByKey.set(key, totals);
+        }
+        addUsageToTotals(totals, usage);
+    }
+    return Array.from(totalsByKey, ([key, totals]) => ({
+        key,
+        cost: totals.cost,
+        tokens: totals.input + totals.output + totals.cacheRead + totals.cacheWrite,
+    }))
+        .filter((entry) => entry.cost > 0 || entry.tokens > 0)
+        .sort((a, b) => b.cost - a.cost);
+}
+//# sourceMappingURL=usage-totals.js.map

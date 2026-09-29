@@ -1,0 +1,43 @@
+# Behavior family: project-trust
+# Upstream evidence: Pi 0.87.1 core/package-manager.ts:2397-2401 gates
+# collectAncestorAgentsSkillDirs on trust; resource-loader.ts:468-470,850-861
+# appends --skill paths after the resolved resources. skills.ts:425-454 keeps
+# the first name. A trusted ancestor therefore wins a collision with --skill.
+# Probe: RPC /ancestor-info through the Node extension, --approve, a session
+# selecting workspace/ below .agents/skills, and --skill explicit. Pi returns
+# shared (ancestor), only-ancestor, only-explicit. Before the fix PiG returns
+# only-explicit, shared (explicit), only-ancestor. No model call is made.
+name = "09-trusted-ancestor-skill-precedence"
+description = "Trusted ancestor skills precede --skill additions in pi.getCommands and win same-name collisions."
+covers = [
+  "packages/coding-agent/src/core/package-manager.ts",
+  "packages/coding-agent/src/core/resource-loader.ts",
+  "packages/coding-agent/src/core/skills.ts",
+]
+tags = ["hermetic", "fast", "security"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent", "PIG_TEST_FAUX=1", "PIG_OFFLINE=1"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1"]
+pig_extensions = ["testdata/ancestor-skill-info.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ancestor-skill-info.mjs"]
+override_base_args = true
+
+[cli]
+args = ["--mode", "rpc", "--model", "test-faux/faux-1", "--no-extensions", "--session", "sessions/nested.jsonl", "--approve", "--skill", "explicit"]
+cwd = "testdata/ancestor-skills"
+snapshot_cwd = true
+input_lines = ['{"id":"info","type":"prompt","message":"/ancestor-info {{TEMP}}/skills.json"}']
+# The extension writes the artifact before its prompt response. Keep stdin
+# open while RPC processes the command, as in extensions-runtime/21.
+settle_seconds = 3
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/skills.json"
+
+[assert]
+exit_code = 0
+runs = 3
+both_contain = ['"id":"info","type":"response","command":"prompt","success":true']
+artifact_normalized_equal = true
+artifact_both_contain = ['[{"name":"skill:shared","description":"ancestor wins","source":"auto","scope":"project"},{"name":"skill:only-ancestor","description":"ancestor-only skill","source":"auto","scope":"project"},{"name":"skill:only-explicit","description":"explicit-only skill","source":"local","scope":"temporary"}]']

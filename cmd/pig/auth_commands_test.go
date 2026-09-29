@@ -753,3 +753,36 @@ func TestSelectEmbeddedOwnerCellsKeepsContainingBinaryAndOnlyOwner(t *testing.T)
 		t.Fatal("owner selection mutated embedded cell manifest")
 	}
 }
+
+// Pre-session auth inspection starts each extension it lists, so it lists an auto-discovered project extension only when the project is trusted, as Pi resolves project extensions (package-manager.ts:2417-2424).
+func TestAuthInspectionSkipsUntrustedProjectExtensions(t *testing.T) {
+	cwd, agentDir := t.TempDir(), t.TempDir()
+	t.Setenv("PIG_HOME", t.TempDir())
+	t.Setenv("PIG_CODING_AGENT_DIR", agentDir)
+	for path, content := range map[string]string{
+		".pig/extensions/proj/go.mod":       "module example.com/proj\n\ngo 1.26\n",
+		".pig/extensions/proj/extension.go": "package proj\nimport sdk \"github.com/MichaelKinsy/PiG/extensions/sdk\"\nfunc Extension() *sdk.Extension { return nil }\n",
+	} {
+		target := filepath.Join(cwd, path)
+		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(target, []byte(content), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, trusted := range []bool{false, true} {
+		settings := codingagent.NewSettingsManagerWithProjectTrust(cwd, agentDir, trusted)
+		configs, _, err := authExtensionConfigs(cwd, agentDir, settings)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := 0
+		if trusted {
+			want = 1
+		}
+		if len(configs) != want {
+			t.Errorf("trusted=%v: configs = %#v, want %d", trusted, configs, want)
+		}
+	}
+}

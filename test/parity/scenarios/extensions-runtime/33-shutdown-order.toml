@@ -1,0 +1,27 @@
+# Pi 0.87.1 regression 5080 calls the real InteractiveMode.shutdown prototype
+# with terminal/runtime spies. This oracle uses the same boundary; the Go side
+# drives the real interactive exit loop and signal/teardown methods.
+# Only deterministic order records are projected, and pipefail preserves every
+# Go assertion failure. No terminal output or ordering difference is normalized.
+name = "33-shutdown-order"
+description = "Signal cleanup precedes draining, while interactive cleanup follows renderer stop"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/shutdown-order-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/shutdown-order-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SHUTDOWN_ORDER signal dispose,drainInput,stop", "SHUTDOWN_ORDER interactive drainInput,stop,dispose"]
+runs = 3

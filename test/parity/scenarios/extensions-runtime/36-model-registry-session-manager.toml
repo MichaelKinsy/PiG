@@ -1,0 +1,39 @@
+# Pi 0.87.1 model-registry.ts:30-171 and session-manager.ts:1427-1563.
+# The fixture records values and tree/context relationships, not just member presence.
+# IDs and timestamps created during the run are compared by their relationships;
+# static fixture messages and auth results retain their exact values.
+name = "36-model-registry-session-manager"
+description = "Registry auth, refresh and late registration plus branched session projections match Pi"
+covers = [
+  "packages/coding-agent/src/core/model-registry.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+model = "test-faux/faux-1"
+
+[rpc]
+cwd = "../testdata"
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/registry.json"
+
+# Closing stdin on a fixed timer can abort the command; Pi also acknowledges handled command errors (agent-session.ts:1619-1623,1778-1789). Wait for the notification emitted after writeFileSync before closing RPC stdin. The RPC driver also snapshots the fixture cwd.
+[[rpc.steps]]
+line = '{"id":"registry","type":"prompt","message":"/registry-info {{TEMP}}/registry.json"}'
+wait_contains = ["registry-artifact-written"]
+wait_timeout_seconds = 30
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--fork", "registry-session.jsonl", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--fork", "registry-session.jsonl", "--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["../testdata/extension-registry-session.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../testdata/extension-registry-session.mjs"]
+
+[assert]
+exit_code = 0
+runs = 3
+both_contain = ['"id":"registry","type":"response","command":"prompt","success":true', 'registry-artifact-written']
+# Both sides serialize this same sorted fixture object; no artifact normalization is needed.
+artifact_equal = true
+artifact_both_contain = ['"leafIsNote": true', '"parity-late/late-a"', '"compactionSummary"', '"sessionDirIsTemp": true']

@@ -1,0 +1,42 @@
+# Upstream evidence: Pi 0.87.1 handleDementedDelves inserts a spacer and the complete announcement.
+# tmux has no image protocol: Image must render the bundled PNG's fallback, not omit it.
+# The name anchors exclude unrelated startup/footer identity but retain both borders and every content row.
+name = "12-earendil-announcement"
+description = "Hidden announcement renders Pi's styled borders, blog link, spacing and bundled image fallback"
+covers = ["packages/coding-agent/src/modes/interactive/components/earendil-announcement.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 80
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 20
+capture_start = "Session name set: announcement-anchor"
+capture_end = "Session name set: announcement-end"
+
+[[tmux.steps]]
+keys = ["/name announcement-anchor", "Enter"]
+wait_contains = ["Session name set: announcement-anchor"]
+
+[[tmux.steps]]
+keys = ["/dementedelves", "Enter"]
+wait_contains = ["pi has joined Earendil", "clankolas.png"]
+
+[[tmux.steps]]
+keys = ["/name announcement-end", "Enter"]
+wait_contains = ["Session name set: announcement-end"]
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/model-picker-defaults"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/model-picker-defaults"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["pi has joined Earendil", "Read the blog post:", "https://mariozechner.at/posts/2026-04-08-ive-sold-out/", "clankolas.png"]
+output_equal = true
+escaped_output_equal = true
+runs = 3

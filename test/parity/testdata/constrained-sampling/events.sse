@@ -1,0 +1,10 @@
+data: {"type":"response.output_item.added","output_index":0,"item":{"type":"custom_tool_call","call_id":"call_1","id":"ctc_1","name":"sample_tool","input":"a"}}
+
+data: {"type":"response.custom_tool_call_input.delta","output_index":0,"item_id":"ctc_1","delta":"b"}
+
+data: {"type":"response.custom_tool_call_input.done","output_index":0,"item_id":"ctc_1","input":"abc"}
+
+data: {"type":"response.output_item.done","output_index":0,"item":{"type":"custom_tool_call","call_id":"call_1","id":"ctc_1","name":"sample_tool","input":"abc"}}
+
+data: {"type":"response.completed","response":{"status":"completed","usage":{"input_tokens":1,"output_tokens":1,"total_tokens":2}}}
+

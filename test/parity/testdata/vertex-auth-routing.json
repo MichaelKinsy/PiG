@@ -1,0 +1,8 @@
+[
+ {"name":"placeholder","key":"<authenticated>"},
+ {"name":"legacy-marker","key":"gcp-vertex-credentials"},
+ {"name":"ambient-marker","envKey":"<authenticated>"},
+ {"name":"api-key","key":"AIzaSyExampleRealisticLookingApiKey123456"},
+ {"name":"header-override","userAgent":"custom-agent"},
+ {"name":"versioned-base","path":"/v1/projects/test-project/locations/global"}
+]

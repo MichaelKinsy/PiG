@@ -7,8 +7,11 @@ package ai
 // ported OAuth provider registry.
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	"slices"
 )
 
 // EnvAPIKeyAuth is standard API-key auth: a stored credential key wins,
@@ -16,7 +19,8 @@ import (
 // envApiKeyAuth.
 func EnvAPIKeyAuth(name string, envVars ...string) *APIKeyAuth {
 	return &APIKeyAuth{
-		Name: name,
+		Name:  name,
+		Login: envAPIKeyLogin(name),
 		Resolve: func(ctx context.Context, input APIKeyAuthInput) (*AuthResult, error) {
 			if err := ctx.Err(); err != nil {
 				return nil, err
@@ -25,7 +29,11 @@ func EnvAPIKeyAuth(name string, envVars ...string) *APIKeyAuth {
 				return &AuthResult{Auth: ModelAuth{APIKey: input.Credential.Key}, Env: input.Credential.Env, Source: "stored credential"}, nil
 			}
 			for _, envVar := range envVars {
-				if value, ok := input.Ctx.Env(envVar); ok {
+				value, ok := input.Ctx.Env(envVar)
+				if ctx.Err() != nil {
+					return nil, context.Cause(ctx)
+				}
+				if ok && value != "" {
 					return &AuthResult{Auth: ModelAuth{APIKey: value}, Source: envVar}, nil
 				}
 			}
@@ -37,6 +45,12 @@ func EnvAPIKeyAuth(name string, envVars ...string) *APIKeyAuth {
 func anthropicAPIKeyAuth() *APIKeyAuth {
 	return &APIKeyAuth{
 		Name: "Anthropic API key",
+		Login: func(ctx context.Context, interaction AuthInteraction) (Credential, error) {
+			if ctx.Err() != nil {
+				return Credential{}, context.Cause(ctx)
+			}
+			return promptAPIKey(ctx, interaction, "Enter Anthropic API key")
+		},
 		Resolve: func(ctx context.Context, input APIKeyAuthInput) (*AuthResult, error) {
 			if err := ctx.Err(); err != nil {
 				return nil, err
@@ -60,7 +74,8 @@ func anthropicAPIKeyAuth() *APIKeyAuth {
 // bedrockAuth accepts a bearer token or the AWS default credential chain.
 func bedrockAuth() *APIKeyAuth {
 	return &APIKeyAuth{
-		Name: "AWS credentials or bearer token",
+		Name:  "AWS credentials or bearer token",
+		Login: bedrockLogin,
 		Resolve: func(ctx context.Context, input APIKeyAuthInput) (*AuthResult, error) {
 			env := func(name string) (string, bool) {
 				if ctx.Err() != nil {
@@ -103,7 +118,8 @@ const vertexADCPath = "~/.config/gcloud/application_default_credentials.json"
 // with a project and location.
 func vertexAuth() *APIKeyAuth {
 	return &APIKeyAuth{
-		Name: "Google Cloud credentials",
+		Name:  "Google Cloud credentials",
+		Login: vertexLogin,
 		Resolve: func(ctx context.Context, input APIKeyAuthInput) (*AuthResult, error) {
 			if err := ctx.Err(); err != nil {
 				return nil, err
@@ -112,8 +128,10 @@ func vertexAuth() *APIKeyAuth {
 			if credential != nil && credential.Key != "" {
 				return &AuthResult{Auth: ModelAuth{APIKey: credential.Key}, Source: "stored credential"}, nil
 			}
-			if key, ok := input.Ctx.Env("GOOGLE_CLOUD_API_KEY"); ok {
-				return &AuthResult{Auth: ModelAuth{APIKey: key}, Source: "GOOGLE_CLOUD_API_KEY"}, nil
+			if !credentialHasKey(credential) || bytes.Equal(bytes.TrimSpace(credential.Extra["key"]), []byte("null")) {
+				if key, ok := input.Ctx.Env("GOOGLE_CLOUD_API_KEY"); ok {
+					return &AuthResult{Auth: ModelAuth{APIKey: key}, Source: "GOOGLE_CLOUD_API_KEY"}, nil
+				}
 			}
 			adcPath, stored := credentialEnvValue(credential, "GOOGLE_APPLICATION_CREDENTIALS")
 			if !stored {
@@ -165,7 +183,7 @@ type cloudflareResolution struct {
 func resolveCloudflareValue(name string, input APIKeyAuthInput) string {
 	if input.Credential != nil {
 		if name == cloudflareAPIKey {
-			if input.Credential.Key != "" {
+			if credentialHasKey(input.Credential) {
 				return input.Credential.Key
 			}
 		} else if value, ok := input.Credential.Env[name]; ok {
@@ -199,7 +217,8 @@ func resolveCloudflareEnv(gateway bool, input APIKeyAuthInput) *cloudflareResolu
 
 func cloudflareWorkersAIAuth() *APIKeyAuth {
 	return &APIKeyAuth{
-		Name: "Cloudflare API key",
+		Name:  "Cloudflare API key",
+		Login: cloudflareLogin(false),
 		Resolve: func(ctx context.Context, input APIKeyAuthInput) (*AuthResult, error) {
 			if err := ctx.Err(); err != nil {
 				return nil, err
@@ -215,7 +234,8 @@ func cloudflareWorkersAIAuth() *APIKeyAuth {
 
 func cloudflareAIGatewayAuth() *APIKeyAuth {
 	return &APIKeyAuth{
-		Name: "Cloudflare API key",
+		Name:  "Cloudflare API key",
+		Login: cloudflareLogin(true),
 		Resolve: func(ctx context.Context, input APIKeyAuthInput) (*AuthResult, error) {
 			if err := ctx.Err(); err != nil {
 				return nil, err
@@ -232,6 +252,15 @@ func cloudflareAIGatewayAuth() *APIKeyAuth {
 			return &AuthResult{Auth: ModelAuth{Headers: headers}, Env: resolved.env, Source: resolved.source}, nil
 		},
 	}
+}
+
+// Empty and null JSON keys live in Extra because the string field alone cannot distinguish them from omission.
+func credentialHasKey(credential *Credential) bool {
+	if credential == nil {
+		return false
+	}
+	_, present := credential.Extra["key"]
+	return credential.Key != "" || present
 }
 
 func credentialEnvValue(credential *Credential, name string) (string, bool) {
@@ -263,7 +292,8 @@ func oauthToAuth(providerID string, provider OAuthProviderInterface) func(Creden
 		case "kimi-coding":
 			return ModelAuth{Headers: ProviderHeaders{"Authorization": new("Bearer " + credential.Access)}}, nil
 		case "github-copilot":
-			return ModelAuth{APIKey: credential.Access, BaseURL: getCopilotBaseURL(credential.Access, credential.EnterpriseDomain)}, nil
+			domain, _ := normalizeDomain(credential.EnterpriseDomain)
+			return ModelAuth{APIKey: credential.Access, BaseURL: getCopilotBaseURL(credential.Access, domain)}, nil
 		case "anthropic", "openai-codex", "openrouter", "xai":
 			return ModelAuth{APIKey: credential.Access}, nil
 		}
@@ -272,7 +302,22 @@ func oauthToAuth(providerID string, provider OAuthProviderInterface) func(Creden
 }
 
 func credentialToOAuth(credential Credential) OAuthCredentials {
-	return OAuthCredentials{Refresh: credential.Refresh, Access: credential.Access, Expires: credential.Expires, ProjectID: credential.ProjectID, Scope: credential.Scope}
+	extra := cloneCredentialExtra(credential.Extra)
+	for key, value := range map[string]json.RawMessage{"availableModelIds": credential.AvailableModelIDs, "gatewayConfig": credential.GatewayConfig} {
+		if len(value) > 0 {
+			if extra == nil {
+				extra = map[string]json.RawMessage{}
+			}
+			extra[key] = slices.Clone(value)
+		}
+	}
+	if credential.EnterpriseDomain != "" {
+		if extra == nil {
+			extra = map[string]json.RawMessage{}
+		}
+		extra["enterpriseUrl"], _ = json.Marshal(credential.EnterpriseDomain)
+	}
+	return OAuthCredentials{Extra: extra, Refresh: credential.Refresh, Access: credential.Access, Expires: credential.Expires, ProjectID: credential.ProjectID, AccountID: credential.AccountID, Scope: credential.Scope, expiry: credential.expiry}
 }
 
 type oauthRefreshResult struct {
@@ -307,15 +352,11 @@ func oauthRefresh(provider OAuthProviderInterface) func(context.Context, Credent
 			if result.err != nil {
 				return Credential{}, result.err
 			}
-			return Credential{
-				Type:             CredentialOAuth,
-				Refresh:          result.credentials.Refresh,
-				Access:           result.credentials.Access,
-				Expires:          result.credentials.Expires,
-				ProjectID:        result.credentials.ProjectID,
-				Scope:            result.credentials.Scope,
-				EnterpriseDomain: credential.EnterpriseDomain,
-			}, nil
+			refreshed, err := credentialFromOAuth(result.credentials)
+			if err != nil {
+				return Credential{}, err
+			}
+			return refreshed, nil
 		}
 	}
 }
@@ -336,6 +377,14 @@ var builtinOAuthNames = map[string]struct {
 	"xai":            {"xAI (Grok/X subscription)", true},
 }
 
+// Provider-owned labels from the matching packages/ai/src/providers/*.ts lazyOAuth metadata.
+var builtinOAuthLoginLabels = map[string]string{
+	"openrouter":  "Sign in with OpenRouter",
+	"kimi-coding": "Sign in with Kimi Code",
+	"meta":        "Sign in with Meta",
+	"xai":         "Sign in with SuperGrok or X Premium",
+}
+
 // OAuthProviderAuth returns the OAuth auth method for a provider registered
 // in the OAuth provider registry.
 func OAuthProviderAuth(providerID string) (*OAuthAuth, bool) {
@@ -344,12 +393,18 @@ func OAuthProviderAuth(providerID string) (*OAuthAuth, bool) {
 		return nil, false
 	}
 	name, subscription := provider.Name(), false
+	loginLabel := ""
+	if label, ok := builtinOAuthLoginLabels[providerID]; ok {
+		loginLabel = label
+	}
 	if builtin, ok := builtinOAuthNames[providerID]; ok {
 		name, subscription = builtin.name, builtin.subscription
 	}
 	return &OAuthAuth{
 		Name:           name,
+		LoginLabel:     loginLabel,
 		IsSubscription: subscription,
+		Login:          oauthNativeLogin(provider),
 		Refresh:        oauthRefresh(provider),
 		ToAuth:         oauthToAuth(providerID, provider),
 	}, true

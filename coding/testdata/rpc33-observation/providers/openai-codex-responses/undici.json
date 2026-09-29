@@ -1,0 +1,8 @@
+{
+  "node": "v24.19.0",
+  "fetchResolution": 8,
+  "bufferedRead": 3,
+  "cancelOpen": 2,
+  "pendingRead": 4,
+  "cancelClosed": 1
+}

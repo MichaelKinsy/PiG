@@ -1,0 +1,24 @@
+# The oracle imports the pinned upstream maintenance script; npm does not publish scripts.
+# All five image-model-data.test.ts inputs plus permissive and modality/price cases compare full values and errors.
+# The Go wrapper removes only Go test-runner framing, not parser output.
+name = "16-image-model-data"
+description = "OpenRouter image catalog validation, modalities, costs and strict/permissive errors match Pi."
+covers = ["packages/ai/scripts/generate-image-models.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/image-model-data.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/image-model-data.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

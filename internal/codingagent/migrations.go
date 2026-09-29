@@ -1,15 +1,22 @@
 // migrations.go provides one-time startup migrations for pig configuration.
 //
-// upstream: coding-agent/src/migrations.ts
+// Ports packages/coding-agent/src/migrations.ts.
 
 package codingagent
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
+
+	jsjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/internal/jsonstringify"
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 const (
@@ -17,9 +24,7 @@ const (
 	extensionsDocURL  = "https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/extensions.md"
 )
 
-// RunMigrations runs all one-time startup migrations. A failed auth.json
-// write is an error, as upstream's uncaught write throws.
-// Mirrors upstream runMigrations (migrations.ts:259-268).
+// RunMigrations runs the startup migrations, including the persisted keybinding-name rewrite. Auth writes return errors; malformed or unwritable keybindings are left alone, as in upstream runMigrations.
 func RunMigrations(cwd, agentDir string) (migratedAuthProviders []string, deprecationWarnings []string, err error) {
 	migratedAuthProviders, err = migrateAuthToAuthJSON(agentDir)
 	if err != nil {
@@ -27,9 +32,91 @@ func RunMigrations(cwd, agentDir string) (migratedAuthProviders []string, deprec
 	}
 	migrateSessionsFromAgentRoot(agentDir)
 	migrateToolsToBin(agentDir)
-	// Keybindings migration is handled inline by KeybindingsManager.Reload.
+	migrateKeybindingsConfigFile(agentDir)
 	deprecationWarnings = migrateExtensionSystem(cwd, agentDir)
 	return migratedAuthProviders, deprecationWarnings, nil
+}
+
+// migrateKeybindingsConfigFile mirrors migrations.ts:157-173: rewrite only migrated objects, with canonical names taking precedence over aliases and best-effort read/parse/write handling. Property names retain lone UTF-16 units rather than merging them with U+FFFD.
+func migrateKeybindingsConfigFile(agentDir string) {
+	path := KeybindingsFile(agentDir)
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return
+	}
+	var raw map[string]json.RawMessage
+	if jsjson.Unmarshal(bytes.TrimPrefix(data, []byte("\xef\xbb\xbf")), &raw) != nil || raw == nil {
+		return
+	}
+	values := make(map[string]any, len(raw))
+	for key, value := range raw {
+		values[key] = value
+	}
+	config, migrated := migrateKeybindingsConfig(values)
+	if !migrated {
+		return
+	}
+	out, err := marshalMigratedKeybindings(config)
+	if err != nil {
+		return
+	}
+	_ = os.WriteFile(path, out, 0o666) // upstream: packages/coding-agent/src/migrations.ts:migrateKeybindingsConfigFile
+}
+
+// marshalMigratedKeybindings retains the TUI_KEYBINDINGS and app definition order before UTF-16-sorted extras, including lone surrogates, as core/keybindings.ts:342-358 requires. Raw values retain nested object order through JSON.parse/stringify canonicalization.
+func marshalMigratedKeybindings(config map[string]any) ([]byte, error) {
+	order := []string{
+		tui.KBEditorCursorUp, tui.KBEditorCursorDown, tui.KBEditorHistoryPrevious, tui.KBEditorHistoryNext,
+		tui.KBEditorCursorLeft, tui.KBEditorCursorRight, tui.KBEditorCursorWordLeft, tui.KBEditorCursorWordRight,
+		tui.KBEditorCursorLineStart, tui.KBEditorCursorLineEnd, tui.KBEditorJumpForward, tui.KBEditorJumpBackward,
+		tui.KBEditorPageUp, tui.KBEditorPageDown, tui.KBEditorDeleteCharBack, tui.KBEditorDeleteCharForward,
+		tui.KBEditorDeleteWordBack, tui.KBEditorDeleteWordForward, tui.KBEditorDeleteToLineStart, tui.KBEditorDeleteToLineEnd,
+		tui.KBEditorYank, tui.KBEditorYankPop, tui.KBEditorUndo,
+		tui.KBInputNewLine, tui.KBInputSubmit, tui.KBInputTab, tui.KBInputCopy,
+		tui.KBSelectUp, tui.KBSelectDown, tui.KBSelectPageUp, tui.KBSelectPageDown, tui.KBSelectConfirm, tui.KBSelectCancel,
+		tui.KBAltScreenPageUp, tui.KBAltScreenPageDown, tui.KBAltScreenHalfPageUp, tui.KBAltScreenHalfPageDown,
+		tui.KBAltScreenLineUp, tui.KBAltScreenLineDown, tui.KBAltScreenPreviousPrompt, tui.KBAltScreenNextPrompt,
+		tui.KBAltScreenSearch, tui.KBAltScreenSearchNext, tui.KBAltScreenSearchPrevious, tui.KBAltScreenSearchClose,
+		tui.KBAltScreenTop, tui.KBAltScreenBottom,
+	}
+	order = append(order, appKeybindingOrder...)
+	var extras []string
+	for key := range config {
+		if !slices.Contains(order, key) {
+			extras = append(extras, key)
+		}
+	}
+	slices.SortFunc(extras, func(a, b string) int {
+		return slices.Compare(jsstring.ToUTF16(a), jsstring.ToUTF16(b))
+	})
+	var compact bytes.Buffer
+	compact.WriteByte('{')
+	first := true
+	for _, key := range append(order, extras...) {
+		value, ok := config[key]
+		if !ok {
+			continue
+		}
+		if !first {
+			compact.WriteByte(',')
+		}
+		first = false
+		name, _ := jsjson.Marshal(key)
+		compact.Write(name)
+		compact.WriteByte(':')
+		compact.Write(value.(json.RawMessage))
+	}
+	compact.WriteByte('}')
+	canonical, err := jsonstringify.Canonicalize(compact.Bytes())
+	if err != nil {
+		return nil, err
+	}
+	var formatted bytes.Buffer
+	if err := json.Indent(&formatted, canonical, "", "  "); err != nil {
+		return nil, err
+	}
+	formatted.WriteByte('\n')
+	return formatted.Bytes(), nil
 }
 
 // migrateAuthToAuthJSON migrates legacy oauth.json and settings.json apiKeys
@@ -178,7 +265,6 @@ func migrateToolsToBin(agentDir string) {
 // deprecated hooks/tools directories.
 // Mirrors upstream migrateExtensionSystem (migrations.ts:241-257).
 func migrateExtensionSystem(cwd, agentDir string) []string {
-	// Upstream joins cwd with CONFIG_DIR_NAME; PiG's is ".pig", never Pi's ".pi".
 	projectDir := ProjectConfigDir(cwd)
 
 	migrateCommandsToPrompts(agentDir, "Global")

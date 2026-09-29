@@ -53,7 +53,7 @@ func TestLabelsMatchUpstream(t *testing.T) {
 		eq("asciiLower", asciiLower(g.Input), g.Lower)
 		eq("asciiUpper", asciiUpper(g.Input), g.Upper)
 		eq("fitLabel", fitLabel(g.Input, 28), g.Fit)
-		if got, _ := wrapLabel(g.Input, 24, 4); !equalStrs(got, g.Wrap) {
+		if got := wrapLabel(g.Input, 24, 4); !equalStrs(got, g.Wrap) {
 			t.Errorf("wrapLabel(%q,24,4) = %#v, want %#v", g.Input, got, g.Wrap)
 		}
 		if got := srcLines(g.Input); !equalStrs(got, g.SrcLines) {

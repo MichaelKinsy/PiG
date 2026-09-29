@@ -18,3 +18,6 @@ func posixTool(t testing.TB, name string) string {
 	}
 	return path
 }
+
+// VerbatimArgs is a no-op: a POSIX exec passes argv without a command line.
+func VerbatimArgs(*exec.Cmd) {}

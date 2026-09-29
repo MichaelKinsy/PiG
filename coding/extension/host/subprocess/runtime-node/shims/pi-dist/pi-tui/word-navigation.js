@@ -1,5 +1,5 @@
 import { getWordSegmenter, isWhitespaceChar, PUNCTUATION_REGEX } from "./utils.js";
-const wordSegmenter = getWordSegmenter();
+import { wordSegmenter } from "../../pi-tui-segmenters.mjs";
 /**
  * Find the cursor position after moving one word backward from `cursor` in `text`.
  * Skips trailing whitespace, then stops at the next word/punctuation boundary.

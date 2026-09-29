@@ -227,6 +227,13 @@ type acquiredCodexWebSocket struct {
 	accountID  string
 }
 
+func optionTimeout(value *int) time.Duration {
+	if value == nil {
+		return 0
+	}
+	return time.Duration(*value) * time.Millisecond
+}
+
 func acquireCodexWebSocket(ctx context.Context, endpoint string, headers http.Header, sessionID, accountID string, connectTimeout time.Duration) (*acquiredCodexWebSocket, error) {
 	cacheNewConnection := sessionID != ""
 	if sessionID != "" {
@@ -277,9 +284,6 @@ func acquireCodexWebSocket(ctx context.Context, endpoint string, headers http.He
 	if err != nil {
 		return nil, err
 	}
-	if connectTimeout <= 0 {
-		connectTimeout = codexWebSocketConnectTimeout
-	}
 	var connectionMu sync.Mutex
 	var dialingConnection net.Conn
 	dialer := websocket.Dialer{Proxy: http.ProxyFromEnvironment, HandshakeTimeout: connectTimeout}
@@ -312,6 +316,10 @@ func acquireCodexWebSocket(ctx context.Context, endpoint string, headers http.He
 		return nil, ctx.Err()
 	}
 	if err != nil {
+		var networkError net.Error
+		if errors.As(err, &networkError) && networkError.Timeout() {
+			return nil, fmt.Errorf("WebSocket connect timeout after %dms", connectTimeout.Milliseconds())
+		}
 		return nil, err
 	}
 	acquired := &acquiredCodexWebSocket{connection: connection, sessionID: sessionID, accountID: accountID}
@@ -395,6 +403,10 @@ func readCodexWebSocket(ctx context.Context, connection *websocket.Conn, timeout
 	if ctx.Err() != nil {
 		return 0, nil, ctx.Err()
 	}
+	var networkError net.Error
+	if errors.As(err, &networkError) && networkError.Timeout() {
+		return 0, nil, fmt.Errorf("WebSocket idle timeout after %dms", timeout.Milliseconds())
+	}
 	return messageType, data, err
 }
 
@@ -461,12 +473,15 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 	if err := json.Unmarshal(body, &fullBody); err != nil {
 		return nil, fmt.Errorf("openai-codex-responses: WebSocket payload: %w", err)
 	}
-	requestID := cacheSessionID
+	requestID := ClampOpenAIPromptCacheKey(cacheSessionID)
 	if requestID == "" {
 		requestID = uuid.Must(uuid.NewV7()).String()
 	}
 	headers := codexWebSocketHeaders(p.cfg.ExtraHeaders, opts.Headers, apiKey, accountID, requestID)
-	connectTimeout := time.Duration(opts.WebSocketConnectTimeoutMs) * time.Millisecond
+	connectTimeout := codexWebSocketConnectTimeout
+	if opts.WebSocketConnectTimeoutMs != nil {
+		connectTimeout = time.Duration(*opts.WebSocketConnectTimeoutMs) * time.Millisecond
+	}
 	acquired, err := acquireCodexWebSocket(ctx, endpoint, headers, cacheSessionID, accountID, connectTimeout)
 	if err != nil {
 		if ctx.Err() != nil {
@@ -532,7 +547,20 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 		codexWebSocketSessions.mu.Unlock()
 	}
 
-	messageType, first, err := readCodexWebSocket(ctx, acquired.connection, time.Duration(opts.TimeoutMs)*time.Millisecond)
+	var messageType int
+	var first []byte
+	for {
+		messageType, first, err = readCodexWebSocket(ctx, acquired.connection, optionTimeout(opts.TimeoutMs))
+		if err != nil {
+			break
+		}
+		var event struct {
+			Type string `json:"type"`
+		}
+		if json.Unmarshal(first, &event) != nil || event.Type != "codex.rate_limits" {
+			break
+		}
+	}
 	if err != nil {
 		wasReused := acquired.reused
 		acquired.release(false)
@@ -577,6 +605,7 @@ func (p *openAIResponsesProvider) startCodexWebSocketAttempt(ctx context.Context
 
 	builder := newAssistantStreamBuilder(ctx, APIOpenAICodexResponses, p.cfg.ProviderID, p.cfg.Model)
 	builder.modelCost = opts.ModelCost
+	builder.requestServiceTier, _ = opts.SamplingParams["service_tier"].(string)
 	go p.consumeCodexWebSocket(ctx, acquired, first, fullBody, grammarProps, useCachedContext, builder, opts)
 	return builder.stream, nil
 }
@@ -618,7 +647,7 @@ func (p *openAIResponsesProvider) consumeCodexWebSocket(ctx context.Context, acq
 					return
 				}
 			}
-			messageType, next, err := readCodexWebSocket(ctx, acquired.connection, time.Duration(opts.TimeoutMs)*time.Millisecond)
+			messageType, next, err := readCodexWebSocket(ctx, acquired.connection, optionTimeout(opts.TimeoutMs))
 			if err != nil {
 				if ctx.Err() == nil {
 					recordCodexWebSocketFailure(acquired.sessionID, err)

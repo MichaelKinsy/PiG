@@ -36,9 +36,9 @@ data: {"type":"response.completed","response":{"status":"completed"}}
 			for _, event := range events {
 				switch event := event.(type) {
 				case ToolCallStartEvent:
-					check(event.Partial.Content[event.ContentIndex].(ToolCall))
+					check(event.Partial.Observe().Content[event.ContentIndex].(ToolCall))
 				case ToolCallDeltaEvent:
-					check(event.Partial.Content[event.ContentIndex].(ToolCall))
+					check(event.Partial.Observe().Content[event.ContentIndex].(ToolCall))
 				case ToolCallEndEvent:
 					check(event.ToolCall)
 				}

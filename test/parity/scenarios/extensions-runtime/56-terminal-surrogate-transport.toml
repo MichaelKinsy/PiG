@@ -1,0 +1,26 @@
+# Pi 0.87.1 stdin-buffer.ts:251 emits each UTF-16 unit separately. The pinned Pi
+# probe records the native Editor before each input, plus JS rewrite units.
+# Pig drives that same parser/Editor through the real Node subprocess listener;
+# the original qualification failed both halves, the owner snapshot, and rewrites.
+name = "56-terminal-surrogate-transport"
+description = "Terminal listeners retain lone UTF-16 units and the intermediate editor snapshot"
+covers = ["packages/tui/src/stdin-buffer.ts", "packages/tui/src/components/editor.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/terminal-surrogate"]
+pi_args = ["node", "./test/parity/testdata/terminal-surrogate-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"rewrites":[[55357],[56832]]']
+runs = 3

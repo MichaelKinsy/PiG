@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -13,6 +12,7 @@ import (
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/invocation"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -33,14 +33,17 @@ const runtimeErrorPath = "<runtime>"
 // promise. Every mode reads streaming and idle state from here, and abort
 // reaches the active run whichever caller started it.
 type sessionRunState struct {
-	active   atomic.Bool
-	settling atomic.Bool
+	active         atomic.Bool
+	settling       atomic.Bool
+	abortRequested atomic.Bool
 
-	mu         sync.Mutex
-	generation uint64
-	cancel     context.CancelFunc // cancels the active run
-	idle       chan struct{}      // closed when the session may have become idle
-	deferred   []func()           // prompts sent while agent_settled was dispatched
+	mu             sync.Mutex
+	generation     uint64
+	cancel         context.CancelFunc // cancels the active run
+	isBeforeSettle bool               // Abort preserves the awaited boundary response; protected by mu
+	idle           chan struct{}      // closed when the session may have become idle
+	deferred       []func()           // prompts sent while agent_settled was dispatched
+	pendingCustom  []agent.AgentMessage
 
 	// Runs an extension starts while the session is idle are owned here:
 	// Close cancels them and waits for them to return.
@@ -63,7 +66,7 @@ func (s *Session) IsIdle() bool { return !s.IsStreaming() && !s.IsCompacting() }
 func (s *Session) HasPendingMessages() bool { return s.PendingMessageCount() > 0 }
 
 // WaitForIdle blocks until the session is idle, ctx ends, or the session
-// closes (upstream waitForIdle).
+// closes (upstream waitForIdle). A pending wait releases unawaited handler admission after its synchronous setup.
 func (s *Session) WaitForIdle(ctx context.Context) error {
 	for {
 		s.runState.mu.Lock()
@@ -76,6 +79,8 @@ func (s *Session) WaitForIdle(ctx context.Context) error {
 		}
 		idle := s.runState.idle
 		s.runState.mu.Unlock()
+		// Upstream waitForIdle suspends at _getIdleWaitPromise; settlement needs the event executor released by this boundary.
+		invocation.Acknowledge(ctx)
 		select {
 		case <-idle:
 		case <-ctx.Done():
@@ -96,19 +101,33 @@ func (s *Session) notifyIdleWaiters() {
 	s.runState.mu.Unlock()
 }
 
-// RequestAbort cancels the active run, retry wait, compaction, and branch
-// summary without waiting. Extensions abort this way: upstream's ctx.abort()
-// does not await the run it stops.
+// RequestAbort stops Session continuations and cancels the Agent's signal without cancelling its caller context. An awaited before-settle hook still commits its drafts, but cannot continue. Extensions do not await the run they stop.
 func (s *Session) RequestAbort() {
 	s.runState.mu.Lock()
 	cancel := s.runState.cancel
+	isBeforeSettle := s.runState.isBeforeSettle
+	if s.runState.active.Load() {
+		s.runState.abortRequested.Store(true)
+	}
 	s.runState.mu.Unlock()
+	// Closing the Session still cancels its entire lifetime.
+	select {
+	case <-s.closeDone:
+		isBeforeSettle = false
+	default:
+	}
 	s.AbortRetry()
 	s.AbortCompaction()
 	s.AbortBranchSummary()
-	if cancel != nil {
+	if s.agent != nil && s.agent.IsStreaming() {
+		s.agent.Abort()
+	} else if cancel != nil && !isBeforeSettle {
 		cancel()
 	}
+}
+
+func (s *Session) agentRunAborted(ctx context.Context) bool {
+	return ctx.Err() != nil || s.runState.abortRequested.Load()
 }
 
 // Abort cancels the active run, whoever started it, and waits until the
@@ -123,10 +142,16 @@ func (s *Session) Abort(ctx context.Context) error {
 // erase a newer run's cancellation.
 func (s *Session) beginAgentRun(ctx context.Context) (context.Context, context.CancelFunc) {
 	runCtx, cancel := context.WithCancel(ctx)
+	return runCtx, s.ownAgentRun(cancel)
+}
+
+// ownAgentRun installs cancellation only after admission; a rejected claim must not replace another run's controller.
+func (s *Session) ownAgentRun(cancel context.CancelFunc) context.CancelFunc {
 	s.runState.mu.Lock()
 	s.runState.generation++
 	generation := s.runState.generation
 	s.runState.cancel = cancel
+	s.runState.abortRequested.Store(false)
 	s.runState.active.Store(true)
 	s.runState.mu.Unlock()
 	select {
@@ -134,7 +159,7 @@ func (s *Session) beginAgentRun(ctx context.Context) (context.Context, context.C
 		cancel()
 	default:
 	}
-	return runCtx, func() {
+	return func() {
 		cancel()
 		s.finishAgentRun(generation)
 	}
@@ -162,8 +187,7 @@ func (s *Session) endAgentRun(end context.CancelFunc) { end() }
 // emitAgentSettled ends the run and emits agent_settled (upstream
 // _emitAgentSettled). The run is inactive before extensions see the event,
 // and a prompt an agent_settled handler sends is deferred until dispatch
-// finishes. With extension handlers the call waits for their dispatch, as
-// upstream awaits them. Notifying the cache warmer is upstream
+// finishes. The call waits for extension dispatch and public subscribers, as upstream awaits _emitAgentSettled. Notifying the cache warmer is upstream
 // _emitAgentSettled's first step (this._cacheWarmer?.onAgentSettled()),
 // ahead of the event dispatch itself.
 func (s *Session) emitAgentSettled() {
@@ -182,13 +206,12 @@ func (s *Session) emitAgentSettledNotification() {
 
 func (s *Session) publishAgentSettled() {
 	s.runState.active.Store(false)
-	if !s.hasAgentLoopHandlers() {
-		s.emitOrderedEvent(agent.AgentSettledEvent{})
-		return
-	}
 	s.runState.settling.Store(true)
-	s.emitOrderedEventSync(agent.AgentSettledEvent{})
-	s.runState.settling.Store(false)
+	defer s.runState.settling.Store(false)
+	event := agent.AgentSettledEvent{}
+	// Session-owned handler effects must reach the output funnel before the settled event itself.
+	s.dispatchAgentEventToExtensions(event)
+	s.emitOrderedEventSync(event)
 }
 
 // runDeferredSettledActions runs the prompts deferred during agent_settled,
@@ -207,86 +230,6 @@ func (s *Session) runDeferredSettledActions() {
 		}
 	}
 	s.notifyIdleWaiters()
-}
-
-// agentLoopExtensionEvents are the events the session dispatches to
-// extensions for a run.
-var agentLoopExtensionEvents = []string{
-	icodingagent.EventAgentStart, icodingagent.EventAgentEnd, icodingagent.EventAgentSettled,
-	icodingagent.EventTurnStart, icodingagent.EventTurnEnd,
-	icodingagent.EventMessageStart, icodingagent.EventMessageUpdate, icodingagent.EventMessageEnd,
-	icodingagent.EventToolExecutionStart, icodingagent.EventToolExecutionUpdate, icodingagent.EventToolExecutionEnd,
-}
-
-// hasAgentLoopHandlers reports whether an extension handles any run event.
-func (s *Session) hasAgentLoopHandlers() bool {
-	runner := s.currentRunner()
-	if runner == nil {
-		return false
-	}
-	return slices.ContainsFunc(agentLoopExtensionEvents, runner.HasHandlers)
-}
-
-// SendUserMessage delivers an extension's user message (upstream
-// sendUserMessage → prompt with source "extension" and no template
-// expansion). content is a string or an array of text and image blocks. It
-// returns only content and option errors; like upstream, the prompt itself
-// runs asynchronously and its failures are reported as extension errors.
-func (s *Session) SendUserMessage(content any, deliverAs extension.DeliverAs) error {
-	text, images, err := extensionUserMessageContent(content)
-	if err != nil {
-		return fmt.Errorf("sendUserMessage: %w", err)
-	}
-	switch deliverAs {
-	case "", extension.DeliverAsSteer, extension.DeliverAsFollowUp:
-	default:
-		return fmt.Errorf("sendUserMessage: unsupported deliverAs %q", deliverAs)
-	}
-	if s.runState.settling.Load() {
-		s.runState.mu.Lock()
-		s.runState.deferred = append(s.runState.deferred, func() {
-			s.reportRuntimeError("send_user_message", s.promptFromExtension(text, images, deliverAs, true))
-		})
-		s.runState.mu.Unlock()
-		return nil
-	}
-	s.reportRuntimeError("send_user_message", s.promptFromExtension(text, images, deliverAs, false))
-	return nil
-}
-
-// promptFromExtension is upstream prompt() for an extension message: input
-// handlers, then queueing during a run or a new run. wait runs a new run on
-// the calling goroutine; otherwise it runs in the background.
-func (s *Session) promptFromExtension(text string, images []ai.ImageContent, deliverAs extension.DeliverAs, wait bool) error {
-	if s.IsCompacting() {
-		return errPromptDuringCompaction
-	}
-	text, images, handled, err := s.RunInputHandlers(s.backgroundContext(), text, images, extension.InputSourceExtension, string(deliverAs))
-	if err != nil || handled {
-		return err
-	}
-	if s.IsStreaming() {
-		switch deliverAs {
-		case extension.DeliverAsFollowUp:
-			s.FollowUp(text, images)
-		case extension.DeliverAsSteer:
-			s.Steer(text, images)
-		default:
-			return errAgentAlreadyProcessing
-		}
-		return nil
-	}
-	content := BuildUserContent(text, images)
-	if wait {
-		_, err := s.SendContent(s.backgroundContext(), content)
-		return ignoreCancellation(err)
-	}
-	ctx := s.backgroundContext()
-	s.runState.background.Go(func() {
-		_, err := s.SendContent(ctx, content)
-		s.reportRuntimeError("send_user_message", ignoreCancellation(err))
-	})
-	return nil
 }
 
 // RunInputHandlers runs the extension input handlers for user input and
@@ -309,6 +252,19 @@ func (s *Session) backgroundContext() context.Context {
 		s.runState.bgCtx, s.runState.bgCancel = context.WithCancel(context.Background())
 	}
 	return s.runState.bgCtx
+}
+
+// startExtensionTask registers work before shutdown can begin its join.
+func (s *Session) startExtensionTask(work func()) error {
+	s.runState.mu.Lock()
+	defer s.runState.mu.Unlock()
+	select {
+	case <-s.closeDone:
+		return errors.New("coding: session is closed")
+	default:
+	}
+	s.runState.background.Go(work)
+	return nil
 }
 
 // shutdownRuns cancels the runs the session started itself and waits for

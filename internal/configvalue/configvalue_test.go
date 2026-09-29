@@ -144,7 +144,7 @@ func TestResolveOrErrorLiteralNeverErrors(t *testing.T) {
 func TestResolveOrErrorMissingEnvReportsName(t *testing.T) {
 	ClearCache()
 	_, err := ResolveOrError("$PIG_TEST_MISSING_ONE", "API key", nil)
-	if err == nil || err.Error() != "failed to resolve API key from environment variable: PIG_TEST_MISSING_ONE" {
+	if err == nil || err.Error() != "Failed to resolve API key from environment variable: PIG_TEST_MISSING_ONE" {
 		t.Fatalf("single-missing error = %v", err)
 	}
 	_, err = ResolveOrError("$PIG_TEST_MISS_A-$PIG_TEST_MISS_B", "API key", nil)

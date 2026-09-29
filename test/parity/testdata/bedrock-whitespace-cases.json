@@ -1,0 +1,6 @@
+[
+  {"name":"BOM","text":"\ufeff"},
+  {"name":"NEL","text":"\u0085"},
+  {"name":"empty","text":""},
+  {"name":"ordinary","text":" ordinary "}
+]

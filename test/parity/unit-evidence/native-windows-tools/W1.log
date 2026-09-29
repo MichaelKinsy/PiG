@@ -1,0 +1,11 @@
+﻿lane: pt-tools-builtin; ref: 4f5e1c075c0f8799e2ac4efd30dab749b46be4e6; modified: 0; go version go1.27.1 windows/amd64; node v24.19.0
+go test ./internal/codingagent/tools -run ^TestChildProcessCloseWithInheritedStdioPort$ -count=1 -v -timeout 10m
+=== RUN   TestChildProcessCloseWithInheritedStdioPort
+=== RUN   TestChildProcessCloseWithInheritedStdioPort/executeBash_resolves_after_the_shell_exits_even_if_inherited_stdio_handles_stay_open
+=== RUN   TestChildProcessCloseWithInheritedStdioPort/bash_tool_resolves_after_the_shell_exits_even_if_inherited_stdio_handles_stay_open
+--- PASS: TestChildProcessCloseWithInheritedStdioPort (0.56s)
+    --- PASS: TestChildProcessCloseWithInheritedStdioPort/executeBash_resolves_after_the_shell_exits_even_if_inherited_stdio_handles_stay_open (0.29s)
+    --- PASS: TestChildProcessCloseWithInheritedStdioPort/bash_tool_resolves_after_the_shell_exits_even_if_inherited_stdio_handles_stay_open (0.27s)
+PASS
+ok  	github.com/MichaelKinsy/PiG/internal/codingagent/tools	0.663s
+===== exit 0 (11s)

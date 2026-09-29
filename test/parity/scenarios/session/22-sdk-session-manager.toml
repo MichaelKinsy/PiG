@@ -1,0 +1,24 @@
+# Runs all four original SDK SessionManager cases against published Pi0.87.1.
+# Assertions retain actual manager identity, selected agent-directory storage, derived cwd and direct bash environment values. Generated paths/IDs are checked against each instance, not normalized.
+# Clean-base qualification reuses the reviewed parent oracle; supplemental construction guards run natively and do not extend this scenario's coverage.
+name = "22-sdk-session-manager"
+description = "SDK manager identity, selected storage root, derived cwd and direct bash session context"
+covers = ["packages/coding-agent/src/core/sdk.ts", "packages/coding-agent/src/core/session-manager.ts", "packages/coding-agent/src/core/tools/tool-definition-wrapper.ts", "packages/coding-agent/src/core/tools/bash.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/sdk-session-manager-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/sdk-session-manager-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

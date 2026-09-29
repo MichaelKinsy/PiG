@@ -1,0 +1,2111 @@
+{
+  "piVersion": "0.87.1",
+  "api": "openai-codex-responses",
+  "node": "v24.19.0",
+  "runs": 8,
+  "fixtures": {
+    "tool": "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_1\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"read\",\"arguments\":\"\"}}\n\nevent: response.function_call_arguments.delta\ndata: {\"type\":\"response.function_call_arguments.delta\",\"output_index\":0,\"delta\":\"{\\\"path\\\":\\\"parity-read-target.txt\\\"}\"}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"read\",\"arguments\":\"{\\\"path\\\":\\\"parity-read-target.txt\\\"}\",\"status\":\"completed\"}}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",\"status\":\"completed\",\"output\":[{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"read\",\"arguments\":\"{\\\"path\\\":\\\"parity-read-target.txt\\\"}\",\"status\":\"completed\"}],\"usage\":{\"input_tokens\":10,\"output_tokens\":3,\"total_tokens\":13}}}\n\n",
+    "text": "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_1\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_1\",\"role\":\"assistant\",\"status\":\"completed\",\"content\":[]}}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"output_index\":0,\"content_index\":0,\"delta\":\"one\"}\n\nevent: response.output_text.delta\ndata: {\"type\":\"response.output_text.delta\",\"output_index\":0,\"content_index\":0,\"delta\":\" two\"}\n\nevent: response.output_item.done\ndata: {\"type\":\"response.output_item.done\",\"output_index\":0,\"item\":{\"type\":\"message\",\"id\":\"msg_1\",\"role\":\"assistant\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"text\":\"one two\",\"annotations\":[]}]}}\n\nevent: response.completed\ndata: {\"type\":\"response.completed\",\"response\":{\"id\":\"resp_1\",\"status\":\"completed\",\"output\":[{\"type\":\"message\",\"id\":\"msg_1\",\"role\":\"assistant\",\"status\":\"completed\",\"content\":[{\"type\":\"output_text\",\"text\":\"one two\",\"annotations\":[]}]}],\"usage\":{\"input_tokens\":10,\"output_tokens\":3,\"total_tokens\":13}}}\n\n",
+    "invalid": "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_1\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"read\",\"arguments\":\"\"}}\n\ndata: {not json\n\n",
+    "apierror": "event: response.created\ndata: {\"type\":\"response.created\",\"response\":{\"id\":\"resp_1\"}}\n\nevent: response.output_item.added\ndata: {\"type\":\"response.output_item.added\",\"output_index\":0,\"item\":{\"type\":\"function_call\",\"id\":\"fc_1\",\"call_id\":\"call_1\",\"name\":\"read\",\"arguments\":\"\"}}\n\nevent: error\ndata: {\"type\":\"error\",\"code\":\"boom\",\"message\":\"broken\"}\n\n"
+  },
+  "inproc": {
+    "buffered/tool": [
+      {
+        "at": "external",
+        "segment": 1,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "start",
+        "segment": 1,
+        "tick": 9,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "start",
+        "segment": 1,
+        "tick": 12,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "toolcall_start",
+        "segment": 1,
+        "tick": 20,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_start",
+        "segment": 1,
+        "tick": 23,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "toolcall_delta",
+        "segment": 1,
+        "tick": 24,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              },
+              "partialJson": "{\"path\":\"parity-read-target.txt\"}"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_delta",
+        "segment": 1,
+        "tick": 27,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              },
+              "partialJson": "{\"path\":\"parity-read-target.txt\"}"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "toolcall_end",
+        "segment": 1,
+        "tick": 28,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              }
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_end",
+        "segment": 1,
+        "tick": 31,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              }
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "done",
+        "segment": 1,
+        "tick": 39,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              }
+            }
+          ],
+          "stopReason": "toolUse",
+          "responseId": "resp_1",
+          "usage": 13,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "done",
+        "segment": 1,
+        "tick": 42,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              }
+            }
+          ],
+          "stopReason": "toolUse",
+          "responseId": "resp_1",
+          "usage": 13,
+          "errorMessage": null
+        }
+      }
+    ],
+    "buffered/text": [
+      {
+        "at": "external",
+        "segment": 1,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "start",
+        "segment": 1,
+        "tick": 9,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "start",
+        "segment": 1,
+        "tick": 12,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "text_start",
+        "segment": 1,
+        "tick": 20,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "text_start",
+        "segment": 1,
+        "tick": 23,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "text_delta",
+        "segment": 1,
+        "tick": 24,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "text_delta",
+        "segment": 1,
+        "tick": 27,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "text_delta",
+        "segment": 1,
+        "tick": 28,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "text_delta",
+        "segment": 1,
+        "tick": 31,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "text_end",
+        "segment": 1,
+        "tick": 32,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two",
+              "textSignature": "{\"v\":1,\"id\":\"msg_1\"}"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "text_end",
+        "segment": 1,
+        "tick": 35,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two",
+              "textSignature": "{\"v\":1,\"id\":\"msg_1\"}"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "done",
+        "segment": 1,
+        "tick": 43,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two",
+              "textSignature": "{\"v\":1,\"id\":\"msg_1\"}"
+            }
+          ],
+          "stopReason": "stop",
+          "responseId": "resp_1",
+          "usage": 13,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "done",
+        "segment": 1,
+        "tick": 46,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two",
+              "textSignature": "{\"v\":1,\"id\":\"msg_1\"}"
+            }
+          ],
+          "stopReason": "stop",
+          "responseId": "resp_1",
+          "usage": 13,
+          "errorMessage": null
+        }
+      }
+    ],
+    "buffered/invalid": [
+      {
+        "at": "external",
+        "segment": 1,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "start",
+        "segment": 1,
+        "tick": 9,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "start",
+        "segment": 1,
+        "tick": 12,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "toolcall_start",
+        "segment": 1,
+        "tick": 20,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_start",
+        "segment": 1,
+        "tick": 23,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "error",
+        "segment": 1,
+        "tick": 26,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {}
+            }
+          ],
+          "stopReason": "error",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": "Invalid Codex SSE JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "error",
+        "segment": 1,
+        "tick": 29,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {}
+            }
+          ],
+          "stopReason": "error",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": "Invalid Codex SSE JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+        }
+      }
+    ],
+    "buffered/apierror": [
+      {
+        "at": "external",
+        "segment": 1,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "start",
+        "segment": 1,
+        "tick": 9,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "start",
+        "segment": 1,
+        "tick": 12,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "toolcall_start",
+        "segment": 1,
+        "tick": 20,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_start",
+        "segment": 1,
+        "tick": 23,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "error",
+        "segment": 1,
+        "tick": 29,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {}
+            }
+          ],
+          "stopReason": "error",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": "Codex error: broken"
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "error",
+        "segment": 1,
+        "tick": 32,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {}
+            }
+          ],
+          "stopReason": "error",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": "Codex error: broken"
+        }
+      }
+    ],
+    "pending/tool": [
+      {
+        "at": "external",
+        "segment": 1,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "start",
+        "segment": 1,
+        "tick": 9,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "start",
+        "segment": 1,
+        "tick": 12,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 2,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "toolcall_start",
+        "segment": 2,
+        "tick": 12,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_start",
+        "segment": 2,
+        "tick": 15,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "toolcall_delta",
+        "segment": 2,
+        "tick": 16,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              },
+              "partialJson": "{\"path\":\"parity-read-target.txt\"}"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_delta",
+        "segment": 2,
+        "tick": 19,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              },
+              "partialJson": "{\"path\":\"parity-read-target.txt\"}"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "toolcall_end",
+        "segment": 2,
+        "tick": 20,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              }
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_end",
+        "segment": 2,
+        "tick": 23,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              }
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "done",
+        "segment": 2,
+        "tick": 31,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              }
+            }
+          ],
+          "stopReason": "toolUse",
+          "responseId": "resp_1",
+          "usage": 13,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "done",
+        "segment": 2,
+        "tick": 34,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              }
+            }
+          ],
+          "stopReason": "toolUse",
+          "responseId": "resp_1",
+          "usage": 13,
+          "errorMessage": null
+        }
+      }
+    ],
+    "pending/text": [
+      {
+        "at": "external",
+        "segment": 1,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "start",
+        "segment": 1,
+        "tick": 9,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "start",
+        "segment": 1,
+        "tick": 12,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 2,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "text_start",
+        "segment": 2,
+        "tick": 12,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "text_start",
+        "segment": 2,
+        "tick": 15,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "text_delta",
+        "segment": 2,
+        "tick": 16,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "text_delta",
+        "segment": 2,
+        "tick": 19,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "text_delta",
+        "segment": 2,
+        "tick": 20,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "text_delta",
+        "segment": 2,
+        "tick": 23,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "text_end",
+        "segment": 2,
+        "tick": 24,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two",
+              "textSignature": "{\"v\":1,\"id\":\"msg_1\"}"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "text_end",
+        "segment": 2,
+        "tick": 27,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two",
+              "textSignature": "{\"v\":1,\"id\":\"msg_1\"}"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "done",
+        "segment": 2,
+        "tick": 35,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two",
+              "textSignature": "{\"v\":1,\"id\":\"msg_1\"}"
+            }
+          ],
+          "stopReason": "stop",
+          "responseId": "resp_1",
+          "usage": 13,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "done",
+        "segment": 2,
+        "tick": 38,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two",
+              "textSignature": "{\"v\":1,\"id\":\"msg_1\"}"
+            }
+          ],
+          "stopReason": "stop",
+          "responseId": "resp_1",
+          "usage": 13,
+          "errorMessage": null
+        }
+      }
+    ],
+    "pending/invalid": [
+      {
+        "at": "external",
+        "segment": 1,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "start",
+        "segment": 1,
+        "tick": 9,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "start",
+        "segment": 1,
+        "tick": 12,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 2,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "toolcall_start",
+        "segment": 2,
+        "tick": 12,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_start",
+        "segment": 2,
+        "tick": 15,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "error",
+        "segment": 2,
+        "tick": 18,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {}
+            }
+          ],
+          "stopReason": "error",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": "Invalid Codex SSE JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "error",
+        "segment": 2,
+        "tick": 21,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {}
+            }
+          ],
+          "stopReason": "error",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": "Invalid Codex SSE JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+        }
+      }
+    ],
+    "pending/apierror": [
+      {
+        "at": "external",
+        "segment": 1,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "start",
+        "segment": 1,
+        "tick": 9,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "start",
+        "segment": 1,
+        "tick": 12,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 2,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "toolcall_start",
+        "segment": 2,
+        "tick": 12,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_start",
+        "segment": 2,
+        "tick": 15,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "push",
+        "type": "error",
+        "segment": 2,
+        "tick": 21,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {}
+            }
+          ],
+          "stopReason": "error",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": "Codex error: broken"
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "error",
+        "segment": 2,
+        "tick": 24,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {}
+            }
+          ],
+          "stopReason": "error",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": "Codex error: broken"
+        }
+      }
+    ],
+    "chunked/tool": [
+      {
+        "at": "external",
+        "segment": 1,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "start",
+        "segment": 1,
+        "tick": 9,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "start",
+        "segment": 1,
+        "tick": 12,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 2,
+        "tick": 0
+      },
+      {
+        "at": "external",
+        "segment": 3,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "toolcall_start",
+        "segment": 3,
+        "tick": 8,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_start",
+        "segment": 3,
+        "tick": 11,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 4,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "toolcall_delta",
+        "segment": 4,
+        "tick": 8,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              },
+              "partialJson": "{\"path\":\"parity-read-target.txt\"}"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_delta",
+        "segment": 4,
+        "tick": 11,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              },
+              "partialJson": "{\"path\":\"parity-read-target.txt\"}"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 5,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "toolcall_end",
+        "segment": 5,
+        "tick": 8,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              }
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_end",
+        "segment": 5,
+        "tick": 11,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              }
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 6,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "done",
+        "segment": 6,
+        "tick": 15,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              }
+            }
+          ],
+          "stopReason": "toolUse",
+          "responseId": "resp_1",
+          "usage": 13,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "done",
+        "segment": 6,
+        "tick": 18,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {
+                "path": "parity-read-target.txt"
+              }
+            }
+          ],
+          "stopReason": "toolUse",
+          "responseId": "resp_1",
+          "usage": 13,
+          "errorMessage": null
+        }
+      }
+    ],
+    "chunked/text": [
+      {
+        "at": "external",
+        "segment": 1,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "start",
+        "segment": 1,
+        "tick": 9,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "start",
+        "segment": 1,
+        "tick": 12,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 2,
+        "tick": 0
+      },
+      {
+        "at": "external",
+        "segment": 3,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "text_start",
+        "segment": 3,
+        "tick": 8,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "text_start",
+        "segment": 3,
+        "tick": 11,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 4,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "text_delta",
+        "segment": 4,
+        "tick": 8,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "text_delta",
+        "segment": 4,
+        "tick": 11,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 5,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "text_delta",
+        "segment": 5,
+        "tick": 8,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "text_delta",
+        "segment": 5,
+        "tick": 11,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 6,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "text_end",
+        "segment": 6,
+        "tick": 8,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two",
+              "textSignature": "{\"v\":1,\"id\":\"msg_1\"}"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "text_end",
+        "segment": 6,
+        "tick": 11,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two",
+              "textSignature": "{\"v\":1,\"id\":\"msg_1\"}"
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 7,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "done",
+        "segment": 7,
+        "tick": 15,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two",
+              "textSignature": "{\"v\":1,\"id\":\"msg_1\"}"
+            }
+          ],
+          "stopReason": "stop",
+          "responseId": "resp_1",
+          "usage": 13,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "done",
+        "segment": 7,
+        "tick": 18,
+        "state": {
+          "content": [
+            {
+              "type": "text",
+              "text": "one two",
+              "textSignature": "{\"v\":1,\"id\":\"msg_1\"}"
+            }
+          ],
+          "stopReason": "stop",
+          "responseId": "resp_1",
+          "usage": 13,
+          "errorMessage": null
+        }
+      }
+    ],
+    "chunked/invalid": [
+      {
+        "at": "external",
+        "segment": 1,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "start",
+        "segment": 1,
+        "tick": 9,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "start",
+        "segment": 1,
+        "tick": 12,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 2,
+        "tick": 0
+      },
+      {
+        "at": "external",
+        "segment": 3,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "toolcall_start",
+        "segment": 3,
+        "tick": 8,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_start",
+        "segment": 3,
+        "tick": 11,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 4,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "error",
+        "segment": 4,
+        "tick": 10,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {}
+            }
+          ],
+          "stopReason": "error",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": "Invalid Codex SSE JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "error",
+        "segment": 4,
+        "tick": 13,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {}
+            }
+          ],
+          "stopReason": "error",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": "Invalid Codex SSE JSON: Expected property name or '}' in JSON at position 1 (line 1 column 2)"
+        }
+      }
+    ],
+    "chunked/apierror": [
+      {
+        "at": "external",
+        "segment": 1,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "start",
+        "segment": 1,
+        "tick": 9,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "start",
+        "segment": 1,
+        "tick": 12,
+        "state": {
+          "content": [],
+          "stopReason": "pending",
+          "responseId": null,
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 2,
+        "tick": 0
+      },
+      {
+        "at": "external",
+        "segment": 3,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "toolcall_start",
+        "segment": 3,
+        "tick": 8,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "toolcall_start",
+        "segment": 3,
+        "tick": 11,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {},
+              "partialJson": ""
+            }
+          ],
+          "stopReason": "pending",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": null
+        }
+      },
+      {
+        "at": "external",
+        "segment": 4,
+        "tick": 0
+      },
+      {
+        "at": "push",
+        "type": "error",
+        "segment": 4,
+        "tick": 13,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {}
+            }
+          ],
+          "stopReason": "error",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": "Codex error: broken"
+        }
+      },
+      {
+        "at": "deliver",
+        "type": "error",
+        "segment": 4,
+        "tick": 16,
+        "state": {
+          "content": [
+            {
+              "type": "toolCall",
+              "id": "call_1|fc_1",
+              "name": "read",
+              "arguments": {}
+            }
+          ],
+          "stopReason": "error",
+          "responseId": "resp_1",
+          "usage": 0,
+          "errorMessage": "Codex error: broken"
+        }
+      }
+    ]
+  },
+  "rpc": {
+    "buffered/tool": {
+      "content": [
+        {
+          "type": "toolCall",
+          "id": "call_1|fc_1",
+          "name": "read",
+          "arguments": {},
+          "partialJson": ""
+        }
+      ],
+      "stopReason": "pending",
+      "responseId": "resp_1",
+      "usage": 0,
+      "errorMessage": null
+    },
+    "pending/tool": {
+      "content": [],
+      "stopReason": "pending",
+      "responseId": null,
+      "usage": 0,
+      "errorMessage": null
+    }
+  }
+}

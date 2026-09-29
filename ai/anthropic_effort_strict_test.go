@@ -172,9 +172,10 @@ func TestAnthropicStrictRequiredFailsWhenUnsupported(t *testing.T) {
 		}},
 		Messages: []Message{UserMessage{Content: UserText("use it"), Timestamp: 1}},
 	})
-	_, err := provider.Stream(context.Background(), transcript, StreamOptions{})
-	if err == nil || !strings.Contains(err.Error(), `Tool "lookup" requires JSON-schema constrained sampling, but strict tools are unsupported.`) {
-		t.Fatalf("Stream error = %v", err)
+	stream, err := provider.Stream(context.Background(), transcript, StreamOptions{})
+	result := requireAnthropicSetupError(t, stream, err)
+	if !strings.Contains(result.ErrorMessage, `Tool "lookup" requires JSON-schema constrained sampling, but strict tools are unsupported.`) {
+		t.Fatalf("Stream error = %q", result.ErrorMessage)
 	}
 }
 

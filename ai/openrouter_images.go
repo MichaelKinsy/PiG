@@ -5,10 +5,12 @@ import (
 	"context"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime"
 	"net/http"
+	"net/url"
 	"slices"
 	"strings"
 	"time"
@@ -75,29 +77,26 @@ func GenerateImagesOpenRouter(ctx context.Context, model ImagesModel, imagesCtx 
 		out.ErrorMessage = err.Error()
 		return out
 	}
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	req.Header.Set("Content-Type", "application/json")
-	for k, v := range model.Headers {
-		req.Header.Set(k, v)
-	}
-	for k, v := range options.Headers {
-		req.Header.Set(k, v)
-	}
+	req.Header = openRouterImagesHeaders(apiKey, model.Headers, options.Headers)
 
-	resp, err := streamingHTTPClient().Do(req)
+	resp, err := providerHTTPClient(streamingHTTPClient(), options.Fetch).Do(req)
 	if err != nil {
 		out.StopReason = imagesStopReasonForContext(ctx)
+		if sdkErr := openAISDKTransportError(ctx, err); sdkErr != nil {
+			out.ErrorMessage = sdkErr.Error()
+			return out
+		}
+		// net/http decorates rejected requests with method and URL; the provider error message is the underlying rejection.
+		if requestError, ok := errors.AsType[*url.Error](err); ok {
+			err = requestError.Err
+		}
 		out.ErrorMessage = err.Error()
 		return out
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if options.OnResponse != nil {
-		headers := make(map[string]string, len(resp.Header))
-		for k, values := range resp.Header {
-			headers[k] = strings.Join(values, ", ")
-		}
-		if err := options.OnResponse(ProviderResponse{Status: resp.StatusCode, Headers: headers}, model); err != nil {
+		if err := options.OnResponse(ProviderResponse{Status: resp.StatusCode, Headers: headersToRecord(resp.Header)}, model); err != nil {
 			out.StopReason = ImagesStopReasonError
 			out.ErrorMessage = err.Error()
 			return out
@@ -151,6 +150,24 @@ func imagesStopReasonForContext(ctx context.Context) ImagesStopReason {
 		return ImagesStopReasonAborted
 	}
 	return ImagesStopReasonError
+}
+
+func openRouterImagesHeaders(apiKey string, modelHeaders map[string]string, optionsHeaders ProviderHeaders) http.Header {
+	headers := make(http.Header)
+	headers.Set("Authorization", "Bearer "+apiKey)
+	headers.Set("Content-Type", "application/json")
+	for key, value := range modelHeaders {
+		if override, exists := optionsHeaders[key]; exists && override == nil {
+			continue
+		}
+		headers.Set(key, value)
+	}
+	for key, value := range optionsHeaders {
+		if value != nil {
+			headers.Set(key, *value)
+		}
+	}
+	return headers
 }
 
 func buildOpenRouterImagesPayload(model ImagesModel, imagesCtx ImagesContext) map[string]any {

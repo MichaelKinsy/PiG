@@ -498,7 +498,7 @@ func TestSelfUpdatePlansASameVersionPackageRename(t *testing.T) {
 	}
 	log := filepath.Join(t.TempDir(), "manager.log")
 	t.Setenv(managerLogEnv, log)
-	prov := &codingagent.SelfUpdateProvenance{PackageOwner: "npm", PackageName: codingagent.PackageName, ExePath: filepath.Join(t.TempDir(), "pig")}
+	prov := &codingagent.SelfUpdateProvenance{Tier: codingagent.TierPackageManager, PackageOwner: "npm", PackageName: codingagent.PackageName, ExePath: filepath.Join(t.TempDir(), "pig")}
 	var err error
 	captureStdoutStderr(t, func() int {
 		err = applyPackageManagerUpdate(prov, []string{os.Args[0]}, false)

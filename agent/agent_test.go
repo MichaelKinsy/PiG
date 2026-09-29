@@ -14,6 +14,15 @@ import (
 	"github.com/MichaelKinsy/PiG/ai"
 )
 
+// Pi agent.ts:DEFAULT_MODEL declares input: [], not an absent value that adapters may infer as text support.
+func TestAgentDefaultModelRetainsExplicitEmptyInput(t *testing.T) {
+	a := NewAgent(AgentOptions{})
+	model := a.Model()
+	if model.Input == nil || len(model.Input) != 0 {
+		t.Fatalf("default model input = %#v, want explicit empty slice", model.Input)
+	}
+}
+
 func TestAgentForwardsThinkingBudgets(t *testing.T) {
 	provider := &recordingProvider{seqs: [][]ai.AssistantMessageEvent{textSeq("")}}
 	budgets := &ai.ThinkingBudgets{Medium: 4096}
@@ -220,7 +229,7 @@ func (t *fakeTool) Execute(_ context.Context, _ string, _ json.RawMessage, _ Too
 	if t.execErr != nil {
 		return AgentToolResult{}, t.execErr
 	}
-	return AgentToolResult{Content: t.content, IsError: t.isError}, nil
+	return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: t.content}}, IsError: t.isError}, nil
 }
 
 // ─── AfterToolCall hooks ─────────────────────────────────────────────────
@@ -244,7 +253,7 @@ func TestAfterToolCallContentOverride(t *testing.T) {
 		AfterToolCall: []AfterToolCallHook{
 			func(_ context.Context, _, _ string, _ json.RawMessage, _ AgentToolResult) AfterToolCallResult {
 				hookCalls++
-				return AfterToolCallResult{Content: &overridden}
+				return AfterToolCallResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: overridden}}}
 			},
 		},
 	})
@@ -282,7 +291,7 @@ func TestAfterToolCallImagesOverride(t *testing.T) {
 		Tools:    []AgentTool{tool},
 		MaxTurns: 5,
 		AfterToolCall: []AfterToolCallHook{func(context.Context, string, string, json.RawMessage, AgentToolResult) AfterToolCallResult {
-			return AfterToolCallResult{Images: &images}
+			return AfterToolCallResult{Content: []ai.ToolResultMessageContent{images[0]}}
 		}},
 	})
 	messages, err := agent.Send(context.Background(), "test")
@@ -502,7 +511,7 @@ func TestOnMessagePersistSkipsResumedHistory(t *testing.T) {
 
 	// Simulate resume: two already-persisted messages loaded into context.
 	a.SetMessages([]AgentMessage{
-		{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "old prompt"}}}},
+		{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "old prompt"}}}},
 		{Assistant: &AssistantMessage{Role: RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: "old reply"}}, StopReason: "stop"}},
 	})
 
@@ -599,7 +608,7 @@ func TestFinishTurnEndStopsAfterTurn(t *testing.T) {
 		Model:    fakeTestModel(prov),
 		MaxTurns: 5,
 		EventCh:  events,
-		FinishTurn: func(_ context.Context, ctx AgentTurnContext) *AgentTurnDecision {
+		FinishTurn: func(_ context.Context, ctx AgentTurnContext) (*AgentTurnDecision, error) {
 			stopCalls++
 			if ctx.Message == nil {
 				t.Fatal("finishTurn got no assistant message")
@@ -613,10 +622,10 @@ func TestFinishTurnEndStopsAfterTurn(t *testing.T) {
 			if got := len(ctx.Context); got != len(agent.Messages()) {
 				t.Fatalf("context len = %d, want %d", got, len(agent.Messages()))
 			}
-			return &AgentTurnDecision{Action: AgentTurnEnd}
+			return &AgentTurnDecision{Action: AgentTurnEnd}, nil
 		},
 	})
-	agent.FollowUp(AgentMessage{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "queued follow-up"}}, Timestamp: time.Now().UnixMilli()}})
+	agent.FollowUp(AgentMessage{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "queued follow-up"}}, Timestamp: time.Now().UnixMilli()}})
 
 	msgs, err := agent.Send(context.Background(), "start")
 	if err != nil {
@@ -675,24 +684,24 @@ func TestPrepareNextTurnUpdatesModelAndThinking(t *testing.T) {
 	a := NewAgent(AgentOptions{
 		Model:    firstModel,
 		MaxTurns: 5,
-		PrepareNextTurn: func(_ context.Context, ctx PrepareNextTurnContext) *AgentLoopTurnUpdate {
+		PrepareNextTurn: func(_ context.Context, ctx PrepareNextTurnContext) (*AgentLoopTurnUpdate, error) {
 			prepareCalls++
 			if ctx.Message == nil {
 				t.Fatal("prepareNextTurn got no assistant message")
 			}
 			if prepareCalls == 1 {
-				return &AgentLoopTurnUpdate{Model: secondModel, ThinkingLevel: &minimal}
+				return &AgentLoopTurnUpdate{Model: secondModel, ThinkingLevel: &minimal}, nil
 			}
-			return nil
+			return nil, nil
 		},
-		FinishTurn: func(_ context.Context, ctx AgentTurnContext) *AgentTurnDecision {
+		FinishTurn: func(_ context.Context, ctx AgentTurnContext) (*AgentTurnDecision, error) {
 			if len(ctx.NewMessages) >= 4 {
-				return &AgentTurnDecision{Action: AgentTurnEnd}
+				return &AgentTurnDecision{Action: AgentTurnEnd}, nil
 			}
-			return nil
+			return nil, nil
 		},
 	})
-	a.FollowUp(AgentMessage{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "queued follow-up"}}, Timestamp: time.Now().UnixMilli()}})
+	a.FollowUp(AgentMessage{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "queued follow-up"}}, Timestamp: time.Now().UnixMilli()}})
 
 	msgs, err := a.Send(context.Background(), "start")
 	if err != nil {
@@ -889,7 +898,7 @@ func (f *fakeToolForSignatureTest) Schema() ai.ToolSchema {
 }
 func (f *fakeToolForSignatureTest) Execute(_ context.Context, _ string, _ json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
 	f.called.Store(true)
-	return AgentToolResult{Content: "file contents"}, nil
+	return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "file contents"}}}, nil
 }
 
 func (f *fakeToolForSignatureTest) ExecutionMode() ToolExecutionMode { return ToolModeParallel }
@@ -958,10 +967,10 @@ func TestExecuteParallelSkipsUnstartedCallsAfterContextAbort(t *testing.T) {
 
 func TestNormalizeMessagesDropsErroredAndAbortedAssistantTurns(t *testing.T) {
 	msgs := []AgentMessage{
-		{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "hello"}}}},
+		{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "hello"}}}},
 		{Assistant: &AssistantMessage{Role: RoleAssistant, StopReason: "error", ErrorMessage: "boom", Content: []ai.AssistantContentBlock{ai.TextContent{Text: ""}}}},
 		{Assistant: &AssistantMessage{Role: RoleAssistant, StopReason: "aborted", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "partial"}}}},
-		{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "next"}}}},
+		{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "next"}}}},
 	}
 	got := NormalizeMessages(msgs, nil)
 	if len(got) != 2 {
@@ -977,7 +986,7 @@ func TestNormalizeMessagesSynthesizesMissingToolResults(t *testing.T) {
 		{Assistant: &AssistantMessage{Role: RoleAssistant, StopReason: "toolUse", Content: []ai.AssistantContentBlock{
 			ai.ToolCall{ID: "call_1", Name: "read", Arguments: ai.JsonObject{"path": "x.go"}},
 		}}},
-		{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "interrupt"}}}},
+		{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "interrupt"}}}},
 	}
 	got := NormalizeMessages(msgs, nil)
 	if len(got) != 3 {

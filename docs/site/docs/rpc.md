@@ -26,9 +26,13 @@ If you omit `--model` and no default model exists, RPC mode starts with Pi's
 to select a model. A prompt fails preflight until the selected provider has
 configured authentication.
 
+The initial active tool list and system-message tool declarations retain extension load and registration order. When several extensions register the same tool name, the first registration wins.
+
 ## Framing
 
 Each input or output record is one JSON object followed by LF (`\n`).
+
+JSON and RPC mode share the event encoder. Event fields follow Pi's construction order rather than alphabetical order. The encoder writes `<`, `>`, `&`, and Unicode line separators as literal characters in JSON strings, including nested records. Parse records as JSON rather than relying on member positions.
 
 - Split records on LF only.
 - Remove a trailing CR when you send CRLF.
@@ -47,6 +51,8 @@ Every command can contain an `id`. The corresponding response repeats it:
 
 A response confirms command acceptance or reports a command error. Later model or tool failures arrive as events.
 
+A `compact` request aborts and joins the active turn before summarizing. It waits off the input loop, so the client can continue to send state queries and replies to extension dialogs.
+
 ## Pi compatibility boundary
 
 PiG implements the command union in the pinned Pi `rpc-types.ts`. The generated
@@ -61,11 +67,18 @@ Pi's TypeScript `RpcClient`. It starts `pig --mode rpc`, correlates responses,
 exposes typed command methods, and delivers events to listeners. Other
 languages use the JSONL protocol directly.
 
-PiG reuses its host-scoped extension runner when it replaces a Session. Pi
-invalidates the old per-Session runner. This difference is D30. Session lifecycle
-events still run before and after each replacement.
+`new_session`, `switch_session`, `fork` and `clone` replace the Session through the
+same runtime factory that creates the first Session, as Pi's rpc-mode does with its
+runtime host. The replacement gets a new extension runner, new extension processes
+and services for the destination Session's working directory. The old runner is
+invalidated. As in Pi 0.87.1, the replacement's extensions receive `session_start`
+twice after these four commands, because rpc-mode rebinds once more after the
+command returns. An extension process does not inherit process-wide state such as
+environment variables from the replaced one; This is D70, which also covers `/reload`.
 
 ## Events
+
+Partial-message observation across the process boundary is a documented 0.3.x known gap (D82, owner decision 2026-09-28). PiG sends snapshots rather than live producer references. An initial assistant message can therefore contain less content or an earlier stop state than Pi's shallow/live observation. Intermediate Completions snapshots omit `partialArgs` and `streamIndex`; Responses snapshots omit `partialJson`. Final messages must omit these parser properties in both hosts. Event order, deltas, terminal results and persisted messages are not part of this allowance. The strict RPC33 comparison retains the complete raw difference; it is not passing parity.
 
 PiG currently emits these model-loop events:
 
@@ -92,6 +105,10 @@ PiG currently emits these model-loop events:
 - `error`.
 
 `message_update` contains an `assistantMessageEvent`. Text and tool-call streams use matching start, delta, and end records. Deltas do not contain cumulative partial messages.
+
+An assistant `message_start` can arrive after successful provider response headers, before any response body data arrives. OpenAI Completions and Responses return their Event Stream before HTTP setup settles and admit start before reading body data. A later cancellation or stream failure still terminates the assistant message; start does not guarantee a successful response.
+
+Partial messages are observed when the event is encoded, not when the provider originally pushes it. A `message_start` can already contain buffered text or a tool call. Intermediate blocks can include the provider's parser fields, as Pi's do: OpenAI Completions tool calls carry `partialArgs`, `customInput` or `streamIndex`; OpenAI Responses and Codex tool calls carry `partialJson`; Anthropic Messages and Bedrock Converse Stream open blocks carry `index`, and their tool calls `partialJson`; Mistral tool calls carry `partialArgs`. Final messages remove those fields. Persist the finalized message or Session entry rather than an intermediate partial.
 
 Example text stream:
 

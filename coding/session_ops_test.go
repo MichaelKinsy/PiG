@@ -19,7 +19,7 @@ func appendUser(t *testing.T, s *Session, text string) string {
 	msg := agent.AgentMessage{
 		User: &agent.UserMessage{
 			Role:      "user",
-			Content:   []ai.UserContentBlock{ai.TextContent{Text: text}},
+			Content:   ai.UserContentBlocks{ai.TextContent{Text: text}},
 			Timestamp: 1,
 		},
 	}
@@ -117,17 +117,13 @@ func TestSessionCloneCreatesIndependentFile(t *testing.T) {
 	}
 }
 
-func TestSessionCloneBootstrapSessionSucceeds(t *testing.T) {
+func TestSessionCloneBootstrapSessionRefuses(t *testing.T) {
 	svcs := newTestServices(t)
 	sess, _ := NewSession(svcs, SessionOptions{Model: fakeModel()})
 	defer func() { _ = sess.Close() }()
 	cloned, err := sess.Clone()
-	if err != nil {
-		t.Fatalf("Clone: %v", err)
-	}
-	defer func() { _ = cloned.Close() }()
-	if cloned.Path() == sess.Path() {
-		t.Fatal("clone should have a distinct path")
+	if err == nil || err.Error() != "This session has not been saved yet. Wait for the first assistant response before cloning or forking it." || cloned != nil {
+		t.Fatalf("clone=%v error=%v", cloned, err)
 	}
 }
 
@@ -157,6 +153,7 @@ func TestSessionClonePreservesActiveTools(t *testing.T) {
 			}
 			defer func() { _ = sess.Close() }()
 			sess.SetActiveToolsByName(tc.active)
+			appendAsst(t, sess, "saved reply")
 
 			cloned, err := sess.Clone()
 			if err != nil {
@@ -371,7 +368,7 @@ func messageText(m agent.AgentMessage) string {
 	switch {
 	case m.User != nil:
 		var b strings.Builder
-		for _, c := range m.User.Content {
+		for _, c := range m.ContentBlocks() {
 			if t, ok := c.(ai.TextContent); ok {
 				b.WriteString(t.Text)
 			}
@@ -408,7 +405,7 @@ func (p envProbeTool) Execute(ctx context.Context, _ string, _ json.RawMessage, 
 	if env, ok := agent.ToolEnvironmentFrom(ctx); ok {
 		*p.got = env
 	}
-	return agent.AgentToolResult{Content: "ok"}, nil
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}}, nil
 }
 
 // toolCallProvider calls env_probe once, then stops.

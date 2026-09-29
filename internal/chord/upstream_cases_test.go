@@ -6,6 +6,7 @@ package chord
 import (
 	"context"
 	"errors"
+	"fmt"
 	"reflect"
 	"strings"
 	"testing"
@@ -156,8 +157,10 @@ func TestUpstreamRetirementFailureTerminatesHost(t *testing.T) {
 	}
 	log := &eventLog{}
 	err = host.Reload(ctx, []Facet{counterFacet(t, "counter", log, 0, nil)})
-	if err == nil || !strings.Contains(err.Error(), "after cutover") || !strings.Contains(err.Error(), "old cleanup failed") {
-		t.Fatalf("reload = %v", err)
+	// host.ts:507-508 throws AggregateError([error, ...abortErrors], "Facet reload failed after cutover"): the message excludes the causes.
+	var aggregate *AggregateError
+	if !errors.As(err, &aggregate) || err.Error() != "Facet reload failed after cutover" || len(aggregate.Errors) == 0 || fmt.Sprint(aggregate.Errors[0]) != "old cleanup failed" {
+		t.Fatalf("reload = %#v", err)
 	}
 	if got := log.snapshot(); !reflect.DeepEqual(got, []string{"activate counter", "dispose counter"}) {
 		t.Fatalf("replacement was not terminated: %v", got)

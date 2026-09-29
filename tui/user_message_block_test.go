@@ -17,7 +17,14 @@ func TestUserMessageBlock_AppliesBackgroundToEveryLine(t *testing.T) {
 		t.Fatalf("expected ≥5 rows (top pad + 3 content + bottom pad), got %d:\n%v", len(out), out)
 	}
 	for i, line := range out {
-		if !strings.HasPrefix(line, UserMessageBgOpen()) {
+		prefix := UserMessageBgOpen()
+		if i == 0 {
+			prefix = "\x1b]133;A\x07" + prefix
+		}
+		if i == len(out)-1 {
+			prefix = "\x1b]133;B\x07\x1b]133;C\x07" + prefix
+		}
+		if !strings.HasPrefix(line, prefix) {
 			t.Errorf("row %d missing bg-open prefix: %q", i, line)
 		}
 		if !strings.HasSuffix(line, BgClose()) {
@@ -39,20 +46,10 @@ func TestUserMessageBlock_PadsToFullWidth(t *testing.T) {
 	}
 }
 
-func TestUserMessageBlock_LLMOutputCannotMimic(t *testing.T) {
-	// Regression test for the live-use bug that motivated 2.19b:
-	// an LLM responding with text containing literal `> ` lines
-	// (e.g. when reciting a system prompt that quotes things) must
-	// NOT visually match a user-message block. A user block uses
-	// raw ANSI bg paint; an LLM markdown response can only emit
-	// markdown, which cannot produce raw bg ANSI by construction.
-	//
-	// We assert by structural inspection: the user-block opens with
-	// the bg-open ANSI escape (\x1b[48;5;...m). Any markdown
-	// rendering: including blockquote text: passes through the
-	// Markdown renderer which never emits that escape.
+func TestUserMessageBlockDiffersFromOrdinaryBlockquote(t *testing.T) {
+	// User messages carry a background frame and semantic prompt markers. Ordinary Markdown blockquotes do not acquire that frame.
 	user := NewUserMessageBlock("say hi").Render(20)
-	if len(user) == 0 || !strings.HasPrefix(user[0], UserMessageBgOpen()) {
+	if len(user) == 0 || !strings.HasPrefix(user[0], "\x1b]133;A\x07"+UserMessageBgOpen()) {
 		t.Fatalf("user block first row should start with bg-open escape, got: %q", user[0])
 	}
 

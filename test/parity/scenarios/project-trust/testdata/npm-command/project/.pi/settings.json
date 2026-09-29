@@ -1,0 +1,1 @@
+{"npmCommand":["node","-e","const fs=require('node:fs');const args=process.argv.slice(1);if(args[0]==='install'||args[0]==='uninstall')fs.appendFileSync(process.env.NPM_TRUST_RECORD+'/npm-calls.txt','project '+args[0]+'\\n');","--"]}

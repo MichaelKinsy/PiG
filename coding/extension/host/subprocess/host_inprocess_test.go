@@ -53,11 +53,13 @@ func assertGreet(t *testing.T, ext extension.Extension) {
 		t.Fatalf("fused tool execute: %v", err)
 	}
 	var got struct {
-		Content string `json:"content"`
+		Content []ai.TextContent `json:"content"`
 	}
 	b, _ := json.Marshal(result)
-	_ = json.Unmarshal(b, &got)
-	if got.Content != "fused hello, Piglet Binary" {
+	if err := json.Unmarshal(b, &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got.Content) != 1 || got.Content[0].Text != "fused hello, Piglet Binary" {
 		t.Errorf("fused tool content = %q, want %q", got.Content, "fused hello, Piglet Binary")
 	}
 }

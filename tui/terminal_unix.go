@@ -70,13 +70,13 @@ func newTerminalInputWaiter(ctx context.Context) (*terminalInputWaiter, error) {
 // wait keeps the reader outside Read while no bytes are available, so
 // cancelling a stopped terminal cannot leave a stale goroutine that consumes
 // the next focus owner's first key.
-func (w *terminalInputWaiter) wait(file *os.File) (bool, error) {
+func (w *terminalInputWaiter) wait(file *os.File, ms int) (bool, error) {
 	for {
 		pollfds := []unix.PollFd{
 			{Fd: int32(file.Fd()), Events: unix.POLLIN},
 			{Fd: int32(w.cancelRead.Fd()), Events: unix.POLLIN},
 		}
-		_, err := unix.Poll(pollfds, -1)
+		_, err := unix.Poll(pollfds, ms)
 		if err != nil {
 			if errors.Is(err, unix.EINTR) {
 				continue
@@ -117,8 +117,9 @@ func (t *ProcessTerminal) startResizeWatcher(ctx context.Context, onResize func(
 			}
 		}
 	}()
-	// Manual kick, mirroring upstream's SIGWINCH self-send on start.
-	go func() { _ = syscall.Kill(os.Getpid(), syscall.SIGWINCH) }()
+	refreshTerminalDimensions(false, os.Getpid(), func(pid int) error {
+		return syscall.Kill(pid, syscall.SIGWINCH)
+	})
 	return func() { signal.Stop(winchCh) }
 }
 

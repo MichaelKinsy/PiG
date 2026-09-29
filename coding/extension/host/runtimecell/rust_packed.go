@@ -324,44 +324,93 @@ func renderRustCargoToml(extensions []RustExtension, sdkRoot, packageName string
 
 func renderRustRunner(extensions []RustExtension) string {
 	var b strings.Builder
-	b.WriteString("use std::env;\nuse std::process;\nuse std::thread;\n\n")
-	b.WriteString("struct Item { name: &'static str, env: &'static str, run: fn(String) -> std::io::Result<()> }\n\n")
+	b.WriteString("use std::env;\nuse std::io::BufRead;\nuse std::process;\nuse std::sync::{Arc, Condvar, Mutex};\nuse std::thread;\n\n")
+	b.WriteString("#[derive(Clone, Copy)]\nstruct Item { name: &'static str, env: &'static str, run: fn(String) -> std::io::Result<()> }\n\n")
+	b.WriteString(rustRunnerState)
 	b.WriteString("fn main() {\n")
 	b.WriteString("    let items: Vec<Item> = vec![\n")
 	for _, ext := range extensions {
 		fmt.Fprintf(&b, "        Item { name: %q, env: %q, run: |sock| %s::%s().run_with_socket(&sock) },\n", ext.Name, SocketEnvName(ext.Name), ext.Crate, ext.Factory)
 	}
 	b.WriteString("    ];\n")
-	b.WriteString("    let mut handles = Vec::new();\n")
-	b.WriteString("    let active = env::var(\"PIG_EXT_ACTIVE_MEMBERS\").ok();\n")
-	b.WriteString("    for item in items {\n")
-	b.WriteString("        if active.as_ref().is_some_and(|value| !value.split(',').any(|name| name == item.name)) { continue; }\n")
-	b.WriteString("        let sock = match env::var(item.env).or_else(|_| if handles.is_empty() { env::var(\"PIG_EXT_SOCKET\") } else { Err(env::VarError::NotPresent) }) {\n")
-	b.WriteString("            Ok(sock) => sock,\n")
-	b.WriteString("            Err(_) => { eprintln!(\"{} not set for {}\", item.env, item.name); process::exit(1); }\n")
-	b.WriteString("        };\n")
-	// A member that fails while the shared process lives on connects to its
-	// socket and closes it, so the host's wait for that member ends with a
-	// visible load error instead of waiting for a connection that never comes.
-	b.WriteString("        handles.push(thread::spawn(move || {\n")
-	b.WriteString("            let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (item.run)(sock.clone())));\n")
-	b.WriteString("            let result = match result { Ok(result) => result, Err(_) => Err(std::io::Error::other(\"extension panicked\")) };\n")
-	b.WriteString("            if let Err(err) = &result { eprintln!(\"{}: {}\", item.name, err); let _ = pig_sdk::report_load_failure(&sock); }\n")
-	b.WriteString("            (item.name, result)\n")
-	b.WriteString("        }));\n")
-	b.WriteString("    }\n")
-	b.WriteString("    let mut failed = false;\n")
-	b.WriteString("    for handle in handles {\n")
-	b.WriteString("        match handle.join() {\n")
-	b.WriteString("            Ok((name, Ok(()))) => {},\n")
-	b.WriteString("            Ok((name, Err(err))) => { eprintln!(\"{}: {}\", name, err); failed = true; },\n")
-	b.WriteString("            Err(_) => { eprintln!(\"extension thread panicked\"); failed = true; },\n")
-	b.WriteString("        }\n")
-	b.WriteString("    }\n")
-	b.WriteString("    if failed { process::exit(1); }\n")
+	b.WriteString(rustRunnerMain)
 	b.WriteString("}\n")
 	return b.String()
 }
+
+// rustRunnerState tracks the generations a runner has started. A failing member connects to its socket and closes it, so the host's wait for that member ends with a visible load error instead of waiting for a connection that never comes.
+const rustRunnerState = `#[derive(Default)]
+struct State { live: usize, parked: bool, input_closed: bool, failed: bool }
+type Shared = Arc<(Mutex<State>, Condvar)>;
+
+// The host percent-encodes the four characters that delimit a control line (packed_go.go encodeAdmissionField); the percent sign decodes last.
+fn unescape_field(field: &str) -> String {
+    field.replace("%09", "\t").replace("%0A", "\n").replace("%0D", "\r").replace("%25", "%")
+}
+
+fn start(item: Item, sock: String, shared: Shared) {
+    shared.0.lock().unwrap().live += 1;
+    thread::spawn(move || {
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| (item.run)(sock.clone())));
+        let result = match result { Ok(result) => result, Err(_) => Err(std::io::Error::other("extension panicked")) };
+        if let Err(err) = &result { eprintln!("{}: {}", item.name, err); let _ = pig_sdk::report_load_failure(&sock); }
+        let (state, cond) = &*shared;
+        let mut state = state.lock().unwrap();
+        state.live -= 1;
+        if result.is_err() { state.failed = true; }
+        cond.notify_all();
+    });
+}
+
+`
+
+// rustRunnerMain starts each member's factory, then admits a further generation of a member's factory for every "admit" line on stdin: Pi re-invokes an extension's factory in the process that already holds its static state. The runner exits once every generation has ended, unless the host parked it for a replacement Session. A "park" line names a socket the runner connects to once it holds the process open, so the host retires its last generation only after the notice took effect.
+const rustRunnerMain = `    let shared: Shared = Arc::new((Mutex::new(State::default()), Condvar::new()));
+    let active = env::var("PIG_EXT_ACTIVE_MEMBERS").ok();
+    let mut started = 0;
+    for item in items.iter().copied() {
+        if active.as_ref().is_some_and(|value| !value.split(',').any(|name| name == item.name)) { continue; }
+        let sock = match env::var(item.env).or_else(|_| if started == 0 { env::var("PIG_EXT_SOCKET") } else { Err(env::VarError::NotPresent) }) {
+            Ok(sock) => sock,
+            Err(_) => { eprintln!("{} not set for {}", item.env, item.name); process::exit(1); }
+        };
+        started += 1;
+        start(item, sock, shared.clone());
+    }
+    {
+        let shared = shared.clone();
+        thread::spawn(move || {
+            for line in std::io::stdin().lock().lines() {
+                let Ok(line) = line else { break };
+                let fields: Vec<String> = line.split('\t').map(unescape_field).collect();
+                match fields[0].as_str() {
+                    "park" => {
+                        let (state, cond) = &*shared;
+                        state.lock().unwrap().parked = true;
+                        cond.notify_all();
+                        if fields.len() > 2 && !fields[2].is_empty() { let _ = pig_sdk::report_load_failure(&fields[2]); }
+                    }
+                    "admit" if fields.len() >= 3 => {
+                        for item in items.iter().copied().filter(|item| item.name == fields[1].as_str()) {
+                            shared.0.lock().unwrap().parked = false;
+                            start(item, fields[2].clone(), shared.clone());
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            let (state, cond) = &*shared;
+            state.lock().unwrap().input_closed = true;
+            cond.notify_all();
+        });
+    }
+    let (state, cond) = &*shared;
+    let mut state = state.lock().unwrap();
+    while state.live > 0 || (state.parked && !state.input_closed) {
+        state = cond.wait(state).unwrap();
+    }
+    if state.failed { process::exit(1); }
+`
 
 func sanitizeRustIdent(value string) string {
 	var identifier strings.Builder

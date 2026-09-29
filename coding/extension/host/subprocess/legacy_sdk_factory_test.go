@@ -52,6 +52,7 @@ func Extension() *sdk.Extension {
 // its own cell (never packed with current-SDK factories), builds against the
 // current SDK, registers, and executes.
 func TestHost_LegacySDKFactoryLoadsBesideCurrentSDKFactory(t *testing.T) {
+	keepGoBuildCaches(t)
 	home := t.TempDir()
 	t.Setenv("HOME", home)
 	t.Setenv("PIG_HOME", filepath.Join(home, ".pig"))
@@ -96,7 +97,7 @@ func TestHost_LegacySDKFactoryLoadsBesideCurrentSDKFactory(t *testing.T) {
 		if err != nil {
 			t.Fatalf("execute legacy tool: %v", err)
 		}
-		if got, ok := result.(agent.AgentToolResult); !ok || got.Content != "legacy ask ok" {
+		if got, ok := result.(agent.AgentToolResult); !ok || got.Text() != "legacy ask ok" {
 			t.Fatalf("legacy tool result = %#v", result)
 		}
 	}

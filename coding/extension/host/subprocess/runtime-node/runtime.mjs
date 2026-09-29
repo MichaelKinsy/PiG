@@ -1,13 +1,55 @@
+import { modelFetchCallbacks } from "./model-fetch.mjs";
+import { AutocompleteRuntime } from "./autocomplete.mjs";
+import { dispatchFacet, dispatchFacetSync, hasFacetBridge } from "./facet-bridge.mjs";
+import { syncTerminalGeometry } from "./terminal-geometry.mjs";
+import { mountedOverlayHandle } from "./overlay-handle.mjs";
+import { disposeIndependentSessions } from "./independent-session-owner.mjs";
+import { dispatchNativeProvider, nativeDeclaration } from "./native-provider.mjs";
+import { dispatchProviderObjectSync, dispatchProviderObjectCallback, remoteProvider } from "./provider-object.mjs";
+import { isWaiting, ProviderSocket, setProviderSocketsRef } from "./provider-socket.mjs";
+import { MessageChannel } from "node:worker_threads";
 import net from "node:net";
 import { closeSync, openSync, readSync } from "node:fs";
 import { basename } from "node:path";
-import { pathToFileURL } from "node:url";
-import { EventEmitter } from "node:events";
 import { AsyncLocalStorage } from "node:async_hooks";
-import { setRuntime } from "./state.mjs";
-import { getKeybindings, isFocusable } from "./shims/pi-tui.mjs";
+import { importExtension } from "./jiti-loader.mjs";
+import { randomUUID } from "node:crypto";
+import { createRequire, flushCompileCache } from "node:module";
+import { stringWidget } from "./widget-component.mjs";
+import { currentRuntime, runWithRuntime, setRuntime } from "./state.mjs";
+import { getKeybindings, KeybindingsManager, setKeybindings } from "./shims/pi-dist/pi-tui/keybindings.js";
+import { EditorComponentHost } from "./editor-component.mjs";
 import { setCapabilities as setTerminalCapabilities } from "./shims/pi-dist/pi-tui/terminal-image.js";
-import { loadAllHighlightLanguages } from "./shims/pi-dist/pi-coding-agent/utils/syntax-highlight.js";
+import { loadAllHighlightLanguages } from "./shims/syntax-highlight.mjs";
+import { themeFromPalette } from "./theme-palette.mjs";
+import { initTheme, setThemeInstance } from "./shims/pi-dist/pi-coding-agent/modes/interactive/theme/theme.js";
+import { createExtensionRuntime } from "./shims/pi-dist/pi-coding-agent/core/extensions/loader.js";
+import { installCloneHooks, Realm } from "./xref.mjs";
+import { SharedBus } from "./event-bus.mjs";
+
+// Pi hands every extension one shared event bus (resource-loader.ts creates
+// one per loader and passes it to each extension). Every Node realm of this
+// Host shares it: this process's listeners stay in its own heap, and
+// payloads cross to other realms by reference (xref.mjs).
+const liveRuntimes = new Set();
+const xrefRealm = new Realm(() => {
+  const preferred = currentRuntime();
+  for (const runtime of preferred ? [preferred, ...liveRuntimes] : liveRuntimes) {
+    const connection = runtime?.connection();
+    if (connection && !connection.closed) return runtime.xrefTransport;
+  }
+  return undefined;
+});
+installCloneHooks(xrefRealm);
+const sharedBus = new SharedBus(xrefRealm, process.env.PIG_EVENT_BUS === "routed");
+const XREF_REQUESTS = new Set(["xref.op", "events.dispatch", "events.migrate"]);
+// Emissions whose foreign listener prefix ran while this process was idle. Pi runs such a listener's continuations only after the emitter's synchronous run, so this process waits for the emitter's first microtask (events.proceed) before its own microtasks run.
+const lockstep = new Set();
+
+// Marks the renderers of a definition from Pi's create<Tool>ToolDefinition
+// (shims/builtin-tools.mjs): the host draws those halves with its built-in
+// renderers for the named tool.
+const builtInToolRenderer = Symbol.for("pig.builtInToolRenderer");
 
 const USER_BLOCKING_CALLS = new Set(["ui.select", "ui.confirm", "ui.input", "ui.editor", "ui.custom"]);
 const MAX_FRAME_SIZE = 128 * 1024 * 1024;
@@ -99,33 +141,301 @@ function normalizeModel(model) {
   };
 }
 
-class RuntimeSessionManager {
-  constructor(runtime) { this.runtime = runtime; }
-  getEntries() { this.runtime.ensureSessionLog(); return [...(this.runtime.state.session?.entries || [])]; }
-  getBranch() { this.runtime.ensureSessionLog(); return this.runtime.branchFromEntries(); }
-  getLeafId() { return this.runtime.state.session?.leafId || ""; }
-  getSessionId() { return this.runtime.state.session?.sessionId || ""; }
-  getSessionName() { return this.runtime.state.session?.sessionName || ""; }
-  getSessionFile() { return this.runtime.state.session?.sessionFile || ""; }
+// Pi's session projection and builtin provider modules load on first use:
+// most extensions never read them, and loading them costs every extension
+// process startup time. require() of an ES module is synchronous, as the
+// ctx.sessionManager and ctx.modelRegistry reads that need them are.
+const requireModule = createRequire(import.meta.url);
+let piSessionModule;
+function piSession() {
+  piSessionModule ??= requireModule("./shims/pi-dist/pi-coding-agent/core/session-manager.js");
+  return piSessionModule;
+}
+function piProviderComposer() {
+  return requireModule("./shims/pi-dist/pi-coding-agent/core/provider-composer.js");
+}
+let piBuiltinProviderMap;
+function piBuiltinProvider(id) {
+  piBuiltinProviderMap ??= new Map(requireModule("./shims/pi-dist/pi-ai/sdk-bundle/providers.js").builtinProviders().map((provider) => [provider.id, provider]));
+  return piBuiltinProviderMap.get(id);
 }
 
-// Session model discovery, request authentication, and model operations.
+// Upstream SessionManager's generateId: 8 hex characters, unique among the
+// log's ids, else a full UUID.
+function generateEntryId(byId) {
+  for (let i = 0; i < 100; i++) {
+    const id = randomUUID().slice(0, 8);
+    if (!byId.has(id)) return id;
+  }
+  return randomUUID();
+}
+
+// 0.3.0: replaced by Pi runner wiring
+// ctx.sessionManager: upstream hands extensions its SessionManager, typed as
+// ReadonlySessionManager (session-manager.ts). The reads answer from the
+// session log the host replicates into this process, through Pi's own
+// projection code (pi-dist session-manager.js) and line-for-line ports of the
+// SessionManager methods over it. The header facts (cwd, session directory,
+// persistence, header) arrive with the host's state pushes.
+class RuntimeSessionManager {
+  constructor(runtime) { this.runtime = runtime; }
+
+  // _entries is the replicated log followed by the entries appendCustomEntry
+  // appended that the host has not yet sent back, so a read sees an append at
+  // once, as upstream's in-process log does.
+  _entries() {
+    this.runtime.ensureSessionLog();
+    const entries = this.runtime.state.session?.entries || [];
+    const pending = this.runtime.pendingEntries;
+    if (pending.length === 0) return entries;
+    const replicated = new Map();
+    entries.forEach((entry, index) => replicated.set(entry?.id, index));
+    const unconfirmed = [];
+    for (const entry of pending) {
+      const index = replicated.get(entry.id);
+      if (index === undefined) {
+        unconfirmed.push(entry);
+        continue;
+      }
+      // The host's copy holds the same values; keep the object the caller
+      // holds, as upstream's log holds the entry it returned.
+      entries[index] = entry;
+    }
+    if (unconfirmed.length !== pending.length) {
+      this.runtime.pendingEntries = unconfirmed;
+      this.runtime.branchCache = undefined;
+    }
+    return unconfirmed.length === 0 ? entries : entries.concat(unconfirmed);
+  }
+
+  // _index mirrors upstream's byId, labelsById and labelTimestampsById,
+  // rebuilt when the log changes.
+  _index() {
+    const base = this.runtime.state.session?.entries;
+    const entries = this._entries();
+    const cached = this._cachedIndex;
+    if (cached && cached.base === base && cached.entries.length === entries.length && cached.pending === this.runtime.pendingEntries.length) return cached;
+    const byId = new Map();
+    const labelsById = new Map();
+    const labelTimestampsById = new Map();
+    for (const entry of entries) {
+      if (!entry || entry.type === "session") continue;
+      byId.set(entry.id, entry);
+      if (entry.type === "label") {
+        if (entry.label) {
+          labelsById.set(entry.targetId, entry.label);
+          labelTimestampsById.set(entry.targetId, entry.timestamp);
+        } else {
+          labelsById.delete(entry.targetId);
+          labelTimestampsById.delete(entry.targetId);
+        }
+      }
+    }
+    this._cachedIndex = { base, entries, pending: this.runtime.pendingEntries.length, byId, labelsById, labelTimestampsById };
+    return this._cachedIndex;
+  }
+
+  _info() { return this.runtime.state.session?.info ?? {}; }
+
+  // An empty host leaf is a reset to the root, not the last stored entry.
+  _leafId() {
+    this._entries();
+    const pending = this.runtime.pendingEntries;
+    if (pending.length > 0) return pending[pending.length - 1].id;
+    return this.runtime.state.session?.leafId || null;
+  }
+
+  isPersisted() { return this._info().persisted ?? Boolean(this.runtime.state.session?.sessionFile); }
+  getCwd() { return this._info().cwd ?? this.runtime.ctx.cwd; }
+  getSessionDir() { return this._info().sessionDir ?? ""; }
+  usesDefaultSessionDir() { return this._info().usesDefaultSessionDir === true; }
+  getSessionId() { return this.runtime.state.session?.sessionId || ""; }
+  getSessionFile() { return this.runtime.state.session?.sessionFile || undefined; }
+  getSessionName() { return this.runtime.state.session?.sessionName?.trim() || undefined; }
+  getLeafId() { return this._leafId(); }
+  getLeafEntry() {
+    const leafId = this._leafId();
+    return leafId ? this._index().byId.get(leafId) : undefined;
+  }
+  getEntry(id) { return this._index().byId.get(id); }
+  getChildren(parentId) {
+    const children = [];
+    for (const entry of this._index().byId.values()) {
+      if (entry.parentId === parentId) children.push(entry);
+    }
+    return children;
+  }
+  getLabel(id) { return this._index().labelsById.get(id); }
+  getBranch(fromId) {
+    if (fromId === undefined && this.runtime.pendingEntries.length === 0) {
+      // The first session read requests the log, whichever read it is.
+      this._entries();
+      return this.runtime.branchFromEntries();
+    }
+    const { byId } = this._index();
+    const startId = fromId ?? this._leafId();
+    const path = [];
+    let current = startId ? byId.get(startId) : undefined;
+    while (current) {
+      path.push(current);
+      current = current.parentId ? byId.get(current.parentId) : undefined;
+    }
+    path.reverse();
+    return path;
+  }
+  buildContextEntries() {
+    const { byId } = this._index();
+    return piSession().buildContextEntries(this.getEntries(), this._leafId(), byId);
+  }
+  buildSessionProjection() {
+    const { byId } = this._index();
+    return piSession().buildSessionProjection(this.getEntries(), this._leafId(), byId);
+  }
+  buildSessionContext() {
+    const { messages, thinkingLevel, model } = this.buildSessionProjection();
+    return { messages, thinkingLevel, model };
+  }
+  getHeader() { return this._info().header ?? null; }
+  getEntries() {
+    return this._entries().filter((entry) => entry?.type !== "session");
+  }
+  getTree() {
+    const { labelsById, labelTimestampsById } = this._index();
+    const entries = this.getEntries();
+    const nodeMap = new Map();
+    const roots = [];
+    for (const entry of entries) {
+      const label = labelsById.get(entry.id);
+      const labelTimestamp = labelTimestampsById.get(entry.id);
+      nodeMap.set(entry.id, { entry, children: [], label, labelTimestamp });
+    }
+    for (const entry of entries) {
+      const node = nodeMap.get(entry.id);
+      if (entry.parentId === null || entry.parentId === entry.id) {
+        roots.push(node);
+      } else {
+        const parent = nodeMap.get(entry.parentId);
+        if (parent) parent.children.push(node);
+        else roots.push(node);
+      }
+    }
+    const stack = [...roots];
+    while (stack.length > 0) {
+      const node = stack.pop();
+      node.children.sort((a, b) => new Date(a.entry.timestamp).getTime() - new Date(b.entry.timestamp).getTime());
+      stack.push(...node.children);
+    }
+    return roots;
+  }
+
+  // appendCustomEntry is the write the host's session log takes from an
+  // extension (upstream pi.appendEntry calls it). The id is generated here,
+  // against the replicated log, so it returns synchronously as upstream's does.
+  appendCustomEntry(customType, data) {
+    const entry = {
+      type: "custom",
+      customType,
+      data,
+      id: generateEntryId(this._index().byId),
+      parentId: this._leafId(),
+      timestamp: new Date().toISOString(),
+    };
+    this.runtime.pendingEntries = [...this.runtime.pendingEntries, entry];
+    this.runtime.fireAndForget("appendEntry", { customType, data, direct: { id: entry.id, timestamp: entry.timestamp } });
+    return entry.id;
+  }
+}
+
+// 0.3.0: replaced by Pi runner wiring
+// ctx.modelRegistry: upstream's ModelRegistry facade over the session's
+// ModelRuntime (model-registry.ts). Its synchronous reads answer from the
+// registry snapshot the host pushes (model_registry_update); refresh,
+// getProviderAuth and request auth ask the host; registrations go to the host,
+// which shares them with every extension as upstream's one runtime does.
 class RuntimeModelRegistry {
   constructor(runtime) { this.runtime = runtime; }
+
+  _providerState(provider) { return this.runtime.registryState.providers?.[provider]; }
+
+  async refresh(options = {}) {
+    const result = await this.runtime.call("refreshModelRegistry", {
+      allowNetwork: options?.allowNetwork,
+      providers: options?.providers,
+      force: options?.force,
+    });
+    if (result?.state) this.runtime.applyModelRegistryState(result.state);
+    const errors = new Map();
+    for (const [provider, message] of Object.entries(result?.errors ?? {})) errors.set(provider, new Error(message));
+    return { aborted: result?.aborted === true || options?.signal?.aborted === true, errors };
+  }
+  getError() { return this.runtime.registryState.error || undefined; }
+  getAll() { return [...this.runtime.models.values()]; }
+  getAvailable() { return this.getAll().filter((model) => {const state=this._providerState(model.provider);return state?.configured===true&&(!state.availableModelIds||state.availableModelIds.includes(model.id))}); }
   find(provider, modelId) {
     return this.runtime.getModel(provider, modelId);
   }
+  hasConfiguredAuth(model) { return this._providerState(model?.provider)?.configured === true; }
   async getApiKeyAndHeaders(model) {
     return this.runtime.call("getModelAuth", { provider: providerIDFromModel(model), modelId: modelIDFromModel(model) });
   }
+  getProviderAuthStatus(provider) {
+    const status = this._providerState(provider)?.authStatus;
+    return status ? { ...status } : { configured: false };
+  }
+  getProvider(provider) { return this.runtime.getRegistryProvider(provider); }
   stream(model, context, options = {}) {
     return this.runtime.startModelStream(model, context, options);
   }
   streamSimple(model, context, options = {}) {
-    return this.runtime.startModelStream(model, context, options);
+    return this.runtime.startModelStream(model, context, options,true);
   }
   complete(model, context, options = {}) {
     return this.stream(model, context, options).result();
+  }
+  getProviderDisplayName(provider) { return this._providerState(provider)?.name ?? this.getProvider(provider)?.name ?? provider; }
+  async getProviderAuth(provider) {
+    return (await this.runtime.call("getProviderAuth", { provider })) ?? undefined;
+  }
+  async getApiKeyForProvider(provider) {
+    try {
+      return (await this.getProviderAuth(provider))?.auth.apiKey;
+    } catch {
+      return undefined;
+    }
+  }
+  isUsingOAuth(model) { return this._providerState(model?.provider)?.usingOAuth === true; }
+  registerProvider(providerOrName, config) {
+    if (typeof providerOrName === "string") {
+      if (!config) throw new Error("Provider config is required when registering by name");
+      this.runtime.registerProvider(providerOrName, config);
+      return;
+    }
+    this.runtime.registerNativeProvider(providerOrName);
+  }
+  unregisterProvider(providerName) { this.runtime.unregisterProvider(providerName); }
+  getRegisteredProviderConfig(providerName) {
+    const local = this.runtime.registeredProviderConfig(providerName);
+    if (local) return local;
+    const entry = this.runtime.registryState.registered?.find((candidate) => candidate.name === providerName);
+    if (!entry?.config) return undefined;
+    const foreign = this.runtime.foreignProviderConfig(providerName);
+    if (foreign) return foreign;
+    // pig divergence (D78): a registration from a native SDK author is snapshot data, not the author's live configuration object.
+    return entry.config;
+  }
+  // Native Providers remain local when their owner shares the cell; other owners expose connection-bound method handles.
+  getRegisteredNativeProvider(providerName) {
+    const native = this.runtime.nativeProviderObjects.get(providerName)?.provider;
+    if (native) return native;
+    const declaration = this.runtime.registryState.registered?.find(entry => entry.name === providerName)?.native;
+    return declaration ? remoteProvider(this.runtime, declaration, ModelEventStream) : undefined;
+  }
+  getRegisteredProviderIds() {
+    return [...new Set([
+      ...(this.runtime.registryState.registered ?? []).map((entry) => entry.name),
+      ...(this.runtime.loadState === "active" ? this.runtime.providerConfigObjects.keys() : this.runtime.registeredProviderConfigs.keys()),
+      ...this.runtime.nativeProviders.keys(),
+    ])];
   }
 }
 
@@ -141,7 +451,10 @@ export class ThemeShim {
     this.foregrounds = palette.foregrounds && typeof palette.foregrounds === "object" ? palette.foregrounds : {};
     this.backgrounds = palette.backgrounds && typeof palette.backgrounds === "object" ? palette.backgrounds : {};
     this.modifiers = palette.modifiers !== false;
+    this.name = typeof palette.name === "string" ? palette.name : undefined;
+    this.sourcePath = typeof palette.sourcePath === "string" && palette.sourcePath !== "" ? palette.sourcePath : undefined;
     this.mode = palette.mode === "256color" ? "256color" : "truecolor";
+    setThemeInstance(this);
   }
   style(open, close, text) {
     const value = String(text ?? "");
@@ -183,15 +496,133 @@ export class ThemeShim {
   getBashModeBorderColor() { return (text) => this.fg("bashMode", text); }
 }
 
-class Connection {
+// pig additive (D19): after RPC stdin ends, the transport must not keep an otherwise drained Node event loop alive. Report the drain to the process owner without resolving any pending extension Promise.
+const quitDrain = { active: false, inputEnded: false, reported: false, tailCheck: false, runtimes: new Set() };
+
+function quitDrainState() {
+  let outstanding = false;
+  let tail = false;
+  let hostWaits = false;
+  for (const runtime of quitDrain.runtimes) {
+    for (const request of runtime.requestRecords.values()) {
+      if (request.responded) continue;
+      outstanding ||= request.quit;
+      tail ||= request.quitTail;
+    }
+    for (const pending of runtime.conn?.pending.values() ?? []) {
+      if (pending.synchronous || !USER_BLOCKING_CALLS.has(pending.method)) hostWaits = true;
+    }
+  }
+  return { outstanding, tail, hostWaits };
+}
+
+function refreshQuitDrain() {
+  if (!quitDrain.active || !quitDrain.inputEnded || quitDrain.reported) return;
+  const { outstanding, tail, hostWaits } = quitDrainState();
+  setProviderSocketsRef(!outstanding || hostWaits);
+  // Pi flushRawStdout lets immediately fulfilled Promise continuations run, but does not await a post-disposal handler's future timer or I/O. IPC must not turn that suspension into a Session join.
+  if (tail && !outstanding && !hostWaits && !quitDrain.tailCheck) {
+    quitDrain.tailCheck = true;
+    setImmediate(() => {
+      quitDrain.tailCheck = false;
+      const current = quitDrainState();
+      if (current.tail && !current.outstanding && !current.hostWaits) reportQuitExit("runtime_quit_yield");
+    });
+  }
+}
+
+// pig additive (D19): Pi reads the prompt line, and stdin's end one event-loop iteration later; then shutdown() exits within microtasks and one tick unless a session_shutdown handler awaits a timer or I/O (rpc-mode.ts:728-744, output-guard.ts:105-108). A command therefore answers after stdin ended only if it settles inside its own window: its microtasks and the setImmediate queued behind its handler's synchronous prefix. The runtime measures that window from the invocation and reports the request suspended (request_state) when the window closes unresponded; the host decides what stdin's end makes of that: it holds a suspended command's response unless a quit session_shutdown handler is suspended too, which keeps Pi's process alive. Only a host call that settles synchronously or through microtasks in Pi keeps a window open; these host calls are I/O, a child process, a dialog or a session change there.
+const WINDOW_CLOSING_CALLS = new Set([
+  ...USER_BLOCKING_CALLS, "exec", "modelStream", "getModelAuth", "getProviderAuth", "refreshModelRegistry", "compact", "waitForIdle",
+  "setModel", "newSession", "fork", "navigateTree", "switchSession", "reload", "oauth.cb.onSelect", "oauth.cb.onPrompt", "oauth.cb.onManualCodeInput",
+]);
+
+function windowPending(owner) {
+  for (const pending of owner.connection.pending.values()) {
+    if (pending.parentRequestId === owner.id && !WINDOW_CLOSING_CALLS.has(pending.method)) return true;
+  }
+  return false;
+}
+
+// armRequestWindow closes the window of a command or of a quit session_shutdown handler at the next check phase after its handler's synchronous prefix, or once its pending short host calls settle. A command arms it before its handler runs with early set: its immediate is then queued ahead of every immediate the handler and its microtask continuations queue in this iteration, and it closes a MessagePort, whose close callback runs in this iteration's closing phase, after the check phase and before the next poll phase. A threadpool completion, a nested immediate and a timer therefore land after the window closes.
+function armRequestWindow(owner, early = false) {
+  const close = () => {
+    if (owner.responded || owner.turned) return;
+    if (windowPending(owner)) {
+      owner.windowWait = true;
+      return;
+    }
+    owner.turned = true;
+    if (!owner.connection.closed) owner.connection.requestState(owner.id, "suspended");
+  };
+  if (early) {
+    closeInCloseCallbacks(close);
+  } else setImmediate(close);
+}
+
+// closeInCloseCallbacks runs fn in the closing phase of the current loop iteration: after the iteration's check-phase immediates and before the next timers and poll. It closes a MessagePort, a libuv handle whose 'close' event fires from the handle's close callback. The port is unref'd and opens no fd or socket. Verified on Node 22, 24 and 25. If the mechanism throws, fn runs two immediates later, the previous behaviour, and the failure never reaches the command. fn runs exactly once.
+export function closeInCloseCallbacks(fn, factory = () => new MessageChannel()) {
+  let port;
+  try {
+    port = factory().port1;
+    if (typeof port?.once !== "function" || typeof port?.close !== "function") throw new TypeError("no message port");
+  } catch {
+    setImmediate(() => setImmediate(fn));
+    return;
+  }
+  setImmediate(() => {
+    try {
+      port.once("close", fn);
+      port.close();
+    } catch {
+      setImmediate(fn);
+    }
+  });
+}
+
+function resumeRequestWindows() {
+  for (const runtime of quitDrain.runtimes) {
+    for (const request of runtime.requestRecords.values()) {
+      if (request.windowWait && !windowPending(request)) {
+        request.windowWait = false;
+        armRequestWindow(request);
+      }
+    }
+  }
+}
+
+function drainQuitRequests() {
+  const { outstanding, hostWaits } = quitDrainState();
+  if (outstanding && !hostWaits) reportQuitExit("runtime_drained");
+}
+
+function reportQuitExit(method) {
+  if (!quitDrain.active || !quitDrain.inputEnded || quitDrain.reported) return;
+  quitDrain.reported = true;
+  setProviderSocketsRef(true);
+  for (const runtime of quitDrain.runtimes) {
+    if (runtime.conn) {
+      runtime.conn.notify(method);
+      break;
+    }
+  }
+}
+
+function enterQuitDrain() {
+  if (quitDrain.active) return;
+  quitDrain.active = true;
+  process.on("beforeExit", drainQuitRequests);
+}
+
+export class Connection {
   constructor(socket) {
     this.socket = socket;
-    this.buffer = Buffer.alloc(0);
     this.pending = new Map();
     this.queue = [];
     this.waiters = [];
     this.closed = false;
-    socket.on("data", (chunk) => this.onData(chunk));
+    this.streamStarts = new Map();
+    socket.on("envelope", env => this.onEnvelope(env));
     socket.on("close", () => this.onClose());
     socket.on("error", () => this.onClose());
   }
@@ -200,39 +631,61 @@ class Connection {
     if (this.closed) return;
     this.closed = true;
     for (const waiter of this.waiters.splice(0)) waiter(null);
-    for (const [, pending] of this.pending) {
+    for (const [id, pending] of this.pending) {
+      // A received result still belongs to the ordered receive loop, even if the peer closes before that loop reaches it.
+      if (pending.responseQueued) continue;
+      this.pending.delete(id);
       pending.reject(new Error("connection closed"));
     }
-    this.pending.clear();
   }
 
-  onData(chunk) {
-    this.buffer = Buffer.concat([this.buffer, chunk]);
-    while (this.buffer.length >= 4) {
-      const size = this.buffer.readUInt32BE(0);
-      if (this.buffer.length < 4 + size) return;
-      const payload = this.buffer.subarray(4, 4 + size);
-      this.buffer = this.buffer.subarray(4 + size);
-      const env = JSON.parse(payload.toString("utf8"));
-      if (env.type === "call_result") {
-        const pending = this.pending.get(env.id);
-        if (pending) {
-          this.pending.delete(env.id);
-          if (env.call_result?.error) {
-            const info = env.call_result.error;
-            const error = new Error(info.code ? `${info.code}: ${info.message}` : info.message);
-            error.code = info.code || "";
-            pending.reject(error);
-          } else pending.resolve(env.call_result?.result ?? null);
-        }
-        continue;
-      }
-      if (this.waiters.length > 0) {
-        this.waiters.shift()(env);
-      } else {
-        this.queue.push(env);
-      }
+  onEnvelope(env) {
+    // Cross-process reference operations and bus dispatches are restricted synchronous requests: they run whether this process is idle or waiting in a synchronous host call, at any nesting depth.
+    if (env.type === "request" && XREF_REQUESTS.has(env.request?.method)) {
+      this.xrefHandler(env);
+      return;
     }
+    if (env.type === "notify" && ["xref.unpin", "events.release", "events.proceed"].includes(env.notify?.method)) {
+      if (env.notify.method === "xref.unpin") xrefRealm.unpin(env.notify.args ?? {});
+      else if (env.notify.method === "events.proceed") lockstep.delete(env.notify.args?.emission);
+      else sharedBus.release(env.notify.args ?? {});
+      return;
+    }
+    if (env.type === "request" && ["provider_sync", "provider_object_callback_sync", "autocomplete.sync", "facet_sync"].includes(env.request?.method)) {
+      this.requestState(env.id, "started");
+      try { this.respond(env.id, this.syncHandler(env.request)); }
+      catch (error) { this.respond(env.id, null, error); }
+      return;
+    }
+    if (env.type === "cancel") this.cancelParent(env.cancel?.request_id || env.id || "", true);
+    if (env.type === "notify" && env.notify?.method === "model_stream_event" && env.notify.args?.started) {
+      this.streamStarts.get(env.notify.args.streamId)?.();
+      return;
+    }
+    if (env.type === "call_result") {
+      const pending = this.pending.get(env.id);
+      if (pending?.synchronous) {
+        this.resolveCall(env);
+        return;
+      }
+      if (pending) pending.responseQueued = true;
+    }
+    if (this.waiters.length > 0) this.waiters.shift()(env);
+    else this.queue.push(env);
+  }
+
+  resolveCall(env) {
+    const pending = this.pending.get(env.id);
+    if (!pending) return;
+    this.pending.delete(env.id);
+    resumeRequestWindows();
+    refreshQuitDrain();
+    if (env.call_result?.error) {
+      const info = env.call_result.error;
+      const error = new Error(info.code ? `${info.code}: ${info.message}` : info.message);
+      error.code = info.code || "";
+      pending.reject(error);
+    } else pending.resolve(env.call_result?.result ?? null);
   }
 
   onDrain(handler) {
@@ -247,7 +700,7 @@ class Connection {
     }
     const hdr = Buffer.alloc(4);
     hdr.writeUInt32BE(data.length, 0);
-    this.socket.write(Buffer.concat([hdr, data]));
+    return this.socket.write(Buffer.concat([hdr, data]));
   }
 
   next() {
@@ -257,16 +710,60 @@ class Connection {
   }
 
   call(method, args = {}, parentRequestId = "") {
+    if (this.closed) return Promise.reject(new Error("extension connection closed"));
     const id = uuid();
     return new Promise((resolve, reject) => {
-      this.pending.set(id, { resolve, reject, parentRequestId });
-      this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}) } });
+      this.pending.set(id, { resolve, reject, parentRequestId, method });
+      refreshQuitDrain();
+      try {
+        this.send({ type: "call", id, call: { method, args, ...(parentRequestId ? { parent_request_id: parentRequestId } : {}) } });
+      } catch (error) {
+        this.pending.delete(id);
+        reject(error);
+      }
     });
   }
 
-  cancelParent(parentRequestId) {
+  callSync(method, args = {}, parentRequestId = "") {
+    const id = uuid();
+    let done = false, value, error;
+    this.pending.set(id, {
+      synchronous: true,
+      parentRequestId,
+      resolve: result => { value = result; done = true; },
+      reject: cause => { error = cause; done = true; },
+    });
+    this.send({ type: "call", id, call: { method, args, parent_request_id: parentRequestId } });
+    try { this.socket.waitUntil(() => done); }
+    finally { this.pending.delete(id); }
+    if (error) throw error;
+    return value;
+  }
+
+  callWithStreamStart(method, args, parentRequestId) {
+    let started = false, startError;
+    this.streamStarts.set(args.streamId, () => { started = true; });
+    const id = uuid();
+    const promise = new Promise((resolve, reject) => {
+      this.pending.set(id, {
+        synchronous: true,
+        parentRequestId,
+        resolve: result => { if (!started) startError = new Error("Provider ended without starting its stream"); started = true; resolve(result); },
+        reject: error => { if (!started) startError = error; started = true; reject(error); },
+      });
+    });
+    // A synchronous start failure is thrown below; the rejected completion is still observed.
+    void promise.catch(() => {});
+    this.send({ type: "call", id, call: { method, args, parent_request_id: parentRequestId } });
+    try { this.socket.waitUntil(() => started); }
+    finally { this.streamStarts.delete(args.streamId); }
+    if (startError) throw startError;
+    return promise;
+  }
+
+  cancelParent(parentRequestId, synchronousOnly = false) {
     for (const [id, pending] of this.pending) {
-      if (pending.parentRequestId !== parentRequestId) continue;
+      if (pending.parentRequestId !== parentRequestId || (synchronousOnly && !pending.synchronous)) continue;
       this.pending.delete(id);
       pending.reject(new Error(`host call cancelled with parent request ${parentRequestId}`));
     }
@@ -326,13 +823,14 @@ class RuntimeContext {
   constructor(runtime) {
     bindOwnMethods(this);
     this.runtime = runtime;
-    this.ui = runtime.ui;
-    this.hasUI = true;
+    Object.defineProperty(this, "scopedModels", { enumerable: true, get: () => runtime.state.scopedModels ?? [] });
+    Object.defineProperties(this, {
+      ui: { enumerable: true, get: () => runtime.state.hasUI ? runtime.ui : runtime.noOpUI },
+      hasUI: { enumerable: true, get: () => runtime.state.hasUI },
+    });
     this.cwd = runtime.ready.cwd || process.cwd();
-    // Run mode (tui|rpc|json|print). Extensions gate on it: pi-atelier returns
-    // early from session_start unless it is "tui": so leaving it undefined
-    // silently disables them rather than failing.
-    this.mode = runtime.ready.mode || "tui";
+    // Pi defaults to print until the host binds a mode (runner.ts:357).
+    this.mode = runtime.ready.mode || "print";
     this.theme = this.ui.theme;
     this.model = normalizeModel(runtime.state.model) ?? (runtime.ready.model ? normalizeModel({ id: runtime.ready.model }) : undefined);
     this.sessionManager = new RuntimeSessionManager(runtime);
@@ -350,17 +848,71 @@ class RuntimeContext {
   isProjectTrusted() { return this.runtime.state.projectTrusted; }
   abort() { this.runtime.fireAndForget("abort", {}); }
   hasPendingMessages() { return this.runtime.state.hasPendingMessages; }
-  shutdown() { this.runtime.fireAndForget("shutdown", {}); }
+  // Pi's shutdown() stops the TUI only after the frame the current input
+  // produced is painted (it drains input first), so a shutdown requested
+  // from an editor's handleInput reaches the host after that frame.
+  shutdown() { queueMicrotask(() => this.runtime.fireAndForget("shutdown", {})); }
   getContextUsage() { return this.runtime.state.contextUsage; }
-  compact(options = {}) { this.runtime.fireAndForget("compact", { options }); }
-  getSystemPrompt() { return this.runtime.state.systemPrompt || this.runtime.systemPrompt || ""; }
+  // The host reads the options flat. Upstream starts compaction without
+  // awaiting it and reports the outcome through onComplete/onError, so a call
+  // with callbacks carries no parent request and outlives its handler.
+  compact(options = {}) {
+    const { onComplete, onError, ...rest } = options ?? {};
+    if (typeof onComplete !== "function" && typeof onError !== "function") {
+      this.runtime.fireAndForget("compact", rest);
+      return;
+    }
+    void this.runtime.conn?.call("compact", { ...rest, awaitCompletion: true }).then(
+      (result) => { if (typeof onComplete === "function") onComplete(result); },
+      (err) => { if (typeof onError === "function") onError(err instanceof Error ? err : new Error(String(err))); },
+    );
+  }
+  getSystemPrompt() { return this.runtime.state.systemPrompt; }
   getSystemPromptOptions() { return this.runtime.state.systemPromptOptions ?? {}; }
+  get thinkingLevel() { return this.runtime.state.thinkingLevel || undefined; }
   async waitForIdle() { return this.runtime.call("waitForIdle", {}); }
-  async newSession(options = {}) { return this.runtime.call("newSession", { options }); }
-  async fork(entryId, options = {}) { return this.runtime.call("fork", { entryId, options }); }
+  async newSession(options = {}) { return this.runtime.call("newSession", { ...options }); }
+  async fork(entryId, options = {}) { return this.runtime.call("fork", { ...options, entryId }); }
   async navigateTree(targetId, options = {}) { return this.runtime.call("navigateTree", { ...options, targetId }); }
   async switchSession(sessionPath, options = {}) { return this.runtime.call("switchSession", { sessionPath, options }); }
   async reload() { return this.runtime.call("reload", {}); }
+}
+
+// Ports packages/coding-agent/src/core/extensions/runner.ts: noOpUIContext.
+function createNoOpUI(ui) {
+  return {
+    select: async () => undefined,
+    confirm: async () => false,
+    input: async () => undefined,
+    notify: () => {},
+    onTerminalInput: () => () => {},
+    setStatus: () => {},
+    setWorkingMessage: () => {},
+    setWorkingVisible: () => {},
+    setWorkingIndicator: () => {},
+    setHiddenThinkingLabel: () => {},
+    setWidget: () => {},
+    setFooter: () => {},
+    setHeader: () => {},
+    setTitle: () => {},
+    custom: async () => undefined,
+    pasteToEditor: () => {},
+    setEditorText: () => {},
+    getEditorText: () => "",
+    editor: async () => undefined,
+    addAutocompleteProvider: () => {},
+    setEditorComponent: () => {},
+    getEditorComponent: () => undefined,
+    get theme() { return ui.theme; },
+    getAllThemes: () => [],
+    getTheme: () => undefined,
+    setTheme: () => ({ success: false, error: "UI not available" }),
+    getToolsExpanded: () => false,
+    setToolsExpanded: () => {},
+    // pig additive (D60): login validation remains owned by the host.
+    setLogin: ui.setLogin,
+    onWidthChange: ui.onWidthChange,
+  };
 }
 
 class RuntimeUI {
@@ -425,14 +977,13 @@ class RuntimeUI {
       this.runtime.clearWidget(key);
       return;
     }
+    // 0.3.0: replaced by Pi runner wiring
     if (Array.isArray(content)) {
-      this.runtime.widgets.delete(key);
-      const lines = content.map((v) => String(v));
-      if (options?.placement) {
-        this.runtime.fireAndForget("ui.setWidget", { key, content: lines, options });
-      } else {
-        this.runtime.conn?.pushWidget(key, lines);
+      if (this.runtime.ctx.mode !== "tui") {
+        this.runtime.fireAndForget("ui.setWidget", { key, content, options });
+        return;
       }
+      this.runtime.setWidgetFactory(key, (_tui, theme) => stringWidget(content, theme), options);
       return;
     }
     if (typeof content === "function") {
@@ -442,14 +993,18 @@ class RuntimeUI {
     throw new Error("setWidget content must be a component factory, string array, or undefined");
   }
   setFooter(factory) {
+    this.runtime.specialSurfaceComponents.get("footer")?.dispose?.();
     this.runtime.footerFactory = typeof factory === "function" ? factory : undefined;
     this.runtime.specialSurfaceComponents.delete("footer");
-    this.runtime.renderSpecialSurface("footer");
+    if (this.runtime.footerFactory) this.runtime.renderSpecialSurface("footer");
+    else this.runtime.fireAndForget("ui.setFooter", { clear: true });
   }
   setHeader(factory) {
+    this.runtime.specialSurfaceComponents.get("header")?.dispose?.();
     this.runtime.headerFactory = typeof factory === "function" ? factory : undefined;
     this.runtime.specialSurfaceComponents.delete("header");
-    this.runtime.renderSpecialSurface("header");
+    if (this.runtime.headerFactory) this.runtime.renderSpecialSurface("header");
+    else this.runtime.fireAndForget("ui.setHeader", { clear: true });
   }
   // pig additive (D60): Pig accepts typed login data across the subprocess wire.
   async setLogin(definition) { return this.runtime.call("ui.setLogin", definition); }
@@ -466,50 +1021,30 @@ class RuntimeUI {
     const result = await this.runtime.call("ui.editor", { title, prefill });
     return result?.ok ? result.text : undefined;
   }
-  addAutocompleteProvider(factory) {
-    if (typeof factory !== "function") return;
-    // Subprocess shim: we keep an ordered list of factories. Each
-    // request from the host runs them as a fold (matching upstream
-    // chain semantics) starting from a null-base provider that
-    // returns no suggestions. Filter-style wrappers that conditionally
-    // delegate to `current.getSuggestions` therefore see a base that
-    // returns null: they act as additive providers, not filters of
-    // the pig built-ins. This is the only honest mapping when the
-    // built-ins live on a different process.
-    if (!this.runtime.autocompleteFactories) {
-      this.runtime.autocompleteFactories = [];
-    }
-    const id = `ac${this.runtime.autocompleteFactories.length + 1}`;
-    this.runtime.autocompleteFactories.push(factory);
-    if (!this.runtime.autocompleteRegistered) {
-      this.runtime.autocompleteRegistered = true;
-      this.runtime.fireAndForget("ui.addAutocompleteProvider", { providerId: id });
-    }
-  }
+  addAutocompleteProvider(factory) { this.runtime.autocomplete.add(factory); }
+  // 0.3.0: replaced by Pi runner wiring
+  // Pi's setEditorComponent: the factory's editor replaces the host's editor
+  // (editor-component.mjs); undefined restores it.
   setEditorComponent(factory) {
     if (typeof factory !== "function") {
-      this.runtime.fireAndForget("ui.setEditorComponent", { clear: true });
-      this.runtime.editorComponent = undefined;
+      this.runtime.editorFactory = undefined;
+      this.runtime.editorHost.clear();
       return;
     }
-    // Subprocess shim: function factories can't cross a process
-    // boundary, but the prompt-editor pattern (modeLabel + history +
-    // bash-mode border color) reduces to a small bounded decoration
-    // set that we can serialise. We invoke the factory locally with a
-    // shim CustomEditor that captures the decoration state, then
-    // forward it to the host. The editor stays in Go; the Node side
-    // never touches per-keystroke input.
-    this.runtime.applyEditorComponent(factory);
+    this.runtime.editorFactory = factory;
+    this.runtime.editorHost.install(factory);
   }
+  getEditorComponent() { return this.runtime.editorFactory; }
   getAllThemes() { return this.runtime.state.allThemes ?? []; }
   getTheme(name) {
-    // Upstream getTheme loads a theme by name without switching to it. The
-    // host pushes the theme list, so an unknown name reports absence rather
-    // than silently yielding the active theme.
-    if (name === undefined || name === null) return this.theme;
-    return (this.runtime.state.allThemes ?? []).find((t) => t.name === name);
+    return themeFromPalette(this.runtime.callSync("ui.getTheme", { name })?.theme);
   }
-  setTheme(name) { this.runtime.fireAndForget("ui.setTheme", { name }); return { success: true }; }
+  setTheme(name) {
+    const result = this.runtime.callSync("ui.setTheme", { theme: name });
+    const palette = this.runtime.callSync("ui.theme")?.theme;
+    if (palette) this.theme.setPalette(palette);
+    return result;
+  }
   getToolsExpanded() { return this.runtime.state.toolsExpanded ?? false; }
   setToolsExpanded(expanded) { this.runtime.fireAndForget("ui.setToolsExpanded", { expanded }); }
 }
@@ -564,18 +1099,13 @@ class OAuthBridgeCancelled extends Error {
   }
 }
 
+// Credentials are Pi's complete token objects: provider-owned keys and the exact expires value cross unchanged. A nullish result spreads to an empty object, as `{ ...result, type: "oauth" }` does in provider-composer.ts:289-292.
 function oauthCredsToWire(creds) {
-  creds = creds || {};
-  const wire = { refresh: creds.refresh ?? "", access: creds.access ?? "", expires: creds.expires ?? 0 };
-  if (creds.projectId) wire.projectId = creds.projectId;
-  return wire;
+  return { ...creds };
 }
 
 function oauthCredsFromWire(wire) {
-  wire = wire || {};
-  const creds = { refresh: wire.refresh ?? "", access: wire.access ?? "", expires: wire.expires ?? 0 };
-  if (wire.projectId) creds.projectId = wire.projectId;
-  return creds;
+  return { ...wire };
 }
 
 // OAuthLoginCallbacks presents the upstream config.oauth callback surface to a
@@ -584,8 +1114,9 @@ function oauthCredsFromWire(wire) {
 // undefined return (onSelect) or a thrown cancel (onPrompt/onManualCodeInput),
 // matching the upstream in-process callback semantics.
 class OAuthLoginCallbacks {
-  constructor(runtime) {
+  constructor(runtime, signal) {
     this.runtime = runtime;
+    this.signal = signal;
   }
   onAuth(info) {
     info = info || {};
@@ -681,15 +1212,44 @@ export class ModelEventStream {
   }
 }
 
+// Pi resolves terminal capabilities once per process and its extensions share that cache (terminal-image.ts getCapabilities). The host owns the terminal and has resolved them, so seed pi-tui's cache before Pi's theme reads it instead of probing the terminal again (under tmux, a synchronous subprocess). The seed belongs to PiG, not to the extension's environment.
+function seedHostTerminalCapabilities() {
+  const encoded = process.env.PIG_TERMINAL_CAPABILITIES;
+  delete process.env.PIG_TERMINAL_CAPABILITIES;
+  if (encoded) applyTerminalCapabilities(JSON.parse(encoded));
+}
+
+function applyTerminalCapabilities(caps) {
+  if (!caps || typeof caps !== "object") return;
+  setTerminalCapabilities({ images: caps.images || null, trueColor: caps.trueColor === true, hyperlinks: caps.hyperlinks === true });
+}
+
 export class Runtime {
-  constructor(entry) {
+  constructor(entry, nativeProviderObjects = new Map(), providerConfigObjects = new Map(), { name, socket } = {}) {
+    seedHostTerminalCapabilities();
+    // Pi initializes the process theme before loading extension factories.
+    if (!globalThis[Symbol.for("@earendil-works/pi-coding-agent:theme")]) initTheme();
     this.entry = entry;
-    this.name = process.env.PIG_EXT_NAME || basename(entry).replace(/\.[^.]+$/, "");
+    this.name = name || process.env.PIG_EXT_NAME || basename(entry).replace(/\.[^.]+$/, "");
+    this.socketPath = socket || process.env.PIG_EXT_SOCKET;
     this.version = "0.0.0";
-    this.localEvents = new EventEmitter();
+    // Pi's per-extension API state (loader.ts createExtensionAPI): event-bus
+    // subscriptions made while the factory runs are dropped if it throws.
+    this.loadState = "loading";
+    this.loadingUnsubscribers = [];
+    this.extensionRuntime = createExtensionRuntime();
+    this.hostReady = false;
+    this.markdownTransformer = undefined;
     this.requestContext = new AsyncLocalStorage();
     this.activeRequests = new Map();
+    // requestRecords holds each outstanding host request's ownership record.
+    this.requestRecords = new Map();
+    // An OAuth refresh signal the extension may keep after its request settles: the request's caller can still abort it. The entry holds the signal weakly and reaches the controller through the signal, so it lives exactly as long as the extension's reference.
+    this.retainedSignals = new Map();
+    this.signalControllers = new WeakMap();
+    this.signalRegistry = new FinalizationRegistry(id => this.releaseRetainedSignal(id));
     this.requestTasks = new Set();
+    this.providerTransport = new AbortController();
     this.handlers = new Map();
     this.nextHandlerId = 1;
     this.tools = new Map();
@@ -700,8 +1260,38 @@ export class Runtime {
     this.commands = new Map();
     this.shortcuts = new Map();
     this.flags = new Map();
+    this.flagRegistrations = [];
+    this.flagValues = new Map();
     this.providers = new Map();
     this.oauthProviders = new Map();
+    this.providerStreams = new Map();
+    // registeredProviderConfigs holds the provider configs this extension
+    // registered, merged per upstream registerProvider, and nativeProviders
+    // the provider objects it registered (upstream registerNativeProvider).
+    this.registeredProviderConfigs = new Map();
+    this.nativeProviders = new Map();
+    this.nativeProviderKeys = new WeakMap();
+    this.nativeProviderCallbacks = new Map();
+    this.providerUpdates = new Map();
+    this.providerObjectCallbacks = new Map();
+    this.remoteProviderObjects = new Map();
+    this.providerLeases = new FinalizationRegistry(reference => {
+      if (!this.conn || this.conn.closed) return;
+      this.conn.send({ type: "call", call: { method: "provider.release", args: reference } });
+    });
+    // pig additive (D19): members of one Node cell retain native Provider identity without serializing callbacks.
+    this.nativeProviderObjects = nativeProviderObjects;
+    // Pi keeps one effective registered configuration root per provider (model-runtime.ts:438-443,753-766). Members of one Node cell share that root and its original children, functions and descriptors.
+    this.providerConfigObjects = providerConfigObjects;
+    // Entries ctx.sessionManager.appendCustomEntry appended that the host's
+    // replicated log does not hold yet.
+    this.pendingEntries = [];
+    // After the register frame the host has this extension's providers, and
+    // a registration applies immediately, as after upstream's bindCore.
+    this.providersSent = false;
+    // The host registry snapshot behind ctx.modelRegistry's reads.
+    this.registryState = { providers: {}, registered: [] };
+    this.registryProviders = new Map();
     this.renderers = new Map();
     this.entryRenderers = new Map();
     // Upstream ToolExecutionComponent keeps one renderer state per tool card,
@@ -709,6 +1299,7 @@ export class Runtime {
     // component. The host names the card and releases it when the card is gone.
     this.toolRenderCards = new Map();
     this.modelStreams = new Map();
+    this.modelStreamCallbacks = new Map();
     this.models = new Map();
     this.nextModelStreamId = 1;
     this.footerFactory = undefined;
@@ -720,6 +1311,7 @@ export class Runtime {
     this.customOverlaySeq = 0;
     this.ready = { cwd: process.cwd(), width: 80, model: "" };
     this.sessionLogRequested = false;
+    this.sessionLogGeneration = 0;
     this.sessionLogSync = undefined;
     this.state = {
       activeTools: [],
@@ -734,29 +1326,40 @@ export class Runtime {
       editorText: "",
       toolsExpanded: false,
       allThemes: [],
-      contextUsage: { tokens: 0, contextWindow: 0, percent: 0 },
+      contextUsage: undefined,
       systemPrompt: "",
       systemPromptOptions: {},
       flags: {},
-      hasUI: true,
-      footerData: { gitBranch: "", extensionStatuses: {}, availableProviderCount: 0 },
+      hasUI: false,
+      footerData: { gitBranch: null, extensionStatuses: {}, availableProviderCount: 0 },
     };
-    this.contextUsage = this.state.contextUsage;
-    this.systemPrompt = "";
+    this.autocomplete = new AutocompleteRuntime(this);
     this.ui = new RuntimeUI(this);
+    // 0.3.0: replaced by Pi runner wiring
+    this.editorHost = new EditorComponentHost(this);
+    this.editorFactory = undefined;
+    this.keybindingTable = undefined;
+    this.noOpUI = createNoOpUI(this.ui);
     this.ctx = new RuntimeContext(this);
     this.api = this.buildAPI();
     setRuntime(this);
   }
 
+  // Ports packages/coding-agent/src/core/extensions/loader.ts (factory API guards).
   buildAPI() {
     // Upstream createExtensionRuntime: action methods throw while the factory
     // runs, before the runtime is bound to the host.
     const action = (fn) => (...args) => {
-      if (!this.conn) throw new Error("Extension runtime not initialized. Action methods cannot be called during extension loading.");
+      if (!this.conn || !this.hostReady) throw new Error("Extension runtime not initialized. Action methods cannot be called during extension loading.");
       return fn(...args);
     };
-    return {
+    const active = (fn) => (...args) => {
+      // upstream: packages/coding-agent/src/core/extensions/loader.ts:createExtensionAPI
+      if (this.loadState === "failed") throw new Error(`Extension "${this.entry}" failed to load and its API is no longer active.`);
+      this.extensionRuntime.assertActive();
+      return fn(...args);
+    };
+    const api = {
       on: (event, handler) => this.on(event, handler),
       registerTool: (definition) => this.registerTool(definition),
       registerCommand: (name, definition) => this.registerCommand(name, definition),
@@ -764,8 +1367,11 @@ export class Runtime {
       registerFlag: (name, definition) => this.registerFlag(name, definition),
       registerMessageRenderer: (customType, handler) => this.registerMessageRenderer(customType, handler),
       registerEntryRenderer: (customType, handler) => this.registerEntryRenderer(customType, handler),
+      registerMarkdownTransformer: (transformer) => {
+        this.markdownTransformer = transformer;
+      },
       registerProvider: (name, config) => this.registerProvider(name, config),
-      unregisterProvider: (name) => this.providers.delete(name),
+      unregisterProvider: (name) => this.unregisterProvider(name),
       sendMessage: action((message, options = {}) => this.fireAndForget("sendMessage", { message, options })),
       sendUserMessage: action((content, options = {}) => this.fireAndForget("sendUserMessage", { content, options })),
       appendEntry: action((customType, data) => this.fireAndForget("appendEntry", { customType, data })),
@@ -775,11 +1381,15 @@ export class Runtime {
       setSessionName: action((name) => this.fireAndForget("setSessionName", { name })),
       setLabel: action((entryId, label) => this.fireAndForget("setLabel", { entryId, label })),
       exec: (command, args = [], options = undefined) => this.call("exec", { command, args, options }),
-      getFlag: (name) => this.state.flags?.[name] ?? this.flagValues?.[name] ?? undefined,
-      getActiveTools: action(() => [...(this.state.activeTools || [])]),
-      // Pi returns fresh ToolInfo and SlashCommandInfo objects on every call;
-      // a caller mutating one must not change the replicated host state.
-      getAllTools: action(() => structuredClone(this.state.allTools || [])),
+      getFlag: (name) => {
+        if (!this.flags.has(name)) return undefined;
+        return (Object.hasOwn(this.state.flags, name) ? this.state.flags[name] : undefined) ?? this.flagValues.get(name);
+      },
+      getActiveTools: action(() => this.callSync("getActiveTools")?.tools || []),
+      // Tool registries can change in another extension while this handler is running.
+      // The host call also carries PiG's legacy per-tool "source" for the Go,
+      // Rust and Python SDKs; Pi's ToolInfo has only sourceInfo, so drop it.
+      getAllTools: action(() => (this.callSync("getAllTools")?.tools || []).map(({ source: _legacySource, ...tool }) => tool)),
       getCommands: action(() => structuredClone(this.state.commands || [])),
       getThinkingLevel: action(() => this.state.thinkingLevel || ""),
       setThinkingLevel: action((level) => {
@@ -790,29 +1400,157 @@ export class Runtime {
         this.state.activeTools = [...tools];
         this.fireAndForget("setActiveTools", { tools });
       }),
-      setModel: (model) => {
-        if (!this.conn) return Promise.reject(new Error("Extension runtime not initialized"));
-        this.ready.model = model;
-        this.state.model = normalizeModel({ id: model });
-        this.ctx.model = this.state.model;
-        this.fireAndForget("setModel", { model });
+      setModel: async (model) => {
+        if (!this.conn || !this.hostReady) throw new Error("Extension runtime not initialized");
+        const result = await this.call("setModel", { model: `${model.provider}/${model.id}` });
+        if (result?.error) throw new Error(result.error);
+        return result?.success === true;
       },
+      // loader.ts createExtensionAPI events: the shared bus, with on()
+      // returning the unsubscribe function.
       events: {
-        on: (event, handler) => this.localEvents.on(event, handler),
-        emit: (event, data) => this.localEvents.emit(event, data),
+        emit: active((channel, data) => {
+          // pig divergence (D83): listeners in other realms reach the original payload through xref proxies; independent tasks across realms are ordered by timing.
+          sharedBus.emit(this, channel, data);
+        }),
+        on: active((channel, handler) => {
+          const unsubscribe = this.extensionRuntime.trackEventBusSubscription(sharedBus.on(this, channel, handler));
+          if (this.loadState === "loading") this.loadingUnsubscribers.push(unsubscribe);
+          return unsubscribe;
+        }),
       },
     };
+    // Guard before invoking even async methods so a failed API throws synchronously, as Pi does.
+    for (const [name, method] of Object.entries(api)) {
+      if (typeof method === "function" && name !== "messageRole" && name !== "messageText") api[name] = active(method);
+    }
+    return api;
   }
 
+  // commitLoad and discardLoad end the factory's loading state as Pi's
+  // loader does on success and on a throw.
+  commitLoad() {
+    if (this.loadState !== "loading") return;
+    this.loadState = "active";
+    this.loadingUnsubscribers = [];
+    for (const [id, config] of this.registeredProviderConfigs) this.transferProviderOwnership(id, config);
+    for (const provider of this.nativeProviders.values()) {
+      this.transferProviderOwnership(provider.id, undefined);
+      this.nativeProviderObjects.set(provider.id, { owner: this, provider });
+    }
+  }
+
+  // registeredProviderConfig returns the effective configuration root this process retains for a provider: the cell's shared root once this member is active, else its own loading-time root.
+  registeredProviderConfig(name) {
+    return this.loadState === "active" ? this.providerConfigObjects.get(name)?.config : this.registeredProviderConfigs.get(name);
+  }
+
+  // A registration or unregister by another member of the cell replaces this member's local ownership of the provider without a host call.
+  forgetProviderOwnership(name) {
+    this.registryProviders.delete(name);
+    this.providers.delete(name);
+    this.providerStreams.delete(name);
+    this.oauthProviders.delete(name);
+    this.registeredProviderConfigs.delete(name);
+    this.nativeProviders.delete(name);
+  }
+
+  // providerConfigRef encodes an effective root for the Host, which lends it to readers in other processes (model-runtime.ts:438-443).
+  providerConfigRef(root) {
+    this.ensureXrefHello();
+    return xrefRealm.encode(root);
+  }
+
+  // Registrations made while loading reach the Host in the handshake; their roots follow once it is complete.
+  publishProviderConfigRefs() {
+    if (this.providerConfigRefsPublished) return;
+    this.providerConfigRefsPublished = true;
+    for (const [name, root] of this.registeredProviderConfigs) {
+      if (this.providers.has(name)) this.fireAndForget("provider.configRef", { name, configRef: this.providerConfigRef(root) });
+    }
+  }
+
+  // A registration in this process merges over another process's effective root only through its xref; a native SDK author's snapshot is not merged.
+  foreignProviderConfigForMerge(name) {
+    return this.registryState.registered?.some((entry) => entry.name === name && entry.config) ? this.foreignProviderConfig(name) : undefined;
+  }
+
+  // foreignProviderConfig returns another process's effective root through its xref, or undefined when the Host holds none for the provider.
+  foreignProviderConfig(name) {
+    if (!this.connection()) return undefined;
+    const result = this.xrefCall("provider.config", { name });
+    return result?.ref ? xrefRealm.decode(result.ref) : undefined;
+  }
+
+  // transferProviderOwnership records this member as the cell's owner of a provider root.
+  transferProviderOwnership(name, config) {
+    const previous = this.providerConfigObjects.get(name)?.owner ?? this.nativeProviderObjects.get(name)?.owner;
+    if (previous && previous !== this) previous.forgetProviderOwnership(name);
+    this.nativeProviderObjects.delete(name);
+    if (config) this.providerConfigObjects.set(name, { owner: this, config });
+    else this.providerConfigObjects.delete(name);
+  }
+
+  discardLoad() {
+    if (this.loadState !== "loading") return;
+    this.loadState = "failed";
+    for (const unsubscribe of this.loadingUnsubscribers.splice(0)) unsubscribe();
+  }
+
+  // Retain callable identities for host-owned dispatch snapshots; removal changes the host's next snapshot, not an already admitted invocation.
   on(event, handler) {
     const bucket = this.handlers.get(event) ?? [];
-    bucket.push({ id: this.nextHandlerId++, handler });
+    const entry = { id: this.nextHandlerId++, handler, removed: false };
+    bucket.push(entry);
     this.handlers.set(event, bucket);
+    if (this.conn) this.fireAndForget("event.subscribe", { event, handlerId: entry.id });
+    return () => {
+      if (entry.removed) return;
+      entry.removed = true;
+      if (this.conn) this.fireAndForget("event.unsubscribe", { event, handlerId: entry.id });
+    };
   }
 
   registerTool(definition) {
     if (!definition || !definition.name) throw new Error("registerTool requires a definition with name");
+    if (typeof definition.parameters !== "object" || definition.parameters === null || Array.isArray(definition.parameters)) {
+      throw new Error(`Tool "${definition.name}" registered by extension "${this.entry}" must define an object parameter schema.`);
+    }
     this.tools.set(definition.name, definition);
+    if (this.conn) this.applyState(this.callSync("registerTool", this.toolDeclaration(definition)));
+  }
+
+  toolDeclaration(tool) {
+    return {
+      name: tool.name,
+      label: tool.label,
+      description: tool.description || "",
+      parameters: tool.parameters,
+      // TypeBox kinds are non-enumerable and remain host-only validation metadata.
+      validation_parameters: JSON.parse(JSON.stringify(tool.parameters || {}, (_key, value) => {
+        if (value && typeof value === "object" && !Array.isArray(value) && value["~kind"]) {
+          const copy = { ...value, "~kind": value["~kind"] };
+          if (["Intersect", "Enum", "TemplateLiteral"].includes(value["~kind"])) {
+            const { Evaluate, Instantiate } = requireModule("./shims/typebox.mjs");
+            copy["~convert"] = Evaluate(value["~kind"] === "Intersect" ? Instantiate({}, value) : value);
+          }
+          if (value === tool.parameters && Object.getOwnPropertySymbols(value).includes(Symbol.for("TypeBox.Kind"))) copy["~skipCoercion"] = true;
+          return copy;
+        }
+        if (value === tool.parameters && Object.getOwnPropertySymbols(value).includes(Symbol.for("TypeBox.Kind"))) return { ...value, "~skipCoercion": true };
+        return value;
+      })),
+      constrained_sampling: tool.constrainedSampling,
+      execution_mode: tool.executionMode,
+      prompt_snippet: tool.promptSnippet,
+      prompt_guidelines: tool.promptGuidelines,
+      annotations: tool.annotations,
+      source: tool.source,
+      render_shell: tool.renderShell === "self" ? "self" : undefined,
+      renders_call: (typeof tool.renderCall === "function" && !tool.renderCall[builtInToolRenderer]) || undefined,
+      renders_result: (typeof tool.renderResult === "function" && !tool.renderResult[builtInToolRenderer]) || undefined,
+      builtin_renderers: tool.renderCall?.[builtInToolRenderer] ?? tool.renderResult?.[builtInToolRenderer],
+    };
   }
 
   registerCommand(name, definition) {
@@ -828,7 +1566,15 @@ export class Runtime {
   }
 
   registerFlag(name, definition) {
-    this.flags.set(name, { name, ...definition });
+    if (definition.default !== undefined && typeof definition.default !== definition.type) {
+      throw new Error(`Invalid default for flag "${name}": expected ${definition.type}, got ${typeof definition.default}`);
+    }
+    const flag = { name, ...definition };
+    this.flags.set(name, flag);
+    this.flagRegistrations.push(flag);
+    if (definition.default !== undefined && !this.flagValues.has(name)) {
+      this.flagValues.set(name, definition.default);
+    }
   }
 
   registerMessageRenderer(customType, handler) {
@@ -839,15 +1585,110 @@ export class Runtime {
     this.entryRenderers.set(customType, handler);
   }
 
-  async connect() {
-    const sockPath = process.env.PIG_EXT_SOCKET;
+  // A factory that uses the shared bus while loading needs its connection before it registers. The IO worker's readiness is awaited synchronously, as any synchronous host call waits.
+  // The registered connection, or the connection a loading factory opened for the shared bus.
+  connection() {
+    return this.conn ?? this.earlyConn;
+  }
+
+  ensureConnectionSync() {
+    if (this.connection()) return;
+    const sockPath = this.socketPath;
     if (!sockPath) throw new Error("PIG_EXT_SOCKET not set");
-    const socket = await new Promise((resolve, reject) => {
-      const s = net.createConnection(sockPath, () => resolve(s));
-      s.on("error", reject);
-    });
-    this.conn = new Connection(socket);
-    this.removeDrainListener = this.conn.onDrain(() => {
+    const socket = new ProviderSocket(sockPath);
+    let failure;
+    socket.once("error", error => { failure ??= error; });
+    socket.waitUntil(() => socket.highWaterMark !== undefined || failure !== undefined);
+    if (failure) throw failure;
+    this.earlyConn = this.attachConnection(socket);
+  }
+
+  ensureXrefHello() {
+    this.ensureConnectionSync();
+    const connection = this.connection();
+    if (connection.xrefRealm) return;
+    connection.callSync("xref.hello", { realm: xrefRealm.id }, "");
+    connection.xrefRealm = xrefRealm.id;
+  }
+
+  xrefCall(method, args) {
+    this.ensureXrefHello();
+    // Before registration no host request is active, so the call has no parent.
+    if (!this.conn) return this.earlyConn.callSync(method, args, "");
+    return this.callSync(method, args);
+  }
+
+  busCall(method, args) {
+    return this.xrefCall(method, args);
+  }
+
+  // Serves one restricted xref/bus request in its own request scope, so host calls it makes use a fresh ordering lane and end with it.
+  serveXref(conn, env) {
+    const request = { id: env.id, controller: new AbortController(), connection: conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false };
+    let result = null;
+    let failure = null;
+    let emission;
+    try {
+      conn.requestState(env.id, "started");
+      runWithRuntime(this, () => this.requestContext.run(request, () => {
+        try {
+          const args = env.request.args ?? {};
+          if (env.request.method === "xref.op") result = xrefRealm.serve(args);
+          else if (env.request.method === "events.dispatch") {
+            sharedBus.dispatch(args);
+            emission = args.emission;
+          }
+          else result = { realm: xrefRealm.id, listeners: sharedBus.migrate().map(({ channel, handlerId, runtime }) => ({ channel, handlerId, extension: runtime.name })) };
+        } catch (error) {
+          failure = error;
+        }
+      }));
+    } finally {
+      request.settled = true;
+    }
+    // The emitter's settle waits until the microtasks this prefix queued have run. A prefix reached while this process already waits in a synchronous call cannot run them first, so it reports at once rather than wait on its own waiter.
+    // pig divergence (D83): only the first post-await generation is ordered with the emitter's microtasks.
+    const quiesce = () => { if (!conn.closed) conn.notify("events.quiesce", { emission }); };
+    const waitForEmitter = emission !== undefined && failure === null && !isWaiting();
+    if (waitForEmitter) lockstep.add(emission);
+    try { conn.respond(env.id, result, failure); }
+    catch (error) { try { conn.respond(env.id, null, error); } catch {} }
+    if (emission === undefined || failure !== null) return;
+    if (!waitForEmitter) {
+      quiesce();
+      return;
+    }
+    try { conn.socket.waitUntil(() => !lockstep.has(emission) || conn.closed); }
+    catch {}
+    finally { lockstep.delete(emission); }
+    setImmediate(quiesce);
+  }
+
+  async reportLoadFailureOnConnection(failure) {
+    const conn = this.earlyConn;
+    if (conn.closed) return;
+    const closed = new Promise(resolve => conn.socket.once("close", resolve));
+    conn.notify("load_failed", failure);
+    await closed;
+    quitDrain.runtimes.delete(this);
+    sharedBus.disposeRuntime(this);
+    liveRuntimes.delete(this);
+  }
+
+  attachConnection(socket) {
+    const conn = new Connection(socket);
+    liveRuntimes.add(this);
+    this.xrefTransport = {
+      call: (method, args) => this.xrefCall(method, args),
+      notify: (method, args) => {
+        this.ensureXrefHello();
+        this.connection().notify(method, args);
+      },
+    };
+    conn.xrefHandler = env => this.serveXref(conn, env);
+    quitDrain.runtimes.add(this);
+    conn.syncHandler = request => request.method === "facet_sync" ? dispatchFacetSync(this, request) : request.method === "autocomplete.sync" ? this.autocomplete.sync(request.args) : dispatchProviderObjectSync(this, request);
+    this.removeDrainListener = conn.onDrain(() => {
       for (const [key, widget] of this.widgets) {
         if (widget.renderRequested) this.requestWidgetRender(key);
       }
@@ -855,25 +1696,25 @@ export class Runtime {
         if (overlay.renderRequested) overlay.renderFrame();
       }
     });
+    return conn;
+  }
+
+  async connect() {
+    if (!this.conn) {
+      if (this.earlyConn) this.conn = this.earlyConn;
+      else {
+        const sockPath = this.socketPath;
+        if (!sockPath) throw new Error("PIG_EXT_SOCKET not set");
+        this.conn = this.attachConnection(await ProviderSocket.connect(sockPath));
+      }
+      this.earlyConn = undefined;
+    }
     this.conn.send({
       type: "register",
       register: {
         name: this.name,
         version: this.version,
-        tools: [...this.tools.values()].map((tool) => ({
-          name: tool.name,
-          label: tool.label,
-          description: tool.description || "",
-          parameters: tool.parameters || { type: "object", properties: {} },
-          constrained_sampling: tool.constrainedSampling,
-          execution_mode: tool.executionMode,
-          prompt_guidelines: tool.promptGuidelines,
-          annotations: tool.annotations,
-          source: tool.source,
-          render_shell: tool.renderShell === "self" ? "self" : undefined,
-          renders_call: typeof tool.renderCall === "function" || undefined,
-          renders_result: typeof tool.renderResult === "function" || undefined,
-        })),
+        tools: [...this.tools.values()].map((tool) => this.toolDeclaration(tool)),
         commands: [...this.commands.values()].map((cmd) => ({
           name: cmd.name,
           description: cmd.description || "",
@@ -882,12 +1723,13 @@ export class Runtime {
         })),
         shortcuts: [...this.shortcuts.values()].map((s) => ({ key: s.key, description: s.description || "" })),
         handlers: [...this.handlers.entries()].flatMap(([event, handlers]) =>
-          handlers.map(({ id }) => ({ event, can_block: BLOCKING_EVENTS.has(event), handler_id: id })),
+          handlers.filter(({ removed }) => !removed).map(({ id }) => ({ event, can_block: BLOCKING_EVENTS.has(event), handler_id: id })),
         ),
-        flags: [...this.flags.values()].map((f) => ({ name: f.name, description: f.description || "", type: f.type || "string", default: f.default })),
-        providers: [...this.providers.entries()].map(([name, config]) => ({ name, config })),
+        flags: this.flagRegistrations.map((f) => ({ name: f.name, description: f.description || "", type: f.type || "string", default: f.default })),
+        providers: [...this.providers.entries()].map(([name, config]) => ({ name, config, ...(this.providerStreams.has(name) ? {stream_simple:true} : {}) })).concat([...this.nativeProviders.values()].map(provider=>({name:provider.id,config:{},native:nativeDeclaration(provider, this.nativeProviderKeys.get(provider))}))),
         message_renderers: [...this.renderers.keys()].map((customType) => ({ custom_type: customType })),
         entry_renderers: [...this.entryRenderers.keys()].map((customType) => ({ custom_type: customType })),
+        markdown_transformer: typeof this.markdownTransformer === "function" || undefined,
         // The host sends no session log until an extension asks for it, so the
         // majority which never inspect the session do not each hold a full copy
         // of it resident. The Go, Rust and Python SDKs ask on the first read,
@@ -899,16 +1741,34 @@ export class Runtime {
         wants_session_log: true,
       },
     });
+    this.providersSent = true;
   }
 
+  // The host retires a generation by waiting for its connection to close after teardown, because the process outlives the generation.
   async run() {
-    await this.connect();
     try {
+      await this.serve();
+    } finally {
+      this.conn?.socket?.destroy?.();
+    }
+  }
+
+  async serve() {
+    try {
+      await this.connect();
       while (true) {
         const env = await this.conn.next();
         if (!env) return;
+        if (env.type === "call_result") {
+          // Apply earlier state and stream notifications before an awaited call resumes its handler.
+          this.conn.resolveCall(env);
+          continue;
+        }
         if (env.type === "ready") {
+          this.publishProviderConfigRefs();
+          this.hostReady = true;
           this.ready = env.ready || this.ready;
+          syncTerminalGeometry(this.ready);
           this.replaceModels(this.ready.models);
           this.ctx.cwd = this.ready.cwd || this.ctx.cwd;
           this.ctx.mode = this.ready.mode || this.ctx.mode;
@@ -918,6 +1778,8 @@ export class Runtime {
           // startup (interactive-mode.ts); print, JSON and RPC mode keep the
           // eager set.
           if (this.ctx.mode === "tui") void loadAllHighlightLanguages();
+          // The host owns process teardown, so flush bytecode when processing ready rather than relying on normal Node exit. Factory/module state is not persisted.
+          flushCompileCache();
           continue;
         }
         if (env.type === "ping") {
@@ -931,7 +1793,7 @@ export class Runtime {
         if (env.type === "shutdown") return;
         if (env.type === "cancel") {
           const requestId = env.cancel?.request_id || env.id || "";
-          this.activeRequests.get(requestId)?.abort(env.cancel?.reason || "cancelled");
+          (this.activeRequests.get(requestId) ?? this.retainedController(requestId))?.abort(env.cancel?.reason || "cancelled");
           this.conn.cancelParent(requestId);
           continue;
         }
@@ -939,18 +1801,35 @@ export class Runtime {
           this.conn.requestState(env.id, "started");
           const controller = new AbortController();
           this.activeRequests.set(env.id, controller);
-          const requestCtx = Object.create(this.ctx);
-          requestCtx.signal = controller.signal;
+          // Pi's context getters are enumerable own properties. Forward reads to the live context instead of snapshotting values or hiding them on a prototype; extensions can spread a context and retain ui/session/model access.
+          const requestCtx = Object.create(Object.getPrototypeOf(this.ctx));
+          for (const key of Object.keys(this.ctx)) {
+            if (key === "signal") continue;
+            const value = this.ctx[key];
+            const descriptor = typeof value === "function" ? { value, writable: true } : { get: () => this.ctx[key] };
+            Object.defineProperty(requestCtx, key, { enumerable: true, configurable: true, ...descriptor });
+          }
+          Object.defineProperty(requestCtx, "signal", { enumerable: true, configurable: true, get: () => controller.signal });
           // Dispatch concurrently so long-running interactive calls
           // (e.g. ui.custom blocking on done()) don't starve incoming
           // notifications such as ui.custom.input. The handler will
           // serialize its response back through the connection on its
           // own when it resolves.
-          const task = this.requestContext.run({ id: env.id, controller, pendingHostCalls: new Set() }, async () => {
+          const quitting = env.request?.method === "event" && env.request.event === "session_shutdown" && env.request.args?.reason === "quit";
+          const quitTail = quitDrain.active && env.request?.method === "event" && ["turn_end", "agent_settled"].includes(env.request.event);
+          const request = { id: env.id, controller, connection: this.conn, pendingHostCalls: new Set(), settled: false, responded: false, cancelled: false, quit: quitting, quitTail };
+          this.requestRecords.set(env.id, request);
+          if (quitting) enterQuitDrain();
+          refreshQuitDrain();
+          const task = this.requestContext.run(request, async () => {
             try {
               await this.handleRequest(env.id, env.request || {}, requestCtx);
             } finally {
+              request.cancelled ||= !request.settled && controller.signal.aborted;
+              request.settled = true;
               this.activeRequests.delete(env.id);
+              this.requestRecords.delete(env.id);
+              refreshQuitDrain();
             }
           });
           this.requestTasks.add(task);
@@ -961,6 +1840,25 @@ export class Runtime {
         }
       }
     } finally {
+      quitDrain.runtimes.delete(this);
+      // The connection is gone, so its shared-bus listeners leave the Host registry before invalidation unsubscribes them.
+      sharedBus.disposeRuntime(this);
+      this.extensionRuntime.invalidate();
+      this.hostReady = false;
+      liveRuntimes.delete(this);
+      this.providerTransport.abort(new Error("Provider connection closed"));
+      this.autocomplete.dispose();
+      for (const [id, entry] of this.nativeProviderObjects) {
+        if (entry.owner === this) this.nativeProviderObjects.delete(id);
+      }
+      for (const [id, entry] of this.providerConfigObjects) {
+        if (entry.owner === this) this.providerConfigObjects.delete(id);
+      }
+      this.nativeProviders.clear();
+      this.nativeProviderCallbacks.clear();
+      this.remoteProviderObjects.clear();
+      this.providerObjectCallbacks.clear();
+      this.providerUpdates.clear();
       this.removeDrainListener?.();
       for (const [requestId, controller] of this.activeRequests) {
         controller.abort("shutdown");
@@ -978,6 +1876,13 @@ export class Runtime {
         try { widget.component?.dispose?.(); } catch {}
       }
       this.widgets.clear();
+      // No dispatcher remains to apply model notifications after this point.
+      // End streams before joining child agents so their abort can settle.
+      for (const [streamId, stream] of this.modelStreams) {
+        stream.fail(new Error("Extension connection closed"), this.modelStreamCallbacks.get(streamId)?.model);
+      }
+      await Promise.all([...this.modelStreamCallbacks.values()].map(callbacks => callbacks.disposeFetch?.()));
+      await disposeIndependentSessions(this);
       if (this.requestTasks.size > 0) {
         let timer;
         const drained = await Promise.race([
@@ -1065,17 +1970,32 @@ export class Runtime {
     if (width === widget.lastWidth && lines.length === widget.lastLines.length && lines.every((line, index) => line === widget.lastLines[index])) return;
     widget.lastLines = lines;
     widget.lastWidth = width;
-    this.conn?.pushWidget(key, lines, width);
+    if (widget.options?.placement) {
+      this.fireAndForget("ui.setWidget", { key, content: lines, options: widget.options, width });
+    } else {
+      this.conn?.pushWidget(key, lines, width);
+    }
   }
 
   applyState(snapshot) {
     if (!snapshot || typeof snapshot !== "object") return;
-    for (const key of ["activeTools", "allTools", "commands"]) {
-      if (Array.isArray(snapshot[key])) this.state[key] = [...snapshot[key]];
+    for (const key of ["activeTools", "allTools", "commands", "allThemes"]) {
+      if (Object.hasOwn(snapshot, key)) this.state[key] = [...(snapshot[key] ?? [])];
     }
     if (typeof snapshot.thinkingLevel === "string") this.state.thinkingLevel = snapshot.thinkingLevel;
-    if (snapshot.model && typeof snapshot.model === "object") this.state.model = normalizeModel(snapshot.model);
+    if (Array.isArray(snapshot.scopedModels)) this.state.scopedModels = snapshot.scopedModels;
+    if (Object.hasOwn(snapshot, "model")) this.state.model = normalizeModel(snapshot.model);
     if (snapshot.session && typeof snapshot.session === "object") {
+      // 0.3.0: replaced by Pi runner wiring
+      // A cursor belongs to one session. Even an empty replacement must drop
+      // the outgoing log before folding pages from the destination.
+      if (snapshot.session.sessionId && snapshot.session.sessionId !== this.state.session.sessionId) {
+        this.pendingEntries = [];
+        this.ctx.sessionManager._cachedIndex = undefined;
+        this.state.session = { entries: [] };
+        this.sessionLogRequested = false;
+        this.sessionLogGeneration++;
+      }
       const persistedSession = (snapshot.session.sessionFile ?? this.state.session.sessionFile) !== "";
       if ((Array.isArray(snapshot.session.entriesAppended) && snapshot.session.entriesAppended.length > 0) ||
           (!persistedSession && typeof snapshot.session.entryCount === "number")) {
@@ -1087,6 +2007,7 @@ export class Runtime {
         sessionName: snapshot.session.sessionName ?? this.state.session.sessionName,
         sessionFile: snapshot.session.sessionFile ?? this.state.session.sessionFile,
         leafId: snapshot.session.leafId ?? this.state.session.leafId,
+        info: snapshot.session.info ?? this.state.session.info,
         entries: this.applyEntryAppend(snapshot.session),
       };
       this.branchCache = undefined;
@@ -1096,7 +2017,7 @@ export class Runtime {
     if (snapshot.footerData && typeof snapshot.footerData === "object") {
       const previousBranch = this.state.footerData.gitBranch;
       this.state.footerData = {
-        gitBranch: snapshot.footerData.gitBranch ?? "",
+        gitBranch: snapshot.footerData.gitBranch || null,
         extensionStatuses: snapshot.footerData.extensionStatuses ?? {},
         availableProviderCount: snapshot.footerData.availableProviderCount ?? 0,
       };
@@ -1105,121 +2026,45 @@ export class Runtime {
     if (typeof snapshot.hasPendingMessages === "boolean") this.state.hasPendingMessages = snapshot.hasPendingMessages;
     if (typeof snapshot.editorText === "string") this.state.editorText = snapshot.editorText;
     if (typeof snapshot.toolsExpanded === "boolean") this.state.toolsExpanded = snapshot.toolsExpanded;
-    if (Array.isArray(snapshot.allThemes)) this.state.allThemes = [...snapshot.allThemes];
-    if (snapshot.contextUsage && typeof snapshot.contextUsage === "object") {
-      this.state.contextUsage = { ...this.state.contextUsage, ...snapshot.contextUsage };
-      this.contextUsage = this.state.contextUsage;
+    if (Object.hasOwn(snapshot, "contextUsage")) {
+      this.state.contextUsage = snapshot.contextUsage == null ? undefined : { ...snapshot.contextUsage };
     }
     if (snapshot.systemPromptOptions && typeof snapshot.systemPromptOptions === "object") {
       this.state.systemPromptOptions = snapshot.systemPromptOptions;
     }
     if (typeof snapshot.systemPrompt === "string") {
       this.state.systemPrompt = snapshot.systemPrompt;
-      this.systemPrompt = snapshot.systemPrompt;
     }
-    if (snapshot.flags && typeof snapshot.flags === "object") this.state.flags = { ...snapshot.flags };
+    if (Object.hasOwn(snapshot, "flags")) this.state.flags = { ...snapshot.flags };
     // Pi's TUI and its extensions share one capability cache; here the host
     // owns the terminal, so its resolved capabilities seed the cache pi-tui's
     // Markdown reads.
     // The host's active theme colors ctx.ui.theme and the pi-coding-agent
     // theme helpers, as Pi's global theme does in its own process.
     if (snapshot.theme && typeof snapshot.theme === "object") this.ui.theme.setPalette(snapshot.theme);
-    const caps = snapshot.terminalCapabilities;
-    if (caps && typeof caps === "object") {
-      setTerminalCapabilities({ images: caps.images || null, trueColor: caps.trueColor === true, hyperlinks: caps.hyperlinks === true });
-    }
+    applyTerminalCapabilities(snapshot.terminalCapabilities);
+    if (snapshot.keybindings && typeof snapshot.keybindings === "object") this.applyKeybindings(snapshot.keybindings);
     if (typeof snapshot.hasUI === "boolean") this.state.hasUI = snapshot.hasUI;
-    this.ctx.hasUI = this.state.hasUI;
     this.ctx.model = normalizeModel(this.state.model);
     this.renderSpecialSurface("header");
     this.renderSpecialSurface("footer");
   }
 
-  // applyEditorComponent invokes a setEditorComponent factory locally,
-  // captures the resulting decoration state (border color, mode label,
-  // history) and forwards it to the host. The actual editor remains
-  // pig-native: only decoration data crosses the socket.
-  //
-  // pig-specific: real CustomEditor instances would route every
-  // keystroke through the socket which is unacceptable latency for an
-  // interactive editor. The decoration-only path covers the dominant
-  // use case in real extensions (prompt-editor).
-  applyEditorComponent(factory) {
-    let comp;
-    try {
-      comp = factory(this.api?.tui || {}, this.ui?.theme, getKeybindings());
-    } catch (err) {
-      this.fireAndForget("ui.notify", {
-        message: `setEditorComponent factory failed: ${err?.message || String(err)}`,
-        level: "error",
-      });
-      return;
-    }
-    if (!comp) {
-      this.fireAndForget("ui.setEditorComponent", { clear: true });
-      this.editorComponent = undefined;
-      return;
-    }
-    this.editorComponent = comp;
-    const send = () => {
-      const deco = this.snapshotEditorDecoration(comp);
-      const history = Array.isArray(comp._history) ? comp._history.slice() : [];
-      this.fireAndForget("ui.setEditorComponent", {
-        clear: false,
-        decoration: deco,
-        history,
-      });
-    };
-    // Hook requestRenderNow so dynamic mode-label changes propagate.
-    if (typeof comp._onRequestRender === "undefined") {
-      Object.defineProperty(comp, "_onRequestRender", {
-        value: send,
-        writable: true,
-        configurable: true,
-      });
-    } else {
-      comp._onRequestRender = send;
-    }
-    send();
+  // keybindings is Pi's keybindings manager, which Pi hands editor and
+  // custom-component factories.
+  keybindings() {
+    return getKeybindings();
   }
 
-  // snapshotEditorDecoration produces a serialisable decoration shape
-  // for the pig editor. It probes the captured borderColor and
-  // modeLabelColor callbacks with a sentinel to extract their
-  // ANSI-wrapping prefix/suffix without serialising the closure itself.
-  snapshotEditorDecoration(comp) {
-    const sentinel = "\u0000pig-deco\u0000";
-    const splitANSI = (styled) => {
-      const idx = styled.indexOf(sentinel);
-      if (idx < 0) return { prefix: "", suffix: "" };
-      return { prefix: styled.slice(0, idx), suffix: styled.slice(idx + sentinel.length) };
-    };
-    let labelText = "";
-    if (typeof comp._modeLabelProvider === "function") {
-      try { labelText = String(comp._modeLabelProvider() ?? ""); } catch { labelText = ""; }
-    }
-    let labelPrefix = "", labelSuffix = "";
-    if (typeof comp._modeLabelColor === "function") {
-      try {
-        const probed = String(comp._modeLabelColor(sentinel));
-        ({ prefix: labelPrefix, suffix: labelSuffix } = splitANSI(probed));
-      } catch {}
-    }
-    let borderPrefix = "", borderSuffix = "";
-    if (typeof comp._borderColor === "function") {
-      try {
-        const probed = String(comp._borderColor(sentinel));
-        ({ prefix: borderPrefix, suffix: borderSuffix } = splitANSI(probed));
-      } catch {}
-    }
-    return {
-      label: labelText,
-      labelPrefix,
-      labelSuffix,
-      borderPrefix,
-      borderSuffix,
-      lockBorder: Boolean(comp._lockedBorder),
-    };
+  // applyKeybindings installs the host's keybinding table (every tui.* and
+  // app.* definition with the user's overrides) as pi-tui's keybindings, as
+  // Pi installs its manager with setKeybindings at startup.
+  applyKeybindings(table) {
+    if (!table || typeof table !== "object" || !table.definitions) return;
+    const encoded = JSON.stringify(table);
+    if (encoded === this.keybindingTable) return;
+    this.keybindingTable = encoded;
+    setKeybindings(new KeybindingsManager(table.definitions, table.userBindings || {}));
   }
 
   readSessionFile() {
@@ -1267,9 +2112,9 @@ export class Runtime {
     const entries = this.readSessionFile();
     this.state.session.entries = entries;
     this.branchCache = undefined;
-    const owner = this.requestContext.getStore();
+    const owner = this.activeRequest();
     let operation;
-    operation = this.syncSessionLog(entries.length).catch((error) => {
+    operation = this.syncSessionLog(entries.length, this.sessionLogGeneration).catch((error) => {
       try { process.stderr.write(`pig: session synchronization failed: ${error?.message || String(error)}\n`); } catch {}
     }).finally(() => {
       owner?.pendingHostCalls.delete(operation);
@@ -1278,11 +2123,12 @@ export class Runtime {
     this.sessionLogSync = operation;
   }
 
-  async syncSessionLog(startCursor) {
+  async syncSessionLog(startCursor, generation = this.sessionLogGeneration) {
     let cursor = startCursor;
     let complete = false;
     for (;;) {
       const result = await this.call("watchSessionLog", { cursor, complete });
+      if (generation !== this.sessionLogGeneration) return;
       const entries = Array.isArray(result?.entries) ? result.entries : [];
       const next = Number(result?.entryCount ?? cursor);
       this.applyState({ session: {
@@ -1323,18 +2169,14 @@ export class Runtime {
     const session = this.state.session;
     const entries = session.entries || [];
     if (this.branchCache && this.branchCacheLeaf === session.leafId) return [...this.branchCache];
-    if (!session.leafId) {
-      this.branchCache = [...entries];
-      this.branchCacheLeaf = session.leafId;
-      return [...this.branchCache];
-    }
+    const leafId = session.leafId || undefined;
     const byId = new Map();
     for (const entry of entries) {
       if (entry && entry.id !== undefined) byId.set(entry.id, entry);
     }
     const path = [];
     const seen = new Set();
-    let current = byId.get(session.leafId);
+    let current = leafId === undefined ? undefined : byId.get(leafId);
     while (current && !seen.has(current.id)) {
       seen.add(current.id);
       path.push(current);
@@ -1371,7 +2213,7 @@ export class Runtime {
   footerDataProvider() {
     const self = this;
     return {
-      getGitBranch() { return self.state.footerData.gitBranch || undefined; },
+      getGitBranch() { return self.state.footerData.gitBranch; },
       getExtensionStatuses() { return new Map(Object.entries(self.state.footerData.extensionStatuses || {})); },
       getAvailableProviderCount() { return self.state.footerData.availableProviderCount || 0; },
       onBranchChange(callback) {
@@ -1398,10 +2240,8 @@ export class Runtime {
   renderSpecialSurface(kind) {
     if (!this.conn) return;
     const factory = kind === "footer" ? this.footerFactory : this.headerFactory;
-    if (!factory) {
-      this.fireAndForget(kind === "footer" ? "ui.setFooter" : "ui.setHeader", { clear: true });
-      return;
-    }
+    // State updates redraw only this extension's installed surfaces. An explicit UI setter owns clearing the shared slot.
+    if (!factory) return;
     try {
       // Upstream builds the component once and re-renders it; rebuilding per
       // frame would re-run factory side effects, and a footer that subscribes
@@ -1543,13 +2383,14 @@ export class Runtime {
     // Pi focuses the component it shows (TUI.setFocus), unless it is a
     // non-capturing overlay, so focusable components such as Input and
     // Editor render their cursor marker.
-    if (isFocusable(component) && !(isOverlay && overlayOpts?.nonCapturing)) component.focused = true;
+    if (requireModule("./shims/pi-dist/pi-tui/tui.js").isFocusable(component) && !(isOverlay && overlayOpts?.nonCapturing)) component.focused = true;
     const openArgs = {
       key,
       title: String(overlayOpts?.title || ""),
       widthFraction: Number(overlayOpts?.widthFraction || 0) || 0,
       heightFraction: Number(overlayOpts?.heightFraction || 0) || 0,
       overlay: isOverlay,
+      hasHandle: isOverlay && typeof sizing.onHandle === "function",
     };
     // Upstream showOverlay(component, overlayOptions ?? { width: component.width })
     // renders the component at the resolved overlay width, not the terminal
@@ -1625,6 +2466,11 @@ export class Runtime {
       renderNow();
     };
 
+    overlay.onMounted = state => {
+      if (!overlay.active || overlay.handle) return;
+      overlay.handle = mountedOverlayHandle(this, overlay, state);
+      try { sizing.onHandle?.(overlay.handle); } catch (error) { closeWithError(error); }
+    };
     hostCallStarted = true;
     const hostCallP = this.call("ui.custom", openArgs);
     overlay.renderImmediate();
@@ -1636,6 +2482,7 @@ export class Runtime {
       hostError = err instanceof Error ? err : new Error(String(err));
     } finally {
       overlay.active = false;
+      overlay.releaseHandle?.();
       if (overlay.renderTimer !== undefined) clearTimeout(overlay.renderTimer);
       this.customOverlays.delete(key);
       overlay.dispose();
@@ -1651,6 +2498,40 @@ export class Runtime {
     return this.models.get(modelRegistryKey(provider, modelId));
   }
 
+  // applyModelRegistryState installs a host registry snapshot: the catalog
+  // and the provider, error and registration state ctx.modelRegistry reads.
+  applyModelRegistryState(state) {
+    if (!state || typeof state !== "object") return;
+    if (Array.isArray(state.models)) this.replaceModels(state.models);
+    this.registryProviders.clear();
+    this.registryState = {
+      providers: state.providers && typeof state.providers === "object" ? state.providers : {},
+      registered: Array.isArray(state.registered) ? state.registered : [],
+      error: typeof state.error === "string" && state.error !== "" ? state.error : undefined,
+    };
+  }
+
+  // Compose the same built-in, models.json and extension layers as Pi. Auth
+  // methods receive the caller's AuthContext; they do not capture host secrets.
+  getRegistryProvider(id) {
+    const native = this.ctx.modelRegistry.getRegisteredNativeProvider(id);
+    if (native) return native;
+    const state = this.registryState.providers?.[id];
+    const models = [...this.models.values()].filter((model) => model.provider === id);
+    if (!state && models.length === 0) return undefined;
+    if (!state?.composed) {
+      const builtin = piBuiltinProvider(id);
+      if (builtin) return builtin;
+    }
+    const config = this.registeredProviderConfig(id) ?? this.registryState.registered?.find(entry => entry.name === id)?.config ?? state?.extensionConfig;
+    // A cell member's re-registration replaces the shared root; Pi recomposes on registration, so a composition is reused only for the root it was built from.
+    const cached = this.registryProviders.get(id);
+    if (cached && cached.config === config) return cached.provider;
+    const provider = piProviderComposer().composeModelProvider(id, piBuiltinProvider(id), { getProvider: () => state?.modelsConfig }, config);
+    this.registryProviders.set(id, { config, provider });
+    return provider;
+  }
+
   replaceModels(models) {
     this.models.clear();
     for (const raw of Array.isArray(models) ? models : []) {
@@ -1663,7 +2544,21 @@ export class Runtime {
   }
 
   handleNotify(notify) {
+    if (notify.method?.startsWith("ui.editor.")) {
+      let args = notify.args;
+      try {
+        if (typeof args === "string") args = JSON.parse(args);
+      } catch {
+        return;
+      }
+      this.editorHost.handleNotify(notify.method, args ?? {});
+      return;
+    }
     switch (notify.method) {
+      case "runtime_input_end":
+        quitDrain.inputEnded = true;
+        refreshQuitDrain();
+        return;
       case "tool_render_release": {
         let args = notify.args;
         try {
@@ -1674,10 +2569,27 @@ export class Runtime {
         this.toolRenderCards.delete(args?.card);
         return;
       }
+      case "autocomplete.release":
+        this.autocomplete.release(notify.args?.id);
+        return;
+      case "provider_release": {
+        this.nativeProviderCallbacks.delete(notify.args?.key);
+        return;
+      }
+      case "provider_superseded": {
+        // Another process registered this provider after this member; Pi keeps only the latest effective root.
+        const name = (typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args)?.name;
+        if (typeof name !== "string") return;
+        this.forgetProviderOwnership(name);
+        for (const table of [this.providerConfigObjects, this.nativeProviderObjects]) {
+          if (table.get(name)?.owner === this) table.delete(name);
+        }
+        return;
+      }
       case "model_registry_update": {
         let args = notify.args;
         if (typeof args === "string") args = JSON.parse(args);
-        this.replaceModels(args?.models);
+        this.applyModelRegistryState(args);
         return;
       }
       case "model_stream_event": {
@@ -1702,6 +2614,7 @@ export class Runtime {
         const width = Number(args?.width || 0);
         if (width > 0) {
           this.ready.width = width;
+          syncTerminalGeometry(this.ready);
           // After the assignment, so a handler reading ctx.width sees the new value.
           for (const handler of [...this.widthChangeHandlers]) {
             try {
@@ -1716,6 +2629,7 @@ export class Runtime {
           // the host receives frames for the new width.
           this.renderSpecialSurface("header");
           this.renderSpecialSurface("footer");
+          this.editorHost.refresh();
         }
         return;
       }
@@ -1729,12 +2643,14 @@ export class Runtime {
         const height = Number(args?.height || 0);
         if (height > 0) {
           this.ready.height = height;
+          syncTerminalGeometry(this.ready);
           // Re-render widgets: height-dependent layouts (chain graphs,
           // dashboards) may want to reflow.
           for (const key of this.widgets.keys()) this.renderWidget(key);
           for (const overlay of this.customOverlays?.values() || []) {
             overlay.renderFrame();
           }
+          this.editorHost.refresh();
         }
         return;
       }
@@ -1750,6 +2666,12 @@ export class Runtime {
         for (const overlay of this.customOverlays?.values() || []) overlay.renderFrame();
         this.renderSpecialSurface("header");
         this.renderSpecialSurface("footer");
+        this.editorHost.refresh();
+        return;
+      }
+      case "ui.custom.opened": {
+        const args = typeof notify.args === "string" ? JSON.parse(notify.args) : notify.args;
+        this.customOverlays.get(args?.key)?.onMounted?.(args);
         return;
       }
       case "ui.custom.input": {
@@ -1761,6 +2683,7 @@ export class Runtime {
         }
         const overlay = this.customOverlays?.get(args?.key);
         if (!overlay) return;
+        if (args.state) overlay.applyHandleState?.(args.state);
         try {
           overlay.component?.handleInput?.(String(args?.data ?? ""));
           overlay.renderImmediate();
@@ -1779,7 +2702,28 @@ export class Runtime {
   // oauthProviders (they cannot cross the process boundary) and replaced with a
   // serializable capability descriptor the host uses to build its OAuth proxy.
   registerProvider(name, config) {
-    config = config || {};
+    if (typeof name !== "string") {
+      this.registerNativeProvider(name);
+      return;
+    }
+    if (!config) throw new Error("Provider config is required when registering by name");
+    // Pi validates the incoming registration on its own, before it touches the stored configuration, then merges its defined values over the previous effective root (model-runtime.ts:753-766).
+    piProviderComposer().validateExtensionProvider(name, piBuiltinProvider(name), this.registryState.providers?.[name]?.modelsConfig, config);
+    // A loading member merges over its own queued root, else over the cell's active root, as Pi's flush merges over the effective registration.
+    const merged = { ...(this.loadState === "active" ? this.registeredProviderConfig(name) ?? this.foreignProviderConfigForMerge(name) : this.registeredProviderConfigs.get(name) ?? this.providerConfigObjects.get(name)?.config) };
+    for (const [key, value] of Object.entries(config)) {
+      if (value !== undefined) merged[key] = value;
+    }
+    this.registryProviders.delete(name);
+    this.registeredProviderConfigs.set(name, merged);
+    this.nativeProviders.delete(name);
+    if (this.loadState === "active") this.transferProviderOwnership(name, merged);
+    config = merged;
+    if (typeof config.streamSimple === "function") {
+      this.providerStreams.set(name, config.streamSimple);
+      const {streamSimple, ...serializable} = config;
+      config = serializable;
+    }
     const oauth = config.oauth;
     if (oauth && typeof oauth === "object") {
       this.oauthProviders.set(name, oauth);
@@ -1795,28 +2739,89 @@ export class Runtime {
       };
     }
     this.providers.set(name, config);
+    if (this.providersSent) this.fireAndForget("registerProvider", { name, config, configRef: this.providerConfigRef(merged) });
+  }
+
+  // Native callbacks remain in their owning process; the host installs reverse-call proxies.
+  registerNativeProvider(provider) {
+    if (!provider || typeof provider.id !== "string" || !provider.id.trim()) throw new Error("Provider id must not be empty.");
+    let key = uuid();
+    const previous = this.nativeProviders.get(provider.id);
+    if (previous && !this.providersSent) this.nativeProviderCallbacks.delete(this.nativeProviderKeys.get(previous));
+    this.nativeProviderKeys.set(provider, key);
+    this.nativeProviderCallbacks.set(key, provider);
+    const declaration=nativeDeclaration(provider, key);
+    this.registeredProviderConfigs.delete(provider.id);
+    this.providerStreams.delete(provider.id);
+    this.providers.delete(provider.id);
+    this.nativeProviders.set(provider.id, provider);
+    if (this.loadState === "active") {
+      this.transferProviderOwnership(provider.id, undefined);
+      this.nativeProviderObjects.set(provider.id, { owner: this, provider });
+    }
+    for(const [key,model] of this.models) if(model.provider===provider.id)this.models.delete(key);
+    for(const model of declaration.models) this.models.set(modelRegistryKey(provider.id,model.id),normalizeModel(model));
+    if(this.providersSent) this.fireAndForget("registerProvider",{name:provider.id,config:{},native:declaration});
   }
 
   unregisterProvider(name) {
+    this.registryProviders.delete(name);
     this.providers.delete(name);
+    this.providerStreams.delete(name);
     this.oauthProviders.delete(name);
+    this.registeredProviderConfigs.delete(name);
+    this.nativeProviders.delete(name);
+    if (this.loadState === "active") this.transferProviderOwnership(name, undefined);
+    if (this.providersSent) {
+      // Pi's unregisterProvider removes the registration synchronously (model-runtime.ts:791-797); the Host's registry update arrives later, so every member of this process drops its stale entry now.
+      for (const runtime of liveRuntimes) runtime.dropRegistration(name);
+      this.dropRegistration(name);
+      this.fireAndForget("unregisterProvider", { name });
+    }
+  }
+
+  dropRegistration(name) {
+    this.registryState = { ...this.registryState, registered: (this.registryState.registered ?? []).filter((entry) => entry.name !== name) };
+  }
+
+  // The Host forwards its caller's abort to a request that already settled while the extension still holds refreshSignal, until releaseRetainedSignal reports that it does not.
+  retainSignal(id, source, refreshSignal) {
+    const controller = this.activeRequests.get(id);
+    if (!controller || controller.signal !== source) return;
+    this.signalControllers.set(source, controller);
+    this.retainedSignals.set(id, { source: new WeakRef(source) });
+    this.signalRegistry.register(refreshSignal, id);
+  }
+
+  retainedController(id) {
+    const source = this.retainedSignals.get(id)?.source.deref();
+    return source && this.signalControllers.get(source);
+  }
+
+  releaseRetainedSignal(id) {
+    if (!this.retainedSignals.delete(id)) return;
+    this.notify("oauth.signal_release", { request_id: id });
   }
 
   // dispatchOAuth answers an oauth_* request. The provider is keyed by
   // request.tool because oauth_* frames carry no provider field of their own.
-  async dispatchOAuth(id, request) {
+  // signal is the host request's abort signal. Pi passes refreshToken the caller's signal, composed with AbortSignal.timeout(15_000) only by resolveStoredOAuth (auth/resolve.ts:149-153, models.ts:474), and login the interaction's signal (provider-composer.ts:281-292); an extension may retain either after the callback returns, and it stays live and unaborted until its own source fires.
+  async dispatchOAuth(id, request, signal) {
     const provider = this.oauthProviders.get(request.tool);
     if (!provider) throw new Error(`unknown oauth provider: ${request.tool}`);
     switch (request.method) {
       case "oauth_login": {
         if (typeof provider.login !== "function") throw new Error("provider does not support login");
-        const creds = await provider.login(new OAuthLoginCallbacks(this));
+        const creds = await provider.login(new OAuthLoginCallbacks(this, signal));
         await this.respond(id, oauthCredsToWire(creds));
         return;
       }
       case "oauth_refresh": {
         if (typeof provider.refreshToken !== "function") throw new Error("provider does not support refresh");
-        const creds = await provider.refreshToken(oauthCredsFromWire(request.args));
+        // The Host says whether the caller is resolveStoredOAuth, which composes the timeout; a refresh from Models.refresh gets the caller's signal alone.
+        const refreshSignal = typeof request.signal_timeout_ms === "number" ? AbortSignal.any([signal, AbortSignal.timeout(request.signal_timeout_ms)]) : signal;
+        this.retainSignal(id, signal, refreshSignal);
+        const creds = await provider.refreshToken(oauthCredsFromWire(request.args), refreshSignal);
         await this.respond(id, oauthCredsToWire(creds));
         return;
       }
@@ -1835,6 +2840,39 @@ export class Runtime {
   async handleRequest(id, request, ctx) {
     try {
       switch (request.method) {
+        case "facet": {
+          await this.respond(id, await dispatchFacet(this, request, ctx));
+          return;
+        }
+        case "provider_object_callback": {
+          const result = await dispatchProviderObjectCallback(this, request);
+          await this.respond(id, result);
+          return;
+        }
+        case "provider_call":
+        case "provider_stream": {
+          const result=await dispatchNativeProvider(this,id,request,ctx);
+          await this.respond(id,result);
+          return;
+        }
+        case "provider_stream_simple": {
+          const callback = this.providerStreams.get(request.tool);
+          if (!callback) throw new Error(`unknown provider stream: ${request.tool}`);
+          const {model, context, options} = request.args;
+          // Pi's composer calls extension.streamSimple with the effective registered root as its receiver (provider-composer.ts:500-501).
+          const stream = await callback.call(this.registeredProviderConfig(request.tool), model, context, {...options, signal:ctx.signal});
+          for await (const event of stream) {
+            if (ctx.signal.aborted) throw new Error("provider stream aborted");
+            const accepted = this.conn.send({type:"notify", notify:{method:"provider_stream_event",args:{request_id:id,result:event}}});
+            if (!accepted) await new Promise((resolve,reject)=>{
+              const finish=(error)=>{this.conn.socket.off("drain",drain);this.conn.socket.off("close",closed);ctx.signal.removeEventListener("abort",aborted);error?reject(error):resolve();};
+              const drain=()=>finish();const closed=()=>finish(new Error("extension connection closed"));const aborted=()=>finish(new Error("provider stream aborted"));
+              this.conn.socket.once("drain",drain);this.conn.socket.once("close",closed);ctx.signal.addEventListener("abort",aborted,{once:true});if(ctx.signal.aborted)aborted();
+            });
+          }
+          await this.respond(id, await stream.result());
+          return;
+        }
         case "tool_call": {
           const tool = this.tools.get(request.tool);
           if (!tool) throw new Error(`unknown tool: ${request.tool}`);
@@ -1854,6 +2892,23 @@ export class Runtime {
           await this.respond(id, this.normalizeToolResult(result));
           return;
         }
+        case "model_stream_callback": {
+          const { streamId, callback, value } = request.args;
+          const owned = this.modelStreamCallbacks.get(streamId);
+          // Closing an already disposed response is idempotent; a provider's deferred Body.Close may follow its terminal stream event.
+          if (!owned && callback === "fetchClose") { await this.respond(id, null); return; }
+          const fn = owned?.[callback];
+          if (typeof fn !== "function") throw new Error(`unknown model stream callback ${streamId}/${callback}`);
+          let result;
+          try {
+            result = await fn(value, owned.model, ctx.signal);
+          } finally {
+            // Pi's provider sees the aborted signal before classifying a callback rejection. Wait for the host to apply cancellation before publishing the reverse-call response.
+            if (owned.cancellation) await owned.cancellation;
+          }
+          await this.respond(id, callback === "onPayload" ? { defined: result !== undefined, value: result } : result);
+          return;
+        }
         case "command_argument_completions": {
           const cmd = this.commands.get(request.tool);
           if (typeof cmd?.getArgumentCompletions !== "function") throw new Error(`command ${request.tool} has no getArgumentCompletions`);
@@ -1864,7 +2919,12 @@ export class Runtime {
         case "command": {
           const cmd = this.commands.get(request.tool);
           if (!cmd) throw new Error(`unknown command: ${request.tool}`);
-          await cmd.handler?.(request.args ?? "", ctx);
+          const owner = this.requestContext.getStore();
+          if (owner?.id === id) owner.command = true;
+          if (owner?.id === id && ctx.mode === "rpc") armRequestWindow(owner, true);
+          const pending = cmd.handler?.(request.args ?? "", ctx);
+          if (ctx.mode === "rpc") await this.acknowledgeInvocation(id, pending);
+          await pending;
           await this.respond(id, null);
           return;
         }
@@ -1876,10 +2936,16 @@ export class Runtime {
           // Upstream preparation.fileOps holds Set<string> values; the wire
           // carries arrays (FileOperations.MarshalJSON).
           const fileOps = request.event === "session_before_compact" ? event.preparation?.fileOps : undefined;
+          // Upstream hands these handlers an AbortSignal; the host cancels the
+          // request when Pi would abort it.
+          if (request.event === "session_before_compact" || request.event === "session_before_tree") {
+            event.signal = ctx.signal;
+          }
           if (fileOps) {
             for (const key of ["read", "written", "edited"]) fileOps[key] = new Set(fileOps[key] ?? []);
           }
-          if (request.event === "agent_before_settle") {
+          // pig additive (D19): preserve boundary mutations alongside handler errors.
+          if (request.event === "agent_before_settle" || request.event === "turn_end") {
             const entries = event.entries;
             let result;
             let error;
@@ -1891,14 +2957,30 @@ export class Runtime {
             await this.respond(id, { _pigBoundaryEntries: entries, _pigBoundaryResult: result }, error);
             return;
           }
+          if (request.event === "before_agent_start") {
+            const options = event.systemPromptOptions;
+            // Pi's normalized options always carry a selectedTools array; the host omits an empty one.
+            if (options.selectedTools === undefined) options.selectedTools = [];
+            let result;
+            let error;
+            try {
+              result = await selected.handler(event, ctx);
+            } catch (err) {
+              error = err instanceof Error ? err : new Error(String(err));
+            }
+            await this.respond(id, { _pigPromptSections: options.sections, _pigPromptSelectedTools: options.selectedTools, _pigPromptResult: result }, error);
+            return;
+          }
           const messages = event.messages;
           const snapshot = Array.isArray(messages) ? messages.slice() : undefined;
           const pending = selected.handler(event, ctx);
-          // Calling an async handler executes its synchronous prefix before
-          // returning its Promise. Admit the next prompt at that boundary.
-          if (request.event === "ui_prompt_start" || request.event === "ui_prompt_end") {
+          const shutdownOwner = this.requestContext.getStore();
+          if (shutdownOwner?.id === id && shutdownOwner.quit && ctx.mode === "rpc") armRequestWindow(shutdownOwner);
+          // Calling an async handler executes its synchronous prefix before returning its Promise. Unawaited notifications admit the next caller at that boundary.
+          if (request.event === "ui_prompt_start" || request.event === "ui_prompt_end" || request.event === "session_info_changed") {
             this.conn.requestState(id, "blocked", "external_io");
           }
+          if (request.event === "session_shutdown" && ctx.mode === "rpc") await this.acknowledgeInvocation(id, pending);
           let result = await pending;
           if ((request.event === "context" || request.event === "context_with_system") && snapshot) {
             const returned = result?.messages ?? messages;
@@ -1910,6 +2992,11 @@ export class Runtime {
           if (request.event === "before_provider_headers") {
             await this.respond(id, event.headers ?? {});
             return;
+          }
+          if (request.event === "user_bash" && result !== undefined) {
+            if (result === null) throw new Error('Invalid user_bash handler result: return undefined for local execution or exactly one valid { operations } or { result } object');
+            const undefinedExitCode = result.result && Object.hasOwn(result.result, "exitCode") && result.result.exitCode === undefined;
+            result = { ...result, _pigUserBashExitCodeUndefined: Boolean(undefinedExitCode) };
           }
           await this.respond(id, result);
           return;
@@ -1928,6 +3015,21 @@ export class Runtime {
           const component = await handler(payload.message, payload.options, this.ui.theme);
           const lines = Array.isArray(component) ? component : component?.render?.(payload.width);
           await this.respond(id, { lines: Array.isArray(lines) ? lines : [] });
+          return;
+        }
+        case "markdown_transform": {
+          // Pi applies each transformer synchronously while it renders
+          // (markdown-transform.ts): a string result replaces the Markdown, and
+          // anything else, a throw included, keeps it.
+          const payload = request.args || {};
+          let transformed = null;
+          if (typeof this.markdownTransformer === "function") {
+            try {
+              const result = this.markdownTransformer(payload.markdown ?? "", payload.context ?? {});
+              if (typeof result === "string") transformed = result;
+            } catch {}
+          }
+          await this.respond(id, transformed);
           return;
         }
         case "render_entry": {
@@ -1975,37 +3077,12 @@ export class Runtime {
           return;
         }
         case "autocomplete.suggest": {
-          // Build the chained provider on demand. Base provider is
-          // null-returning so chained wrappers fall back gracefully.
-          const factories = this.autocompleteFactories || [];
-          const baseProvider = {
-            async getSuggestions() { return null; },
-            applyCompletion(lines, cursorLine, cursorCol, _item, _prefix) { return [lines, cursorLine, cursorCol]; },
-            shouldTriggerFileCompletion() { return false; },
-          };
-          const chain = factories.reduce((acc, f) => {
-            try { return f(acc) || acc; } catch { return acc; }
-          }, baseProvider);
-          const args = request.args || {};
-          const lines = Array.isArray(args.lines) ? args.lines : [];
-          const cursorLine = Number(args.cursorLine) || 0;
-          const cursorCol = Number(args.cursorCol) || 0;
-          const ac = new AbortController();
-          const options = { signal: ac.signal };
-          const abort = () => ac.abort(ctx.signal?.reason);
-          ctx.signal?.addEventListener("abort", abort, { once: true });
-          let result = null;
-          try {
-            result = await chain.getSuggestions(lines, cursorLine, cursorCol, options);
-          } finally {
-            ctx.signal?.removeEventListener("abort", abort);
-          }
-          const items = (result && Array.isArray(result.items)) ? result.items : [];
-          const prefix = (result && typeof result.prefix === "string") ? result.prefix : "";
-          await this.respond(id, { items, prefix });
+          await this.respond(id, await this.autocomplete.suggest(request.args, ctx.signal));
           return;
         }
         case "terminal_input": {
+          this.state.editorText = request.args.editorText;
+          this.state.toolsExpanded = request.args.toolsExpanded;
           // Upstream's TerminalInputHandler is synchronous and the host waits
           // on this reply, so the handlers run inline in registration order.
           // A handler's data replaces the chunk for the handlers after it; a
@@ -2032,7 +3109,7 @@ export class Runtime {
         case "oauth_login":
         case "oauth_refresh":
         case "oauth_get_api_key":
-          await this.dispatchOAuth(id, request);
+          await this.dispatchOAuth(id, request, ctx.signal);
           return;
         default:
           throw new Error(`unknown request method: ${request.method}`);
@@ -2042,12 +3119,29 @@ export class Runtime {
     }
   }
 
+  // pig additive (D19): normal completion retires async-local request ownership before its response; cancellation never promotes that owner.
   async respond(id, result = null, error = null) {
     const owner = this.requestContext.getStore();
-    if (owner?.id === id && owner.pendingHostCalls.size > 0) {
-      await Promise.all([...owner.pendingHostCalls]);
+    if (owner?.id === id) {
+      owner.cancelled ||= !owner.settled && owner.controller.signal.aborted;
+      owner.settled = true;
+      if (owner.pendingHostCalls.size > 0) await Promise.all([...owner.pendingHostCalls]);
+      owner.responded = true;
+      this.conn.cancelParent(id);
     }
     this.conn.respond(id, result, error);
+  }
+
+  // The host request whose handler is running the current code. Code the
+  // handler left scheduled when it returned (a timer, a promise it did not
+  // await) still carries the request's async context, but it is no longer part
+  // of that request, whose host calls the host cancels once it ends. As in Pi,
+  // where nothing ties a call to the event that scheduled it, such calls are
+  // the extension's own: pi-powerline-footer opens its welcome overlay from a
+  // timer its session_start handler starts.
+  activeRequest() {
+    const request = this.requestContext.getStore();
+    return request && !request.settled ? request : undefined;
   }
 
   normalizeToolResult(result) {
@@ -2059,36 +3153,40 @@ export class Runtime {
       details: result.details,
       is_error: Boolean(result.isError ?? result.is_error),
       terminate: result.terminate === true ? true : undefined,
+      usage: result.usage ?? undefined,
     };
   }
 
-  startModelStream(model, context, options = {}) {
+  startModelStream(model, context, options = {}, simple = false, apiRequest = false) {
     const streamId = `model-stream-${this.nextModelStreamId++}`;
     const stream = new ModelEventStream();
     this.modelStreams.set(streamId, stream);
     // An AbortSignal (upstream options.signal) cannot cross the process
     // boundary: its abort cancels the host request instead, and the provider
     // ends the stream as upstream does for an aborted request.
-    const { signal, ...requestOptions } = options ?? {};
+    const { signal, onPayload, onResponse, transformHeaders, fetch, ...requestOptions } = options ?? {};
+    const fetchCallbacks = typeof fetch === "function" ? modelFetchCallbacks(fetch, signal) : {};
+    const callbacks = { model, onPayload, onResponse, transformHeaders, ...fetchCallbacks };
+    this.modelStreamCallbacks.set(streamId, callbacks);
     let onAbort;
     if (signal && typeof signal.addEventListener === "function") {
-      onAbort = () => { this.call("cancelModelStream", { streamId }).catch(() => {}); };
+      onAbort = () => { callbacks.cancellation = this.call("cancelModelStream", { streamId }).catch(() => {}); };
       signal.addEventListener("abort", onAbort, { once: true });
     }
-    // The host writes every model_stream_event notification before the call
-    // result, but Connection resolves call results inside its frame reader
-    // while earlier notifications still wait for the run loop. Settle only
-    // after the run loop has applied every frame received before the result.
-    const settle = (error) => {
+    // The receive loop applies preceding stream notifications before this call settles. Cleanup runs outside the host-call continuation and reports a missing terminal event rather than fabricating a successful stream.
+    const settle = async (error) => {
       if (!stream.terminal && this.conn?.queue.length > 0) {
-        setImmediate(() => settle(error));
+        setImmediate(() => { void settle(error); });
         return;
       }
+      try { await fetchCallbacks.disposeFetch?.(); }
+      catch (cleanupError) { error ??= cleanupError; }
       if (!stream.terminal) stream.fail(error ?? new Error("model stream ended without a terminal event"), model);
       this.modelStreams.delete(streamId);
+      this.modelStreamCallbacks.delete(streamId);
       if (onAbort) signal.removeEventListener("abort", onAbort);
     };
-    void this.call("modelStream", { streamId, model, request: { ...context, ...requestOptions } }).then(
+    void this.call("modelStream", { streamId, model, simple, apiRequest, fetch: typeof fetch === "function", onPayload: typeof onPayload === "function", onResponse: typeof onResponse === "function", transformHeaders: typeof transformHeaders === "function", request: { ...context, ...requestOptions } }).then(
       () => setImmediate(() => settle()),
       (error) => setImmediate(() => settle(error)),
     );
@@ -2096,21 +3194,42 @@ export class Runtime {
     return stream;
   }
 
-  async call(method, args = {}) {
+  // Only these synchronous operations may wait while the IO worker continues servicing the connection.
+  callSync(method, args = {}) {
+    const facetMethod = method === "facet.host.sync" && hasFacetBridge(this);
+    const providerMethod = method === "provider.object" && ["getModels", "filterModels", "update"].includes(args.method);
+    const providerCallback = method === "provider.callback" && args.method === "notify";
+    const themeMethod = ["ui.getTheme", "ui.setTheme", "ui.theme", "ui.addAutocompleteProvider", "ui.autocomplete.invoke", "ui.autocomplete.current"].includes(method);
+    if (!facetMethod && !themeMethod && !["registerTool", "getAllTools", "getActiveTools", "xref.hello", "xref.op", "provider.config", "events.on", "events.off", "events.emit", "events.settle"].includes(method) && method !== "ui.custom.control" && method !== "provider.retain" && method !== "provider.release" && !providerMethod && !providerCallback) {
+      throw new Error(`Host method ${method} is not a synchronous bridge operation`);
+    }
     if (!this.conn) throw new Error("runtime not connected");
-    const parentRequestId = this.requestContext.getStore()?.id || "";
+    const parent = this.activeRequest()?.id ?? "";
+    if (parent) this.conn.requestState(parent, "blocked", "host_call");
+    try { return this.conn.callSync(method, args, parent); }
+    finally { if (parent) this.conn.requestState(parent, "progress"); }
+  }
+
+  async call(method, args = {}) {
+    const owner = this.requestContext.getStore();
+    const connection = owner?.connection ?? this.conn;
+    if (!connection || connection.closed || connection !== this.conn) throw new Error("extension connection closed or replaced");
+    if (owner?.cancelled || (!owner?.settled && owner?.controller.signal.aborted)) {
+      throw new Error("host call cancelled with its parent request");
+    }
+    const parentRequestId = owner && !owner.settled ? owner.id : "";
     if (parentRequestId && !USER_BLOCKING_CALLS.has(method)) {
-      this.conn.requestState(parentRequestId, "blocked", "host_call");
+      connection.requestState(parentRequestId, "blocked", "host_call");
     }
     try {
-      return await this.conn.call(method, args, parentRequestId);
+      return await connection.call(method, args, parentRequestId);
     } finally {
-      if (parentRequestId) this.conn.requestState(parentRequestId, "progress");
+      if (parentRequestId && !owner.responded && !connection.closed) connection.requestState(parentRequestId, "progress");
     }
   }
 
   blockForUser() {
-    const requestId = this.requestContext.getStore()?.id || "";
+    const requestId = this.activeRequest()?.id || "";
     if (requestId) this.conn.requestState(requestId, "blocked", "user");
   }
 
@@ -2164,15 +3283,27 @@ export class Runtime {
     return out;
   }
 
+  // Host-backed synchronous effects belong to the handler's prefix, not its suspension. Flush them before releasing the caller that awaits invocation. A handler whose Promise has already settled never entered an awaited operation: its response releases the caller with the result, as Pi continues a settled await before its next input event.
+  async acknowledgeInvocation(id, pending) {
+    let settled = false;
+    Promise.resolve(pending).then(() => { settled = true; }, () => { settled = true; });
+    await Promise.resolve();
+    const owner = this.requestContext.getStore();
+    while (owner?.pendingHostCalls.size) await Promise.all([...owner.pendingHostCalls]);
+    if (!settled) this.conn.requestState(id, "blocked", "external_io");
+  }
+
   fireAndForget(method, args = {}) {
     if (!this.conn) return;
     // The caller does not await, but the dispatcher owns the operation through
     // its parent request. The response cannot report completed while this call
     // is still blocked, and a host rejection remains visible on the existing
     // stderr path.
-    const owner = this.requestContext.getStore();
+    const owner = this.activeRequest();
     const parentRequestId = owner?.id || "";
-    if (parentRequestId) this.conn.requestState(parentRequestId, "blocked", "host_call");
+    // These synchronous RPC effects must reach the host before invocation acknowledgment.
+    const synchronousRPC = this.ctx.mode === "rpc";
+    if (parentRequestId && !synchronousRPC) this.conn.requestState(parentRequestId, "blocked", "host_call");
     let operation;
     operation = this.conn.call(method, args, parentRequestId).catch((err) => {
       const reason = err && err.message ? err.message : String(err);
@@ -2198,13 +3329,62 @@ export class Runtime {
   }
 }
 
+// Pi's loader reports a module that exports no factory with this message as
+// the whole load error (loader.ts loadExtension).
+export function invalidFactory(entry) {
+  const error = new Error(`Extension does not export a valid factory function: ${entry}`);
+  error.pigLoaderError = true;
+  return error;
+}
+
+// loadFailure is Pi's load error for a factory or import that threw:
+// "Failed to load extension: <message>" (loader.ts loadExtension), with the
+// thrown error's stack for diagnostics.
+export function loadFailure(err) {
+  if (err?.pigLoaderError) return { error: err.message, stack: err.stack || "" };
+  const message = err instanceof Error ? err.message : String(err);
+  return { error: `Failed to load extension: ${message}`, stack: err instanceof Error ? err.stack || "" : "" };
+}
+
+// reportLoadFailure connects to the host, sends a load_failed notify in place
+// of the register handshake, and closes. In a packed cell it always settles:
+// destroy() tears the connection down after the frame is written whether or
+// not the host has accepted the connection yet (an end() would wait for the
+// host to close its side, and the host may still be working through earlier
+// members). An isolated extension's process exits once this settles, so it
+// waits for the host to read the frame and close the connection; otherwise
+// the host could see the exit before the connection.
+export function reportLoadFailure(sockPath, failure, { waitForHost = false } = {}) {
+  return new Promise((resolve) => {
+    if (!sockPath) {
+      resolve();
+      return;
+    }
+    const data = Buffer.from(JSON.stringify({ type: "notify", notify: { method: "load_failed", args: failure } }));
+    const header = Buffer.alloc(4);
+    header.writeUInt32BE(data.length, 0);
+    const socket = net.createConnection(sockPath, () => {
+      if (waitForHost) socket.end(Buffer.concat([header, data]));
+      else socket.write(Buffer.concat([header, data]), () => socket.destroy());
+    });
+    socket.on("error", () => resolve());
+    socket.on("close", () => resolve());
+  });
+}
+
+// 0.3.0: replaced by Pi runner wiring
 export async function loadExtension(entry) {
   const runtime = new Runtime(entry);
-  const mod = await import(pathToFileURL(entry).href);
-  const install = mod?.default ?? mod;
-  if (typeof install !== "function") {
-    throw new Error(`Extension does not export a valid factory function: ${entry}`);
+  try {
+    const install = await importExtension(entry);
+    if (typeof install !== "function") throw invalidFactory(entry);
+    await install(runtime.api);
+  } catch (err) {
+    runtime.discardLoad();
+    if (runtime.earlyConn) await runtime.reportLoadFailureOnConnection(loadFailure(err));
+    else await reportLoadFailure(process.env.PIG_EXT_SOCKET, loadFailure(err), { waitForHost: true });
+    process.exit(1);
   }
-  await install(runtime.api);
+  runtime.commitLoad();
   await runtime.run();
 }

@@ -1,0 +1,49 @@
+# Upstream evidence: Pi 0.87.1 terminal-image.ts:77-85 rejects inherited image hints under tmux.
+# settings-selector.ts:727-763 hides Show images and Image width, but retains
+# Auto-resize images and Block images. Reproduced with Herdr graphics forwarded
+# to the outer terminal; tmux is still the immediate terminal boundary.
+name = "09-settings-tmux-image-capability"
+description = "Tmux hides terminal image controls even inside an image-capable Herdr pane"
+covers = [
+  "packages/tui/src/terminal-image.ts",
+  "packages/coding-agent/src/modes/interactive/components/settings-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 20
+capture_start = "Auto-compact"
+capture_end = "Type to search · Enter/Space to change · Esc to cancel"
+
+[[tmux.steps]]
+keys = ["/settings", "Enter"]
+wait_contains = ["Type to search · Enter/Space to change · Esc to cancel"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/model-picker-defaults", "HERDR_ENV=1", "HERDR_KITTY_GRAPHICS=1"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/model-picker-defaults", "HERDR_ENV=1", "HERDR_KITTY_GRAPHICS=1"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Auto-resize images", "Block images"]
+both_not_contain = ["Show images", "Image width"]
+output_equal = true
+escaped_output_equal = true
+runs = 3
+pig_contains = ["(1/32)"]
+pi_contains = ["(1/31)"]
+
+# normalize-rationale: D80 contributes exactly one non-image privacy row. Assert both raw counts while preserving the image-control and full-frame comparisons.
+[[assert.normalize_replace]]
+pattern = '\(1/32\)'
+with = '(1/31)'
+reason = "D80 adds one non-image settings row; Pi's 33-row catalog loses two image-only rows under tmux, and PiG adds one privacy row."

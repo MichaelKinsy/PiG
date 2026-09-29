@@ -1,0 +1,31 @@
+# Derived from Pi 0.87.1 agent.test.ts:376,414,449 and e2e.test.ts:208.
+# Both probes use the public Agent API and a controlled provider stream.
+# Abort triggers a terminal provider response; an agent_end listener then holds
+# settlement behind a barrier. Compare the retained response, error state,
+# cancellation signal and final idle state without timing or path normalization.
+# Busy prompt/continue/reset and invalid continuation errors retain Pi's exact literals.
+# The constructor copies the caller's initial tool array before declaring its loadout.
+# Subscribers see only completed transcript entries; rejected continuation keeps the last turn error.
+# --experimental-import-meta-resolve resolves the exact published Pi package.
+name = "16-sdk-agent-lifecycle"
+description = "Agent abort drains provider termination and awaits lifecycle subscribers before becoming idle"
+covers = ["packages/agent/src/agent.ts", "packages/agent/src/agent-loop.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/agent-lifecycle-pig"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/agent-lifecycle-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['AGENT_LIFECYCLE held ["aborted","Request was aborted","Request was aborted",true,false]', 'AGENT_LIFECYCLE settled [true,true,false,[]]', '"No messages to continue from","Cannot continue from message role: assistant"', 'AGENT_LIFECYCLE initial-tools ["first","first"]', 'AGENT_LIFECYCLE retained-error "Request was aborted"', '"message_start:user:","message_end:user:user","message_start:assistant:user","message_end:assistant:user,assistant"']
+runs = 3

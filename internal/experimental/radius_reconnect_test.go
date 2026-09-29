@@ -68,7 +68,7 @@ func (c *fakeReconnectClient) OnAttachmentChange(listener func(*RadiusClientAtta
 }
 func (c *fakeReconnectClient) Reconnect(ctx context.Context) error { return c.reconnect(ctx) }
 
-// The pinned upstream test retries at 1s then 2s and restores demo-1 only after connection succeeds.
+// .upstream/v0.87.1/packages/coding-agent/test/experimental-radius-relay.test.ts:244 — reconnects an established client and restores its selected Session.
 func TestRadiusReconnectRestoresSelectedSession(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		client := &fakeReconnectClient{connected: true, attachment: &RadiusClientAttachment{SessionID: "demo-1"}}

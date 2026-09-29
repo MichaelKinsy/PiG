@@ -1,7 +1,8 @@
 package rssdk
 
 import (
-	"os"
+	"io/fs"
+	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
@@ -31,20 +32,20 @@ func TestSourceReadable(t *testing.T) {
 // The staged crate builds only if every module source is bundled: lib.rs
 // declares each src/*.rs file as a module.
 func TestBundledFilesIncludeEveryCrateSource(t *testing.T) {
-	entries, err := os.ReadDir("src")
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, entry := range entries {
-		name := "src/" + entry.Name()
-		if entry.IsDir() || !strings.HasSuffix(name, ".rs") {
-			continue
+	err := filepath.WalkDir("src", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
 		}
+		name := filepath.ToSlash(path)
 		if !slices.Contains(BundledFiles(), name) {
 			t.Errorf("BundledFiles is missing crate source %s", name)
 		}
 		if _, err := Source.ReadFile(name); err != nil {
 			t.Errorf("crate source %s is not embedded: %v", name, err)
 		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
 	}
 }

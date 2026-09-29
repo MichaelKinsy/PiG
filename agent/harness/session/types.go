@@ -313,9 +313,13 @@ type SessionMetadata struct {
 }
 
 // SessionCreateOptions configure repository creation; empty strings are
-// absent. Cwd is required by file-backed repositories.
+// absent except for ID, which HasID marks present when it is empty (upstream
+// distinguishes id: "" from an omitted id). Cwd is required by file-backed
+// repositories.
 type SessionCreateOptions struct {
-	ID              string
+	ID string
+	// HasID keeps an empty ID instead of generating a UUIDv7.
+	HasID           bool
 	ParentSessionID string
 	Cwd             string
 }
@@ -334,7 +338,8 @@ const (
 
 // ForkOptions select a repository fork. Branch scope copies one path from a
 // complete configured source AgentLane; tree scope copies the whole tree and
-// every Branch tip. Empty strings and nil pointers are absent.
+// every Branch tip. Empty strings and nil pointers are absent, except that
+// HasID marks an empty ID present.
 type ForkOptions struct {
 	Scope  string
 	Branch string
@@ -343,4 +348,6 @@ type ForkOptions struct {
 	// Position is ForkPositionAt (default) or ForkPositionBefore.
 	Position string
 	ID       string
+	// HasID keeps an empty ID instead of generating a UUIDv7.
+	HasID bool
 }

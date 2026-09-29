@@ -1,0 +1,24 @@
+# Pi 0.87.1 package-manager.ts:1083-1090 rejects a missing update target before any work.
+# package-manager-cli.ts:1096-1100 prints Error (not error) on stderr after that rejection.
+# Probe: fresh HOME/agent, pi update npm:missing --no-approve => exact diagnostic below, exit 1.
+name = "12-package-update-error"
+description = "A missing update target uses Pi's shared caught-error label and does not start a package operation."
+covers = ["packages/coding-agent/src/package-manager-cli.ts", "packages/coding-agent/src/core/package-manager.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/empty-home/agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/empty-home/agent"]
+override_base_args = true
+
+[cli]
+args = ["update", "npm:missing", "--no-approve"]
+timeout_seconds = 25
+
+[assert]
+exit_code = 1
+output_equal = true
+stderr_equal = true
+both_not_contain = ["Updating", "Updated"]
+runs = 3

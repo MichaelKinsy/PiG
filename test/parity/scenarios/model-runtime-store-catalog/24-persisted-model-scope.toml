@@ -1,0 +1,23 @@
+# Pi 0.87.1 model-resolver.test.ts:873-915 exercises AgentSession.setModel persistence. agent-session.ts:2140-2152 adds only a persisted default to a nonempty scope and preserves unscoped/session-only behavior.
+# The fixtures construct real Sessions and SettingsManagers. They compare ordered scopes and persisted settings; empty Go strings represent omitted default settings, and nil enabledModels represents Pi undefined.
+name = "24-persisted-model-scope"
+description = "Persisted model defaults extend existing scopes without creating or changing session-only scopes."
+covers = ["packages/coding-agent/src/core/agent-session.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/model-scope.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/model-scope.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

@@ -14,6 +14,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 // ─── Grep Tool ────────────────────────────────────────────────────────────────
@@ -43,23 +44,18 @@ func (t *GrepTool) Name() string  { return "grep" }
 func (t *GrepTool) Label() string { return "" }
 
 func (t *GrepTool) Schema() ai.ToolSchema {
-	return ai.ToolSchema{
+	return toolSchemaWithParameters(ai.ToolSchema{
 		Name:        "grep",
 		Description: "Search file contents for a pattern. Returns matching lines with file paths and line numbers. Respects .gitignore. Output is truncated to 100 matches or 50KB (whichever is hit first). Long lines are truncated to 500 chars.",
-		Parameters: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"pattern":    map[string]any{"type": "string", "description": "Search pattern (regex or literal string)"},
-				"path":       map[string]any{"type": "string", "description": "Directory or file to search (default: current directory)"},
-				"glob":       map[string]any{"type": "string", "description": "Filter files by glob pattern, e.g. '*.ts' or '**/*.spec.ts'"},
-				"ignoreCase": map[string]any{"type": "boolean", "description": "Case-insensitive search (default: false)"},
-				"literal":    map[string]any{"type": "boolean", "description": "Treat pattern as literal string instead of regex (default: false)"},
-				"context":    map[string]any{"type": "number", "description": "Number of lines to show before and after each match (default: 0)"},
-				"limit":      map[string]any{"type": "number", "description": "Maximum number of matches to return (default: 100)"},
-			},
-			"required": []string{"pattern"},
-		},
-	}
+	}, `{"type":"object","required":["pattern"],"properties":{
+		"pattern":{"type":"string","description":"Search pattern (regex or literal string)"},
+		"path":{"type":"string","description":"Directory or file to search (default: current directory)"},
+		"glob":{"type":"string","description":"Filter files by glob pattern, e.g. '*.ts' or '**/*.spec.ts'"},
+		"ignoreCase":{"type":"boolean","description":"Case-insensitive search (default: false)"},
+		"literal":{"type":"boolean","description":"Treat pattern as literal string instead of regex (default: false)"},
+		"context":{"type":"number","description":"Number of lines to show before and after each match (default: 0)"},
+		"limit":{"type":"number","description":"Maximum number of matches to return (default: 100)"}
+	}}`)
 }
 
 func (t *GrepTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolModeParallel }
@@ -96,7 +92,14 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	if searchDir == "" {
 		searchDir = "."
 	}
-	searchPath := resolvePath(t.CWD, searchDir)
+	cwd, err := toolCWD(ctx, t.CWD)
+	if err != nil {
+		return agent.AgentToolResult{}, err
+	}
+	searchPath, err := resolvePath(cwd, searchDir)
+	if err != nil {
+		return agent.AgentToolResult{}, err
+	}
 	info, err := os.Stat(searchPath)
 	if err != nil {
 		return grepError("Path not found: " + searchPath), nil
@@ -125,8 +128,13 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	}
 	args = append(args, "--", p.Pattern, searchPath)
 
-	matches, run, err := runRipgrep(ctx, rgPath, t.CWD, args, effectiveLimit)
+	matches, run, err := runRipgrep(ctx, rgPath, cwd, args, effectiveLimit)
 	if err != nil {
+		// Upstream's catch rejects with an error spawn throws unchanged; only
+		// the child's error event adds the prefix.
+		if spawnErr, ok := errors.AsType[*nodespawn.Error](err); ok && spawnErr.Thrown {
+			return grepError(err.Error()), nil
+		}
 		return grepError("Failed to run ripgrep: " + err.Error()), nil
 	}
 	if ctx.Err() != nil {
@@ -140,7 +148,7 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 		return grepError(msg), nil
 	}
 	if run.matchCount == 0 {
-		return agent.AgentToolResult{Content: "No matches found"}, nil
+		return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "No matches found"}}}, nil
 	}
 
 	f := grepFormatter{searchPath: searchPath, isDirectory: isDirectory, contextValue: contextValue, fileCache: map[string][]string{}}
@@ -172,7 +180,7 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	if len(notices) > 0 {
 		output += "\n\n[" + strings.Join(notices, ". ") + "]"
 	}
-	result := agent.AgentToolResult{Content: output}
+	result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: output}}}
 	if len(notices) > 0 {
 		result.Details = details
 	}
@@ -180,7 +188,7 @@ func (t *GrepTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 }
 
 func grepError(message string) agent.AgentToolResult {
-	return agent.AgentToolResult{Content: message, IsError: true}
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true}
 }
 
 // ripgrepRun is the outcome of one rg process.
@@ -198,6 +206,9 @@ type ripgrepRun struct {
 // its output discarded.
 func runRipgrep(ctx context.Context, rgPath, dir string, args []string, limit float64) ([]grepMatch, ripgrepRun, error) {
 	cmd := exec.CommandContext(ctx, rgPath, args...)
+	// Upstream's spawn has no cwd option, so on Windows libuv finds rg from
+	// PiG's working directory: the lookup precedes cmd.Dir.
+	nodespawn.SetProgram(cmd)
 	cmd.Dir = dir
 	var stderr strings.Builder
 	cmd.Stderr = &stderr

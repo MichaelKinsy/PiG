@@ -1,0 +1,39 @@
+# The oracle executes the entire pinned tools-manager.ts with process lookup and
+# fetch dependencies replaced. Downloads and extraction use real temporary files;
+# no download contacts the network. tools-manager.ts:353-356 silently reuses an
+# installed binary; :377-382 downloads and reports installation otherwise.
+# Success cases assert one download across installation and reuse for fd and rg.
+# Only the temporary bin-directory prefix is projected to /fixture/bin in status records.
+# D81 additive same-manager overlapping-flight coalescing is Go-only and unit-tested;
+# pinned Pi starts separate downloads for overlapping same-tool misses.
+# It also calls the pinned InteractiveMode.showManagedToolStatus with real Text,
+# Container and themes. The Go probes call EnsureTool and the interactive renderer.
+# Compare exact status records and escaped ANSI rows (including spaces and resets).
+# Go-only native wrapped-error cases are represented by equivalent Error.cause chains.
+# Startup concurrency, live-before-completion progress and cancellation are guarded
+# by TestManagedToolsRenderProgressBeforeDownloadsFinish and TestManagedToolsCancellationJoinsDownloads.
+name = "12-managed-tool-status"
+description = "Managed tool callbacks retain bounded causes, render exact warning/info lines, and silently reuse installed fd and rg without another download."
+covers = [
+  "packages/coding-agent/src/utils/tools-manager.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/managed-tool-status-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/managed-tool-status-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["MANAGED_TOOL_CALLBACKS", "MANAGED_TOOL_RENDER", "fetch failed: connect ETIMEDOUT", "installed reuse fd", "installed reuse rg"]
+runs = 3

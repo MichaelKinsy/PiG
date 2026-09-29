@@ -53,7 +53,7 @@ build_go_fixture "$SDK_FIXTURE_BIN" \
   GOWORK=off
 
 build_go_fixture "$CONFORMANCE_SDK_FIXTURE_BIN" \
-  ./tests/extension-conformance/testfixture/cmd/ \
+  ./test/extension-conformance/testfixture/cmd/ \
   CGO_ENABLED=0 \
   "$ROOT_GOWORK" "$ROOT_GOFLAGS"
 
@@ -62,7 +62,7 @@ RUST_EXPORT=""
 RUST_TARGET_EXPORT=""
 RUST_REPORT=""
 if command -v cargo >/dev/null 2>&1; then
-  RUST_SRC="$ROOT/tests/extension-conformance/testdata/rust-sdk-fixture"
+  RUST_SRC="$ROOT/test/extension-conformance/testdata/rust-sdk-fixture"
   RUST_RELEASE="$RUST_TARGET/release/rust-sdk-fixture"
   echo "[test-fixtures] building rust-sdk-fixture → $RUST_SDK_FIXTURE_BIN" >&2
   (cd "$RUST_SRC" && CARGO_TARGET_DIR="$RUST_TARGET" cargo build --release --quiet)

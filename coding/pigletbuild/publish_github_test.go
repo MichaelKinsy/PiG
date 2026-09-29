@@ -284,6 +284,7 @@ func TestPublishGitHubUploadsSignedAssetsChecksumsAndIndex(t *testing.T) {
 	}
 	wantIndex := pigletrelease.Index{
 		Piglet: "porter", Version: "1.2.3", PigVersion: publishTestPigVersion, SourceRef: sourceRef,
+		GitHub:   &pigletrelease.GitHubRelease{Repository: "acme/porter"},
 		Signer:   signature.Signer{KeyID: keyID, PublicKey: base64.StdEncoding.EncodeToString(key.Public().(ed25519.PublicKey))},
 		Binaries: binaries,
 	}

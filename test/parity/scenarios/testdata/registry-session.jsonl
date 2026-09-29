@@ -1,0 +1,15 @@
+{"type":"session","version":3,"id":"0199a000-0000-7000-8000-000000000001","timestamp":"2026-01-01T00:00:00.000Z","cwd":"/registry-fixture"}
+{"type":"model_change","id":"e0000001","parentId":null,"timestamp":"2026-01-01T00:00:01.000Z","provider":"test-faux","modelId":"faux-1"}
+{"type":"thinking_level_change","id":"e0000002","parentId":"e0000001","timestamp":"2026-01-01T00:00:02.000Z","thinkingLevel":"low"}
+{"type":"message","id":"e0000003","parentId":"e0000002","timestamp":"2026-01-01T00:00:03.000Z","message":{"role":"user","content":[{"type":"text","text":"first question"}],"timestamp":1767225603000}}
+{"type":"message","id":"e0000004","parentId":"e0000003","timestamp":"2026-01-01T00:00:04.000Z","message":{"role":"assistant","content":[{"type":"text","text":"first answer"}],"api":"openai-completions","provider":"test-faux","model":"faux-1","usage":{"input":1,"output":1,"cacheRead":0,"cacheWrite":0,"totalTokens":2,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}},"stopReason":"stop","timestamp":1767225604000}}
+{"type":"label","id":"e0000005","parentId":"e0000004","timestamp":"2026-01-01T00:00:05.000Z","targetId":"e0000003","label":"question"}
+{"type":"message","id":"e0000006","parentId":"e0000005","timestamp":"2026-01-01T00:00:06.000Z","message":{"role":"user","content":[{"type":"text","text":"abandoned branch"}],"timestamp":1767225606000}}
+{"type":"branch_summary","id":"e0000007","parentId":"e0000005","timestamp":"2026-01-01T00:00:07.000Z","fromId":"e0000006","summary":"abandoned summary"}
+{"type":"custom_message","id":"e0000008","parentId":"e0000007","timestamp":"2026-01-01T00:00:08.000Z","customType":"note","content":"custom context","display":true}
+{"type":"compaction","id":"e0000009","parentId":"e0000008","timestamp":"2026-01-01T00:00:09.000Z","summary":"compacted","firstKeptEntryId":"e0000008","tokensBefore":100}
+{"type":"message","id":"e0000010","parentId":"e0000009","timestamp":"2026-01-01T00:00:10.000Z","message":{"role":"user","content":[{"type":"text","text":"after compaction"}],"timestamp":1767225610000}}
+{"type":"context_edit","id":"e0000011","parentId":"e0000010","timestamp":"2026-01-01T00:00:11.000Z","targetId":"e0000010","replacement":{"content":"edited question"}}
+{"type":"custom","id":"e0000012","parentId":"e0000011","timestamp":"2026-01-01T00:00:12.000Z","customType":"state","data":{"k":1}}
+{"type":"label","id":"e0000013","parentId":"e0000012","timestamp":"2026-01-01T00:00:13.000Z","targetId":"e0000003","label":""}
+{"type":"label","id":"e0000014","parentId":"e0000013","timestamp":"2026-01-01T00:00:14.000Z","targetId":"e0000008","label":"note-label"}

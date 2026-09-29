@@ -1,0 +1,103 @@
+{"name": "root", "md": "```mermaid\nflowchart LR\n A --> B\n```\n", "out": "`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "root tilde", "md": "~~~mermaid\nflowchart LR\n A --> B\n~~~\n", "out": "`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "after paragraph", "md": "paragraph\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "paragraph\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "unclosed root", "md": "```mermaid\nflowchart LR\n A --> B\n", "out": "`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "empty", "md": "", "out": ""}
+{"name": "plain", "md": "paragraph\n", "out": "paragraph\n"}
+{"name": "crlf", "md": "```mermaid\r\nflowchart LR\r\n A --> B\r\n```\r\n", "out": "`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "cr only", "md": "```mermaid\rflowchart LR\r A --> B\r```\r", "out": "`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "invalid outer info", "md": "```text`bad\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "```text`bad\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "heading", "md": "# title\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "# title\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "setext", "md": "title\n-----\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "title\n-----\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "spaced rule", "md": "- - -\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n", "out": "- - -\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "noninterrupting ordered list", "md": "paragraph\n2. text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n", "out": "paragraph\n2. text\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "escaped list", "md": "\\- text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n", "out": "\\- text\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "indented code", "md": "    example\n    ```mermaid\n    flowchart LR\n     A --> B\n    ```\n", "out": "    example\n    ```mermaid\n    flowchart LR\n     A --> B\n    ```\n"}
+{"name": "reference title", "md": "[ref]: /url \"title\n```mermaid\nflowchart LR\n A --> B\n```\ntail\"\n", "out": "[ref]: /url \"title\n```mermaid\nflowchart LR\n A --> B\n```\ntail\"\n"}
+{"name": "html in paragraph", "md": "paragraph\n<span>\n```mermaid\nflowchart LR\n A --> B\n```\n</span>\n", "out": "paragraph\n<span>\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n</span>\n"}
+{"name": "quote followed root", "md": "> paragraph\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "> paragraph\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "indent 1", "md": " ```mermaid\n flowchart LR\n  A --> B\n ```\n", "out": "`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "indent 2", "md": "  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n", "out": "`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "indent 3", "md": "   ```mermaid\n   flowchart LR\n    A --> B\n   ```\n", "out": "`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "indent 4", "md": "    ```mermaid\n    flowchart LR\n     A --> B\n    ```\n", "out": "    ```mermaid\n    flowchart LR\n     A --> B\n    ```\n"}
+{"name": "outer ````text", "md": "````text\n```mermaid\nflowchart LR\n A --> B\n```\n````\n", "out": "````text\n```mermaid\nflowchart LR\n A --> B\n```\n````\n"}
+{"name": "unclosed outer ````text", "md": "````text\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "````text\n```mermaid\nflowchart LR\n A --> B\n```\n"}
+{"name": "outer `````text", "md": "`````text\n```mermaid\nflowchart LR\n A --> B\n```\n`````\n", "out": "`````text\n```mermaid\nflowchart LR\n A --> B\n```\n`````\n"}
+{"name": "unclosed outer `````text", "md": "`````text\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "`````text\n```mermaid\nflowchart LR\n A --> B\n```\n"}
+{"name": "outer ~~~text", "md": "~~~text\n```mermaid\nflowchart LR\n A --> B\n```\n~~~\n", "out": "~~~text\n```mermaid\nflowchart LR\n A --> B\n```\n~~~\n"}
+{"name": "unclosed outer ~~~text", "md": "~~~text\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "~~~text\n```mermaid\nflowchart LR\n A --> B\n```\n"}
+{"name": "outer ````", "md": "````\n```mermaid\nflowchart LR\n A --> B\n```\n````\n", "out": "````\n```mermaid\nflowchart LR\n A --> B\n```\n````\n"}
+{"name": "unclosed outer ````", "md": "````\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "````\n```mermaid\nflowchart LR\n A --> B\n```\n"}
+{"name": "<div>", "md": "<div>\n```mermaid\nflowchart LR\n A --> B\n```\n</div>\n", "out": "<div>\n```mermaid\nflowchart LR\n A --> B\n```\n</div>\n"}
+{"name": "<div> then root", "md": "<div>\n```mermaid\nflowchart LR\n A --> B\n```\n</div>\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "<div>\n```mermaid\nflowchart LR\n A --> B\n```\n</div>\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "<script>", "md": "<script>\n```mermaid\nflowchart LR\n A --> B\n```\n</script>\n", "out": "<script>\n```mermaid\nflowchart LR\n A --> B\n```\n</script>\n"}
+{"name": "<script> then root", "md": "<script>\n```mermaid\nflowchart LR\n A --> B\n```\n</script>\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "<script>\n```mermaid\nflowchart LR\n A --> B\n```\n</script>\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "<pre>", "md": "<pre>\n```mermaid\nflowchart LR\n A --> B\n```\n</pre>\n", "out": "<pre>\n```mermaid\nflowchart LR\n A --> B\n```\n</pre>\n"}
+{"name": "<pre> then root", "md": "<pre>\n```mermaid\nflowchart LR\n A --> B\n```\n</pre>\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "<pre>\n```mermaid\nflowchart LR\n A --> B\n```\n</pre>\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "<style>", "md": "<style>\n```mermaid\nflowchart LR\n A --> B\n```\n</style>\n", "out": "<style>\n```mermaid\nflowchart LR\n A --> B\n```\n</style>\n"}
+{"name": "<style> then root", "md": "<style>\n```mermaid\nflowchart LR\n A --> B\n```\n</style>\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "<style>\n```mermaid\nflowchart LR\n A --> B\n```\n</style>\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "<textarea>", "md": "<textarea>\n```mermaid\nflowchart LR\n A --> B\n```\n</textarea>\n", "out": "<textarea>\n```mermaid\nflowchart LR\n A --> B\n```\n</textarea>\n"}
+{"name": "<textarea> then root", "md": "<textarea>\n```mermaid\nflowchart LR\n A --> B\n```\n</textarea>\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "<textarea>\n```mermaid\nflowchart LR\n A --> B\n```\n</textarea>\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "<!--", "md": "<!--\n```mermaid\nflowchart LR\n A --> B\n```\n-->\n", "out": "<!--\n```mermaid\nflowchart LR\n A --> B\n```\n-->\n"}
+{"name": "<!-- then root", "md": "<!--\n```mermaid\nflowchart LR\n A --> B\n```\n-->\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "<!--\n```mermaid\nflowchart LR\n A --> B\n```\n-->\n\n```mermaid\nflowchart LR\n A --> B\n```\n"}
+{"name": "<?pi", "md": "<?pi\n```mermaid\nflowchart LR\n A --> B\n```\n?>\n", "out": "<?pi\n```mermaid\nflowchart LR\n A --> B\n```\n?>\n"}
+{"name": "<?pi then root", "md": "<?pi\n```mermaid\nflowchart LR\n A --> B\n```\n?>\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "<?pi\n```mermaid\nflowchart LR\n A --> B\n```\n?>\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "<!DECL", "md": "<!DECL\n```mermaid\nflowchart LR\n A --> B\n```\n>\n", "out": "<!DECL\n```mermaid\nflowchart LR\n A --> B\n```\n>\n"}
+{"name": "<!DECL then root", "md": "<!DECL\n```mermaid\nflowchart LR\n A --> B\n```\n>\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "<!DECL\n```mermaid\nflowchart LR\n A --> B\n```\n>\n\n```mermaid\nflowchart LR\n A --> B\n```\n"}
+{"name": "<![CDATA[", "md": "<![CDATA[\n```mermaid\nflowchart LR\n A --> B\n```\n]]>\n", "out": "<![CDATA[\n```mermaid\nflowchart LR\n A --> B\n```\n]]>\n"}
+{"name": "<![CDATA[ then root", "md": "<![CDATA[\n```mermaid\nflowchart LR\n A --> B\n```\n]]>\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "<![CDATA[\n```mermaid\nflowchart LR\n A --> B\n```\n]]>\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "<span>", "md": "<span>\n```mermaid\nflowchart LR\n A --> B\n```\n</span>\n", "out": "<span>\n```mermaid\nflowchart LR\n A --> B\n```\n</span>\n"}
+{"name": "<span> then root", "md": "<span>\n```mermaid\nflowchart LR\n A --> B\n```\n</span>\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "<span>\n```mermaid\nflowchart LR\n A --> B\n```\n</span>\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "- list", "md": "- text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n", "out": "- text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n"}
+{"name": "- loose list", "md": "- text\n\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n", "out": "- text\n\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n"}
+{"name": "- list then root", "md": "- text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "- text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "* list", "md": "* text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n", "out": "* text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n"}
+{"name": "* loose list", "md": "* text\n\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n", "out": "* text\n\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n"}
+{"name": "* list then root", "md": "* text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "* text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "+ list", "md": "+ text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n", "out": "+ text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n"}
+{"name": "+ loose list", "md": "+ text\n\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n", "out": "+ text\n\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n"}
+{"name": "+ list then root", "md": "+ text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "+ text\n  ```mermaid\n  flowchart LR\n   A --> B\n  ```\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "1. list", "md": "1. text\n   ```mermaid\n   flowchart LR\n    A --> B\n   ```\n", "out": "1. text\n   ```mermaid\n   flowchart LR\n    A --> B\n   ```\n"}
+{"name": "1. loose list", "md": "1. text\n\n   ```mermaid\n   flowchart LR\n    A --> B\n   ```\n", "out": "1. text\n\n   ```mermaid\n   flowchart LR\n    A --> B\n   ```\n"}
+{"name": "1. list then root", "md": "1. text\n   ```mermaid\n   flowchart LR\n    A --> B\n   ```\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "1. text\n   ```mermaid\n   flowchart LR\n    A --> B\n   ```\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "9) list", "md": "9) text\n   ```mermaid\n   flowchart LR\n    A --> B\n   ```\n", "out": "9) text\n   ```mermaid\n   flowchart LR\n    A --> B\n   ```\n"}
+{"name": "9) loose list", "md": "9) text\n\n   ```mermaid\n   flowchart LR\n    A --> B\n   ```\n", "out": "9) text\n\n   ```mermaid\n   flowchart LR\n    A --> B\n   ```\n"}
+{"name": "9) list then root", "md": "9) text\n   ```mermaid\n   flowchart LR\n    A --> B\n   ```\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "9) text\n   ```mermaid\n   flowchart LR\n    A --> B\n   ```\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "12. list", "md": "12. text\n    ```mermaid\n    flowchart LR\n     A --> B\n    ```\n", "out": "12. text\n    ```mermaid\n    flowchart LR\n     A --> B\n    ```\n"}
+{"name": "12. loose list", "md": "12. text\n\n    ```mermaid\n    flowchart LR\n     A --> B\n    ```\n", "out": "12. text\n\n    ```mermaid\n    flowchart LR\n     A --> B\n    ```\n"}
+{"name": "12. list then root", "md": "12. text\n    ```mermaid\n    flowchart LR\n     A --> B\n    ```\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "12. text\n    ```mermaid\n    flowchart LR\n     A --> B\n    ```\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "quote fenced", "md": "> ```mermaid\n> flowchart LR\n>  A --> B\n> ```\n", "out": "> ```mermaid\n> flowchart LR\n>  A --> B\n> ```\n"}
+{"name": "nested list", "md": "- outer\n  - inner\n    ```mermaid\n    flowchart LR\n     A --> B\n    ```\n", "out": "- outer\n  - inner\n    ```mermaid\n    flowchart LR\n     A --> B\n    ```\n"}
+{"name": "info NEL", "md": "```mermaidother\nflowchart LR\n A --> B\n```\n", "out": "```mermaidother\nflowchart LR\n A --> B\n```\n"}
+{"name": "info dotted I", "md": "```MERMAİD\nflowchart LR\n A --> B\n```\n", "out": "```MERMAİD\nflowchart LR\n A --> B\n```\n"}
+{"name": "pair-review: mixed closing suffix", "md": "```mermaid\nflowchart LR\n A --> B\n```~\nAfter", "out": "`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\nAfter"}
+{"name": "pair-review: tilde mixed closing suffix", "md": "~~~mermaid\nflowchart LR\n A --> B\n~~~`\nAfter", "out": "`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\nAfter"}
+{"name": "pair-review: tab closing suffix", "md": "```mermaid\nflowchart LR\n A --> B\n```\t\nAfter", "out": "```mermaid\nflowchart LR\n A --> B\n```\t\nAfter\n````Mermaid diagram not rendered: dropped, does not start with a node: \"```\"````  \n"}
+{"name": "pair-review: reference only", "md": "[a]: https://example.com\n", "out": "[a]: https://example.com\n"}
+{"name": "pair-review: reference before diagram", "md": "[a]: https://example.com\n\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "[a]: https://example.com\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: comment inline html", "md": "paragraph\n<div>\n```mermaid\nflowchart LR\n A --> B\n```\n</div>\n", "out": "paragraph\n<div>\n```mermaid\nflowchart LR\n A --> B\n```\n</div>\n"}
+{"name": "pair-review: table", "md": "a | b\n- | -\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "a | b\n- | -\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: space tab opener", "md": " \t```mermaid\nflowchart LR\n A --> B\n```\n", "out": " \t```mermaid\nflowchart LR\n A --> B\n```\n"}
+{"name": "pair-review: loose list dedent", "md": "- item\n\n ```mermaid\n flowchart LR\n  A --> B\n ```\n", "out": "- item\n\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: list lazy", "md": "- item\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "- item\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: definition title", "md": "[a]: /url\n \"title\n```mermaid\nflowchart LR\n A --> B\n```\n\"\n", "out": "[a]: /url\n \"title\n```mermaid\nflowchart LR\n A --> B\n```\n\"\n"}
+{"name": "pair-review: empty spaced line", "md": "a\n \n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "a\n \n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: standalone ref then prose", "md": "[a]: /url\n\nhello [a]\n", "out": "[a]: /url\n\nhello [a]\n"}
+{"name": "pair-review: blank tabs", "md": "\t\n```mermaid\nflowchart LR\n A --> B\n```\n", "out": "\t\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: nested html tab", "md": "<div\t>\n```mermaid\nflowchart LR\n A --> B\n```\n</div>\n", "out": "<div\t>\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n</div>\n"}
+{"name": "pair-review: tilde backtick language", "md": "~~~mermaid `example`\nflowchart LR\n A --> B\n~~~\n", "out": "`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: backtick language invalid", "md": "```mermaid `example`\nflowchart LR\n A --> B\n```\n", "out": "```mermaid `example`\nflowchart LR\n A --> B\n```\n"}
+{"name": "pair-review: tab blank line after fence", "md": "```mermaid\nflowchart LR\n A --> B\n```\n\t\nAfter", "out": "`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n\n\t\nAfter"}
+{"name": "pair-review: space-tab blank line after fence", "md": "```mermaid\nflowchart LR\n A --> B\n```\n \t\nAfter", "out": "`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n\n \t\nAfter"}
+{"name": "pair-review: HTML inside reference title before diagram", "md": "[a]: /url\n \"title\n<div>\n\"\n```mermaid\nflowchart LR\n A --> B\n```", "out": "[a]: /url\n \"title\n<div>\n\"\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: unclosed fence inside reference title before diagram", "md": "[a]: /url\n \"title\n````text\n\"\n```mermaid\nflowchart LR\n A --> B\n```", "out": "[a]: /url\n \"title\n````text\n\"\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: HTML scripture prefix", "md": "<scripture>\n```mermaid\nflowchart LR\n A --> B\n```", "out": "<scripture>\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: HTML /scripture prefix", "md": "</scripture>\n```mermaid\nflowchart LR\n A --> B\n```", "out": "</scripture>\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: HTML prefix prefix", "md": "<prefix>\n```mermaid\nflowchart LR\n A --> B\n```", "out": "<prefix>\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: HTML /prefix prefix", "md": "</prefix>\n```mermaid\nflowchart LR\n A --> B\n```", "out": "</prefix>\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: HTML styleguide prefix", "md": "<styleguide>\n```mermaid\nflowchart LR\n A --> B\n```", "out": "<styleguide>\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: HTML /styleguide prefix", "md": "</styleguide>\n```mermaid\nflowchart LR\n A --> B\n```", "out": "</styleguide>\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: HTML textareabox prefix", "md": "<textareabox>\n```mermaid\nflowchart LR\n A --> B\n```", "out": "<textareabox>\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: HTML /textareabox prefix", "md": "</textareabox>\n```mermaid\nflowchart LR\n A --> B\n```", "out": "</textareabox>\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: HTML SCRIPTURE prefix", "md": "<SCRIPTURE>\n```mermaid\nflowchart LR\n A --> B\n```", "out": "<SCRIPTURE>\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}
+{"name": "pair-review: HTML /SCRIPTURE prefix", "md": "</SCRIPTURE>\n```mermaid\nflowchart LR\n A --> B\n```", "out": "</SCRIPTURE>\n`┌───┐    ┌───┐`  \n`│ A ├───▶│ B │`  \n`└───┘    └───┘`\n"}

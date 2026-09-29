@@ -6,9 +6,66 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"sync/atomic"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/bodyreadhook"
 )
+
+type fetchTransport struct{ client *http.Client }
+
+func (transport fetchTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	client := transport.client
+	base := client.Transport
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	if _, standard := base.(*http.Transport); standard && request.URL.Opaque != "" {
+		copy := *client
+		copy.Transport = originFormTransport{base: base}
+		client = &copy
+	}
+	return client.Do(request)
+}
+
+type originFormTransport struct{ base http.RoundTripper }
+
+func (transport originFormTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	return transport.base.RoundTrip(originFormRequest(request))
+}
+
+// originFormRequest preserves the raw WHATWG path when a standard Go transport serializes a request, without changing the URL observed by a caller-supplied fetch function.
+func originFormRequest(request *http.Request) *http.Request {
+	prefix := "//" + request.URL.Host
+	if !strings.HasPrefix(request.URL.Opaque, prefix+"/") {
+		return request
+	}
+	copy := new(*request)
+	url := *request.URL
+	url.Opaque = strings.TrimPrefix(url.Opaque, prefix)
+	copy.URL = &url
+	return copy
+}
+
+// providerHTTPClient replaces only HTTP execution, keeping the provider's retry and transport-error policy. The caller-owned client decides redirects. Neither client nor the process default is mutated.
+func providerHTTPClient(configured, fetch *http.Client) *http.Client {
+	if fetch == nil {
+		return configured
+	}
+	client := *configured
+	client.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
+	transport := &nodeFetchTransport{base: fetchTransport{client: fetch}}
+	if retry, ok := configured.Transport.(*retryTransport); ok {
+		transport.base = &providerRequestTransport{base: transport.base}
+		wrapped := *retry
+		wrapped.base = transport
+		client.Transport = &wrapped
+	} else {
+		client.Transport = transport
+	}
+	return &client
+}
 
 const DefaultHTTPIdleTimeoutMs = 300_000
 
@@ -46,11 +103,20 @@ func configuredHTTPIdleTimeout() time.Duration {
 type idleTimeoutConn struct {
 	net.Conn
 	timeout func() time.Duration
+	// ready is set by the HTTP transport only after connection establishment, including proxy CONNECT and TLS, completes. Nil keeps standalone wrappers active.
+	ready    *atomic.Bool
+	bodyRead bodyReadOwner
 }
 
 func (c *idleTimeoutConn) Read(p []byte) (int, error) {
+	c.bodyRead.pending()
 	c.setReadDeadline()
-	return c.Conn.Read(p)
+	if !bodyreadhook.BeforeRead(c.Conn) {
+		return c.Conn.Read(p)
+	}
+	n, err := c.Conn.Read(p)
+	bodyreadhook.AfterRead(c.LocalAddr().String(), n)
+	return n, err
 }
 
 func (c *idleTimeoutConn) Write(p []byte) (int, error) {
@@ -59,6 +125,9 @@ func (c *idleTimeoutConn) Write(p []byte) (int, error) {
 }
 
 func (c *idleTimeoutConn) setReadDeadline() {
+	if c.ready != nil && !c.ready.Load() {
+		return
+	}
 	timeout := c.timeout()
 	if timeout <= 0 {
 		_ = c.SetReadDeadline(time.Time{})
@@ -68,6 +137,9 @@ func (c *idleTimeoutConn) setReadDeadline() {
 }
 
 func (c *idleTimeoutConn) setWriteDeadline() {
+	if c.ready != nil && !c.ready.Load() {
+		return
+	}
 	timeout := c.timeout()
 	if timeout <= 0 {
 		_ = c.SetWriteDeadline(time.Time{})
@@ -76,17 +148,7 @@ func (c *idleTimeoutConn) setWriteDeadline() {
 	_ = c.SetWriteDeadline(time.Now().Add(timeout))
 }
 
-// streamingHTTPClient builds the HTTP client used for LLM SSE streaming.
-//
-// Faithfulness notes:
-//
-//   - ProxyFromEnvironment mirrors upstream's EnvHttpProxyAgent so provider
-//     traffic honors HTTP(S)_PROXY and NO_PROXY.
-//   - ForceAttemptHTTP2 stays false to match upstream allowH2=false.
-//   - Configurable per-read/per-write idle deadlines mirror upstream's
-//     bodyTimeout/headersTimeout.
-//   - No overall client Timeout: SSE streams are long-lived; the caller
-//     controls cancellation via context.
+// streamingHTTPClient builds the provider HTTP/1.1 client with environment proxy routing. Connection establishment has the pinned Undici budget; configurable read/write/header idle deadlines apply after GotConn. There is no overall timeout for long-lived SSE requests; the caller context owns cancellation.
 func streamingHTTPClient() *http.Client {
 	return newStreamingHTTPClient(false)
 }
@@ -100,7 +162,7 @@ func streamingHTTPClient() *http.Client {
 // is explicitly configured insecure.
 func newStreamingHTTPClient(insecure bool) *http.Client {
 	client := baseStreamingHTTPClient(insecure)
-	client.Transport = &retryTransport{base: &nodeFetchTransport{base: client.Transport}}
+	client.Transport = &retryTransport{base: &nodeFetchTransport{base: &providerRequestTransport{base: client.Transport}, connectionIdle: true}}
 	return client
 }
 
@@ -111,57 +173,96 @@ func newStreamingHTTPClient(insecure bool) *http.Client {
 // own (disabled) retries.
 func streamingHTTPClientNoRetry() *http.Client {
 	client := baseStreamingHTTPClient(false)
-	client.Transport = &nodeFetchTransport{base: client.Transport}
+	client.Transport = &nodeFetchTransport{base: client.Transport, connectionIdle: true}
 	return client
 }
 
+// upstream: node_modules/undici/lib/core/connect.js:buildConnector
+const defaultHTTPConnectTimeout = 10 * time.Second
+
+func activateHTTPIdleTimeout(conn net.Conn) {
+	for {
+		switch current := conn.(type) {
+		case *idleTimeoutConn:
+			if current.ready != nil {
+				current.ready.Store(true)
+			}
+			return
+		case *tls.Conn:
+			conn = current.NetConn()
+		case *proxyBufferedConn:
+			conn = current.Conn
+		default:
+			return
+		}
+	}
+}
+
+// dialStreamingTLS uses one connection budget through DNS, TCP and secureConnect. HTTP idleness starts only when the transport publishes GotConn.
+func dialStreamingTLS(ctx context.Context, network, address string, dial func(context.Context, string, string) (net.Conn, error), config *tls.Config, timeout time.Duration) (net.Conn, error) {
+	connectCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	conn, err := dial(connectCtx, network, address)
+	if err != nil {
+		return nil, err
+	}
+	tracked := &idleTimeoutConn{Conn: conn, timeout: configuredHTTPIdleTimeout, ready: new(atomic.Bool)}
+	options := config.Clone()
+	if options == nil {
+		options = &tls.Config{}
+	}
+	if options.ServerName == "" {
+		host, _, err := net.SplitHostPort(address)
+		if err != nil {
+			_ = conn.Close()
+			return nil, err
+		}
+		options.ServerName = host
+	}
+	secure := tls.Client(tracked, options)
+	if err := secure.HandshakeContext(connectCtx); err != nil {
+		_ = conn.Close()
+		return nil, err
+	}
+	return secure, nil
+}
+
+func streamingDialer(dialer net.Dialer) *net.Dialer {
+	// upstream: packages/coding-agent/src/core/http-dispatcher.ts:DEFAULT_AUTO_SELECT_FAMILY_ATTEMPT_TIMEOUT_MS
+	dialer.FallbackDelay = 2000 * time.Millisecond
+	return &dialer
+}
+
 func baseStreamingHTTPClient(insecure bool) *http.Client {
-	dialer := &net.Dialer{
-		Timeout:   10 * time.Second,
+	dialer := streamingDialer(net.Dialer{
 		KeepAlive: 15 * time.Second,
-	}
-	return &http.Client{
-		Transport: &http.Transport{
-			Proxy: http.ProxyFromEnvironment,
-
-			// Connection establishment.
-			DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
-				conn, err := dialer.DialContext(ctx, network, address)
-				if err != nil {
-					return nil, err
-				}
-				return &idleTimeoutConn{Conn: conn, timeout: configuredHTTPIdleTimeout}, nil
-			},
-
-			// TLS: enable session resumption for 0-RTT on reconnect.
-			TLSClientConfig: &tls.Config{
-				// Go 1.26 defaults to TLS 1.3 with post-quantum ML-KEM key
-				// exchange. Session tickets enable 0-RTT resumption.
-				//nolint:gosec // G402: opt-in per-provider insecure TLS for
-				// self-signed/internal-CA on-prem endpoints. Never the default.
-				// pig additive (D36): opt-in TLS-skip for self-signed/internal-CA endpoints.
-				InsecureSkipVerify: insecure,
-			},
-			TLSHandshakeTimeout: 10 * time.Second,
-
-			// Upstream uses undici EnvHttpProxyAgent({ allowH2: false }).
-			ForceAttemptHTTP2: false,
-
-			// Connection pool: keep connections warm between turns.
-			MaxIdleConns:        100,
-			MaxIdleConnsPerHost: 4,
-			IdleConnTimeout:     120 * time.Second,
-
-			// Match upstream's configurable header idle timeout. Body idleness is
-			// enforced by idleTimeoutConn on every read/write operation.
-			ResponseHeaderTimeout: configuredHTTPIdleTimeout(),
-
-			// Compression: enable transparent gzip for non-streaming responses
-			// (auth token requests, model listings). SSE responses are chunked
-			// and typically not gzipped, so this is harmless.
-			DisableCompression: false,
+	})
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+			connectCtx, cancel := context.WithTimeout(ctx, defaultHTTPConnectTimeout)
+			defer cancel()
+			conn, err := dialer.DialContext(connectCtx, network, address)
+			if err != nil {
+				return nil, err
+			}
+			return &idleTimeoutConn{Conn: conn, timeout: configuredHTTPIdleTimeout, ready: new(atomic.Bool)}, nil
 		},
-		// No overall timeout: SSE streams are long-lived. The caller
-		// controls cancellation via context.Context.
+		TLSClientConfig: &tls.Config{
+			//nolint:gosec // G402: opt-in per-provider insecure TLS for self-signed/internal-CA endpoints; never the default.
+			// pig additive (D36): opt-in TLS-skip for self-signed/internal-CA endpoints.
+			InsecureSkipVerify: insecure,
+		},
+		// A TLS upgrade after proxy CONNECT has its own connector budget, as in Undici. Direct TLS uses DialTLSContext's shared TCP/TLS budget.
+		TLSHandshakeTimeout:   defaultHTTPConnectTimeout,
+		ForceAttemptHTTP2:     false,
+		MaxIdleConns:          100,
+		MaxIdleConnsPerHost:   4,
+		IdleConnTimeout:       120 * time.Second,
+		ResponseHeaderTimeout: configuredHTTPIdleTimeout(),
+		DisableCompression:    false,
 	}
+	transport.DialTLSContext = func(ctx context.Context, network, address string) (net.Conn, error) {
+		return dialStreamingTLS(ctx, network, address, dialer.DialContext, transport.TLSClientConfig, defaultHTTPConnectTimeout)
+	}
+	return &http.Client{Transport: newProxyTunnelTransport(transport)}
 }

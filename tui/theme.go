@@ -2,14 +2,19 @@ package tui
 
 import (
 	"fmt"
+	"maps"
 	"math"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+
+	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
@@ -128,6 +133,7 @@ func (t *Theme) ColorMode() ColorMode {
 }
 
 // WithColorMode returns this theme resolved in mode, mirroring theme.ts createTheme(themeJson, mode). Rebuilt themes are not cached, so obsolete themes can be collected. A theme without JSON source is returned unchanged.
+// The variant keeps the theme's name: it is the same theme in another mode, and a registry entry activated by name must stay that name even when its JSON names another theme.
 func (t *Theme) WithColorMode(mode ColorMode) *Theme {
 	if t == nil || t.ColorMode() == mode || t.source == nil {
 		return t
@@ -136,6 +142,7 @@ func (t *Theme) WithColorMode(mode ColorMode) *Theme {
 	if err != nil {
 		return t
 	}
+	variant.Name = t.Name
 	return variant
 }
 
@@ -158,6 +165,8 @@ func storeActiveTheme(t *Theme) {
 // the terminal supports now. Upstream re-creates the theme from settings after
 // applying capability overrides on reload.
 func RefreshActiveThemeColorMode() {
+	themeMutationMu.Lock()
+	defer themeMutationMu.Unlock()
 	if t := ActiveTheme(); t != nil {
 		storeActiveTheme(t)
 	}
@@ -188,10 +197,11 @@ const (
 
 type TerminalTheme string
 
+// RgbColor preserves JavaScript numeric channels, including NaN when an overflowing channel is scaled by an infinite maximum.
 type RgbColor struct {
-	R int
-	G int
-	B int
+	R float64
+	G float64
+	B float64
 }
 
 type TerminalThemeDetection struct {
@@ -205,7 +215,7 @@ type TerminalThemeDetectionOptions struct {
 	Env map[string]string
 }
 
-var osc11BackgroundColorPattern = regexp.MustCompile(`^\x1b\]11;([^\x07\x1b]*)(?:\x07|\x1b\\)$`)
+var osc11BackgroundColorPattern = lazyregexp.New(`^\x1b\]11;([^\x07\x1b]*)(?:\x07|\x1b\\)$`)
 
 // Fg returns the ANSI foreground escape for a named color token.
 // Mirrors upstream theme.fg(tokenName, text).
@@ -304,26 +314,37 @@ func (t *Theme) ColorKeys() []string {
 	return t.colorKeys
 }
 
-// SetTheme switches the active theme by name ("dark" or "light").
-func SetTheme(name string) {
+// SetTheme switches the active built-in theme. enableWatcher restarts the owned watcher; previews leave the current watch registration unchanged.
+func SetTheme(name string, enableWatcher ...bool) {
+	themeMutationMu.Lock()
+	defer themeMutationMu.Unlock()
+	setBuiltinTheme(name, len(enableWatcher) > 0 && enableWatcher[0])
+}
+
+func setBuiltinTheme(name string, enableWatcher bool) {
 	switch name {
 	case "light":
 		storeActiveTheme(lightTheme)
+		noteSelectedTheme("light", enableWatcher)
 	default:
 		storeActiveTheme(darkTheme)
+		noteSelectedTheme("dark", enableWatcher)
 	}
 }
 
-// SetThemeByName switches the active theme using the global registry.
-// Falls back to the built-in dark theme if name is not found.
-func SetThemeByName(name string) {
+// SetThemeByName activates a registered theme, or falls back to dark when absent. enableWatcher restarts the interactive owner's watch after a successful selection; it defaults to false for previews.
+func SetThemeByName(name string, enableWatcher ...bool) {
+	themeMutationMu.Lock()
+	defer themeMutationMu.Unlock()
+	watch := len(enableWatcher) > 0 && enableWatcher[0]
 	if r := globalRegistry.Load(); r != nil {
 		if t := r.Get(name); t != nil {
 			storeActiveTheme(t)
+			noteSelectedTheme(name, watch)
 			return
 		}
 	}
-	SetTheme(name)
+	setBuiltinTheme(name, watch && (name == "dark" || name == "light"))
 }
 
 // globalRegistry holds the theme registry for /theme command. It is read on
@@ -356,8 +377,7 @@ func DetectTheme() {
 	SetTheme(string(DetectTerminalBackground(TerminalThemeDetectionOptions{}).Theme))
 }
 
-// ParseAutoThemeSetting parses the upstream automatic theme setting format
-// "lightTheme/darkTheme". Empty or malformed values are not automatic.
+// ParseAutoThemeSetting parses "lightTheme/darkTheme", trimming ECMAScript whitespace around each name. Empty or malformed values are not automatic.
 func ParseAutoThemeSetting(themeSetting string) (lightTheme, darkTheme string, ok bool) {
 	if themeSetting == "" {
 		return "", "", false
@@ -366,53 +386,84 @@ func ParseAutoThemeSetting(themeSetting string) (lightTheme, darkTheme string, o
 	if slash == -1 || strings.Contains(themeSetting[slash+1:], "/") {
 		return "", "", false
 	}
-	lightTheme = strings.TrimSpace(themeSetting[:slash])
-	darkTheme = strings.TrimSpace(themeSetting[slash+1:])
+	lightTheme = widthx.JSTrim(themeSetting[:slash])
+	darkTheme = widthx.JSTrim(themeSetting[slash+1:])
 	if lightTheme == "" || darkTheme == "" {
 		return "", "", false
 	}
 	return lightTheme, darkTheme, true
 }
 
-// ResolveThemeSetting resolves a stored theme setting to the concrete theme
-// name for the detected terminal appearance. Non-automatic settings resolve to
-// themselves unless they are malformed slash values.
-func ResolveThemeSetting(themeSetting string, terminalTheme TerminalTheme) (string, bool) {
-	if lightTheme, darkTheme, ok := ParseAutoThemeSetting(themeSetting); ok {
+// ResolveThemeSettingPresence resolves a theme setting to the concrete theme
+// name for the detected terminal appearance. A nil setting and a malformed
+// slash value resolve to nothing; any other string, including an empty one,
+// is a fixed name that resolves to itself.
+func ResolveThemeSettingPresence(themeSetting *string, terminalTheme TerminalTheme) (string, bool) {
+	if themeSetting == nil {
+		return "", false
+	}
+	setting := *themeSetting
+	if lightTheme, darkTheme, ok := ParseAutoThemeSetting(setting); ok {
 		if terminalTheme == TerminalTheme("light") {
 			return lightTheme, true
 		}
 		return darkTheme, true
 	}
-	if strings.Contains(themeSetting, "/") {
+	if strings.Contains(setting, "/") {
 		return "", false
 	}
-	if themeSetting == "" {
-		return "", false
-	}
-	return themeSetting, true
+	return setting, true
 }
 
-// SetThemeSetting applies a stored theme setting. An empty setting means
-// automatic built-in dark/light detection; a light/dark automatic setting may
-// resolve to any registered theme name.
-func SetThemeSetting(themeSetting string) {
-	if themeSetting == "" {
-		DetectTheme()
-		return
-	}
+// ResolveThemeSetting resolves a stored theme setting to the concrete theme
+// name for the detected terminal appearance.
+//
+// Deprecated: use ResolveThemeSettingPresence; an empty string means no setting.
+func ResolveThemeSetting(themeSetting string, terminalTheme TerminalTheme) (string, bool) {
+	return ResolveThemeSettingPresence(themeSettingPresence(themeSetting), terminalTheme)
+}
+
+// SetThemeSettingPresence applies a theme setting before the terminal
+// answers. A nil or malformed setting selects the environment-detected
+// built-in theme; a fixed name that is not registered, including an empty
+// one, falls back to dark.
+func SetThemeSettingPresence(themeSetting *string) {
 	detected := DetectTerminalBackground(TerminalThemeDetectionOptions{}).Theme
-	if name, ok := ResolveThemeSetting(themeSetting, detected); ok {
+	if name, ok := ResolveThemeSettingPresence(themeSetting, detected); ok {
 		SetThemeByName(name)
 		return
 	}
-	SetThemeByName(themeSetting)
+	SetTheme(string(detected))
+}
+
+// SetThemeSetting applies a stored theme setting.
+//
+// Deprecated: use SetThemeSettingPresence; an empty string means no setting.
+func SetThemeSetting(themeSetting string) {
+	SetThemeSettingPresence(themeSettingPresence(themeSetting))
+}
+
+// themeSettingPresence maps the deprecated string form, where "" means no setting, to a presence-aware setting.
+func themeSettingPresence(themeSetting string) *string {
+	if themeSetting == "" {
+		return nil
+	}
+	return &themeSetting
 }
 
 func getColorFgBgBackgroundIndex(colorfgbg string) (int, bool) {
 	parts := strings.Split(colorfgbg, ";")
 	for _, part := range slices.Backward(parts) {
-		bg, err := strconv.Atoi(strings.TrimSpace(part))
+		part = widthx.JSTrim(part)
+		end := 0
+		if strings.HasPrefix(part, "+") || strings.HasPrefix(part, "-") {
+			end++
+		}
+		for end < len(part) && part[end] >= '0' && part[end] <= '9' {
+			end++
+		}
+		// theme.ts uses parseInt(part.trim(), 10), which accepts a decimal prefix.
+		bg, err := strconv.Atoi(part[:end])
 		if err == nil && bg >= 0 && bg <= 255 {
 			return bg, true
 		}
@@ -421,8 +472,8 @@ func getColorFgBgBackgroundIndex(colorfgbg string) (int, bool) {
 }
 
 func getRgbColorLuminance(rgb RgbColor) float64 {
-	toLinear := func(channel int) float64 {
-		value := float64(channel) / 255
+	toLinear := func(channel float64) float64 {
+		value := channel / 255
 		if value <= 0.03928 {
 			return value / 12.92
 		}
@@ -436,7 +487,7 @@ func getAnsiColorLuminance(index int) float64 {
 	if !ok {
 		return 0
 	}
-	return getRgbColorLuminance(RgbColor{R: r, G: g, B: b})
+	return getRgbColorLuminance(RgbColor{R: float64(r), G: float64(g), B: float64(b)})
 }
 
 func GetThemeForRgbColor(rgb RgbColor) TerminalTheme {
@@ -446,7 +497,7 @@ func GetThemeForRgbColor(rgb RgbColor) TerminalTheme {
 	return TerminalTheme("dark")
 }
 
-func parseOscHexChannel(channel string) (int, bool) {
+func parseOscHexChannel(channel string) (float64, bool) {
 	if channel == "" {
 		return 0, false
 	}
@@ -455,37 +506,33 @@ func parseOscHexChannel(channel string) (int, bool) {
 			return 0, false
 		}
 	}
-	value, err := strconv.ParseInt(channel, 16, 64)
-	if err != nil {
+	value, err := strconv.ParseFloat("0x"+channel+"p0", 64)
+	if err != nil && !math.IsInf(value, 1) {
 		return 0, false
 	}
 	maxValue := math.Pow(16, float64(len(channel))) - 1
 	if maxValue <= 0 {
 		return 0, false
 	}
-	return int(math.Round((float64(value) / maxValue) * 255)), true
+	return math.Round((value / maxValue) * 255), true
 }
 
+// ParseOsc11BackgroundColor uses JavaScript whitespace and numeric semantics for strict OSC 11 replies. Slash-separated colors use the first three channels; later channels do not change the RGB result.
 func ParseOsc11BackgroundColor(data string) *RgbColor {
 	match := osc11BackgroundColorPattern.FindStringSubmatch(data)
 	if match == nil {
 		return nil
 	}
 
-	value := strings.TrimSpace(match[1])
+	value := widthx.JSTrim(match[1])
 	if after, ok := strings.CutPrefix(value, "#"); ok {
 		hex := after
 		switch len(hex) {
-		case 6:
-			r, g, b, ok := parseHex(hex)
-			if !ok {
-				return nil
-			}
-			return &RgbColor{R: r, G: g, B: b}
-		case 12:
-			r, okR := parseOscHexChannel(hex[0:4])
-			g, okG := parseOscHexChannel(hex[4:8])
-			b, okB := parseOscHexChannel(hex[8:12])
+		case 6, 12:
+			channelLength := len(hex) / 3
+			r, okR := parseOscHexChannel(hex[:channelLength])
+			g, okG := parseOscHexChannel(hex[channelLength : 2*channelLength])
+			b, okB := parseOscHexChannel(hex[2*channelLength:])
 			if !okR || !okG || !okB {
 				return nil
 			}
@@ -502,7 +549,7 @@ func ParseOsc11BackgroundColor(data string) *RgbColor {
 		rgbValue = stripped
 	}
 	parts := strings.Split(rgbValue, "/")
-	if len(parts) != 3 {
+	if len(parts) < 3 {
 		return nil
 	}
 	r, okR := parseOscHexChannel(parts[0])
@@ -514,6 +561,7 @@ func ParseOsc11BackgroundColor(data string) *RgbColor {
 	return &RgbColor{R: r, G: g, B: b}
 }
 
+// DetectTerminalBackground parses COLORFGBG with JavaScript whitespace and decimal-prefix semantics, then falls back to a low-confidence dark theme when no index is valid.
 func DetectTerminalBackground(options TerminalThemeDetectionOptions) TerminalThemeDetection {
 	env := options.Env
 	if env == nil {
@@ -576,6 +624,7 @@ func ansi256ToHex(index int) string {
 
 // ThemeRegistry holds all loaded themes and enables switching.
 type ThemeRegistry struct {
+	mu     sync.RWMutex
 	themes map[string]*Theme
 	names  []string // ordered list of theme names
 	// paths records the file each JSON-loaded theme came from. Built-in
@@ -597,6 +646,12 @@ func NewThemeRegistry() *ThemeRegistry {
 // Add registers a theme. If a theme with the same name already exists, it is
 // replaced. The name is derived from the theme's Name field.
 func (r *ThemeRegistry) Add(t *Theme) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.addLocked(t)
+}
+
+func (r *ThemeRegistry) addLocked(t *Theme) {
 	name := t.Name
 	if name == "" {
 		return
@@ -605,16 +660,44 @@ func (r *ThemeRegistry) Add(t *Theme) {
 		r.names = append(r.names, name)
 	}
 	r.themes[name] = t
+	delete(r.paths, name)
+}
+
+// AddFile registers a theme loaded from path and records path as its source,
+// which the startup resource listing and getAllThemes report.
+func (r *ThemeRegistry) AddFile(t *Theme, path string) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	if t.Name == "" {
+		return
+	}
+	r.addLocked(t)
+	if r.paths == nil {
+		r.paths = make(map[string]string)
+	}
+	r.paths[t.Name] = path
 }
 
 // Get returns a theme by name, or nil.
-func (r *ThemeRegistry) Get(name string) *Theme { return r.themes[name] }
+func (r *ThemeRegistry) Get(name string) *Theme {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.themes[name]
+}
 
 // PathOf returns the file a theme was loaded from, or "" for built-ins.
-func (r *ThemeRegistry) PathOf(name string) string { return r.paths[name] }
+func (r *ThemeRegistry) PathOf(name string) string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.paths[name]
+}
 
-// Names returns the list of available theme names.
-func (r *ThemeRegistry) Names() []string { return r.names }
+// Names returns the available theme names in registration order as a defensive copy.
+func (r *ThemeRegistry) Names() []string {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return slices.Clone(r.names)
+}
 
 // LoadDir scans a directory for .json theme files and registers them,
 // recording each theme's source file so extensions can report it.
@@ -623,12 +706,8 @@ func (r *ThemeRegistry) LoadDir(dir string) error {
 	if err != nil {
 		return err
 	}
-	for name, t := range themes {
-		r.Add(t)
-		if r.paths == nil {
-			r.paths = make(map[string]string)
-		}
-		r.paths[name] = filepath.Join(dir, name+".json")
+	for _, fileName := range slices.Sorted(maps.Keys(themes)) {
+		r.AddFile(themes[fileName], filepath.Join(dir, fileName+".json"))
 	}
 	return nil
 }

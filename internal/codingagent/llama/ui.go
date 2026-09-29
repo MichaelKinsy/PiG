@@ -4,13 +4,14 @@ import (
 	"context"
 	"errors"
 	"math"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 	"unicode/utf16"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/tui"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
@@ -193,7 +194,7 @@ func newSelectList(labels, descriptions []string, minPrimary, maxPrimary int) *t
 // jsWhitespaceClass mirrors the characters JavaScript's \s matches.
 const jsWhitespaceClass = `\t\n\v\f\r \x{a0}\x{1680}\x{2000}-\x{200a}\x{2028}\x{2029}\x{202f}\x{205f}\x{3000}\x{feff}`
 
-var exactModelPattern = regexp.MustCompile(`^[^/` + jsWhitespaceClass + `]+/[^:` + jsWhitespaceClass + `]+(?::[^` + jsWhitespaceClass + `:]+)?$`)
+var exactModelPattern = lazyregexp.New(`^[^/` + jsWhitespaceClass + `]+/[^:` + jsWhitespaceClass + `]+(?::[^` + jsWhitespaceClass + `:]+)?$`)
 
 // jsLength mirrors String.prototype.length in UTF-16 code units.
 func jsLength(text string) int { return len(utf16.Encode([]rune(text))) }

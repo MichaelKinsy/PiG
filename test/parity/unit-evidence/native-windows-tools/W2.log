@@ -1,0 +1,22 @@
+﻿lane: pt-tools-builtin; ref: 4f5e1c075c0f8799e2ac4efd30dab749b46be4e6; modified: 0; go version go1.27.1 windows/amd64; node v24.19.0
+go test ./internal/codingagent/tools -run ^TestFind(RootRelativizationWindowsPort|CustomGlobRootPort)$ -count=1 -v -timeout 10m
+=== RUN   TestFindCustomGlobRootPort
+=== RUN   TestFindCustomGlobRootPort/relativizes_custom_glob_results_against_a_root_search_path
+FIND_OPS root ["home/user/project/\nhome/user/project/file.txt",null]
+--- PASS: TestFindCustomGlobRootPort (0.00s)
+    --- PASS: TestFindCustomGlobRootPort/relativizes_custom_glob_results_against_a_root_search_path (0.00s)
+=== RUN   TestFindRootRelativizationWindowsPort
+=== RUN   TestFindRootRelativizationWindowsPort/preserves_the_first_segment_and_emits_one_trailing_slash_for_fd_directory_output
+=== RUN   TestFindRootRelativizationWindowsPort/handles_fd_output_that_uses_forward_slashes_under_a_drive_root
+=== RUN   TestFindRootRelativizationWindowsPort/keeps_deeper_search_paths_unchanged
+=== RUN   TestFindRootRelativizationWindowsPort/does_not_relativize_a_sibling_directory_that_shares_a_name_prefix
+=== RUN   TestFindRootRelativizationWindowsPort/normalizes_relative_custom-glob_results_without_corrupting_them
+--- PASS: TestFindRootRelativizationWindowsPort (0.00s)
+    --- PASS: TestFindRootRelativizationWindowsPort/preserves_the_first_segment_and_emits_one_trailing_slash_for_fd_directory_output (0.00s)
+    --- PASS: TestFindRootRelativizationWindowsPort/handles_fd_output_that_uses_forward_slashes_under_a_drive_root (0.00s)
+    --- PASS: TestFindRootRelativizationWindowsPort/keeps_deeper_search_paths_unchanged (0.00s)
+    --- PASS: TestFindRootRelativizationWindowsPort/does_not_relativize_a_sibling_directory_that_shares_a_name_prefix (0.00s)
+    --- PASS: TestFindRootRelativizationWindowsPort/normalizes_relative_custom-glob_results_without_corrupting_them (0.00s)
+PASS
+ok  	github.com/MichaelKinsy/PiG/internal/codingagent/tools	0.093s
+===== exit 0 (1s)

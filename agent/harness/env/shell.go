@@ -6,14 +6,15 @@ import (
 	"fmt"
 	"maps"
 	"math"
-	"os"
 	"os/exec"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent/harness"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 const (
@@ -83,7 +84,10 @@ func findBashOnPath(ctx context.Context) string {
 	runCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
 	defer cancel()
 	command := exec.CommandContext(runCtx, name, args...)
-	command.SysProcAttr = hiddenProcessAttributes()
+	// Upstream's runCommand spawns with stdio ["ignore", "pipe", "ignore"]
+	// and windowsHide: true.
+	nodespawn.HideWindow(command, nodespawn.Ignore, nodespawn.Pipe, nodespawn.Ignore)
+	nodespawn.SetProgram(command)
 	output, err := command.Output()
 	if err != nil || len(output) == 0 {
 		return ""
@@ -95,32 +99,37 @@ func findBashOnPath(ctx context.Context) string {
 	return ""
 }
 
-// getShellEnv layers the configured and per-call environment over the process
-// environment, or uses only the per-call values when inheritance is off.
-func getShellEnv(baseEnv, extraEnv map[string]string, inheritEnv *bool) []string {
-	merged := map[string]string{}
+// getShellEnv is upstream's getShellEnv object as nodespawn.SetEnvProperties
+// properties: {...process.env, ...baseEnv, ...extraEnv}, or {...extraEnv} when
+// inheritance is off. A later property of a name replaces the value in place.
+// Go maps keep no insertion order, so each map adds its new names in sorted
+// order; only the child's environment order outside Windows can show it.
+func getShellEnv(baseEnv, extraEnv map[string]string, inheritEnv *bool) []nodespawn.EnvProperty {
+	var environment []nodespawn.EnvProperty
 	if inheritEnv == nil || *inheritEnv {
-		for _, entry := range os.Environ() {
-			if key, value, ok := strings.Cut(entry, "="); ok {
-				merged[key] = value
-			}
-		}
-		maps.Copy(merged, baseEnv)
+		environment = appendEnvObject(nodespawn.EnvProperties(nodespawn.ProcessEnv()), baseEnv)
 	}
-	maps.Copy(merged, extraEnv)
-	environment := make([]string, 0, len(merged))
-	for key, value := range merged {
-		environment = append(environment, key+"="+value)
+	return appendEnvObject(environment, extraEnv)
+}
+
+// appendEnvObject appends the properties of values in name order.
+func appendEnvObject(environment []nodespawn.EnvProperty, values map[string]string) []nodespawn.EnvProperty {
+	for _, name := range slices.Sorted(maps.Keys(values)) {
+		environment = append(environment, nodespawn.EnvProperty{Name: name, Value: values[name]})
 	}
 	return environment
 }
 
-// spawnErrorMessage mirrors Node's "spawn <file> <CODE>" message.
+// spawnErrorMessage mirrors Node's "spawn <file> <CODE>" message, or the
+// message of the error Node's spawn reports for a program it does not start.
 func spawnErrorMessage(shell string, err error) string {
+	if spawnErr, ok := errors.AsType[*nodespawn.Error](err); ok {
+		return spawnErr.Error()
+	}
 	code := errnoCode(err)
 	if code == "" && errors.Is(err, exec.ErrNotFound) {
-		// On Windows exec rejects a file without an executable extension
-		// before spawning; libuv reports ENOENT for it.
+		// os/exec reports a program it finds no executable file for as
+		// exec.ErrNotFound; libuv reports ENOENT for it.
 		code = "ENOENT"
 	}
 	if code != "" {

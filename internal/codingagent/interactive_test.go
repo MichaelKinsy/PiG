@@ -372,29 +372,6 @@ func TestStdinBuffer_BracketedPasteDispatch(t *testing.T) {
 	}
 }
 
-func TestEscapeSequenceCompleteness(t *testing.T) {
-	tests := []struct {
-		name string
-		in   string
-		want string
-	}{
-		{"bare ESC at end", "\x1b", "incomplete"},
-		{"ESC+char", "\x1ba", "complete"},
-		{"CSI arrow", "\x1b[A", "complete"},
-		{"CSI params", "\x1b[13;2u", "complete"},
-		{"SS3", "\x1bOP", "complete"},
-		{"SS3 at end", "\x1bO", "incomplete"},
-		{"CSI no final", "\x1b[", "incomplete"},
-	}
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := isCompleteSequence(tc.in); got != tc.want {
-				t.Errorf("isCompleteSequence(%q) = %q, want %q", tc.in, got, tc.want)
-			}
-		})
-	}
-}
-
 // ─── filterAllowedTools ───────────────────────────────────────────────────────
 
 // stubTool implements agent.AgentTool for testing.
@@ -634,36 +611,6 @@ func TestJsonNoEscape(t *testing.T) {
 	}
 }
 
-func TestFormatProviderErrorForDisplayCopilotAuth(t *testing.T) {
-	raw := "github-copilot: resolve base URL: github-copilot: refresh failed: run 'pig login' to re-authenticate: HTTP 401: {\n  \"message\": \"Bad credentials\",\n  \"status\": \"401\"\n}"
-	status, chat := formatProviderErrorForDisplay("error", raw)
-	if want := "GitHub Copilot authentication failed: credentials may have expired or network is unavailable; run pig login"; status != want {
-		t.Fatalf("status = %q, want %q", status, want)
-	}
-	if !strings.Contains(chat, "github-copilot") || !strings.Contains(chat, "Bad credentials") {
-		t.Fatalf("chat should preserve provider error details, got %q", chat)
-	}
-	if strings.Contains(chat, "\n") || strings.Contains(chat, "  ") {
-		t.Fatalf("chat should be compact single-line provider text: %q", chat)
-	}
-}
-
-func TestFormatProviderErrorForDisplayCompactsGenericMultiline(t *testing.T) {
-	status, chat := formatProviderErrorForDisplay("error", "openai: HTTP 400:\n{\n  bad request\n}")
-	if status != "Provider request failed" {
-		t.Fatalf("status = %q", status)
-	}
-	if strings.Contains(chat, "\n") || strings.Contains(chat, "  ") {
-		t.Fatalf("chat should be single-line compact text: %q", chat)
-	}
-	if !strings.Contains(chat, "openai: HTTP 400") {
-		t.Fatalf("chat missing original error summary: %q", chat)
-	}
-	if strings.Contains(chat, "Provider request failed") {
-		t.Fatalf("chat should be raw provider details, assistant block adds Error prefix: %q", chat)
-	}
-}
-
 func TestInteractiveMode_WriteDebugLog(t *testing.T) {
 	dir := t.TempDir()
 	m := &InteractiveMode{
@@ -674,7 +621,7 @@ func TestInteractiveMode_WriteDebugLog(t *testing.T) {
 	}
 	m.agent.SetMessages([]agent.AgentMessage{{User: &agent.UserMessage{
 		Role:    agent.RoleUser,
-		Content: []ai.UserContentBlock{ai.TextContent{Text: "hello debug"}},
+		Content: ai.UserContentBlocks{ai.TextContent{Text: "hello debug"}},
 	}}})
 
 	path, err := m.writeDebugLog()
@@ -762,7 +709,7 @@ func TestInteractiveMode_RendersSteeredUserMessageFromAgentEvent(t *testing.T) {
 	}
 	msg := agent.AgentMessage{User: &agent.UserMessage{
 		Role:    agent.RoleUser,
-		Content: []ai.UserContentBlock{ai.TextContent{Text: "steer now"}},
+		Content: ai.UserContentBlocks{ai.TextContent{Text: "steer now"}},
 	}}
 
 	m.handleAgentEvent(agent.MessageStartEvent{Message: msg})
@@ -906,7 +853,7 @@ func TestInteractiveMode_GenericExtensionToolDetailsRetainArguments(t *testing.T
 	m.handleAgentEvent(agent.ToolExecutionEndEvent{
 		ToolCallID: "generic-1",
 		ToolName:   generic.Name,
-		Result:     agent.AgentToolResult{Content: "updated"},
+		Result:     agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "updated"}}},
 	})
 	if genericComponent == nil {
 		t.Fatal("generic extension tool did not create a tool card")
@@ -1574,6 +1521,20 @@ type recordingCompactHandle struct {
 	agentSettledCount    int
 }
 
+func (h *recordingCompactHandle) IsIdle() bool { return h.agent == nil || !h.agent.IsStreaming() }
+func (h *recordingCompactHandle) WaitForIdle(ctx context.Context) error {
+	if h.agent == nil {
+		return ctx.Err()
+	}
+	aborted := make(chan struct{})
+	stop := context.AfterFunc(ctx, func() { h.agent.Abort(); close(aborted) })
+	h.agent.WaitForIdle()
+	if !stop() {
+		<-aborted
+	}
+	return ctx.Err()
+}
+
 func (h *recordingCompactHandle) CacheWarmingStatus() *CacheWarmingStatus { return h.cacheWarming }
 func (h *recordingCompactHandle) SetCacheWarmingMode(mode CacheWarmingMode) error {
 	h.cacheWarmingModes = append(h.cacheWarmingModes, mode)
@@ -1588,6 +1549,11 @@ func (h *recordingCompactHandle) SetModel(*ai.Model, ...ModelMutationOptions) er
 func (h *recordingCompactHandle) SetModelOnMain(model *ai.Model, options ModelMutationOptions, dispatch func(func() error) error) error {
 	return dispatch(func() error { return h.SetModel(model, options) })
 }
+func (h *recordingCompactHandle) SetSessionName(name string) error {
+	_, err := h.inner.AppendSessionInfo(name)
+	return err
+}
+
 func (h *recordingCompactHandle) SetThinkingLevel(level ai.ThinkingLevel, _ ...ModelMutationOptions) error {
 	previous := h.agent.ThinkingLevel()
 	effective := ai.ClampThinkingLevel(h.agent.Model(), level)
@@ -1633,12 +1599,14 @@ func (h *recordingCompactHandle) Compact(_ context.Context, _ string) error {
 func TestDynamicProviderInModelSurfaces(t *testing.T) {
 	dir := t.TempDir()
 	reg := NewModelRegistry(dir)
-	reg.RegisterProvider("example-provider", extension.ProviderConfig{
+	if err := reg.RegisterProvider("example-provider", extension.ProviderConfig{
 		BaseURL: "https://models.example/v1",
 		APIKey:  "tok", // makes the provider count as authed in GetAvailable
 		API:     "openai-completions",
 		Models:  []extension.ProviderModelConfig{{ID: "test-model", Name: "Test Model"}},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 	m := &InteractiveMode{opts: InteractiveOptions{ModelRegistry: reg, AgentDir: dir}}
 
 	if spec, ok := m.resolveAvailableModel("example-provider/test-model"); !ok || spec != "example-provider/test-model" {
@@ -1659,10 +1627,13 @@ func TestDynamicProviderInModelSurfaces(t *testing.T) {
 	}
 
 	// Negative control: a provider with no configured auth is excluded.
-	reg.RegisterProvider("secret-ai", extension.ProviderConfig{
+	if err := reg.RegisterProvider("secret-ai", extension.ProviderConfig{
+		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://secret.example/v1",
 		Models:  []extension.ProviderModelConfig{{ID: "hidden", Name: "Hidden"}},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 	if _, ok := m.resolveAvailableModel("secret-ai/hidden"); ok {
 		t.Fatal("unauthed dynamic provider must not resolve")
 	}
@@ -1722,7 +1693,7 @@ func TestCreateInteractiveTuiRoutesOsc8ClickToInjectedOpener(t *testing.T) {
 	var opened []string
 
 	m := newRunOnMainProbe(t)
-	m.opts.Settings.TuiMode = "fullscreen"
+	m.opts.TuiMode = "fullscreen"
 	m.openURL = func(u string) error { opened = append(opened, u); return nil }
 	m.rendererOut = &bytes.Buffer{}
 
@@ -1750,7 +1721,12 @@ func TestCreateInteractiveTuiRoutesOsc8ClickToInjectedOpener(t *testing.T) {
 func newSwitchTuiProbe(t *testing.T) *InteractiveMode {
 	t.Helper()
 	model := &ai.Model{ID: "m", DisplayName: "m", Capabilities: ai.ModelCapabilities{ContextWindow: 8000}}
-	m := NewInteractiveMode(InteractiveOptions{CWD: t.TempDir(), Model: model, Settings: Settings{TuiMode: "regular"}})
+	return newSwitchTuiProbeWithOptions(t, InteractiveOptions{CWD: t.TempDir(), Model: model, AgentDir: t.TempDir(), Settings: Settings{TuiMode: "regular"}})
+}
+
+func newSwitchTuiProbeWithOptions(t *testing.T, opts InteractiveOptions) *InteractiveMode {
+	t.Helper()
+	m := NewInteractiveMode(opts)
 	m.runCtx = context.Background()
 	m.rendererOut = &bytes.Buffer{}
 	m.editor = tui.NewEditor()
@@ -1762,8 +1738,9 @@ func newSwitchTuiProbe(t *testing.T) *InteractiveMode {
 	m.editorContainer.Add(m.editor)
 	m.extHeader = newSpecialLinesComponent(func() { m.tuiInst.Render() })
 	m.extFooter = newSpecialLinesComponent(func() { m.tuiInst.Render() })
-	m.statusLine = NewStatusLine(model, "", nil)
+	m.statusLine = NewStatusLine(opts.Model, "", nil)
 	m.createInteractiveTui(m.runCtx)
+	m.installRenderDispatcher()
 	m.mountInteractiveTui()
 	return m
 }

@@ -242,7 +242,7 @@ func (m *ModelSelector) Render(width int) []string {
 	border := NewDynamicBorder("")
 	out := append([]string{}, border.Render(width)...)
 	text := func(content string) { out = append(out, NewPaddedText(content, 0, 0, nil).Render(width)...) }
-	spacer := func() { out = append(out, padOrTrunc("", width)) }
+	spacer := func() { out = append(out, "") }
 	spacer()
 	if !m.noAuth {
 		text(m.scopeLine())

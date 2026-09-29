@@ -15,7 +15,7 @@ import (
 
 // ─── Canned responses for compaction / branch summarization ──────────────────
 // These must be identical in ai/test_faux.go (pig) and
-// parity/testdata/test-faux-provider.ts (upstream pi).
+// test/parity/testdata/test-faux-provider.ts (upstream pi).
 
 const testFauxSummaryResponse = `## Goal
 The user explored Go programming language features and error handling patterns.
@@ -94,7 +94,7 @@ The user asked a complex question requiring multi-step analysis.
 //
 // Any other value returns an EventError.
 // Test-faux model limits match the model the upstream side of the parity
-// harness registers (parity/testdata/test-faux-provider.ts), so both sides
+// harness registers (test/parity/testdata/test-faux-provider.ts), so both sides
 // report the same context window and output budget.
 const (
 	TestFauxContextWindow = 128000
@@ -104,6 +104,8 @@ const (
 // Tool-call IDs use a deterministic counter per StreamOptions.SessionID. An omitted session ID shares the provider's default counter; resumed history seeds a new counter.
 type TestFauxProvider struct {
 	Scenario string
+
+	afterPush func()
 
 	toolCallMu       sync.Mutex
 	toolCallCounters map[string]uint64
@@ -129,9 +131,14 @@ func (p *TestFauxProvider) Stream(ctx context.Context, transcript TranscriptCont
 	if err := validateProviderRequest(ctx, transcript); err != nil {
 		return nil, fmt.Errorf("test-faux: invalid transcript: %w", err)
 	}
-	builder := newAssistantStreamBuilder(ctx, "test-faux", p.ID(), "faux-1")
+	builder := newObservedProviderBuilder(ctx, "test-faux", p.ID(), "faux-1")
+	builder.partial.StopReason = StopReasonStop
+	builder.afterPush = p.afterPush
 	messages := transcript.Messages()
-	go func() {
+	// test-faux-provider.ts:streamTestFaux emits from `queueMicrotask(emitPlan)`: the turn is reserved at that reaction position and the plan runs in one segment, so a consumer observes every push's shared output only after the last of them.
+	turn := builder.stream.executor.newTurn()
+	go turn.run(func(turn *continuationTurn) {
+		defer builder.produceUnder(turn)()
 		if err := ctx.Err(); err != nil {
 			builder.fail(StopReasonAborted, err)
 			return
@@ -157,10 +164,10 @@ func (p *TestFauxProvider) Stream(ctx context.Context, transcript TranscriptCont
 				}
 				builder.textDelta(fmt.Sprintf("LIVE-STREAM-%02d\n", i))
 				if i == 8 && strings.Contains(lastText, "TUI_LIVE_STREAM_PAUSE") {
-					time.Sleep(time.Second)
+					testFauxWait(turn, ctx, time.Second)
 					continue
 				}
-				time.Sleep(40 * time.Millisecond)
+				testFauxWait(turn, ctx, 40*time.Millisecond)
 			}
 			builder.done(StopReasonStop, nil, "")
 			return
@@ -185,34 +192,38 @@ func (p *TestFauxProvider) Stream(ctx context.Context, transcript TranscriptCont
 				strings.Contains(historyText(messages), "Trigger: overflow error with queued message")
 		// TEST_FAUX_HOLD_COMPACTION holds a /compact summary until the run is
 		// cancelled, so a probe of the in-progress screen captures a steady
-		// state instead of racing a fixed delay. parity/testdata/
+		// state instead of racing a fixed delay. test/parity/testdata/
 		// test-faux-provider.ts does the same for Pi.
 		if os.Getenv("TEST_FAUX_HOLD_COMPACTION") == "1" &&
 			strings.Contains(lastText, "Create a structured context checkpoint summary") {
 			builder.start()
-			<-ctx.Done()
+			testFauxWait(turn, ctx, -1)
 			builder.fail(StopReasonAborted, errors.New("This operation was aborted"))
 			return
 		}
 		if slowCompactionProbe || slowOverflowSummary {
 			builder.start()
-			select {
-			case <-time.After(time.Second):
-			case <-ctx.Done():
+			if testFauxWait(turn, ctx, time.Second) {
 				builder.fail(StopReasonAborted, errors.New("This operation was aborted"))
 				return
 			}
 		}
 
 		kind, text, toolCalls := classifyTestFauxRequest(messages)
+		if kind == "text" && text == "over-window-ok" {
+			builder.setUsage(&Usage{Input: 130000, Output: 1000, TotalTokens: 131000})
+		}
+		if !builder.started {
+			// The paired fixture's emitPlan snapshots its initial event before mutating output; native provider reference behavior does not change that fixture contract.
+			initial := builder.partial.Observe()
+			initial.StopReason = StopReasonPending
+			builder.started = true
+			builder.push(StartEvent{Partial: initial})
+		}
 		switch kind {
 		case "text":
 			builder.textDelta(text)
-			if text == "over-window-ok" {
-				builder.done(StopReasonStop, &Usage{Input: 130000, Output: 1000, TotalTokens: 131000}, "")
-			} else {
-				builder.done(StopReasonStop, &Usage{}, "")
-			}
+			builder.done(StopReasonStop, nil, "")
 		case "tool":
 			firstID := p.reserveToolCallIDs(options.SessionID, messages, len(toolCalls))
 			for index, call := range toolCalls {
@@ -220,6 +231,8 @@ func (p *TestFauxProvider) Stream(ctx context.Context, transcript TranscriptCont
 				builder.toolCallDelta(streamToolCallDelta{
 					index: index, id: fmt.Sprintf("call_test_faux_%d", firstID+uint64(index)), name: call.Name, argumentsDelta: string(arguments),
 				})
+				// The paired Pi fixture completes each call before emitting the next call's start.
+				builder.endToolCall(index)
 			}
 			builder.done(StopReasonToolUse, nil, "")
 		case "error":
@@ -228,8 +241,21 @@ func (p *TestFauxProvider) Stream(ctx context.Context, transcript TranscriptCont
 		default:
 			builder.fail(StopReasonError, fmt.Errorf("test-faux: unknown kind %q", kind))
 		}
-	}()
+	})
 	return builder.stream, nil
+}
+
+// testFauxWait models `await new Promise((resolve) => setTimeout(resolve, d))`: a timer is an external completion, so the turn releases execution until it fires. A negative d waits for cancellation only. It reports whether ctx ended first.
+func testFauxWait(turn *continuationTurn, ctx context.Context, d time.Duration) (canceled bool) {
+	executor := turn.executor
+	settled := newContinuationPromise[bool](executor)
+	stop := context.AfterFunc(ctx, func() { executor.postExternal(func() { settled.resolve(true) }) })
+	defer stop()
+	if d >= 0 {
+		timer := time.AfterFunc(d, func() { executor.postExternal(func() { settled.resolve(false) }) })
+		defer timer.Stop()
+	}
+	return awaitContinuation(turn, settled)
 }
 
 // Reserve a whole batch under one lock so concurrent requests cannot interleave its IDs. Keep only counters, not transcripts, for the provider's lifetime.
@@ -365,6 +391,18 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}}
 	}
 
+	if strings.Contains(lastText, "Run: extension argument coercion") {
+		return "tool", "", []testFauxToolCall{{Name: "coercion_probe", Args: map[string]any{
+			"native": map[string]any{"integer": "2.9", "flag": "TRUE", "array": "3", "optional": nil},
+			"plain":  map[string]any{"integer": "2", "flag": "true", "optional": nil},
+		}}}
+	}
+	if strings.Contains(lastText, "Run: noncanonical read") {
+		return "tool", "", []testFauxToolCall{{Name: "read", Args: map[string]any{
+			"path": "parity-read-target.txt", "offset": "2", "limit": nil, "extra": true,
+		}}}
+	}
+
 	// Read tool parity.
 	if strings.Contains(lastText, "Run: read parity-read-target.txt") {
 		return "tool", "", []testFauxToolCall{{
@@ -494,14 +532,17 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		}}
 	}
 
-	// Find tool parity.
-	if strings.Contains(lastText, "Run: find txt files") {
+	// Find results are echoed, not replaced with a success token: a failed search must fail the scenario.
+	if strings.Contains(lastText, "Run: find txt files") || strings.Contains(lastText, "Run: find path glob") || strings.Contains(lastText, "Run: find scoped ignores") {
+		pattern := "*.txt"
+		if strings.Contains(lastText, "Run: find path glob") {
+			pattern = "src/**/*.spec.ts"
+		} else if strings.Contains(lastText, "Run: find scoped ignores") {
+			pattern = "**/*.txt"
+		}
 		return "tool", "", []testFauxToolCall{{
 			Name: "find",
-			Args: map[string]any{
-				"pattern": "*.txt",
-				"path":    ".",
-			},
+			Args: map[string]any{"pattern": pattern, "path": "."},
 		}}
 	}
 
@@ -552,6 +593,13 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	if _, ok := last.(ToolResultMessage); ok {
 		if strings.Contains(currentUserText, "Run: expr 20 + 22") {
 			return "text", "42", nil
+		}
+		if strings.Contains(currentUserText, "Run: noncanonical read") || strings.Contains(currentUserText, "Run: extension argument coercion") {
+			result := last.(ToolResultMessage)
+			if result.IsError {
+				return "error", lastText, nil
+			}
+			return "text", lastText, nil
 		}
 		if strings.Contains(currentUserText, "Run: read parity-read-target.txt") {
 			return "text", "done", nil
@@ -607,8 +655,11 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 		if strings.Contains(currentUserText, "Run: grep hello") {
 			return "text", "found", nil
 		}
-		if strings.Contains(currentUserText, "Run: find txt files") {
-			return "text", "listed", nil
+		if strings.Contains(currentUserText, "Run: find txt files") || strings.Contains(currentUserText, "Run: find path glob") || strings.Contains(currentUserText, "Run: find scoped ignores") {
+			// fd traversal order is unspecified; upstream's find regression tests sort the paths too.
+			paths := strings.Split(lastText, "\n")
+			slices.Sort(paths)
+			return "text", strings.Join(paths, "\n"), nil
 		}
 		if strings.Contains(currentUserText, "Run: ls here") {
 			return "text", "listed-ls", nil
@@ -635,7 +686,7 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 			return "text", "sanitized", nil
 		}
 		if strings.Contains(currentUserText, "Run: bash with invalid args") {
-			return "text", "validation-handled", nil
+			return "text", lastText, nil
 		}
 	}
 
@@ -667,11 +718,11 @@ func classifyTestFauxRequest(msgs []Message) (kind, text string, toolCalls []tes
 	}
 
 	// Validation parity: trigger a tool call whose args fail schema validation.
-	// The bash tool requires "command" (string); sending a number should fail.
+	// Arrays cannot be coerced to a command string; numbers can.
 	if strings.Contains(lastText, "Run: bash with invalid args") {
 		return "tool", "", []testFauxToolCall{{
 			Name: "bash",
-			Args: map[string]any{"command": 42},
+			Args: map[string]any{"command": []any{}},
 		}}
 	}
 

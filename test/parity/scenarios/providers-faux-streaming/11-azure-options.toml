@@ -1,0 +1,26 @@
+# Pi 0.87.1 azure-openai-tool-choice.test.ts:21,50 and azure-openai-base-url.test.ts:155.
+# The oracle runs Pi's Azure provider through fetch; PiG sends to a local HTTP server.
+# Assert the wire choice, retained tool name/count, terminal result, and invalid-URL diagnostic contract.
+# Include object-valued choice because the provider-specific upstream option is a union, not a string.
+name = "11-azure-options"
+description = "Azure preserves tool choices and tool definitions and reports invalid base URLs."
+covers = ["packages/ai/src/api/azure-openai-responses.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/azure-options-pig"]
+pi_args = ["node", "./test/parity/testdata/azure-options-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["choice=required tools=1:read stop=stop", "choice=none tools=1:read stop=stop", "choice=function:read tools=1:read stop=stop", "invalid-url=true"]
+runs = 3

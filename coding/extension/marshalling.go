@@ -16,7 +16,7 @@
 // loss (round-trip tests live in marshalling_test.go).
 //
 // References:
-//   - DIVERGENCES.md D2 (the divergence retired by these helpers)
+//   - docs/parity/DIVERGENCES.md D2 (the divergence retired by these helpers)
 //   - .upstream/current/packages/coding-agent/src/core/extensions/types.ts
 //     lines 750 (InputEventResult), 810 (ToolCallEvent), 869 (ToolResultEvent)
 

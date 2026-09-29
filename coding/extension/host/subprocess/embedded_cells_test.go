@@ -146,7 +146,7 @@ func TestEmbeddedPackedOwnerActivationByLanguage(t *testing.T) {
 			assertPackedCellStable(t, ownerHost, fixture.cell.Key, fixture.owner)
 
 			ownerHost.mu.Lock()
-			ownerConn := ownerHost.exts[fixture.owner].conn
+			ownerConn := ownerHost.exts[fixture.owner].connection()
 			ownerHost.mu.Unlock()
 			if err := ownerConn.Close("owner command complete"); err != nil && !errors.Is(err, net.ErrClosed) {
 				ownerHost.Shutdown("close failed")

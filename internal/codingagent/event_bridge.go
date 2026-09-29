@@ -162,8 +162,12 @@ func emitTurnEnd(runner *inproc.Runner, event agent.TurnEndEvent) {
 // emitMessageStart dispatches a message_start event.
 // upstream: agent-session.ts:637-640: includes message.
 func emitMessageStart(runner *inproc.Runner, message extension.AgentMessage) {
+	emitMessageStartContext(context.Background(), runner, message)
+}
+
+func emitMessageStartContext(ctx context.Context, runner *inproc.Runner, message extension.AgentMessage) {
 	if runner != nil && runner.HasHandlers(EventMessageStart) {
-		_, _ = runner.Emit(context.Background(), extension.MessageStartEvent{
+		_, _ = runner.Emit(ctx, extension.MessageStartEvent{
 			Type:    EventMessageStart,
 			Message: message,
 		})
@@ -173,8 +177,12 @@ func emitMessageStart(runner *inproc.Runner, message extension.AgentMessage) {
 // emitMessageEnd dispatches a message_end event.
 // upstream: agent-session.ts:649-652: includes message.
 func emitMessageEnd(runner *inproc.Runner, message extension.AgentMessage) {
+	emitMessageEndContext(context.Background(), runner, message)
+}
+
+func emitMessageEndContext(ctx context.Context, runner *inproc.Runner, message extension.AgentMessage) {
 	if runner != nil && runner.HasHandlers(EventMessageEnd) {
-		_, _ = runner.Emit(context.Background(), extension.MessageEndEvent{
+		_, _ = runner.Emit(ctx, extension.MessageEndEvent{
 			Type:    EventMessageEnd,
 			Message: message,
 		})
@@ -185,8 +193,12 @@ func emitMessageEnd(runner *inproc.Runner, message extension.AgentMessage) {
 // upstream: agent-session.ts:641-647: high-frequency per-delta event.
 // Includes the current message state and the raw assistantMessageEvent.
 func emitMessageUpdate(runner *inproc.Runner, message extension.AgentMessage, assistantMessageEvent any) {
+	emitMessageUpdateContext(context.Background(), runner, message, assistantMessageEvent)
+}
+
+func emitMessageUpdateContext(ctx context.Context, runner *inproc.Runner, message extension.AgentMessage, assistantMessageEvent any) {
 	if runner != nil && runner.HasHandlers(EventMessageUpdate) {
-		_, _ = runner.Emit(context.Background(), extension.MessageUpdateEvent{
+		_, _ = runner.Emit(ctx, extension.MessageUpdateEvent{
 			Type:                  EventMessageUpdate,
 			Message:               message,
 			AssistantMessageEvent: assistantMessageEvent,
@@ -206,12 +218,7 @@ func toolExecutionArgs(args json.RawMessage) any {
 }
 
 func extensionToolResult(result agent.AgentToolResult) map[string]any {
-	content := make([]any, 0, 1+len(result.Images))
-	content = append(content, map[string]any{"type": "text", "text": result.Content})
-	for _, image := range result.Images {
-		content = append(content, map[string]any{"type": "image", "data": image.Data, "mimeType": image.MimeType})
-	}
-	payload := map[string]any{"content": content}
+	payload := map[string]any{"content": ToolResultEventContent(result)}
 	if result.Details != nil {
 		payload["details"] = result.Details
 	}
@@ -265,15 +272,12 @@ func emitToolExecutionEnd(runner *inproc.Runner, toolCallID, toolName string, re
 	}
 }
 
-// DispatchAgentLoopEvent maps one agent-loop event to the extension runner,
-// mirroring upstream agent-session.ts::_emitExtensionEvent (lines 640-711).
-// It is called from coding.Session.forwardAgentEvents so that every driver -
-// interactive, rpc, and print: dispatches agent-loop events from one place
-// (the session), matching upstream where _handleAgentEvent awaits
-// _emitExtensionEvent before notifying listeners. currentMessage carries the
-// in-flight message across message_start → message_update, as upstream passes
-// event.message on message_update; the caller owns the storage (the session
-// funnel is single-goroutine, so no lock is needed).
+// AgentEventContext returns the context an extension handler for ev runs under. It carries the event's stream scope, so a handler that waits for its extension process releases the stream's continuation queue instead of freezing the provider, as Pi's awaited handler does (agent-session.ts:894-919; runner.ts:emit).
+func AgentEventContext(ev agent.AgentEvent) context.Context {
+	return agent.EventObservation(ev).Context(context.Background())
+}
+
+// DispatchAgentLoopEvent maps one agent-loop event to the extension runner. Session awaits extension dispatch before notifying public listeners, as agent-session.ts::_handleAgentEvent does. Each message_update carries its own shallow message and full provider event; currentMessage retains the message_start value for callers that track it.
 func DispatchAgentLoopEvent(runner *inproc.Runner, ev agent.AgentEvent, currentMessage *extension.AgentMessage) {
 	if runner == nil {
 		return
@@ -293,15 +297,11 @@ func DispatchAgentLoopEvent(runner *inproc.Runner, ev agent.AgentEvent, currentM
 		if currentMessage != nil {
 			*currentMessage = e.Message
 		}
-		emitMessageStart(runner, e.Message)
+		emitMessageStartContext(AgentEventContext(ev), runner, e.Message)
 	case agent.MessageUpdateEvent:
-		var msg extension.AgentMessage
-		if currentMessage != nil {
-			msg = *currentMessage
-		}
-		emitMessageUpdate(runner, msg, e.AssistantMessageEvent)
+		emitMessageUpdateContext(AgentEventContext(ev), runner, e.Message, e.AssistantMessageEvent)
 	case agent.MessageEndEvent:
-		emitMessageEnd(runner, e.Message)
+		emitMessageEndContext(AgentEventContext(ev), runner, e.Message)
 	case agent.ToolExecutionStartEvent:
 		emitToolExecutionStart(runner, e.ToolCallID, e.ToolName, e.Args)
 	case agent.ToolExecutionUpdateEvent:
@@ -344,11 +344,11 @@ func AgentLoopEventType(ev agent.AgentEvent) string {
 // emitUserBash dispatches a user_bash event. A non-nil error means a handler
 // failed or returned an invalid result; the runner already reported it, and
 // the caller must not run the command (upstream #9068 fails closed).
-func emitUserBash(runner *inproc.Runner, command, cwd string, excludeFromContext bool) (*extension.UserBashEventResult, error) {
+func emitUserBash(ctx context.Context, runner *inproc.Runner, command, cwd string, excludeFromContext bool) (*extension.UserBashEventResult, error) {
 	if runner == nil || !runner.HasHandlers(EventUserBash) {
 		return nil, nil
 	}
-	return runner.EmitUserBash(context.Background(), extension.UserBashEvent{
+	return runner.EmitUserBash(ctx, extension.UserBashEvent{
 		Type:               EventUserBash,
 		Command:            command,
 		Cwd:                cwd,
@@ -409,43 +409,6 @@ func emitThinkingLevelSelect(runner *inproc.Runner, level, previousLevel string)
 			PreviousLevel: previousLevel,
 		})
 	}
-}
-
-// emitSessionBeforeSwitch dispatches session_before_switch.
-// Extensions can cancel the switch. Mirrors upstream interactive-mode.ts emitBeforeSwitch.
-func emitSessionBeforeSwitch(runner *inproc.Runner, reason string, targetFile string) bool {
-	if runner == nil || !runner.HasHandlers(EventSessionBeforeSwitch) {
-		return false
-	}
-	result, _ := runner.Emit(context.Background(), extension.SessionBeforeSwitchEvent{
-		Type:              EventSessionBeforeSwitch,
-		Reason:            reason,
-		TargetSessionFile: targetFile,
-	})
-	if m, ok := result.(map[string]any); ok {
-		if cancel, ok := m["cancel"].(bool); ok {
-			return cancel
-		}
-	}
-	return false
-}
-
-// emitSessionBeforeFork dispatches session_before_fork.
-// Extensions can cancel the fork. Mirrors upstream interactive-mode.ts emitBeforeFork.
-func emitSessionBeforeFork(runner *inproc.Runner, entryID string) bool {
-	if runner == nil || !runner.HasHandlers(EventSessionBeforeFork) {
-		return false
-	}
-	result, _ := runner.Emit(context.Background(), extension.SessionBeforeForkEvent{
-		Type:    EventSessionBeforeFork,
-		EntryID: entryID,
-	})
-	if m, ok := result.(map[string]any); ok {
-		if cancel, ok := m["cancel"].(bool); ok {
-			return cancel
-		}
-	}
-	return false
 }
 
 // modelToExtModel converts an ai.Model to extension.Model (map[string]any).

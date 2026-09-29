@@ -1,0 +1,57 @@
+# Behavior family: extensions-runtime
+# Scenario: an extension's modules load the way Pi's jiti loads them.
+#
+# testdata/module-loading/index.ts imports through package.json "imports"
+# ("#src/parser", no extension, as @gotgenes/pi-permission-system does) and
+# "exports" (conditional, by self-reference), extensionless and emitted
+# (.js/.mjs/.cjs for .ts/.mts/.cts) specifiers, an index directory, JSON, a
+# CommonJS dependency and a dual package from node_modules, and a type-only
+# name imported without `type`. It records import.meta, the CommonJS globals
+# (__dirname, as confluence-cli reads) and require's conditions, and puts the
+# results in the description of /module-loading.
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-26):
+#   PI_OFFLINE=1 PI_CODING_AGENT_DIR=<empty> pi --no-extensions \
+#     -e testdata/module-loading/index.ts --mode rpc --no-session
+#   stdin: {"id":"cmds","type":"get_commands"}
+# describes /module-loading with parser "src/parser.ts", dirname ".",
+# requireConditional "esm-dep require", module "object", and the rest below.
+# PiG loaded extensions with Node's type stripping and its own resolver
+# before: "#src/parser" failed with ERR_MODULE_NOT_FOUND, __dirname was not
+# defined, and a JSON import needed an import attribute.
+
+name = "34-extension-module-loading"
+description = "Extension modules resolve and evaluate as Pi's jiti loads them"
+
+covers = [
+  "packages/coding-agent/src/core/extensions/loader.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"cmds","type":"get_commands"}']
+timeout_seconds = 30
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pig_extensions = ["testdata/module-loading/index.ts"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/module-loading/index.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+
+[assert]
+exit_code = 0
+runs = 3
+both_contain = [
+  '\"parser\":\"src/parser.ts\"',
+  '\"dirname\":\".\"',
+  '\"requireConditional\":\"esm-dep require\"',
+]
+both_not_contain = ["Failed to load extension", "panic:"]
+both_match_regex = [
+  '"name":"module-loading","description":"\{\\"parser\\":\\"src/parser.ts\\",\\"data\\":\{\\"name\\":\\"src/data.json\\"\},\\"helper\\":\\"src/helper.ts\\",\\"idx\\":\\"src/dir/index.ts\\",\\"value\\":\\"src/types.ts\\",\\"shape\\":1,\\"legacy\\":\{\\"named\\":\\"src/legacy.cjs\\",\\"moduleType\\":\\"object\\"\},\\"named\\":\\"src/legacy.cjs\\",\\"modern\\":\\"src/modern.mts\\",\\"old\\":\\"src/old.cts\\",\\"feature\\":\\"src/feature-esm.ts\\",\\"cjsDep\\":\{\\"value\\":\\"cjs-dep\\",\\"dirname\\":\\"string\\"\},\\"esmDep\\":\\"esm-dep import\\",\\"json\\":\{\\"name\\":\\"src/data.json\\"\},\\"lazy\\":\\"src/lazy.ts\\",\\"dirname\\":\\".\\",\\"filename\\":\\"index.ts\\",\\"metaUrl\\":\\"index.ts\\",\\"metaDirname\\":\\".\\",\\"metaFilename\\":\\"index.ts\\",\\"metaResolve\\":\\"src/parser.ts\\",\\"require\\":\\"function\\",\\"requireCjs\\":\\"src/legacy.cjs\\",\\"requireResolve\\":\\"node_modules/cjs-dep/lib/main.js\\",\\"requireConditional\\":\\"esm-dep require\\",\\"module\\":\\"object\\",\\"exports\\":\\"object\\",\\"createRequire\\":\\"src/legacy.cjs\\"\}"',
+]

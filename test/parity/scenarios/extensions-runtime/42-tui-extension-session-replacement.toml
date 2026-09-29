@@ -1,0 +1,56 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:1921-1963 binds replacement commands to runtimeHost and
+# fills the fork editor only after replacement completes. Control-U clears
+# that prefill before the next command. The final crop is the entire stable
+# lifecycle/history trace, not a startup or completion banner.
+#
+# Each replacement step waits for `replacement-settled:*`, which the replacement's
+# extension instance announces once the replacing command has resumed. Pi fills
+# the fork prefill before that command resumes, so the next step's C-u cannot
+# arrive before the prefill lands. Waiting on the session_start notify raced the
+# prefill under parallel load (about 2 of 4 runs).
+#
+# pig divergence (D70): the fixture's replace-probe command sets
+# process.env.FIN_REPLACEMENT_LOG so the replacement's session_start handler can
+# find the log. Pi re-runs the extension factory inside the same Node process, so
+# the assignment survives into the replacement Session. Pig starts a fresh
+# extension process for each replacement Session, and a process environment
+# change does not cross that boundary. Pig's side receives the log path at
+# startup; Pi keeps the fixture's own assignment.
+name = "42-tui-extension-session-replacement"
+description = "Interactive extension commands replace sessions, honor cancel and repaint before returning"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/coding-agent/src/core/agent-session-runtime.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "FIN_REPLACEMENT_LOG=trace.jsonl"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-session"]
+pi_args = ["--no-session"]
+pig_extensions = ["testdata/ext/session-replacement.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/session-replacement.mjs"]
+
+[tmux]
+width = 160
+height = 60
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "replacement-trace:"
+capture_end = "replacement-end"
+steps = [
+  {keys = ["/replace-probe resume trace.jsonl", "Enter"], wait_contains = ["replacement-settled:resume:3"], wait_timeout_seconds = 15},
+  {keys = ["C-u", "/replace-probe at trace.jsonl", "Enter"], wait_contains = ["replacement-settled:fork:2"], wait_timeout_seconds = 15},
+  {keys = ["C-u", "/replace-probe before trace.jsonl", "Enter"], wait_contains = ["replacement-settled:fork:0"], wait_timeout_seconds = 15},
+  {keys = ["C-u", "/replace-probe cancel trace.jsonl", "Enter"], wait_contains = ["replacement-cancelled:true"], wait_timeout_seconds = 15},
+  {keys = ["C-u", "/replace-probe new trace.jsonl", "Enter"], wait_contains = ["replacement-settled:new:0"], wait_timeout_seconds = 15},
+  {keys = ["C-u", "/replacement-report trace.jsonl", "Enter"], wait_contains = ["replacement-end"], wait_timeout_seconds = 15},
+]
+
+[assert]
+both_reach_ready = true
+output_equal = true
+both_contain = ['["result","cancel",true]', '["result","new",false]']
+both_not_contain = ["unsupported", "Error:", "panic:"]
+runs = 3

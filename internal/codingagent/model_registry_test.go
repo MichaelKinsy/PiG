@@ -83,37 +83,48 @@ func TestModelRegistry_RefreshReloadsModelsJSON(t *testing.T) {
 	}
 }
 
-func TestModelRegistry_RefreshContextCancellationDoesNotPublish(t *testing.T) {
+// Pi's refresh awaits ModelConfig.load, which takes no signal, and rebuilds the providers before it forwards the signal to the catalog refresh, so an aborted refresh still publishes models.json and only reports aborted (model-runtime.ts:700-712).
+func TestModelRegistry_AbortedRefreshStillPublishesConfig(t *testing.T) {
 	dir := t.TempDir()
 	modelsPath := filepath.Join(dir, "models.json")
 	if err := os.WriteFile(modelsPath, []byte(`{"providers":{"custom":{"baseUrl":"https://a.test","models":[{"id":"m1"}]}}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	r := NewModelRegistry(dir)
-	if err := os.WriteFile(modelsPath, []byte(`{"providers":{"custom":{"baseUrl":"https://b.test","models":[{"id":"m1"}]}}}`), 0o644); err != nil {
+	if err := os.WriteFile(modelsPath, []byte(`{"providers":{"custom":{"baseUrl":"https://b.test","models":[{"id":"m1"},{"id":"m2"}]}}}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	result := r.refreshContext(ctx)
+	notified := 0
+	defer r.SetChangeListener(func() { notified++ })()
+	result := r.refreshContext(ctx, nil)
 	if !result.Aborted {
 		t.Fatal("cancelled refresh did not report aborted")
 	}
-	entry, ok := r.Resolve("custom", "m1")
-	if !ok || entry.BaseURL != "https://a.test" {
-		t.Fatalf("cancelled refresh published new config: ok=%v entry=%+v", ok, entry)
+	for _, id := range []string{"m1", "m2"} {
+		entry, ok := r.Resolve("custom", id)
+		if !ok || entry.BaseURL != "https://b.test" {
+			t.Fatalf("aborted refresh did not publish models.json for %s: ok=%v entry=%+v", id, ok, entry)
+		}
+	}
+	if notified != 1 {
+		t.Fatalf("listener notified %d times, want once for the published configuration", notified)
 	}
 }
 
 func TestModelRegistry_RefreshPreservesDynamicProviders(t *testing.T) {
 	dir := t.TempDir()
 	r := NewModelRegistry(dir)
-	r.RegisterProvider("ext-prov", extension.ProviderConfig{
+	if err := r.RegisterProvider("ext-prov", extension.ProviderConfig{
+		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://ext.test",
 		Models: []extension.ProviderModelConfig{
 			{ID: "ext-m1", Name: "Ext M1"},
 		},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 	r.Refresh()
 	entry, ok := r.Resolve("ext-prov", "ext-m1")
 	if !ok || entry.BaseURL != "https://ext.test" {
@@ -198,13 +209,15 @@ func TestModelRegistry_HasConfiguredAuth_OAuth(t *testing.T) {
 
 func TestModelRegistry_RegisterProvider_InsecureThreadsToEntry(t *testing.T) {
 	r := NewModelRegistry(t.TempDir())
-	r.RegisterProvider("corp-ai", extension.ProviderConfig{
+	if err := r.RegisterProvider("corp-ai", extension.ProviderConfig{
 		BaseURL:  "https://corp.test/v1",
 		APIKey:   "corp-key",
 		API:      "openai-completions",
 		Insecure: true,
 		Models:   []extension.ProviderModelConfig{{ID: "corp-m1", Name: "Corp M1"}},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 
 	entry, ok := r.Resolve("corp-ai", "corp-m1")
 	if !ok {
@@ -224,11 +237,14 @@ func TestModelRegistry_RegisterProvider_InsecureThreadsToEntry(t *testing.T) {
 	}
 
 	// A provider registered without the flag must stay secure.
-	r.RegisterProvider("safe-ai", extension.ProviderConfig{
+	if err := r.RegisterProvider("safe-ai", extension.ProviderConfig{
+		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://safe.test/v1",
 		APIKey:  "safe-key",
 		Models:  []extension.ProviderModelConfig{{ID: "safe-m1", Name: "Safe M1"}},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 	safe, ok := r.Resolve("safe-ai", "safe-m1")
 	if !ok {
 		t.Fatal("Resolve(safe-ai/safe-m1) not found")
@@ -241,13 +257,16 @@ func TestModelRegistry_RegisterProvider_InsecureThreadsToEntry(t *testing.T) {
 func TestModelRegistry_RegisterProvider_OAuthDetection(t *testing.T) {
 	dir := t.TempDir()
 	r := NewModelRegistry(dir)
-	r.RegisterProvider("corp-ai", extension.ProviderConfig{
+	if err := r.RegisterProvider("corp-ai", extension.ProviderConfig{
+		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://corp.test",
 		OAuth:   &extension.ProviderOAuth{Name: "Corp AI SSO"},
 		Models: []extension.ProviderModelConfig{
 			{ID: "corp-m1", Name: "Corp M1"},
 		},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 
 	// Without auth storage, HasConfiguredAuth should be false for oauth-only provider.
 	if r.HasConfiguredAuth("corp-ai") {
@@ -275,20 +294,26 @@ func TestModelRegistry_GetAvailable(t *testing.T) {
 	r.SetAuthStorage(auth)
 
 	// Register two providers: one with auth, one without.
-	r.RegisterProvider("authed-prov", extension.ProviderConfig{
+	if err := r.RegisterProvider("authed-prov", extension.ProviderConfig{
+		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://authed.test",
 		OAuth:   &extension.ProviderOAuth{Name: "Authed"},
 		Models: []extension.ProviderModelConfig{
 			{ID: "m1", Name: "M1"},
 		},
-	})
-	r.RegisterProvider("no-auth-prov", extension.ProviderConfig{
+	}); err != nil {
+		t.Error(err)
+	}
+	if err := r.RegisterProvider("no-auth-prov", extension.ProviderConfig{
+		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://noauth.test",
 		OAuth:   &extension.ProviderOAuth{Name: "NoAuth"},
 		Models: []extension.ProviderModelConfig{
 			{ID: "m2", Name: "M2"},
 		},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 
 	available := r.GetAvailable()
 	if len(available) != 1 {
@@ -316,7 +341,9 @@ func TestModelRegistry_GetProviderDisplayName(t *testing.T) {
 	if got := r.GetProviderDisplayName("deepseek"); got != "DeepSeek" {
 		t.Fatalf("display name = %q, want DeepSeek", got)
 	}
-	r.RegisterProvider("corp-ai", extension.ProviderConfig{Name: "Corp AI"})
+	if err := r.RegisterProvider("corp-ai", extension.ProviderConfig{Name: "Corp AI"}); err != nil {
+		t.Error(err)
+	}
 	if got := r.GetProviderDisplayName("corp-ai"); got != "Corp AI" {
 		t.Fatalf("display name = %q, want Corp AI", got)
 	}
@@ -328,7 +355,7 @@ func TestModelRegistry_GetProviderDisplayName(t *testing.T) {
 func TestModelRegistry_GetProviderDisplayName_Upstream0803Labels(t *testing.T) {
 	r := NewModelRegistry(t.TempDir())
 	want := map[string]string{
-		"zai":                   "ZAI Coding Plan (Global)",
+		"zai":                   "Z.AI",
 		"zai-coding-cn":         "ZAI Coding Plan (China)",
 		"ant-ling":              "Ant Ling",
 		"xiaomi-token-plan-cn":  "Xiaomi MiMo Token Plan (China)",
@@ -345,7 +372,9 @@ func TestModelRegistry_GetProviderDisplayName_Upstream0803Labels(t *testing.T) {
 func TestModelRegistry_GetProviderAuthStatus_DynamicEnvLabel(t *testing.T) {
 	r := NewModelRegistry(t.TempDir())
 	t.Setenv("CORP_AI_KEY", "secret")
-	r.RegisterProvider("corp-ai", extension.ProviderConfig{APIKey: "$CORP_AI_KEY"})
+	if err := r.RegisterProvider("corp-ai", extension.ProviderConfig{APIKey: "$CORP_AI_KEY"}); err != nil {
+		t.Error(err)
+	}
 	status := r.GetProviderAuthStatus("corp-ai")
 	if !status.Configured || status.Source != ai.AuthSourceEnvironment || status.Label != "CORP_AI_KEY" {
 		t.Fatalf("unexpected status: %+v", status)
@@ -357,7 +386,8 @@ func TestModelRegistry_ModelOverridesMergeThinkingLevelMap(t *testing.T) {
 	high := "HIGH"
 	off := "disabled"
 	low := "LOW"
-	r.RegisterProvider("corp-ai", extension.ProviderConfig{
+	if err := r.RegisterProvider("corp-ai", extension.ProviderConfig{
+		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://corp.example/v1",
 		Models: []extension.ProviderModelConfig{{
 			ID:               "model-1",
@@ -365,10 +395,14 @@ func TestModelRegistry_ModelOverridesMergeThinkingLevelMap(t *testing.T) {
 			Reasoning:        true,
 			ThinkingLevelMap: ai.ThinkingLevelMap{ai.ThinkingHigh: &high, ai.ThinkingOff: &off},
 		}},
-	})
-	r.RegisterProvider("corp-ai", extension.ProviderConfig{
+	}); err != nil {
+		t.Error(err)
+	}
+	if err := r.RegisterProvider("corp-ai", extension.ProviderConfig{
 		BaseURL: "https://corp.example/v1",
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 	r.mu.Lock()
 	r.upsertRegisteredProviderLocked("corp-ai", providerConfig{
 		ModelOverrides: map[string]modelOverrideJSON{
@@ -420,8 +454,12 @@ func TestModelRegistry_CustomModelBaseURLOverride(t *testing.T) {
 
 func TestModelRegistry_GetAvailable_SortedStableForSameNameFamily(t *testing.T) {
 	r := NewModelRegistry(t.TempDir())
-	r.RegisterProvider("z-prov", extension.ProviderConfig{BaseURL: "https://z.example", APIKey: "Z_API_KEY", Models: []extension.ProviderModelConfig{{ID: "z-1", Name: "z-1"}}})
-	r.RegisterProvider("a-prov", extension.ProviderConfig{BaseURL: "https://a.example", APIKey: "A_API_KEY", Models: []extension.ProviderModelConfig{{ID: "a-1", Name: "a-1"}}})
+	if err := r.RegisterProvider("z-prov", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://z.example", APIKey: "Z_API_KEY", Models: []extension.ProviderModelConfig{{ID: "z-1", Name: "z-1"}}}); err != nil {
+		t.Error(err)
+	}
+	if err := r.RegisterProvider("a-prov", extension.ProviderConfig{API: ai.APIOpenAICompletions, BaseURL: "https://a.example", APIKey: "A_API_KEY", Models: []extension.ProviderModelConfig{{ID: "a-1", Name: "a-1"}}}); err != nil {
+		t.Error(err)
+	}
 	t.Setenv("Z_API_KEY", "z")
 	t.Setenv("A_API_KEY", "a")
 	got := r.GetAvailable()
@@ -485,17 +523,20 @@ func TestModelRegistry_GetAvailable_IncludesModelsJSONProviders(t *testing.T) {
 func TestModelRegistry_GetAvailable_DynamicProviderTakesPrecedenceOverModelsJSON(t *testing.T) {
 	dir := t.TempDir()
 	modelsPath := filepath.Join(dir, "models.json")
-	data := `{"providers":{"shared":{"baseUrl":"https://stale.example/v1","apiKey":"stale-key","models":[{"id":"m1","name":"Stale M1"}]}}}`
+	data := `{"providers":{"shared":{"baseUrl":"https://stale.example/v1","api":"openai-completions","apiKey":"stale-key","models":[{"id":"m1","name":"Stale M1"}]}}}`
 	if err := os.WriteFile(modelsPath, []byte(data), 0o644); err != nil {
 		t.Fatalf("WriteFile: %v", err)
 	}
 
 	r := NewModelRegistry(dir)
-	r.RegisterProvider("shared", extension.ProviderConfig{
+	if err := r.RegisterProvider("shared", extension.ProviderConfig{
+		API:     ai.APIOpenAICompletions,
 		BaseURL: "https://fresh.example/v1",
 		APIKey:  "fresh-key",
 		Models:  []extension.ProviderModelConfig{{ID: "m1", Name: "Fresh M1"}},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 
 	available := r.GetAvailable()
 	count := 0

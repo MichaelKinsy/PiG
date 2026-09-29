@@ -20,8 +20,8 @@ func TestTreeSelectRowsStayWithinWidth(t *testing.T) {
 		"empty": func() *TreeSelect { return NewTreeSelect("", &fakeNode{id: "r"}) },
 		"label": func() *TreeSelect {
 			ts := NewTreeSelect("", root)
-			ts.editingLabel = true
-			ts.labelBuf = "a long label being typed"
+			ts.labelInput = NewInput(InputOptions{})
+			ts.labelInput.SetValue("a long label being typed")
 			return ts
 		},
 	}

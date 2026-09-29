@@ -4,78 +4,90 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"sync"
 	"testing"
 )
 
-// A full redraw discards terminal scrollback, so a reader loses their place.
-// Every branch that decides on one emits identical bytes, so the reason is not
-// recoverable from the output; upstream logs it behind PI_TUI_DEBUG_REDRAW.
+// Pi tui-main-screen.ts logs redraw reasons to its configured log directory, not a home-directory default.
 func TestRedrawReasonIsLogged(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("PIG_HOME", home)
+	dir := t.TempDir()
 	t.Setenv("PI_TUI_DEBUG_REDRAW", "1")
-	redrawDebugOnce = sync.Once{}
-
-	w := &countingWriter{}
-	tui := NewWithOutput(w, 120, 40)
-	tui.Add(NewText("hello"))
-	tui.Render()
-	// A width change is the least ambiguous full-redraw trigger.
-	tui.width = 100
-	tui.Render()
-
-	data, err := os.ReadFile(filepath.Join(home, "agent", "pig-debug.log"))
+	ui := NewWithOutput(&countingWriter{}, 120, 40)
+	ui.SetLogDirectory(dir)
+	ui.Add(NewText("hello"))
+	ui.Render()
+	ui.width = 100
+	ui.Render()
+	data, err := os.ReadFile(filepath.Join(dir, "pi-tui-debug.log"))
 	if err != nil {
-		t.Fatalf("no redraw log was written: %v", err)
+		t.Fatal(err)
 	}
 	log := string(data)
 	if !strings.Contains(log, "terminal width changed") {
-		t.Errorf("the log does not name the branch that redrew:\n%s", log)
+		t.Errorf("missing redraw branch: %s", log)
 	}
 	if !strings.Contains(log, "height=") || !strings.Contains(log, "prev=") {
-		t.Errorf("the log omits the buffer measurements needed to read it:\n%s", log)
+		t.Errorf("missing buffer measurements: %s", log)
 	}
 }
 
-// The switch must be off by default: this writes to disk on a render path.
 func TestRedrawReasonIsSilentByDefault(t *testing.T) {
-	home := t.TempDir()
-	t.Setenv("PIG_HOME", home)
+	dir := t.TempDir()
 	t.Setenv("PI_TUI_DEBUG_REDRAW", "")
-	redrawDebugOnce = sync.Once{}
-
-	w := &countingWriter{}
-	tui := NewWithOutput(w, 120, 40)
-	tui.Add(NewText("hello"))
-	tui.Render()
-	tui.width = 100
-	tui.Render()
-
-	if _, err := os.Stat(filepath.Join(home, "agent", "pig-debug.log")); !os.IsNotExist(err) {
-		t.Error("a redraw log was written with the switch off")
+	ui := NewWithOutput(&countingWriter{}, 120, 40)
+	ui.SetLogDirectory(dir)
+	ui.Add(NewText("hello"))
+	ui.Render()
+	ui.width = 100
+	ui.Render()
+	if _, err := os.Stat(filepath.Join(dir, "pi-tui-debug.log")); !os.IsNotExist(err) {
+		t.Error("redraw log written while switch off")
 	}
 }
 
 func TestStaleRedrawDebugAliasesDoNotEnableLogging(t *testing.T) {
 	for _, name := range []string{"PI_DEBUG_REDRAW", "PIG_DEBUG_REDRAW"} {
 		t.Run(name, func(t *testing.T) {
-			home := t.TempDir()
-			t.Setenv("PIG_HOME", home)
+			dir := t.TempDir()
 			t.Setenv("PI_TUI_DEBUG_REDRAW", "")
 			t.Setenv(name, "1")
-			redrawDebugOnce = sync.Once{}
-
-			w := &countingWriter{}
-			tui := NewWithOutput(w, 120, 40)
-			tui.Add(NewText("hello"))
-			tui.Render()
-			tui.width = 100
-			tui.Render()
-
-			if _, err := os.Stat(filepath.Join(home, "agent", "pig-debug.log")); !os.IsNotExist(err) {
-				t.Errorf("stale %s alias enabled redraw logging", name)
+			ui := NewWithOutput(&countingWriter{}, 120, 40)
+			ui.SetLogDirectory(dir)
+			ui.Add(NewText("hello"))
+			ui.Render()
+			ui.width = 100
+			ui.Render()
+			if _, err := os.Stat(filepath.Join(dir, "pi-tui-debug.log")); !os.IsNotExist(err) {
+				t.Errorf("stale %s alias enabled logging", name)
 			}
 		})
 	}
+}
+
+func TestRedrawLoggingTracksEnvironmentAndPropagatesIOFailure(t *testing.T) {
+	dir := t.TempDir()
+	ui := NewWithOutput(&countingWriter{}, 40, 10)
+	ui.SetLogDirectory(dir)
+	ui.Add(NewText("hello"))
+	t.Setenv("PI_TUI_DEBUG_REDRAW", "")
+	ui.Render()
+	t.Setenv("PI_TUI_DEBUG_REDRAW", "1")
+	ui.width = 30
+	ui.Render()
+	data, err := os.ReadFile(filepath.Join(dir, "pi-tui-debug.log"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	upstreamContains(t, string(data), "terminal width changed")
+	file := filepath.Join(dir, "not-a-directory")
+	if err := os.WriteFile(file, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	ui.SetLogDirectory(file)
+	ui.width = 20
+	defer func() {
+		if err, ok := recover().(error); !ok {
+			t.Fatalf("log write failure did not propagate as an error: %v", err)
+		}
+	}()
+	ui.Render()
 }

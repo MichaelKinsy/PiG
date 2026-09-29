@@ -22,24 +22,32 @@ type RadiusClientTransportFactory func(context.Context, RelayByteConnectionHandl
 // CreateRadiusClientTransportFactory creates an inert connection factory.
 func CreateRadiusClientTransportFactory(options RadiusClientTransportOptions) RadiusClientTransportFactory {
 	return func(ctx context.Context, handlers RelayByteConnectionHandler) (*RadiusClientByteTransport, error) {
-		if options.Auth == nil {
-			return nil, errors.New("Radius authentication is required")
-		}
-		if !connectionIDPattern.MatchString(options.ServerID) {
-			return nil, errors.New("Invalid Radius relay server ID")
-		}
-		auth, err := options.Auth.Resolve(ctx, true)
+		socket, err := openRadiusClientSocket(ctx, options)
 		if err != nil {
 			return nil, err
 		}
-		socket, err := openRadiusRelayWebSocket(ctx, auth, options.ServerID, RadiusRelayClientSubprotocol, options.WebSocketFactory)
-		if err != nil {
-			return nil, err
-		}
-		transport := &RadiusClientByteTransport{socket: socket, writer: newOrderedWebSocketWriter(socket), handlers: handlers, done: make(chan struct{})}
+		transport := newRadiusClientByteTransport(socket, handlers)
 		go transport.run(ctx)
 		return transport, nil
 	}
+}
+
+func openRadiusClientSocket(ctx context.Context, options RadiusClientTransportOptions) (RadiusRelayWebSocket, error) {
+	if options.Auth == nil {
+		return nil, errors.New("Radius authentication is required")
+	}
+	if !connectionIDPattern.MatchString(options.ServerID) {
+		return nil, errors.New("Invalid Radius relay server ID")
+	}
+	auth, err := options.Auth.Resolve(ctx, true)
+	if err != nil {
+		return nil, err
+	}
+	return openRadiusRelayWebSocket(ctx, auth, options.ServerID, RadiusRelayClientSubprotocol, options.WebSocketFactory)
+}
+
+func newRadiusClientByteTransport(socket RadiusRelayWebSocket, handlers RelayByteConnectionHandler) *RadiusClientByteTransport {
+	return &RadiusClientByteTransport{socket: socket, writer: newOrderedWebSocketWriter(socket), handlers: handlers, done: make(chan struct{})}
 }
 
 // RadiusClientByteTransport carries raw binary messages and reports one remote terminal event. Close initiates local shutdown; Done joins reads, writes, and cancellation cleanup.

@@ -69,7 +69,7 @@ func TestSendUserMessageStructuredActiveQueuesRawImages(t *testing.T) {
 			if len(queued) != 1 || queued[0].User == nil {
 				t.Fatalf("queue %#v", queued)
 			}
-			blocks := queued[0].User.Content
+			blocks := queued[0].User.Content.(ai.UserContentBlocks)
 			if len(blocks) != 2 {
 				t.Fatalf("content %#v", blocks)
 			}

@@ -10,6 +10,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
 // quarantineDirName is the directory, beside the nearest node_modules, that
@@ -30,11 +32,20 @@ func GetPackageDir() string {
 	return filepath.Dir(exe)
 }
 
+// normalizeWindowsPath is windows-self-update.ts normalizePath: toNamespacedPath(resolve(path)).
+func normalizeWindowsPath(path string) (string, error) {
+	resolved, err := nodepath.Resolve(path)
+	if err != nil {
+		return "", err
+	}
+	return nodepath.ToNamespacedPath(resolved)
+}
+
 func getQuarantineRoot(packageDir string) (string, bool) {
 	if packageDir == "" {
 		return "", false
 	}
-	current, err := filepath.Abs(packageDir)
+	current, err := nodepath.Resolve(packageDir)
 	if err != nil {
 		return "", false
 	}
@@ -57,7 +68,7 @@ func loadedSharedObjectsInPackageDir(packageDir string, sharedObjects []string) 
 	seen := make(map[string]bool)
 	var loadedFiles []string
 	for _, value := range sharedObjects {
-		filePath, err := filepath.Abs(value)
+		filePath, err := normalizeWindowsPath(value)
 		if err != nil {
 			continue
 		}
@@ -101,7 +112,7 @@ func QuarantineWindowsNativeDependencies(packageDir string) error {
 }
 
 func quarantineNativeDependencies(packageDir string, sharedObjects []string) error {
-	resolvedPackageDir, err := filepath.Abs(packageDir)
+	resolvedPackageDir, err := normalizeWindowsPath(packageDir)
 	if err != nil {
 		return err
 	}

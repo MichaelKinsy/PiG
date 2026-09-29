@@ -214,7 +214,8 @@ func TestReloadRefreshesRealSubprocessShortcuts(t *testing.T) {
 	if err := os.MkdirAll(source, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(source, "package.json"), []byte(`{"type":"module","main":"main.js"}`), 0o644); err != nil {
+	// A .ts entry, because Pi 0.87.1's /reload re-evaluates only what jiti (moduleCache: false) transpiles: a native ESM .js or .mjs stays in Node's module cache, so an edit to it, even a syntax error, is not seen until the process restarts (loader.ts loadExtensionModule, resource-loader.ts reload).
+	if err := os.WriteFile(filepath.Join(source, "package.json"), []byte(`{"type":"module","main":"main.ts"}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	writeNodeShortcutExtension(t, source, "old")
@@ -252,7 +253,7 @@ func TestReloadRefreshesRealSubprocessShortcuts(t *testing.T) {
 	}
 	waitFileContains(t, output, "old\nnew")
 
-	if err := os.WriteFile(filepath.Join(source, "main.js"), []byte("export default function register(pi) { pi.registerShortcut(\"ctrl+shift+right\", { handler: () => {\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(source, "main.ts"), []byte("export default function register(pi) { pi.registerShortcut(\"ctrl+shift+right\", { handler: () => {\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	// Like upstream reload, an extension whose replacement fails to load is
@@ -306,7 +307,7 @@ export default function register(pi) {
   });
 }
 `
-	if err := os.WriteFile(filepath.Join(source, "main.js"), []byte(content), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(source, "main.ts"), []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -392,7 +393,9 @@ func TestInteractiveModeExtendResourcesFromExtensions_MergesDiscoveredPaths(t *t
 		}}, cwd),
 	}
 
-	m.extendResourcesFromExtensions("startup")
+	if err := m.extendResourcesFromExtensions(t.Context(), "startup"); err != nil {
+		t.Fatal(err)
+	}
 	if !contains(m.opts.PromptPaths, promptPath) {
 		t.Fatalf("PromptPaths = %v, want %s", m.opts.PromptPaths, promptPath)
 	}
@@ -417,6 +420,133 @@ func TestInteractiveModeExtendResourcesFromExtensions_MergesDiscoveredPaths(t *t
 	}
 	if m.opts.SystemPrompt != "rebuilt prompt" {
 		t.Fatalf("SystemPrompt = %q", m.opts.SystemPrompt)
+	}
+}
+
+// Ports packages/coding-agent/test/resource-loader.test.ts:580-681 through the interactive extension-resource application path. Both ordinary and file-URL resource paths must keep their extension provenance.
+func TestResourceLoaderUpstreamExtensionResources(t *testing.T) {
+	for _, fileURL := range []bool{false, true} {
+		t.Run(fmt.Sprint(fileURL), func(t *testing.T) {
+			root := t.TempDir()
+			skillName, source := "extra-skill", "extra"
+			skillDir := filepath.Join(root, "extra-skills", skillName)
+			if fileURL {
+				skillName, source = "file-url-skill", "file-url"
+				skillDir = filepath.Join(root, "extra skills", skillName)
+			}
+			skillPath := filepath.Join(skillDir, "SKILL.md")
+			promptPath := filepath.Join(root, "extra-prompts", "extra.md")
+			description := "Extra skill"
+			if fileURL {
+				description = "File URL skill"
+			}
+			for path, content := range map[string]string{
+				skillPath:  "---\nname: " + skillName + "\ndescription: " + description + "\n---\nExtra content",
+				promptPath: "---\ndescription: Extra prompt\n---\nExtra prompt content",
+			} {
+				if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+					t.Fatal(err)
+				}
+			}
+			input := skillDir
+			if fileURL {
+				input = fileURLForTest(skillDir).String()
+			}
+			m := &InteractiveMode{opts: InteractiveOptions{CWD: root, AgentDir: t.TempDir()}}
+			m.newRunner = inproc.NewRunner([]extension.Extension{{Path: filepath.Join(root, source+".ts"), Handlers: map[string][]extension.HandlerFn{
+				EventResourcesDiscover: {func(...any) (any, error) {
+					return &extension.ResourcesDiscoverResult{SkillPaths: []string{input}, PromptPaths: []string{promptPath}}, nil
+				}},
+			}}}, root)
+			if err := m.extendResourcesFromExtensions(t.Context(), "startup"); err != nil {
+				t.Fatal(err)
+			}
+			if len(m.opts.Skills) != 1 || m.opts.Skills[0].Name != skillName || m.opts.Skills[0].Path != skillPath || len(m.opts.SkillDiagnostics) != 0 {
+				t.Fatalf("skills=%#v diagnostics=%v", m.opts.Skills, m.opts.SkillDiagnostics)
+			}
+			wantSkillSource := PiSourceInfo{Path: skillPath, Source: "extension:" + source, Scope: "temporary", Origin: "top-level", BaseDir: root}
+			if m.opts.Skills[0].SourceInfo != wantSkillSource {
+				t.Fatalf("loaded skill source = %#v, want %#v", m.opts.Skills[0].SourceInfo, wantSkillSource)
+			}
+			if len(m.promptTemplates) != 1 || m.promptTemplates[0].Name != "extra" {
+				t.Fatalf("prompts=%#v", m.promptTemplates)
+			}
+			catalog := SlashCommandCatalog{CWD: root, AgentDir: m.opts.AgentDir, SourceInfo: m.resourceSourceInfo}
+			for path, kind := range map[string]string{skillPath: "skills", promptPath: "prompts"} {
+				info := catalog.SourceInfoForPath(path, kind)
+				if info.Source != "extension:"+source || info.Path != path || info.Scope != "temporary" || info.Origin != "top-level" {
+					t.Fatalf("source info for %s = %#v", path, info)
+				}
+			}
+		})
+	}
+}
+
+// Ports packages/coding-agent/test/resource-loader.test.ts:786-828 at the reload boundary: noSkills suppresses discovery, not the already selected additional paths.
+func TestResourceLoaderUpstreamNoSkillsReload(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "custom.md")
+	if err := os.WriteFile(path, []byte("---\nname: custom\ndescription: Custom skill\n---\nContent"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, paths := range [][]string{nil, {root}} {
+		m := &InteractiveMode{opts: InteractiveOptions{CWD: root, NoSkills: true, SkillPaths: paths}}
+		m.reloadSkillsFromPaths()
+		if len(paths) == 0 {
+			if len(m.opts.Skills) != 0 {
+				t.Fatalf("no selected paths loaded skills: %#v", m.opts.Skills)
+			}
+		} else if len(m.opts.Skills) != 1 || m.opts.Skills[0].Name != "custom" {
+			t.Fatalf("additional paths lost with noSkills: %#v", m.opts.Skills)
+		}
+	}
+}
+
+// All three no-resource flags suppress automatic discovery, not extension-selected paths (resource-loader.ts:extendResources and update*FromPaths).
+func TestResourceLoaderUpstreamDisabledDiscoveryKeepsExtensions(t *testing.T) {
+	previous := tui.ActiveThemeRegistry()
+	tui.SetThemeRegistry(tui.NewThemeRegistry())
+	t.Cleanup(func() { tui.SetThemeRegistry(previous) })
+	root := t.TempDir()
+	skillPath := filepath.Join(root, "custom", "SKILL.md")
+	promptPath := filepath.Join(root, "custom.md")
+	themePath := filepath.Join(root, "custom.json")
+	themeData, err := os.ReadFile("../../tui/theme_dark.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	for path, content := range map[string]string{
+		skillPath:  "---\nname: custom\ndescription: Custom skill\n---\nContent",
+		promptPath: "Custom prompt",
+		themePath:  strings.Replace(string(themeData), `"name": "dark"`, `"name": "extension-discovery-test"`, 1),
+	} {
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(path, []byte(content), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	m := &InteractiveMode{opts: InteractiveOptions{CWD: root, NoSkills: true, NoPromptTemplates: true, NoThemes: true}}
+	agg := &extension.ResourcesDiscoverAggregateResult{
+		SkillPaths:  []extension.AttributedResourcePath{{Path: filepath.Dir(skillPath), ExtensionPath: "/custom.ts"}},
+		PromptPaths: []extension.AttributedResourcePath{{Path: promptPath, ExtensionPath: "/custom.ts"}},
+		ThemePaths:  []extension.AttributedResourcePath{{Path: themePath, ExtensionPath: "/custom.ts"}},
+	}
+	if err := m.applyDiscoveredResources(agg); err != nil {
+		t.Fatal(err)
+	}
+	if len(m.opts.Skills) != 1 || m.opts.Skills[0].Name != "custom" {
+		t.Fatalf("extension skill = %#v", m.opts.Skills)
+	}
+	if len(m.promptTemplates) != 1 || m.promptTemplates[0].Name != "custom" {
+		t.Errorf("extension prompt = %#v", m.promptTemplates)
+	}
+	if path := tui.ActiveThemeRegistry().PathOf("extension-discovery-test"); path != themePath {
+		t.Errorf("extension theme = %s, want %s", path, themePath)
 	}
 }
 

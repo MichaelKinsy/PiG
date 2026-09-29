@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"slices"
 	"sync"
 	"testing"
@@ -129,7 +130,7 @@ func abortableStream(ctx context.Context, started chan<- struct{}) *ai.Assistant
 }
 
 func userMessage(text string) AgentMessage {
-	return AgentMessage{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: text}}, Timestamp: time.Now().UnixMilli()}}
+	return AgentMessage{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: text}}, Timestamp: time.Now().UnixMilli()}}
 }
 
 func assistantText(text string) AgentMessage {
@@ -176,22 +177,27 @@ var valueSchema = map[string]any{
 
 // scriptTool is an AgentTool whose Execute runs a test-supplied function.
 type scriptTool struct {
-	name    string
-	label   string
-	mode    ToolExecutionMode
-	params  map[string]any
-	execute func(ctx context.Context, id string, args json.RawMessage, onUpdate ToolUpdateCallback) (AgentToolResult, error)
+	name        string
+	label       string
+	description string
+	mode        ToolExecutionMode
+	params      map[string]any
+	execute     func(ctx context.Context, id string, args json.RawMessage, onUpdate ToolUpdateCallback) (AgentToolResult, error)
 }
 
 func (t *scriptTool) Name() string  { return t.name }
 func (t *scriptTool) Label() string { return t.label }
 func (t *scriptTool) Schema() ai.ToolSchema {
-	return ai.ToolSchema{Name: t.name, Description: t.name + " tool", Parameters: t.params}
+	description := t.description
+	if description == "" {
+		description = t.name + " tool"
+	}
+	return ai.ToolSchema{Name: t.name, Description: description, Parameters: t.params}
 }
 func (t *scriptTool) ExecutionMode() ToolExecutionMode { return t.mode }
 func (t *scriptTool) Execute(ctx context.Context, id string, args json.RawMessage, onUpdate ToolUpdateCallback) (AgentToolResult, error) {
 	if t.execute == nil {
-		return AgentToolResult{Content: t.name}, nil
+		return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: t.name}}}, nil
 	}
 	return t.execute(ctx, id, args, onUpdate)
 }
@@ -205,7 +211,7 @@ func valueEchoTool(mode ToolExecutionMode, record func(value string)) *scriptToo
 			if record != nil {
 				record(value)
 			}
-			return AgentToolResult{Content: "echoed: " + value, Details: map[string]any{"value": value}}, nil
+			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "echoed: " + value}}, Details: map[string]any{"value": value}}, nil
 		}}
 }
 
@@ -282,8 +288,7 @@ func (r *eventRecorder) waitFor(t *testing.T, match func(AgentEvent) bool) {
 	}
 }
 
-// eventTypes names events the way upstream's event.type does, skipping
-// PiG's TimingEvent diagnostics, which upstream does not emit.
+// eventTypes names events the way upstream's event.type does.
 func eventTypes(events []AgentEvent) []string {
 	var out []string
 	for _, ev := range events {
@@ -317,7 +322,8 @@ func eventType(ev AgentEvent) string {
 	case ToolExecutionEndEvent:
 		return "tool_execution_end"
 	}
-	return ""
+	// An event with no upstream name must fail the order comparison instead of vanishing from it.
+	return fmt.Sprintf("unexpected:%T", ev)
 }
 
 // orderLog is a mutex-guarded ordering log shared by hooks and listeners.

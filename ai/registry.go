@@ -14,20 +14,25 @@ import (
 // Status line, /cost, and `--diagnose` all consume from here.
 
 var (
-	registryOnce sync.Once
-	registryByFQ map[string]*GeneratedModel   // "<provider>/<model-id>"
-	registryByID map[string][]*GeneratedModel // "<model-id>" → entries (multiple providers)
+	registryOnce       sync.Once
+	registryByFQ       map[string]*GeneratedModel   // "<provider>/<model-id>"
+	registryByID       map[string][]*GeneratedModel // "<model-id>" → entries (multiple providers)
+	registryByProvider map[string][]*GeneratedModel
+	registryProviders  []string
 )
 
 func initRegistry() {
 	registryByFQ = make(map[string]*GeneratedModel, len(GeneratedModels))
 	registryByID = make(map[string][]*GeneratedModel, len(GeneratedModels))
+	registryByProvider = make(map[string][]*GeneratedModel)
 	for i := range GeneratedModels {
 		m := &GeneratedModels[i]
 		fq := m.Provider + "/" + m.ID
 		registryByFQ[fq] = m
 		registryByID[m.ID] = append(registryByID[m.ID], m)
+		registryByProvider[m.Provider] = append(registryByProvider[m.Provider], m)
 	}
+	registryProviders = slices.Sorted(maps.Keys(registryByProvider))
 }
 
 // LookupModel resolves a spec like "<provider>/<model-id>" or just
@@ -91,11 +96,12 @@ func (m *GeneratedModel) ToCapabilities() ModelCapabilities {
 			caps.SupportsImages = true
 		}
 	}
-	for _, level := range GetSupportedThinkingLevels(&Model{
-		Capabilities:     ModelCapabilities{MaxThinking: thinkingMaxLevel(m.Reasoning, m.ThinkingLevelMap)},
-		ThinkingLevelMap: cloneThinkingLevelMap(m.ThinkingLevelMap),
-	}) {
-		if CompareThinkingLevels(level, caps.MaxThinking) > 0 {
+	// MaxThinking is the highest level GetSupportedThinkingLevels reports for a model whose only reasoning signal is thinkingMaxLevel, computed without the throwaway Model and level list.
+	if thinkingMaxLevel(m.Reasoning, m.ThinkingLevelMap) == "" {
+		return caps
+	}
+	for _, level := range extendedThinkingLevels {
+		if !thinkingLevelUnsupported(m.ThinkingLevelMap, level) && CompareThinkingLevels(level, caps.MaxThinking) > 0 {
 			caps.MaxThinking = level
 		}
 	}
@@ -118,20 +124,16 @@ func thinkingMaxLevel(reasoning bool, levelMap ThinkingLevelMap) ThinkingLevel {
 	return maxLevel
 }
 
-// ToModel lifts a generated catalog entry into the runtime model metadata shape
-// used by provider-specific compat helpers and tests.
+// ToModel preserves catalog prices, limits, modalities, capabilities and provider metadata for runtime requests.
 func (m *GeneratedModel) ToModel() *Model {
 	if m == nil {
 		return nil
 	}
 	return &Model{
-		ID:          m.ID,
-		DisplayName: m.DisplayName,
-		Capabilities: ModelCapabilities{
-			MaxThinking:     thinkingMaxLevel(m.Reasoning, m.ThinkingLevelMap),
-			MaxOutputTokens: m.MaxOutputTokens,
-		},
-		Input:            append([]string(nil), m.Capabilities...),
+		ID:               m.ID,
+		DisplayName:      m.DisplayName,
+		Capabilities:     m.ToCapabilities(),
+		Input:            slices.Clone(m.Capabilities),
 		ThinkingLevelMap: cloneThinkingLevelMap(m.ThinkingLevelMap),
 		SamplingParams:   maps.Clone(m.SamplingParams),
 		PromptCache:      maps.Clone(m.PromptCache),
@@ -151,11 +153,15 @@ func (m *GeneratedModel) ToModel() *Model {
 // provider prefix. Empty provider returns everything.
 func ListModels(provider string) []GeneratedModel {
 	registryOnce.Do(initRegistry)
-	out := make([]GeneratedModel, 0, len(GeneratedModels))
-	for _, m := range GeneratedModels {
-		if provider == "" || m.Provider == provider {
-			out = append(out, m)
-		}
+	if provider == "" {
+		out := make([]GeneratedModel, len(GeneratedModels))
+		copy(out, GeneratedModels)
+		return out
+	}
+	models := registryByProvider[provider]
+	out := make([]GeneratedModel, len(models))
+	for i, model := range models {
+		out[i] = *model
 	}
 	return out
 }
@@ -165,16 +171,7 @@ func ListModels(provider string) []GeneratedModel {
 // providers/all.ts:getBuiltinProviders and compat.ts:getProviders.
 func ListProviders() []string {
 	registryOnce.Do(initRegistry)
-	seen := make(map[string]struct{})
-	for _, m := range GeneratedModels {
-		seen[m.Provider] = struct{}{}
-	}
-	providers := make([]string, 0, len(seen))
-	for p := range seen {
-		providers = append(providers, p)
-	}
-	slices.Sort(providers)
-	return providers
+	return slices.Clone(registryProviders)
 }
 
 // ListRuntimeProviders returns providers with an implemented runtime API.

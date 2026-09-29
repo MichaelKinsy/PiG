@@ -4,10 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"time"
 
+	"golang.org/x/term"
+
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
+	"github.com/MichaelKinsy/PiG/internal/buildprogress"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
 )
 
@@ -55,6 +61,9 @@ func reasonFor(cell CellSpec) string {
 	case CellStrategyPackedPython:
 		return "python factory packed (shared-ok)"
 	case CellStrategyPackedNode:
+		if name, ok := strings.CutPrefix(cell.Isolation, "quarantined:"); ok {
+			return "Node crash culprit in its own process: " + name
+		}
 		return "node factory packed (shared-ok)"
 	default:
 		return string(cell.Strategy)
@@ -65,16 +74,6 @@ func reasonFor(cell CellSpec) string {
 type cellFailure struct {
 	cfg ExtConfig
 	err error
-}
-
-// stageCellIsolating stages cell and returns every staging attempt with the
-// extensions that failed. Upstream loads each extension on its own and records
-// a failure for that extension only. When a packed cell fails, each member is
-// therefore staged again in its own isolated cell, so one failing member does
-// not take its packed siblings down.
-func (h *Host) stageCellIsolating(ctx context.Context, cell CellSpec, oldByName map[string]*managedExt) ([]stageOutcome, []cellFailure) {
-	outcome, err := h.stageCell(ctx, cell, oldByName)
-	return h.isolateCellFailure(ctx, cell, oldByName, outcome, err)
 }
 
 // isolateCellFailure preserves successful staged outcomes and retries each
@@ -117,6 +116,17 @@ func (h *Host) isolateCellFailure(ctx context.Context, cell CellSpec, oldByName 
 }
 
 func (h *Host) stageCell(ctx context.Context, cell CellSpec, oldByName map[string]*managedExt) (stageOutcome, error) {
+	ctx = context.WithValue(ctx, packedConfigsKey{}, cell.Extensions)
+	ctx = context.WithValue(ctx, retentionGroupKey{}, cell.Group)
+	// pig additive (D19): native cold-build notices belong to interactive mode, not to a terminal file descriptor alone. Explicit build observers remain authoritative.
+	if !buildprogress.Enabled(ctx) && h.mode == "tui" && term.IsTerminal(int(os.Stderr.Fd())) {
+		var notice sync.Once
+		ctx = buildprogress.Observe(ctx, func(event buildprogress.Event) {
+			if strings.HasPrefix(event.Phase, "Compiling ") {
+				notice.Do(func() { fmt.Fprintln(os.Stderr, "Building extensions... (first run, will be cached)") })
+			}
+		}, false)
+	}
 	work := func() (stageOutcome, error) {
 		rep := ReloadCellReport{
 			Key:        cell.Key,
@@ -171,7 +181,7 @@ func (h *Host) stageIsolated(ctx context.Context, cfg ExtConfig, oldByName map[s
 	resolved := cfg
 	h.markExtension(cfg.Name, "build-check-start")
 	if resolved.Source != "" && resolved.Path == "" {
-		result, err := h.builder.Build(resolved.Name, resolved.Source)
+		result, err := h.builder.BuildContext(ctx, resolved.Name, resolved.Source)
 		if err != nil {
 			return nil, fmt.Errorf("build %q: %w", resolved.Name, err)
 		}
@@ -179,12 +189,13 @@ func (h *Host) stageIsolated(ctx context.Context, cfg ExtConfig, oldByName map[s
 	}
 	h.markExtension(cfg.Name, "build-check-done")
 	rep.BinaryPath = resolved.Path
-	// Upstream reload invokes every extension factory again, so an unchanged
-	// extension still gets a fresh instance: only its build artifact is reused.
-	// pig divergence (D70): the fresh instance is a fresh process, so module-level
-	// state is re-initialized even where Pi's module cache would have kept it.
+	// Upstream reload invokes every extension factory again inside the process that holds its module, so an unchanged extension gets a fresh instance in the same runtime: a Node factory extension re-invokes its factory in the retained process.
 	old := oldByName[resolved.Name]
-	me, _, err := h.startManaged(ctx, resolved)
+	var retained *processShare
+	if entry, ok := nodeLauncherEntry(resolved.Path); ok {
+		retained = h.retention().claim("node-extension:" + resolved.Name + "\x00" + entry)
+	}
+	me, _, err := h.startManagedIn(ctx, resolved, retained)
 	if err != nil {
 		return nil, fmt.Errorf("reload %q: %w", resolved.Name, err)
 	}
@@ -332,6 +343,8 @@ func (h *Host) stagePackedRust(ctx context.Context, cell CellSpec, oldByName map
 	return staged, nil
 }
 
+type packedConfigsKey struct{}
+
 func (h *Host) stagePackedNode(ctx context.Context, cell CellSpec, oldByName map[string]*managedExt, rep *ReloadCellReport) ([]stagedManagedExt, error) {
 	nodeExts, err := cell.NodeExtensions()
 	if err != nil {
@@ -457,7 +470,7 @@ func pythonExtensionFromConfig(cfg ExtConfig) (runtimecell.PythonExtension, erro
 // Reload() to make quarantine/fission decisions visible in /reload --explain.
 func (h *Host) quarantineReports(now time.Time) []ReloadCellReport {
 	q := h.QuarantinedCells()
-	if len(q) == 0 {
+	if len(q) == 0 && len(h.nodeFaults) == 0 {
 		return nil
 	}
 	_ = now
@@ -469,6 +482,9 @@ func (h *Host) quarantineReports(now time.Time) []ReloadCellReport {
 			Quarantined: true,
 			Reason:      "fissioned (quarantined): " + reason,
 		})
+	}
+	for name, reason := range h.nodeFaults {
+		out = append(out, ReloadCellReport{Key: "node-member:" + name, Strategy: CellStrategyIsolated, Language: "node", Extensions: []string{name}, Quarantined: true, Reason: "Node culprit isolated; healthy members remain shared: " + reason})
 	}
 	return out
 }

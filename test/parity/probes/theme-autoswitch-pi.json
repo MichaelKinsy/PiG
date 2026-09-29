@@ -1,0 +1,128 @@
+{
+  "states": [
+    {
+      "label": "initial",
+      "name": "light",
+      "selection": "light/dark",
+      "terminal": "light",
+      "invalidations": 1,
+      "notifications": [
+        true
+      ],
+      "saves": []
+    },
+    {
+      "label": "dark",
+      "name": "dark",
+      "selection": "light/dark",
+      "terminal": "dark",
+      "invalidations": 2,
+      "notifications": [
+        true
+      ],
+      "saves": []
+    },
+    {
+      "label": "duplicate",
+      "name": "dark",
+      "selection": "light/dark",
+      "terminal": "dark",
+      "invalidations": 2,
+      "notifications": [
+        true
+      ],
+      "saves": []
+    },
+    {
+      "label": "preview",
+      "name": "light",
+      "selection": "light/dark",
+      "terminal": "dark",
+      "invalidations": 3,
+      "notifications": [
+        true
+      ],
+      "saves": []
+    },
+    {
+      "label": "duplicate during preview",
+      "name": "light",
+      "selection": "light/dark",
+      "terminal": "dark",
+      "invalidations": 3,
+      "notifications": [
+        true
+      ],
+      "saves": []
+    },
+    {
+      "label": "restore preview",
+      "name": "dark",
+      "selection": "light/dark",
+      "terminal": "dark",
+      "invalidations": 4,
+      "notifications": [
+        true
+      ],
+      "saves": []
+    },
+    {
+      "label": "invalid explicit",
+      "name": "dark",
+      "selection": "light/dark",
+      "terminal": "dark",
+      "invalidations": 5,
+      "notifications": [
+        true,
+        false
+      ],
+      "saves": []
+    },
+    {
+      "label": "disabled after invalid",
+      "name": "dark",
+      "selection": "light/dark",
+      "terminal": "dark",
+      "invalidations": 5,
+      "notifications": [
+        true,
+        false
+      ],
+      "saves": []
+    }
+  ],
+  "invalid": {
+    "success": false,
+    "error": "Theme not found: no-such-theme"
+  },
+  "pairAsName": {
+    "success": false,
+    "error": "Theme not found: light/dark"
+  },
+  "parse": [
+    {
+      "input": "\u001b[?997;1n",
+      "scheme": "dark"
+    },
+    {
+      "input": "\u001b[?997;2n",
+      "scheme": "light"
+    },
+    {
+      "input": "\u001b[?997;1n\u001b[?997;2n",
+      "scheme": "light"
+    },
+    {
+      "input": "",
+      "scheme": null
+    },
+    {
+      "input": "\u001b[?997;3n",
+      "scheme": null
+    },
+    {
+      "input": "\u001b[I",
+      "scheme": null
+    }
+  ]
+}

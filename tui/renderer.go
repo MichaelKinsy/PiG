@@ -15,6 +15,8 @@ type Renderer interface {
 	Render()
 	// RequestRender coalesces a render on the shared 16ms frame throttle.
 	RequestRender()
+	// RequestImmediateRender coalesces input updates onto the next owner-loop turn without throttle delay.
+	RequestImmediateRender()
 	// CancelPendingRender invalidates a throttled frame already queued for owner-loop delivery.
 	CancelPendingRender()
 	// ForceFullRender marks the next frame as a full (non-differential) redraw.
@@ -31,6 +33,8 @@ type Renderer interface {
 	OpenOverlay(component Component, opts OverlayOptions) *OverlayHandle
 	// SetFocus records the non-overlay target restored after overlay teardown.
 	SetFocus(component Component)
+	// ActiveOverlay prepares visibility and eligible focus restoration at the input boundary.
+	ActiveOverlay() Component
 	// FocusedComponent returns the current keyboard focus target.
 	FocusedComponent() Component
 	// SetOverlayCommandDispatcher binds remote overlay commands to the owner loop.
@@ -40,6 +44,10 @@ type Renderer interface {
 	// Width and Height report the current terminal geometry.
 	Width() int
 	Height() int
+	// QueryTerminalBackgroundColor asks for the default background and returns its one-shot completion.
+	QueryTerminalBackgroundColor(options TerminalColorQueryOptions) <-chan TerminalBackgroundColorResult
+	// ConsumeOsc11BackgroundResponse intercepts replies before input listeners, including late replies after timeout.
+	ConsumeOsc11BackgroundResponse(data string) bool
 	// QueryCellSize asks an image-capable terminal for its cell size.
 	QueryCellSize()
 	// ConsumeCellSizeResponse applies and consumes a cell-size response.
@@ -58,6 +66,8 @@ type Renderer interface {
 	SetOnHeightChange(fn func(height int))
 	// SetRenderDispatcher marshals timer-scheduled renders onto the driver loop.
 	SetRenderDispatcher(dispatch func(render func()))
+	// Start resumes rendering after Stop. The driver owns terminal input and raw mode.
+	Start()
 	// Stop tears down the renderer.
 	Stop()
 	// StopWithOptions tears down the renderer; PreserveScreen leaves the current

@@ -2,7 +2,7 @@
 # interface-extract-cache.sh: content-keyed cache wrapper around the TypeScript
 # interface extractor used by `make interface-inventory-drift`.
 #
-# The extractor (parity/interface-extractor/src/extract.mjs +
+# The extractor (test/parity/interface-extractor/src/extract.mjs +
 # src/extract-cli.mjs) re-parses the pinned upstream source tree and the
 # exact published Pi package with the TypeScript compiler on every run. Those
 # inputs almost never change between candidates, so this wrapper hashes them

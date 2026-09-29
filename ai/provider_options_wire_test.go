@@ -72,16 +72,19 @@ func TestAnthropicAppliesPreparedHeadersAndRequestEnvironment(t *testing.T) {
 	options := requestHeaderOptions()
 	options.Env = ProviderEnv{"PI_CACHE_RETENTION": "none"}
 	options.Headers["x-api-key"] = nil
-	if _, err := provider.Stream(context.Background(), providerWireTranscript(), options); err == nil {
-		t.Fatal("Stream error = nil, want test rejection")
+	stream, err := provider.Stream(context.Background(), providerWireTranscript(), options)
+	result := requireAnthropicSetupError(t, stream, err)
+	if !strings.Contains(result.ErrorMessage, "expected test rejection") {
+		t.Fatalf("Stream rejection = %q", result.ErrorMessage)
 	}
 	request := <-requests
 	assertPreparedProviderHeaders(t, request)
 	if request.header.Get("x-api-key") != "" {
 		t.Fatalf("x-api-key = %q, want deleted", request.header.Get("x-api-key"))
 	}
-	if strings.Contains(string(request.body), `"cache_control"`) {
-		t.Fatalf("request environment did not disable cache retention: %s", request.body)
+	// anthropic-messages.ts:60-84: env=none falls back to short rather than disabling cache.
+	if !strings.Contains(string(request.body), `"cache_control":{"type":"ephemeral"}`) || strings.Contains(string(request.body), `"ttl"`) {
+		t.Fatalf("request environment did not override configured long retention with short: %s", request.body)
 	}
 }
 
@@ -128,10 +131,10 @@ func TestMistralAppliesPreparedHeadersAndRequestSessionID(t *testing.T) {
 
 func bedrockReservedHeaderOptions(value *string) StreamOptions {
 	options := requestHeaderOptions()
+	options.CacheRetention = CacheRetentionNone
 	options.Env = ProviderEnv{
 		"AWS_BEDROCK_SKIP_AUTH": "1",
 		"AWS_REGION":            "eu-test-1",
-		"PI_CACHE_RETENTION":    "none",
 	}
 	options.Headers["aUtHoRiZaTiOn"] = value
 	options.Headers["hOsT"] = value
@@ -200,8 +203,12 @@ func TestBedrockReservedHeadersCannotBeOverriddenOrDeleted(t *testing.T) {
 			server, requests := rejectingProviderServer(t)
 			t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
 			provider := NewBedrockProvider("anthropic.claude-test", server.URL)
-			if _, err := provider.Stream(context.Background(), providerWireTranscript(), bedrockReservedHeaderOptions(test.value)); err == nil {
-				t.Fatal("Stream error = nil, want test rejection")
+			stream, err := provider.Stream(context.Background(), providerWireTranscript(), bedrockReservedHeaderOptions(test.value))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if result := stream.Result(); result.StopReason != StopReasonError {
+				t.Fatalf("want fixture rejection event, got %+v", result)
 			}
 			request := <-requests
 			assertPreparedProviderHeaders(t, request)
@@ -213,15 +220,21 @@ func TestBedrockReservedHeadersCannotBeOverriddenOrDeleted(t *testing.T) {
 func TestBedrockAppliesPreparedHeadersAndRequestEnvironment(t *testing.T) {
 	server, requests := rejectingProviderServer(t)
 	t.Setenv("AWS_EC2_METADATA_DISABLED", "true")
-	provider := NewBedrockProvider("anthropic.claude-test", server.URL)
+	// The cache-capable model makes the cache-retention assertion exercise real cache insertion.
+	provider := NewBedrockProvider("us.anthropic.claude-sonnet-4-5-20250929-v1:0", server.URL)
 	options := requestHeaderOptions()
+	options.CacheRetention = CacheRetentionNone
 	options.Env = ProviderEnv{
 		"AWS_BEDROCK_SKIP_AUTH": "1",
 		"AWS_REGION":            "eu-test-1",
-		"PI_CACHE_RETENTION":    "none",
+		"PI_CACHE_RETENTION":    "long",
 	}
-	if _, err := provider.Stream(context.Background(), providerWireTranscript(), options); err == nil {
-		t.Fatal("Stream error = nil, want test rejection")
+	stream, err := provider.Stream(context.Background(), providerWireTranscript(), options)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result := stream.Result(); result.StopReason != StopReasonError {
+		t.Fatalf("want fixture rejection event, got %+v", result)
 	}
 	request := <-requests
 	if got := request.header.Get("X-Configured"); got != "request" {
@@ -238,6 +251,6 @@ func TestBedrockAppliesPreparedHeadersAndRequestEnvironment(t *testing.T) {
 		t.Fatalf("Bedrock request has no system prompt: %#v", body)
 	}
 	if strings.Contains(string(request.body), `"cachePoint"`) {
-		t.Fatalf("request environment did not disable Bedrock cache retention: %s", request.body)
+		t.Fatalf("explicit cacheRetention=none did not override the environment: %s", request.body)
 	}
 }

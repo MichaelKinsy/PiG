@@ -1,0 +1,28 @@
+# Probed published Pi 0.87.1 createEditTool with an access callback that aborts
+# before resolving. edit.ts:188 checks cancellation before readFile, even when
+# access succeeded. Both probes invoke the actual tool execution and compare
+# its error and whether the read callback ran. This proves the operations API,
+# not subprocess transport or UI behavior. Removing the post-access check from
+# EditTool compiles and fails the Go probe with read=true.
+name = "15-edit-access-abort"
+description = "A cancelled edit access check does not proceed to read the file"
+covers = ["packages/coding-agent/src/core/tools/edit.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/edit-access-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/edit-access-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['EDIT_ACCESS ["Operation aborted",false]']
+runs = 3

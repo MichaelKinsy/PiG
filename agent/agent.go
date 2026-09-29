@@ -29,14 +29,14 @@ const (
 	RoleCompactionSummary = "compactionSummary"
 )
 
-// UserMessage is a message from the user.
+// UserMessage is a user turn whose content retains the upstream string-or-block-array shape.
 type UserMessage struct {
-	Role      string                `json:"role"` // "user"
-	Content   []ai.UserContentBlock `json:"content"`
-	Timestamp int64                 `json:"timestamp"`
+	Role      string         `json:"role"` // "user"
+	Content   ai.UserContent `json:"content"`
+	Timestamp int64          `json:"timestamp"`
 }
 
-// AssistantMessage is a streamed response from the LLM.
+// AssistantMessage is a streamed response from the LLM. Streaming events retain a shallow provider view; Observe and JSON serialization read its current nested state without mutating these exported fields.
 type AssistantMessage struct {
 	Role                  string                          `json:"role"` // "assistant"
 	Content               []ai.AssistantContentBlock      `json:"content"`
@@ -63,6 +63,9 @@ type AssistantMessage struct {
 	// ThinkingSignature is a legacy runtime convenience; durable signatures
 	// live on ThinkingContent blocks in the upstream wire shape.
 	ThinkingSignature string `json:"-"`
+
+	// streamView pins top-level values and retains the provider's nested object identities.
+	streamView *ai.AssistantMessage
 }
 
 // ToolResultMessage carries one tool execution result back to the LLM.
@@ -141,13 +144,19 @@ func (m AgentMessage) ContentBlocks() []ai.ContentBlock {
 			}
 		}
 	case m.User != nil:
-		blocks = make([]ai.ContentBlock, len(m.User.Content))
-		for i, block := range m.User.Content {
-			blocks[i] = block
+		switch content := m.User.Content.(type) {
+		case ai.UserText:
+			blocks = []ai.ContentBlock{ai.TextContent{Text: string(content)}}
+		case ai.UserContentBlocks:
+			blocks = make([]ai.ContentBlock, len(content))
+			for i, block := range content {
+				blocks[i] = block
+			}
 		}
 	case m.Assistant != nil:
-		blocks = make([]ai.ContentBlock, len(m.Assistant.Content))
-		for i, block := range m.Assistant.Content {
+		message := m.Assistant.Observe()
+		blocks = make([]ai.ContentBlock, len(message.Content))
+		for i, block := range message.Content {
 			blocks[i] = block
 		}
 	case m.ToolResult != nil:
@@ -172,19 +181,10 @@ const (
 	ToolModeParallel   ToolExecutionMode = "parallel"
 )
 
-// AgentToolResult is the result of a tool execution.
-//
-// upstream: agent/src/types.ts AgentToolResult: content is
-// `(TextContent | ImageContent)[]`. In pig, Content (string) is the
-// primary text-only path; Images carries optional image blocks for
-// multi-modal results (e.g. read tool on image files).
+// AgentToolResult carries the ordered text/image blocks returned by a tool.
+// Ports packages/agent/src/types.ts.
 type AgentToolResult struct {
-	Content string
-	// Images holds optional image content returned alongside text.
-	// When non-nil, the provider serialises both Content (as TextContent)
-	// and each image (as ImageContent) in the tool result message.
-	// upstream: content: (TextContent | ImageContent)[]
-	Images  []ai.ImageContent
+	Content []ai.ToolResultMessageContent
 	Details any
 	IsError bool
 	// Usage is the usage of the tool execution itself, if available. It is
@@ -203,6 +203,22 @@ type AgentToolResult struct {
 	// renderResult callbacks; subprocess extensions need a serializable
 	// alternative).
 	Preview string
+}
+
+// Text joins text blocks for text-only displays; Content retains their boundaries and image positions.
+func (r AgentToolResult) Text() string {
+	var text []string
+	for _, block := range r.Content {
+		if value, ok := block.(ai.TextContent); ok {
+			text = append(text, value.Text)
+		}
+	}
+	return strings.Join(text, "\n")
+}
+
+// Images selects image blocks for displays with a separate image area.
+func (r AgentToolResult) Images() []ai.ImageContent {
+	return (ToolResultMessage{Content: r.Content}).Images()
 }
 
 // AgentTool is the interface that all tools must implement.
@@ -266,6 +282,17 @@ type QueueUpdateEvent struct {
 	FollowUp []string
 }
 
+// SessionInfoChangedEvent reports the effective Session name; an empty name clears it.
+type SessionInfoChangedEvent struct {
+	Name string
+}
+
+// BashExecutionUpdateEvent reports one command-output delta. A nil ID omits the correlation identifier; a non-nil empty ID remains explicit.
+type BashExecutionUpdateEvent struct {
+	ID    *string
+	Delta string
+}
+
 // ThinkingLevelChangedEvent reports an effective reasoning-level change.
 type ThinkingLevelChangedEvent struct {
 	Level ai.ThinkingLevel
@@ -282,12 +309,71 @@ type TurnEndEvent struct {
 	MessageEntryID     string
 	ToolResultEntryIDs []string
 }
-type MessageStartEvent struct{ Message AgentMessage }
+type MessageStartEvent struct {
+	Message     AgentMessage
+	observation *ai.StreamObservation
+}
 type MessageUpdateEvent struct {
 	Message               AgentMessage
 	AssistantMessageEvent ai.AssistantMessageEvent
+	observation           *ai.StreamObservation
 }
-type MessageEndEvent struct{ Message AgentMessage }
+type MessageEndEvent struct {
+	Message     AgentMessage
+	observation *ai.StreamObservation
+}
+
+// RefreshEvent returns the message event with the assistant message's and the provider event's partial fields set to the stream state at this call. A host dispatcher calls it when it delivers a retained event to a listener after an awaited step. Other events are returned unchanged.
+func RefreshEvent(event AgentEvent) AgentEvent {
+	switch value := event.(type) {
+	case MessageStartEvent:
+		value.Message.Assistant = value.Message.Assistant.refreshed()
+		return value
+	case MessageUpdateEvent:
+		value.Message.Assistant = value.Message.Assistant.refreshed()
+		if value.AssistantMessageEvent != nil {
+			value.AssistantMessageEvent = ai.RefreshEvent(value.AssistantMessageEvent)
+		}
+		return value
+	case MessageEndEvent:
+		value.Message.Assistant = value.Message.Assistant.refreshed()
+		return value
+	default:
+		return event
+	}
+}
+
+// EventObservation returns the attached stream scope for synchronous host dispatch. Session transfers that scope before notifying its synchronous subscribers; it is not message data or wire metadata.
+func EventObservation(event AgentEvent) *ai.StreamObservation {
+	switch event := event.(type) {
+	case MessageStartEvent:
+		return event.observation
+	case MessageUpdateEvent:
+		return event.observation
+	case MessageEndEvent:
+		return event.observation
+	default:
+		return nil
+	}
+}
+
+// WithEventObservation carries a stream scope across synchronous host dispatch without changing message identity or serialized fields. Events outside the message lifecycle are unchanged.
+func WithEventObservation(event AgentEvent, observation *ai.StreamObservation) AgentEvent {
+	switch value := event.(type) {
+	case MessageStartEvent:
+		value.observation = observation
+		return value
+	case MessageUpdateEvent:
+		value.observation = observation
+		return value
+	case MessageEndEvent:
+		value.observation = observation
+		return value
+	default:
+		return event
+	}
+}
+
 type ToolExecutionStartEvent struct {
 	ToolCallID string
 	ToolName   string
@@ -315,16 +401,20 @@ type ToolExecutionEndEvent struct {
 	Duration   time.Duration
 }
 
-// TimingEvent is emitted whenever a turn ends or a tool completes so
-// status-line / extension / diagnostics consumers can read live timing
-// data without needing to subscribe to TurnEnd + ToolExecutionEnd
-// individually. Kind is one of "turn", "tool", or "session_end".
-type TimingEvent struct {
-	Kind     string        // "turn" | "tool" | "session_end"
-	Name     string        // tool name when Kind == "tool"; empty otherwise
-	Duration time.Duration // for the just-completed turn or tool call
+// TimingEvent retains the former diagnostic event shape for source compatibility.
+// The agent no longer emits timing events, matching Pi's event stream.
+//
+// Deprecated: Read Agent.Timings or observe TurnEndEvent and ToolExecutionEndEvent.
+type TimingEvent = timingEvent
+
+type timingEvent struct {
+	Kind     string
+	Name     string
+	Duration time.Duration
 	Snapshot TimingSnapshot
 }
+
+func (timingEvent) agentEvent() {}
 
 // CompactionStartEvent fires when auto-compaction or /compact begins.
 // Mirrors upstream compaction_start event (agent-session.ts).
@@ -350,7 +440,9 @@ type CompactionEndEvent struct {
 func (AgentStartEvent) agentEvent()           {}
 func (AgentEndEvent) agentEvent()             {}
 func (AgentSettledEvent) agentEvent()         {}
+func (BashExecutionUpdateEvent) agentEvent()  {}
 func (QueueUpdateEvent) agentEvent()          {}
+func (SessionInfoChangedEvent) agentEvent()   {}
 func (ThinkingLevelChangedEvent) agentEvent() {}
 func (TurnStartEvent) agentEvent()            {}
 func (TurnEndEvent) agentEvent()              {}
@@ -410,7 +502,6 @@ type EntryAppendedEvent struct {
 	Entry json.RawMessage
 }
 
-func (TimingEvent) agentEvent()                         {}
 func (EntryAppendedEvent) agentEvent()                  {}
 func (CompactionStartEvent) agentEvent()                {}
 func (CompactionEndEvent) agentEvent()                  {}
@@ -442,18 +533,16 @@ type BeforeToolCallHook func(ctx context.Context, toolCallID, toolName string, a
 
 // AfterToolCallResult carries per-tool overrides returned by AfterToolCallHook.
 // Mirrors upstream types.ts AfterToolCallResult (agent-loop.ts:617-640).
-// Merge semantics: field-by-field replace; no deep merge. Nil pointer = no override.
+// Merge semantics: field-by-field replace; no deep merge. Nil fields keep the original; a non-nil empty Content replaces it with an empty array.
 //
-//   - Content: if non-nil, replaces the tool result text.
-//   - Images: if non-nil, replaces the tool result image blocks.
+//   - Content: if non-nil, replaces the ordered content, including an empty array.
 //   - IsError: if non-nil, replaces the tool result error flag.
 //   - Usage: if non-nil, replaces the tool result usage.
 //   - Terminate: if non-nil, replaces the early-termination hint. The agent
 //     stops after the batch only when every finalized result terminates
 //     (upstream shouldTerminateToolBatch).
 type AfterToolCallResult struct {
-	Content   *string
-	Images    *[]ai.ImageContent
+	Content   []ai.ToolResultMessageContent
 	Details   any
 	IsError   *bool // nil = keep original
 	Usage     *ai.Usage
@@ -503,6 +592,10 @@ type AgentOptions struct {
 	// PrepareRequest runs immediately before every provider request and may
 	// replace the context, model, and thinking level for the run.
 	PrepareRequest PrepareRequest
+	// ConvertToLlm converts the transformed agent context to provider messages.
+	// The run waits for it and reports conversion failures through its lifecycle.
+	// Nil uses the standard message conversion.
+	ConvertToLlm func([]AgentMessage) ([]ai.Message, error)
 	// TransformLLMMessages post-processes the provider messages that the
 	// built-in conversion produced for each request. The coding session uses
 	// it as upstream createAgentSession wraps convertToLlm
@@ -535,9 +628,13 @@ type AgentOptions struct {
 	// pointed-to message or custom map), and the replacement is what agent
 	// state, persistence and EventCh observe.
 	OnEvent func(AgentEvent)
-	// StreamFn sends each provider request. Nil uses the model's provider.
+	// AfterEvent runs after persistence and channel publication, before the loop polls queued work. An error fails the same run.
+	AfterEvent func(AgentEvent) error
+	// StreamFn sends each provider request. Nil uses DefaultStreamFn or the model's native provider.
 	// Mirrors upstream AgentOptions.streamFn.
 	StreamFn StreamFn
+	// DefaultStreamFn supplies the host's stock request path without making it a caller override. Nil uses the configured host default.
+	DefaultStreamFn StreamFn
 
 	// OnMessagePersist, if set, is invoked exactly once for each NEW message
 	// the agent produces during a turn: the user prompt, steering / follow-up
@@ -581,6 +678,14 @@ type Agent struct {
 	pendingNextTurn   []AgentMessage
 	pendingNextTurnMu sync.Mutex
 	streaming         bool // true while Send/Continue is actively streaming
+	runContext        context.Context
+	runCancel         context.CancelFunc
+	stopParentCancel  func() bool
+	runDone           chan struct{}
+	listeners         []*agentListener
+	streamingMessage  *AgentMessage
+	pendingToolCalls  []string
+	errorMessage      string
 
 	// beforeProviderHook transforms the provider's final wire payload.
 	// Mirrors upstream before_provider_request via StreamOptions.OnPayload.
@@ -598,6 +703,18 @@ type Agent struct {
 
 // NewAgent creates a new Agent.
 func NewAgent(opts AgentOptions) *Agent {
+	opts.Tools = slices.Clone(opts.Tools)
+	if opts.DefaultStreamFn == nil {
+		// A native model provider remains the host default when no registry is configured.
+		opts.DefaultStreamFn, _ = GetDefaultStreamFn()
+	}
+	if opts.Model == nil {
+		// DEFAULT_MODEL has an explicit empty input list; adapters must not infer text support for it.
+		opts.Model = &ai.Model{ID: "unknown", DisplayName: "unknown", Input: []string{}, ProviderMeta: ai.ProviderMetadata{ProviderID: "unknown", API: "unknown"}}
+	}
+	if opts.ThinkingLevel == "" {
+		opts.ThinkingLevel = ai.ThinkingOff
+	}
 	sm := opts.SteeringMode
 	if sm == "" {
 		sm = QueueModeOneAtATime
@@ -640,8 +757,8 @@ func (a *Agent) SetTools(tools []AgentTool) {
 
 // SetSystemPrompt projects a replacement system prompt onto subsequent provider requests without rewriting transcript history.
 func (a *Agent) SetSystemPrompt(prompt string) {
-	a.stateMu.Lock()
-	defer a.stateMu.Unlock()
+	a.messagesMu.Lock()
+	defer a.messagesMu.Unlock()
 	a.opts.SystemPrompt = prompt
 	a.forcedSystemPrompt = new(prompt)
 }
@@ -649,14 +766,24 @@ func (a *Agent) SetSystemPrompt(prompt string) {
 // ClearSystemPrompt removes a SetSystemPrompt projection, so later requests
 // use the transcript's own system prompt again.
 func (a *Agent) ClearSystemPrompt() {
-	a.stateMu.Lock()
-	defer a.stateMu.Unlock()
+	a.messagesMu.Lock()
+	defer a.messagesMu.Unlock()
 	a.forcedSystemPrompt = nil
 }
 
+// SystemPromptOverride returns only the explicit provider projection and its presence, not replayed transcript instructions.
+func (a *Agent) SystemPromptOverride() (string, bool) {
+	a.messagesMu.RLock()
+	defer a.messagesMu.RUnlock()
+	if a.forcedSystemPrompt == nil {
+		return "", false
+	}
+	return *a.forcedSystemPrompt, true
+}
+
 func (a *Agent) systemPromptOverride() *string {
-	a.stateMu.RLock()
-	defer a.stateMu.RUnlock()
+	a.messagesMu.RLock()
+	defer a.messagesMu.RUnlock()
 	return a.forcedSystemPrompt
 }
 
@@ -669,15 +796,15 @@ var ErrNoModelSelected = errors.New("no model selected")
 // ErrAlreadyProcessingPrompt is returned when a prompt is sent while a run is
 // active. Mirrors upstream Agent.prompt's "Agent is already processing a
 // prompt" error: queue the message with Steer or FollowUp instead.
-var ErrAlreadyProcessingPrompt = errors.New("agent is already processing a prompt; use Steer or FollowUp to queue messages, or wait for completion")
+var ErrAlreadyProcessingPrompt = errors.New("Agent is already processing a prompt. Use steer() or followUp() to queue messages, or wait for completion.")
 
 // ErrAlreadyProcessing is returned when Continue or Reset is called while a
 // run is active. Mirrors upstream Agent.continue and Agent.reset.
-var ErrAlreadyProcessing = errors.New("agent is already processing; wait for completion")
+var ErrAlreadyProcessing = errors.New("Agent is already processing.")
 
 // ErrNoMessagesToContinue is returned by Continue on an empty transcript.
 // Mirrors upstream Agent.continue's "No messages to continue from".
-var ErrNoMessagesToContinue = errors.New("no messages to continue from")
+var ErrNoMessagesToContinue = errors.New("No messages to continue from")
 
 // ErrToolResultsUnanswered reports that a run ended with tool results the
 // model never answered although no tool asked to terminate the run. It guards
@@ -688,12 +815,11 @@ var ErrToolResultsUnanswered = errors.New("agent run ended after tool results wi
 // tool results still waiting for a model response.
 var ErrMaxTurnsReached = errors.New("agent stopped at its turn limit with tool results still unanswered")
 
-// ensureModel reports whether the agent has a usable model+provider to stream
-// with. Callers reject the turn instead of dereferencing a nil model.
+// ensureModel requires a model and either an injected stream function or a provider runtime.
 func (a *Agent) ensureModel() error {
 	a.stateMu.RLock()
 	defer a.stateMu.RUnlock()
-	if a.opts.Model == nil || a.opts.Model.Provider == nil {
+	if a.opts.Model == nil || (a.opts.StreamFn == nil && a.opts.DefaultStreamFn == nil && a.opts.Model.Provider == nil) {
 		return ErrNoModelSelected
 	}
 	return nil
@@ -701,21 +827,49 @@ func (a *Agent) ensureModel() error {
 
 // beginRun claims the agent for one run, or returns busy when a run is active.
 // Mirrors upstream Agent's activeRun guard.
-func (a *Agent) beginRun(busy error) error {
+func (a *Agent) beginRun(ctx context.Context, busy error) error {
 	a.stateMu.Lock()
 	defer a.stateMu.Unlock()
 	if a.streaming {
 		return busy
 	}
+	// Detach the parent's cancellation registration at settlement without
+	// aborting a successfully completed run's retained signal.
+	runContext, cancel := context.WithCancel(context.WithoutCancel(ctx))
+	deadline, hasDeadline := ctx.Deadline()
+	signal := &runDeadlineContext{Context: ai.WithStreamContinuations(runContext), parent: ctx, deadline: deadline, hasDeadline: hasDeadline}
+	signal.active.Store(true)
+	a.runContext = signal
+	a.runCancel = cancel
+	a.stopParentCancel = context.AfterFunc(ctx, cancel)
+	if ctx.Err() != nil {
+		cancel()
+	}
+	a.runDone = make(chan struct{})
 	a.streaming = true
+	a.streamingMessage = nil
 	return nil
 }
 
 // finishRun releases the claim beginRun took.
 func (a *Agent) finishRun() {
 	a.stateMu.Lock()
+	defer a.stateMu.Unlock()
+	a.stopParentCancel()
+	signal := a.runContext.(*runDeadlineContext)
+	if signal.parent.Err() != nil {
+		a.runCancel()
+	}
+	signal.active.Store(false)
 	a.streaming = false
-	a.stateMu.Unlock()
+	a.streamingMessage = nil
+	a.pendingToolCalls = nil
+	a.runContext = nil
+	a.runCancel = nil
+	a.stopParentCancel = nil
+	close(a.runDone)
+	a.runDone = nil
+	a.listeners = slices.DeleteFunc(a.listeners, func(listener *agentListener) bool { return listener.removed.Load() })
 }
 
 // Send sends a plain-text user message and runs the agent loop until the LLM
@@ -727,50 +881,62 @@ func (a *Agent) Send(ctx context.Context, content string) ([]AgentMessage, error
 
 // SendContent is the structured-content variant of Send.
 func (a *Agent) SendContent(ctx context.Context, content []ai.UserContentBlock) ([]AgentMessage, error) {
-	run, err := a.BeginSendContent(content)
+	run, err := a.BeginSendContent(ctx, content)
 	if err != nil {
 		return nil, err
 	}
-	return run.Run(ctx)
+	return run.Run()
 }
 
-// PromptRun is a claimed prompt. Start dispatches agent_start; Run drains the remaining events and releases the claim. The owner must call Run exactly once, even if Start fails or the context is cancelled.
+// PromptRun owns a claimed prompt and its cancellation context. Start dispatches agent_start; Run drains the remaining events and releases the claim. The owner must call Run exactly once, even if Start fails or the context is cancelled.
 type PromptRun struct {
-	agent    *Agent
-	content  []ai.UserContentBlock
-	started  bool
-	prepared bool
-	runStart int
-	startErr error
+	agent            *Agent
+	ctx              context.Context
+	content          []ai.UserContentBlock
+	messages         []AgentMessage
+	suppliedMessages bool
+	prompts          []AgentMessage
+	started          bool
+	prepared         bool
+	startErr         error
 }
 
-// Start prepares the prompt and dispatches agent_start without requesting a Provider response. Repeated calls return the first result.
-func (r *PromptRun) Start(ctx context.Context) error {
+// Start prepares the prompt and dispatches agent_start without requesting a Provider response or committing unfinished prompt messages. Repeated calls return the first result.
+func (r *PromptRun) Start() error {
 	if r.started {
 		return r.startErr
 	}
 	r.started = true
 	a := r.agent
 	var messages []AgentMessage
-	messages, r.startErr = a.prepareContent(ctx, r.content)
+	if r.suppliedMessages {
+		messages = r.messages
+		if a.opts.PreparePrompt != nil {
+			messages, r.startErr = a.opts.PreparePrompt(r.ctx, messages)
+		}
+	} else {
+		messages, r.startErr = a.prepareContent(r.ctx, r.content)
+	}
 	if r.startErr != nil {
 		return r.startErr
 	}
-	r.runStart = len(a.messages)
-	a.appendMessages(a.declareToolChanges(a.messages, messages)...)
+	r.prompts = a.declareToolChanges(a.MessagesSnapshot(), messages)
 	r.prepared = true
+	a.stateMu.Lock()
+	a.errorMessage = ""
+	a.stateMu.Unlock()
 	err, failure := catchRunFailure(func() error { a.emit(AgentStartEvent{}); return nil })
 	if failure != nil {
-		err = a.handleRunFailure(failure, ctx.Err() != nil, a.Model())
+		err = a.handleRunFailure(failure, r.ctx.Err() != nil, a.Model())
 	}
 	r.startErr = err
 	return err
 }
 
 // Run drains the claimed prompt and releases its active-run state, including when Start failed. The owner calls Run once; it calls Start when needed.
-func (r *PromptRun) Run(ctx context.Context) ([]AgentMessage, error) {
+func (r *PromptRun) Run() ([]AgentMessage, error) {
 	defer r.agent.finishRun()
-	if err := r.Start(ctx); err != nil {
+	if err := r.Start(); err != nil {
 		if r.prepared {
 			return r.agent.messages, err
 		}
@@ -778,26 +944,38 @@ func (r *PromptRun) Run(ctx context.Context) ([]AgentMessage, error) {
 	}
 	cfg := r.agent.createLoopConfig(false)
 	cfg.agentStarted = true
-	return r.agent.runLoop(ctx, cfg, r.runStart)
+	return r.agent.runLoop(r.ctx, cfg, r.prompts)
 }
 
-// BeginSendContent claims the agent synchronously without starting its event stream. A pending preflight is not an active agent run; a successfully claimed prompt is active before its first awaited listener finishes.
-func (a *Agent) BeginSendContent(content []ai.UserContentBlock) (*PromptRun, error) {
-	if err := a.beginRun(ErrAlreadyProcessingPrompt); err != nil {
+// BeginSendContent claims the agent and binds its cancellation context synchronously without starting events. Pending preflight is not an active run; a claimed prompt is active before its first awaited listener finishes.
+func (a *Agent) BeginSendContent(ctx context.Context, content []ai.UserContentBlock) (*PromptRun, error) {
+	if err := a.beginRun(ctx, ErrAlreadyProcessingPrompt); err != nil {
 		return nil, err
 	}
 	if err := a.ensureModel(); err != nil {
 		a.finishRun()
 		return nil, err
 	}
-	return &PromptRun{agent: a, content: append([]ai.UserContentBlock(nil), content...)}, nil
+	return &PromptRun{agent: a, ctx: a.Signal(), content: slices.Clone(content)}, nil
+}
+
+// BeginSendMessages claims a turn for already-built messages without starting events. The owner calls Run exactly once, even if Start fails, just as for BeginSendContent.
+func (a *Agent) BeginSendMessages(ctx context.Context, messages []AgentMessage) (*PromptRun, error) {
+	if err := a.beginRun(ctx, ErrAlreadyProcessingPrompt); err != nil {
+		return nil, err
+	}
+	if err := a.ensureModel(); err != nil {
+		a.finishRun()
+		return nil, err
+	}
+	return &PromptRun{agent: a, ctx: a.Signal(), messages: messages, suppliedMessages: true}, nil
 }
 
 func (a *Agent) prepareContent(ctx context.Context, content []ai.UserContentBlock) ([]AgentMessage, error) {
 	userMsg := AgentMessage{
 		User: &UserMessage{
 			Role:      RoleUser,
-			Content:   append([]ai.UserContentBlock(nil), content...),
+			Content:   append(ai.UserContentBlocks(nil), content...),
 			Timestamp: time.Now().UnixMilli(),
 		},
 	}
@@ -821,23 +999,11 @@ func (a *Agent) SendMessages(ctx context.Context, msgs []AgentMessage) ([]AgentM
 	if len(msgs) == 0 {
 		return a.messages, nil
 	}
-	if err := a.beginRun(ErrAlreadyProcessingPrompt); err != nil {
+	run, err := a.BeginSendMessages(ctx, msgs)
+	if err != nil {
 		return nil, err
 	}
-	defer a.finishRun()
-	// Validate before appending so a rejected turn leaves history unchanged,
-	// matching SendContent.
-	if err := a.ensureModel(); err != nil {
-		return nil, err
-	}
-	if a.opts.PreparePrompt != nil {
-		var err error
-		msgs, err = a.opts.PreparePrompt(ctx, msgs)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return a.runPromptMessages(ctx, msgs, a.createLoopConfig(false))
+	return run.Run()
 }
 
 // Continue runs the agent loop from the current message state without
@@ -845,13 +1011,14 @@ func (a *Agent) SendMessages(ctx context.Context, msgs []AgentMessage) ([]AgentM
 // when an overflow error is recovered by compacting and replaying.
 //
 // If the last message is an assistant message, Continue first checks the
-// steering queue, then the follow-up queue, before falling through to
-// runLoop. Mirrors upstream Agent.continue (packages/agent/src/agent.ts).
+// steering queue, then the follow-up queue. Without queued input it rejects
+// the assistant tail. Mirrors upstream Agent.continue (packages/agent/src/agent.ts).
 func (a *Agent) Continue(ctx context.Context) ([]AgentMessage, error) {
-	if err := a.beginRun(ErrAlreadyProcessing); err != nil {
+	if err := a.beginRun(ctx, fmt.Errorf("%w Wait for completion before continuing.", ErrAlreadyProcessing)); err != nil {
 		return nil, err
 	}
 	defer a.finishRun()
+	ctx = a.Signal()
 	lastMsg := a.lastMessage()
 	if lastMsg == nil || slices.IndexFunc(a.messages, func(m AgentMessage) bool { return m.System == nil }) == -1 {
 		return a.messages, ErrNoMessagesToContinue
@@ -864,17 +1031,15 @@ func (a *Agent) Continue(ctx context.Context) ([]AgentMessage, error) {
 		if followUps := a.followUpQueue.Drain(); len(followUps) > 0 {
 			return a.runPromptMessages(ctx, followUps, a.createLoopConfig(false))
 		}
-		return a.messages, fmt.Errorf("cannot continue from message role: assistant")
+		return a.messages, fmt.Errorf("Cannot continue from message role: assistant")
 	}
-	return a.runLoop(ctx, a.createLoopConfig(false), len(a.messages))
+	return a.runAgentLoopContinue(ctx, a.createLoopConfig(false))
 }
 
-// runPromptMessages appends a run's prompt messages and runs the loop, which
-// replays their lifecycle events. Mirrors upstream Agent.runPromptMessages.
+// runPromptMessages prepares a prompt batch and runs its lifecycle before the
+// first provider request. Mirrors upstream Agent.runPromptMessages.
 func (a *Agent) runPromptMessages(ctx context.Context, msgs []AgentMessage, cfg agentLoopConfig) ([]AgentMessage, error) {
-	runStart := len(a.messages)
-	a.appendMessages(a.declareToolChanges(a.messages, msgs)...)
-	return a.runLoop(ctx, cfg, runStart)
+	return a.runLoop(ctx, cfg, a.declareToolChanges(a.messages, msgs))
 }
 
 func (a *Agent) lastMessage() *AgentMessage {
@@ -909,12 +1074,21 @@ func (a *Agent) appendMessages(msgs ...AgentMessage) {
 	a.messagesMu.Unlock()
 }
 
-// SystemPrompt returns the current replayed instructions or an explicit provider prompt override.
+// SystemPrompt returns the current replayed instructions or an explicit provider prompt override. It is safe to call while the agent appends messages.
 func (a *Agent) SystemPrompt() string {
-	if prompt := a.systemPromptOverride(); prompt != nil {
-		return *prompt
+	prompt, _ := a.SystemPromptSnapshot()
+	return prompt
+}
+
+// SystemPromptSnapshot reads the prompt and whether it is present under one lock. Presence distinguishes an empty projected prompt from an uninitialized transcript.
+func (a *Agent) SystemPromptSnapshot() (string, bool) {
+	a.messagesMu.RLock()
+	defer a.messagesMu.RUnlock()
+	if a.forcedSystemPrompt != nil {
+		return *a.forcedSystemPrompt, true
 	}
-	return ai.GetCurrentSystemPrompt(systemMessages(a.MessagesSnapshot()))
+	systems := systemMessages(a.messages)
+	return ai.GetCurrentSystemPrompt(systems), len(systems) > 0
 }
 
 // SetMessages replaces the message history (used for session restore). The
@@ -942,6 +1116,21 @@ func (a *Agent) SetBeforeProviderHook(fn func(payload any, model *ai.Model) (any
 	a.beforeProviderHook = fn
 }
 
+// Ports packages/agent/src/agent.ts
+// StreamFunction returns the caller's stream override. Nil denotes the stock stream, allowing summarization to distinguish optional custom-stream auth from required stock auth without comparing Go function values.
+func (a *Agent) StreamFunction() StreamFn {
+	a.stateMu.RLock()
+	defer a.stateMu.RUnlock()
+	return a.opts.StreamFn
+}
+
+// SetStreamFunction replaces the provider request function for subsequent requests, matching Agent.streamFunction assignment in Pi. Nil restores the stock stream.
+func (a *Agent) SetStreamFunction(streamFn StreamFn) {
+	a.stateMu.Lock()
+	a.opts.StreamFn = streamFn
+	a.stateMu.Unlock()
+}
+
 // SetTransformHeaders sets the hook that rewrites each provider request's
 // merged HTTP headers. Mirrors upstream StreamOptions.transformHeaders.
 func (a *Agent) SetTransformHeaders(fn func(context.Context, ai.ProviderHeaders) (ai.ProviderHeaders, error)) {
@@ -966,8 +1155,8 @@ func (a *Agent) SetTransformContextWithContext(fn func(context.Context, []AgentM
 	a.transformContext = fn
 }
 
-// Model returns the currently active model. May be nil if the agent
-// was constructed without one.
+// Model returns the active model. New agents use the upstream unknown
+// descriptor until one is selected; SetModel(nil) clears it.
 func (a *Agent) Model() *ai.Model {
 	a.stateMu.RLock()
 	defer a.stateMu.RUnlock()
@@ -1095,7 +1284,7 @@ func (a *Agent) Reset() error {
 	streaming := a.streaming
 	a.stateMu.RUnlock()
 	if streaming {
-		return ErrAlreadyProcessing
+		return fmt.Errorf("%w Wait for completion before resetting.", ErrAlreadyProcessing)
 	}
 	baseline := ai.GetCurrentSystemMessage(systemMessages(a.messages))
 	var messages []AgentMessage
@@ -1103,6 +1292,11 @@ func (a *Agent) Reset() error {
 		messages = []AgentMessage{{System: baseline}}
 	}
 	a.setMessages(messages)
+	a.stateMu.Lock()
+	a.streamingMessage = nil
+	a.pendingToolCalls = nil
+	a.errorMessage = ""
+	a.stateMu.Unlock()
 	a.steeringQueue.Clear()
 	a.followUpQueue.Clear()
 	return nil
@@ -1205,9 +1399,6 @@ func (a *Agent) handleRunFailure(err error, aborted bool, model *ai.Model) error
 		}
 	}
 	failureMessage := AgentMessage{Assistant: message}
-	// Upstream appends from its single event-loop owner; Go takes messagesMu so
-	// concurrent MessagesSnapshot readers (the cache warmer) stay race-free.
-	a.appendMessages(failureMessage)
 	_, failure := catchRunFailure(func() error {
 		a.emit(MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(message)}})
 		a.emit(MessageEndEvent{Message: failureMessage})
@@ -1221,14 +1412,17 @@ func (a *Agent) handleRunFailure(err error, aborted bool, model *ai.Model) error
 // ─── Internal helpers ─────────────────────────────────────────────────────────
 
 func (a *Agent) emit(ev AgentEvent) {
+	// message_end commits to public state before listeners run. The provider
+	// context is separate, so unfinished or future prompt messages stay hidden.
+	if end, ok := ev.(MessageEndEvent); ok {
+		a.appendMessages(end.Message)
+	}
+	a.reduceEventState(ev)
+	a.notifyListeners(ev)
 	if a.opts.OnEvent != nil {
 		a.opts.OnEvent(ev)
 	}
-	// Persist on message_end, mirroring upstream agent-session.ts:511-525:
-	// every user/assistant/toolResult message is persisted exactly once as the
-	// agent loop emits it. The runLoop replay (a.messages[runStart:]) emits
-	// message_end only for THIS run's new messages (prompt, steering,
-	// follow-up): never resumed history: so each message persists once.
+	// Persist each completed message once. Prompt, steering and follow-up messages emit message_end when admitted; resumed history does not replay its lifecycle.
 	var persistErr error
 	if me, ok := ev.(MessageEndEvent); ok {
 		persistErr = a.persistMessage(me.Message)
@@ -1241,6 +1435,11 @@ func (a *Agent) emit(ev AgentEvent) {
 	}
 	if persistErr != nil {
 		panic(runFailure{err: persistErr})
+	}
+	if a.opts.AfterEvent != nil {
+		if err := a.opts.AfterEvent(ev); err != nil {
+			panic(runFailure{err: err})
+		}
 	}
 }
 
@@ -1273,47 +1472,63 @@ func (a *Agent) consumeStream(ctx context.Context, stream *ai.AssistantMessageEv
 	var message *AssistantMessage
 	started := false
 
-	for event := range stream.Events(ctx) {
+	caller := ai.StreamObservationFromContext(ctx)
+	iteratorContext := ctx
+	if signal, ok := ctx.(*runDeadlineContext); ok {
+		// Agent.abort waits for the provider's terminal response, preserving its
+		// error and draining its owned work. The Go caller can still cancel its
+		// own context if it must stop waiting for a non-responsive provider.
+		iteratorContext = signal.parent
+	}
+	for observation, event := range stream.ObserveEvents(caller.Context(iteratorContext)) {
+		if !started {
+			switch event.(type) {
+			case ai.StartEvent, ai.DoneEvent, ai.ErrorEvent:
+			default:
+				continue
+			}
+		}
 		switch event := event.(type) {
 		case ai.StartEvent:
-			message = agentAssistantMessage(event.Partial)
+			message = shallowAssistantMessage(event.Partial)
 			started = true
-			a.emit(MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(message)}})
+			a.emitObserved(observation, MessageStartEvent{Message: AgentMessage{Assistant: message}})
 		case ai.TextStartEvent:
-			message = a.emitAssistantUpdate(event.Partial, event)
+			message = a.emitAssistantUpdate(observation, event.Partial, event)
 		case ai.TextDeltaEvent:
-			message = a.emitAssistantUpdate(event.Partial, event)
+			message = a.emitAssistantUpdate(observation, event.Partial, event)
 		case ai.TextEndEvent:
-			message = a.emitAssistantUpdate(event.Partial, event)
+			message = a.emitAssistantUpdate(observation, event.Partial, event)
 		case ai.ThinkingStartEvent:
-			message = a.emitAssistantUpdate(event.Partial, event)
+			message = a.emitAssistantUpdate(observation, event.Partial, event)
 		case ai.ThinkingDeltaEvent:
-			message = a.emitAssistantUpdate(event.Partial, event)
+			message = a.emitAssistantUpdate(observation, event.Partial, event)
 		case ai.ThinkingEndEvent:
-			message = a.emitAssistantUpdate(event.Partial, event)
+			message = a.emitAssistantUpdate(observation, event.Partial, event)
 		case ai.ToolCallStartEvent:
-			message = a.emitAssistantUpdate(event.Partial, event)
+			message = a.emitAssistantUpdate(observation, event.Partial, event)
 		case ai.ToolCallDeltaEvent:
-			message = a.emitAssistantUpdate(event.Partial, event)
+			message = a.emitAssistantUpdate(observation, event.Partial, event)
 		case ai.ToolCallEndEvent:
-			message = a.emitAssistantUpdate(event.Partial, event)
+			message = a.emitAssistantUpdate(observation, event.Partial, event)
 		case ai.DoneEvent:
-			message = agentAssistantMessage(event.Message)
+			message = agentAssistantMessage(stream.Result())
 			if !started {
-				a.emit(MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(message)}})
+				a.emitObserved(observation, MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(message)}})
 			}
-			message = a.endAssistantMessage(message)
+			message = a.endAssistantMessage(observation, message)
 			return message, pendingToolCalls(message), nil
 		case ai.ErrorEvent:
-			message = agentAssistantMessage(event.Error)
+			message = agentAssistantMessage(stream.Result())
 			if !started {
-				a.emit(MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(message)}})
+				a.emitObserved(observation, MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(message)}})
 			}
-			return a.endAssistantMessage(message), nil, nil
+			return a.endAssistantMessage(observation, message), nil, nil
 		}
 	}
 
-	if ctx.Err() != nil {
+	final, resultErr := stream.ResultContext(ctx)
+	if ctx.Err() != nil || resultErr != nil {
 		if message == nil {
 			providerID, modelID := "", ""
 			if model != nil {
@@ -1327,19 +1542,20 @@ func (a *Agent) consumeStream(ctx context.Context, stream *ai.AssistantMessageEv
 				StopReason: ai.StopReasonAborted, Timestamp: time.Now().UnixMilli(),
 			})
 		} else {
+			message = message.Observe()
 			message.StopReason = ai.StopReasonAborted
 		}
 		if !started {
 			a.emit(MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(message)}})
 		}
-		return a.endAssistantMessage(message), nil, ctx.Err()
+		return a.endAssistantMessage(nil, message), nil, ctx.Err()
 	}
 
-	result := agentAssistantMessage(stream.Result())
+	result := agentAssistantMessage(final)
 	if !started {
 		a.emit(MessageStartEvent{Message: AgentMessage{Assistant: cloneAssistantMessage(result)}})
 	}
-	result = a.endAssistantMessage(result)
+	result = a.endAssistantMessage(nil, result)
 	return result, pendingToolCalls(result), nil
 }
 
@@ -1347,18 +1563,34 @@ func (a *Agent) consumeStream(ctx context.Context, stream *ai.AssistantMessageEv
 // returns the message the transcript records. The event and the transcript
 // share it, as upstream shares one object, so an OnEvent replacement applied
 // in place reaches agent state, persistence and listeners alike.
-func (a *Agent) endAssistantMessage(message *AssistantMessage) *AssistantMessage {
+func (a *Agent) endAssistantMessage(observation *ai.StreamObservation, message *AssistantMessage) *AssistantMessage {
 	final := cloneAssistantMessage(message)
-	a.emit(MessageEndEvent{Message: AgentMessage{Assistant: final}})
+	a.emitObserved(observation, MessageEndEvent{Message: AgentMessage{Assistant: final}})
 	return final
 }
 
-func (a *Agent) emitAssistantUpdate(partial *ai.AssistantMessage, event ai.AssistantMessageEvent) *AssistantMessage {
-	message := agentAssistantMessage(partial)
-	a.emit(MessageUpdateEvent{
-		Message:               AgentMessage{Assistant: cloneAssistantMessage(message)},
+func (a *Agent) emitAssistantUpdate(observation *ai.StreamObservation, partial *ai.AssistantMessage, event ai.AssistantMessageEvent) *AssistantMessage {
+	message := shallowAssistantMessage(partial)
+	a.emitObserved(observation, MessageUpdateEvent{
+		Message:               AgentMessage{Assistant: message},
 		AssistantMessageEvent: event,
 	})
+	return message
+}
+
+// upstream: packages/agent/src/agent-loop.ts:416-453 awaits the event sink even when its synchronous prefix completes without blocking.
+func (a *Agent) emitObserved(observation *ai.StreamObservation, event AgentEvent) {
+	a.emit(WithEventObservation(event, observation))
+	if observation != nil {
+		observation.Yield()
+	}
+}
+
+// upstream: packages/agent/src/agent-loop.ts:408-433
+func shallowAssistantMessage(partial *ai.AssistantMessage) *AssistantMessage {
+	view := partial.ShallowCopy()
+	message := agentAssistantMessage(view.Observe())
+	message.streamView = view
 	return message
 }
 
@@ -1414,10 +1646,12 @@ func pendingToolCalls(message *AssistantMessage) []pendingToolCall {
 	return calls
 }
 
+// cloneAssistantMessage copies a finished or synthesized message for a lifecycle event. Its producer no longer mutates it, so an owned copy reads as Pi's object spread does.
 func cloneAssistantMessage(msg *AssistantMessage) *AssistantMessage {
 	if msg == nil {
 		return nil
 	}
+	msg = msg.Observe()
 	cp := *msg
 	cp.Content = append([]ai.AssistantContentBlock(nil), msg.Content...)
 	if msg.EndTurn != nil {

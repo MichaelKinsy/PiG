@@ -1,0 +1,103 @@
+# Behavior family: json
+# Surface: `--mode json` streams the session's AgentSessionEvent stream as
+# JSONL while the turn runs.
+#
+# Upstream evidence (Pi 0.84.0, probed 2026-08-16): print-mode.ts runs text and
+# json from one function. The json branch writes the session header as line 1,
+# then subscribes and writes every event as it arrives:
+#
+#   unsubscribe = session.subscribe((event) => {
+#     if (mode === "json") writeRawStdout(`${JSON.stringify(toJsonEvent(event))}\n`);
+#   });
+#
+# Observed sequence for this prompt, identical in both binaries:
+#   session (header)
+#   agent_start
+#   turn_start
+#   message_start(user) / message_end(user)
+#   message_start(assistant)
+#   message_update(text_start) / message_update(text_delta) / message_update(text_end)
+#   message_end(assistant)
+#   turn_end
+#   agent_end
+#   agent_settled
+#
+# pig previously collected the turn and printed a single non-upstream object
+# ({mode, model, text, messages, session, session_id}) at exit, so no consumer
+# could observe progress without polling the session JSONL. That is fixed:
+# json_mode.go now forwards the same rpcAgentEvent wire shapes --mode rpc uses.
+#
+# Pi 0.87.1 print-mode.ts:110 and json-event.ts:48-60 emit JSON.stringify in insertion order; compare raw records below.
+
+name = "01-json-mode-streams-events"
+description = "--mode json emits the upstream AgentSessionEvent JSONL stream, delimited text run included"
+
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  # toJsonEvent's observable contract: message_update carries deltas only, with
+  # the cumulative `partial` snapshot removed.
+  "packages/coding-agent/src/modes/json-event.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--mode", "json", "--model", "test-faux/faux-1", "--system-prompt", "JSON event probe.", "--no-context-files", "--no-skills", "What is 20+22?"]
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+stderr_equal = true
+both_contain = [
+  # Line 1 is the session header, so a consumer can bind the stream to a session.
+  '"type":"session"',
+  '"type":"agent_start"',
+  '"type":"turn_start"',
+  '"type":"message_start"',
+  '"role":"user"',
+  '"role":"assistant"',
+  # The text run is delimited, not just a bare delta.
+  '"type":"text_start"',
+  '"type":"text_delta"',
+  '"delta":"42"',
+  '"type":"text_end"',
+  '"content":"42"',
+  '"type":"message_end"',
+  '"type":"turn_end"',
+  '"type":"agent_end"',
+  # Terminal quiesce event: the run will not retry, compact, or continue.
+  '"type":"agent_settled"',
+]
+both_not_contain = [
+  '"partial":',
+  '"mode":"json"',
+]
+
+# normalize-rationale: Only independent clocks, the header UUID and the isolated cwd identity vary; retain every other byte and property order.
+# Snapshot cwd roots differ only by their isolated random suffix.
+[[assert.normalize_replace]]
+pattern = 'parity-snap-cwd-[0-9]{10}'
+with = 'parity-snap-cwd-0000000000'
+reason = "Alias the isolated working-directory identity while preserving path suffixes and content."
+
+[[assert.normalize_replace]]
+pattern = '"timestamp":[0-9]+'
+with = '"timestamp":0'
+reason = "Independent numeric wall clocks vary; retain field placement, type and every other byte."
+[[assert.normalize_replace]]
+pattern = '"timestamp":"[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\.[0-9]{3}Z"'
+with = '"timestamp":"2000-01-01T00:00:00.000Z"'
+reason = "Independent ISO wall clocks vary; preserve the string type and exact timestamp syntax."
+[[assert.normalize_replace]]
+pattern = '"id":"[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}"'
+with = '"id":"SESSION"'
+reason = "The header UUID is independently generated; no message content or property order is replaced."

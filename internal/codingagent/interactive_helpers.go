@@ -5,8 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -27,99 +25,6 @@ func filterAllowedTools(in []agent.AgentTool, allow map[string]struct{}) []agent
 		if _, ok := allow[t.Name()]; ok {
 			out = append(out, t)
 		}
-	}
-	return out
-}
-
-func (m *InteractiveMode) formatLoadedResourceRef(path, display string) string {
-	if display == "" {
-		display = filepath.Base(path)
-	}
-	info, ok := m.resourceSourceInfo[path]
-	if !ok {
-		return fmt.Sprintf("%s: %s", display, shortenPath(path))
-	}
-	label := info.Source
-	if info.Origin == "top-level" || label == "" {
-		label = "local"
-	}
-	short := shortenPath(path)
-	if info.BaseDir != "" {
-		if rel, err := filepath.Rel(info.BaseDir, path); err == nil && rel != "." {
-			short = filepath.ToSlash(rel)
-		}
-	}
-	if info.Scope != "" {
-		return fmt.Sprintf("%s: %s (%s) %s", display, label, info.Scope, short)
-	}
-	return fmt.Sprintf("%s: %s %s", display, label, short)
-}
-
-func (m *InteractiveMode) resourceCollisionDiagnostics() []string {
-	var out []string
-	out = append(out, m.collisionDiagnosticsForSkills()...)
-	out = append(out, m.collisionDiagnosticsForPrompts()...)
-	return out
-}
-
-func (m *InteractiveMode) collisionDiagnosticsForSkills() []string {
-	groups := map[string][]ResourceSourceInfo{}
-	for _, info := range m.resourceSourceInfo {
-		if info.ResourceType == "skills" && info.Enabled {
-			groups[info.DisplayName()] = append(groups[info.DisplayName()], info)
-		}
-	}
-	winners := map[string]string{}
-	for _, s := range m.opts.Skills {
-		winners[s.Name] = s.Path
-	}
-	return m.buildCollisionDiagnostics("skill", groups, winners)
-}
-
-func (m *InteractiveMode) collisionDiagnosticsForPrompts() []string {
-	groups := map[string][]ResourceSourceInfo{}
-	for _, info := range m.resourceSourceInfo {
-		if info.ResourceType == "prompts" && info.Enabled {
-			groups[info.DisplayName()] = append(groups[info.DisplayName()], info)
-		}
-	}
-	winners := map[string]string{}
-	for _, p := range m.promptTemplates {
-		winners[p.Name] = p.FilePath
-	}
-	return m.buildCollisionDiagnostics("prompt", groups, winners)
-}
-
-func (m *InteractiveMode) buildCollisionDiagnostics(kind string, groups map[string][]ResourceSourceInfo, winners map[string]string) []string {
-	keys := make([]string, 0, len(groups))
-	for name, infos := range groups {
-		if len(infos) > 1 && winners[name] != "" {
-			keys = append(keys, name)
-		}
-	}
-	slices.Sort(keys)
-	out := make([]string, 0, len(keys))
-	for _, name := range keys {
-		winnerPath := winners[name]
-		infos := groups[name]
-		var winner *ResourceSourceInfo
-		losers := make([]ResourceSourceInfo, 0, len(infos)-1)
-		for i := range infos {
-			if infos[i].Path == winnerPath {
-				winner = &infos[i]
-				continue
-			}
-			losers = append(losers, infos[i])
-		}
-		if winner == nil || len(losers) == 0 {
-			continue
-		}
-		var msg strings.Builder
-		fmt.Fprintf(&msg, "[%s] %q collision: ✓ %s", kind, name, m.formatLoadedResourceRef(winner.Path, name))
-		for _, loser := range losers {
-			fmt.Fprintf(&msg, "; ✗ %s (skipped)", m.formatLoadedResourceRef(loser.Path, name))
-		}
-		out = append(out, msg.String())
 	}
 	return out
 }
@@ -199,28 +104,14 @@ func (m *InteractiveMode) addTerminalInputListenerEntry(listener terminalInputLi
 	}
 }
 
-// addKeyPressListener registers a terminal-input listener that sees presses
-// only, and is the registration every in-tree consumer with press-once
-// semantics should use.
-//
-// Terminal-input listeners are raw by design, mirroring upstream's
-// addInputListener: an extension may legitimately want releases, and upstream's
-// own space-invaders and doom examples set wantsKeyRelease to get them. But the
-// consumers pig ships: the footer games: all want a keypress to act once, and
-// leaving that to each of them means each must remember, in a codebase where
-// forgetting is silent. Only one of the three did; the other two were saved
-// only by matching exact byte literals, which a switch to MatchesKeyID would
-// have quietly undone.
-//
-// Registering the filter here keeps the raw path intact for extensions while
-// giving in-tree consumers one place that cannot be forgotten.
+// addKeyPressListener registers a built-in press-only shortcut. Raw extension listeners retain release events and can accept input during an awaited extension UI phase; a built-in shortcut does not enable early editor input.
 func (m *InteractiveMode) addKeyPressListener(handler func(string) bool) func() {
-	return m.addTerminalInputListener(func(data string) bool {
+	return m.addTerminalInputListenerEntry(terminalInputListener{builtin: true, handler: func(data string) extension.TerminalInputResult {
 		if tui.IsKeyRelease(data) {
-			return false
+			return extension.TerminalInputResult{}
 		}
-		return handler(data)
-	})
+		return extension.TerminalInputResult{Consume: handler(data)}
+	}})
 }
 
 // setupExtensionShortcutListener binds extension shortcuts from the current

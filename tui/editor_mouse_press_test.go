@@ -11,11 +11,11 @@ import (
 func TestEditorAutocompleteClickKeepsPressedItem(t *testing.T) {
 	editor := NewEditor()
 	editor.SetAutocomplete(NewSlashOnlyProvider(sampleCommands()))
-	editor.SetText("/")
+	editor.HandleInput("/")
 	editor.AutocompleteMove(6)
 	before := editor.Render(40)
 	start, _ := editor.autocompleteVisibleRange()
-	row := editor.renderedVisibleLineCount + 3
+	row := editor.renderedVisibleLineCount + 2
 	want := "/" + editor.autocompleteItems[start].Value + " "
 	if !strings.Contains(stripANSI(before[row]), editor.autocompleteItems[start].Value) {
 		t.Fatalf("pressed row does not display target: %q", before[row])
@@ -31,12 +31,13 @@ func TestEditorAutocompleteClickKeepsPressedItem(t *testing.T) {
 func TestEditorAutocompletePressClearedByNewSuggestions(t *testing.T) {
 	editor := NewEditor()
 	editor.SetAutocomplete(NewSlashOnlyProvider(sampleCommands()))
-	editor.SetText("/")
+	editor.HandleInput("/")
 	editor.AutocompleteMove(6)
 	editor.Render(40)
-	row := editor.renderedVisibleLineCount + 3
+	row := editor.renderedVisibleLineCount + 2
 	DispatchMouseEvent(editor, componentMouseEvent(MousePress, 1, row))
 	editor.SetText("/mo")
+	editor.RefreshAutocomplete()
 	editor.Render(40)
 	DispatchMouseEvent(editor, componentMouseEvent(MouseClick, 1, row))
 	if got := editor.Text(); got != "/model " {
@@ -47,13 +48,14 @@ func TestEditorAutocompletePressClearedByNewSuggestions(t *testing.T) {
 func TestEditorAutocompleteDeferredSuggestionsClearPress(t *testing.T) {
 	editor := NewEditor()
 	editor.SetAutocomplete(NewSlashOnlyProvider(sampleCommands()))
-	editor.SetText("/")
+	editor.HandleInput("/")
 	editor.AutocompleteMove(5)
 	var apply func()
 	editor.SetAsyncApply(func(next func()) { apply = next })
 	editor.SetText("/mo")
+	editor.RefreshAutocomplete()
 	editor.Render(40)
-	row := editor.renderedVisibleLineCount + 3
+	row := editor.renderedVisibleLineCount + 2
 	DispatchMouseEvent(editor, componentMouseEvent(MousePress, 1, row))
 	apply()
 	editor.Render(40)
@@ -69,9 +71,10 @@ func BenchmarkEditorAutocompleteMouseClick(b *testing.B) {
 	b.ReportAllocs()
 	for b.Loop() {
 		editor.SetText("/")
+		editor.RefreshAutocomplete()
 		editor.AutocompleteMove(6)
 		editor.Render(80)
-		row := editor.renderedVisibleLineCount + 3
+		row := editor.renderedVisibleLineCount + 2
 		DispatchMouseEvent(editor, componentMouseEvent(MousePress, 1, row))
 		editor.Render(80)
 		DispatchMouseEvent(editor, componentMouseEvent(MouseClick, 1, row))
@@ -82,13 +85,13 @@ func TestEditorAutocompletePressedItemThroughAltScreen(t *testing.T) {
 	h := newAltHarness(t, 40, 20, TuiAltScreenOptions{})
 	editor := NewEditor()
 	editor.SetAutocomplete(NewSlashOnlyProvider(sampleCommands()))
-	editor.SetText("/")
+	editor.HandleInput("/")
 	editor.AutocompleteMove(6)
 	h.tui.Add(editor)
 	h.start()
 	start, _ := editor.autocompleteVisibleRange()
 	want := "/" + editor.autocompleteItems[start].Value + " "
-	row := editor.renderedVisibleLineCount + 3 + 1 // SGR coordinates are one-based.
+	row := editor.renderedVisibleLineCount + 2 + 1 // SGR coordinates are one-based.
 	h.send(fmt.Sprintf("\x1b[<0;2;%dM", row))
 	h.send(fmt.Sprintf("\x1b[<0;2;%dm", row))
 	if got := editor.Text(); got != want {

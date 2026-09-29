@@ -11,19 +11,18 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"slices"
 	"strconv"
 	"strings"
-	"sync"
-	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/BurntSushi/toml"
 	"golang.org/x/mod/modfile"
-	"golang.org/x/term"
 
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
+	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
 	"github.com/MichaelKinsy/PiG/internal/pigsdklock"
 	"github.com/MichaelKinsy/PiG/internal/toolchain"
@@ -52,9 +51,6 @@ type Builder struct {
 	// mismatch means every extension compiles against an SDK the host does not
 	// speak, which surfaces as a fixed bug reappearing.
 	verifyStagedSDK func(stagedDir, buildType string) error
-
-	// buildMu prevents concurrent builds of the same extension.
-	buildMu sync.Mutex
 }
 
 // SetStagedSDKVerifier installs the staged-SDK freshness check. Without one the
@@ -110,13 +106,9 @@ func (b *Builder) Build(name, srcDir string) (*BuildResult, error) {
 	return b.BuildContext(context.Background(), name, srcDir)
 }
 
-// BuildContext builds an extension and cancels compiler subprocesses when ctx
-// ends. Build retains the background-context compatibility entry point.
+// BuildContext builds an extension and cancels compiler subprocesses when ctx ends. Independent sources may build concurrently; PublishArtifact deduplicates each content identity and publishes it atomically. Build retains the background-context entry point.
 func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*BuildResult, error) {
-	// Serialize builds to prevent concurrent compilation of the same extension
-	// and partial-write corruption of cache entries.
-	b.buildMu.Lock()
-	defer b.buildMu.Unlock()
+	// pig additive (D20): the host bounds independent cell preparations; the content-addressed publisher owns same-artifact exclusion.
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -182,7 +174,6 @@ func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*Build
 		if buildType == "node" {
 			keepAlso = []string{artifactName + ".runtime"}
 		}
-		start := time.Now()
 		entry, err := runtimecell.PublishArtifact(ctx, finalDir, artifactName, hash, buildType, func(scratch string) (string, error) {
 			// Preflight the compiler toolchain before announcing a build, so a
 			// toolchain-less host gets actionable guidance instead of an opaque exec
@@ -191,13 +182,6 @@ func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*Build
 			// from a warm cache, so neither reaches this build closure.
 			if err := ensureBuildToolchain(ctx, buildType); err != nil {
 				return "", err
-			}
-			// pig compiles extensions where upstream pi has no build step; emit the
-			// first-run notice only to an interactive stderr so print/json mode and
-			// piped/CI output stay byte-clean and match pi.
-			// pig additive (D18): explicit builds own the progress display instead of the runtime-load notice.
-			if !buildprogress.Enabled(ctx) && term.IsTerminal(int(os.Stderr.Fd())) {
-				fmt.Fprintf(os.Stderr, "Building extension %s (first run, will be cached)...\n", name)
 			}
 			out := filepath.Join(scratch, artifactName)
 			switch buildType {
@@ -210,7 +194,7 @@ func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*Build
 					return "", fmt.Errorf("cargo build: %w", err)
 				}
 			case "node":
-				if err := buildNode(srcDir, out); err != nil {
+				if err := buildNode(ctx, b.cacheDir, srcDir, out); err != nil {
 					return "", fmt.Errorf("node launcher: %w", err)
 				}
 			}
@@ -218,9 +202,6 @@ func (b *Builder) BuildContext(ctx context.Context, name, srcDir string) (*Build
 		}, keepAlso...)
 		if err != nil {
 			return nil, err
-		}
-		if !entry.Reused && !buildprogress.Enabled(ctx) && term.IsTerminal(int(os.Stderr.Fd())) {
-			fmt.Fprintf(os.Stderr, "Built %s in %s\n", name, time.Since(start).Round(time.Millisecond))
 		}
 		// Record the SDK this build compiled against. A later SDK change makes the
 		// build unreachable (the cache key folds the SDK in), and the fingerprint is
@@ -303,21 +284,10 @@ func hashSourceDir(src, buildType string) (string, error) {
 		h.Write([]byte(lexicalRoot))
 		h.Write([]byte(nodeRuntimeVersion))
 		h.Write([]byte(nodeLauncherFormat))
-		// Hash every embedded runtime file so changes to runtime.mjs,
-		// cli.mjs, the loader, or any shim invalidate cached launchers
-		// without requiring a manual nodeRuntimeVersion bump.
-		_ = fs.WalkDir(nodeRuntimeFS, "runtime-node", func(p string, d fs.DirEntry, err error) error {
-			if err != nil || d.IsDir() {
-				return err
-			}
-			data, err := nodeRuntimeFS.ReadFile(p)
-			if err != nil {
-				return err
-			}
-			h.Write([]byte(p))
-			h.Write(data)
-			return nil
-		})
+		// The embedded runtime's digest: changes to runtime.mjs, cli.mjs,
+		// the loader, or any shim invalidate cached launchers without
+		// requiring a manual nodeRuntimeVersion bump.
+		h.Write(nodeRuntimeDigest())
 	}
 
 	var exts []string
@@ -568,9 +538,12 @@ func goNeedsStagedSDK(srcDir string) bool {
 	}
 	required := false
 	for _, requirement := range file.Require {
+		// pig additive (D19): legacy imports use a build-local alias of the current SDK, not an obsolete authored replacement.
+		if requirement.Mod.Path == extsource.LegacyGoSDKModulePath {
+			return true
+		}
 		if requirement.Mod.Path == goSDKModule {
 			required = true
-			break
 		}
 	}
 	if !required {
@@ -837,7 +810,7 @@ func cargoBuildTargetDirectory(workingDirectory string) string {
 // the path value so it can be replaced. Registry-form deps (`pig-sdk = "x.y"`)
 // and section-form `[dependencies.pig-sdk]` tables do not match; the SDK
 // scaffolds emit the inline path form.
-var pigSDKInlinePathRe = regexp.MustCompile(`(pig-sdk\s*=\s*\{[^}]*?path\s*=\s*)"[^"]*"`)
+var pigSDKInlinePathRe = lazyregexp.New(`(pig-sdk\s*=\s*\{[^}]*?path\s*=\s*)"[^"]*"`)
 
 // rewritePigSDKPath redirects an inline pig-sdk path dependency to newPath,
 // returning the rewritten manifest and whether a replacement occurred.
@@ -926,6 +899,30 @@ func stagedGoModFile(srcDir, stagedSDK string) (string, func(), error) {
 	if err := file.AddReplace(goSDKModule, "", filepath.ToSlash(stagedSDK), ""); err != nil {
 		return "", func() {}, fmt.Errorf("add staged SDK replacement: %w", err)
 	}
+	aliasDir := ""
+	for _, requirement := range file.Require {
+		if requirement.Mod.Path != extsource.LegacyGoSDKModulePath {
+			continue
+		}
+		aliasDir, err = os.MkdirTemp("", "pig-legacy-sdk-*")
+		if err != nil {
+			return "", func() {}, err
+		}
+		if err = runtimecell.StageLegacyGoSDK(stagedSDK, aliasDir); err == nil {
+			err = file.AddReplace(extsource.LegacyGoSDKModulePath, "", filepath.ToSlash(aliasDir), "")
+		}
+		if err != nil {
+			_ = os.RemoveAll(aliasDir)
+			return "", func() {}, err
+		}
+		break
+	}
+	keepAlias := false
+	defer func() {
+		if aliasDir != "" && !keepAlias {
+			_ = os.RemoveAll(aliasDir)
+		}
+	}()
 	encoded, err := file.Format()
 	if err != nil {
 		return "", func() {}, fmt.Errorf("format build-local go.mod: %w", err)
@@ -939,6 +936,9 @@ func stagedGoModFile(srcDir, stagedSDK string) (string, func(), error) {
 	cleanup := func() {
 		_ = os.Remove(tempPath)
 		_ = os.Remove(sumPath)
+		if aliasDir != "" {
+			_ = os.RemoveAll(aliasDir)
+		}
 	}
 	if _, err := temp.Write(encoded); err != nil {
 		_ = temp.Close()
@@ -960,6 +960,7 @@ func stagedGoModFile(srcDir, stagedSDK string) (string, func(), error) {
 			return "", func() {}, err
 		}
 	}
+	keepAlias = true
 	return tempPath, cleanup, nil
 }
 

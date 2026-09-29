@@ -32,7 +32,7 @@ func TestSummarizationRejectsIncompleteResponses(t *testing.T) {
 			}
 			t.Run(tc.name+"/"+name, func(t *testing.T) {
 				provider := &scriptedProvider{responses: []scriptedResponse{tc.response}}
-				messages := []agent.AgentMessage{{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "summarize this"}}}}}
+				messages := []agent.AgentMessage{{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "summarize this"}}}}}
 				prep := compaction.CompactionPreparation{FirstKeptEntryID: "keep", Settings: compaction.CompactionSettings{ReserveTokens: 1000}}
 				if split {
 					prep.IsSplitTurn = true
@@ -63,7 +63,7 @@ func TestCompactDoesNotPersistLengthLimitedSummary(t *testing.T) {
 	}()
 	for i := range 3 {
 		for _, message := range []agent.AgentMessage{
-			{User: &agent.UserMessage{Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: fmt.Sprintf("q%d", i)}}}},
+			{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("q%d", i)}}}},
 			{Assistant: &agent.AssistantMessage{Role: agent.RoleAssistant, Content: []ai.AssistantContentBlock{ai.TextContent{Text: fmt.Sprintf("a%d", i)}}}},
 		} {
 			if _, err := sess.inner.AppendMessage(message); err != nil {
@@ -117,7 +117,7 @@ func TestSessionSummarizationPreservesModelCost(t *testing.T) {
 	}()
 	for i := range 3 {
 		for _, message := range []agent.AgentMessage{
-			{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: fmt.Sprintf("q%d", i)}}}},
+			{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("q%d", i)}}}},
 			{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: fmt.Sprintf("a%d", i)}}}},
 		} {
 			if _, err := sess.inner.AppendMessage(message); err != nil {
@@ -174,7 +174,7 @@ func TestSessionSummarizationRoutingAndThinkingLevel(t *testing.T) {
 	}()
 	for i := range 3 {
 		for _, message := range []agent.AgentMessage{
-			{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: fmt.Sprintf("q%d", i)}}}},
+			{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: fmt.Sprintf("q%d", i)}}}},
 			{Assistant: &agent.AssistantMessage{Role: "assistant", Content: []ai.AssistantContentBlock{ai.TextContent{Text: fmt.Sprintf("a%d", i)}}}},
 		} {
 			if _, err := sess.inner.AppendMessage(message); err != nil {

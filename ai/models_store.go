@@ -11,7 +11,8 @@ import (
 	"path/filepath"
 	"slices"
 	"sync"
-	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/pilock"
 )
 
 // ModelsStoreEntry mirrors pi-ai ModelsStoreEntry. Models stay raw JSON
@@ -105,38 +106,41 @@ func (s *InMemoryModelsStore) Delete(ctx context.Context, providerID string) err
 // locked JSON storage for dynamically refreshed provider catalogs, keyed by
 // provider id, at <agentDir>/models-store.json by default.
 type FileModelsStore struct {
-	path string
-	mu   sync.Mutex
+	path      string
+	readState *modelsFileReadState
+	lock      func(context.Context, string, func(func() error) error) error
 }
 
 // NewFileModelsStore opens the store at path.
 func NewFileModelsStore(path string) *FileModelsStore {
-	return &FileModelsStore{path: path}
+	if absolute, err := filepath.Abs(path); err == nil {
+		path = absolute
+	}
+	return &FileModelsStore{path: path, readState: modelsReadStateForPath(path), lock: withSidecarLock}
 }
 
 // Path returns the store file path.
 func (s *FileModelsStore) Path() string { return s.path }
 
-// Read returns the provider's stored catalog, or nil when none is stored.
+// Read returns a fresh copy of the provider's stored catalog. Concurrent readers share reloads and cancel their waits independently; unchanged files use the cached revision.
 func (s *FileModelsStore) Read(ctx context.Context, providerID string) (*ModelsStoreEntry, error) {
-	var entry *ModelsStoreEntry
-	err := s.withLock(ctx, func(entries []storedModels) ([]storedModels, error) {
-		for _, stored := range entries {
-			if stored.providerID != providerID {
-				continue
-			}
-			var decoded ModelsStoreEntry
-			if err := json.Unmarshal(stored.raw, &decoded); err != nil {
-				return nil, fmt.Errorf("models store: parse %s: %w", providerID, err)
-			}
-			entry = &decoded
-		}
-		return nil, nil
-	})
+	entries, err := s.readLatest(ctx)
 	if err != nil {
 		return nil, err
 	}
-	return entry, ctx.Err()
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
+	for _, stored := range entries {
+		if stored.providerID == providerID {
+			var entry ModelsStoreEntry
+			if err := json.Unmarshal(stored.raw, &entry); err != nil {
+				return nil, fmt.Errorf("models store: parse %s: %w", providerID, err)
+			}
+			return &entry, nil
+		}
+	}
+	return nil, nil
 }
 
 // Write replaces the provider's stored catalog.
@@ -176,21 +180,24 @@ type storedModels struct {
 // withLock mirrors FileAuthStorageBackend.withLockAsync: it creates the file
 // as "{}" when missing, holds the lock across read-modify-write, and writes
 // only when fn returns entries.
-func (s *FileModelsStore) withLock(ctx context.Context, fn func([]storedModels) ([]storedModels, error)) error {
+func (s *FileModelsStore) withLock(ctx context.Context, fn func([]storedModels) ([]storedModels, error)) (err error) {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	if err := os.MkdirAll(filepath.Dir(s.path), 0o700); err != nil {
 		return fmt.Errorf("models store: ensure dir: %w", err)
 	}
-	if _, err := os.Stat(s.path); errors.Is(err, fs.ErrNotExist) {
-		if err := os.WriteFile(s.path, []byte("{}"), 0o600); err != nil {
+	return s.lock(ctx, s.path, func(check func() error) error {
+		file, err := os.OpenFile(s.path, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0o600)
+		if err == nil {
+			_, writeErr := file.WriteString("{}")
+			closeErr := file.Close()
+			if err := errors.Join(writeErr, closeErr); err != nil {
+				return fmt.Errorf("models store: create: %w", err)
+			}
+		} else if !errors.Is(err, fs.ErrExist) {
 			return fmt.Errorf("models store: create: %w", err)
 		}
-	}
-	return withSidecarLock(s.path, func() error {
 		data, err := os.ReadFile(s.path)
 		if err != nil && !errors.Is(err, fs.ErrNotExist) {
 			return fmt.Errorf("models store: read: %w", err)
@@ -199,11 +206,27 @@ func (s *FileModelsStore) withLock(ctx context.Context, fn func([]storedModels) 
 		if err != nil {
 			return err
 		}
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		next, err := fn(entries)
 		if err != nil || next == nil {
 			return err
 		}
-		return writeStoredModels(s.path, next)
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		if err := check(); err != nil {
+			return err
+		}
+		if err := writeStoredModels(s.path, next); err != nil {
+			return err
+		}
+		s.readState.mu.Lock()
+		s.readState.data = next
+		s.readState.revision = ""
+		s.readState.mu.Unlock()
+		return nil
 	})
 }
 
@@ -274,31 +297,15 @@ func marshalStoreJSON(value any) ([]byte, error) {
 	return bytes.TrimSuffix(buffer.Bytes(), []byte("\n")), nil
 }
 
-// withSidecarLock holds the same kind of sidecar flock AuthStorage uses.
-func withSidecarLock(path string, fn func() error) error {
-	lockPath := path + ".lock"
-	deadline := time.Now().Add(2 * time.Second)
-	for {
-		file, err := os.OpenFile(lockPath, os.O_CREATE|os.O_RDWR, 0o600)
-		if err != nil {
-			return fmt.Errorf("models store: open lock: %w", err)
-		}
-		locked, err := tryLockFile(file)
-		if err != nil {
-			_ = file.Close()
-			return fmt.Errorf("models store: lock: %w", err)
-		}
-		if locked {
-			defer func() {
-				unlockFile(file)
-				_ = file.Close()
-			}()
-			return fn()
-		}
-		_ = file.Close()
-		if time.Now().After(deadline) {
-			return errors.New("models store: timed out acquiring lock")
-		}
-		time.Sleep(20 * time.Millisecond)
+// withSidecarLock holds the shared Pi directory lease and supplies its pre-commit ownership check.
+func withSidecarLock(ctx context.Context, path string, fn func(func() error) error) (err error) {
+	lock, err := pilock.Acquire(ctx, path)
+	if err != nil {
+		return fmt.Errorf("models store: acquire lock: %w", err)
 	}
+	defer func() { err = errors.Join(err, lock.Release()) }()
+	if err := lock.Check(); err != nil {
+		return err
+	}
+	return fn(lock.Check)
 }

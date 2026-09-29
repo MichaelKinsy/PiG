@@ -1,0 +1,28 @@
+# Pi 0.87.1 packages/coding-agent/test/suite/regressions/3302-find-path-glob.test.ts:68.
+# Direct published-Pi probe: src/**/*.spec.ts returns src/foo/bar/example.spec.ts.
+# Both normal print sessions run the builtin find; the faux provider echoes the
+# actual result instead of a canned success token. This catches a compiling
+# mutation that removes --full-path, unlike the former "listed" assertion.
+name = "05-print-find-tool-exec"
+description = "Print mode preserves the builtin find result for a nested path glob"
+covers = ["packages/coding-agent/src/core/tools/find.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--no-extensions", "--tools", "find"]
+pi_args = ["--tools", "find"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: find path glob"
+timeout_seconds = 30
+cwd = "testdata/find-regressions"
+
+[assert]
+exit_code = 0
+both_contain = ["src/foo/bar/example.spec.ts"]
+output_equal = true
+runs = 3

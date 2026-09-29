@@ -1,0 +1,17 @@
+[
+ {"name":"aborted","model":"gpt-5-mini","messages":[{"role":"user","content":"before"},{"role":"assistant","api":"openai-responses","provider":"openai","model":"gpt-5-mini","stopReason":"aborted","content":[{"type":"thinking","thinking":"Double 21","thinkingSignature":"{\"type\":\"reasoning\",\"id\":\"rs_1\",\"encrypted_content\":\"encrypted\"}"}]},{"role":"user","content":"continue"}]},
+ {"name":"model-switch","model":"gpt-5.5","messages":[{"role":"user","content":"before"},{"role":"assistant","api":"openai-responses","provider":"openai","model":"gpt-5-mini","stopReason":"toolUse","content":[{"type":"thinking","thinking":"Double 21","thinkingSignature":"{\"type\":\"reasoning\",\"id\":\"rs_1\"}"},{"type":"toolCall","id":"call_1|fc_1","name":"double_number","arguments":{"value":21}}]},{"role":"toolResult","toolCallId":"call_1|fc_1","toolName":"double_number","content":[{"type":"text","text":"42"}]},{"role":"user","content":"continue"}]},
+ {"name":"provider-switch","model":"gpt-5.5","messages":[{"role":"user","content":"before"},{"role":"assistant","api":"anthropic-messages","provider":"anthropic","model":"claude-sonnet-4-5","stopReason":"toolUse","content":[{"type":"thinking","thinking":"Double 21","thinkingSignature":"anthropic-signature"},{"type":"toolCall","id":"toolu_double","name":"double_number","arguments":{"value":21}}]},{"role":"toolResult","toolCallId":"toolu_double","toolName":"double_number","content":[{"type":"text","text":"42"}]},{"role":"user","content":"continue"}]},
+ {"name":"poisoned-tool-changes","model":"custom-model","messages":[
+  {"role":"system","content":"base prompt","toolsAdded":[{"name":"base_tool","description":"base_tool tool","parameters":{"type":"object","properties":{}}}]},
+  {"role":"user","content":"before","timestamp":1},
+  {"role":"assistant","api":"anthropic-messages","provider":"anthropic","model":"custom","content":[{"type":"text","text":""}],"stopReason":"error","errorMessage":"overloaded","timestamp":2},
+  {"role":"system","content":"load late tool","toolsAdded":[{"name":"late_tool","description":"late_tool tool","parameters":{"type":"object","properties":{}}}],"timestamp":3},
+  {"role":"user","content":"retry","timestamp":4},
+  {"role":"assistant","api":"openai-responses","provider":"openai","model":"gpt-5","content":[{"type":"toolCall","id":"call_1|fc_1","name":"late_tool","arguments":{}}],"stopReason":"toolUse","timestamp":5},
+  {"role":"system","content":"between call and result","timestamp":6},
+  {"role":"toolResult","toolCallId":"call_1|fc_1","toolName":"late_tool","content":[{"type":"text","text":"done"}],"timestamp":7},
+  {"role":"assistant","api":"anthropic-messages","provider":"anthropic","model":"custom","content":[{"type":"text","text":"  "},{"type":"toolCall","id":"call_2","name":"base_tool","arguments":{}}],"stopReason":"aborted","timestamp":8},
+  {"role":"user","content":"go on","timestamp":9}
+ ]}
+]

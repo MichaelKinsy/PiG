@@ -38,7 +38,7 @@ var defaultEditUsage = ai.Usage{Input: 10, Output: 1, TotalTokens: 11}
 func editUser(text string) agent.AgentMessage {
 	return agent.AgentMessage{User: &agent.UserMessage{
 		Role:      agent.RoleUser,
-		Content:   []ai.UserContentBlock{ai.TextContent{Text: text}},
+		Content:   ai.UserContentBlocks{ai.TextContent{Text: text}},
 		Timestamp: time.Now().UnixMilli(),
 	}}
 }
@@ -62,38 +62,20 @@ func (e *editSession) message(message agent.AgentMessage) string {
 	return id
 }
 
-// rawMessage appends a message entry whose message is decoded from JSON, for
-// roles AppendMessage routes elsewhere (system messages).
+// rawMessage decodes fixture JSON before using the production message appender.
 func (e *editSession) rawMessage(message string) string {
 	e.t.Helper()
 	var decoded agent.AgentMessage
 	if err := json.Unmarshal([]byte(message), &decoded); err != nil {
 		e.t.Fatal(err)
 	}
-	id, err := codingagent.GenerateEntryID()
-	if err != nil {
-		e.t.Fatal(err)
-	}
-	if err := e.sess.AppendEntry(codingagent.MessageEntry{
-		SessionEntryBase: codingagent.SessionEntryBase{Type: "message", ID: id, ParentID: e.sess.LeafID(), Timestamp: codingagent.RFC3339NowNano()},
-		Message:          decoded,
-	}); err != nil {
-		e.t.Fatal(err)
-	}
-	return id
+	return e.message(decoded)
 }
 
 func (e *editSession) custom(customType string, data any) string {
 	e.t.Helper()
-	id, err := codingagent.GenerateEntryID()
+	id, err := e.sess.AppendCustomEntry(customType, data)
 	if err != nil {
-		e.t.Fatal(err)
-	}
-	if err := e.sess.AppendEntry(codingagent.CustomEntry{
-		SessionEntryBase: codingagent.SessionEntryBase{Type: "custom", ID: id, ParentID: e.sess.LeafID(), Timestamp: codingagent.RFC3339NowNano()},
-		CustomType:       customType,
-		Data:             data,
-	}); err != nil {
 		e.t.Fatal(err)
 	}
 	return id
@@ -400,7 +382,7 @@ func TestTurnPrefixSummaryUsesMarkdownHeadingFraming(t *testing.T) {
 func projectedMessageText(message agent.AgentMessage) string {
 	var text strings.Builder
 	if message.User != nil {
-		for _, block := range message.User.Content {
+		for _, block := range message.ContentBlocks() {
 			if block, ok := block.(ai.TextContent); ok {
 				text.WriteString(block.Text)
 			}
@@ -417,7 +399,7 @@ func TestEstimateTokensCountsJavaScriptLengthsImagesAndCustomBlocks(t *testing.T
 	}{
 		{"astral characters count two UTF-16 units", editUser("😀😀"), 1},
 		{"multi-byte BMP characters count one unit", editUser("éééé"), 1},
-		{"images count 4800 characters", agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.ImageContent{Data: "x", MimeType: "image/png"}}}}, 1200},
+		{"images count 4800 characters", agent.AgentMessage{User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.ImageContent{Data: "x", MimeType: "image/png"}}}}, 1200},
 		{"custom content blocks", agent.AgentMessage{Custom: map[string]any{"role": agent.RoleCustom, "content": []any{map[string]any{"type": "text", "text": "abcdefgh"}}}}, 2},
 		{"unknown roles count zero", agent.AgentMessage{Custom: map[string]any{"role": "future", "content": "abcdefgh"}}, 0},
 		{"system content, sections, and tools", agent.AgentMessage{System: &ai.SystemMessage{Content: ai.SystemText("abcd"), Sections: ai.OrderedSections{{Name: "env", Value: new("efgh")}}}}, 2},

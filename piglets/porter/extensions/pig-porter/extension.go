@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	sdk "github.com/MichaelKinsy/PiG/extensions/sdk"
-	"github.com/MichaelKinsy/PiG/parity/closure"
-	porter "github.com/MichaelKinsy/PiG/parity/porter"
+	"github.com/MichaelKinsy/PiG/test/parity/closure"
+	porter "github.com/MichaelKinsy/PiG/test/parity/porter"
 )
 
 const (

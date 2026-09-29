@@ -46,10 +46,11 @@ func TestOAuthSelector_StatusIndicators(t *testing.T) {
 	}{
 		{"stored same auth type default source", OAuthProvider{ID: "github-copilot", Name: "GitHub Copilot", AuthType: "oauth", Stored: true, StoredType: "oauth"}, "✓ configured"},
 		{"stored same auth type stored source", OAuthProvider{ID: "github-copilot", Name: "GitHub Copilot", AuthType: "oauth", Stored: true, StoredType: "oauth", AuthStatusSource: "stored"}, "✓ stored"},
+		{"logout stored credential source", OAuthProvider{ID: "openai", Name: "OpenAI", AuthType: "api_key", Stored: true, StoredType: "api_key", AuthStatusSource: "stored credential"}, "✓ configured"},
 		{"stored other auth type oauth", OAuthProvider{ID: "anthropic", Name: "Anthropic", AuthType: "api_key", Stored: true, StoredType: "oauth"}, "subscription configured"},
 		{"stored other auth type api key", OAuthProvider{ID: "openai", Name: "OpenAI", AuthType: "oauth", Stored: true, StoredType: "api_key"}, "API key configured"},
 		{"runtime key", OAuthProvider{ID: "openai", Name: "OpenAI", AuthType: "api_key", AuthStatusSource: "runtime"}, "✓ runtime API key"},
-		{"fallback key", OAuthProvider{ID: "openai", Name: "OpenAI", AuthType: "api_key", AuthStatusSource: "fallback"}, "✓ custom API key"},
+		{"fallback key", OAuthProvider{ID: "openai", Name: "OpenAI", AuthType: "api_key", AuthStatusSource: "fallback"}, "✓ fallback"},
 		{"models.json key", OAuthProvider{ID: "openai", Name: "OpenAI", AuthType: "api_key", AuthStatusSource: "models_json_key"}, "✓ key in models.json"},
 		{"models.json command", OAuthProvider{ID: "openai", Name: "OpenAI", AuthType: "api_key", AuthStatusSource: "models_json_command"}, "✓ command in models.json"},
 		{"oauth unconfigured", OAuthProvider{ID: "anthropic", Name: "Anthropic", AuthType: "oauth"}, "• unconfigured"},

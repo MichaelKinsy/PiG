@@ -31,8 +31,12 @@ func TestSessionQueueOperationsPreserveModesAndEmitUpdates(t *testing.T) {
 		t.Fatalf("queue modes = %q/%q", sess.Agent().SteeringMode(), sess.Agent().FollowUpMode())
 	}
 
-	sess.Steer("redirect", []ai.ImageContent{{MimeType: "image/png", Data: "aW1n"}})
-	sess.FollowUp("later", nil)
+	if err := sess.Steer(t.Context(), "redirect", []ai.ImageContent{{MimeType: "image/png", Data: "aW1n"}}, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := sess.FollowUp(t.Context(), "later", nil, nil); err != nil {
+		t.Fatal(err)
+	}
 	if got := sess.PendingMessageCount(); got != 2 {
 		t.Fatalf("pending messages = %d, want 2", got)
 	}

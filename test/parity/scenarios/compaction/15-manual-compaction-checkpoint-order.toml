@@ -1,0 +1,30 @@
+# The pinned implementation is the oracle. The first case at
+# agent-session-compaction.test.ts:84-107 has a stale summary-first expectation.
+# Pi 0.87.1 session-manager.ts:1268-1281 saves the system checkpoint and :461-463
+# projects it before the summary. The lead approves matching that implementation.
+# reference-original-assertion-red.log records the original assertion failing in Pi.
+# Compare the entire role sequence and the original nonempty-summary/positive-token
+# predicates. Raw token counts depend on provider usage; no output is normalized.
+# Node's resolution flag binds the test helpers to unchanged installed Pi.
+name = "15-manual-compaction-checkpoint-order"
+description = "Manual compaction retains the system checkpoint before its summary"
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/session-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-compaction-e2e-pig.sh"]
+pi_args = ["bash", "./test/parity/testdata/session-compaction-e2e-pi.sh"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"roles":["system","compactionSummary","assistant"]', '"summaryPresent":true,"tokensPositive":true']
+runs = 3

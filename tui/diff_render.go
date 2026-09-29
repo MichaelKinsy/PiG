@@ -12,13 +12,14 @@ package tui
 // Upstream reference: components/diff.ts.
 
 import (
-	"regexp"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // parseDiffLine extracts prefix, lineNum, content from a diff line.
 // Format: "+123 content" or "-123 content" or " 123 content"
-var diffLineRe = regexp.MustCompile(`^([+\- ])([ ]*\d*)[ ](.*)$`)
+var diffLineRe = lazyregexp.New(`^([+\- ])([ ]*\d*)[ ](.*)$`)
 
 type diffLineParsed struct {
 	prefix  string

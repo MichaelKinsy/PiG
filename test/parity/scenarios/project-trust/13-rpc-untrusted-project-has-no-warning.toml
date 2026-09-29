@@ -1,0 +1,33 @@
+# Behavior family: project-trust
+# Pi 0.87.1 core/project-trust.ts:83-94 and main.ts:756-773: RPC startup has
+# no trust UI. get_commands responds normally, with no trust UI requests or
+# interactive warning on the wire. TestProjectTrustNoninteractiveDoesNotPromptOrWarn
+# additionally checks stderr, which the RPC scenario driver captures separately.
+name = "13-rpc-untrusted-project-has-no-warning"
+description = "RPC mode neither prompts for trust nor emits an interactive warning."
+covers = ["packages/coding-agent/src/core/project-trust.ts"]
+tags = ["hermetic", "fast", "security"]
+driver = "rpc-mode"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/warning-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/warning-agent"]
+override_base_args = true
+pi_args = ["--offline", "--no-extensions", "--no-session", "--model", "openai/gpt-4.1"]
+pig_args = ["--offline", "--no-extensions", "--no-session", "--model", "openai/gpt-4.1"]
+
+[rpc]
+cwd = "testdata/warning-project"
+timeout_seconds = 30
+
+[[rpc.steps]]
+line = '{"id":"commands","type":"get_commands"}'
+wait_contains = ['"id":"commands"']
+wait_timeout_seconds = 10
+
+[assert]
+exit_code = 0
+both_contain = ['"command":"get_commands"', '"success":true']
+both_not_contain = ["Trust project folder?", "This project is not trusted.", "extension_ui_request"]
+output_equal = true
+runs = 3

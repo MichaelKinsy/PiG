@@ -13,7 +13,6 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
-	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // ReloadResourceSnapshot is the recomputed settings/resource view used by
@@ -28,6 +27,9 @@ type ReloadResourceSnapshot struct {
 	// resources [Context] section lists before ContextFiles.
 	SystemPromptSourcePaths []string
 	ResourceSourceInfo      map[string]ResourceSourceInfo
+	// Err is the error resource resolution threw (an invalid settings file:
+	// URL); /reload fails with it and applies nothing.
+	Err error
 }
 
 func cloneResourceSourceInfoMap(in map[string]ResourceSourceInfo) map[string]ResourceSourceInfo {
@@ -102,22 +104,33 @@ func (m *InteractiveMode) refreshAgentTools() []error {
 	if m.agent == nil {
 		return nil
 	}
+	allTools, errs := m.buildAgentTools()
+	m.agent.SetTools(allTools)
+	m.rebuildToolSystemPrompt()
+	return errs
+}
+
+func (m *InteractiveMode) buildAgentTools() ([]agent.AgentTool, []error) {
 	builtin := tools.CreateAllTools(m.opts.CWD, m.opts.Settings, filepath.Join(m.opts.AgentDir, "bin"))
-	allTools := tools.SelectBuiltinTools(builtin, m.opts.ActiveBuiltinTools, m.opts.AllowedTools)
+	// An explicit tool set (--tools, or an extension's setActiveTools) names the
+	// active built-ins itself; the startup default set applies only without one.
+	active := m.opts.ActiveBuiltinTools
+	if m.opts.AllowedTools != nil {
+		active = nil
+	}
+	allTools := tools.SelectBuiltinTools(builtin, active, m.opts.AllowedTools)
 	if m.newRunner != nil && m.opts.BridgeExtensionTools != nil {
 		bridged, errs := m.opts.BridgeExtensionTools(m.newRunner.Tools())
 		allTools = append(allTools, bridged...)
 		allTools = deduplicateAgentTools(allTools)
 		allTools = filterAllowedAgentTools(allTools, m.opts.AllowedTools)
 		allTools = removeExcludedAgentTools(allTools, m.opts.ExcludedTools)
-		m.agent.SetTools(allTools)
-		return errs
+		return allTools, errs
 	}
 	allTools = deduplicateAgentTools(allTools)
 	allTools = filterAllowedAgentTools(allTools, m.opts.AllowedTools)
 	allTools = removeExcludedAgentTools(allTools, m.opts.ExcludedTools)
-	m.agent.SetTools(allTools)
-	return nil
+	return allTools, nil
 }
 
 func (m *InteractiveMode) replaceExtensionRunner(exts []extension.Extension) []error {
@@ -139,15 +152,19 @@ func (m *InteractiveMode) replaceExtensionRunner(exts []extension.Extension) []e
 		ctx = context.Background()
 	}
 	m.setupExtensionShortcutListener(ctx)
-	return m.refreshAgentTools()
+	m.reconfigureRemoteEditor()
+	var errs []error
+	if session, ok := m.opts.SessionHandle.(interface{ RefreshTools() error }); ok {
+		if err := session.RefreshTools(); err != nil {
+			errs = append(errs, err)
+		}
+	}
+	return append(errs, m.refreshAgentTools()...)
 }
 
+// reloadSkillsFromPaths loads the paths already selected by the resolver, including explicit paths when automatic discovery is disabled.
 func (m *InteractiveMode) reloadSkillsFromPaths() {
-	if m.opts.NoSkills {
-		m.opts.Skills = nil
-		m.publishSlashCommandCatalog()
-		return
-	}
+	m.opts.SkillDiagnostics = nil
 	if len(m.opts.SkillPaths) == 0 {
 		m.opts.Skills = nil
 		m.publishSlashCommandCatalog()
@@ -168,7 +185,9 @@ func (m *InteractiveMode) reloadSkillsFromPaths() {
 			}
 		}
 	}
-	m.opts.Skills = DeduplicateSkills(allSkills)
+	m.opts.Skills, m.opts.SkillDiagnostics = DeduplicateSkillsWithDiagnostics(allSkills)
+	catalog := SlashCommandCatalog{CWD: m.opts.CWD, AgentDir: m.opts.AgentDir, SourceInfo: m.resourceSourceInfo}
+	m.opts.Skills = catalog.WithSkillSources(m.opts.Skills)
 	m.publishSlashCommandCatalog()
 }
 
@@ -179,14 +198,15 @@ func (m *InteractiveMode) rebuildSystemPromptFromResources() {
 	systemPrompt, promptOptions := m.opts.RebuildSystemPrompt(m.opts.Skills, m.opts.ContextFiles)
 	m.opts.SystemPrompt = systemPrompt
 	m.opts.SystemPromptOptions = promptOptions
+	m.rebuildToolSystemPrompt()
 	if m.agent != nil {
-		m.agent.SetSystemPrompt(systemPrompt)
+		m.agent.SetSystemPrompt(m.currentSystemPrompt())
 	}
 }
 
 func mergeUniqueStrings(base []string, additions ...string) []string {
-	seen := make(map[string]struct{}, len(base)+len(additions))
-	out := make([]string, 0, len(base)+len(additions))
+	seen := make(map[string]struct{}, len(base))
+	out := make([]string, 0, len(base))
 	for _, item := range base {
 		if item == "" {
 			continue
@@ -242,19 +262,48 @@ func ExtensionDiscoveredSourceInfo(path, kind, extensionPath string) ResourceSou
 	}
 }
 
+// ResourcesDiscoverReason maps a session_start reason to the resources_discover reason. Pi's AgentSession passes "reload" for a reload and "startup" for every other Session start, including one a replacement created (agent-session.ts:2941; the union is "startup" | "reload", extensions/types.ts:551-555).
+func ResourcesDiscoverReason(sessionStartReason string) string {
+	if sessionStartReason == "reload" {
+		return "reload"
+	}
+	return "startup"
+}
+
 // extendResourcesFromExtensions merges extension-discovered resources. Its
 // caller shows the final prompt diagnostics once, as upstream
 // showLoadedResources does after startup and after reload.
-func (m *InteractiveMode) extendResourcesFromExtensions(reason string) {
-	if m.newRunner == nil || !m.newRunner.HasHandlers(EventResourcesDiscover) {
-		return
+func (m *InteractiveMode) extendResourcesFromExtensions(ctx context.Context, reason string) error {
+	runner, cwd := m.newRunner, m.opts.CWD
+	if runner == nil || !runner.HasHandlers(EventResourcesDiscover) {
+		return nil
 	}
-	agg, err := m.newRunner.EmitResourcesDiscover(context.Background(), m.opts.CWD, reason)
-	if err != nil || agg == nil {
-		return
+	var agg *extension.ResourcesDiscoverAggregateResult
+	await := m.awaitExtensionUI
+	if reason == "reload" {
+		await = m.awaitReloadStep
+	}
+	if err := await(ctx, func(ctx context.Context) error {
+		var err error
+		agg, err = runner.EmitResourcesDiscover(ctx, cwd, reason)
+		return err
+	}); err != nil {
+		return err
+	}
+	return m.applyDiscoveredResources(agg)
+}
+
+func (m *InteractiveMode) applyDiscoveredResources(agg *extension.ResourcesDiscoverAggregateResult) error {
+	var err error
+	agg, err = NormalizeExtensionPaths(m.opts.CWD, agg)
+	if err != nil {
+		return err
+	}
+	if agg == nil {
+		return nil
 	}
 	if len(agg.SkillPaths) == 0 && len(agg.PromptPaths) == 0 && len(agg.ThemePaths) == 0 {
-		return
+		return nil
 	}
 	if m.resourceSourceInfo == nil {
 		m.resourceSourceInfo = map[string]ResourceSourceInfo{}
@@ -272,19 +321,11 @@ func (m *InteractiveMode) extendResourcesFromExtensions(reason string) {
 		m.resourceSourceInfo[entry.Path] = ExtensionDiscoveredSourceInfo(entry.Path, "themes", entry.ExtensionPath)
 	}
 
-	if m.opts.NoPromptTemplates {
-		m.promptTemplates = nil
-	} else {
-		m.loadPromptTemplates()
-	}
+	m.loadPromptTemplates()
 	m.reloadSkillsFromPaths()
-	if !m.opts.NoThemes {
-		registry := tui.ActiveThemeRegistry()
-		loadThemePaths(registry, m.opts.ThemePaths, func(err error) {
-			_, _ = fmt.Fprintf(stderrWriter(), "theme reload: %v\n", err)
-		})
-	}
+	m.loadThemes()
 	m.rebuildSystemPromptFromResources()
+	return nil
 }
 
 // stderrWriter is the destination for resource-reload diagnostics.

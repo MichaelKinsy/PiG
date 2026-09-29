@@ -8,12 +8,14 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/ai"
 )
 
 // ── Protocol framing tests ───────────────────────────────────────────────────
@@ -196,7 +198,7 @@ func TestConn_RequestResponse(t *testing.T) {
 		if err := json.Unmarshal(r.env.Response.Result, &toolResult); err != nil {
 			t.Fatalf("unmarshal tool result: %v", err)
 		}
-		if toolResult.Content != "Dispatched worker (S1) in background." {
+		if toolResult.Content[0] != (ai.TextContent{Text: "Dispatched worker (S1) in background."}) {
 			t.Errorf("content = %q, want %q", toolResult.Content, "Dispatched worker (S1) in background.")
 		}
 	case <-time.After(3 * time.Second):
@@ -590,25 +592,10 @@ func TestHost_BuildExtension_Tools(t *testing.T) {
 
 // ── Reload tests ─────────────────────────────────────────────────────────────
 
-// buildFixtureExt compiles testdata/fixture-ext into a temporary binary.
+// buildFixtureExt shares the wire fixture with the integration tests.
 func buildFixtureExt(t *testing.T) string {
 	t.Helper()
-	if p := os.Getenv("PIG_TEST_FIXTURE_EXT_BIN"); p != "" {
-		if _, err := os.Stat(p); err != nil {
-			t.Fatalf("PIG_TEST_FIXTURE_EXT_BIN=%q does not exist: %v", p, err)
-		}
-		return p
-	}
-	binPath := testExtensionBinaryPath(t.TempDir(), "fixture-ext")
-	srcDir := filepath.Join("testdata", "fixture-ext")
-
-	cmd := exec.Command("go", "build", "-o", binPath, ".")
-	cmd.Dir = srcDir
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("build fixture-ext: %v\n%s", err, out)
-	}
-	return binPath
+	return buildFixture(t)
 }
 
 func TestHostStartupTraceAttributesExtensionLifecycle(t *testing.T) {
@@ -866,7 +853,7 @@ func TestToolResultUnmarshal_StringContent(t *testing.T) {
 	if err := json.Unmarshal([]byte(data), &r); err != nil {
 		t.Fatalf("unmarshal string content: %v", err)
 	}
-	if r.Content != "hello world" {
+	if !reflect.DeepEqual(r.Content, []ai.ToolResultMessageContent{ai.TextContent{Text: "hello world"}}) {
 		t.Fatalf("content = %q, want %q", r.Content, "hello world")
 	}
 }
@@ -877,7 +864,7 @@ func TestToolResultUnmarshal_ArrayContent(t *testing.T) {
 	if err := json.Unmarshal([]byte(data), &r); err != nil {
 		t.Fatalf("unmarshal array content: %v", err)
 	}
-	if r.Content != "Edited file.go." {
+	if !reflect.DeepEqual(r.Content, []ai.ToolResultMessageContent{ai.TextContent{Text: "Edited file.go."}}) {
 		t.Fatalf("content = %q, want %q", r.Content, "Edited file.go.")
 	}
 }
@@ -888,7 +875,7 @@ func TestToolResultUnmarshal_EmptyContent(t *testing.T) {
 	if err := json.Unmarshal([]byte(data), &r); err != nil {
 		t.Fatalf("unmarshal empty content: %v", err)
 	}
-	if r.Content != "" {
+	if len(r.Content) != 0 {
 		t.Fatalf("content = %q, want empty", r.Content)
 	}
 	if !r.IsError {
@@ -941,6 +928,29 @@ func TestHostLoadAllLoadsDuplicateSelectedIdentitySeparately(t *testing.T) {
 	slices.Sort(origins)
 	if !slices.Equal(origins, []string{"/first", "/second"}) {
 		t.Fatalf("failed copies = %v", origins)
+	}
+}
+
+// upstream: packages/coding-agent/src/core/extensions/loader.ts:304,317 — flags and shortcuts record extension.path as their owner, and a repeated flag name keeps its first Map position with the last declaration.
+func TestRegisteredFlagsKeepOrderAndExtensionPath(t *testing.T) {
+	reg := &RegisterPayload{
+		Name:      "flags",
+		Flags:     []FlagDecl{{Name: "zeta", Type: "string"}, {Name: "alpha", Type: "boolean", Description: "first"}, {Name: "zeta", Type: "string", Description: "again"}},
+		Shortcuts: []ShortcutDecl{{Key: "ctrl+shift+y"}},
+	}
+	if err := validateRegisterPayload("flags", reg); err != nil {
+		t.Fatal(err)
+	}
+	h := NewHost(t.TempDir())
+	ext := h.buildExtension(&managedExt{config: ExtConfig{Name: "flags", Source: "/extensions/flags.mjs", Path: "/cache/cells/flags"}, host: h}, reg)
+	if !slices.Equal(ext.FlagOrder, []string{"zeta", "alpha"}) {
+		t.Fatalf("flag order = %q, want [zeta alpha]", ext.FlagOrder)
+	}
+	if got := ext.Flags["zeta"]; got.Description != "again" || got.ExtensionPath != "/extensions/flags.mjs" {
+		t.Fatalf("zeta flag = %+v, want the last declaration owned by /extensions/flags.mjs", got)
+	}
+	if got := ext.Shortcuts["ctrl+shift+y"].ExtensionPath; got != "/extensions/flags.mjs" {
+		t.Fatalf("shortcut extension path = %q, want /extensions/flags.mjs", got)
 	}
 }
 

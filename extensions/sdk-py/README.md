@@ -10,6 +10,10 @@ See [`docs/extension-api-parity.md`](../../docs/extension-api-parity.md) for the
 [`docs/extension-runtime-cells.md`](../../docs/extension-runtime-cells.md) for how factory extensions are packed
 into generated runner subprocesses.
 
+## Breaking changes in 0.3.0
+
+Host-backed `Context` getters raise `HostCallError` on a host failure or a reply that lacks its field, and never return an empty value. `get_session_name`, `get_session_file` and `get_leaf_id` return `None` when absent, and `get_branch` and `get_entries` raise a failed session-log subscription. `timeout` options accept a float. See the migration tables in `docs/site/docs/extensions.md`.
+
 ## Status
 
 ```text
@@ -91,6 +95,10 @@ def slow_tool(ctx, args):
 
 Cancellation is cooperative; a handler that never checks it will run until
 the process exits or shuts down.
+
+## Terminal strings
+
+`on_terminal_input` receives strings with the same UTF-16 units as Pi. A high or low surrogate can arrive without its partner. Python `str` retains that unit, and the SDK's JSON encoder sends it as a standard `\u` escape. Return it directly in `TerminalInputResult(data=...)`. Do not encode it to UTF-8 yourself or replace it with U+FFFD. Callback order and cancellation are unchanged.
 
 ## Development
 

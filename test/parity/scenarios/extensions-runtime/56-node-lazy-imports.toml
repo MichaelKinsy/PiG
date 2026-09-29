@@ -1,0 +1,31 @@
+# Pi 0.87.1 loader.ts:490-501 serves one shared namespace per virtual module.
+# keybindings.ts:311-320 stores one manager; theme.ts:1078-1097,1186-1205 synchronously highlights code.
+# Import the graph during a command, not factory registration. Compare the complete namespace inventory, values shared across aliases, mutable keybinding state, text layout, and highlight output.
+# The performance guard is TestNodeStartupDefersPresentationDependencies; this scenario preserves observable behavior rather than asserting a machine-dependent timing limit.
+name = "56-node-lazy-imports"
+description = "Deferred Node imports retain Pi exports, shared state, and synchronous rendering helpers"
+covers = [
+  "packages/coding-agent/src/core/extensions/loader.ts",
+  "packages/tui/src/keybindings.ts",
+  "packages/coding-agent/src/modes/interactive/theme/theme.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["testdata/lazy-imports.ts"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/lazy-imports.ts"]
+
+[print]
+prompt = "/lazy-imports"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"order":["factory","command","tui","theme"]', '"shared":true,"state":true', '"unknownLanguage":["\u001b[38;2;181;189;104mnot code\u001b[39m"]']
+both_not_contain = ["Failed to load extension", "Command failed"]
+runs = 3

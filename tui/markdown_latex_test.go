@@ -9,7 +9,7 @@ import (
 )
 
 // markdownLatexGolden is one line of testdata/markdown-latex-golden.jsonl,
-// captured from pi's own Markdown component by parity/testdata/markdown-latex-pi.mjs.
+// captured from pi's own Markdown component by test/parity/testdata/markdown-latex-pi.mjs.
 type markdownLatexGolden struct {
 	Input string   `json:"input"`
 	Lines []string `json:"lines"`

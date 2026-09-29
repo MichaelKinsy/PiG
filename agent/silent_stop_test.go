@@ -72,7 +72,7 @@ type terminateTool struct{ fakeTool }
 func (*terminateTool) Name() string          { return "stop" }
 func (*terminateTool) Schema() ai.ToolSchema { return ai.ToolSchema{Name: "stop"} }
 func (*terminateTool) Execute(context.Context, string, json.RawMessage, ToolUpdateCallback) (AgentToolResult, error) {
-	return AgentToolResult{Content: "stopped", Terminate: true}, nil
+	return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "stopped"}}, Terminate: true}, nil
 }
 
 // checkRunEnd turns any clean loop exit that leaves a tool result unanswered

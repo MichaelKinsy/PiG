@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -87,7 +88,7 @@ func TestRadiusOAuthDeviceLoginUsesGatewayEndpoints(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := OAuthCredentials{Access: "access-token", Refresh: "refresh-token", Expires: now.UnixMilli() + 3600*1000 - 60_000, Scope: "gateway offline_access"}
-	if credentials != want {
+	if !reflect.DeepEqual(credentials, want) {
 		t.Fatalf("credentials = %+v, want %+v", credentials, want)
 	}
 	if len(events) != 1 || events[0] != (OAuthDeviceCodeInfo{UserCode: "ABCD-1234", VerificationURI: "https://radius-ui.example/pair", IntervalSeconds: 5, ExpiresInSeconds: 600}) {

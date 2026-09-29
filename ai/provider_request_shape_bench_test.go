@@ -15,6 +15,22 @@ func BenchmarkProviderRequestShape(b *testing.B) {
 			AssistantMessage{Content: []AssistantContentBlock{TextContent{}, TextContent{Text: strings.Repeat("answer ", 128)}}},
 		)
 	}
+	b.Run("anthropic-environment-cache", func(b *testing.B) {
+		provider := NewAnthropicProvider(AnthropicConfig{Model: "claude-test", APIKey: "benchmark"}).(*anthropicProvider)
+		transcript := NormalizeContext(Context{Messages: messages})
+		model := provider.resolveModel()
+		env := ProviderEnv{"PI_CACHE_RETENTION": "none"}
+		b.ReportAllocs()
+		for b.Loop() {
+			params, err := provider.buildParams(model, transcript, false, anthropicHeaders{}, anthropicHeaders{}, StreamOptions{}, env)
+			if err != nil {
+				b.Fatal(err)
+			}
+			if _, err := json.Marshal(params.request); err != nil {
+				b.Fatal(err)
+			}
+		}
+	})
 	b.Run("responses", func(b *testing.B) {
 		provider := &openAIResponsesProvider{}
 		b.ReportAllocs()

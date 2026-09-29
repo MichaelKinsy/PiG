@@ -20,6 +20,18 @@ You can also set the name directly in `~/.pig/agent/settings.json`:
 }
 ```
 
+## Automatic switching
+
+Choose **Automatic** in the theme submenu to select separate themes for light and dark terminal appearance. You can also set the pair directly:
+
+```json
+{
+  "theme": "light/dark"
+}
+```
+
+The first name is the light theme. The second name is the dark theme. Live switching requires terminal support for color-scheme notifications (DEC mode 2031). PiG preserves the pair when the terminal appearance changes. Selecting a single theme, including through an extension, disables automatic switching.
+
 ## Theme sources
 
 PiG can load theme Resources from:

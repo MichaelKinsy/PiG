@@ -1,0 +1,27 @@
+# Pi 0.87.1 branch-summarization.test.ts:47,68,88,112 drives unchanged production
+# generateBranchSummary with real provider event streams. Go uses its production
+# modelCompleter (the same path used by Session.NavigateTree), not a fake completer
+# that fabricates the errors under test. The branch error and request cap are exact.
+# The Node flag resolves Pi's ESM dependencies relative to its pinned package.
+name = "09-branch-summary-provider-responses"
+description = "Branch summaries cap output, leave tool choice unset, and reject tool/length responses"
+covers = ["packages/coding-agent/src/core/compaction/branch-summarization.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/branch-summary-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/branch-summary-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['BRANCH_SUMMARY 0 max=4096 error=""', 'BRANCH_SUMMARY 1 max=1024 error=""', 'error="Branch summarization attempted to call a tool"', 'error="Branch summarization failed: generation hit the token cap and the summary is incomplete"']
+runs = 3

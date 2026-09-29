@@ -1,0 +1,25 @@
+# Pi 0.87.1 faux-provider.test.ts:175,299,382: factory rejection, per-session cache accounting, and exact fixed-chunk event order.
+# Both use the production faux provider API, not a replacement scripted stream.
+# Pi faux.ts:648-652 retains canonical model/provider identity. The provider metadata guard is mutation-proven by omitting the Go constructor's ProviderID while preserving its live Provider binding.
+name = "20-faux-provider-lifecycle"
+description = "Faux generation preserves exact event order, usage/cache state and factory errors."
+covers = ["packages/ai/src/providers/faux.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/faux-provider/pig"]
+pi_args = ["node", "./test/parity/testdata/faux-provider/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"errorEvents":["error"]', '"toolcall_end","done"']
+runs = 3

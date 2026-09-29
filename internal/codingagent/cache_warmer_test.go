@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"math"
+	"reflect"
 	"sync"
 	"testing"
 	"testing/synctest"
@@ -237,6 +238,7 @@ func stopTimerForTest(w *CacheWarmer) *cacheWarmingRun {
 
 func closeTo(got, want float64) bool { return math.Abs(got-want) < 0.5e-2 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/cache-warmer.test.ts:127
 func TestCacheWarmingDerivesEligibilityAndTiming(t *testing.T) {
 	models := newCacheWarmingModels(t)
 	ttl := func(model *ai.Model, env ai.ProviderEnv) any {
@@ -259,6 +261,12 @@ func TestCacheWarmingDerivesEligibilityAndTiming(t *testing.T) {
 		if tc.got != tc.want {
 			t.Errorf("%s: ttl = %v, want %v", tc.name, tc.got, tc.want)
 		}
+	}
+	if got, ok := GetPromptCacheTtlMs(models.adaptive, ai.StreamOptions{CacheRetention: ai.CacheRetentionLong}); !ok || got != 3_600_000 {
+		t.Fatalf("explicit long retention = %d, %t", got, ok)
+	}
+	if _, ok := GetPromptCacheTtlMs(models.adaptive, ai.StreamOptions{CacheRetention: ai.CacheRetentionNone}); ok {
+		t.Fatal("cacheRetention none has a cache lifetime")
 	}
 	for ttlMs, want := range map[int64]int64{300_000: 270_000, 60_000: 50_000} {
 		if got, ok := GetCacheWarmingDelayMs(ttlMs); !ok || got != want {
@@ -291,11 +299,18 @@ func equalBools(a, b []bool) bool {
 	return true
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/cache-warmer.test.ts:147
 func TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions(t *testing.T) {
 	models := newCacheWarmingModels(t)
 	synctest.Test(t, func(t *testing.T) {
 		f := newFakeWarmRuntime(t)
-		transformHeaders := func(_ context.Context, headers ai.ProviderHeaders) (ai.ProviderHeaders, error) { return headers, nil }
+		transformHeaders := func(_ context.Context, headers ai.ProviderHeaders) (ai.ProviderHeaders, error) {
+			if headers == nil {
+				headers = ai.ProviderHeaders{}
+			}
+			headers["X-Preserved-Transform"] = new("original")
+			return headers, nil
+		}
 		requestCtx, cancelRequest := context.WithCancel(context.Background())
 		defer cancelRequest()
 		f.warmer.Start(warmRequest(models.adaptive, ai.StreamOptions{Thinking: ai.ThinkingHigh, SessionID: "s", TransformHeaders: transformHeaders}), alwaysCurrent)
@@ -308,6 +323,10 @@ func TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions(t *testing.T) 
 		call := record.calls[0]
 		if call.model != models.adaptive || call.options.Thinking != ai.ThinkingHigh || call.options.SessionID != "s" || call.options.TransformHeaders == nil || call.options.MaxTokens != 1 {
 			t.Fatalf("warm request = %+v", call.options)
+		}
+		headers, err := call.options.TransformHeaders(call.ctx, nil)
+		if err != nil || headers["X-Preserved-Transform"] == nil || *headers["X-Preserved-Transform"] != "original" {
+			t.Fatalf("preserved transform returned %v, %v", headers, err)
 		}
 		if got := ai.ProviderMaxRetries(call.ctx); got != 0 {
 			t.Fatalf("warm request maxRetries = %d, want 0", got)
@@ -325,7 +344,7 @@ func TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions(t *testing.T) 
 		if len(record.appended) != 1 || record.appended[0].Kind != "cache_warm" || record.appended[0].Provider != "anthropic" || record.appended[0].Model != models.adaptive.ID || record.appended[0].Usage != warmUsage || record.appended[0].Note != "" {
 			t.Fatalf("appended usage = %+v", record.appended)
 		}
-		if len(record.warmed) != 1 || record.warmed[0].ID != record.appended[0].ID {
+		if len(record.warmed) != 1 || !reflect.DeepEqual(record.warmed[0], record.appended[0]) {
 			t.Fatalf("onWarmed = %+v, want the appended entry", record.warmed)
 		}
 		advance(270 * time.Second)
@@ -336,6 +355,7 @@ func TestCacheWarmingReplaysProfitableRequestsAndPreservesOptions(t *testing.T) 
 	})
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/cache-warmer.test.ts:182
 func TestCacheWarmingSkipsRefreshesAfterTheirSafeDeadline(t *testing.T) {
 	models := newCacheWarmingModels(t)
 	synctest.Test(t, func(t *testing.T) {
@@ -355,6 +375,7 @@ func TestCacheWarmingSkipsRefreshesAfterTheirSafeDeadline(t *testing.T) {
 	})
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/cache-warmer.test.ts:200
 func TestCacheWarmingRechecksTheDeadlineAfterAnExtensionDecision(t *testing.T) {
 	models := newCacheWarmingModels(t)
 	synctest.Test(t, func(t *testing.T) {
@@ -374,6 +395,7 @@ func TestCacheWarmingRechecksTheDeadlineAfterAnExtensionDecision(t *testing.T) {
 	})
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/cache-warmer.test.ts:220
 func TestCacheWarmingAppliesEconomicDecisionsAndExtensionOverrides(t *testing.T) {
 	models := newCacheWarmingModels(t)
 	synctest.Test(t, func(t *testing.T) {
@@ -412,6 +434,7 @@ func TestCacheWarmingAppliesEconomicDecisionsAndExtensionOverrides(t *testing.T)
 	})
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/cache-warmer.test.ts:255
 func TestCacheWarmingStopsForUnsupportedRequestsContextChangesAndModeChanges(t *testing.T) {
 	models := newCacheWarmingModels(t)
 	synctest.Test(t, func(t *testing.T) {
@@ -466,6 +489,7 @@ func TestCacheWarmingStopsForUnsupportedRequestsContextChangesAndModeChanges(t *
 	})
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/cache-warmer.test.ts:285
 func TestCacheWarmingAbortsReplacedRequestsAndSkipsFailedRefreshes(t *testing.T) {
 	models := newCacheWarmingModels(t)
 	synctest.Test(t, func(t *testing.T) {
@@ -500,6 +524,7 @@ func TestCacheWarmingAbortsReplacedRequestsAndSkipsFailedRefreshes(t *testing.T)
 	})
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/cache-warmer.test.ts:310
 func TestCacheWarmingFormatsStatusAndUsageEntries(t *testing.T) {
 	decision := &CacheWarmingDecision{
 		Phase: "idle", WarmCost: 0.013, MissCost: 0.621, ContinuationProbability: 0.6,

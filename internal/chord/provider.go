@@ -36,6 +36,7 @@ func KeyedService[T any](def pico3.ServiceDefinition[T]) ServiceProviderDefiniti
 type instanceMember struct {
 	kind   string
 	method reflect.Value
+	invoke func(context.Context, []json.RawMessage) (json.RawMessage, error)
 	state  *stateCore
 }
 
@@ -320,7 +321,43 @@ func (provider *RemoteServiceProvider) Invoke(ctx context.Context, call ServiceC
 	if member.kind != MemberMethod {
 		return nil, remoteError(ErrServiceMemberMismatch, "Remote service member %s.%s is not a method", call.ServiceId, call.Member)
 	}
+	if member.invoke != nil {
+		return invokeFacetMember(ctx, call.Args, member.invoke)
+	}
 	return invokeMethod(ctx, call, member.method)
+}
+
+// BeginInvoke applies Invoke's allowlist, instance and member checks, then delegates admission to an implementation that exposes it. Implementations without an admission boundary are rejected rather than started on a prematurely signalled goroutine.
+func (provider *RemoteServiceProvider) BeginInvoke(ctx context.Context, call ServiceCall) (*ServiceInvocation, error) {
+	provider.mu.Lock()
+	if provider.disposed {
+		provider.mu.Unlock()
+		return nil, errors.New("Remote service provider is disposed")
+	}
+	registration, ok := provider.registrations[call.ServiceId]
+	if !ok {
+		provider.mu.Unlock()
+		return nil, remoteError(ErrServiceNotAllowed, "Remote service %s is not allowlisted", call.ServiceId)
+	}
+	instance, err := resolveInstance(registration, call.Instance)
+	if err != nil {
+		provider.mu.Unlock()
+		return nil, err
+	}
+	member, ok := instance.members[call.Member]
+	implementation := instance.implementation
+	provider.mu.Unlock()
+	if !ok {
+		return nil, remoteError(ErrServiceMemberNotFound, "Unknown remote service member %s.%s", call.ServiceId, call.Member)
+	}
+	if member.kind != MemberMethod {
+		return nil, remoteError(ErrServiceMemberMismatch, "Remote service member %s.%s is not a method", call.ServiceId, call.Member)
+	}
+	initiator, ok := implementation.(ServiceMemberInitiator)
+	if !ok {
+		return nil, ErrInvocationAdmissionUnavailable
+	}
+	return initiator.BeginServiceMember(ctx, call.Member, call.Args)
 }
 
 func invokeMethod(ctx context.Context, call ServiceCall, method reflect.Value) (result json.RawMessage, err error) {
@@ -481,7 +518,7 @@ func (provider *RemoteServiceProvider) Dispose() error {
 	provider.registrations = map[string]*serviceRegistration{}
 	provider.mu.Unlock()
 	if len(errs) > 1 {
-		return fmt.Errorf("Failed to dispose remote service provider: %w", errors.Join(errs...))
+		return NewAggregateError("Failed to dispose remote service provider", errs)
 	}
 	return joinErrors(errs)
 }
@@ -598,7 +635,7 @@ func (provider *RemoteServiceProvider) deliverUnlocking(jobs []deliveryJob) erro
 	provider.drainer = 0
 	provider.mu.Unlock()
 	if len(errs) > 1 {
-		return fmt.Errorf("%s: %w", message, errors.Join(errs...))
+		return NewAggregateError(message, errs)
 	}
 	return joinErrors(errs)
 }
@@ -616,7 +653,7 @@ func (provider *RemoteServiceProvider) runJobsUnlocking(jobs []deliveryJob) erro
 	}
 	provider.mu.Unlock()
 	if len(errs) > 1 {
-		return fmt.Errorf("%s: %w", message, errors.Join(errs...))
+		return NewAggregateError(message, errs)
 	}
 	return joinErrors(errs)
 }
@@ -790,6 +827,9 @@ var (
 // Go method sets. When T is an interface, exactly its methods are members;
 // otherwise the implementation's exported method set is used.
 func classifyImplementation[T any](serviceId string, implementation T) (classifiedImplementation, error) {
+	if dynamic, ok := any(implementation).(*FacetServiceImplementation); ok {
+		return classifyFacetImplementation(serviceId, dynamic)
+	}
 	value := reflect.ValueOf(implementation)
 	if !value.IsValid() || ((value.Kind() == reflect.Pointer || value.Kind() == reflect.Interface) && value.IsNil()) {
 		return classifiedImplementation{}, fmt.Errorf("Remote service %s implementation must be an object", serviceId)

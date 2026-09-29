@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
 )
 
@@ -22,7 +23,7 @@ func stripANSITest(s string) string {
 func TestRenderReadLinesCollapsedShowsNoContent(t *testing.T) {
 	d := &tools.ReadDetails{Path: "main.go", StartLine: 1, TotalLines: 3}
 	content := "line one\nline two\nline three"
-	r := toolBodyRenderer("read", agent.AgentToolResult{Details: d, Content: content}, nil)
+	r := toolBodyRenderer("read", agent.AgentToolResult{Details: d, Content: []ai.ToolResultMessageContent{ai.TextContent{Text: content}}}, nil)
 	if r == nil {
 		t.Fatal("expected renderer for read with ReadDetails")
 	}
@@ -171,7 +172,7 @@ func TestWriteRendererDoesNotRenderResultMetadata(t *testing.T) {
 func TestReadRendererMatchesUpstreamBody(t *testing.T) {
 	d := &tools.ReadDetails{Path: "a.go", StartLine: 1, TotalLines: 3}
 	content := "alpha\nbeta\ngamma"
-	r := toolBodyRenderer("read", agent.AgentToolResult{Details: d, Content: content}, nil)
+	r := toolBodyRenderer("read", agent.AgentToolResult{Details: d, Content: []ai.ToolResultMessageContent{ai.TextContent{Text: content}}}, nil)
 	if r == nil {
 		t.Fatal("expected renderer for read")
 	}
@@ -223,7 +224,7 @@ func TestReadRendererTruncationWarnings(t *testing.T) {
 func TestReadRendererUsesScopedResetsInsideBgPaint(t *testing.T) {
 	d := &tools.ReadDetails{Path: "a.go", StartLine: 1, TotalLines: 4}
 	content := "package main\n\nfunc main() {}\n"
-	r := toolBodyRenderer("read", agent.AgentToolResult{Details: d, Content: content}, nil)
+	r := toolBodyRenderer("read", agent.AgentToolResult{Details: d, Content: []ai.ToolResultMessageContent{ai.TextContent{Text: content}}}, nil)
 	out := strings.Join(r(80, true), "\n")
 	if strings.Contains(out, "\x1b[0m") {
 		t.Fatalf("read renderer should avoid full SGR resets inside bg-painted tool output; got %q", out)
@@ -326,7 +327,7 @@ func TestRenderDiffString_ContextLines(t *testing.T) {
 // that shows the preview when collapsed and full content when expanded.
 func TestToolBodyRendererWithPreview(t *testing.T) {
 	result := agent.AgentToolResult{
-		Content: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\n",
+		Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "line 1\nline 2\nline 3\nline 4\nline 5\nline 6\nline 7\nline 8\nline 9\nline 10\n"}},
 		Preview: "# Session TOC\n| turn | time | user |\n|---:|---|---|\n| 1 | 00:01 | hello |",
 	}
 	renderer := toolBodyRenderer("read_session", result, nil)
@@ -362,9 +363,8 @@ func TestToolBodyRendererWithPreview(t *testing.T) {
 // fallback: unknown tools without Preview get nil (TUI handles them
 // with the generic collapsed preview in ToolExecutionComponent).
 func TestToolBodyRendererWithoutPreviewReturnsNil(t *testing.T) {
-	result := agent.AgentToolResult{
-		Content: "some output\n",
-	}
+	result := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "some output\n"}}}
+
 	renderer := toolBodyRenderer("custom_tool", result, nil)
 	if renderer != nil {
 		t.Errorf("expected nil renderer for unknown tool without Preview")

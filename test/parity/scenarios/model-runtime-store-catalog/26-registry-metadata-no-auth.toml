@@ -1,0 +1,23 @@
+# Pi 0.87.1 model-registry.test.ts:1932,1979 requires catalog/status queries to leave command-backed keys unevaluated. The upstream-first probe observed zero executions; Go initially executed the command once.
+# The fixture also asserts request-only resolution counts, stored-key precedence, command error text, isolated composition errors, empty fallback arrays and the Copilot account filter. JSON keys are sorted; no values are normalized.
+name = "26-registry-metadata-no-auth"
+description = "Registry metadata is side-effect-free; request auth, diagnostics and account filters match Pi."
+covers = ["packages/coding-agent/src/core/model-registry.ts", "packages/coding-agent/src/core/model-runtime.ts", "packages/coding-agent/src/core/provider-composer.ts", "packages/coding-agent/src/core/resolve-config-value.ts", "packages/ai/src/providers/github-copilot.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/registry-metadata.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/registry-metadata.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

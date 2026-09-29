@@ -16,8 +16,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/tui"
@@ -117,11 +119,46 @@ type extensionDialogResult struct {
 // their call initiated once the dialog is queued for installation.
 func (u *ExtUIContext) ReportsDialogInitiation() bool { return true }
 
+// dialogCountdown is a dialog's timeout option. As upstream's CountdownTimer
+// does, tick shows the seconds left and expire cancels the dialog.
+type dialogCountdown struct {
+	timeout time.Duration
+	tick    func(seconds int)
+	expire  func()
+}
+
+// dialogTimeout reads ExtensionUIDialogOptions.timeout. Upstream's interactive
+// dialogs count down only for a positive number of milliseconds
+// (extension-selector.ts:56, extension-input.ts:60).
+func dialogTimeout(opts extension.ExtensionUIDialogOptions) time.Duration {
+	if opts == nil {
+		return 0
+	}
+	data, err := json.Marshal(opts)
+	if err != nil {
+		return 0
+	}
+	var value struct {
+		Timeout float64 `json:"timeout"`
+	}
+	if json.Unmarshal(data, &value) != nil || !(value.Timeout > 0) {
+		return 0
+	}
+	// The countdown shows whole seconds; a timeout beyond Duration's range
+	// counts down from its largest.
+	longest := time.Duration(math.MaxInt64) - time.Second
+	if value.Timeout >= float64(longest/time.Millisecond) {
+		return longest
+	}
+	return time.Duration(value.Timeout * float64(time.Millisecond))
+}
+
 func (u *ExtUIContext) runDialog(
 	ctx context.Context,
 	component tui.Component,
 	handle func(string),
 	result func() (value string, done, cancelled bool),
+	countdown dialogCountdown,
 ) (string, error) {
 	if u.m.layout == nil || u.m.tuiInst == nil {
 		return "", fmt.Errorf("no TUI available")
@@ -129,14 +166,12 @@ func (u *ExtUIContext) runDialog(
 	if ctx == nil {
 		ctx = context.Background()
 	}
+	// The dialog's context ends when it returns, which disposes its countdown.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
 	if u.m.runCtx != nil {
-		merged, cancel := context.WithCancel(ctx)
 		stop := context.AfterFunc(u.m.runCtx, cancel)
-		defer func() {
-			stop()
-			cancel()
-		}()
-		ctx = merged
+		defer stop()
 	}
 
 	resultCh := make(chan extensionDialogResult, 1)
@@ -150,21 +185,42 @@ func (u *ExtUIContext) runDialog(
 			return
 		}
 
-		u.m.setExtensionDialogViewMode(true, u.m.extensionDialogLines(component))
-		u.m.editorContainer.SetChildren(component)
-		u.m.extensionDialog = &extensionDialog{component: component}
-		u.m.extensionDialog.handle = func(data string) {
-			handle(data)
+		var timer *tui.CountdownTimer
+		finish := func() {
 			value, done, cancelled := result()
 			if !done {
 				u.m.tuiInst.Render()
 				return
+			}
+			if timer != nil {
+				timer.Dispose()
 			}
 			u.m.extensionDialog = nil
 			u.m.editorContainer.SetChildren(u.m.editor)
 			u.m.setExtensionDialogViewMode(false, 0)
 			u.m.tuiInst.RequestRender()
 			resultCh <- extensionDialogResult{value: value, cancelled: cancelled}
+		}
+		u.m.setExtensionDialogViewMode(true, u.m.extensionDialogLines(component))
+		u.m.editorContainer.SetChildren(component)
+		u.m.extensionDialog = &extensionDialog{component: component}
+		u.m.extensionDialog.handle = func(data string) {
+			handle(data)
+			finish()
+		}
+		if countdown.timeout > 0 {
+			// Each second runs on this loop, so expiry replaces the dialog
+			// before any frame shows a zero countdown.
+			timer = tui.NewCountdownTimer(countdown.timeout, func(second func()) {
+				_ = u.m.postToMain(ctx, second)
+			}, func(seconds int) {
+				countdown.tick(seconds)
+				u.m.tuiInst.RequestRender()
+			}, func() {
+				countdown.expire()
+				finish()
+			})
+			context.AfterFunc(ctx, timer.Dispose)
 		}
 		u.m.tuiInst.Render()
 	})
@@ -206,12 +262,13 @@ func (u *ExtUIContext) runDialog(
 // the user picks an option or cancels (Esc). Mirrors upstream's
 // showExtensionSelector in interactive-mode.ts using the
 // standalone ExtensionSelectorComponent (NO filter input, fixed
-// title row, fixed hint row).
-func (u *ExtUIContext) Select(ctx context.Context, title string, options []string, _ extension.ExtensionUIDialogOptions) (string, error) {
-	sel := tui.NewExtensionSelector(title, options)
+// title row, fixed hint row). A positive opts timeout counts down in the
+// title and cancels the selector when it expires.
+func (u *ExtUIContext) Select(ctx context.Context, title string, options []string, opts extension.ExtensionUIDialogOptions) (string, error) {
+	sel := tui.NewExtensionSelector(title, options, u.m.toggleAllTools)
 	return u.runDialog(ctx, sel, sel.HandleInput, func() (string, bool, bool) {
 		return sel.SelectedValue(), sel.Done(), sel.Cancelled()
-	})
+	}, dialogCountdown{timeout: dialogTimeout(opts), tick: sel.SetCountdown, expire: sel.Cancel})
 }
 
 // Confirm shows a Yes/No selector. Mirrors upstream's
@@ -230,12 +287,13 @@ func (u *ExtUIContext) Confirm(ctx context.Context, title, message string, opts 
 
 // Input shows a text input in the editor slot. Blocks until the user
 // submits (Enter) or cancels (Esc). Mirrors upstream's
-// showExtensionInput in interactive-mode.ts.
-func (u *ExtUIContext) Input(ctx context.Context, title, placeholder string, _ extension.ExtensionUIDialogOptions) (string, error) {
+// showExtensionInput in interactive-mode.ts. A positive opts timeout counts
+// down in the title and cancels the input when it expires.
+func (u *ExtUIContext) Input(ctx context.Context, title, placeholder string, opts extension.ExtensionUIDialogOptions) (string, error) {
 	input := tui.NewExtensionInputComponent(title, placeholder)
 	return u.runDialog(ctx, input, input.HandleInput, func() (string, bool, bool) {
 		return input.Text(), input.Done(), input.Cancelled()
-	})
+	}, dialogCountdown{timeout: dialogTimeout(opts), tick: input.SetCountdown, expire: input.Cancel})
 }
 
 // Editor shows a multi-line editor in the editor slot. Mirrors upstream's
@@ -243,9 +301,12 @@ func (u *ExtUIContext) Input(ctx context.Context, title, placeholder string, _ e
 // ExtensionEditorComponent and swaps it into the editorContainer.
 func (u *ExtUIContext) Editor(ctx context.Context, title, prefill string) (string, error) {
 	ed := tui.NewExtensionEditorComponent(title, prefill)
+	ed.SetExternalEditor(func(content string, apply func(string)) {
+		u.m.openExternalEditorBuffer(ctx, content, apply)
+	})
 	return u.runDialog(ctx, ed, ed.HandleInput, func() (string, bool, bool) {
 		return ed.Value(), ed.Done(), ed.Cancelled()
-	})
+	}, dialogCountdown{})
 }
 
 // ─── Notifications & Status ──────────────────────────────────────────────────
@@ -322,17 +383,20 @@ func (u *ExtUIContext) SetFooter(factory any) {
 	if u.m.extFooter == nil {
 		return
 	}
-	if frame, ok := widthLines(factory); ok && len(frame.Lines) > 0 {
-		u.m.extFooter.SetLinesAt(frame.Lines, frame.Width)
+	// Upstream setExtensionFooter swaps the built-in footer for the
+	// extension's component whatever it renders, so a frame with no lines
+	// is an empty footer; only a cleared footer (nil) restores the built-in. Ownership changes before SetLinesAt, whose invalidation callback can paint synchronously.
+	if frame, ok := widthLines(factory); ok {
 		if u.m.statusLine != nil {
 			u.m.statusLine.SetSuppressedByExtFooter(true)
 		}
+		u.m.extFooter.SetLinesAt(frame.Lines, frame.Width)
 		return
 	}
-	u.m.extFooter.SetLines(nil)
 	if u.m.statusLine != nil {
 		u.m.statusLine.SetSuppressedByExtFooter(false)
 	}
+	u.m.extFooter.SetLines(nil)
 }
 
 func (u *ExtUIContext) SetHeader(factory any) {
@@ -355,6 +419,7 @@ func (u *ExtUIContext) SetLogin(definition extension.LoginDefinition) error {
 		return extension.ErrUIUnavailable
 	}
 	if !u.m.opts.LoginVisible {
+		u.m.extHeader.SetLines(nil)
 		return nil
 	}
 	options := u.m.opts.LoginHeaderOptions
@@ -405,17 +470,7 @@ func (u *ExtUIContext) Custom(_ context.Context, _ any, _ any) (any, error) {
 	return nil, fmt.Errorf("custom extension components require subprocess RunRemoteOverlay or in-process implementation")
 }
 
-// RunRemoteOverlay opens a remote-backed overlay (used by the
-// subprocess bridge to implement ctx.ui.custom from TypeScript
-// extensions). Blocks until the remote producer signals close.
-//
-// The input loop runs in this goroutine: safe because subprocess
-// extension calls are dispatched from the host read loop, which is
-// distinct from the interactive Run() loop. While this overlay is
-// open, the originating /command or event handler is awaiting its
-// response on Node, so the interactive editor is idle and the
-// goroutine that opens this overlay has exclusive read access to
-// os.Stdin (same invariant as Select/Input/Editor above).
+// RunRemoteOverlay mounts remote custom UI as an overlay or editor-slot replacement and waits for its result. The owner loop mounts the component and transfers renderer focus; this caller drains its modal input lease off-loop. Normal completion restores the editor slot and focus before returning.
 func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, host extension.RemoteOverlayHost, onHandle func(extension.RemoteOverlayHandle)) (any, bool) {
 	if u.m.tuiInst == nil {
 		return nil, false
@@ -433,9 +488,7 @@ func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, hos
 	if host != nil {
 		overlay.SetOnInput(host.OnInput)
 	}
-	if onHandle != nil {
-		onHandle(overlay)
-	}
+	defer overlay.setInputActive(u.m, false)
 
 	ctx := u.m.runCtx
 	runOnOwner := u.m.runOnMain
@@ -448,14 +501,20 @@ func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, hos
 		var cleanup func()
 		if opts.Overlay || u.m.layout == nil {
 			h := u.m.tuiInst.OpenOverlay(overlay, remoteOverlayTUIOptions(opts))
+			u.bindOverlayControls(overlay, h, runOnOwner)
 			cleanup = h.Close
 		} else {
 			// Match upstream ctx.ui.custom(): replace the editor slot directly
 			// rather than wrapping the component in a second modal shell.
 			u.m.editorContainer.SetChildren(overlay)
-			cleanup = func() { u.m.editorContainer.SetChildren(u.m.editor) }
+			// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:showExtensionCustom
+			u.m.tuiInst.SetFocus(overlay)
+			overlay.setInputActive(u.m, true)
+			cleanup = func() {
+				u.m.editorContainer.SetChildren(u.m.editor)
+				u.m.tuiInst.SetFocus(u.m.editor)
+			}
 		}
-		u.m.tuiInst.Render()
 		setup <- cleanup
 	})
 	var cleanup func()
@@ -477,13 +536,32 @@ func (u *ExtUIContext) RunRemoteOverlay(opts extension.RemoteOverlayOptions, hos
 		}
 	}()
 
-	inputCh, releaseInput := u.m.acquireModalInputChannel()
-	defer releaseInput()
+	if onHandle != nil {
+		onHandle(overlay)
+	}
+	runOnOwner(ctx, func() { u.m.tuiInst.Render() })
 
 	for !overlay.Done() {
+		inputCh, changed := overlay.inputRoute()
 		select {
+		case <-changed:
+		case <-ctx.Done():
+			return nil, false
 		case buf := <-inputCh:
-			dispatchModalInput(overlay, []string{string(buf)}, overlay.HandleInput, overlay.Done)
+			data := string(buf)
+			if tui.ParseTerminalColorSchemeReport(data) != "" || tui.IsOsc11BackgroundColorResponse(data) {
+				consumed := make(chan bool, 1)
+				runOnOwner(ctx, func() { consumed <- u.m.consumeTerminalThemeInput(data) })
+				select {
+				case handled := <-consumed:
+					if handled {
+						continue
+					}
+				case <-ctx.Done():
+					return nil, false
+				}
+			}
+			dispatchModalInput(overlay, []string{data}, overlay.HandleInput, overlay.Done)
 		case <-overlay.Closed():
 			// The extension closed its own overlay. Without this the loop stays
 			// parked on inputCh and the caller only unblocks when the user
@@ -514,9 +592,13 @@ func (u *ExtUIContext) SetEditorText(text string) {
 	}
 }
 
+// GetEditorText reads owner-published expanded text after binding, including paste contents. Before binding the caller owns the editor directly.
 func (u *ExtUIContext) GetEditorText() string {
+	if snapshot := u.m.editorSnapshot.Load(); snapshot != nil {
+		return *snapshot
+	}
 	if u.m.editor != nil {
-		return u.m.editor.Text()
+		return u.m.editor.GetExpandedText()
 	}
 	return ""
 }
@@ -541,90 +623,12 @@ func (u *ExtUIContext) OnRemoteTerminalInput(extensionName string, handler exten
 
 // ─── Autocomplete ────────────────────────────────────────────────────────────
 
-// asyncSourceAdapter bridges an extension.AsyncSuggestionSource (with
-// extension.AutocompleteSuggestions) into the tui package's
-// AsyncSuggestionSource (with tui.AutocompleteSuggestions). Defined
-// here so neither package needs to depend on the other.
-type asyncSourceAdapter struct {
-	src extension.AsyncSuggestionSource
-}
-
-func (a *asyncSourceAdapter) Suggest(ctx context.Context, lines []string, line, col int) *tui.AutocompleteSuggestions {
-	out := a.src.Suggest(ctx, lines, line, col)
-	if out == nil {
-		return nil
-	}
-	items := make([]tui.AutocompleteItem, 0, len(out.Items))
-	for _, it := range out.Items {
-		items = append(items, tui.AutocompleteItem{
-			Value:       it.Value,
-			Label:       it.Label,
-			Description: it.Description,
-		})
-	}
-	return &tui.AutocompleteSuggestions{Items: items, Prefix: out.Prefix}
-}
-
-// AddAutocompleteProvider accepts subprocess async suggestion sources. It does not instantiate an in-process provider factory.
-func (u *ExtUIContext) AddAutocompleteProvider(factory extension.AutocompleteProviderFactory) {
-	if u.m.editor == nil {
-		return
-	}
-	src, ok := factory.(extension.AsyncSuggestionSource)
-	if !ok {
-		return
-	}
-	// Install the async-apply scheduler once so extension-supplied async
-	// suggestion results are applied + rendered on the main loop, never
-	// from the worker goroutine that produced them.
-	if u.m.tuiInst != nil {
-		u.m.editor.SetAsyncApply(func(apply func()) {
-			u.m.postUITask(func() { apply(); u.m.tuiInst.Render() })
-		})
-	}
-	u.m.editor.AddAsyncSuggestionSource(&asyncSourceAdapter{src: src})
-}
-
+// SetEditorComponent installs an extension's editor component in place of
+// the editor, or with nil restores the editor, as Pi's setEditorComponent
+// does (remote_editor.go).
 func (u *ExtUIContext) SetEditorComponent(factory any) {
-	if u.m.editor == nil {
-		return
-	}
-	if factory == nil {
-		u.m.editor.ClearExtensionDecorations()
-		if u.m.tuiInst != nil {
-			u.m.tuiInst.Render()
-		}
-		return
-	}
-	// Subprocess shim path: the bridge passes a structured payload
-	// (map[string]any) containing already-rendered decoration ANSI
-	// codes and optional history entries. Other shapes are ignored.
-	payload, ok := factory.(map[string]any)
-	if !ok {
-		return
-	}
-	if hist, ok := payload["history"].([]string); ok {
-		for _, h := range hist {
-			u.m.editor.AddToHistory(h)
-		}
-	}
-	deco, _ := payload["decoration"].(map[string]any)
-	if deco != nil {
-		label, _ := deco["label"].(string)
-		labelPrefix, _ := deco["labelPrefix"].(string)
-		labelSuffix, _ := deco["labelSuffix"].(string)
-		borderPrefix, _ := deco["borderPrefix"].(string)
-		borderSuffix, _ := deco["borderSuffix"].(string)
-		lockBorder, _ := deco["lockBorder"].(bool)
-		u.m.editor.SetExtensionModeLabel(label, labelPrefix, labelSuffix)
-		u.m.editor.SetExtensionBorderColor(borderPrefix, borderSuffix)
-		if lockBorder {
-			u.m.editor.LockExtensionBorderColor()
-		}
-	}
-	if u.m.tuiInst != nil {
-		u.m.tuiInst.Render()
-	}
+	editor, _ := factory.(extension.RemoteEditor)
+	u.m.runOnMain(u.m.backgroundCtx, func() { u.m.setRemoteEditor(editor) })
 }
 
 func (u *ExtUIContext) GetEditorComponent() any {
@@ -651,8 +655,12 @@ func ActiveExtensionTheme() extension.Theme {
 	if theme == nil {
 		return nil
 	}
+	return extensionThemePalette(theme)
+}
+
+func extensionThemePalette(theme *tui.Theme) extension.Theme {
 	foregrounds, backgrounds := theme.ANSIPalette()
-	return map[string]any{
+	palette := map[string]any{
 		"name":        theme.Name,
 		"foregrounds": foregrounds,
 		"backgrounds": backgrounds,
@@ -662,6 +670,14 @@ func ActiveExtensionTheme() extension.Theme {
 		// mode is upstream Theme.getColorMode().
 		"mode": themeColorMode(),
 	}
+	// sourcePath is upstream Theme.sourcePath: the file a custom theme was
+	// loaded from, absent for built-in themes.
+	if reg := tui.ActiveThemeRegistry(); reg != nil {
+		if path := reg.PathOf(theme.Name); path != "" {
+			palette["sourcePath"] = path
+		}
+	}
+	return palette
 }
 
 // GetAllThemes lists the themes the user can switch to, mirroring upstream's
@@ -680,25 +696,21 @@ func (u *ExtUIContext) GetAllThemes() []extension.ThemeMeta {
 	return metas
 }
 
-// GetTheme loads a theme by name without switching to it, mirroring upstream's
-// getTheme (getThemeByName).
+// GetTheme loads a theme's portable palette without selecting it. Missing names return absence, as Pi's getThemeByName does.
 func (u *ExtUIContext) GetTheme(name string) (extension.Theme, error) {
 	reg := tui.ActiveThemeRegistry()
 	if reg == nil {
-		return nil, fmt.Errorf("no theme registry is active")
+		return nil, nil
 	}
 	theme := reg.Get(name)
 	if theme == nil {
-		return nil, fmt.Errorf("unknown theme %q", name)
+		return nil, nil
 	}
-	return theme, nil
+	return extensionThemePalette(theme), nil
 }
 
-// SetTheme switches the active theme and persists the choice, mirroring
-// upstream's setTheme: apply, then record it in settings when it differs.
-//
-// Upstream also accepts a Theme instance. A subprocess extension cannot send
-// one, and no in-process caller does, so only the name form is accepted.
+// SetTheme disables automatic switching, applies a named theme, and persists a successful choice.
+// An unknown name falls back to dark and returns failure without changing the stored selection.
 func (u *ExtUIContext) SetTheme(theme any) extension.SetThemeResult {
 	name, ok := theme.(string)
 	if !ok {
@@ -707,17 +719,24 @@ func (u *ExtUIContext) SetTheme(theme any) extension.SetThemeResult {
 	if u.m == nil {
 		return extension.SetThemeResult{Success: false, Error: "no interactive UI is active"}
 	}
-	if _, isAuto := parseAutoThemeName(name); !isAuto {
-		reg := tui.ActiveThemeRegistry()
-		if reg == nil || reg.Get(name) == nil {
-			return extension.SetThemeResult{Success: false, Error: fmt.Sprintf("unknown theme %q", name)}
+	u.m.setAutoSync(false)
+	reg := tui.ActiveThemeRegistry()
+	found := reg != nil && reg.Get(name) != nil
+	tui.SetThemeByName(name, true)
+	activeName := tui.ActiveTheme().Name
+	u.m.themeState.activeThemeName.Store(&activeName)
+	if u.m.tuiInst != nil {
+		invalidate := func() { u.m.tuiInst.Invalidate(); u.m.tuiInst.RequestRender() }
+		if u.m.runCtx == nil {
+			invalidate()
+		} else {
+			u.m.runOnMain(u.m.runCtx, invalidate)
 		}
 	}
-
-	tui.SetThemeSetting(name)
-	if u.m.tuiInst != nil {
-		u.m.tuiInst.ForceFullRender()
+	if !found {
+		return extension.SetThemeResult{Success: false, Error: "Theme not found: " + name}
 	}
+	u.m.themeState.currentThemeSetting.Store(&name)
 
 	if u.m.opts.SettingsManager != nil && u.m.opts.Settings.Theme != name {
 		if err := u.m.opts.SettingsManager.UpdateGlobal(func(gs *Settings) {
@@ -728,13 +747,6 @@ func (u *ExtUIContext) SetTheme(theme any) extension.SetThemeResult {
 		u.m.opts.Settings.Theme = name
 	}
 	return extension.SetThemeResult{Success: true}
-}
-
-// parseAutoThemeName reports whether name is an "automatic" theme setting,
-// which follows terminal appearance instead of naming a registry entry.
-func parseAutoThemeName(name string) (string, bool) {
-	light, _, ok := tui.ParseAutoThemeSetting(name)
-	return light, ok
 }
 
 // ─── Tools state ─────────────────────────────────────────────────────────────

@@ -19,17 +19,9 @@ import (
 
 // TestPrintModeSignalExitCodes pins print mode's termination contract.
 //
-// Upstream's print mode registers SIGTERM (plus SIGHUP off win32) and exits
-// 128+signum after disposing its runtime, and leaves SIGINT to Node's default
-// handler, which also exits 128+signum:
-//
-//	packages/coding-agent/src/modes/print-mode.ts
-//	  process.exit(signal === "SIGHUP" ? 129 : 143)
-//
-// The exit code is the only way a caller: a CI timeout, a supervisor, a shell
-// pipeline: can tell "something killed the run" from "the run failed". pig
-// previously cancelled its root context and returned the resulting error, so
-// every signal produced exit 1 and printed "error: context canceled".
+// Pi 0.87.1 print-mode.ts:49-64 handles SIGTERM/SIGHUP with numeric
+// 128+signum exits but leaves SIGINT to the default signal action. Process
+// wait status distinguishes that action from a normal exit with code 130.
 func TestPrintModeSignalExitCodes(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping signal exit-code test in short mode")
@@ -43,7 +35,7 @@ func TestPrintModeSignalExitCodes(t *testing.T) {
 	}{
 		{"SIGTERM", syscall.SIGTERM, 143},
 		{"SIGHUP", syscall.SIGHUP, 129},
-		{"SIGINT", syscall.SIGINT, 130},
+		{"SIGINT", syscall.SIGINT, -1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			workDir := t.TempDir()
@@ -84,6 +76,12 @@ func TestPrintModeSignalExitCodes(t *testing.T) {
 			var exitErr *exec.ExitError
 			if !errors.As(err, &exitErr) {
 				t.Fatalf("wait = %v, want an exit error carrying %d", err, tc.want)
+			}
+			if tc.signal == syscall.SIGINT {
+				status, ok := exitErr.Sys().(syscall.WaitStatus)
+				if !ok || !status.Signaled() || status.Signal() != syscall.SIGINT {
+					t.Fatalf("wait status = %v, want SIGINT termination", exitErr.Sys())
+				}
 			}
 			if got := exitErr.ExitCode(); got != tc.want {
 				t.Errorf("exit code = %d, want %d (upstream print-mode contract)", got, tc.want)

@@ -13,7 +13,7 @@ passes its page sources and generated docs data), and fails on:
              command", ...) outside the allowlist below
   governance sponsorship, OSPO approval, community ownership, endorsement, or
              signed releases stated without a negation on the same line
-  version    a Pi version other than the pin in coding/pigversion/pigversion.go
+  version    a Pi version other than the pin in internal/coding/pigversion/pigversion.go
              (UpstreamReviewedVersion, read from coding/upstream.go, is
              accepted only on a line about review)
   numbers    a porting or verification percentage or ratio that differs from
@@ -52,7 +52,7 @@ PHRASES = [
 
 # Byte-level identity holds only for named outputs: tool definitions and their
 # order match Pi byte for byte, whole requests do not. The engineering ledgers
-# (DIVERGENCES.md, docs/*.md specs) use these words for single outputs pinned by
+# (docs/parity/DIVERGENCES.md, docs/*.md specs) use these words for single outputs pinned by
 # named tests, so the check applies them only to user-facing text.
 BYTE_PHRASES = [
     r"\bbyte[- ]for[- ]byte\b",
@@ -91,7 +91,7 @@ PERCENT = re.compile(r"(?<![\w.])(\d+(?:\.\d+)?)\s?%")
 RATIO = re.compile(r"\b(\d+)\s*(?:/|of)\s*(\d+)\s+(?:intended-portable|upstream files|PORT_MAP|ported)")
 
 SKIP_DIRS = {"node_modules", "vendor", "public", ".next", "out"}
-SKIP_ROOT_FILES = {"AGENTS.md", "PORT_MAP.md", "THIRD_PARTY_NOTICES.md"}
+SKIP_ROOT_FILES = {"AGENTS.md", "docs/parity/PORT_MAP.md", "THIRD_PARTY_NOTICES.md"}
 # Generated text the site serves as is. The site's page sources and the docs
 # data it generates from docs/site/docs live in the private hosting
 # repository, whose CI passes them to this script as extra paths.
@@ -146,6 +146,7 @@ def coverage_block(root: pathlib.Path) -> Coverage:
 
 def public_files(root: pathlib.Path) -> list[pathlib.Path]:
     files = [p for p in sorted(root.glob("*.md")) if p.name not in SKIP_ROOT_FILES]
+    files += [root / name for name in (".github/CODE_OF_CONDUCT.md", ".github/CONTRIBUTING.md", ".github/SECURITY.md", ".github/SUPPORT.md") if (root / name).is_file()]
     for base in ("docs", "internal/pigdocs/content"):
         for directory, subdirs, names in os.walk(root / base):
             subdirs[:] = sorted(d for d in subdirs if d not in SKIP_DIRS)
@@ -331,7 +332,7 @@ def main() -> int:
     parser.add_argument("extra", nargs="*", type=pathlib.Path, help="additional Markdown files to audit")
     args = parser.parse_args()
     root = args.root
-    pinned = go_const(root, "UpstreamVersion", "coding/pigversion/pigversion.go")
+    pinned = go_const(root, "UpstreamVersion", "internal/coding/pigversion/pigversion.go")
     reviewed = go_const(root, "UpstreamReviewedVersion")
     cov = coverage_block(root)
 

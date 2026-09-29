@@ -3,8 +3,10 @@ package extension
 import (
 	"encoding/json"
 	"maps"
+	"reflect"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/scalarjson"
 )
 
 // ModelInfo projects one composed model into the complete extension-facing Pi Model shape.
@@ -25,7 +27,11 @@ func ModelInfo(model *ai.Model) map[string]any {
 			input = append(input, "image")
 		}
 	}
-	costTiers := append([]ai.CostTier(nil), model.Capabilities.CostTiers...)
+	cost := map[string]any{"input": model.Capabilities.InputCostPer1M, "output": model.Capabilities.OutputCostPer1M, "cacheRead": model.Capabilities.CacheReadCostPer1M, "cacheWrite": model.Capabilities.CacheWriteCostPer1M}
+	// Upstream's cost.tiers is absent unless the model defines tiers.
+	if len(model.Capabilities.CostTiers) > 0 {
+		cost["tiers"] = append([]ai.CostTier(nil), model.Capabilities.CostTiers...)
+	}
 	var headers any
 	if model.ProviderMeta.Headers != nil {
 		headers = maps.Clone(model.ProviderMeta.Headers)
@@ -41,7 +47,7 @@ func ModelInfo(model *ai.Model) map[string]any {
 		"reasoning":           model.ProviderMeta.Reasoning,
 		"thinkingLevelMap":    cloneThinkingLevelMap(model.ThinkingLevelMap),
 		"input":               input,
-		"cost":                map[string]any{"input": model.Capabilities.InputCostPer1M, "output": model.Capabilities.OutputCostPer1M, "cacheRead": model.Capabilities.CacheReadCostPer1M, "cacheWrite": model.Capabilities.CacheWriteCostPer1M, "tiers": costTiers},
+		"cost":                cost,
 		"promptCache":         maps.Clone(model.PromptCache),
 		"contextWindow":       model.Capabilities.ContextWindow,
 		"maxTokens":           model.Capabilities.MaxOutputTokens,
@@ -64,6 +70,10 @@ func cloneCompat(value *ai.ModelCompat) *ai.ModelCompat {
 	if value == nil {
 		return nil
 	}
+	scalar := *value
+	if scalarjson.CloneFields(reflect.ValueOf(&scalar).Elem()) {
+		return &scalar
+	}
 	data, err := json.Marshal(value)
 	if err != nil {
 		return nil
@@ -79,21 +89,43 @@ func cloneJSONMap(value map[string]any) map[string]any {
 	if value == nil {
 		return nil
 	}
-	cloned := make(map[string]any, len(value))
-	for key, item := range value {
-		cloned[key] = cloneJSONValue(item)
-	}
-	return cloned
+	return cloneJSONValue(value, make(map[any]any)).(map[string]any)
 }
 
-func cloneJSONValue(value any) any {
+// Active ancestors preserve cycles for the JSON encoder to reject. Completed subgraphs leave the table so repeated acyclic input keeps the existing independent-copy semantics.
+func cloneJSONValue(value any, ancestors map[any]any) any {
 	switch typed := value.(type) {
 	case map[string]any:
-		return cloneJSONMap(typed)
+		if typed == nil {
+			return map[string]any(nil)
+		}
+		identity := reflect.ValueOf(typed)
+		if previous, ok := ancestors[identity]; ok {
+			return previous
+		}
+		cloned := make(map[string]any, len(typed))
+		ancestors[identity] = cloned
+		defer delete(ancestors, identity)
+		for key, item := range typed {
+			cloned[key] = cloneJSONValue(item, ancestors)
+		}
+		return cloned
 	case []any:
 		cloned := make([]any, len(typed))
+		if len(typed) == 0 {
+			return cloned
+		}
+		identity := struct {
+			first  *any
+			length int
+		}{&typed[0], len(typed)}
+		if previous, ok := ancestors[identity]; ok {
+			return previous
+		}
+		ancestors[identity] = cloned
+		defer delete(ancestors, identity)
 		for i, item := range typed {
-			cloned[i] = cloneJSONValue(item)
+			cloned[i] = cloneJSONValue(item, ancestors)
 		}
 		return cloned
 	default:

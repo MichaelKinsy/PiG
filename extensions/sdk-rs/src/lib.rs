@@ -17,23 +17,41 @@
 //! }
 //! ```
 
+mod autocomplete;
+pub use autocomplete::{AutocompleteProvider, AutocompleteProviderFactory, AutocompleteSuggestions, AutocompleteCompletion, AutocompleteSuggestionsFn, AutocompleteApplyFn, AutocompleteFileTriggerFn};
+mod provider;
+pub use provider::{Provider, ProviderAuth, APIKeyAuth, OAuthAuth, APIKeyAuthInput, AuthContext, AuthResult, AuthCheck, AuthInteraction, ProviderStreamOptions, ProviderStreamFn, ProviderFilterFn, ProviderModel, ProviderResult, ProviderSignal, ProviderSignalSubscription, ModelsPublication, RefreshModelsContext};
+mod constrained_sampling;
+pub use constrained_sampling::ToolConstrainedSampling;
 mod context;
+mod events;
+mod session_manager;
+pub use session_manager::SessionManager;
 mod extension;
 mod login;
 mod oauth;
 mod protocol;
+mod theme;
 mod tool_render;
 mod transport;
+mod user_bash;
+
+mod js_string;
+pub use js_string::JsString;
 
 pub use context::{
-    CommandInfo, Context, ModelEventStream, ModelRegistry, RemoteComponent,
-    RemoteComponentInvalidate, RemoteComponentResult, SourceInfo, TerminalInputResult,
-    TerminalInputSubscription, ToolInfo, message_role, message_text,
+    CommandInfo, CompactCompleteHandler, CompactErrorHandler, CompactOptions, Context,
+    CustomMessage, DialogOptions, ExecOptions, ExecResult, ModelEventStream, ModelRegistry,
+    RemoteComponent, RemoteComponentInvalidate, RemoteComponentResult, SendMessageOptions,
+    SourceInfo, TerminalInputResult, TerminalInputSubscription, ToolInfo, message_role,
+    message_text,
 };
+pub use events::*;
 #[doc(hidden)]
 pub use extension::report_load_failure;
 pub use extension::{
-    CommandResult, Extension, Factory, ProjectTrustDecision, ProjectTrustResult, ToolResult,
+    CommandResult, Extension, Factory, FlagOptions, FlagType, MarkdownTransformContext, ProjectTrustDecision, ProjectTrustResult, ToolDefinition,
+    ToolHandler, ToolPrepareArguments, ToolResult,
 };
 pub use login::LoginDefinition;
 pub use oauth::{
@@ -42,6 +60,7 @@ pub use oauth::{
     OAuthProvider, OAuthRefreshFn, OAuthSelectOption, OAuthSelectPrompt,
 };
 pub use protocol::{AutocompleteItem, ConstrainedSampling, Schema, empty_schema};
+pub use theme::{Theme, ThemeColorFn};
 pub use tool_render::{
     ToolRenderCallHandler, ToolRenderContext, ToolRenderResult, ToolRenderResultHandler,
     ToolRenderResultOptions, ToolRenderShell,

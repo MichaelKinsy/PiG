@@ -1,0 +1,25 @@
+# Pi 0.87.1 tool-call-without-result.test.ts:32-91 replays a tool call followed by a new user message without a result.
+# transform-messages.ts:162-253 inserts an error tool result rather than dropping the call.
+# The fixtures exercise ModelRuntime and production provider conversion on both OpenAI APIs, Anthropic, Google, and Mistral.
+# Mutation: bypass prepareProviderToolFlow; the compiled Go fixture sends no placeholder and differs from Pi.
+name = "15-missing-tool-results"
+description = "Direct model requests close abandoned tool calls with Pi's synthetic error result without mutating history."
+covers = ["packages/ai/src/api/transform-messages.ts", "packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/openai-responses-shared.ts", "packages/ai/src/api/anthropic-messages.ts", "packages/ai/src/api/google-shared.ts", "packages/ai/src/api/mistral-conversations.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/missing-result-pig"]
+pi_args = ["node", "./test/parity/testdata/missing-result-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

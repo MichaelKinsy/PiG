@@ -2,6 +2,7 @@ package tui
 
 import (
 	"runtime"
+	"slices"
 	"strings"
 	"testing"
 
@@ -96,6 +97,28 @@ func TestLoginDialog_ShowAuth(t *testing.T) {
 	}
 }
 
+// Pi's showDeviceCode (login-dialog.ts:118-131): a spacer, the linked verification URL, the click hint, a spacer, then "Enter code: <code>". Pi's notifyAuthDialog follows it with showWaiting.
+func TestLoginDialog_ShowDeviceCode(t *testing.T) {
+	dlg := NewLoginDialog("GitHub Copilot", nil)
+	dlg.ShowDeviceCode("https://github.com/login/device", "WDJB-MJHT")
+	dlg.ShowWaiting("Waiting for authentication...")
+	lines := dlg.Render(80)
+	hint := "Ctrl+click to open"
+	if runtime.GOOS == "darwin" {
+		hint = "Cmd+click to open"
+	}
+	want := []string{"", " https://github.com/login/device", " " + hint, "", " Enter code: WDJB-MJHT", "", " Waiting for authentication...", " (escape/ctrl+c to cancel)"}
+	body := lines[2 : len(lines)-1]
+	if len(body) != len(want) {
+		t.Fatalf("device-code lines = %q, want %q", body, want)
+	}
+	for i, line := range body {
+		if got := strings.TrimRight(widthx.StripAnsi(line), " "); got != want[i] {
+			t.Errorf("line %d = %q, want %q", i, got, want[i])
+		}
+	}
+}
+
 func TestLoginDialog_ShowWaiting(t *testing.T) {
 	dlg := NewLoginDialog("Anthropic", nil)
 	dlg.ShowAuth("https://example.com", "")
@@ -182,5 +205,122 @@ func TestLoginDialog_CancelClosesPendingInputChannel(t *testing.T) {
 	dlg.HandleInput("\x1b")
 	if _, ok := <-ch; ok {
 		t.Fatal("expected input channel to be closed on cancel")
+	}
+}
+
+// Ports packages/coding-agent/test/suite/regressions/5433-extension-oauth-prompt-input.test.ts:40,61,73,87,99.
+func TestLoginDialogOAuthPromptsUpstream(t *testing.T) {
+	previousTheme, previousKeys := ActiveTheme(), GetTUIKeybindings()
+	SetTheme("dark")
+	SetTUIKeybindings(NewTUIKeybindingsManager(nil))
+	t.Cleanup(func() { storeActiveTheme(previousTheme); SetTUIKeybindings(previousKeys) })
+	newDialog := func() *LoginDialog { return NewLoginDialog("Prompt Repro", func() {}) }
+	render := func(dialog *LoginDialog) []string {
+		lines := strings.Split(widthx.StripAnsi(strings.Join(dialog.Render(120), "\n")), "\n")
+		for i := range lines {
+			lines[i] = strings.TrimRight(lines[i], " ")
+		}
+		return lines
+	}
+	contains := func(t *testing.T, lines []string, values ...string) {
+		t.Helper()
+		for _, value := range values {
+			if !strings.Contains(strings.Join(lines, "\n"), value) {
+				t.Errorf("dialog missing %q: %q", value, lines)
+			}
+		}
+	}
+	assertValue := func(t *testing.T, result <-chan string, want string) {
+		t.Helper()
+		select {
+		case got, ok := <-result:
+			if !ok || got != want {
+				t.Fatalf("submitted=%q open=%v want=%q", got, ok, want)
+			}
+		default:
+			t.Fatal("Enter did not complete the prompt")
+		}
+	}
+	for _, tc := range []struct {
+		name, prompt, placeholder, value string
+		manual                           bool
+	}{
+		{"keeps previous prompt input stable when a later prompt is active", "First prompt:", "first-value", "first-value", false},
+		{"keeps previous manual input stable when a later prompt is active", "Paste callback URL:", "", "callback-value", true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dialog := newDialog()
+			var first <-chan string
+			if tc.manual {
+				first = dialog.ShowManualInput(tc.prompt)
+			} else {
+				first = dialog.ShowInput(tc.prompt, tc.placeholder)
+			}
+			dialog.HandleInput(tc.value)
+			dialog.HandleInput("\n")
+			assertValue(t, first, tc.value)
+			second := dialog.ShowInput("Second prompt:", "")
+			dialog.HandleInput("second-secret-demo")
+			lines := render(dialog)
+			contains(t, lines, tc.prompt, "Second prompt:")
+			for _, value := range []string{tc.value, "second-secret-demo"} {
+				count := 0
+				for _, line := range lines {
+					if strings.TrimSpace(line) == "> "+value {
+						count++
+					}
+				}
+				if count != 1 {
+					t.Errorf("rendered %q %d times, want once: %q", value, count, lines)
+				}
+			}
+			dialog.HandleInput("\n")
+			assertValue(t, second, "second-secret-demo")
+		})
+	}
+	t.Run("preserves auth instructions when showing a prompt", func(t *testing.T) {
+		dialog := newDialog()
+		dialog.ShowAuth("https://example.invalid/login", "Authorize the extension")
+		dialog.ShowInput("First prompt:", "")
+		contains(t, render(dialog), "https://example.invalid/login", "Authorize the extension", "First prompt:")
+	})
+	t.Run("preserves neutral information and links when showing a prompt", func(t *testing.T) {
+		dialog := newDialog()
+		dialog.ShowInfo("Configure credentials outside pi.", []AuthInfoLink{{Label: "Provider documentation", URL: "https://example.invalid/docs"}}, false)
+		dialog.ShowInput("Press Enter to continue:", "")
+		contains(t, render(dialog), "Configure credentials outside pi.", "Provider documentation: https://example.invalid/docs", "Press Enter to continue:")
+	})
+	t.Run("preserves setup details when showing a prompt", func(t *testing.T) {
+		dialog := newDialog()
+		dialog.ShowDetails([]string{"AWS credential setup:", "providers.md"})
+		dialog.ShowInput("Enter API key:", "")
+		contains(t, render(dialog), "AWS credential setup:", "providers.md", "Enter API key:")
+	})
+}
+
+// packages/coding-agent/src/modes/interactive/components/login-dialog.ts:137-143: manual input uses a dim label and a cancel-only hint, unlike showPrompt.
+func TestLoginDialogManualInputLayout(t *testing.T) {
+	previous := GetTUIKeybindings()
+	SetTUIKeybindings(NewTUIKeybindingsManager(nil))
+	t.Cleanup(func() { SetTUIKeybindings(previous) })
+	dialog := NewLoginDialog("Prompt Repro", nil)
+	answer := dialog.ShowManualInput("Paste callback URL:")
+	dialog.HandleInput("callback-value")
+	dialog.HandleInput("\n")
+	if got := <-answer; got != "callback-value" {
+		t.Fatalf("submission=%q", got)
+	}
+	lines := dialog.Render(120)
+	got := make([]string, 0, len(lines)-3)
+	for _, line := range lines[2 : len(lines)-1] {
+		got = append(got, strings.TrimRight(widthx.StripAnsi(line), " "))
+	}
+	want := []string{"", " Paste callback URL:", "> callback-value", " (escape/ctrl+c to cancel)"}
+	if !slices.Equal(got, want) {
+		t.Fatalf("manual input body=%q want=%q", got, want)
+	}
+	wantLabel := NewPaddedText(ActiveTheme().FgText("dim", "Paste callback URL:"), 1, 0, nil).Render(120)
+	if !slices.Equal(lines[3:4], wantLabel) {
+		t.Fatalf("manual input label=%q want=%q", lines[3:4], wantLabel)
 	}
 }

@@ -1,0 +1,27 @@
+# Pi 0.87.1 runner.ts:snapshotEventHandlers snapshots every extension before
+# the first callback, not each extension just before visiting it. The real Pi
+# loader installs the factories; both programs dispatch through their actual
+# runner library. The second record also proves nested dispatch sees changes
+# while the enclosing dispatch still invokes its removed pending handler.
+name = "39-event-subscription-snapshots"
+description = "All-extension snapshots preserve pending callbacks and isolate nested dispatch"
+covers = ["packages/coding-agent/src/core/extensions/runner.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/subscription-order"]
+pi_args = ["node", "./test/parity/testdata/subscription-order-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['["A","B","A","C"]', '["A","C","B"]']
+runs = 3

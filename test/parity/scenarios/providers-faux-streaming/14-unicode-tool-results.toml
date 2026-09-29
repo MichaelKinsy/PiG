@@ -1,0 +1,26 @@
+# Pi 0.87.1 unicode-surrogate.test.ts:209-282 constructs a lone high UTF-16 code unit in a tool result.
+# Go represents that otherwise unrepresentable code unit as WTF-8; each provider must remove it before JSON serialization rather than let encoding/json replace it.
+# Both fixtures preserve the original history and capture the tool text from a real provider request.
+# The Go fixture runs through Services.ModelRuntime.Complete on Completions, Responses, Anthropic, Google, and Mistral.
+# Mutation: return the input unchanged from sanitizeSurrogates; the compiled fixture sends replacement characters and the exact comparison fails.
+name = "14-unicode-tool-results"
+description = "Provider requests remove unpaired surrogate code units while retaining the original tool-result history."
+covers = ["packages/ai/src/utils/sanitize-unicode.ts", "packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/openai-responses-shared.ts", "packages/ai/src/api/anthropic-messages.ts", "packages/ai/src/api/google-shared.ts", "packages/ai/src/api/mistral-conversations.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/unicode-provider-pig"]
+pi_args = ["node", "./test/parity/testdata/unicode-provider-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

@@ -1,21 +1,109 @@
 package main
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/coding/packagecontent"
+	"github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
-// Installing a directory that contributes no resource used to print "Installed"
-// and record it in settings. Nothing loaded, and nothing said so: the reported
-// symptom was an extension that installed cleanly and never appeared.
-//
-// Upstream discovers package resources from extensions/, skills/, prompts/ and
-// themes/, so a single extension's own directory is not a package in Pi either.
-// The fix is to say so, not to widen what a package is.
+// Pi package-manager.ts:installAndPersist awaits npm installation and records the source without requiring Pi resources or importing the package's JavaScript.
+func TestPackageInstallPlainNpmPersistsWithoutLoadingCode(t *testing.T) {
+	for _, local := range []bool{false, true} {
+		t.Run(map[bool]string{false: "global", true: "project"}[local], func(t *testing.T) {
+			f := newPackageProcessFixture(t, `
+if(command !== 'npm') throw new Error('unexpected command');
+const root = args[args.indexOf('--prefix') + 1];
+const pkg = path.join(root, 'node_modules', 'plain-library');
+if(args[0] === 'install') {
+  if(args[1] !== 'plain-library@7.0.0') throw new Error('wrong pinned source');
+  fs.mkdirSync(pkg, {recursive:true});
+  fs.writeFileSync(path.join(pkg, 'package.json'), JSON.stringify({name:'plain-library', version:'7.0.0', main:'index.js'}));
+  fs.writeFileSync(path.join(pkg, 'index.js'), "require('node:fs').writeFileSync(__filename + '.imported', 'yes'); throw new Error('install must not import code'); module.exports = function(value) { return typeof value === 'number'; };\n");
+} else if(args[0] === 'uninstall') {
+  if(args[1] !== 'plain-library') throw new Error('wrong uninstall source');
+  fs.rmSync(pkg, {recursive:true});
+} else throw new Error('unexpected operation');
+`)
+			t.Chdir(f.cwd)
+			const source = "npm:plain-library@7.0.0"
+			args := []string{"install", source}
+			root := filepath.Join(f.agent, "npm")
+			settingsPath := filepath.Join(f.agent, "settings.json")
+			if local {
+				args = append(args, "--local", "--approve")
+				root = filepath.Join(codingagent.ProjectConfigDir(f.cwd), "npm")
+				settingsPath = filepath.Join(codingagent.ProjectConfigDir(f.cwd), "settings.json")
+			}
+			stdout, stderr, code := captureStdoutStderr(t, func() int { return runPackageCommand(args) })
+			if code != 0 || stderr != "" || stdout != "Installing "+source+"...\nInstalled "+source+"\n" {
+				t.Fatalf("install: exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+			}
+			requirePackageProcessCall(t, f.calls(t), "npm", []string{"install", "plain-library@7.0.0", "--prefix", root, "--legacy-peer-deps"}, "")
+			if _, err := os.Stat(filepath.Join(root, "node_modules", "plain-library", "index.js.imported")); !os.IsNotExist(err) {
+				t.Fatalf("package code ran during installation: marker stat = %v", err)
+			}
+			data, err := os.ReadFile(settingsPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var settings struct {
+				Packages []string `json:"packages"`
+			}
+			if err := json.Unmarshal(data, &settings); err != nil {
+				t.Fatal(err)
+			}
+			if !slices.Equal(settings.Packages, []string{source}) {
+				t.Fatalf("persisted packages = %q", settings.Packages)
+			}
+			stdout, stderr, code = captureStdoutStderr(t, func() int { return runPackageCommand([]string{"list", "--approve"}) })
+			title := "User packages:"
+			if local {
+				title = "Project packages:"
+			}
+			if want := title + "\n  " + source + "\n    " + filepath.Join(root, "node_modules", "plain-library") + "\n"; code != 0 || stderr != "" || stdout != want {
+				t.Fatalf("list: exit=%d stdout=%q stderr=%q; want %q", code, stdout, stderr, want)
+			}
+			resources, err := packagecontent.Discover(filepath.Join(root, "node_modules", "plain-library"))
+			if err != nil || packageResourceCount(resources) != 0 {
+				t.Fatalf("ordinary library contributes resources: %+v, %v", resources, err)
+			}
+			args[0] = "remove"
+			_, stderr, code = captureStdoutStderr(t, func() int { return runPackageCommand(args) })
+			if code != 0 || stderr != "" {
+				t.Fatalf("remove: exit=%d stderr=%q", code, stderr)
+			}
+			stdout, stderr, code = captureStdoutStderr(t, func() int { return runPackageCommand([]string{"list", "--approve"}) })
+			if code != 0 || stderr != "" || stdout != "No packages installed.\n" {
+				t.Fatalf("list after remove: exit=%d stdout=%q stderr=%q", code, stdout, stderr)
+			}
+		})
+	}
+}
+
+func BenchmarkVerifyEmptyNodePackage(b *testing.B) {
+	root, agent := b.TempDir(), b.TempDir()
+	for name, body := range map[string]string{
+		"package.json": `{"name":"plain-library","version":"7.0.0"}`,
+		"index.js":     "module.exports = function(value) { return typeof value === 'number'; };\n",
+	} {
+		if err := os.WriteFile(filepath.Join(root, name), []byte(body), 0o644); err != nil {
+			b.Fatal(err)
+		}
+	}
+	sm := codingagent.NewSettingsManager(filepath.Dir(root), agent)
+	b.ReportAllocs()
+	for b.Loop() {
+		if err := verifyPackageContributesResources(filepath.Dir(root), sm, root, false); err != nil {
+			b.Fatal(err)
+		}
+	}
+}
 
 func writeBareGoExtension(t *testing.T) string {
 	t.Helper()
@@ -34,7 +122,7 @@ func writeBareGoExtension(t *testing.T) string {
 func TestInstallRejectsAnExtensionDirectoryAsAPackage(t *testing.T) {
 	dir := writeBareGoExtension(t)
 
-	err := verifyPackageContributesResources(filepath.Dir(dir), dir, false)
+	err := verifyPackageContributesResources(filepath.Dir(dir), codingagent.NewSettingsManager(filepath.Dir(dir), t.TempDir()), dir, false)
 	if err == nil {
 		t.Fatal("installing a bare extension directory as a package reported success; " +
 			"it contributes no resources and would never load")
@@ -58,7 +146,7 @@ func TestInstallAcceptsAPackageUsingConventionDirectories(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "prompts", "review.md"), []byte("# review\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := verifyPackageContributesResources(filepath.Dir(root), root, false); err != nil {
+	if err := verifyPackageContributesResources(filepath.Dir(root), codingagent.NewSettingsManager(filepath.Dir(root), t.TempDir()), root, false); err != nil {
 		t.Fatalf("a package with a conventional prompts/ directory was rejected: %v", err)
 	}
 }
@@ -93,8 +181,23 @@ func TestEveryPackageResourceKindCountsAsAContribution(t *testing.T) {
 // package Pi installs without complaint.
 func TestInstallDoesNotRefuseDirectoriesThatMerelyLookLikeCode(t *testing.T) {
 	cases := map[string]map[string]string{
-		"plain npm package":       {"package.json": `{"name":"demo","version":"1.0.0"}`},
-		"npm package with pi key": {"package.json": `{"name":"demo","pi":{"skills":["skills"]}}`},
+		"plain npm package": {"package.json": `{"name":"demo","version":"1.0.0"}`},
+		"npm commonjs entry": {
+			"package.json": `{"name":"demo","version":"1.0.0","main":"index.js"}`,
+			"index.js":     "module.exports = function isNumber(value) { return typeof value === 'number'; };\n",
+		},
+		"npm esm entry": {
+			"package.json": `{"name":"demo","version":"1.0.0","type":"module"}`,
+			"index.js":     "export default function isNumber(value) { return typeof value === 'number'; }\n",
+		},
+		"npm named exports only": {
+			"package.json": `{"name":"demo","version":"1.0.0"}`,
+			"index.js":     "export const answer = 42;\n",
+		},
+		"npm empty entry":                   {"package.json": `{"name":"demo","version":"1.0.0"}`, "index.js": ""},
+		"typescript entry without manifest": {"index.ts": "throw new Error('install must not import code');\n"},
+		"mjs entry without manifest":        {"main.mjs": "throw new Error('install must not import code');\n"},
+		"npm package with pi key":           {"package.json": `{"name":"demo","pi":{"skills":["skills"]}}`},
 		"go module with no factory": {
 			"go.mod":  "module demo\n\ngo 1.26\n",
 			"util.go": "package demo\n\nfunc Helper() {}\n",
@@ -109,7 +212,7 @@ func TestInstallDoesNotRefuseDirectoriesThatMerelyLookLikeCode(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			if err := verifyPackageContributesResources(filepath.Dir(dir), dir, false); err != nil {
+			if err := verifyPackageContributesResources(filepath.Dir(dir), codingagent.NewSettingsManager(filepath.Dir(dir), t.TempDir()), dir, false); err != nil {
 				t.Errorf("refused a package Pi would install: %v", err)
 			}
 		})

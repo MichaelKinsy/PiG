@@ -9,6 +9,36 @@ This file records third-party software that PiG distributes in its source tree o
 
 The canonical license texts for the components below are in `LICENSES/`.
 
+## ICU 78.3 CJK word segmentation
+
+Source: <https://github.com/unicode-org/icu/tree/release-78.3/icu4c/source>
+
+Distributed files: `internal/wordsegmenter/cjk.go` and `internal/wordsegmenter/cjk_dictionary.bin`.
+
+- Copyright © 2016 and later Unicode, Inc. and others.
+- Copyright 2006–2016 International Business Machines Corporation and others.
+- The dictionary includes the Google, TaBE, Academia Sinica, and IPADIC notices reproduced in `LICENSES/LicenseRef-ICU-CJK.txt`.
+- License texts: `LICENSES/Unicode-3.0.txt` and `LICENSES/LicenseRef-ICU-CJK.txt`.
+
+PiG translates ICU's weighted CJK word-boundary algorithm to Go. The embedded index is generated from the exact ICU 78.3 `cjdict.txt` data used by the pinned Node oracle. Its source SHA256 is `e73fd72048981d0cc13e9dc436a7eaba07ffb6eff58c8a59dc75c1df746663a0`.
+
+
+## ICU 78.3 Southeast Asian word segmentation
+
+Source: <https://github.com/unicode-org/icu/tree/release-78.3/icu4c/source>
+
+Distributed files: `internal/wordsegmenter/sea.go`, `internal/wordsegmenter/segments.go`, `internal/wordsegmenter/word_rules.go`, `internal/wordsegmenter/rule_data.go`, the Thai/Lao/Khmer/Burmese `*_dictionary.bin` indexes, and the dictionary-derived differential corpus in `internal/wordsegmenter/testdata/sea-icu78.json`.
+
+- Copyright © 2016 and later Unicode, Inc. and others.
+- Copyright 1999–2016 International Business Machines Corporation and others.
+- Copyright 2006–2015 International Business Machines Corporation, Apple Inc., and others.
+- The Lao dictionary includes the notice of Brian Eugene Wilson and Robert Martin Campbell (2013).
+- The Burmese dictionary includes the notice of LeRoy Benjamin Sharon (2013), with thanks to Robert Martin Campbell.
+- Complete dictionary notices and redistribution terms: `LICENSES/LicenseRef-ICU-SEA.txt`.
+- ICU algorithm and Unicode 17.0.0 property-data terms: `LICENSES/Unicode-3.0.txt`.
+
+PiG translates ICU's `DictionaryBreakEngine`, `PossibleWord`, `ThaiBreakEngine`, `LaoBreakEngine`, `KhmerBreakEngine`, `BurmeseBreakEngine`, `DictionaryCache::populateDictionary` engine selection, `UnhandledEngine`, and word-rule tailoring to Go. `internal/wordsegmenter/generate_sea_dictionary.py` verifies each source hash and preserves ICU's byte-offset transform in a sorted embedded index. The generator and `internal/wordsegmenter/README.md` record the exact source hashes and regeneration procedure.
+
 ## Go gopher artwork
 
 Source: <https://go.dev/brand>
@@ -25,7 +55,7 @@ The remaining PiG artwork and composition are licensed under MIT.
 
 Source: <https://www.contributor-covenant.org/version/2/1/code_of_conduct.html>
 
-Distributed file: `CODE_OF_CONDUCT.md`
+Distributed file: `.github/CODE_OF_CONDUCT.md`
 
 - Copyright Contributor Covenant contributors
 - License: CC-BY-4.0
@@ -58,6 +88,18 @@ Distributed file: `internal/mermaid/width_data.go`
 - License: Apache-2.0 OR MIT; PiG uses the MIT option for this derived data
 
 The width table is generated through `grok-mermaid` from the exact `unicode-width` 0.2.0 crate pinned by `grok-mermaid`'s width oracle. The required MIT copyright and permission notice is preserved here, and the canonical MIT text is in `LICENSES/MIT.txt`.
+
+## Pi TUI 0.87.1
+
+Source: <https://github.com/earendil-works/pi/tree/v0.87.1/packages/tui>
+
+Distributed files: `coding/extension/host/subprocess/runtime-node/shims/pi-dist/pi-tui/**`
+
+- Copyright (c) 2025 Mario Zechner
+- License: MIT
+- License text: `LICENSES/MIT.txt`
+
+`automation/gen/vendor-pi-dist.sh` copies Pi's complete JavaScript TUI module tree and native helper source/prebuilds from the locked coding-agent distribution. Only the `marked` and `get-east-asian-width` import paths change. The native prebuilds retain Pi's Linux, macOS, and Windows architecture directories. Pi's published TUI package contains no separate LICENSE file; this notice and the canonical MIT text retain its upstream license.
 
 ## OpenTUI-derived input buffering
 
@@ -348,6 +390,108 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## ignore 7.0.8
+
+Source: <https://github.com/kaelzhang/node-ignore>
+
+Distributed files: `coding/extension/host/subprocess/runtime-node/shims/ignore/`.
+
+- Copyright (c) 2013 Kael Zhang <i@kael.me>, contributors
+- License: MIT
+- Complete notice and license: `coding/extension/host/subprocess/runtime-node/shims/ignore/LICENSE-MIT`
+
+## diff 8.0.4
+
+Source: <https://github.com/kpdecker/jsdiff>
+
+Distributed files: `coding/extension/host/subprocess/runtime-node/shims/diff/`.
+
+- Copyright (c) 2009-2015, Kevin Decker <kpdecker@gmail.com>
+- License: BSD-3-Clause
+- Complete notice and license: `coding/extension/host/subprocess/runtime-node/shims/diff/LICENSE`
+
+The runtime includes the pinned package's ES module implementation, package metadata and license. Type declarations are not shipped. Pi's own edit-diff module uses this implementation for display diffs and unified patches.
+
+## cross-spawn 7.0.6 and dependencies
+
+Source: <https://github.com/moxystudio/node-cross-spawn>
+
+Distributed root: `coding/extension/host/subprocess/runtime-node/shims/cross-spawn/`. The package and its exact pinned production dependencies are copied without source changes by `automation/gen/vendor-node-dependencies.mjs`. Paths below are relative to this root. Each package retains its complete license text and copyright notice.
+
+`internal/crossspawn` also translates cross-spawn's Windows command parsing, resolution and escaping, including shebang-command, shebang-regex, which and isexe, into Go. The Go translation retains the same MIT and ISC notices. Its drive-relative path resolution translates Node's `path.win32.resolve` (lib/path.js), Copyright Joyent, Inc. and other Node contributors, MIT, and retains that notice.
+
+| Package | Version | Copyright | License | Notice path |
+|---|---|---|---|---|
+| cross-spawn | 7.0.6 | Copyright (c) 2018 Made With MOXY Lda <hello@moxy.studio> | MIT | `LICENSE` |
+| path-key | 3.1.1 | Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> | MIT | `node_modules/path-key/license` |
+| shebang-command | 2.0.0 | Copyright (c) Kevin Mårtensson <kevinmartensson@gmail.com> | MIT | `node_modules/shebang-command/license` |
+| shebang-regex | 3.0.0 | Copyright (c) Sindre Sorhus <sindresorhus@gmail.com> | MIT | `node_modules/shebang-command/node_modules/shebang-regex/license` |
+| which | 2.0.2 | Copyright (c) Isaac Z. Schlueter and Contributors | ISC | `node_modules/which/LICENSE` |
+| isexe | 2.0.0 | Copyright (c) Isaac Z. Schlueter and Contributors | ISC | `node_modules/which/node_modules/isexe/LICENSE` |
+
+## jiti 2.7.0
+
+The Node extension runtime loads TypeScript and JavaScript extensions with the same loader, release and options Pi 0.87.1 uses. `coding/extension/host/subprocess/runtime-node/shims/jiti/` holds the unmodified `lib/` and `dist/` directories, `package.json` and `LICENSE` of the npm package `jiti@2.7.0` (integrity `sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==`), copied by `automation/gen/vendor-pi-dist.sh`. As published, `dist/jiti.cjs` and `dist/babel.cjs` bundle jiti's own dependencies: Babel 7 and its plugins, acorn, mlly, pathe, get-tsconfig, json5 and others under the MIT license, and semver 6 under the ISC license.
+
+```text
+MIT License
+
+Copyright (c) Pooya Parsa <pooya@pi0.io>
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+```
+
+## Independent Node SDK dependencies
+
+`automation/gen/vendor-pi-dist.sh` copies the following exact production dependencies from the locked Pi 0.87.1 installation. Paths are relative to `coding/extension/host/subprocess/runtime-node/shims/`. Each package retains its published manifest and complete license. The Photon package includes its published WebAssembly image-processing asset; it is not an extension runtime.
+
+| Package | Version | License | Retained notice and license |
+|---|---|---|---|
+| chalk | 6.0.0 | MIT | `chalk/license` |
+| undici | 8.10.2 | MIT | `undici/LICENSE` |
+| semver | 7.8.5 | ISC | `semver/LICENSE` |
+| minimatch | 10.2.6 | BlueOak-1.0.0 | `minimatch/LICENSE.md` |
+| brace-expansion | 5.0.9 | MIT | `minimatch/node_modules/brace-expansion/LICENSE` |
+| balanced-match | 4.0.4 | MIT | `minimatch/node_modules/brace-expansion/node_modules/balanced-match/LICENSE.md` |
+| hosted-git-info | 9.0.3 | ISC | `hosted-git-info/LICENSE` |
+| lru-cache | 11.4.0 | BlueOak-1.0.0 | `hosted-git-info/node_modules/lru-cache/LICENSE.md` |
+| grok-mermaid | 0.2.3 | Apache-2.0 | `grok-mermaid/LICENSE` |
+| @silvia-odwyer/photon-node | 0.3.4 | Apache-2.0 | `photon-node/LICENSE.md` |
+| proper-lockfile | 4.1.2 | MIT | `proper-lockfile/LICENSE` |
+| retry | 0.12.0 | MIT | `proper-lockfile/node_modules/retry/License` |
+| graceful-fs | 4.2.11 | ISC | `proper-lockfile/node_modules/graceful-fs/LICENSE` |
+| signal-exit | 3.0.7 | ISC | `proper-lockfile/node_modules/signal-exit/LICENSE.txt` |
+
+The Blue Oak Model License is also reproduced in `LICENSES/BlueOak-1.0.0.txt`. Copyright holders appear in the retained files and `NOTICE`. No dependency resolves from the network at extension load time.
+
+`internal/nodesemver` translates the semver 7.8.5 version and range parsing that Pi's package manager calls into Go. The Go translation retains the same ISC notice, Copyright (c) Isaac Z. Schlueter and Contributors, reproduced in `LICENSES/ISC.txt`.
+
+## libuv 1.51.0 Windows command-line quoting
+
+Source: <https://github.com/libuv/libuv/blob/v1.51.0/src/win/process.c>
+
+`internal/nodespawn` translates libuv's `quote_cmd_arg` and `make_program_args`, which build the Windows command line for Node's `child_process.spawn`, into Go. The Go translation retains the libuv notice, Copyright Joyent, Inc. and other Node contributors, under the MIT license reproduced in `LICENSES/MIT.txt`.
+
+## Go encoding/json
+
+`extensions/sdk/json/` derives from the Go Authors' Go 1.27.1 `src/encoding/json` implementation, with lossless UTF-16 surrogate handling for the extension wire. It retains the Go Authors' copyright headers and BSD-3-Clause license in `extensions/sdk/json/LICENSE`. `extensions/sdk/json/README.md` records the source files and local modifications. The SDK source bundle carries this license.
 
 ## Unicode 17.0.0 character data
 

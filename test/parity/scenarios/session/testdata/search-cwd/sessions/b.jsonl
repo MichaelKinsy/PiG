@@ -1,0 +1,3 @@
+{"type":"session","version":3,"id":"b","timestamp":"2099-01-01T00:00:00.000Z","cwd":"/fixture"}
+{"type":"message","id":"m","parentId":null,"timestamp":"2099-01-01T00:00:00.000Z","message":{"role":"user","content":"hello","timestamp":4070908800000}}
+{"type":"session_info","id":"n","parentId":"m","timestamp":"2099-01-01T00:00:00.000Z","name":"bravo"}

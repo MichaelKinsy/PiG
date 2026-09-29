@@ -264,7 +264,6 @@ func TestFacetHostKeyedProvisionObservedLocallyAndRemotely(t *testing.T) {
 				return err
 			}
 			observed <- observeCtx
-			<-observeCtx.Done()
 			return nil
 		})
 	}}

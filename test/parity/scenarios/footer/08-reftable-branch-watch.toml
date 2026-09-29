@@ -1,0 +1,36 @@
+# Upstream evidence: Pi 0.87.1 footer-data-provider.test.ts:227 observes a tables.list write without a HEAD change. Real Pi's final-branch footer was captured by the fixture below; exact paired ANSI output passed all three runs.
+# The launch fixture mirrors its git fallback mock, but uses real filesystem events and the real interactive CLI.
+# Two branch changes distinguish reftable watching from the old HEAD-only poll even after the poll's initial scan.
+# Crop retains both complete footer rows; only runner-owned temporary path digits are masked by the standard driver.
+name = "08-reftable-branch-watch"
+description = "An idle footer follows reftable-only branch changes without keyboard input."
+covers = ["packages/coding-agent/src/core/footer-data-provider.ts", "packages/coding-agent/src/utils/fs-watch.ts"]
+tags = ["hermetic", "tui", "fixture-auth"]
+driver = "interactive-tmux"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["python3", "launch.py", "pig"]
+pi_args = ["python3", "launch.py", "pi"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent", "OPENAI_API_KEY=fixture", "PI_OFFLINE=1"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "OPENAI_API_KEY=fixture", "PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1"]
+[tmux]
+cwd = "testdata/branch-watch"
+width = 100
+height = 35
+ready_pattern_pig = "(final-branch)"
+ready_pattern_pi = "(final-branch)"
+ready_timeout_seconds = 20
+capture_start = "parity-snap-cwd-"
+capture_start_last = true
+capture_end = "gpt-4.1"
+settle_seconds = 1
+[[tmux.steps]]
+wait_visible_contains = ["(final-branch)"]
+wait_timeout_seconds = 20
+[assert]
+both_reach_ready = true
+both_contain = ["(final-branch)", "gpt-4.1"]
+escaped_output_equal = true
+runs = 3

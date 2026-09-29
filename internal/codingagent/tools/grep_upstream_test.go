@@ -39,8 +39,8 @@ func TestGrepToolUpstreamCases(t *testing.T) {
 	if err := os.WriteFile(single, []byte("first line\nmatch line\nlast line"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if res := runGrep(t, dir, map[string]any{"pattern": "match", "path": single}); !strings.Contains(res.Content, "example.txt:2: match line") {
-		t.Errorf("single file: %q", res.Content)
+	if res := runGrep(t, dir, map[string]any{"pattern": "match", "path": single}); !strings.Contains(res.Text(), "example.txt:2: match line") {
+		t.Errorf("single file: %q", res.Text())
 	}
 
 	ctxFile := filepath.Join(dir, "context.txt")
@@ -50,12 +50,12 @@ func TestGrepToolUpstreamCases(t *testing.T) {
 	res := runGrep(t, dir, map[string]any{"pattern": "match", "path": ctxFile, "limit": 1, "context": 1})
 	for _, want := range []string{"context.txt-1- before", "context.txt:2: match one", "context.txt-3- after",
 		"[1 matches limit reached. Use limit=2 for more, or refine pattern]"} {
-		if !strings.Contains(res.Content, want) {
-			t.Errorf("context/limit output missing %q: %q", want, res.Content)
+		if !strings.Contains(res.Text(), want) {
+			t.Errorf("context/limit output missing %q: %q", want, res.Text())
 		}
 	}
-	if strings.Contains(res.Content, "match two") {
-		t.Errorf("second match present: %q", res.Content)
+	if strings.Contains(res.Text(), "match two") {
+		t.Errorf("second match present: %q", res.Text())
 	}
 
 	injection := t.TempDir()
@@ -70,8 +70,8 @@ func TestGrepToolUpstreamCases(t *testing.T) {
 	// The pattern is also a regex; the '/' spelling keeps a Windows payload path
 	// free of backslash escapes such as \U that rg would reject.
 	res = runGrep(t, injection, map[string]any{"pattern": "--pre=" + filepath.ToSlash(payload), "path": injection})
-	if !strings.Contains(res.Content, "No matches found") {
-		t.Errorf("flag-like pattern: %q", res.Content)
+	if !strings.Contains(res.Text(), "No matches found") {
+		t.Errorf("flag-like pattern: %q", res.Text())
 	}
 	if _, err := os.Stat(marker); err == nil {
 		t.Error("flag-like pattern executed the payload")
@@ -97,9 +97,9 @@ func TestGrep_HugeMatchLineDoesNotHang(t *testing.T) {
 	}()
 	select {
 	case res := <-done:
-		if res.IsError || !strings.Contains(res.Content, "b-other.txt:1: needle here") ||
-			!strings.Contains(res.Content, "a-bundle.js:1: needle") || !strings.Contains(res.Content, "Some lines truncated to 500 chars") {
-			t.Fatalf("res = %.300q", res.Content)
+		if res.IsError || !strings.Contains(res.Text(), "b-other.txt:1: needle here") ||
+			!strings.Contains(res.Text(), "a-bundle.js:1: needle") || !strings.Contains(res.Text(), "Some lines truncated to 500 chars") {
+			t.Fatalf("res = %.300q", res.Text())
 		}
 	case <-ctx.Done():
 		t.Fatal("grep hung on a match line over 1 MB")
@@ -114,7 +114,7 @@ func TestGrep_InvalidRegexReportsStderr(t *testing.T) {
 		t.Fatal(err)
 	}
 	res := runGrep(t, dir, map[string]any{"pattern": "foo(bar"})
-	if !res.IsError || !strings.Contains(res.Content, "regex parse error") {
+	if !res.IsError || !strings.Contains(res.Text(), "regex parse error") {
 		t.Fatalf("res = %+v", res)
 	}
 }
@@ -123,14 +123,14 @@ func TestGrep_InvalidRegexReportsStderr(t *testing.T) {
 func TestGrep_PathNotFoundAndAbort(t *testing.T) {
 	dir := t.TempDir()
 	res := runGrep(t, dir, map[string]any{"pattern": "x", "path": "nope"})
-	if !res.IsError || res.Content != "Path not found: "+filepath.Join(dir, "nope") {
+	if !res.IsError || res.Text() != "Path not found: "+filepath.Join(dir, "nope") {
 		t.Fatalf("res = %+v", res)
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
 	args, _ := json.Marshal(map[string]any{"pattern": "x"})
 	res, err := (&GrepTool{CWD: dir, RgPath: requireRG(t)}).Execute(ctx, "", args, nil)
-	if err != nil || !res.IsError || res.Content != "Operation aborted" {
+	if err != nil || !res.IsError || res.Text() != "Operation aborted" {
 		t.Fatalf("abort: %+v %v", res, err)
 	}
 }

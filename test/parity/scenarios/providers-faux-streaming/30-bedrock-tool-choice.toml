@@ -1,0 +1,27 @@
+# Pi 0.87.1 bedrock-converse-stream.ts:1120-1154 lowers tool choices and drops toolConfig for none or empty tool lists.
+# Both real SDKs send to a local server; the empty response ends after the complete outgoing toolConfig is captured.
+name = "30-bedrock-tool-choice"
+description = "Bedrock preserves tool definitions and lowers automatic, any, named, and no-tool choices."
+covers = ["packages/ai/src/api/bedrock-converse-stream.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+# Defined-empty bearer tokens select a Node auth scheme, so remove this variable for both probes.
+pig_args = ["-u", "AWS_BEARER_TOKEN_BEDROCK", "go", "run", "./test/parity/testdata/bedrock-tool-choice-pig"]
+pi_args = ["-u", "AWS_BEARER_TOKEN_BEDROCK", "node", "./test/parity/testdata/bedrock-tool-choice-pi.mjs"]
+pig = ["AWS_PROFILE=", "AWS_DEFAULT_PROFILE=", "AWS_CONFIG_FILE={{TEMP}}/config", "AWS_SHARED_CREDENTIALS_FILE={{TEMP}}/credentials", "AWS_EC2_METADATA_DISABLED=true"]
+pi = ["AWS_PROFILE=", "AWS_DEFAULT_PROFILE=", "AWS_CONFIG_FILE={{TEMP}}/config", "AWS_SHARED_CREDENTIALS_FILE={{TEMP}}/credentials", "AWS_EC2_METADATA_DISABLED=true"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['["none",null]', '["no-tools",null]', '"toolChoice":{"auto":{}}', '"toolChoice":{"any":{}}', '"toolChoice":{"tool":{"name":"read"}}']
+runs = 3

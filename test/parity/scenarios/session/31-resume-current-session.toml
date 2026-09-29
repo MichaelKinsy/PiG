@@ -1,0 +1,71 @@
+# Upstream evidence: Pi 0.87.1 session-selector.ts:375-397 retains the active session; :494-504 marks it with accent, not a suffix.
+# interactive-mode.ts:5551-5586 passes the active file to the picker; :5563-5566,5592-5608 resumes it normally on Enter.
+# session-selector.ts:404-413 rejects deletion of the active path, including while searching.
+# Probe: open delta four from the five search JSONL fixtures, /resume, search delta, Enter, then reopen and search delta.
+# The full picker block includes three ranked rows and the active accent after a same-session resume.
+# Future message timestamps make ages deterministically "now". The crop excludes unrelated transcript/startup chrome, not picker content. No normalization.
+name = "31-resume-current-session"
+description = "The interactive resume picker includes and accents the current session, resumes it on Enter, and retains fuzzy scoring"
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/session-selector.ts",
+  "packages/coding-agent/src/modes/interactive/components/session-selector-search.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "fast", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+cwd = "testdata/search-cwd"
+ready_pattern_pig = "hello"
+ready_pattern_pi = "hello"
+ready_timeout_seconds = 25
+capture_start = "Resume Session (Current Folder)"
+capture_end_regex = "─+"
+
+[[tmux.steps]]
+keys = ["/resume", "Enter"]
+wait_visible_contains = ["Resume Session (Current Folder)", "delta four", "alpha one", "bravo", "charlie", "golf seven"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["delta"]
+wait_visible_contains = ["> delta", "› delta four", "alpha one", "golf seven"]
+wait_not_contains = ["bravo", "charlie"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["C-d"]
+wait_contains = ["Cannot delete the currently active session"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Resumed session"]
+wait_not_contains = ["Resume Session (Current Folder)"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["/resume", "Enter"]
+wait_contains = ["Resume Session (Current Folder)"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["delta"]
+wait_visible_contains = ["> delta", "› delta four", "alpha one", "golf seven"]
+wait_not_contains = ["bravo", "charlie"]
+wait_timeout_seconds = 5
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/pig-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions", "--no-skills", "--session", "sessions/00000000-0000-4000-8000-000000000004.jsonl", "--session-dir", "sessions"]
+pi_args = ["--no-extensions", "--no-skills", "--session", "sessions/00000000-0000-4000-8000-000000000004.jsonl", "--session-dir", "sessions"]
+
+[assert]
+both_reach_ready = true
+escaped_output_equal = true
+both_contain = ["› delta four", "alpha one", "golf seven"]
+both_not_contain = ["bravo", "charlie"]
+runs = 3

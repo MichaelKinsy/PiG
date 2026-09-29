@@ -1,0 +1,6 @@
+{"type":"session","version":3,"id":"w3-branch","timestamp":"2026-01-01T00:00:00.000Z","cwd":"/fixture"}
+{"type":"message","id":"common","parentId":null,"timestamp":"2026-01-01T00:00:01.000Z","message":{"role":"user","content":"common","timestamp":1}}
+{"type":"message","id":"old","parentId":"common","timestamp":"2026-01-01T00:00:02.000Z","message":{"role":"user","content":"old","timestamp":2}}
+{"type":"message","id":"oldleaf","parentId":"old","timestamp":"2026-01-01T00:00:03.000Z","message":{"role":"assistant","content":[{"type":"text","text":"old"}],"api":"test-faux","provider":"test-faux","model":"faux-1","stopReason":"stop","timestamp":3,"usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}}}
+{"type":"message","id":"active","parentId":"common","timestamp":"2026-01-01T00:00:04.000Z","message":{"role":"user","content":"active 12345","timestamp":4}}
+{"type":"message","id":"leaf","parentId":"active","timestamp":"2026-01-01T00:00:05.000Z","message":{"role":"assistant","content":[{"type":"text","text":"active 12345"}],"api":"test-faux","provider":"test-faux","model":"faux-1","stopReason":"stop","timestamp":5,"usage":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"totalTokens":0,"cost":{"input":0,"output":0,"cacheRead":0,"cacheWrite":0,"total":0}}}}

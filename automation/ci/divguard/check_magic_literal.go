@@ -206,7 +206,7 @@ func runMagicLiteral(fc *fileCtx) []Hit {
 
 // upstreamAllowed reports whether an `// upstream:` comment on one of lines
 // names a mirror file that contains one of values, or whether one of
-// implicit appears in an upstream file PORT_MAP.md maps to this Go file. A
+// implicit appears in an upstream file docs/parity/PORT_MAP.md maps to this Go file. A
 // reference to a missing file or symbol is recorded as a problem.
 func (fc *fileCtx) upstreamAllowed(lines []int, implicit, values []*regexp.Regexp) bool {
 	if fc.Env.Upstream.mappedValue(fc.Env.PortMap[fc.Rel], implicit) {

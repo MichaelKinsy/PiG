@@ -2,8 +2,6 @@ package tui
 
 // extension_editor.go: multi-line editor overlay for extensions.
 //
-// Faithful port of upstream extension-editor.ts (132 LOC).
-//
 // Layout (matches upstream ExtensionEditorComponent):
 //
 //   DynamicBorder
@@ -20,16 +18,18 @@ package tui
 // for the /tree "Custom summarization instructions" flow and any
 // extension ctx.ui.editor() calls.
 
+// Ports packages/coding-agent/src/modes/interactive/components/extension-editor.ts
 // ExtensionEditorComponent wraps a fresh Editor with bordered
 // extension-editor chrome, matching upstream's layout exactly.
 type ExtensionEditorComponent struct {
 	invalidatable
-	editor      *Editor
-	title       string
-	description string
-	done        bool
-	cancel      bool
-	value       string
+	editor         *Editor
+	title          string
+	description    string
+	done           bool
+	cancel         bool
+	value          string
+	externalEditor func(string, func(string))
 }
 
 // NewExtensionEditorComponent creates the editor-slot extension editor.
@@ -68,6 +68,11 @@ func (c *ExtensionEditorComponent) SetDescription(description string) {
 	c.Invalidate()
 }
 
+// SetExternalEditor binds the terminal owner's asynchronous external-editor handoff. A successful completion updates the buffer without submitting the dialog.
+func (c *ExtensionEditorComponent) SetExternalEditor(open func(string, func(string))) {
+	c.externalEditor = open
+}
+
 // Done reports whether the user submitted or cancelled.
 func (c *ExtensionEditorComponent) Done() bool { return c.done }
 
@@ -96,6 +101,15 @@ func (c *ExtensionEditorComponent) HandleInput(data string) {
 		c.Invalidate()
 		return
 	}
+	if kb.Matches(data, "app.editor.external") && c.externalEditor != nil {
+		c.externalEditor(c.editor.Text(), func(text string) {
+			if !c.done {
+				c.editor.SetText(text)
+				c.Invalidate()
+			}
+		})
+		return
+	}
 	c.editor.HandleInput(data)
 	c.Invalidate()
 }
@@ -114,8 +128,7 @@ func (c *ExtensionEditorComponent) Render(width int) []string {
 	lines = append(lines, "")
 	lines = append(lines, NewPaddedText(t.Accent+c.title+t.Reset, 1, 0, nil).Render(width)...)
 	lines = append(lines, dialogDescriptionLines(c.description, width)...)
-	// No spacer here: the Editor's Render starts with a blank line
-	// ("one blank row above the top border") that provides the gap.
+	lines = append(lines, "")
 	lines = append(lines, c.editor.Render(width)...)
 	lines = append(lines, "")
 
@@ -124,7 +137,8 @@ func (c *ExtensionEditorComponent) Render(width int) []string {
 	// tui.input.newLine → "shift+enter/ctrl+j", tui.select.cancel → "escape/ctrl+c".
 	hint := KeyHint("enter", "submit") + "  " +
 		KeyHint("shift+enter/ctrl+j", "newline") + "  " +
-		KeyHint("escape/ctrl+c", "cancel")
+		KeyHint("escape/ctrl+c", "cancel") + "  " +
+		KeyHint(AppKeyText("app.editor.external", "ctrl+g"), "external editor")
 	lines = append(lines, NewPaddedText(hint, 1, 0, nil).Render(width)...)
 	lines = append(lines, "")
 	lines = append(lines, border.Render(width)...)

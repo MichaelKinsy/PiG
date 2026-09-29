@@ -8,6 +8,7 @@ import (
 
 	sourceref "github.com/MichaelKinsy/PiG/coding/source"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 )
 
 // A Git source checks out to <install root>/<host>/<repository path>.
@@ -25,13 +26,13 @@ func TestGitCheckoutPathOnThisPlatform(t *testing.T) {
 	if windows {
 		drive = "C"
 	}
-	got, err := gitCheckoutPath(t.TempDir(), "git:file://localhost/C:/Users/me/owner/piglet.git", false)
+	got, err := packagemanager.GitCheckoutPath(t.TempDir(), agentDir, "git:file://localhost/C:/Users/me/owner/piglet.git", false)
 	if want := filepath.Join(root, "localhost", drive, "Users", "me", "owner", "piglet"); err != nil || got != want {
 		t.Fatalf("file URL checkout = %q, %v; want %q", got, err, want)
 	}
 
 	for _, source := range []string{"git:https://example.com/owner/repo:stream", "git:https://example.com/C:/owner/repo"} {
-		got, err := gitCheckoutPath(t.TempDir(), source, false)
+		got, err := packagemanager.GitCheckoutPath(t.TempDir(), agentDir, source, false)
 		if !windows {
 			if err != nil {
 				t.Errorf("%s: %v; a ':' segment is an ordinary name here", source, err)
@@ -64,7 +65,7 @@ func TestGitCheckoutRelativePerPlatform(t *testing.T) {
 		if err != nil {
 			t.Fatalf("parse %s: %v", tc.source, err)
 		}
-		got, err := gitCheckoutRelative(tc.goos, "root", ref)
+		got, err := packagemanager.GitCheckoutRelative(tc.goos, "root", ref)
 		if tc.refused {
 			if err == nil || !strings.Contains(err.Error(), "Refusing to use path outside package install root") {
 				t.Errorf("%s %s = %q, %v; want the install root refusal", tc.goos, tc.source, got, err)
@@ -88,7 +89,7 @@ func TestGitCloneRepoPerPlatform(t *testing.T) {
 		{"windows", "https://example.com/owner/repo", "https://example.com/owner/repo"},
 		{"linux", "file://localhost/tmp/owner/piglet.git", "file://localhost/tmp/owner/piglet.git"},
 	} {
-		if got := gitCloneRepo(tc.goos, tc.repo); got != tc.want {
+		if got := packagemanager.GitCloneRepo(tc.goos, tc.repo); got != tc.want {
 			t.Errorf("gitCloneRepo(%s, %q) = %q, want %q", tc.goos, tc.repo, got, tc.want)
 		}
 	}

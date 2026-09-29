@@ -17,7 +17,7 @@ func TestUnknownEventHandlerIsAnErrorInEverySDK(t *testing.T) {
 	if testing.Short() {
 		t.Skip("builds and loads SDK fixtures")
 	}
-	conformance := filepath.Join("..", "..", "..", "..", "tests", "extension-conformance", "testdata")
+	conformance := filepath.Join("..", "..", "..", "..", "test", "extension-conformance", "testdata")
 	cases := []struct {
 		name string
 		cfg  func(t *testing.T) ExtConfig

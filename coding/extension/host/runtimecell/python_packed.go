@@ -180,7 +180,7 @@ func findPythonSDKRoot() (string, error) {
 
 func renderPythonRunner(extensions []PythonExtension, sdkRoot string) string {
 	var b strings.Builder
-	b.WriteString("import importlib\nimport os\nimport sys\nimport threading\n\n")
+	b.WriteString("import importlib.util\nimport hashlib\nimport os\nimport sys\nimport threading\n\n")
 	b.WriteString("sys.dont_write_bytecode = True\nos.environ.setdefault('PYTHONDONTWRITEBYTECODE', '1')\n\n")
 	fmt.Fprintf(&b, "sys.path.insert(0, %q)\n", filepath.ToSlash(sdkRoot))
 	for _, ext := range extensions {
@@ -188,28 +188,93 @@ func renderPythonRunner(extensions []PythonExtension, sdkRoot string) string {
 	}
 	b.WriteString("\nITEMS = [\n")
 	for _, ext := range extensions {
-		fmt.Fprintf(&b, "    (%q, %q, %q, %q),\n", ext.Name, SocketEnvName(ext.Name), ext.Package, ext.Factory)
+		fmt.Fprintf(&b, "    (%q, %q, %q, %q, %q),\n", ext.Name, SocketEnvName(ext.Name), ext.Package, ext.Factory, filepath.ToSlash(ext.Root))
 	}
 	b.WriteString("]\n\n")
-	b.WriteString("def _run(name, env, module_name, factory_name):\n")
-	b.WriteString("    sock = os.environ.get(env)\n")
-	b.WriteString("    if not sock and len(ITEMS) == 1:\n        sock = os.environ.get('PIG_EXT_SOCKET')\n")
-	b.WriteString("    if not sock:\n        raise RuntimeError(f'{env} not set for {name}')\n")
-	b.WriteString("    mod = importlib.import_module(module_name)\n")
-	b.WriteString("    ext = getattr(mod, factory_name)()\n")
+	b.WriteString("_MODULES = {}\n\n")
+	b.WriteString("def _module(module_name, root):\n")
+	b.WriteString("    # Python keeps an imported module for the life of the process, so module state survives each factory call.\n")
+	b.WriteString("    key = '_pig_cell_' + hashlib.sha256((root + ':' + module_name).encode()).hexdigest()\n")
+	b.WriteString("    mod = _MODULES.get(key)\n    if mod is not None:\n        return mod\n")
+	b.WriteString("    path = os.path.join(root, *module_name.split('.'))\n    path = os.path.join(path, '__init__.py') if os.path.isdir(path) else path + '.py'\n    spec = importlib.util.spec_from_file_location(key, path, submodule_search_locations=[os.path.dirname(path)])\n    mod = importlib.util.module_from_spec(spec)\n    sys.modules[key] = mod\n    spec.loader.exec_module(mod)\n    _MODULES[key] = mod\n    return mod\n\n")
+	b.WriteString("def _run(item, sock):\n")
+	b.WriteString("    name, env, module_name, factory_name, root = item\n")
+	b.WriteString("    ext = getattr(_module(module_name, root), factory_name)()\n")
 	b.WriteString("    ext.run_with_socket(sock)\n\n")
 	b.WriteString(pythonRunnerFailureReport)
-	b.WriteString("def main():\n")
-	b.WriteString("    errors = []\n    threads = []\n")
-	b.WriteString("    active_value = os.environ.get('PIG_EXT_ACTIVE_MEMBERS')\n")
-	b.WriteString("    active = set(active_value.split(',')) if active_value else None\n")
-	b.WriteString("    def target(item):\n        try:\n            _run(*item)\n        except BaseException as exc:\n            errors.append(f'{item[0]}: {exc}')\n            _report_member_failure(item, exc)\n")
-	b.WriteString("    for item in ITEMS:\n        if active is not None and item[0] not in active:\n            continue\n        t = threading.Thread(target=target, args=(item,))\n        t.start()\n        threads.append(t)\n")
-	b.WriteString("    for t in threads:\n        t.join()\n")
-	b.WriteString("    if errors:\n        print('\\n'.join(errors), file=sys.stderr)\n        raise SystemExit(1)\n\n")
-	b.WriteString("if __name__ == '__main__':\n    main()\n")
+	b.WriteString(pythonRunnerMain)
 	return b.String()
 }
+
+// pythonRunnerMain starts each member's factory, then admits a further generation of a member's factory for every "admit" line on stdin: Pi re-invokes an extension's factory in the process that already holds its module state. The runner exits once every generation has ended, unless the host parked it for a replacement Session. A "park" line names a socket the runner connects to once it holds the process open, so the host retires its last generation only after the notice took effect.
+const pythonRunnerMain = `def _unescape(field):
+    # The host percent-encodes the four characters that delimit a control line (packed_go.go encodeAdmissionField); the percent sign decodes last.
+    return field.replace('%09', '\t').replace('%0A', '\n').replace('%0D', '\r').replace('%25', '%')
+
+def main():
+    errors = []
+    cond = threading.Condition()
+    state = {'live': 0, 'parked': False, 'closed': False}
+    active_value = os.environ.get('PIG_EXT_ACTIVE_MEMBERS')
+    active = set(active_value.split(',')) if active_value else None
+
+    def target(item, sock):
+        try:
+            if not sock:
+                raise RuntimeError(f'{item[1]} not set for {item[0]}')
+            _run(item, sock)
+        except BaseException as exc:
+            errors.append(f'{item[0]}: {exc}')
+            _report_member_failure(item, exc, sock)
+        finally:
+            with cond:
+                state['live'] -= 1
+                cond.notify_all()
+
+    def start(item, sock):
+        with cond:
+            state['live'] += 1
+        threading.Thread(target=target, args=(item, sock)).start()
+
+    for item in ITEMS:
+        if active is not None and item[0] not in active:
+            continue
+        start(item, os.environ.get(item[1]) or (os.environ.get('PIG_EXT_SOCKET') if len(ITEMS) == 1 else None))
+
+    def control():
+        for line in sys.stdin:
+            fields = [_unescape(field) for field in line.rstrip('\r\n').split('\t')]
+            if fields[0] == 'park':
+                with cond:
+                    state['parked'] = True
+                    cond.notify_all()
+                if len(fields) > 2 and fields[2]:
+                    from pig_sdk import _connect_unix
+                    try:
+                        _connect_unix(fields[2]).close()
+                    except OSError:
+                        pass
+            elif fields[0] == 'admit' and len(fields) >= 3:
+                for item in ITEMS:
+                    if item[0] == fields[1]:
+                        with cond:
+                            state['parked'] = False
+                        start(item, fields[2])
+        with cond:
+            state['closed'] = True
+            cond.notify_all()
+
+    threading.Thread(target=control, daemon=True).start()
+    with cond:
+        while state['live'] > 0 or (state['parked'] and not state['closed']):
+            cond.wait()
+    if errors:
+        print('\n'.join(errors), file=sys.stderr)
+        raise SystemExit(1)
+
+if __name__ == '__main__':
+    main()
+`
 
 // pythonRunnerFailureReport tells the host that one member failed while the
 // shared process lives on: it prints the error and connects to the member's
@@ -217,9 +282,8 @@ func renderPythonRunner(extensions []PythonExtension, sdkRoot string) string {
 // visible load error instead of waiting for a connection that never comes.
 // It connects as the SDK does: CPython on Windows has no socket.AF_UNIX, and
 // the SDK reaches the host's AF_UNIX socket through Winsock there.
-const pythonRunnerFailureReport = `def _report_member_failure(item, exc):
+const pythonRunnerFailureReport = `def _report_member_failure(item, exc, sock):
     print(f'{item[0]}: {exc}', file=sys.stderr, flush=True)
-    sock = os.environ.get(item[1]) or (os.environ.get('PIG_EXT_SOCKET') if len(ITEMS) == 1 else None)
     if not sock:
         return
     from pig_sdk import _connect_unix

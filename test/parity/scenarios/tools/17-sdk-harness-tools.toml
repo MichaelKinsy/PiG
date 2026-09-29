@@ -1,0 +1,29 @@
+# Pi 0.87.1 harness/tools.test.ts supplies the inputs and expected behavior.
+# The oracle imports unchanged production factories from the exact published
+# pi-agent-core package. The Go probe uses the public harness factories and the
+# same filesystem, image-processor, late-update and mutation-queue boundaries.
+# Checkpoint time is virtual in both probes, as in upstream's fake-timer test.
+# Other calls use real isolated files. No paths, whitespace or output are normalized.
+# --experimental-import-meta-resolve selects dependencies of the pinned package.
+name = "17-sdk-harness-tools"
+description = "Harness execution environments preserve read/edit output, image delegation, checkpoints and canceled mutation settlement"
+covers = ["packages/agent/src/harness/tools/read.ts", "packages/agent/src/harness/tools/write.ts", "packages/agent/src/harness/tools/edit.ts", "packages/agent/src/harness/tools/bash.ts", "packages/agent/src/harness/tools/file-mutation-queue.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/harness-tools-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/harness-tools-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['HARNESS_TOOLS checkpoints ["one\ntwo\n","one\ntwo\nthree\nfour\n"]', 'HARNESS_TOOLS edit-queue [true,false,true,"ALPHA\nBETA\n"]', 'HARNESS_TOOLS late ["before\n",["","before\n"]]']
+runs = 3

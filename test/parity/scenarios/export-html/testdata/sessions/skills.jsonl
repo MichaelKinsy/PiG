@@ -1,0 +1,4 @@
+{"type":"session","version":3,"id":"export-skills","cwd":"/tmp","timestamp":"2026-09-27T00:00:00.000Z"}
+{"type":"message","id":"skill-only","parentId":null,"timestamp":"2026-09-27T00:00:01.000Z","message":{"role":"user","content":"<skill name=\"review\" location=\"/skills/SKILL.md\">\nReview **code** & tests.\n</skill>"}}
+{"type":"message","id":"skill-prompt","parentId":"skill-only","timestamp":"2026-09-27T00:00:02.000Z","message":{"role":"user","content":[{"type":"text","text":"<skill name=\"review\" location=\"/skills/SKILL.md\">\nReview **code** & tests.\n</skill>\n\nCheck [link](javascript:alert) and <script> text."},{"type":"image","mimeType":"image/png","data":"aGVsbG8="}]}}
+{"type":"message","id":"error","parentId":"skill-prompt","timestamp":"2026-09-27T00:00:03.000Z","message":{"role":"assistant","content":[],"stopReason":"error","errorMessage":"<failed> & stopped"}}

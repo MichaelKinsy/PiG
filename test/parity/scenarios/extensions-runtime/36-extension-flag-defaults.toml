@@ -1,0 +1,26 @@
+# Pi 0.87.1 loader.ts:307-347 exposes first pending defaults during the factory,
+# then committed flags during command dispatch. Re-registering a flag changes
+# its declaration but not the first pending runtime default. All values are
+# primitive JSON with no unstable identifiers; normalization changes nothing.
+name = "36-extension-flag-defaults"
+description = "Factory and command flag values preserve types, falsy values and first defaults"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["testdata/ext/flag-defaults.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/flag-defaults.mjs"]
+
+[cli]
+args = ["--no-session", "--model", "test-faux/faux-1", "--capture", "{{TEMP}}/flags.json", "-p", "/flag-defaults"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/flags.json"
+
+[assert]
+exit_code = 0
+artifact_normalized_equal = true
+artifact_both_contain = ['"duringFactory":[true,false,"default","",null,true,null]', '"duringCommand":[true,false,"default","",null,true,null]']
+both_not_contain = ["Extension error", "TypeError"]
+runs = 3

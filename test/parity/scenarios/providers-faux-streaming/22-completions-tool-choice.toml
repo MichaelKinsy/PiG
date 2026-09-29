@@ -1,0 +1,22 @@
+# Pi 0.87.1 openai-completions.ts:845-965,1225,1638-1650 and constrained-sampling.ts retain
+# native tool choice, provider thinking controls, model-specific instruction roles and schema property order.
+# Payload projections use fixed field order; no fields or values are normalized by the comparator.
+name = "22-completions-tool-choice"
+description = "Completions tool choice, strict property order, thinking flags and instruction roles match Pi."
+covers = ["packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/constrained-sampling.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/completions-tool-choice-pig"]
+pi_args = ["node", "./test/parity/testdata/completions-tool-choice-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"choice":"required"', '"clear_thinking":false', '"required":["required","optional"]']
+runs = 3

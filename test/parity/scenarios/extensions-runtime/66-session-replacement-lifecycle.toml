@@ -1,0 +1,91 @@
+# Upstream evidence: Pi 0.87.1 agent-session-runtime.ts:167-353 awaits before hooks, shutdown with
+# destination path, replacement, and rebind/start with the outgoing path.
+# interactive-mode.ts:1984 re-lists resources; 2020-2045 renders before start.
+# The observer checks path identity at each phase, persisting only so Pi's fresh
+# extension factories can report the complete trace. No filenames are normalized.
+# The paired 2026-09-28 drive loads Pi's unchanged rpc-demo.ts, confirms /new,
+# and observes identical lifecycle traces. Resource checks use the visible frame:
+# Pi can preserve identical resource rows without repainting them into the pipe.
+# session-selector.ts:952-1002 loads the list asynchronously and header.setLoading
+# swaps "◉ Current Folder" for "Loading ..." until it settles; Enter on the still-empty
+# list selects nothing. The resume step therefore waits for the settled header
+# before pressing Enter (a loaded CI runner otherwise left Pi on the picker).
+name = "66-session-replacement-lifecycle"
+description = "Built-in clone, fork, new and resume await ordered lifecycle events with exact Session file identity and retain loaded resources"
+covers = ["packages/coding-agent/src/core/agent-session-runtime.ts", "packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home", "LIFECYCLE_LOG={{TEMP}}/trace.json"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "LIFECYCLE_LOG={{TEMP}}/trace.json"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+pig_extensions = ["testdata/ext/session-replacement-lifecycle.mjs", "../../../../.upstream/v0.87.1/packages/coding-agent/examples/extensions/rpc-demo.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/session-replacement-lifecycle.mjs", "../../../../.upstream/v0.87.1/packages/coding-agent/examples/extensions/rpc-demo.ts"]
+
+[tmux]
+width = 240
+height = 45
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "LIFECYCLE before:at"
+capture_end = "resume:start:ok"
+
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+wait_contains = ["42"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["/clone", "Enter"]
+wait_contains = ["Cloned to new session"]
+wait_visible_contains = ["[Extensions]"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["/fork", "Enter"]
+wait_contains = ["Fork from Message"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Forked to new session"]
+wait_visible_contains = ["[Extensions]"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["C-u", "/new", "Enter"]
+wait_contains = ["Clear session?", "All messages will be lost."]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["New session started"]
+wait_visible_contains = ["[Extensions]"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["/resume", "Enter"]
+wait_contains = ["Resume Session"]
+wait_visible_contains = ["◉ Current Folder"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Resumed session"]
+wait_visible_contains = ["[Extensions]"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["/lifecycle-status", "Enter"]
+wait_contains = ["LIFECYCLE before:at", "resume:start:ok"]
+wait_timeout_seconds = 15
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["BAD", "panic:"]
+output_equal = true
+runs = 2

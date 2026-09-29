@@ -1,38 +1,23 @@
-// System clipboard reader for image paste.
-//
-// Mirrors upstream packages/coding-agent/src/utils/clipboard-image.ts
-// minus the native clipboard module (pig has no native bindings: pure
-// shellouts only).
-//
-// macOS: osascript with the «class PNGf» query (one round trip; writes
-// the PNG bytes to a tempfile because AppleScript's `do shell script
-// echo` can't round-trip binary safely).
-//
-// Linux:
-//
-//   - Wayland (WAYLAND_DISPLAY or XDG_SESSION_TYPE=wayland) → wl-paste
-//     `--list-types` then `--type image/<fmt> --no-newline` for the
-//     first preferred MIME type the clipboard advertises.
-//   - X11 (DISPLAY) or a failed wl-paste → xclip TARGETS probe then
-//     `xclip -selection clipboard -t image/<fmt> -o`.
-//   - WSL with no Linux image → the Windows clipboard through PowerShell.
-//
-// Returns (nil, "", nil) when no image is present (NOT an error). The
-// caller (paste handler) silently ignores in that case.
+// Ports packages/coding-agent/src/utils/clipboard-image.ts.
 
 package codingagent
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"image"
+	"image/png"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 // SupportedImageMIMEs lists the formats we accept from the clipboard.
@@ -49,12 +34,7 @@ var SupportedImageMIMEs = []string{
 type clipboardRunner func(ctx context.Context, name string, args ...string) ([]byte, error)
 
 func defaultClipboardRunner(ctx context.Context, name string, args ...string) ([]byte, error) {
-	cmd := exec.CommandContext(ctx, name, args...)
-	out, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
+	return runClipboardCommandContext(ctx, name, args, clipboardCommandOptions{})
 }
 
 // envLookup is the seam tests use to override env-var lookups.
@@ -66,6 +46,8 @@ var clipboardEnv envLookup = os.Getenv
 // clipboardRun is the package-level command runner (overridden in tests).
 var clipboardRun clipboardRunner = defaultClipboardRunner
 
+var getNativeClipboard = tui.GetNativeClipboard
+
 // ReadClipboardImage reads a PNG/JPEG/WebP/GIF from the system
 // clipboard. Returns (nil, "", nil) when the clipboard holds no image
 // : this is not an error case, just "nothing to paste".
@@ -73,77 +55,52 @@ func ReadClipboardImage() ([]byte, string, error) {
 	return ReadClipboardImageContext(context.Background())
 }
 
-// ReadClipboardImageContext reads a clipboard image while parent remains
-// active. Ctrl+V passes its renderer lifetime so teardown cancels command
-// probes and joins the operation instead of leaving terminal I/O behind.
+// ReadClipboardImageContext reads command backends before the native helper on Linux and the native helper directly elsewhere. Termux reads no image clipboard. Native transfer errors propagate unchanged, and unsupported formats are converted to PNG. The caller owns cancellation and awaits the transfer.
 func ReadClipboardImageContext(parent context.Context) ([]byte, string, error) {
-	switch clipboardGOOS {
-	case "darwin":
-		return readClipboardImageMacOSContext(parent)
-	case "linux":
-		return readClipboardImageLinuxContext(parent)
-	default:
+	if clipboardEnv("TERMUX_VERSION") != "" {
 		return nil, "", nil
 	}
+	var data []byte
+	var mime string
+	var err error
+	if clipboardGOOS == "linux" {
+		data, mime, err = readClipboardImageLinuxContext(parent)
+	} else {
+		data, mime, err = readClipboardImageViaNativeClipboard(parent)
+	}
+	if err != nil || len(data) == 0 {
+		return nil, "", err
+	}
+	if !slices.Contains(SupportedImageMIMEs, baseMIME(mime)) {
+		// Clipboard conversion decodes raw pixels without the terminal image converter's EXIF orientation step.
+		// upstream: packages/coding-agent/src/utils/clipboard-image.ts:convertToPng
+		decoded, _, err := image.Decode(bytes.NewReader(data))
+		if err != nil {
+			return nil, "", nil
+		}
+		var out bytes.Buffer
+		if err := png.Encode(&out, decoded); err != nil {
+			return nil, "", nil
+		}
+		data, mime = out.Bytes(), "image/png"
+	}
+	return data, mime, nil
 }
 
-// ─── macOS ────────────────────────────────────────────────────────────────────
-
-// readClipboardImageMacOS spawns `osascript` with a small AppleScript
-// program that writes the clipboard's PNG bytes to a tempfile (or
-// returns "no" if the clipboard doesn't hold image data).
-//
-// AppleScript can't round-trip binary safely through stdout: the
-// tempfile dance is the parity-faithful approach (matches the upstream
-// PowerShell-on-WSL pattern, just on macOS).
-func readClipboardImageMacOS() ([]byte, string, error) {
-	return readClipboardImageMacOSContext(context.Background())
-}
-
-func readClipboardImageMacOSContext(parent context.Context) ([]byte, string, error) {
-	tmpFile, err := os.CreateTemp("", "pig-clip-*.png")
-	if err != nil {
-		return nil, "", fmt.Errorf("clipboard: tempfile: %w", err)
-	}
-	tmpPath := tmpFile.Name()
-	_ = tmpFile.Close()
-	defer func() { _ = os.Remove(tmpPath) }()
-
-	script := strings.Join([]string{
-		"try",
-		"  set thePng to (the clipboard as «class PNGf»)",
-		"  set fp to open for access POSIX file \"" + tmpPath + "\" with write permission",
-		"  set eof fp to 0",
-		"  write thePng to fp",
-		"  close access fp",
-		"  return \"ok\"",
-		"on error errMsg",
-		"  try",
-		"    close access POSIX file \"" + tmpPath + "\"",
-		"  end try",
-		"  return \"no\"",
-		"end try",
-	}, "\n")
-
-	// osascript stands in for upstream's native clipboard read and takes
-	// runClipboardCommand's default timeout.
-	out, err := runClipboardImageCommandContext(parent, clipboardCommandTimeout, "osascript", "-e", script)
-	if err != nil {
-		// Most osascript failures = "no image" rather than a hard
-		// error. Mirror upstream and return (nil, "", nil) silently.
+func readClipboardImageViaNativeClipboard(ctx context.Context) ([]byte, string, error) {
+	helper := getNativeClipboard()
+	if helper == nil || helper.GetImage == nil {
 		return nil, "", nil
 	}
-	if strings.TrimSpace(string(out)) != "ok" {
-		return nil, "", nil
+	data, _, err := helper.GetImage(ctx)
+	if err != nil || len(data) == 0 {
+		return nil, "", err
 	}
-	bytes, err := os.ReadFile(tmpPath)
-	if err != nil {
-		return nil, "", nil
+	mime := imageprocessing.DetectSupportedImageMimeType(data)
+	if mime == "" {
+		mime = "application/octet-stream"
 	}
-	if len(bytes) == 0 {
-		return nil, "", nil
-	}
-	return bytes, "image/png", nil
+	return data, mime, nil
 }
 
 // ─── Linux ────────────────────────────────────────────────────────────────────
@@ -187,16 +144,13 @@ func runClipboardImageCommandContext(parent context.Context, timeout time.Durati
 	return clipboardRun(ctx, name, args...)
 }
 
-// readClipboardImageLinux mirrors upstream readClipboardImage's linux branch:
-// wl-paste under Wayland or WSL, xclip when that backend failed, then the
-// Windows clipboard through PowerShell under WSL when Linux had no image.
+// readClipboardImageLinux tries Wayland when selected, Xclip when the command backend is unavailable, PowerShell under WSL when Linux has no image, then the native helper only if the Linux backend remains unavailable.
 func readClipboardImageLinux() ([]byte, string, error) {
 	return readClipboardImageLinuxContext(context.Background())
 }
 
 func readClipboardImageLinuxContext(parent context.Context) ([]byte, string, error) {
 	wayland := isWaylandSession()
-	hasX11 := clipboardEnv("DISPLAY") != ""
 	wsl := IsWSL(clipboardEnv, clipboardReadFile)
 
 	var data []byte
@@ -205,7 +159,7 @@ func readClipboardImageLinuxContext(parent context.Context) ([]byte, string, err
 	if wayland || wsl {
 		data, mime, result = tryWlPasteContext(parent)
 	}
-	if result == clipboardImageFailed && (hasX11 || wayland || wsl) {
+	if result == clipboardImageFailed {
 		data, mime, result = tryXclipContext(parent)
 	}
 	if result == clipboardImageFound {
@@ -215,6 +169,9 @@ func readClipboardImageLinuxContext(parent context.Context) ([]byte, string, err
 		if data, ok := readClipboardImageViaPowerShellContext(parent); ok {
 			return data, "image/png", nil
 		}
+	}
+	if result == clipboardImageFailed {
+		return readClipboardImageViaNativeClipboard(parent)
 	}
 	return nil, "", nil
 }

@@ -1,0 +1,25 @@
+# Pi 0.87.1 image-tool-result.test.ts sends image-only and mixed text/image tool results.
+# Compare actual HTTP image fields/data and retained description across Google, OpenRouter, Mistral and both OpenAI paths.
+# This does not claim live visual recognition from a canned response. A wrong Mistral imageUrl wire key is not counted as an image_url field.
+name = "17-image-tool-result-wire"
+description = "Vision model capabilities and tool-result image bytes survive provider conversion and HTTP encoding."
+covers = ["packages/ai/src/api/google-generative-ai.ts", "packages/ai/src/api/google-shared.ts", "packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/openai-responses-shared.ts", "packages/ai/src/api/mistral-conversations.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/image-tool-result/pig"]
+pi_args = ["node", "./test/parity/testdata/image-tool-result/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_not_contain = ['"images":[]', "panic:"]
+runs = 3

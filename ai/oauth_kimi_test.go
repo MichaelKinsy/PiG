@@ -5,13 +5,188 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 	"testing/synctest"
 	"time"
 )
+
+// Ports packages/ai/test/kimi-coding-oauth.test.ts:52,121,143,165,194,231.
+func TestKimiOAuthUpstream(t *testing.T) {
+	for _, tc := range []struct {
+		name, tokenError, host string
+		interval               int
+	}{
+		{"logs in with the device authorization flow", "", "https://auth.kimi.com", 5},
+		{"fails when the device code expires", "expired_token", "https://auth.kimi.com", 5},
+		{"fails when the user denies the login", "access_denied", "https://auth.kimi.com", 5},
+		{"honors the KIMI_CODE_OAUTH_HOST override", "", "https://auth.example.com", 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("KIMI_CODE_OAUTH_HOST", tc.host+"/")
+			synctest.Test(t, func(t *testing.T) {
+				p := newKimiOAuthProvider()
+				if tc.tokenError == "" && tc.interval == 5 {
+					startTime := time.Date(2026, time.July, 20, 0, 0, 0, 0, time.UTC)
+					time.Sleep(time.Until(startTime))
+				}
+				start := time.Now()
+				var urls []string
+				var polls []time.Duration
+				var pollMu sync.Mutex
+				pollTimes := func() []time.Duration {
+					pollMu.Lock()
+					defer pollMu.Unlock()
+					return slices.Clone(polls)
+				}
+				p.client = &http.Client{Transport: metaRoundTripper(func(r *http.Request) (*http.Response, error) {
+					urls = append(urls, r.URL.String())
+					if r.Method != "POST" || r.Header.Get("Content-Type") != "application/x-www-form-urlencoded" || r.Header.Get("Accept") != "application/json" {
+						t.Errorf("request = %s %v", r.Method, r.Header)
+					}
+					if err := r.ParseForm(); err != nil {
+						t.Error(err)
+					}
+					if r.Form.Get("client_id") != "17e5f671-d194-4dfb-9706-5516cb48c098" {
+						t.Errorf("client_id = %s", r.Form.Get("client_id"))
+					}
+					switch r.URL.String() {
+					case tc.host + "/api/oauth/device_authorization":
+						return metaJSONResponse(200, map[string]any{"device_code": "device-code-123", "user_code": "ABCD-1234", "verification_uri": "https://www.kimi.com/code", "verification_uri_complete": "https://www.kimi.com/code?user_code=ABCD-1234", "interval": tc.interval, "expires_in": 600}), nil
+					case tc.host + "/api/oauth/token":
+						pollMu.Lock()
+						polls = append(polls, time.Since(start))
+						pollCount := len(polls)
+						pollMu.Unlock()
+						if r.Form.Get("grant_type") != "urn:ietf:params:oauth:grant-type:device_code" || r.Form.Get("device_code") != "device-code-123" {
+							t.Errorf("token form = %v", r.Form)
+						}
+						if tc.tokenError != "" {
+							return metaJSONResponse(400, map[string]any{"error": tc.tokenError}), nil
+						}
+						if tc.interval == 5 && pollCount == 1 {
+							return metaJSONResponse(400, map[string]any{"error": "authorization_pending"}), nil
+						}
+						if tc.interval == 1 {
+							return metaJSONResponse(200, map[string]any{"access_token": "a", "refresh_token": "r", "expires_in": 60}), nil
+						}
+						return metaJSONResponse(200, map[string]any{"access_token": "access-token", "refresh_token": "refresh-token", "expires_in": 3600}), nil
+					default:
+						t.Fatalf("unexpected URL %s", r.URL)
+						return nil, nil
+					}
+				})}
+				var notifications []AuthEvent
+				var creds Credential
+				var loginErr error
+				go func() {
+					creds, loginErr = oauthNativeLogin(p)(t.Context(), AuthInteraction{Notify: func(event AuthEvent) { notifications = append(notifications, event) }, Prompt: func(context.Context, AuthPrompt) (string, error) {
+						t.Error("Kimi login must not prompt")
+						return "", nil
+					}})
+				}()
+				synctest.Wait()
+				wantInfo := AuthDeviceCodeEvent{UserCode: "ABCD-1234", VerificationURI: "https://www.kimi.com/code?user_code=ABCD-1234", IntervalSeconds: new(float64(tc.interval)), ExpiresInSeconds: new(float64(600))}
+				if !reflect.DeepEqual(notifications, []AuthEvent{wantInfo}) {
+					t.Fatalf("notifications = %#v", notifications)
+				}
+				time.Sleep(time.Duration(tc.interval)*time.Second - time.Millisecond)
+				synctest.Wait()
+				if got := pollTimes(); len(got) != 0 {
+					t.Fatalf("early polls = %v", got)
+				}
+				time.Sleep(time.Millisecond)
+				synctest.Wait()
+				if tc.tokenError != "" {
+					want := "expired"
+					if tc.tokenError == "access_denied" {
+						want = "denied"
+					}
+					if loginErr == nil || !strings.Contains(loginErr.Error(), want) {
+						t.Fatalf("login error = %v", loginErr)
+					}
+					return
+				}
+				wantPolls := []time.Duration{time.Second}
+				wantCreds := Credential{Type: CredentialOAuth, Access: "a", Refresh: "r", Expires: start.Add(61 * time.Second).UnixMilli()}
+				if tc.interval == 5 {
+					if got := pollTimes(); !slices.Equal(got, []time.Duration{5 * time.Second}) {
+						t.Fatalf("first polls = %v", got)
+					}
+					time.Sleep(5 * time.Second)
+					synctest.Wait()
+					wantPolls = []time.Duration{5 * time.Second, 10 * time.Second}
+					wantCreds = Credential{Type: CredentialOAuth, Access: "access-token", Refresh: "refresh-token", Expires: start.Add(3610 * time.Second).UnixMilli()}
+				}
+				if got := pollTimes(); loginErr != nil || !reflect.DeepEqual(creds, wantCreds) || !slices.Equal(got, wantPolls) {
+					t.Fatalf("creds=%#v err=%v polls=%v", creds, loginErr, got)
+				}
+				if tc.interval == 1 && !slices.Equal(urls, []string{tc.host + "/api/oauth/device_authorization", tc.host + "/api/oauth/token"}) {
+					t.Fatalf("urls = %v", urls)
+				}
+			})
+		})
+	}
+	t.Run("refreshes tokens and returns a Bearer header for requests", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			p := newKimiOAuthProvider()
+			p.oauthHost = "https://auth.kimi.com"
+			p.client = &http.Client{Transport: metaRoundTripper(func(r *http.Request) (*http.Response, error) {
+				if err := r.ParseForm(); err != nil {
+					t.Error(err)
+				}
+				if r.URL.String() != "https://auth.kimi.com/api/oauth/token" || r.Form.Get("grant_type") != "refresh_token" || r.Form.Get("refresh_token") != "old-refresh" || r.Form.Get("client_id") != kimiOAuthClientID {
+					t.Errorf("request = %s %v", r.URL, r.Form)
+				}
+				return metaJSONResponse(200, map[string]any{"access_token": "new-access", "refresh_token": "new-refresh", "expires_in": 3600}), nil
+			})}
+			before := time.Now()
+			creds, err := oauthRefresh(p)(t.Context(), Credential{Type: CredentialOAuth, Access: "old-access", Refresh: "old-refresh", Expires: before.UnixMilli()})
+			if err != nil || creds.Type != CredentialOAuth || creds.Access != "new-access" || creds.Refresh != "new-refresh" || creds.Expires < before.Add(time.Hour).UnixMilli() {
+				t.Fatalf("refresh = %#v %v", creds, err)
+			}
+			auth, err := oauthToAuth("kimi-coding", p)(creds)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(auth, ModelAuth{Headers: ProviderHeaders{"Authorization": new("Bearer new-access")}}) {
+				t.Fatalf("auth = %#v", auth)
+			}
+		})
+	})
+	t.Run("retries refresh on 429 and fails unauthorized on invalid_grant", func(t *testing.T) {
+		synctest.Test(t, func(t *testing.T) {
+			p := newKimiOAuthProvider()
+			calls := 0
+			invalid := false
+			p.client = &http.Client{Transport: metaRoundTripper(func(*http.Request) (*http.Response, error) {
+				calls++
+				if invalid {
+					return metaJSONResponse(400, map[string]any{"error": "invalid_grant"}), nil
+				}
+				if calls == 1 {
+					return metaJSONResponse(429, map[string]any{"error": "temporarily_unavailable"}), nil
+				}
+				return metaJSONResponse(200, map[string]any{"access_token": "a", "refresh_token": "r", "expires_in": 60}), nil
+			})}
+			start := time.Now()
+			creds, err := p.RefreshTokenContext(t.Context(), OAuthCredentials{Access: "old", Refresh: "old"})
+			if err != nil || creds.Access != "a" || calls != 2 || time.Since(start) != time.Second {
+				t.Fatalf("refresh = %#v %v calls=%d elapsed=%s", creds, err, calls, time.Since(start))
+			}
+			invalid = true
+			calls = 0
+			_, err = p.RefreshTokenContext(t.Context(), OAuthCredentials{Access: "old", Refresh: "old"})
+			if err == nil || !strings.Contains(err.Error(), "unauthorized") || calls != 1 {
+				t.Fatalf("invalid_grant = %v calls=%d", err, calls)
+			}
+		})
+	})
+}
 
 func TestKimiOAuthLoginDeviceFlow(t *testing.T) {
 	var tokenCalls atomic.Int32
@@ -174,7 +349,7 @@ func TestKimiOAuthLoginContextCancellation(t *testing.T) {
 						time.AfterFunc(time.Second, cancel)
 					}
 				}})
-				if err == nil || credentials != (OAuthCredentials{}) {
+				if err == nil || !reflect.DeepEqual(credentials, OAuthCredentials{}) {
 					t.Fatalf("LoginContext = %#v, %v; want cancellation", credentials, err)
 				}
 				wantRequests, wantNotifications, wantElapsed := []string(nil), 0, time.Duration(0)
@@ -228,7 +403,7 @@ func TestKimiOAuthRefreshTokenContextCancellation(t *testing.T) {
 				case "backoff":
 					wantRequests, wantElapsed = 1, 500*time.Millisecond
 				}
-				if err == nil || credentials != (OAuthCredentials{}) || requests != wantRequests || time.Since(start) != wantElapsed {
+				if err == nil || !reflect.DeepEqual(credentials, OAuthCredentials{}) || requests != wantRequests || time.Since(start) != wantElapsed {
 					t.Fatalf("step=%s: refresh = %#v, %v after %v with %d requests", step, credentials, err, time.Since(start), requests)
 				}
 			})

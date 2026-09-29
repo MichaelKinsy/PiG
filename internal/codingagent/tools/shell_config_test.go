@@ -80,7 +80,7 @@ func TestBashToolMissingCustomShell(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !res.IsError || res.Content != "Custom shell path not found: "+missing {
+	if !res.IsError || res.Text() != "Custom shell path not found: "+missing {
 		t.Fatalf("res = %+v", res)
 	}
 }

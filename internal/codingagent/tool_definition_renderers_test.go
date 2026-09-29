@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/tools"
@@ -34,7 +35,7 @@ func TestInteractiveModeDrawsToolDefinitionRenderers(t *testing.T) {
 		},
 		RenderResult: func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, _ extension.Theme, context extension.ToolRenderContext) extension.Component {
 			value := result.(agent.AgentToolResult)
-			return tui.NewText(fmt.Sprintf("RESULT %s %v partial=%t expanded=%t topic=%s", value.Content, value.Details, options.IsPartial, options.Expanded, context.State.(map[string]any)["topic"]))
+			return tui.NewText(fmt.Sprintf("RESULT %s %v partial=%t expanded=%t topic=%s", value.Text(), value.Details, options.IsPartial, options.Expanded, context.State.(map[string]any)["topic"]))
 		},
 	}
 	m := &InteractiveMode{
@@ -55,7 +56,7 @@ func TestInteractiveModeDrawsToolDefinitionRenderers(t *testing.T) {
 	if got := render(); !strings.Contains(got, `RESULT working partial-details partial=true expanded=false topic={"topic":"alpha"}`) {
 		t.Fatalf("partial card = %q", got)
 	}
-	m.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "call-1", ToolName: definition.Name, Result: agent.AgentToolResult{Content: "failed", Details: "final-details", IsError: true}})
+	m.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "call-1", ToolName: definition.Name, Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "failed"}}, Details: "final-details", IsError: true}})
 	got := render()
 	if !strings.Contains(got, `CALL {"topic":"alpha"} partial=false`) || !strings.Contains(got, "RESULT failed final-details partial=false expanded=false") {
 		t.Fatalf("final card = %q", got)
@@ -100,7 +101,7 @@ func TestBuiltInOverrideFillsMissingRenderer(t *testing.T) {
 	if got := plainRows(filled.RenderCall(nil, nil, extension.ToolRenderContext{}).(tui.Component).Render(40)); strings.TrimSpace(got) != "OVERRIDE CALL" {
 		t.Fatalf("the override's renderCall was replaced: %q", got)
 	}
-	failed := agent.AgentToolResult{Content: "disk full", IsError: true}
+	failed := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "disk full"}}, IsError: true}
 	rows := filled.RenderResult(failed, extension.ToolRenderResultOptions{}, nil, extension.ToolRenderContext{IsError: true, State: map[string]any{}}).(tui.Component).Render(40)
 	if got := plainRows(rows); got != "\ndisk full" {
 		t.Fatalf("built-in write renderResult = %q", got)
@@ -132,7 +133,7 @@ func TestBuiltInOverrideDrawsBuiltInWriteCall(t *testing.T) {
 	args, _ := json.Marshal(map[string]string{"path": "notes.txt", "content": strings.Join(lines, "\n")})
 	m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "call-1", ToolName: "write", Args: args})
 	card := m.toolByID["call-1"]
-	m.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "call-1", ToolName: "write", Result: agent.AgentToolResult{Content: "ok"}})
+	m.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "call-1", ToolName: "write", Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}}})
 	got := plainRows(card.Render(80))
 	for _, want := range []string{"write notes.txt", "line 10", "... (2 more lines, 12 total,", "OVERRIDE RESULT"} {
 		if !strings.Contains(got, want) {
@@ -166,7 +167,7 @@ func TestBuiltInEditRenderersPreviewAndResultDiff(t *testing.T) {
 	if !strings.Contains(got, "edit a.txt") || !strings.Contains(got, "-2 two") || !strings.Contains(got, "+2 TWO") {
 		t.Fatalf("edit call preview = %q", got)
 	}
-	done := agent.AgentToolResult{Content: "ok", Details: &tools.EditToolDetails{Diff: "-2 two\n+2 TWO"}}
+	done := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}}, Details: &tools.EditToolDetails{Diff: "-2 two\n+2 TWO"}}
 	if rows := result(done, extension.ToolRenderResultOptions{}, nil, context).(tui.Component).Render(60); len(rows) != 0 {
 		t.Fatalf("result repeated the call's diff: %q", rows)
 	}
@@ -187,7 +188,7 @@ func TestBuiltInShellRenderersShowDuration(t *testing.T) {
 	if !strings.Contains(header, "$ ls") {
 		t.Fatalf("bash call = %q", header)
 	}
-	rows := result(agent.AgentToolResult{Content: "a\nb"}, extension.ToolRenderResultOptions{}, nil, context).(tui.Component).Render(60)
+	rows := result(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "a\nb"}}}, extension.ToolRenderResultOptions{}, nil, context).(tui.Component).Render(60)
 	if got := plainRows(rows); !strings.Contains(got, "a") || !strings.Contains(got, "Took ") {
 		t.Fatalf("bash result = %q", got)
 	}
@@ -197,10 +198,10 @@ func TestBuiltInShellRenderersShowDuration(t *testing.T) {
 // formatReadResult does.
 func TestBuiltInReadResultCollapsedIsEmpty(t *testing.T) {
 	_, result := builtInToolRenderers("read")
-	if rows := result(agent.AgentToolResult{Content: "text"}, extension.ToolRenderResultOptions{}, nil, extension.ToolRenderContext{State: map[string]any{}}).(tui.Component).Render(60); len(rows) != 0 {
+	if rows := result(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "text"}}}, extension.ToolRenderResultOptions{}, nil, extension.ToolRenderContext{State: map[string]any{}}).(tui.Component).Render(60); len(rows) != 0 {
 		t.Fatalf("collapsed read result = %q", rows)
 	}
-	rows := result(agent.AgentToolResult{Content: "text"}, extension.ToolRenderResultOptions{Expanded: true}, nil, extension.ToolRenderContext{State: map[string]any{}}).(tui.Component).Render(60)
+	rows := result(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "text"}}}, extension.ToolRenderResultOptions{Expanded: true}, nil, extension.ToolRenderContext{State: map[string]any{}}).(tui.Component).Render(60)
 	if got := plainRows(rows); got != "\ntext" {
 		t.Fatalf("expanded read result = %q", got)
 	}

@@ -1,0 +1,19 @@
+# Upstream evidence: Pi 0.87.1 main.ts:251-281,385,409-410.
+# On 2026-09-27, pi --session nosuch-id -p hi and --fork nosuch-id -p hi
+# returned exit 1, empty stdout, and exactly "No session found matching 'nosuch-id'\n" on stderr.
+# The binary Pi-comparison test also covers JSON/RPC and forced ANSI color for both flags.
+name = "19-missing-session-id"
+description = "An unmatched session ID uses Pi's exact stderr diagnostic and exits before model startup"
+covers = ["packages/coding-agent/src/main.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--session", "nosuch-id", "-p", "hi"]
+
+[assert]
+exit_code = 1
+output_equal = true
+stderr_equal = true
+both_match_regex = ["^$"]
+runs = 3

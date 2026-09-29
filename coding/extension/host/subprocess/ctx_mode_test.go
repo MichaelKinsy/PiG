@@ -288,7 +288,7 @@ func TestFooterFactoryReceivesProvider(t *testing.T) {
 // renderSpecialSurface). Before UIBridge.OnStateChanged was wired to
 // Host.BroadcastStateUpdate, ui.setStatus never triggered that push, so a
 // footer already installed at session_start (as in the parity fixture
-// parity/scenarios/extensions-runtime/testdata/ext/footer-status.mjs) could
+// test/parity/scenarios/extensions-runtime/testdata/ext/footer-status.mjs) could
 // go stale forever after the first render: most visibly across /reload
 // (scenario 15-footer-status-reload-composition), where the reloaded
 // extension's own setStatus/setFooter calls are the only state transition
@@ -479,6 +479,9 @@ func TestNodeRuntimeReportsRealUIStateNotStubs(t *testing.T) {
 	fakeUI.allThemes = []extension.ThemeMeta{
 		{Name: "dark", Path: "/tmp/dark.json"},
 		{Name: "solarized", Path: "/tmp/solarized.json"},
+	}
+	fakeUI.themeByName = map[string]extension.Theme{
+		"solarized": map[string]any{"name": "solarized", "foregrounds": map[string]string{}, "backgrounds": map[string]string{}, "mode": "truecolor"},
 	}
 	fakeUI.setUIState("draft prompt", true)
 

@@ -93,7 +93,7 @@ func GenerateBugReportSummary(ctx context.Context, opts GenerateBugReportSummary
 	request := []agent.AgentMessage{{
 		User: &agent.UserMessage{
 			Role:      "user",
-			Content:   []ai.UserContentBlock{ai.TextContent{Text: strings.Join(parts, "\n\n")}},
+			Content:   ai.UserContentBlocks{ai.TextContent{Text: strings.Join(parts, "\n\n")}},
 			Timestamp: time.Now().UnixMilli(),
 		},
 	}}

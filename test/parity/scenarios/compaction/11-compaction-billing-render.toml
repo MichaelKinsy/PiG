@@ -1,0 +1,26 @@
+# Pi 0.87.1 interactive-mode.ts:3972 renders warning-colored billing notices,
+# gated by showCacheMissNotices, using JS toFixed rounding. Both probes render
+# the real components at width 120 and compare every escaped byte in every row.
+# Node's flag resolves pi-tui relative to the pinned coding-agent package.
+name = "11-compaction-billing-render"
+description = "Compaction and branch-summary billing notices match Pi's text, rounding and color"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/compaction-billing-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/compaction-billing-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["Compaction: 100 tokens billed (~$0.13)", "Branch summary: 100 tokens billed (~$0.13)"]
+runs = 3

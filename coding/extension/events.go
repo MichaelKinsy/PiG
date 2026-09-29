@@ -19,7 +19,7 @@ import (
 //     (Id, Url, Api, Json) at word boundaries.
 //
 // JSON tags carry upstream's exact camelCase. The parity gates in
-// tests/upstream-parity/ enforce both.
+// test/upstream-parity/ enforce both.
 
 // ─── Project Trust (upstream types.ts ProjectTrust*) ─────────────────────
 
@@ -256,10 +256,11 @@ type BeforeProviderHeadersEvent struct {
 
 // BeforeAgentStartEvent: upstream types.ts BeforeAgentStartEvent.
 type BeforeAgentStartEvent struct {
-	Type                string                   `json:"type"`
-	Prompt              string                   `json:"prompt"`
-	Images              []ImageContent           `json:"images,omitempty"`
-	SystemPrompt        string                   `json:"systemPrompt"`
+	Type         string         `json:"type"`
+	Prompt       string         `json:"prompt"`
+	Images       []ImageContent `json:"images,omitempty"`
+	SystemPrompt string         `json:"systemPrompt"`
+	// SystemPromptOptions is the per-handler value view of the run's options. Use BeforeAgentStartOptions with the dispatch context to replace collections on the shared per-run object.
 	SystemPromptOptions BuildSystemPromptOptions `json:"systemPromptOptions"`
 }
 
@@ -284,6 +285,12 @@ type CustomMessageRef struct {
 type AgentStartEvent struct {
 	Type string `json:"type"`
 }
+
+// BoundaryBaseEvent is the closed input union of actionable turn_end and agent_before_settle events. The runner supplies each handler's proposal and preview.
+type BoundaryBaseEvent interface{ boundaryBaseEvent() }
+
+func (TurnEndEvent) boundaryBaseEvent()            {}
+func (*AgentBeforeSettleEvent) boundaryBaseEvent() {}
 
 // AgentBeforeSettleEvent: upstream types.ts AgentBeforeSettleEvent. It is
 // awaited after retry, recovery, compaction, and queued continuations stop.
@@ -445,8 +452,9 @@ type TurnStartEvent struct {
 	Timestamp int64  `json:"timestamp"`
 }
 
-// TurnEndEvent: upstream types.ts TurnEndEvent.
+// TurnEndEvent carries the completed turn and the actionable boundary proposal and preview (upstream types.ts TurnEndEvent).
 type TurnEndEvent struct {
+	*BoundaryState
 	Type               string              `json:"type"`
 	TurnIndex          int                 `json:"turnIndex"`
 	Message            AgentMessage        `json:"message"`
@@ -779,7 +787,7 @@ type GrepToolDetails struct {
 // FindToolDetails mirrors upstream find.ts:32.
 type FindToolDetails struct {
 	Truncation         *ToolTruncation `json:"truncation,omitempty"`
-	ResultLimitReached int             `json:"resultLimitReached,omitempty"`
+	ResultLimitReached *float64        `json:"resultLimitReached,omitempty"`
 }
 
 // LsToolDetails mirrors upstream ls.ts:23, including fractional requested limits.

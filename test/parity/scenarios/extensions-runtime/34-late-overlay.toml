@@ -1,0 +1,44 @@
+# Behavior family: extensions-runtime
+# Surface: pi-powerline-footer's startup welcome overlay.
+#
+# late-welcome.mjs opens a centered ui.custom overlay from a timer its
+# session_start handler starts, after the handler has returned.
+#
+# Upstream evidence (Pi 0.87.1, tmux 100x35, probed 2026-09-26): the overlay
+# shows. PiG before the fix drew none: the timer's ui.custom call carried the
+# finished session_start request as its parent, and PiG cancelled it with
+# that request ("cancelled: context canceled").
+
+name = "34-late-overlay"
+description = "An overlay opened by a timer after its session_start handler returned shows"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/late-welcome.mjs"]
+pi_extensions = [
+  "../../testdata/test-faux-provider.ts",
+  "testdata/ext/late-welcome.mjs",
+]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "LATE WELCOME"
+ready_pattern_pi = "LATE WELCOME"
+ready_timeout_seconds = 30
+capture_start = "╭──────────────────╮"
+capture_end = "╰──────────────────╯"
+
+[assert]
+both_reach_ready = true
+both_contain = ["LATE WELCOME", "press any key..."]
+both_not_contain = ["panic:", "goroutine "]
+output_normalized_equal = true
+runs = 3

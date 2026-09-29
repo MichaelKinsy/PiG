@@ -1,5 +1,7 @@
 package ai
 
+// Ports packages/ai/src/api/azure-openai-responses.ts.
+
 import (
 	"context"
 	"fmt"
@@ -13,12 +15,15 @@ const defaultAzureAPIVersion = "v1"
 // AzureOpenAIResponsesConfig mirrors the upstream Azure wrapper provider while
 // delegating transport/parsing to the shared OpenAI Responses implementation.
 type AzureOpenAIResponsesConfig struct {
-	APIKey              string
-	Model               string
-	ProviderID          string
-	BaseURL             string
-	ExtraHeaders        map[string]string
-	SamplingParams      map[string]any
+	ModelMetadata  *Model
+	APIKey         string
+	Model          string
+	ProviderID     string
+	BaseURL        string
+	ExtraHeaders   map[string]string
+	SamplingParams map[string]any
+	// ThinkingLevelMap overrides catalog effort values when non-nil.
+	ThinkingLevelMap    ThinkingLevelMap
 	AzureAPIVersion     string
 	AzureResourceName   string
 	AzureDeploymentName string
@@ -35,15 +40,19 @@ func NewAzureOpenAIResponsesProvider(cfg AzureOpenAIResponsesConfig) Provider {
 	}
 	deployment := resolveAzureDeploymentName(cfg.Model, cfg.AzureDeploymentName, cfg.Env)
 	baseCfg := OpenAIResponsesConfig{
+		api:                    APIAzureOpenAIResponses,
 		StrictModeDefault:      true, // upstream azure-openai-responses.ts: supportsStrictMode ?? true
 		SkipServiceTierPricing: true,
 		APIKey:                 cfg.APIKey,
 		APIKeyHeader:           "api-key",
 		APIKeyPrefix:           "",
-		Model:                  deployment,
+		Model:                  cfg.Model,
+		requestModel:           deployment,
 		ProviderID:             providerID,
 		ExtraHeaders:           cfg.ExtraHeaders,
 		SamplingParams:         cfg.SamplingParams,
+		ModelMetadata:          cfg.ModelMetadata,
+		ThinkingLevelMap:       cfg.ThinkingLevelMap,
 		Compat:                 cfg.Compat,
 		BaseURLIsEndpoint:      true,
 		GetAPIKey: func(context.Context) (string, error) {
@@ -97,16 +106,13 @@ func resolveAzureBaseURL(cfg AzureOpenAIResponsesConfig) (string, error) {
 	}
 
 	trimmed := strings.TrimSpace(strings.TrimRight(baseURL, "/"))
-	if trimmed == "" {
-		return "", fmt.Errorf("azure-openai-responses: invalid base URL %q", baseURL)
+	// upstream: packages/ai/src/api/azure-openai-responses.ts:normalizeAzureBaseUrl
+	if trimmed == "" || !strings.Contains(trimmed, "://") {
+		return "", fmt.Errorf("Invalid Azure OpenAI base URL: %s", baseURL)
 	}
-	if !strings.Contains(trimmed, "://") {
-		return "", fmt.Errorf("azure-openai-responses: invalid base URL %q", baseURL)
-	}
-
 	u, err := url.Parse(trimmed)
 	if err != nil || u.Scheme == "" || u.Host == "" {
-		return "", fmt.Errorf("azure-openai-responses: invalid base URL %q", baseURL)
+		return "", fmt.Errorf("Invalid Azure OpenAI base URL: %s", baseURL)
 	}
 
 	isAzureHost := strings.HasSuffix(u.Hostname(), ".openai.azure.com") || strings.HasSuffix(u.Hostname(), ".cognitiveservices.azure.com") || strings.HasSuffix(u.Hostname(), ".ai.azure.com")

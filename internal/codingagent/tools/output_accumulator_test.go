@@ -80,7 +80,7 @@ func TestBashMultibyteOutputAcrossReads(t *testing.T) {
 	if err != nil || res.IsError {
 		t.Fatalf("execute: %v %+v", err, res)
 	}
-	if n := strings.Count(res.Content, "�"); n != 0 {
+	if n := strings.Count(res.Text(), "�"); n != 0 {
 		t.Fatalf("tool output has %d U+FFFD", n)
 	}
 	sh, err := defaultShellConfig()
@@ -128,7 +128,7 @@ func TestBOMHandlingByPath(t *testing.T) {
 		t.Fatalf("user bash output = %q, %v", res.Output, err)
 	}
 	read := readFileTool(t, "bom.txt", []byte("\xef\xbb\xbfhello"), map[string]any{})
-	if read.Content != "\uFEFFhello" {
-		t.Fatalf("read content = %q, want the BOM kept", read.Content)
+	if read.Text() != "\uFEFFhello" {
+		t.Fatalf("read content = %q, want the BOM kept", read.Text())
 	}
 }

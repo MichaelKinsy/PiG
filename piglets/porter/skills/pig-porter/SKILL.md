@@ -10,7 +10,7 @@ SPDX-License-Identifier: MIT
 
 # Pig Porter
 
-Work against the exact Pi release in `coding/pigversion/pigversion.go` (the
+Work against the exact Pi release in `internal/coding/pigversion/pigversion.go` (the
 pin `coding/upstream.go` re-exports). Use one mode and one bounded scope:
 
 - `inventory <family>` inspects the current frontier without changing behavior.
@@ -54,7 +54,7 @@ For a family task, run:
 
 ```bash
 make family-gaps FAMILY=<family>
-go run ./parity/cmd/behaviorcheck -family <family>
+go run ./test/parity/cmd/behaviorcheck -family <family>
 ```
 
 Generated ledgers identify review obligations. They do not prove behavior.
@@ -103,7 +103,7 @@ An `upgrade <tag>` invocation first produces a read-only plan.
 
 After approval:
 
-1. Update `coding/pigversion/pigversion.go` and the exact Pi dependency in
+1. Update `internal/coding/pigversion/pigversion.go` and the exact Pi dependency in
    `extensions/sdk-ts`.
 2. Run `make upstream-mirror`, `make model-catalogs`, and
    `make interface-proposals`.

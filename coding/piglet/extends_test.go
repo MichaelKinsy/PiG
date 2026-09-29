@@ -198,7 +198,7 @@ skills:
 			t.Fatal(err)
 		}
 		link := filepath.Join(childDir, "link")
-		testenv.Symlink(t, outside, link)
+		testenv.RequireDirectoryLink(t, outside, link)
 		symlink := writePigletSource(t, childDir, "symlink", "name: symlink\nsystemPrompt:\n  file: link/prompt.md\n")
 		if _, err := ResolveEffective(symlink); err == nil || !strings.Contains(err.Error(), "resolves outside the Piglet anchor") {
 			t.Fatalf("symlink error = %v", err)

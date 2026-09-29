@@ -58,7 +58,9 @@ func TestCompactionFailureWaitsForEndListeners(t *testing.T) {
 							Provider: "fake", ModelID: "fake-1",
 						}, true, nil)
 					default:
-						sess.runAutoCompaction(context.Background(), "overflow", true)
+						if _, err := sess.runAutoCompaction(context.Background(), "overflow", true); err != nil {
+							t.Error(err)
+						}
 					}
 				}()
 				<-endEntered

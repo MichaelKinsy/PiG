@@ -11,7 +11,7 @@ echo
 echo '=== parity scheduler ==='
 python3 <<'PY'
 import os, re, collections, json
-root='parity/scenarios'
+root='test/parity/scenarios'
 limits = os.environ.get('PARITY_GROUP_LIMITS', 'process=12,tmux=12,rpc=6')
 results_path = os.environ.get('RESULTS') or os.path.join(os.environ.get('TMPDIR') or '/tmp', 'parity-results.json')
 

@@ -44,7 +44,7 @@ func TestEstimateTokens(t *testing.T) {
 		msg := AgentMessage{
 			User: &UserMessage{
 				Role:    "user",
-				Content: []ai.UserContentBlock{ai.TextContent{Text: text}},
+				Content: ai.UserContentBlocks{ai.TextContent{Text: text}},
 			},
 		}
 		got := EstimateTokens(msg)
@@ -92,7 +92,7 @@ func TestEstimateTokens(t *testing.T) {
 func TestEstimateContextTokens(t *testing.T) {
 	t.Run("no_usage_full_estimate", func(t *testing.T) {
 		msgs := []AgentMessage{
-			{User: &UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: strings.Repeat("a", 400)}}}},
+			{User: &UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: strings.Repeat("a", 400)}}}},
 		}
 		est := EstimateContextTokens(msgs)
 		if est.LastUsageIndex != -1 {
@@ -134,7 +134,7 @@ func TestEstimateContextTokens(t *testing.T) {
 	// reports no usage falls back to estimating every message.
 	t.Run("all_zero_usage_skipped", func(t *testing.T) {
 		msgs := []AgentMessage{
-			{User: &UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: strings.Repeat("u", 40)}}}},
+			{User: &UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: strings.Repeat("u", 40)}}}},
 			{Assistant: &AssistantMessage{Role: "assistant", StopReason: "stop", Content: []ai.AssistantContentBlock{ai.TextContent{Text: strings.Repeat("a", 80)}}, Usage: &ai.Usage{}}},
 		}
 		est := EstimateContextTokens(msgs)

@@ -44,7 +44,7 @@ func TestReadInputStripsEveryNegotiationResponse(t *testing.T) {
 				t.Fatalf("write: %v", err)
 			}
 
-			got, err := term.readInput(r)
+			got, err := readTestTerminalInput(term, r)
 			if err != nil {
 				t.Fatalf("readInput: %v", err)
 			}

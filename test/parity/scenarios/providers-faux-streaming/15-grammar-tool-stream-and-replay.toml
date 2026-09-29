@@ -1,0 +1,25 @@
+# Pi 0.87.1 constrained-sampling.test.ts:201,271 preserves native custom IDs and starts arguments with initial input.
+# Probe full API streams, then replay their result through onPayload. Also replay a foreign fc-prefixed item to prove source identity controls normalization.
+# The strict-schema case at line129 preserves JSON declaration order through decoding, transcript cloning and provider conversion.
+name = "15-grammar-tool-stream-and-replay"
+description = "Grammar tool arguments initialize and grow correctly, and replay IDs follow source provider/API/model identity."
+covers = ["packages/ai/src/api/openai-responses-shared.ts", "packages/ai/src/api/constrained-sampling.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/constrained-sampling/pig"]
+pi_args = ["node", "./test/parity/testdata/constrained-sampling/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"ctc_1"', '"fc_otg7yamm1iir"', '"starts":[{"payload":"a"}]']
+runs = 3

@@ -65,7 +65,7 @@ func TestResponsesRequestPreservesEmptyText(t *testing.T) {
 	for _, providerID := range []string{"openai", "github-copilot"} {
 		t.Run(providerID, func(t *testing.T) {
 			body := captureShapeRequest(t, func(url string) Provider {
-				return NewOpenAIResponsesProvider(OpenAIResponsesConfig{BaseURL: url, APIKey: "test", ProviderID: providerID, Model: "test"})
+				return NewOpenAIResponsesProvider(OpenAIResponsesConfig{BaseURL: url, APIKey: "test", ProviderID: providerID, Model: "test", ModelMetadata: &Model{ID: "test", Capabilities: ModelCapabilities{SupportsImages: true}}})
 			}, []Message{
 				UserMessage{Content: UserText("")},
 				UserMessage{Content: UserText(" \t")},

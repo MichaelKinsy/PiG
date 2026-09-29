@@ -117,7 +117,7 @@ func (b *BashExecutionBlock) SetExpanded(expanded bool) {
 	b.Invalidate()
 }
 
-// Render produces the block's lines. Output wraps to the current terminal width, and collapsed previews retain the last previewLines visual rows.
+// Render produces the block's lines. Commands and output wrap to the current terminal width, and collapsed previews retain the last previewLines visual rows.
 func (b *BashExecutionBlock) Render(width int) []string {
 	if width < 1 {
 		width = 1
@@ -141,10 +141,11 @@ func (b *BashExecutionBlock) Render(width int) []string {
 	// Top border.
 	out = append(out, border)
 
-	// Header: " $ command" with 1-col indent matching upstream
-	// Text(text, 1, 0) (1-col left padding).
-	header := fmt.Sprintf(" %s%s$ %s%s", colorKey, bold, b.command, reset)
-	out = append(out, header)
+	// Upstream renders the command with Text(text, 1, 0), including wrapped and multiline commands.
+	header := fmt.Sprintf("%s%s$ %s%s", colorKey, bold, b.command, reset)
+	for _, line := range NewPaddedText(header, 1, 0, nil).Render(width) {
+		out = append(out, strings.TrimRight(line, " "))
+	}
 
 	// Body: output split on \n. Preserve trailing newline so the
 	// final empty line is rendered as a blank row inside the box -

@@ -1,0 +1,129 @@
+{
+  "slice": "fix-node-scrollview",
+  "base_commit": "fdcf667708",
+  "upstream": "0.87.1",
+  "toolchain": {
+    "go": "1.27.1",
+    "node": "24.19.0",
+    "npm": "11.17.0",
+    "tmux": "3.7b"
+  },
+  "package": {
+    "package": "gentle-pi",
+    "version": "3.7.0",
+    "lock_sha256": "3a27b51cfb03a7cd3e44d29a75b9a781c523ef8a6c6bd2bb2c2cdb13dbda0d6a",
+    "integrity": "sha512-SXBp9jIRnVIcOsLCW/Zw4XDTXxhViXNxrCZS7LyioB6kdRl99Ohojeaj+yIH5+K/ucwLlTlHYBz8zwue9aspNQ==",
+    "main_command": "gentle-live-research-probe",
+    "pi": {
+      "print_exit": 0,
+      "home": "/tmp/parity-integrate021-corpus-1q55rk97/gentle-pi/pi"
+    },
+    "pig": {
+      "print_exit": 0,
+      "home": "/tmp/parity-integrate021-corpus-1q55rk97/gentle-pi/pig"
+    }
+  },
+  "terminal": {
+    "width": 170,
+    "height": 55,
+    "mode": "regular"
+  },
+  "checkpoints": [
+    {
+      "stage": "startup",
+      "escaped_footer_equal": true,
+      "escaped_footer_sha256": "c3e8927a0a6552b3aa6d9e141e35522f4319432d0166e7473e94b440b463a0ee",
+      "capture_sha256": {
+        "pi": "b589bbd64a1a6ef2d846f459c6156808cabf29cf275d6a8e41ac0ae339decb96",
+        "pig": "0fe83b5828eea42bd76d133c51b20e6d244195773fab2a75f2d0425b040ad5ca"
+      }
+    },
+    {
+      "stage": "command",
+      "escaped_footer_equal": true,
+      "escaped_footer_sha256": "c3e8927a0a6552b3aa6d9e141e35522f4319432d0166e7473e94b440b463a0ee",
+      "capture_sha256": {
+        "pi": "e98e848435560fbea9d94dbb30a6dcc28006823e823fe6c47720123fc980f064",
+        "pig": "e534cad5774262ca0acebba0cef45f1b0b12a5c43e883cd664a00f5798818b3f"
+      }
+    },
+    {
+      "stage": "turn",
+      "escaped_footer_equal": true,
+      "escaped_footer_sha256": "c3e8927a0a6552b3aa6d9e141e35522f4319432d0166e7473e94b440b463a0ee",
+      "capture_sha256": {
+        "pi": "5fe3fddc2f4fda3cb83effc926eae1b542f4bb9fe79789655fbf07931745dad1",
+        "pig": "2987cb9bdf638476c7c44f68d0205f41a35c9412888b525c5dc4974e0f7ab1db"
+      }
+    }
+  ],
+  "production_sha256": {
+    "automation/gen/vendor-pi-dist.sh": "0b748dd9b43604afe5236825d50b167db09c7e3e8b0ce819a6d9786abdd60faa",
+    "coding/extension/host/subprocess/runtime-node/shims/pi-tui.mjs": "edde3d9fb93ca22999e69b62cfb0d5b9ac0ca9563f0b68c2046bee582b111f90",
+    "coding/extension/host/subprocess/runtime-node/runtime.mjs": "e7e80c6a0e0bef5748fb0b22aac2469358dd9d28cac831b7afebe46323aaa425",
+    "internal/codingagent/status_line.go": "3b9f8164c8b8ebd771aafa417eff39cf6698a1d71757c4522bb31780be0192e9",
+    "internal/codingagent/git_watcher.go": "ce380d5b1668c0e50312f13167f8a1ae4d8de7c2ec47a3034811c496e9bbdda3",
+    "test/parity/cmd/sdksurface/probe.mjs": "d4782c8d475056267a32f0d10aac78cabb5020091222d9f2f011470a562e03e4"
+  },
+  "log_sha256": {
+    "unit-red.log": "ecd1c579d65f53cfd06d8aa96cfcc145a07785d2c81e183b2865ba45b4ee5ba1",
+    "ownership-unit-red.log": "711f9d39b2e56372b59d0f1ef1cb1aa683944166e3665876430409136a558744",
+    "ownership-scenario-red.log": "67c367b79c6867b45d5dac0c30ce732ed277b87551adf6039d5d2a5124a50a9b",
+    "dispose-mutation-red.log": "c3114d07ae367b9909e72532b977ea331ac64da81e98624770c19eaa8a33f5ba",
+    "branch-unit-red.log": "bd5e2055da51c704162225ac2da70054be65a2f2b6ced87b51e6a5c8e681e874",
+    "branch-scenario-red.log": "b08beacd204aeafa0adf6c55f5c6ce0e66c0d02a14a95393cc4a748fa66c55b3",
+    "null-branch-red.log": "eb1f2363f71d0584d7068f21656463887eb2f570a8c7e11550ad0afc8c697c57",
+    "symbol-red.log": "99a79a1f53656ed9d9e157118d59631d2925223e76f429b01e9d74c99dd158df",
+    "go-test-final.log": "c4c2ed634812187bd4a05bd456b4685fac430924a69fde62915038bfff88035e",
+    "touched-final.log": "1b3d95bdebefafc8fc83f68c78b2b739de1a408f22e55f73c3452faf9d61ac02",
+    "touched-without-fixtures.log": "1ec64b781997f23d75b5a23207f764ecfac2196d544dd6a38ca3b066553e94fe",
+    "family-final.log": "6431032e8cc94bdd5a2c63f1c143ae665623f926f79798a9cc72e3cc446e15cd",
+    "footer.log": "d98627d890faa4b41bd4c988b6bc341ed09916fd4fe0af6dbd84c2379d540208",
+    "interactive-rendering.log": "a47faf58e7a1bd1701502cd0b49f02f0421970dfc79f5dcc619bea576215e29b",
+    "fullscreen.log": "b237f4161063999391ec3bf9bc92552027fb261caf808293c9d6cc71280db1b0",
+    "vet-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "windows-vet-final.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "lint-final.log": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "lint-full.log": "2d4113914d04ea505d11ee1aa5df7b2a5fe333234e503471302b27266c94fe92",
+    "ci-final.log": "65008030b4409de1410b8e5de8ae52c8d230549e98052211bb21c06bc4477681",
+    "node-race.log": "88b771f712f1dec9529b96f19c6da5befe95072f43af54dcb6304452d0216121",
+    "branch-race.log": "76d669765a628e11f48e3631485aa82cce7a1abdef294be56aad97b3e70460da",
+    "startup-bench.log": "03353dc4e46bec031c19289092437adf483f28bfa3f5ebde786da72af257e410",
+    "pi-bench.json": "67bf20dce99aa4ae31760bb742fcb7cb5d68985748a4709066eecce8d0150fb9",
+    "pig-bench.json": "eacf2f33e40b9101fbfcf049bc2820f8af3cd29e7f98b7d05fda0899bda0f7e9"
+  },
+  "gate_exit_codes": {
+    "ci-final": 2,
+    "ci-gates-keepgoing": 2,
+    "ci-gates": 2,
+    "family-final": 0,
+    "family": 0,
+    "footer": 0,
+    "fullscreen": 0,
+    "go-fix": 0,
+    "go-test-all": 1,
+    "go-test-final": 1,
+    "interactive-rendering": 0,
+    "lint-changed": 0,
+    "lint-final": 0,
+    "lint-full": 0,
+    "lint": 0,
+    "parity-go": 1,
+    "touched-final": 0,
+    "touched-without-fixtures": 1,
+    "vet-final": 0,
+    "vet": 0,
+    "windows-vet-final": 0,
+    "windows-vet": 0
+  },
+  "release_blockers": [
+    "Three inherited test/parity/closure tests require unresolved divergence closure",
+    "358 inherited open hot-path upstream-test obligations",
+    "D77 and D78 lack owner approval"
+  ],
+  "qualification_limits": [
+    "Windows/macOS native desktop clipboard runtime",
+    "gentle-pi private fullscreen layoutRoot mutation",
+    "live-auth footer scenarios"
+  ]
+}

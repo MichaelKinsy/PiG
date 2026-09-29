@@ -63,7 +63,8 @@ func (c *modelCatalogRefreshCoordinator) refresh(ctx context.Context, registry *
 
 func (c *modelCatalogRefreshCoordinator) run(ctx context.Context, registry *ModelRegistry, active *activeModelCatalogRefresh) {
 	defer active.cancel()
-	if registry.refreshContext(ctx).Aborted {
+	registry.YieldToRegistrationRefresh(ctx)
+	if registry.refreshContext(ctx, nil).Aborted {
 		active.result = CatalogRefreshResult{Aborted: true, Errors: map[string]error{}}
 	} else {
 		active.result = registry.RefreshCatalogs(ctx, CatalogRefreshOptions{AllowNetwork: ModelNetworkEnabled()})

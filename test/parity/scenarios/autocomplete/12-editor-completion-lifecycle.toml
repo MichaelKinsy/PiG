@@ -1,0 +1,30 @@
+# Behavior family: autocomplete
+# Pi0.87.1 editor.test.ts:2096,2338-2508,2689-3042 supplies these input sequences.
+# Editor.ts:766-810,2208-2224,2389-2434 owns acceptance, undo and best-match selection.
+# Both fixtures drive the actual Editor, flush its owner/event queue and capture
+# text bytes, UTF-16 cursor, popup state and every complete popup row (including ANSI).
+# The invalid-result case enters PiG through a real Node command factory; its
+# temporary prefix marker proves callback invocation before the null result reaches Editor.
+# Border/input-row rendering belongs to separate editor scenarios; no popup byte is normalized.
+name = "12-editor-completion-lifecycle"
+description = "Editor force completion, undo, cursor requery and slash argument selection preserve the complete popup and accepted value"
+covers = ["packages/tui/src/components/editor.ts", "packages/tui/src/autocomplete.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/editor-completion-helper/pig"]
+pi_args = ["node", "./test/parity/testdata/editor-completion-helper/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_contain = ["2096 undo autocomplete", "2508 cursor requery", "2836 unique unfiltered prefix", "3042 no argument completer", "2994 awaited arguments", "3019 invalid argument result", '"invocation":"s"']

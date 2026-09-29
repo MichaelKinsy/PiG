@@ -1,0 +1,6 @@
+[
+ {"status":403,"body":"{\"error\":\"blocked by gateway WAF\"}"},
+ {"status":403,"body":"{\"error\":{\"message\":\"Permission denied\"}}"},
+ {"status":400,"body":""},
+ {"status":403,"body":"{\"error\":{\"message\":\"Provider returned error\",\"code\":403,\"metadata\":{\"raw\":\"upstream WAF blocked policy XYZ\"}}}"}
+]

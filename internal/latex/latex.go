@@ -5,13 +5,15 @@
 //
 // The static lookup tables live in symbols.go, generated from the pinned
 // upstream source by internal/latex/gentables.
+// Ports packages/tui/src/latex.ts.
 package latex
 
 import (
-	"regexp"
 	"strconv"
 	"strings"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // Sentinels mirror latex.ts. Display mode emits fraction/operator placeholders
@@ -19,22 +21,28 @@ import (
 // art; PROTECTED_SPACE guards alignment padding from the final space collapse;
 // NEGATIVE_SPACE marks a trailing-trim request from \! and friends.
 const (
-	layoutMarkerStart = "\U000f0000"
-	layoutMarkerEnd   = "\U000f0001"
-	protectedSpace    = "\u00a0"
-	negativeSpace     = "\u0000"
+	layoutMarkerStart  = "\U000f0000"
+	layoutMarkerEnd    = "\U000f0001"
+	protectedSpace     = "\U000f0002"
+	negativeSpace      = "\u0000"
+	namedOperatorStart = "\U000f0004"
+	namedOperatorEnd   = "\U000f0005"
 )
 
 var (
-	reSimpleLetterNumber = regexp.MustCompile(`^[\p{L}\p{N}.]+$`)
-	reSimpleNumber       = regexp.MustCompile(`^[\p{N}.]+$`)
-	reASCIILetters       = regexp.MustCompile(`^[A-Za-z]+$`)
-	reSpaceTabRun        = regexp.MustCompile(`[ \t]+`)
-	reCasesKeyword       = regexp.MustCompile(`(?i)^(?:if|when|for|otherwise)\b`)
-	reTrailingComma      = regexp.MustCompile(`,\s*$`)
-	reEnvRowSplit        = regexp.MustCompile(`\\\\(?:\[[^\]\n]*\])?`)
-	reArrayColumnSpec    = regexp.MustCompile(`^\s*\{[^}]*\}`)
-	reLayoutMarker       = regexp.MustCompile(`\x{f0000}(\d+)\x{f0001}`)
+	reSimpleLetterNumber   = lazyregexp.New(`^[\p{L}\p{N}.]+$`)
+	reSimpleNumber         = lazyregexp.New(`^[\p{N}.]+$`)
+	reASCIILetters         = lazyregexp.New(`^[A-Za-z]+$`)
+	reSpaceTabRun          = lazyregexp.New(`[ \t]+`)
+	reCasesKeyword         = lazyregexp.New(`(?i)^(?:if|when|for|otherwise)\b`)
+	reTrailingComma        = lazyregexp.New(`,\s*$`)
+	reEnvRowSplit          = lazyregexp.New(`\\\\(?:\[[^\]\n]*\])?`)
+	reArrayColumnSpec      = lazyregexp.New(`^\s*\{[^}]*\}`)
+	reLayoutMarker         = lazyregexp.New(`\x{f0000}(\d+)\x{f0001}`)
+	reTrailingLayoutMarker = lazyregexp.New(`\x{f0000}(\d+)\x{f0001}$`)
+	reNamedOperatorLeft    = lazyregexp.New(`([\p{L}\p{N})\]}\x{f0001}])\x{f0004}`)
+	reNamedOperatorRight   = lazyregexp.New(`\x{f0005}([\p{L}\p{N}√\x{f0000}])`)
+	reLayoutScript         = lazyregexp.New(`[A-Z*∗]`)
 )
 
 // RenderLatexOptions mirrors upstream RenderLatexOptions.
@@ -43,15 +51,11 @@ type RenderLatexOptions struct {
 	Display bool
 }
 
-// RenderLatex renders a LaTeX math expression to Unicode text. The bool is
-// false (upstream `undefined`) for unsupported or malformed input.
+// RenderLatex renders a LaTeX math expression to Unicode text, aligning matrices and cases in both modes and stacking fractions, operator limits, and unsupported scripts in display mode. The bool is false (upstream `undefined`) for unsupported or malformed input.
 func RenderLatex(source string, opts RenderLatexOptions) (string, bool) {
-	var nodes *[]layoutNode
-	if opts.Display {
-		n := []layoutNode{}
-		nodes = &n
-	}
-	p := &parser{src: []rune(source), nodes: nodes, ok: true, stack: true}
+	n := []layoutNode{}
+	nodes := &n
+	p := &parser{src: []rune(source), nodes: nodes, display: opts.Display, ok: true, stack: true}
 	rendered, ok := p.render()
 	if !ok {
 		return "", false
@@ -95,15 +99,37 @@ func replaceCharacters(value string, table map[string]string) (string, bool) {
 	return b.String(), true
 }
 
-func formatScript(value, kind string) string {
+func normalizeScriptValue(value string) string {
 	value = trimJS(value)
+	var out string
+	for _, r := range value {
+		switch {
+		case r == '=' || r == '+' || r == '-':
+			out = trimEndJS(out) + string(r)
+		case isJSSpace(r) && (strings.HasSuffix(out, "=") || strings.HasSuffix(out, "+") || strings.HasSuffix(out, "-")):
+			continue
+		default:
+			out += string(r)
+		}
+	}
+	return out
+}
+
+func formatUnicodeScript(value, kind string) (string, bool) {
 	table := latexSuperscripts
-	prefix := "^"
 	if kind == "sub" {
 		table = latexSubscripts
+	}
+	return replaceCharacters(normalizeScriptValue(value), table)
+}
+
+func formatScript(value, kind string) string {
+	value = normalizeScriptValue(value)
+	prefix := "^"
+	if kind == "sub" {
 		prefix = "_"
 	}
-	if unicode, ok := replaceCharacters(value, table); ok {
+	if unicode, ok := formatUnicodeScript(value, kind); ok {
 		return unicode
 	}
 	if utf8.RuneCountInString(value) == 1 || (kind == "sub" && reASCIILetters.MatchString(value)) {
@@ -135,6 +161,10 @@ func formatRoot(value, symbol string) string {
 }
 
 func normalizeOutput(value string) string {
+	value = reNamedOperatorLeft.ReplaceAllString(value, "${1} ")
+	value = strings.ReplaceAll(value, namedOperatorStart, "")
+	value = reNamedOperatorRight.ReplaceAllString(value, " ${1}")
+	value = strings.ReplaceAll(value, namedOperatorEnd, "")
 	lines := strings.Split(value, "\n")
 	mapped := make([]string, len(lines))
 	for i, line := range lines {
@@ -152,7 +182,9 @@ func normalizeOutput(value string) string {
 // --- 2D layout for display mode ---
 
 type layoutNode struct {
-	kind         string // "fraction" | "operator"
+	kind         string // "fraction" | "operator" | "script" | "matrix"
+	lines        []string
+	baseline     int
 	numerator    string
 	denominator  string
 	operator     string
@@ -214,30 +246,49 @@ func renderLayout(source string, nodes []layoutNode) layout {
 	for sourceLine := range strings.SplitSeq(source, "\n") {
 		var layouts []layout
 		position := 0
-		previousWasNode := false
+		var previousNode *layoutNode
 		for _, m := range reLayoutMarker.FindAllStringSubmatchIndex(sourceLine, -1) {
 			index := m[0]
+			idx, _ := strconv.Atoi(sourceLine[m[2]:m[3]])
+			if idx < 0 || idx >= len(nodes) {
+				continue
+			}
+			node := &nodes[idx]
 			if index > position {
 				sliced := sourceLine[position:index]
-				if previousWasNode {
-					sliced = trimStartJS(sliced)
+				text := sliced
+				if previousNode != nil {
+					text = trimStartJS(text)
 				}
-				text := trimEndJS(sliced)
+				text = trimEndJS(text)
+				leading := previousNode != nil && previousNode.kind == "matrix" && trimStartJS(sliced) != sliced
+				trailing := node.kind == "matrix" && trimEndJS(sliced) != sliced
+				if text != "" {
+					if leading {
+						text = " " + text
+					}
+					if trailing {
+						text += " "
+					}
+				} else if leading || trailing {
+					text = " "
+				}
 				layouts = append(layouts, layout{lines: []string{text}, width: visibleWidth(text), baseline: 0})
 			}
-			idx, _ := strconv.Atoi(sourceLine[m[2]:m[3]])
-			if idx >= 0 && idx < len(nodes) {
-				layouts = append(layouts, nodeLayout(nodes[idx], nodes))
-			}
+			layouts = append(layouts, nodeLayout(*node, nodes))
 			position = m[1]
-			previousWasNode = true
+			previousNode = node
 		}
 		if position < len(sourceLine) {
 			sliced := sourceLine[position:]
-			if previousWasNode {
-				sliced = trimStartJS(sliced)
+			text := sliced
+			if previousNode != nil {
+				text = trimStartJS(text)
 			}
-			layouts = append(layouts, layout{lines: []string{sliced}, width: visibleWidth(sliced), baseline: 0})
+			if previousNode != nil && previousNode.kind == "matrix" && trimStartJS(sliced) != sliced {
+				text = " " + text
+			}
+			layouts = append(layouts, layout{lines: []string{text}, width: visibleWidth(text), baseline: 0})
 		}
 		lineLayout := joinLayouts(layouts)
 		if len(renderedLines) == 0 {
@@ -255,6 +306,36 @@ func renderLayout(source string, nodes []layoutNode) layout {
 }
 
 func nodeLayout(node layoutNode, nodes []layoutNode) layout {
+	if node.kind == "matrix" {
+		width := 0
+		for _, line := range node.lines {
+			width = max(width, visibleWidth(line))
+		}
+		lines := make([]string, len(node.lines))
+		for i, line := range node.lines {
+			lines[i] = padLayoutLine(line, width, false)
+		}
+		return layout{lines: lines, width: width, baseline: node.baseline}
+	}
+	if node.kind == "script" {
+		var upper, lower layout
+		if node.upper != nil {
+			upper = renderLayout(*node.upper, nodes)
+		}
+		if node.lower != nil {
+			lower = renderLayout(*node.lower, nodes)
+		}
+		width := max(upper.width, lower.width)
+		var lines []string
+		for _, line := range upper.lines {
+			lines = append(lines, padLayoutLine(line, width, false))
+		}
+		lines = append(lines, strings.Repeat(" ", width))
+		for _, line := range lower.lines {
+			lines = append(lines, padLayoutLine(line, width, false))
+		}
+		return layout{lines: lines, width: width, baseline: len(upper.lines)}
+	}
 	if node.kind == "fraction" {
 		numerator := renderLayout(node.numerator, nodes)
 		denominator := renderLayout(node.denominator, nodes)
@@ -295,11 +376,13 @@ func nodeLayout(node layoutNode, nodes []layoutNode) layout {
 // --- parser ---
 
 type parser struct {
-	src   []rune
-	nodes *[]layoutNode // nil = inline mode (no display stacking)
-	pos   int
-	ok    bool
-	stack bool
+	src         []rune
+	nodes       *[]layoutNode
+	display     bool
+	scriptDepth int
+	pos         int
+	ok          bool
+	stack       bool
 }
 
 func (p *parser) at(i int) rune {
@@ -337,7 +420,7 @@ func (p *parser) parseSequence(end rune) string {
 		if c == '\\' {
 			command := p.parseCommand()
 			if command == negativeSpace {
-				result = trimEndJS(result)
+				result = strings.TrimSuffix(trimEndJS(result), namedOperatorEnd)
 			} else {
 				result += command
 			}
@@ -346,15 +429,21 @@ func (p *parser) parseSequence(end rune) string {
 		if c == '^' || c == '_' {
 			p.pos++
 			result = trimEndJS(result)
-			kind := "sup"
-			if c == '_' {
-				kind = "sub"
+			script := p.parseScripts(c)
+			if before, ok := strings.CutSuffix(result, namedOperatorEnd); ok {
+				result = before + script + namedOperatorEnd
+			} else {
+				result += script
 			}
-			result += formatScript(p.parseRequiredArgument(false), kind)
 			continue
 		}
 		if isJSSpace(c) {
 			result += p.parseWhitespace()
+			continue
+		}
+		if c == '=' || c == '<' || c == '>' {
+			result = trimEndJS(result) + " " + string(c) + " "
+			p.pos++
 			continue
 		}
 		if c == '&' {
@@ -366,6 +455,17 @@ func (p *parser) parseSequence(end rune) string {
 			result += " "
 			continue
 		}
+		if c == '.' {
+			if match := reTrailingLayoutMarker.FindStringSubmatch(result); match != nil {
+				index, _ := strconv.Atoi(match[1])
+				if index < len(*p.nodes) && (*p.nodes)[index].kind == "matrix" {
+					node := &(*p.nodes)[index]
+					node.lines[len(node.lines)-1] += "."
+					p.pos++
+					continue
+				}
+			}
+		}
 		result += string(c)
 		p.pos++
 	}
@@ -373,6 +473,63 @@ func (p *parser) parseSequence(end rune) string {
 		p.ok = false
 	}
 	return result
+}
+
+func (p *parser) parseScripts(initialMarker rune) string {
+	scripts := make(map[string]string)
+	var order []string
+	parse := func(marker rune) {
+		kind := "sup"
+		if marker == '_' {
+			kind = "sub"
+		}
+		p.scriptDepth++
+		scripts[kind] = p.parseRequiredArgument(false)
+		p.scriptDepth--
+		order = append(order, kind)
+	}
+	parse(initialMarker)
+	next := p.pos
+	for next < len(p.src) && isJSSpace(p.src[next]) {
+		next++
+	}
+	if marker := p.at(next); (marker == '^' || marker == '_') && marker != initialMarker {
+		p.pos = next + 1
+		parse(marker)
+	}
+	canUseLayout := true
+	needsLayout := p.scriptDepth > 0
+	for _, kind := range order {
+		value := scripts[kind]
+		if strings.Contains(value, "/") || (!strings.Contains(value, layoutMarkerStart) && utf8.RuneCountInString(value) > 1 && !reLayoutScript.MatchString(value)) {
+			canUseLayout = false
+		}
+		if _, ok := formatUnicodeScript(value, kind); !ok {
+			needsLayout = true
+		}
+	}
+	if !p.display || !canUseLayout || !needsLayout {
+		var result strings.Builder
+		for _, kind := range order {
+			result.WriteString(formatScript(scripts[kind], kind))
+		}
+		return result.String()
+	}
+	node := layoutNode{kind: "script"}
+	if value, ok := scripts["sub"]; ok {
+		value = normalizeOutput(value)
+		node.lower = &value
+	}
+	if value, ok := scripts["sup"]; ok {
+		value = normalizeOutput(value)
+		node.upper = &value
+	}
+	return p.addLayoutNode(node)
+}
+
+func (p *parser) addLayoutNode(node layoutNode) string {
+	*p.nodes = append(*p.nodes, node)
+	return layoutMarkerStart + strconv.Itoa(len(*p.nodes)-1) + layoutMarkerEnd
 }
 
 func (p *parser) parseWhitespace() string {
@@ -390,6 +547,13 @@ func (p *parser) parseCommand() string {
 	}
 	var command string
 	first := p.src[p.pos]
+	if first == '\n' || first == '\r' {
+		p.pos++
+		if first == '\r' && p.at(p.pos) == '\n' {
+			p.pos++
+		}
+		return " "
+	}
 	if isASCIILetter(first) {
 		start := p.pos
 		for p.pos < len(p.src) && isASCIILetter(p.src[p.pos]) {
@@ -408,6 +572,11 @@ func (p *parser) parseCommand() string {
 		return " "
 	case latexNegativeSpacingCommands[command]:
 		return negativeSpace
+	case latexFontSwitchCommands[command]:
+		for p.pos < len(p.src) && isJSSpace(p.src[p.pos]) {
+			p.pos++
+		}
+		return ""
 	case latexIgnoredCommands[command]:
 		return ""
 	case command == "{" || command == "}" || command == "$" || command == "%" || command == "#" || command == "_" || command == "&":
@@ -417,14 +586,14 @@ func (p *parser) parseCommand() string {
 	case command == "not":
 		value := trimJS(p.parseRequiredArgument(false))
 		if negated, ok := latexNegatedSymbols[value]; ok {
-			return negated
+			return " " + negated + " "
 		}
 		chars := []rune(value)
 		if len(chars) == 0 {
 			p.ok = false
 			return ""
 		}
-		return string(chars[0]) + "\u0338" + string(chars[1:])
+		return " " + string(chars[0]) + "\u0338" + string(chars[1:]) + " "
 	case latexLimitOperators[command]:
 		return p.parseOperator(command, "bracket", true, true)
 	}
@@ -433,10 +602,13 @@ func (p *parser) parseCommand() string {
 		if latexDisplayLimitSymbols[command] {
 			return p.parseOperator(symbol, "script", true, false)
 		}
+		if command == "cdot" || command == "times" || latexRelationCommands[command] {
+			return " " + symbol + " "
+		}
 		return symbol
 	}
 	if latexNamedOperators[command] {
-		return " " + command + " "
+		return namedOperatorStart + command + namedOperatorEnd
 	}
 	if latexSizeCommands[command] {
 		return ""
@@ -448,7 +620,7 @@ func (p *parser) parseCommand() string {
 		return ""
 	}
 	if command == "frac" || command == "dfrac" || command == "tfrac" {
-		shouldStack := p.nodes != nil && p.stack && command != "tfrac"
+		shouldStack := p.display && p.stack && command != "tfrac"
 		numerator := p.parseRequiredArgument(!shouldStack)
 		denominator := p.parseRequiredArgument(!shouldStack)
 		if shouldStack {
@@ -585,7 +757,7 @@ func (p *parser) parseOperator(operator, inlineLowerStyle string, displayLimits,
 		}
 	}
 
-	if p.nodes != nil && useDisplayLimits && (lower != nil || upper != nil) {
+	if p.display && useDisplayLimits && (lower != nil || upper != nil) {
 		*p.nodes = append(*p.nodes, layoutNode{kind: "operator", operator: operator, lower: lower, upper: upper})
 		return layoutMarkerStart + strconv.Itoa(len(*p.nodes)-1) + layoutMarkerEnd
 	}
@@ -636,7 +808,7 @@ func (p *parser) parseRequiredArgument(stackFractions bool) string {
 }
 
 func (p *parser) parseRequiredArgumentValue() string {
-	for p.pos < len(p.src) && (p.src[p.pos] == ' ' || p.src[p.pos] == '\t') {
+	for p.pos < len(p.src) && isJSSpace(p.src[p.pos]) {
 		p.pos++
 	}
 	if p.pos >= len(p.src) {
@@ -770,8 +942,12 @@ func (p *parser) parseEnvironment() string {
 				rows = append(rows, cells)
 			}
 		}
-		var out []string
-		for index, row := range rows {
+		valueWidth := 0
+		for _, row := range rows {
+			valueWidth = max(valueWidth, visibleWidth(reTrailingComma.ReplaceAllString(row[0], "")))
+		}
+		var contents []string
+		for _, row := range rows {
 			value := ""
 			if len(row) > 0 {
 				value = reTrailingComma.ReplaceAllString(row[0], "")
@@ -780,23 +956,37 @@ func (p *parser) parseEnvironment() string {
 			if len(row) > 1 {
 				condition = row[1]
 			}
-			delimiter := "⎨"
-			if index == 0 {
-				delimiter = "⎧"
-			} else if index == len(rows)-1 {
-				delimiter = "⎩"
-			}
-			line := delimiter + " " + value
+			line := value
 			if condition != "" {
 				conditionPrefix := " if "
 				if reCasesKeyword.MatchString(condition) {
 					conditionPrefix = " "
 				}
-				line += conditionPrefix + condition
+				line += strings.Repeat(protectedSpace, valueWidth-visibleWidth(value)) + conditionPrefix + condition
 			}
-			out = append(out, line)
+			contents = append(contents, line)
 		}
-		return strings.Join(out, "\n")
+		if len(contents) == 0 {
+			return ""
+		}
+		if len(contents) == 1 {
+			return "⎧ " + contents[0]
+		}
+		middle := len(contents) / 2
+		var lines []string
+		for i, content := range contents {
+			if len(contents)%2 == 0 && i == middle {
+				lines = append(lines, "⎨")
+			}
+			delimiter := "⎨"
+			if i == 0 {
+				delimiter = "⎧"
+			} else if i == len(contents)-1 {
+				delimiter = "⎩"
+			}
+			lines = append(lines, delimiter+" "+content)
+		}
+		return p.addLayoutNode(layoutNode{kind: "matrix", lines: lines, baseline: middle})
 	case "array", "matrix", "smallmatrix", "pmatrix", "bmatrix", "Bmatrix", "vmatrix", "Vmatrix":
 		matrixBody := body
 		if environment == "array" {
@@ -852,7 +1042,7 @@ func (p *parser) renderMatrix(environment, body string) string {
 		rows[i] = strings.Join(cells, " │ ")
 	}
 	if environment == "array" || environment == "matrix" || environment == "smallmatrix" {
-		return strings.Join(rows, "\n")
+		return p.matrixLayout(rows)
 	}
 
 	delimiters := map[string][6]string{
@@ -881,15 +1071,21 @@ func (p *parser) renderMatrix(environment, body string) string {
 		}
 		out[index] = left + " " + row + " " + right
 	}
-	return strings.Join(out, "\n")
+	return p.matrixLayout(out)
+}
+
+func (p *parser) matrixLayout(lines []string) string {
+	if len(lines) == 0 {
+		return ""
+	}
+	if len(lines) == 1 {
+		return lines[0]
+	}
+	return p.addLayoutNode(layoutNode{kind: "matrix", lines: lines, baseline: 0})
 }
 
 func (p *parser) renderNested(source string, stackFractions bool) string {
-	var nodes *[]layoutNode
-	if stackFractions {
-		nodes = p.nodes
-	}
-	sub := &parser{src: []rune(source), nodes: nodes, ok: true, stack: true}
+	sub := &parser{src: []rune(source), nodes: p.nodes, display: p.display && stackFractions, ok: true, stack: true}
 	rendered, ok := sub.render()
 	if !ok {
 		p.ok = false

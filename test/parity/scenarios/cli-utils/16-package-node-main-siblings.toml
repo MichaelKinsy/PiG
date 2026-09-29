@@ -1,0 +1,26 @@
+# Pi 0.87.1 package-manager.ts:557-638 treats main.ts as an ordinary discovered file, not a directory entry that hides its sibling.
+# The sibling's print-mode command must execute and write the complete ordered list of the two discovered commands; registration alone cannot create this artifact.
+name = "16-package-node-main-siblings"
+description = "Conventional Node main.ts and sibling extensions both load and the sibling command executes"
+covers = ["packages/coding-agent/src/core/package-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/package-node-main/agent", "PIG_HOME=testdata/empty-home"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/package-node-main/agent"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "/discovery-sibling {{TEMP}}/commands.json"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/commands.json"
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+artifact_equal = true
+artifact_both_contain = ['["discovery-main","discovery-sibling"]']
+both_not_contain = ["unhandled request", "Failed to load extension"]

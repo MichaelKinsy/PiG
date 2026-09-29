@@ -11,10 +11,7 @@ import (
 // block exists for: it is the surface people copy from, so no character may be
 // dropped between the source and the render.
 //
-// Clipping used to drop the tail of any over-wide line with no marker, so a
-// copied command silently lost its end. pig's own truncations are vertical,
-// marked, and recoverable with ctrl+o; there is no horizontal equivalent, which
-// is why the content has to wrap instead. pig divergence (D54).
+// Pi 0.87.1 Markdown.render wraps every non-image row after token rendering, including code rows. These guards retain all source characters at that final width.
 func TestCodeBlockKeepsEveryCharacterAtNarrowWidth(t *testing.T) {
 	const long = `docker login fails with "x509: certificate signed by unknown authority" because MSR chains to a private root`
 
@@ -28,8 +25,7 @@ func TestCodeBlockKeepsEveryCharacterAtNarrowWidth(t *testing.T) {
 			m := NewMarkdown(tc.fence + "\n" + long + "\n```")
 			out := m.Render(width)
 
-			// Every rendered row must fit, or pig's renderer clips it later and
-			// the content is lost anyway.
+			// Every row must fit after the final wrapping pass.
 			for i, line := range out {
 				if w := widthx.VisibleWidth(line); w > width {
 					t.Errorf("line %d is %d wide, over the %d given: %q", i, w, width, line)

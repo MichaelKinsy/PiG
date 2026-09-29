@@ -1,0 +1,57 @@
+# Upstream evidence: Pi 0.87.1 extension-selector.ts:45-87,96-102 renders a bordered selector
+# with theme-colored title, options and resolved confirm/cancel hints.
+# Re-probed through /tree: the [system], user and assistant entries make
+# (3/3), and Up from the assistant selects the user entry.
+# Compare all content rows in escaped terminal output; DynamicBorder and
+# the surrounding transcript are outside this component-content assertion.
+name = "09-extension-selector-summarize-branch"
+description = "The /tree summarization dialog preserves Pi's title, options, key hints and palette."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/extension-selector.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Summarize branch?"
+capture_end = "escape/ctrl+c cancel"
+
+[[tmux.steps]]
+keys = ["What is 20+22?", "Enter"]
+settle_seconds = 5
+
+[[tmux.steps]]
+keys = ["/tree", "Enter"]
+wait_contains = ["Session Tree", "(3/3)"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Up"]
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["Enter"]
+wait_contains = ["Summarize branch?", "No summary", "Summarize with custom prompt", "navigate", "select", "cancel"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+both_contain = ["Summarize branch?", "→ No summary", "Summarize", "Summarize with custom prompt", "↑↓", "navigate", "select", "cancel"]
+escaped_output_equal = true
+runtime_ratio_max = 1.50
+runs = 3

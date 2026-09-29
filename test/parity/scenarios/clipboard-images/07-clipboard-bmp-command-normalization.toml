@@ -1,0 +1,28 @@
+# Behavior family: clipboard-images
+# Upstream evidence: clipboard-image-bmp-conversion.test.ts:59 supplies the 58-byte red BMP fixture through command/native paths. This scenario supplies the same BMP through a real wl-paste subprocess and observes readClipboardImage's MIME, PNG signature, dimensions and pixel.
+# This probe covers Linux command normalization only. The absent native clipboard adapter and its Windows row remain open; no physical clipboard or full-file closure is claimed.
+name = "07-clipboard-bmp-command-normalization"
+description = "A BMP clipboard command result is normalized to the same PNG image as Pi"
+covers = ["packages/coding-agent/src/utils/clipboard-image.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/clipboard-bmp-pig"]
+pi_args = ["node", "./test/parity/testdata/clipboard-bmp-pi.mjs"]
+pig = ["PARITY_CLIPBOARD_DIR={{TEMP}}"]
+pi = ["PARITY_CLIPBOARD_DIR={{TEMP}}"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_contain = ['"mimeType":"image/png"', '"signature":"89504e47"', '"rgba":[255,0,0,255]']
+both_not_contain = ["panic:", "ERR_MODULE_NOT_FOUND"]

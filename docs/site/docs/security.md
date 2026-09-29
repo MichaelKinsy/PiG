@@ -23,7 +23,7 @@ Trust-sensitive project paths include:
 
 PiG stores decisions by canonical directory under its user configuration. The closest saved decision for the current directory or a parent applies.
 
-Use `/trust` to manage the current project decision. Restart PiG after changing trust so startup discovery runs under the new decision.
+Use `/trust` to manage the current project decision. The selector shows the saved decision and the current session's trust state separately. A checkmark stays on the saved choice while you browse. Select **Trust parent folder** to trust the parent and clear the current project's override. Restart PiG after changing trust so startup discovery runs under the new decision.
 
 ## Extensions
 
@@ -120,7 +120,7 @@ Review the publisher, license, source, and integrity evidence before use.
 
 ## Report a vulnerability
 
-Do not open a public issue for an undisclosed vulnerability. Follow the private reporting instructions in the repository's `SECURITY.md` after the public repository enables private vulnerability reporting.
+Do not open a public issue for an undisclosed vulnerability. Follow the private reporting instructions in the repository's `.github/SECURITY.md` after the public repository enables private vulnerability reporting.
 
 Until that route is enabled, do not publish exploit details. Contact the maintainer through a verified private channel.
 

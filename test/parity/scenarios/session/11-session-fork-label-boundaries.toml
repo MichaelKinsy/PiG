@@ -1,0 +1,26 @@
+# Pi 0.87.1 session-manager.ts:1625-1744 rebuilds fork paths without label entries,
+# preserves resolved labels/timestamps, remaps compaction boundaries, and delays
+# writing a fork without an assistant. Probes drive the real SessionManager and
+# assert random ID relationships internally. No production algorithm is copied.
+name = "11-session-fork-label-boundaries"
+description = "Forks preserve labels and compaction context and defer assistant-free files"
+covers = ["packages/coding-agent/src/core/session-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-fork-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/session-fork-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SESSION_FORK boundary=kept context=summary,kept,after"]
+runs = 3

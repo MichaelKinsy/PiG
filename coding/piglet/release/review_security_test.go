@@ -90,7 +90,7 @@ func TestReviewPullRejectsSymlinkedArtifactParent(t *testing.T) {
 	if err := os.MkdirAll(parent, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	testenv.Symlink(t, outside, filepath.Join(parent, "porter"))
+	testenv.RequireDirectoryLink(t, outside, filepath.Join(parent, "porter"))
 	key := newKey(t)
 	server, url := releaseServer(t, key, releaseSpec{
 		piglet: "porter", version: "1.0.0", target: testTarget, pigVersion: "pig-test",

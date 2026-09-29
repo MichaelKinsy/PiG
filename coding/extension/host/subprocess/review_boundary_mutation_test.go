@@ -37,7 +37,7 @@ func TestReviewBoundaryMutationThroughFusedSDK(t *testing.T) {
 			defer runner.Invalidate("test complete")
 			var handlerErrors []*extension.ExtensionError
 			runner.AddErrorListener(func(err *extension.ExtensionError) { handlerErrors = append(handlerErrors, err) })
-			result, err := runner.EmitBoundary(t.Context(), "agent_before_settle", extension.AgentActivityCompleted,
+			result, err := runner.EmitBoundary(t.Context(), &extension.AgentBeforeSettleEvent{Type: "agent_before_settle", BoundaryState: extension.BoundaryState{Outcome: extension.AgentActivityCompleted}},
 				func(entries []extension.SessionBoundaryDraft) (extension.BoundaryContextPreview, error) {
 					return extension.BoundaryContextPreview{ContextEntries: make([]extension.ProjectedSessionEntry, len(entries))}, nil
 				})

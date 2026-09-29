@@ -14,6 +14,7 @@ import (
 	"go/token"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -54,7 +55,7 @@ func TestRPCTaskGroupClosesAgainstConcurrentStarts(t *testing.T) {
 }
 
 func TestRPCRunEmitsSessionStartOnce(t *testing.T) {
-	file, err := parser.ParseFile(token.NewFileSet(), "rpc_mode.go", nil, 0)
+	file, err := parser.ParseFile(token.NewFileSet(), "rpc_mode_runtime.go", nil, 0)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -65,14 +66,26 @@ func TestRPCRunEmitsSessionStartOnce(t *testing.T) {
 			return true
 		}
 		selector, ok := call.Fun.(*ast.SelectorExpr)
-		if ok && selector.Sel.Name == "EmitSessionStart" {
+		if ok && selector.Sel.Name == "EmitSessionStartTransition" {
 			count++
 		}
 		return true
 	})
 	if count != 1 {
-		t.Fatalf("runRPCMode contains %d EmitSessionStart calls, want one lifecycle event", count)
+		t.Fatalf("rpc_mode_runtime.go contains %d EmitSessionStartTransition calls, want the one rebind announcement", count)
 	}
+	rpc, err := parser.ParseFile(token.NewFileSet(), "rpc_mode.go", nil, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ast.Inspect(rpc, func(node ast.Node) bool {
+		if call, ok := node.(*ast.CallExpr); ok {
+			if selector, ok := call.Fun.(*ast.SelectorExpr); ok && strings.HasPrefix(selector.Sel.Name, "EmitSessionStart") {
+				t.Errorf("runRPCMode calls %s directly; session_start belongs to the rebind", selector.Sel.Name)
+			}
+		}
+		return true
+	})
 }
 
 type rpcEventRunnerStub struct {
@@ -151,31 +164,29 @@ func TestRPCCommandParse(t *testing.T) {
 		name     string
 		input    string
 		wantType string
-		wantID   string
+		wantID   rpcRequestID
 	}{
 		{
 			name:     "prompt with id",
 			input:    `{"id":"abc","type":"prompt","message":"hello"}`,
 			wantType: "prompt",
-			wantID:   "abc",
+			wantID:   rpcStringID("abc"),
 		},
 		{
 			name:     "prompt without id",
 			input:    `{"type":"prompt","message":"say hi"}`,
 			wantType: "prompt",
-			wantID:   "",
 		},
 		{
 			name:     "abort",
 			input:    `{"id":"x1","type":"abort"}`,
 			wantType: "abort",
-			wantID:   "x1",
+			wantID:   rpcStringID("x1"),
 		},
 		{
 			name:     "get_state",
 			input:    `{"type":"get_state"}`,
 			wantType: "get_state",
-			wantID:   "",
 		},
 	}
 	for _, tc := range cases {
@@ -187,8 +198,8 @@ func TestRPCCommandParse(t *testing.T) {
 			if env.Type != tc.wantType {
 				t.Errorf("Type: got %q, want %q", env.Type, tc.wantType)
 			}
-			if env.ID != tc.wantID {
-				t.Errorf("ID: got %q, want %q", env.ID, tc.wantID)
+			if !reflect.DeepEqual(env.ID, tc.wantID) {
+				t.Errorf("ID: got %s, want %s", env.ID, tc.wantID)
 			}
 			// Raw bytes must be set and round-trip cleanly.
 			if len(env.Raw) == 0 {
@@ -411,6 +422,30 @@ func TestRPCModelValueUsesUnknownPiShape(t *testing.T) {
 	}
 }
 
+// Pi returns the selected model's input array verbatim, including an explicit empty array.
+func TestRPCModelValuePreservesInputPresenceAndOrder(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		input  []string
+		images bool
+		want   string
+	}{
+		{"inferred text", nil, false, `["text"]`},
+		{"inferred images", nil, true, `["text","image"]`},
+		{"explicit empty overrides capability", []string{}, true, `[]`},
+		{"explicit image only", []string{"image"}, false, `["image"]`},
+		{"explicit order", []string{"image", "text"}, true, `["image","text"]`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			model := &ai.Model{Input: tc.input, Capabilities: ai.ModelCapabilities{SupportsImages: tc.images}}
+			wire, err := json.Marshal(rpcModelValue(model).Input)
+			if err != nil || string(wire) != tc.want {
+				t.Fatalf("input = %s, %v; want %s", wire, err, tc.want)
+			}
+		})
+	}
+}
+
 func TestRPCModelValueUsesFullPiShape(t *testing.T) {
 	model := &ai.Model{
 		ID: "reasoner", DisplayName: "Reasoner",
@@ -526,7 +561,7 @@ func TestRPCStateCommand(t *testing.T) {
 		MessageCount: 3,
 	}
 
-	resp := rpcSuccess("req-1", "get_state", state)
+	resp := rpcSuccess(rpcStringID("req-1"), "get_state", state)
 
 	var buf bytes.Buffer
 	writeJSONLine(&buf, resp)
@@ -571,7 +606,7 @@ func TestRPCStateCommand(t *testing.T) {
 
 // TestRPCErrorResponse verifies the error response shape.
 func TestRPCErrorResponse(t *testing.T) {
-	resp := rpcError("req-2", "prompt", "message is required")
+	resp := rpcError(rpcStringID("req-2"), "prompt", "message is required")
 
 	var buf bytes.Buffer
 	writeJSONLine(&buf, resp)
@@ -590,22 +625,30 @@ func TestRPCErrorResponse(t *testing.T) {
 
 // TestRPCErrorResponseEchoesID covers the 0.79.x change where an error
 // response echoes the request id (error(id, ...)) and omits it when the
-// command carried none. The unknown-command path threads env.ID into
-// rpcError; this asserts the builder + omitempty serialization that makes
-// {"id":"...","type":"response",...} versus {"type":"response",...}.
+// command carried none. This asserts the unknown-command builder + omitempty
+// serialization that makes {"id":"...","type":"response",...} versus
+// {"type":"response",...}.
 func TestRPCErrorResponseEchoesID(t *testing.T) {
+	unknown := func(command string) rpcUnknownCommandResponse {
+		t.Helper()
+		env, err := parseRPCCommand([]byte(command))
+		if err != nil {
+			t.Fatal(err)
+		}
+		return rpcUnknownCommand(env)
+	}
 	t.Run("present id is echoed first", func(t *testing.T) {
 		var buf bytes.Buffer
-		writeJSONLine(&buf, rpcError("test-id", "does_not_exist", "Unknown command: does_not_exist"))
+		writeJSONLine(&buf, unknown(`{"id":"test-id","type":"does_not_exist"}`))
 		line := string(bytes.TrimRight(buf.Bytes(), "\n"))
 		want := `{"id":"test-id","type":"response","command":"does_not_exist","success":false,"error":"Unknown command: does_not_exist"}`
 		if line != want {
 			t.Errorf("error line:\n got %s\nwant %s", line, want)
 		}
 	})
-	t.Run("empty id is omitted", func(t *testing.T) {
+	t.Run("omitted id stays omitted", func(t *testing.T) {
 		var buf bytes.Buffer
-		writeJSONLine(&buf, rpcError("", "hello", "Unknown command: hello"))
+		writeJSONLine(&buf, unknown(`{"type":"hello"}`))
 		line := string(bytes.TrimRight(buf.Bytes(), "\n"))
 		if want := `{"type":"response","command":"hello","success":false,"error":"Unknown command: hello"}`; line != want {
 			t.Errorf("error line:\n got %s\nwant %s", line, want)
@@ -711,8 +754,8 @@ func TestRPCSteerFieldExtraction(t *testing.T) {
 	if cmd.Message != "redirect please" {
 		t.Errorf("message: got %q", cmd.Message)
 	}
-	if cmd.ID != "s1" {
-		t.Errorf("id: got %q", cmd.ID)
+	if string(cmd.ID) != `"s1"` {
+		t.Errorf("id: got %s", cmd.ID)
 	}
 }
 
@@ -735,8 +778,8 @@ func TestRPCBashFieldExtraction(t *testing.T) {
 
 // TestRPCBashResultSerialize verifies BashResult serializes with exitCode + output.
 func TestRPCBashResultSerialize(t *testing.T) {
-	result := RPCBashResult{Output: "hello\nworld\n", ExitCode: 0}
-	resp := rpcSuccess("b2", "bash", result)
+	result := RPCBashResult{Output: "hello\nworld\n", ExitCode: new(0)}
+	resp := rpcSuccess(rpcStringID("b2"), "bash", result)
 
 	var buf bytes.Buffer
 	writeJSONLine(&buf, resp)
@@ -893,6 +936,13 @@ type fakeRPCCommandRunner struct {
 	mu       sync.Mutex
 	commands []extension.ResolvedCommand
 	executed []string
+	errors   []*extension.ExtensionError
+}
+
+func (f *fakeRPCCommandRunner) EmitError(err *extension.ExtensionError) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.errors = append(f.errors, err)
 }
 
 func (f *fakeRPCCommandRunner) Commands() []extension.ResolvedCommand {
@@ -932,7 +982,7 @@ func TestRPCGetCommandsParseAndExactEmptyResponse(t *testing.T) {
 		t.Fatalf("command=%#v error=%v", command, err)
 	}
 	var output bytes.Buffer
-	writeJSONLine(&output, rpcGetCommandsResponse("", headlessCommandCatalog{}))
+	writeJSONLine(&output, rpcGetCommandsResponse(nil, headlessCommandCatalog{}))
 	want := "{\"type\":\"response\",\"command\":\"get_commands\",\"success\":true,\"data\":{\"commands\":[]}}\n"
 	if output.String() != want {
 		t.Fatalf("response:\n got %s want %s", output.String(), want)
@@ -986,7 +1036,11 @@ func TestRPCGetCommandsCategoryAndLoaderOrderWithoutBuiltins(t *testing.T) {
 func TestRPCPromptRoutingPriorityAndInvocationConsistency(t *testing.T) {
 	runner := &fakeRPCCommandRunner{commands: []extension.ResolvedCommand{{RegisteredCommand: extension.RegisteredCommand{Name: "skill:deploy"}, InvocationName: "skill:deploy"}}}
 	template := codingagent.PromptTemplate{Name: "deploy", Content: "prompt $1"}
-	skill := &codingagent.SkillDef{Name: "deploy", Body: "skill body", Path: "/skills/deploy/SKILL.md", Dir: "/skills/deploy"}
+	path := filepath.Join(t.TempDir(), "SKILL.md")
+	if err := os.WriteFile(path, []byte("skill body"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	skill := &codingagent.SkillDef{Name: "deploy", Body: "stale cached body", Path: path, Dir: filepath.Dir(path)}
 	catalog := headlessCommandCatalog{runner: runner, promptTemplates: []codingagent.PromptTemplate{template}, skills: []*codingagent.SkillDef{skill}}
 
 	if expanded, handled := catalog.routePrompt(context.Background(), "/skill:deploy now"); !handled || expanded != "" {
@@ -1004,6 +1058,15 @@ func TestRPCPromptRoutingPriorityAndInvocationConsistency(t *testing.T) {
 	}
 	if expanded, handled := catalog.routePrompt(context.Background(), "/unknown untouched"); handled || expanded != "/unknown untouched" {
 		t.Fatalf("unknown slash=%q handled=%v", expanded, handled)
+	}
+	if err := os.Remove(path); err != nil {
+		t.Fatal(err)
+	}
+	if expanded, handled := catalog.routePrompt(t.Context(), "/skill:deploy now"); handled || expanded != "/skill:deploy now" {
+		t.Fatalf("missing skill expansion=%q handled=%v", expanded, handled)
+	}
+	if len(runner.errors) != 1 || runner.errors[0].Event != "skill_expansion" || runner.errors[0].ExtensionPath != path {
+		t.Fatalf("skill errors=%v", runner.errors)
 	}
 }
 
@@ -1056,6 +1119,10 @@ func TestRPCResourceHandoffFlagsTrustExplicitAndPiglet(t *testing.T) {
 	if len(inline) != 1 || inline[0].Path != "builtin:piglet" || inline[0].Dir != "." {
 		t.Fatalf("Piglet inline source=%#v", inline)
 	}
+	got, expanded, failure := codingagent.ExpandSkillCommand("/skill:inline", inline)
+	if !expanded || failure != nil || got != "<skill name=\"inline\" location=\"builtin:piglet\">\nReferences are relative to ..\n\nbody\n</skill>" {
+		t.Fatalf("inline invocation=%q expanded=%v failure=%v", got, expanded, failure)
+	}
 }
 
 func TestRPCGetCommandsConcurrentQueriesRemainJSONL(t *testing.T) {
@@ -1069,7 +1136,7 @@ func TestRPCGetCommandsConcurrentQueriesRemainJSONL(t *testing.T) {
 		go func(id int) {
 			defer wait.Done()
 			outputMu.Lock()
-			writeJSONLine(&output, rpcGetCommandsResponse(string(rune('a'+id)), catalog))
+			writeJSONLine(&output, rpcGetCommandsResponse(rpcStringID(string(rune('a'+id))), catalog))
 			outputMu.Unlock()
 		}(i)
 	}
@@ -1122,7 +1189,7 @@ func TestRPCGetCommandsExactRecordResponseShape(t *testing.T) {
 		InvocationName: "deploy",
 	}}}
 	var output bytes.Buffer
-	writeJSONLine(&output, rpcGetCommandsResponse("commands-1", headlessCommandCatalog{runner: runner}))
+	writeJSONLine(&output, rpcGetCommandsResponse(rpcStringID("commands-1"), headlessCommandCatalog{runner: runner}))
 	want := "{\"id\":\"commands-1\",\"type\":\"response\",\"command\":\"get_commands\",\"success\":true,\"data\":{\"commands\":[{\"name\":\"deploy\",\"description\":\"Deploy\",\"source\":\"extension\",\"sourceInfo\":{\"path\":\"/ext/deploy\",\"source\":\"local\",\"scope\":\"project\",\"origin\":\"top-level\",\"baseDir\":\"/ext\"}}]}}\n"
 	if output.String() != want {
 		t.Fatalf("response:\n got %s want %s", output.String(), want)

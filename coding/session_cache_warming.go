@@ -9,6 +9,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/coding/extension"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -25,27 +26,71 @@ type sessionCacheWarming struct {
 	retired   sync.WaitGroup
 }
 
-// cacheWarmingStreamFn sends each agent request through the model's provider
-// after restarting cache warming for it, as sdk.ts streamFn does.
+// cacheWarmingStreamFn installs response observers and restarts cache warming
+// before sending each agent request through the provider, as sdk.ts streamFn does.
 func cacheWarmingStreamFn(session func() *Session) agent.StreamFn {
 	return func(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 		if s := session(); s != nil {
+			options.OnResponse = s.extensionProviderResponseHook
+			var err error
+			options, err = s.buildRequestOptions(model, options)
+			if err != nil {
+				return nil, err
+			}
 			s.startCacheWarming(model, transcript, options)
+			return s.modelRuntime.StreamSimple(ctx, model, ai.Context{Messages: transcript.Messages()}, options), nil
+		}
+		if options.MaxRetries != nil {
+			ctx = ai.WithProviderMaxRetries(ctx, *options.MaxRetries)
 		}
 		return model.Provider.Stream(ctx, transcript, options)
 	}
 }
 
-// streamWarmRequest replays a warm request directly through the provider,
-// never through the agent's StreamFn, as the upstream warmer calls
-// modelRuntime.streamSimple.
-func streamWarmRequest(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
-	return model.Provider.Stream(ctx, transcript, options)
+// buildRequestOptions mirrors sdk.ts:310-338. Request presence wins over settings, including explicit zero, and the Session header hook runs after provider/header assembly.
+func (s *Session) buildRequestOptions(model *ai.Model, options ai.StreamOptions) (ai.StreamOptions, error) {
+	settings := s.services.SettingsManager()
+	retry := settings.GetProviderRetrySettings()
+	if options.TimeoutMs == nil {
+		timeout, err := settings.GetProviderRequestTimeoutMs()
+		if err != nil {
+			return options, err
+		}
+		// upstream: packages/coding-agent/src/core/sdk.ts:effectiveTimeoutMs
+		if timeout == 0 {
+			if raw := settings.Get().Retry; raw == nil || raw.Provider == nil || raw.Provider.TimeoutMs == nil {
+				timeout = 2147483647
+			}
+		}
+		options.TimeoutMs = &timeout
+	}
+	if options.WebSocketConnectTimeoutMs == nil {
+		timeout, err := settings.GetWebSocketConnectTimeoutMs()
+		if err != nil {
+			return options, err
+		}
+		options.WebSocketConnectTimeoutMs = timeout
+	}
+	if options.MaxRetries == nil {
+		options.MaxRetries = new(retry.MaxRetries)
+	}
+	if options.MaxRetryDelayMs == nil {
+		options.MaxRetryDelayMs = new(retry.MaxRetryDelayMs)
+	}
+	options.Headers = mergeRuntimeHeaders(model.ProviderMeta.Headers, options.Headers)
+	options.TransformHeaders = s.extensionProviderHeadersHook
+	return options, nil
+}
+
+// streamWarmRequest replays through the same Model Runtime without restarting the Agent's cache-warming hook, as upstream CacheWarmer calls modelRuntime.streamSimple.
+func (s *Session) streamWarmRequest(ctx context.Context, model *ai.Model, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
+	return s.modelRuntime.StreamSimple(ctx, model, ai.Context{Messages: transcript.Messages()}, options), nil
 }
 
 // installCacheWarmer binds a fresh warmer to inner and retires the previous
 // one.
 func (s *Session) installCacheWarmer(inner *icodingagent.Session) {
+	inner.SetCacheReadPriceSource(s.services.Registry().CacheReadPrice)
 	s.warming.mu.Lock()
 	defer s.warming.mu.Unlock()
 	if s.warming.closed {
@@ -59,7 +104,7 @@ func (s *Session) installCacheWarmer(inner *icodingagent.Session) {
 			s.cleanupRetiredSessionResources(previousID)
 		})
 	}
-	warmer := icodingagent.NewCacheWarmer(streamWarmRequest, inner, s.services.SettingsManager().GetCacheWarmingMode, s.decideCacheWarming)
+	warmer := icodingagent.NewCacheWarmer(s.streamWarmRequest, inner, s.services.SettingsManager().GetCacheWarmingMode, s.decideCacheWarming)
 	warmer.SetOnWarmed(s.emitEntryAppended)
 	s.warming.warmer, s.warming.sessionID = warmer, inner.ID()
 }
@@ -120,12 +165,17 @@ func sameAgentMessage(a, b agent.AgentMessage) bool {
 		reflect.ValueOf(a.Custom).UnsafePointer() == reflect.ValueOf(b.Custom).UnsafePointer()
 }
 
-// decideCacheWarming is the cache_warming_decision hook point: sdk.ts passes
-// extensionRunner.emitCacheWarmingDecision(event) here, which returns
-// event.action when no extension handles the event. PiG does not dispatch that
-// extension event yet, so Pi's own decision stands.
-func (s *Session) decideCacheWarming(_ context.Context, event icodingagent.CacheWarmingDecisionEvent) (icodingagent.CacheWarmingAction, error) {
-	return event.Action, nil
+// decideCacheWarming awaits extension decisions before a refresh starts. The last supplied action wins; without a runner the economic decision stands.
+func (s *Session) decideCacheWarming(ctx context.Context, event icodingagent.CacheWarmingDecisionEvent) (icodingagent.CacheWarmingAction, error) {
+	runner := s.currentRunner()
+	if runner == nil {
+		return event.Action, nil
+	}
+	action, err := runner.EmitCacheWarmingDecision(ctx, extension.CacheWarmingDecisionEvent{
+		Type: event.Type, WarmCost: event.WarmCost, MissCost: event.MissCost,
+		ContinuationProbability: event.ContinuationProbability, Action: extension.CacheWarmingAction(event.Action),
+	})
+	return icodingagent.CacheWarmingAction(action), err
 }
 
 // emitEntryAppended reports a persisted cache-warming usage entry on the

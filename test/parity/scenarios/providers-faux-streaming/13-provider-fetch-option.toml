@@ -1,0 +1,27 @@
+# Pi 0.87.1 fetch-option.test.ts:63-181 supplies a custom request function without replacing global fetch.
+# The selected HTTP adapters call it once; Google rejects a non-global implementation with an adapter-specific error.
+# A custom implementation returning a manual 302 response is called once; the host must not add a second redirect policy around it.
+# The image-abort case mirrors openrouter-images.test.ts:104-126's SDK rejection and verifies the original signal plus undecorated error message.
+# Go uses a caller-owned *http.Client with a custom RoundTripper as the callback equivalent.
+name = "13-provider-fetch-option"
+description = "Provider HTTP execution honors a per-request implementation without ambient fallback or global mutation."
+covers = ["packages/ai/src/api/anthropic-messages.ts", "packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/openai-responses.ts", "packages/ai/src/api/azure-openai-responses.ts", "packages/ai/src/api/mistral-conversations.ts", "packages/ai/src/api/openai-codex-responses.ts", "packages/ai/src/api/pi-messages.ts", "packages/ai/src/api/google-generative-ai.ts", "packages/ai/src/api/google-vertex.ts", "packages/ai/src/api/openrouter-images.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/fetch-option/pig"]
+pi_args = ["node", "./test/parity/testdata/fetch-option/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_not_contain = ['"fallback":1', "panic:"]
+runs = 3

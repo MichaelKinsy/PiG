@@ -1,10 +1,14 @@
 //! Extension builder and runtime.
 
-use crate::context::{Context, ModelStreams, RemoteComponents, TerminalInputSubs};
+use crate::context::{
+    Context, ModelEventStream, ModelStreams, RemoteComponents, TerminalInputSubs,
+};
 use crate::oauth::{OAuthLoginCallbacks, OAuthProvider, ProviderOAuthConfig};
 use crate::protocol::*;
+use crate::theme::UiState;
 use crate::tool_render::{
-    ToolRenderContext, ToolRenderResult, ToolRenderResultOptions, ToolRenderShell, ToolRenderers,
+    ToolRenderCallHandler, ToolRenderContext, ToolRenderResult, ToolRenderResultHandler,
+    ToolRenderResultOptions, ToolRenderShell, ToolRenderers,
 };
 use crate::transport::UnixStream;
 use serde_json::Value;
@@ -50,6 +54,64 @@ pub type ToolPrepareArguments = Box<dyn Fn(Value) -> Result<Value, String> + Sen
 /// Type alias for tool handler functions.
 pub type ToolHandler = Box<dyn Fn(&Context, Value) -> ToolResult + Send + Sync>;
 
+/// Upstream `ToolDefinition`, registered with [`Extension::register_tool`].
+///
+/// `execute` receives the JSON parameters; upstream's `onUpdate` is
+/// [`Context::on_update`] and its `AbortSignal` is the request's cancellation
+/// ([`Context::is_cancelled`]). The renderers return terminal lines at a
+/// width, since a Pi Component cannot cross the process boundary.
+pub struct ToolDefinition {
+    pub name: String,
+    /// Display name.
+    pub label: String,
+    pub description: String,
+    /// One-line entry for the default system prompt's Available tools
+    /// section; `None` leaves the tool out of that section.
+    pub prompt_snippet: Option<String>,
+    /// Bullets appended to the system prompt's Guidelines section while the
+    /// tool is active.
+    pub prompt_guidelines: Vec<String>,
+    /// JSON Schema of the parameters.
+    pub parameters: Value,
+    pub constrained_sampling: Option<crate::ToolConstrainedSampling>,
+    pub render_shell: ToolRenderShell,
+    /// Transforms raw arguments before schema validation.
+    pub prepare_arguments: Option<ToolPrepareArguments>,
+    /// `"sequential"` or `"parallel"`; `None` uses the session default.
+    pub execution_mode: Option<String>,
+    pub execute: ToolHandler,
+    pub render_call: Option<ToolRenderCallHandler>,
+    pub render_result: Option<ToolRenderResultHandler>,
+}
+
+impl ToolDefinition {
+    /// A definition with upstream's required fields; the optional ones are
+    /// unset and can be assigned before registering.
+    pub fn new(
+        name: impl Into<String>,
+        label: impl Into<String>,
+        description: impl Into<String>,
+        parameters: Value,
+        execute: impl Fn(&Context, Value) -> ToolResult + Send + Sync + 'static,
+    ) -> Self {
+        Self {
+            name: name.into(),
+            label: label.into(),
+            description: description.into(),
+            prompt_snippet: None,
+            prompt_guidelines: Vec::new(),
+            parameters,
+            constrained_sampling: None,
+            render_shell: ToolRenderShell::Default,
+            prepare_arguments: None,
+            execution_mode: None,
+            execute: Box::new(execute),
+            render_call: None,
+            render_result: None,
+        }
+    }
+}
+
 /// Type alias for command handler functions.
 pub type CommandHandler = Box<dyn Fn(&Context, &str) -> CommandResult + Send + Sync>;
 /// Command argument completions (upstream getArgumentCompletions).
@@ -58,7 +120,8 @@ pub type CommandCompletionHandler =
 
 /// Type alias for event handler functions.
 /// Errors are returned to the host as request failures.
-pub type EventHandler = Box<dyn Fn(&Context, &mut Value) -> Result<Option<Value>, String> + Send + Sync>;
+pub type EventHandler =
+    Box<dyn Fn(&Context, &mut Value) -> Result<Option<Value>, String> + Send + Sync>;
 
 #[derive(Debug, Clone, Copy, serde::Serialize)]
 #[serde(rename_all = "lowercase")]
@@ -104,6 +167,24 @@ pub struct EntryRenderOptions {
 pub type EntryRendererHandler = Box<
     dyn Fn(&Context, Value, EntryRenderOptions, u32) -> Result<Vec<String>, String> + Send + Sync,
 >;
+
+/// Pi's MarkdownTransformContext: the transcript message being rendered
+/// ("user", "assistant" or "assistant-thinking"), whether it is still
+/// streaming, and the width it is rendered at.
+#[derive(Debug, Clone, Default, serde::Serialize, serde::Deserialize)]
+pub struct MarkdownTransformContext {
+    #[serde(default, rename = "messageType")]
+    pub message_type: String,
+    #[serde(default, rename = "isStreaming")]
+    pub is_streaming: bool,
+    #[serde(default, rename = "availableWidth")]
+    pub available_width: u32,
+}
+
+/// Type alias for a display-only Markdown transformer (Pi's
+/// MarkdownTransformer). Returning `None` keeps the input.
+pub type MarkdownTransformerHandler =
+    Box<dyn Fn(&str, &MarkdownTransformContext) -> Option<String> + Send + Sync>;
 
 /// Flag type for extension CLI flags.
 #[derive(Debug, Clone, Copy)]
@@ -157,8 +238,10 @@ pub type Factory = fn() -> Extension;
 
 #[derive(Clone)]
 struct RequestCancel {
+    signal: crate::ProviderSignal,
     flag: Arc<AtomicBool>,
     reason: Arc<Mutex<Option<String>>>,
+    provider_stream: Arc<Mutex<Option<Arc<ModelEventStream>>>>,
 }
 
 impl RequestCancel {
@@ -166,27 +249,33 @@ impl RequestCancel {
         Self {
             flag: Arc::new(AtomicBool::new(false)),
             reason: Arc::new(Mutex::new(None)),
+            signal: crate::ProviderSignal::new(),
+            provider_stream: Arc::new(Mutex::new(None)),
         }
     }
 
     fn cancel(&self, reason: impl Into<String>) {
         self.flag.store(true, Ordering::Relaxed);
         *self.reason.lock().unwrap() = Some(reason.into());
+        self.signal.cancel();
+        if let Some(stream) = self.provider_stream.lock().unwrap().as_ref() {
+            stream.end(Value::Null);
+        }
     }
 }
 
 #[derive(Default)]
-struct RequestThreads {
+pub(crate) struct RequestThreads {
     count: Mutex<usize>,
     idle: Condvar,
 }
 
 impl RequestThreads {
-    fn start(&self) {
+    pub(crate) fn start(&self) {
         *self.count.lock().unwrap() += 1;
     }
 
-    fn finish(&self) {
+    pub(crate) fn finish(&self) {
         let mut count = self.count.lock().unwrap();
         *count -= 1;
         if *count == 0 {
@@ -211,8 +300,11 @@ impl Context {
         tool_call_id: Option<String>,
         request_id: String,
     ) -> Self {
+        let parent = if self.request_id == request_id { self.request_parent.clone() } else { None }
+            .unwrap_or_else(|| self.conn.arm_parent(&request_id));
         Self {
             conn: self.conn.clone(),
+            request_parent: Some(parent),
             tool_call_id,
             request_id,
             session_name: self.session_name.clone(),
@@ -221,6 +313,7 @@ impl Context {
             shared_width: self.shared_width.clone(),
             shared_height: self.shared_height.clone(),
             shared_model: self.shared_model.clone(),
+            flag_defaults: self.flag_defaults.clone(),
             shared_session: self.shared_session.clone(),
             session_sub_lock: self.session_sub_lock.clone(),
             cancel_flag: cancel.flag,
@@ -233,6 +326,7 @@ impl Context {
             width_change_seq: self.width_change_seq.clone(),
             model_streams: self.model_streams.clone(),
             model_stream_seq: self.model_stream_seq.clone(),
+            shared_ui: self.shared_ui.clone(),
         }
     }
 }
@@ -246,6 +340,15 @@ pub struct Extension {
     handlers: Vec<HandlerDef>,
     flags: Vec<FlagDef>,
     providers: Vec<ProviderDef>,
+    provider_objects: Arc<crate::provider::ProviderObjects>,
+    provider_streams: HashMap<
+        String,
+        Box<
+            dyn Fn(&Context, Value, Value, Value) -> Result<Arc<ModelEventStream>, String>
+                + Send
+                + Sync,
+        >,
+    >,
     renderers: Vec<RendererDef>,
     entry_renderers: Vec<RendererDef>,
 
@@ -256,6 +359,7 @@ pub struct Extension {
     shortcut_fns: HashMap<String, ShortcutHandler>,
     renderer_fns: HashMap<String, RendererHandler>,
     entry_renderer_fns: HashMap<String, EntryRendererHandler>,
+    markdown_transformer: Option<MarkdownTransformerHandler>,
     // oauth_fns holds OAuth closures for providers registered with an OAuth
     // capability, keyed by provider name for oauth_* dispatch.
     oauth_fns: HashMap<String, OAuthProvider>,
@@ -274,6 +378,8 @@ impl Extension {
             handlers: Vec::new(),
             flags: Vec::new(),
             providers: Vec::new(),
+            provider_objects: Arc::new(crate::provider::ProviderObjects::default()),
+            provider_streams: HashMap::new(),
             renderers: Vec::new(),
             entry_renderers: Vec::new(),
             tool_fns: HashMap::new(),
@@ -283,6 +389,7 @@ impl Extension {
             shortcut_fns: HashMap::new(),
             renderer_fns: HashMap::new(),
             entry_renderer_fns: HashMap::new(),
+            markdown_transformer: None,
             oauth_fns: HashMap::new(),
             tool_renderers: ToolRenderers::default(),
             command_completion_fns: HashMap::new(),
@@ -310,7 +417,9 @@ impl Extension {
         for tool in self.tools.iter_mut().filter(|tool| tool.name == name) {
             tool.renders_call = true;
         }
-        self.tool_renderers.call.insert(name.to_string(), Box::new(handler));
+        self.tool_renderers
+            .call
+            .insert(name.to_string(), Box::new(handler));
     }
 
     /// Set the result renderer of the registered tool `name` (upstream
@@ -332,7 +441,9 @@ impl Extension {
         for tool in self.tools.iter_mut().filter(|tool| tool.name == name) {
             tool.renders_result = true;
         }
-        self.tool_renderers.result.insert(name.to_string(), Box::new(handler));
+        self.tool_renderers
+            .result
+            .insert(name.to_string(), Box::new(handler));
     }
 
     /// Returns the extension's registered name.
@@ -340,7 +451,12 @@ impl Extension {
         &self.name
     }
 
-    /// Register a tool that the LLM can invoke.
+    // upstream: packages/coding-agent/src/core/extensions/loader.ts:registerTool
+    fn validate_tool_schema(&self, name: &str, schema: &Value) {
+        assert!(schema.is_object(), "Tool \"{name}\" registered by extension \"{}\" must define an object parameter schema.", self.name);
+    }
+
+    /// Register a tool that the LLM can invoke. Panics before registration if the schema is not an object.
     pub fn tool(
         &mut self,
         name: impl Into<String>,
@@ -349,6 +465,7 @@ impl Extension {
         handler: impl Fn(&Context, Value) -> ToolResult + Send + Sync + 'static,
     ) {
         let n = name.into();
+        self.validate_tool_schema(&n, &schema);
         self.tools.push(ToolDef {
             name: n.clone(),
             description: description.into(),
@@ -359,11 +476,72 @@ impl Extension {
             render_shell: None,
             renders_call: false,
             renders_result: false,
+            ..Default::default()
         });
         self.tool_fns.insert(n, Box::new(handler));
     }
 
-    /// Register a tool with a local pre-validation argument transform.
+    /// Set the registered tool's optional system-prompt summary before running the extension.
+    pub fn tool_prompt_snippet(&mut self, name: &str, snippet: impl Into<String>) {
+        let snippet = snippet.into();
+        for tool in self.tools.iter_mut().filter(|tool| tool.name == name) {
+            tool.prompt_snippet = snippet.clone();
+        }
+    }
+
+    /// Upstream `pi.registerTool(definition)`. Registering a name again
+    /// replaces the earlier definition in place, as upstream's tool map does.
+    pub fn register_tool(&mut self, definition: ToolDefinition) {
+        self.validate_tool_schema(&definition.name, &definition.parameters);
+        let ToolDefinition {
+            name,
+            label,
+            description,
+            prompt_snippet,
+            prompt_guidelines,
+            parameters,
+            constrained_sampling,
+            render_shell,
+            prepare_arguments,
+            execution_mode,
+            execute,
+            render_call,
+            render_result,
+        } = definition;
+        let decl = ToolDef {
+            name: name.clone(),
+            label,
+            description,
+            parameters,
+            constrained_sampling,
+            prompt_guidelines,
+            prompt_snippet: prompt_snippet.unwrap_or_default(),
+            execution_mode: execution_mode.unwrap_or_default(),
+            source: None,
+            render_shell: (render_shell == ToolRenderShell::SelfShell).then(|| "self".to_string()),
+            renders_call: render_call.is_some(),
+            renders_result: render_result.is_some(),
+        };
+        match self.tools.iter_mut().find(|tool| tool.name == name) {
+            Some(existing) => *existing = decl,
+            None => self.tools.push(decl),
+        }
+        self.tool_fns.insert(name.clone(), execute);
+        match prepare_arguments {
+            Some(prepare) => self.tool_prepare_fns.insert(name.clone(), prepare),
+            None => self.tool_prepare_fns.remove(&name),
+        };
+        match render_call {
+            Some(render) => self.tool_renderers.call.insert(name.clone(), render),
+            None => self.tool_renderers.call.remove(&name),
+        };
+        match render_result {
+            Some(render) => self.tool_renderers.result.insert(name, render),
+            None => self.tool_renderers.result.remove(&name),
+        };
+    }
+
+    /// Register a tool with a local pre-validation argument transform. Panics before registration if the schema is not an object.
     pub fn tool_with_prepare_arguments(
         &mut self,
         name: impl Into<String>,
@@ -377,7 +555,7 @@ impl Extension {
         self.tool_prepare_fns.insert(name, Box::new(prepare));
     }
 
-    /// Register a tool with system prompt guidelines.
+    /// Register a tool with system prompt guidelines. Panics before registration if the schema is not an object.
     /// Guidelines are bullets injected into the system prompt's Guidelines section
     /// when this tool is active. Each guideline must name the tool it refers to.
     pub fn tool_with_guidelines(
@@ -389,6 +567,7 @@ impl Extension {
         handler: impl Fn(&Context, Value) -> ToolResult + Send + Sync + 'static,
     ) {
         let n = name.into();
+        self.validate_tool_schema(&n, &schema);
         self.tools.push(ToolDef {
             name: n.clone(),
             description: description.into(),
@@ -399,11 +578,12 @@ impl Extension {
             render_shell: None,
             renders_call: false,
             renders_result: false,
+            ..Default::default()
         });
         self.tool_fns.insert(n, Box::new(handler));
     }
 
-    /// Register a tool with an explicit source identifier.
+    /// Register a tool with an explicit source identifier. Panics before registration if the schema is not an object.
     /// Source overrides the default extension-name attribution Piglet tool
     /// scoping reads, allowing extensions that wrap external tool sources
     /// (e.g. MCP servers) to provide per-tool provenance. `get_all_tools()`
@@ -418,6 +598,7 @@ impl Extension {
         handler: impl Fn(&Context, Value) -> ToolResult + Send + Sync + 'static,
     ) {
         let n = name.into();
+        self.validate_tool_schema(&n, &schema);
         self.tools.push(ToolDef {
             name: n.clone(),
             description: description.into(),
@@ -428,11 +609,12 @@ impl Extension {
             render_shell: None,
             renders_call: false,
             renders_result: false,
+            ..Default::default()
         });
         self.tool_fns.insert(n, Box::new(handler));
     }
 
-    /// Register a tool that requests provider-side constrained sampling.
+    /// Register a tool that requests provider-side constrained sampling. Panics before registration if the schema is not an object.
     /// The host forwards the request to the provider, which (for OpenAI-compatible
     /// providers) turns a grammar request into a custom grammar tool.
     /// Mirrors upstream ToolDefinition.constrainedSampling.
@@ -441,20 +623,22 @@ impl Extension {
         name: impl Into<String>,
         description: impl Into<String>,
         schema: Value,
-        sampling: ConstrainedSampling,
+        sampling: impl Into<crate::ToolConstrainedSampling>,
         handler: impl Fn(&Context, Value) -> ToolResult + Send + Sync + 'static,
     ) {
         let n = name.into();
+        self.validate_tool_schema(&n, &schema);
         self.tools.push(ToolDef {
             name: n.clone(),
             description: description.into(),
             parameters: schema,
-            constrained_sampling: Some(sampling),
+            constrained_sampling: Some(sampling.into()),
             prompt_guidelines: Vec::new(),
             source: None,
             render_shell: None,
             renders_call: false,
             renders_result: false,
+            ..Default::default()
         });
         self.tool_fns.insert(n, Box::new(handler));
     }
@@ -483,7 +667,11 @@ impl Extension {
         name: &str,
         handler: impl Fn(&str) -> Option<Vec<AutocompleteItem>> + Send + Sync + 'static,
     ) {
-        for command in self.commands.iter_mut().filter(|command| command.name == name) {
+        for command in self
+            .commands
+            .iter_mut()
+            .filter(|command| command.name == name)
+        {
             command.argument_completions = true;
         }
         self.command_completion_fns
@@ -515,17 +703,48 @@ impl Extension {
         });
     }
 
+    pub fn register_native_provider(&mut self,provider:Arc<crate::Provider>)->Result<(),String>{
+        let declaration=self.provider_objects.register(provider)?;
+        self.unregister_provider(&declaration.name);
+        self.providers.push(declaration);
+        Ok(())
+    }
+
     /// Register or override a model provider.
     pub fn register_provider(&mut self, name: impl Into<String>, config: Value) {
         self.providers.push(ProviderDef {
             name: name.into(),
             config,
+            native: None,
+            stream_simple: false,
+        });
+    }
+
+    /// Register an extension-owned provider stream with request cancellation and ordered events.
+    pub fn register_provider_stream(
+        &mut self,
+        name: impl Into<String>,
+        config: Value,
+        handler: impl Fn(&Context, Value, Value, Value) -> Result<Arc<ModelEventStream>, String>
+        + Send
+        + Sync
+        + 'static,
+    ) {
+        let name = name.into();
+        self.provider_streams
+            .insert(name.clone(), Box::new(handler));
+        self.providers.push(ProviderDef {
+            name,
+            config,
+            native: None,
+            stream_simple: true,
         });
     }
 
     /// Remove a previously queued provider registration.
     pub fn unregister_provider(&mut self, name: &str) {
         self.providers.retain(|provider| provider.name != name);
+        self.provider_streams.remove(name);
     }
 
     /// Register a model provider that also contributes an OAuth capability.
@@ -547,6 +766,8 @@ impl Extension {
         self.providers.push(ProviderDef {
             name: name.clone(),
             config,
+            native: None,
+            stream_simple: false,
         });
         self.oauth_fns.insert(name, provider);
     }
@@ -583,6 +804,17 @@ impl Extension {
         self.entry_renderer_fns.insert(ty, Box::new(handler));
     }
 
+    /// Register the extension's display-only Markdown transform (Pi's
+    /// `pi.registerMarkdownTransformer`). The host applies it to user and
+    /// assistant Markdown in the interactive transcript, after its own
+    /// transformers; a later registration replaces an earlier one.
+    pub fn markdown_transformer(
+        &mut self,
+        transformer: impl Fn(&str, &MarkdownTransformContext) -> Option<String> + Send + Sync + 'static,
+    ) {
+        self.markdown_transformer = Some(Box::new(transformer));
+    }
+
     /// Register an event handler. Mutations to boundary entries are retained.
     /// Return `Some(value)` to pass data back to the host, `None` to ack.
     pub fn on_event(
@@ -591,6 +823,16 @@ impl Extension {
         can_block: bool,
         handler: impl Fn(&Context, &mut Value) -> Option<Value> + Send + Sync + 'static,
     ) {
+        self.on_event_result(event, can_block, move |ctx, data| Ok(handler(ctx, data)));
+    }
+
+    /// Register an awaited event handler with surfaced errors. In-place mutations survive an error when Pi retains that event's mutable inputs.
+    pub fn on_event_result(
+        &mut self,
+        event: impl Into<String>,
+        can_block: bool,
+        handler: impl Fn(&Context, &mut Value) -> Result<Option<Value>, String> + Send + Sync + 'static,
+    ) {
         let e = event.into();
         let handler_id = self.handlers.len() as u32 + 1;
         self.handlers.push(HandlerDef {
@@ -598,10 +840,7 @@ impl Extension {
             can_block,
             handler_id,
         });
-        self.event_fns.insert(
-            handler_id,
-            Box::new(move |ctx, data| Ok(handler(ctx, data))),
-        );
+        self.event_fns.insert(handler_id, Box::new(handler));
     }
 
     /// Register an awaited project_trust handler with surfaced errors.
@@ -639,6 +878,7 @@ impl Extension {
     pub fn run_with_socket(self, sock_path: &str) -> io::Result<()> {
         let stream = UnixStream::connect(sock_path)?;
         let conn = Arc::new(Connection::new(stream));
+        let _=conn.provider_objects.set(self.provider_objects.clone());
 
         // Send register.
         conn.write_envelope(&Envelope {
@@ -653,6 +893,7 @@ impl Extension {
                 providers: self.providers.clone(),
                 renderers: self.renderers.clone(),
                 entry_renderers: self.entry_renderers.clone(),
+                markdown_transformer: self.markdown_transformer.is_some(),
             }),
             ..Default::default()
         })?;
@@ -680,15 +921,26 @@ impl Extension {
                 let _ = shared_session.lock().unwrap().apply_update(session);
             }
         }
+        let shared_ui = Arc::new(Mutex::new(UiState::default()));
+        if let Some(state) = ready.state.as_ref().and_then(|state| state.as_object()) {
+            shared_ui.lock().unwrap().apply_state(state);
+        }
         let overlay_seq = Arc::new(AtomicU64::new(0));
         let overlays: RemoteComponents = Arc::new(Mutex::new(HashMap::new()));
         let terminal_input: TerminalInputSubs = Arc::new(Mutex::new(Vec::new()));
         let terminal_input_seq = Arc::new(AtomicU64::new(0));
         let width_change: crate::context::WidthChangeSubs = Arc::new(Mutex::new(Vec::new()));
         let width_change_seq = Arc::new(AtomicU64::new(0));
-        let model_streams: ModelStreams = Arc::new(Mutex::new(HashMap::new()));
+        let model_streams: ModelStreams = self.provider_objects.streams.clone();
         let model_stream_seq = Arc::new(AtomicU64::new(0));
+        let mut flag_defaults = HashMap::new();
+        for flag in &self.flags {
+            if let Some(value) = &flag.default {
+                flag_defaults.entry(flag.name.clone()).or_insert_with(|| value.clone());
+            }
+        }
         let base_ctx = Context {
+            request_parent: None,
             conn: conn.clone(),
             tool_call_id: None,
             request_id: String::new(),
@@ -698,6 +950,7 @@ impl Extension {
             shared_width,
             shared_height,
             shared_model,
+            flag_defaults: Arc::new(flag_defaults),
             shared_session: shared_session.clone(),
             session_sub_lock: Arc::new(Mutex::new(())),
             cancel_flag: Arc::new(AtomicBool::new(false)),
@@ -710,17 +963,23 @@ impl Extension {
             model_streams,
             model_stream_seq,
             overlays,
+            shared_ui,
         };
         let ext = Arc::new(self);
         let active_requests: Arc<Mutex<HashMap<String, RequestCancel>>> =
             Arc::new(Mutex::new(HashMap::new()));
-        let request_threads = Arc::new(RequestThreads::default());
+        let request_threads = ext.provider_objects.workers.clone();
         let stop_requests = |reason: &str| -> io::Result<()> {
             for cancel in active_requests.lock().unwrap().values() {
                 cancel.cancel(reason);
             }
             conn.cancel_pending_calls();
-            if request_threads.wait(Duration::from_secs(2)) {
+            let drained=request_threads.wait(Duration::from_secs(2));
+            conn.registered_tools.lock().unwrap().clear();
+            ext.provider_objects.clear();
+            conn.autocomplete.clear();
+            conn.close_transport();
+            if drained {
                 Ok(())
             } else {
                 Err(io::Error::new(
@@ -809,6 +1068,7 @@ impl Extension {
                         .filter(|id| !id.is_empty())
                         .or(env.id.as_deref())
                         .unwrap_or("");
+                    conn.cancel_pending_calls_for(request_id);
                     if let Some(cancel) = active_requests.lock().unwrap().get(request_id) {
                         let reason = env
                             .cancel
@@ -817,7 +1077,6 @@ impl Extension {
                             .unwrap_or_default();
                         cancel.cancel(reason);
                     }
-                    conn.cancel_pending_calls_for(request_id);
                 }
                 "notify" => {
                     if let Some(notify) = env.notify {
@@ -825,12 +1084,27 @@ impl Extension {
                             "tool_render_release" => {
                                 ext.tool_renderers.release(notify.args.as_ref());
                             }
+                            "autocomplete.release" => {
+                                if let Some(id) = notify.args.as_ref().and_then(|args| args["id"].as_str()) { conn.autocomplete.release(id); }
+                            }
+                            "provider_release" => {
+                                if let Some(key)=notify.args.as_ref().and_then(|args|args["key"].as_str()){ext.provider_objects.release(key)}
+                            }
                             "model_stream_event" => {
                                 if let Some(args) = &notify.args {
-                                    let stream_id = args.get("streamId").and_then(|value| value.as_str()).unwrap_or("");
+                                    let stream_id = args
+                                        .get("streamId")
+                                        .and_then(|value| value.as_str())
+                                        .unwrap_or("");
                                     let event = args.get("event").cloned().unwrap_or(Value::Null);
-                                    if let Some(stream) = base_ctx.model_streams.lock().unwrap().get(stream_id).cloned() {
-                                        stream.push(event);
+                                    if let Some(stream) = base_ctx
+                                        .model_streams
+                                        .lock()
+                                        .unwrap()
+                                        .get(stream_id)
+                                        .cloned()
+                                    {
+                                        if args.get("started")==Some(&Value::Bool(true)){stream.mark_started(None)}else{stream.push(event)}
                                     }
                                 }
                             }
@@ -839,6 +1113,7 @@ impl Extension {
                                     if let Some(state) =
                                         args.get("state").and_then(|s| s.as_object())
                                     {
+                                        base_ctx.shared_ui.lock().unwrap().apply_state(state);
                                         // Session replication: apply incremental entries.
                                         if let Some(session) = state.get("session") {
                                             let _ = base_ctx
@@ -861,6 +1136,13 @@ impl Extension {
                                         }
                                     }
                                 }
+                            }
+                            "theme_change" => {
+                                base_ctx
+                                    .shared_ui
+                                    .lock()
+                                    .unwrap()
+                                    .apply_theme_change(notify.args.as_ref());
                             }
                             "width_change" => {
                                 if let Some(args) = &notify.args {
@@ -907,16 +1189,15 @@ impl Extension {
                                 }
                             }
                             "ui.custom.input" => {
-                                let Some(args) = notify.args.as_ref() else {
+                                let Some(args) = notify.custom_input else {
                                     continue;
                                 };
-                                let key = args.get("key").and_then(|v| v.as_str()).unwrap_or("");
-                                let data = args.get("data").and_then(|v| v.as_str()).unwrap_or("");
+                                let key = args.key.as_str();
                                 let overlay = base_ctx.overlays.lock().unwrap().get(key).cloned();
                                 let Some(overlay) = overlay else {
                                     continue;
                                 };
-                                if let Err(err) = overlay.send_input(data.to_string()) {
+                                if let Err(err) = overlay.send_input(args.data) {
                                     overlay.active.store(false, Ordering::Release);
                                     let _ = conn.notify(
                                         "ui.custom.close",
@@ -1068,6 +1349,70 @@ impl Extension {
         cancel: RequestCancel,
     ) {
         match req.method.as_str() {
+            "autocomplete.sync" | "autocomplete.suggest" => {
+                let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                let result = conn.autocomplete.dispatch(&ctx, req.args.clone().unwrap_or_default());
+                let (value, error) = match result { Ok(value) => (Some(value), None), Err(err) => (None, Some(ErrorInfo { code: None, message: err.to_string() })) };
+                let _ = conn.respond(id, value, error);
+            }
+            "provider_call"|"provider_stream"|"provider_sync"|"provider_object_callback"|"provider_object_callback_sync"=>{
+                let result=if req.method.starts_with("provider_object_callback"){self.provider_objects.dispatch_callback(req)}else{self.provider_objects.dispatch(conn,id,req,cancel.signal)};
+                let(value,error)=match result{Ok(value)=>(Some(value),None),Err(message)=>(None,Some(ErrorInfo{code:None,message}))};
+                let _=conn.respond(id,value,error);
+            }
+            "provider_stream_simple" => {
+                let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
+                let result = (|| -> Result<Value, String> {
+                    let handler = self
+                        .provider_streams
+                        .get(req.tool.as_deref().unwrap_or(""))
+                        .ok_or("unknown provider stream")?;
+                    let args = req.args.clone().unwrap_or(Value::Null);
+                    let stream = handler(
+                        &ctx,
+                        args["model"].clone(),
+                        args["context"].clone(),
+                        args["options"].clone(),
+                    )?;
+                    {
+                        let mut active = cancel.provider_stream.lock().unwrap();
+                        *active = Some(stream.clone());
+                        if ctx.is_cancelled() {
+                            stream.end(Value::Null);
+                        }
+                    }
+                    while let Some(event) = stream.next() {
+                        if ctx.is_cancelled() {
+                            return Err("provider stream aborted".into());
+                        };
+                        conn.notify(
+                            "provider_stream_event",
+                            Some(serde_json::json!({"request_id":id,"result":event})),
+                        )
+                        .map_err(|error| error.to_string())?;
+                    }
+                    if ctx.is_cancelled() {
+                        return Err("provider stream aborted".into());
+                    };
+                    Ok(stream.result().unwrap_or(Value::Null))
+                })();
+                *cancel.provider_stream.lock().unwrap() = None;
+                match result {
+                    Ok(value) => {
+                        let _ = conn.respond(id, Some(value), None);
+                    }
+                    Err(message) => {
+                        let _ = conn.respond(
+                            id,
+                            None,
+                            Some(ErrorInfo {
+                                code: None,
+                                message,
+                            }),
+                        );
+                    }
+                }
+            }
             "oauth_login"
             | "oauth_refresh"
             | "oauth_get_api_key"
@@ -1081,13 +1426,7 @@ impl Extension {
                 // synchronous, so handlers run inline in registration order. A
                 // handler's data replaces the chunk for the handlers after it;
                 // a panicking handler yields no verdict.
-                let original = req
-                    .args
-                    .as_ref()
-                    .and_then(|a| a.get("data"))
-                    .and_then(|d| d.as_str())
-                    .unwrap_or("")
-                    .to_string();
+                let original = req.terminal_input.as_ref().map(|a| a.data.clone()).unwrap_or_default();
                 let handlers: Vec<_> = base_ctx
                     .terminal_input
                     .lock()
@@ -1108,16 +1447,21 @@ impl Extension {
                         current = data;
                     }
                 }
-                let verdict = if !consume && current != original {
-                    serde_json::json!({"consume": false, "data": current})
-                } else {
-                    serde_json::json!({"consume": consume})
+                let verdict = crate::TerminalInputResult {
+                    consume,
+                    data: if !consume && current != original { Some(current) } else { None },
                 };
-                let _ = conn.respond(id, Some(verdict), None);
+                let _ = conn.respond_serialized(id, Some(verdict), None);
             }
             "tool_call" => {
                 let tool_name = req.tool.as_deref().unwrap_or("");
-                if let Some(handler) = self.tool_fns.get(tool_name) {
+                let registered = conn.registered_tools.lock().unwrap().get(tool_name).cloned();
+                let handler = registered.as_ref().map(|tool| &tool.execute).or_else(|| self.tool_fns.get(tool_name));
+                let prepare = match &registered {
+                    Some(tool) => tool.prepare_arguments.as_ref(),
+                    None => self.tool_prepare_fns.get(tool_name),
+                };
+                if let Some(handler) = handler {
                     let ctx = base_ctx.clone_for_request(
                         cancel.clone(),
                         req.tool_call_id.clone(),
@@ -1127,7 +1471,7 @@ impl Extension {
                         .args
                         .clone()
                         .unwrap_or(Value::Object(Default::default()));
-                    let args = if let Some(prepare) = self.tool_prepare_fns.get(tool_name) {
+                    let args = if let Some(prepare) = prepare {
                         match prepare(args) {
                             Ok(prepared) => prepared,
                             Err(message) => {
@@ -1208,12 +1552,28 @@ impl Extension {
             }
             "event" => {
                 let handler_id = req.handler_id;
-                let mut data = req.args.clone().unwrap_or(Value::Object(Default::default()));
+                let mut data = req
+                    .args
+                    .clone()
+                    .unwrap_or(Value::Object(Default::default()));
+                if req.event.as_deref() == Some("before_agent_start") {
+                    // Pi's normalized options always carry a selectedTools array; the host omits an empty one.
+                    if let Some(options) = data
+                        .get_mut("systemPromptOptions")
+                        .and_then(Value::as_object_mut)
+                    {
+                        options
+                            .entry("selectedTools")
+                            .or_insert_with(|| Value::Array(Vec::new()));
+                    }
+                }
                 let result = if let Some(handler) = self.event_fns.get(&handler_id) {
                     let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                     match catch_unwind(AssertUnwindSafe(|| handler(&ctx, &mut data))) {
                         Ok(result) => result,
-                        Err(_) => Err("extension handler panicked".to_string()),
+                        Err(payload) => Err(payload.downcast_ref::<String>().cloned()
+                            .or_else(|| payload.downcast_ref::<&str>().map(|message| (*message).to_string()))
+                            .unwrap_or_else(|| "extension handler panicked".to_string())),
                     }
                 } else {
                     Err(format!(
@@ -1224,9 +1584,41 @@ impl Extension {
                 };
                 let (mut value, error) = match result {
                     Ok(value) => (value, None),
-                    Err(message) => (None, Some(ErrorInfo { code: None, message })),
+                    Err(message) => (
+                        None,
+                        Some(ErrorInfo {
+                            code: None,
+                            message,
+                        }),
+                    ),
                 };
-                if req.event.as_deref() == Some("agent_before_settle") {
+                if req.event.as_deref() == Some("user_bash") {
+                    value = crate::user_bash::user_bash_event_result(value);
+                }
+                // Upstream runner.ts emitContext uses `handlerResult?.messages`, or
+                // event.messages when the handler edited that list in place. The
+                // host cannot see an in-place edit, so send the list the handler
+                // left; the host compares it by value.
+                if matches!(req.event.as_deref(), Some("context" | "context_with_system")) && error.is_none() {
+                    let returned = value
+                        .as_ref()
+                        .and_then(|result| result.get("messages"))
+                        .filter(|messages| !messages.is_null())
+                        .or_else(|| data.get("messages"))
+                        .cloned();
+                    if let Some(messages) = returned {
+                        value = Some(serde_json::json!({ "messages": messages }));
+                    }
+                }
+                if req.event.as_deref() == Some("before_agent_start") {
+                    value = Some(serde_json::json!({
+                        "_pigPromptSections": data.get("systemPromptOptions").and_then(|options| options.get("sections")),
+                        "_pigPromptSelectedTools": data.get("systemPromptOptions").and_then(|options| options.get("selectedTools")),
+                        "_pigPromptResult": value,
+                    }));
+                }
+                // pig additive (D19): preserve boundary mutations alongside handler errors.
+                if matches!(req.event.as_deref(), Some("agent_before_settle" | "turn_end")) {
                     value = Some(serde_json::json!({
                         "_pigBoundaryEntries": data.get("entries"),
                         "_pigBoundaryResult": value,
@@ -1330,14 +1722,47 @@ impl Extension {
             "render_tool" => {
                 let ctx = base_ctx.clone_for_request(cancel.clone(), None, id.to_string());
                 let tool = req.tool.as_deref().unwrap_or("");
-                match self.tool_renderers.render(&ctx, conn, tool, req.args.as_ref()) {
+                match self
+                    .tool_renderers
+                    .render(&ctx, conn, tool, req.args.as_ref())
+                {
                     Ok(lines) => {
                         let _ = conn.respond(id, Some(serde_json::json!({"lines": lines})), None);
                     }
                     Err(message) => {
-                        let _ = conn.respond(id, None, Some(ErrorInfo { code: None, message }));
+                        let _ = conn.respond(
+                            id,
+                            None,
+                            Some(ErrorInfo {
+                                code: None,
+                                message,
+                            }),
+                        );
                     }
                 }
+            }
+            "markdown_transform" => {
+                // A transformer that panics keeps its input, as Pi keeps the
+                // Markdown when a transformer throws.
+                let args = req.args.clone().unwrap_or(Value::Null);
+                let markdown = args
+                    .get("markdown")
+                    .and_then(|v| v.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                let context: MarkdownTransformContext = args
+                    .get("context")
+                    .cloned()
+                    .and_then(|v| serde_json::from_value(v).ok())
+                    .unwrap_or_default();
+                let transformed = self.markdown_transformer.as_ref().and_then(|transformer| {
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        transformer(&markdown, &context)
+                    }))
+                    .ok()
+                    .flatten()
+                });
+                let _ = conn.respond(id, transformed.map(Value::String), None);
             }
             "render_entry" => {
                 let custom_type = req.tool.as_deref().unwrap_or("");
@@ -1425,6 +1850,18 @@ fn decode_creds(args: &Option<Value>) -> crate::oauth::OAuthCredentials {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn registration_preserves_sampling_false_separately_from_omission() {
+        let mut ext = super::Extension::new("sampling");
+        for (name, sampling) in [("unset", None), ("disabled", Some(crate::ToolConstrainedSampling::Disabled))] {
+            let mut tool = super::ToolDefinition::new(name, name, name, serde_json::json!({"type":"object"}), |_, _| super::ToolResult::text("ok"));
+            tool.constrained_sampling = sampling;
+            ext.register_tool(tool);
+        }
+        let tools = serde_json::to_value(&ext.tools).unwrap();
+        assert!(tools[0].get("constrained_sampling").is_none());
+        assert_eq!(tools[1].get("constrained_sampling"), Some(&serde_json::json!(false)));
+    }
     use super::{CommandResult, Extension, resolve_socket_path_from_env};
     use crate::protocol::{Envelope, ReadyMsg, RequestMsg};
     use std::io::{Read, Write};
@@ -1432,6 +1869,37 @@ mod tests {
     use std::sync::mpsc;
     use std::sync::{Mutex, OnceLock};
     use std::time::{Duration, SystemTime, UNIX_EPOCH};
+
+    #[test]
+    fn tool_schema_validation_precedes_registration() {
+        use serde_json::{json, Value};
+        for variant in ["tool", "prepare", "guidelines", "source", "sampling"] {
+            let register = |ext: &mut Extension, schema: Value| {
+                let handler = |_: &crate::Context, _: Value| crate::ToolResult::text("ok");
+                match variant {
+                    "tool" => ext.tool("noop", "No-op", schema, handler),
+                    "prepare" => ext.tool_with_prepare_arguments("noop", "No-op", schema, Ok, handler),
+                    "guidelines" => ext.tool_with_guidelines("noop", "No-op", schema, vec![], handler),
+                    "source" => ext.tool_with_source("noop", "No-op", schema, "source", vec![], handler),
+                    "sampling" => ext.tool_with_constrained_sampling("noop", "No-op", schema, crate::ConstrainedSampling { kind: "json_schema".into(), strict: None, variants: None }, handler),
+                    _ => unreachable!(),
+                }
+            };
+            for schema in [Value::Null, json!([]), json!("object"), json!(1), json!(false)] {
+                let mut ext = Extension::new("schema");
+                let failed = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| register(&mut ext, schema)));
+                let failure = failed.expect_err("non-object schema must fail synchronously");
+                let message = failure.downcast_ref::<String>().map(String::as_str).or_else(|| failure.downcast_ref::<&str>().copied());
+                assert_eq!(message, Some("Tool \"noop\" registered by extension \"schema\" must define an object parameter schema."));
+                assert!(ext.tools.is_empty());
+                assert!(ext.tool_fns.is_empty());
+                assert!(ext.tool_prepare_fns.is_empty());
+                register(&mut ext, json!({}));
+                assert_eq!(ext.tools.len(), 1);
+                assert_eq!(ext.tool_fns.len(), 1);
+            }
+        }
+    }
 
     fn env_lock() -> &'static Mutex<()> {
         static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
@@ -1519,6 +1987,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("r1".to_string()),
                 request: Some(RequestMsg {
+                    terminal_input: None,
                     method: "render_message".to_string(),
                     tool: Some("custom".to_string()),
                     event: None,
@@ -1598,6 +2067,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-1".to_string()),
                 request: Some(RequestMsg {
+                    terminal_input: None,
                     method: "command".to_string(),
                     tool: Some("wait".to_string()),
                     event: None,
@@ -1800,6 +2270,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("login-1".to_string()),
                 request: Some(RequestMsg {
+                    terminal_input: None,
                     method: "oauth_login".to_string(),
                     tool: Some("example-provider".to_string()),
                     event: None,
@@ -1862,6 +2333,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("key-1".to_string()),
                 request: Some(RequestMsg {
+                    terminal_input: None,
                     method: "oauth_get_api_key".to_string(),
                     tool: Some("example-provider".to_string()),
                     event: None,
@@ -1882,6 +2354,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("ref-1".to_string()),
                 request: Some(RequestMsg {
+                    terminal_input: None,
                     method: "oauth_refresh".to_string(),
                     tool: Some("example-provider".to_string()),
                     event: None,
@@ -1903,6 +2376,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("store-1".to_string()),
                 request: Some(RequestMsg {
+                    terminal_input: None,
                     method: "oauth_store_credentials".to_string(),
                     tool: Some("example-provider".to_string()),
                     event: None,
@@ -1921,6 +2395,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("status-1".to_string()),
                 request: Some(RequestMsg {
+                    terminal_input: None,
                     method: "oauth_credential_status".to_string(),
                     tool: Some("example-provider".to_string()),
                     event: None,
@@ -2010,6 +2485,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-state".to_string()),
                 request: Some(RequestMsg {
+                    terminal_input: None,
                     method: "command".to_string(),
                     tool: Some("done".to_string()),
                     event: None,
@@ -2038,6 +2514,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-user".to_string()),
                 request: Some(RequestMsg {
+                    terminal_input: None,
                     method: "command".to_string(),
                     tool: Some("ask".to_string()),
                     event: None,
@@ -2102,6 +2579,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-title".to_string()),
                 request: Some(RequestMsg {
+                    terminal_input: None,
                     method: "command".to_string(),
                     tool: Some("title".to_string()),
                     event: None,
@@ -2155,6 +2633,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-panic".to_string()),
                 request: Some(RequestMsg {
+                    terminal_input: None,
                     method: "command".to_string(),
                     tool: Some("panic".to_string()),
                     event: None,
@@ -2231,6 +2710,7 @@ mod tests {
                 msg_type: "request".to_string(),
                 id: Some("req-label".to_string()),
                 request: Some(RequestMsg {
+                    terminal_input: None,
                     method: "command".to_string(),
                     tool: Some("label".to_string()),
                     event: None,
@@ -2265,8 +2745,14 @@ mod tests {
                 break env.response.unwrap();
             }
         };
-        let message = response.error.expect("setLabel error was discarded").message;
-        assert!(message.contains("Entry missing-entry not found"), "{message}");
+        let message = response
+            .error
+            .expect("setLabel error was discarded")
+            .message;
+        assert!(
+            message.contains("Entry missing-entry not found"),
+            "{message}"
+        );
         write_env(
             &mut stream,
             &Envelope {
@@ -2278,4 +2764,185 @@ mod tests {
         let _ = std::fs::remove_file(sock);
     }
 
+    fn request(id: &str, method: &str, tool: &str, args: Option<serde_json::Value>) -> Envelope {
+        Envelope {
+            msg_type: "request".to_string(),
+            id: Some(id.to_string()),
+            request: Some(RequestMsg {
+                terminal_input: None,
+                method: method.to_string(),
+                tool: Some(tool.to_string()),
+                event: None,
+                handler_id: 0,
+                tool_call_id: Some(format!("call-{id}")),
+                args,
+            }),
+            ..Default::default()
+        }
+    }
+
+    fn notify(method: &str, args: serde_json::Value) -> Envelope {
+        Envelope {
+            msg_type: "notify".to_string(),
+            notify: Some(crate::protocol::NotifyMsg {
+                custom_input: None,
+                method: method.to_string(),
+                args: Some(args),
+            }),
+            ..Default::default()
+        }
+    }
+
+    #[test]
+    fn register_tool_declares_the_definition_and_replicates_ui_state() {
+        use super::{ToolDefinition, ToolResult};
+        use crate::tool_render::ToolRenderShell;
+        use serde_json::json;
+
+        let unique = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let sock = std::env::temp_dir().join(format!("pig-sdk-rs-regtool-{unique}.sock"));
+        let _ = std::fs::remove_file(&sock);
+        let listener = UnixListener::bind(&sock).unwrap();
+
+        let mut ext = Extension::new("rust-register-tool");
+        let mut definition = ToolDefinition::new(
+            "greet",
+            "Greeter",
+            "Greets someone",
+            json!({"type": "object", "properties": {"name": {"type": "string"}}}),
+            |_ctx, params| {
+                ToolResult::text(format!(
+                    "hello {}",
+                    params.get("name").and_then(|v| v.as_str()).unwrap_or("")
+                ))
+            },
+        );
+        definition.prompt_snippet = Some("greet: say hello".to_string());
+        definition.prompt_guidelines = vec!["Use greet to say hello.".to_string()];
+        definition.execution_mode = Some("sequential".to_string());
+        definition.render_shell = ToolRenderShell::SelfShell;
+        definition.prepare_arguments = Some(Box::new(|mut args| {
+            args["name"] = json!("prepared");
+            Ok(args)
+        }));
+        definition.render_call = Some(Box::new(|_ctx, _args, _render, _width| Ok(vec![])));
+        ext.register_tool(definition);
+
+        let (seen_tx, seen_rx) = mpsc::channel();
+        ext.command("ui", "report ui state", move |ctx, _args| {
+            let theme = ctx.theme();
+            let _ = seen_tx.send((
+                ctx.has_ui(),
+                theme.name.clone(),
+                theme.source_path.clone(),
+                theme.fg("accent", "x"),
+                theme.get_color_mode(),
+            ));
+            CommandResult::Ok
+        });
+
+        let sock_for_ext = sock.clone();
+        let handle =
+            std::thread::spawn(move || ext.run_with_socket(sock_for_ext.to_str().unwrap()));
+        let (mut stream, _) = listener.accept().unwrap();
+        let register = read_env(&mut stream).register.unwrap();
+        let wire = serde_json::to_value(&register.tools[0]).unwrap();
+        assert_eq!(
+            wire,
+            json!({
+                "name": "greet",
+                "label": "Greeter",
+                "description": "Greets someone",
+                "parameters": {"type": "object", "properties": {"name": {"type": "string"}}},
+                "prompt_guidelines": ["Use greet to say hello."],
+                "prompt_snippet": "greet: say hello",
+                "execution_mode": "sequential",
+                "render_shell": "self",
+                "renders_call": true
+            })
+        );
+
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "ready".to_string(),
+                ready: Some(ReadyMsg {
+                    session_name: String::new(),
+                    cwd: "/tmp".to_string(),
+                    mode: "print".to_string(),
+                    width: 80,
+                    height: 24,
+                    model: String::new(),
+                    state: Some(json!({
+                        "hasUI": false,
+                        "theme": {"name": "light", "sourcePath": "/t/light.json",
+                                  "foregrounds": {"accent": "<a>"}, "backgrounds": {},
+                                  "modifiers": true, "mode": "256color"}
+                    })),
+                }),
+                ..Default::default()
+            },
+        );
+
+        write_env(
+            &mut stream,
+            &request("r1", "tool_call", "greet", Some(json!({"name": "raw"}))),
+        );
+        let response = read_env(&mut stream);
+        assert_eq!(
+            response.response.unwrap().result.unwrap(),
+            json!({"content": "hello prepared"})
+        );
+
+        write_env(&mut stream, &request("r2", "command", "ui", None));
+        assert_eq!(read_env(&mut stream).msg_type, "response");
+        assert_eq!(
+            seen_rx.recv_timeout(Duration::from_secs(2)).unwrap(),
+            (
+                false,
+                "light".to_string(),
+                Some("/t/light.json".to_string()),
+                "<a>x\x1b[39m".to_string(),
+                "256color".to_string()
+            )
+        );
+
+        write_env(
+            &mut stream,
+            &notify(
+                "theme_change",
+                json!({"name": "dark", "foregrounds": {"accent": "<d>"}, "backgrounds": {},
+                       "modifiers": true, "mode": "truecolor"}),
+            ),
+        );
+        write_env(
+            &mut stream,
+            &notify("state_update", json!({"state": {"hasUI": true}})),
+        );
+        write_env(&mut stream, &request("r3", "command", "ui", None));
+        assert_eq!(read_env(&mut stream).msg_type, "response");
+        assert_eq!(
+            seen_rx.recv_timeout(Duration::from_secs(2)).unwrap(),
+            (
+                true,
+                "dark".to_string(),
+                None,
+                "<d>x\x1b[39m".to_string(),
+                "truecolor".to_string()
+            )
+        );
+
+        write_env(
+            &mut stream,
+            &Envelope {
+                msg_type: "shutdown".to_string(),
+                ..Default::default()
+            },
+        );
+        handle.join().unwrap().unwrap();
+        let _ = std::fs::remove_file(sock);
+    }
 }

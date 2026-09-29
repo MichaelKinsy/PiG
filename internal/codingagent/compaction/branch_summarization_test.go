@@ -254,6 +254,22 @@ func TestGenerateBranchSummary_Abort(t *testing.T) {
 
 // TestGenerateBranchSummary_Error: fake completer returns error →
 // BranchSummaryResult{Error: "..."}.
+func TestBranchSummaryFailureMatchesPi(t *testing.T) {
+	// Pi 0.87.1 branch-summarization.ts:361-366 preserves the operation label and gives tool calls their own error.
+	for _, tc := range []struct {
+		err  error
+		want string
+	}{
+		{ErrSummarizationToolCall, "Branch summarization attempted to call a tool"},
+		{errors.New("generation hit the token cap and the summary is incomplete"), "Branch summarization failed: generation hit the token cap and the summary is incomplete"},
+	} {
+		result := GenerateBranchSummary(t.Context(), makeTestEntries(), GenerateBranchSummaryOptions{Model: &ai.Model{}, Completer: &branchFakeCompleter{err: tc.err}})
+		if result.Error != tc.want {
+			t.Fatalf("error = %q, want %q", result.Error, tc.want)
+		}
+	}
+}
+
 func TestGenerateBranchSummary_Error(t *testing.T) {
 	completer := &branchFakeCompleter{err: errors.New("LLM down")}
 	result := GenerateBranchSummary(context.Background(), makeTestEntries(), GenerateBranchSummaryOptions{

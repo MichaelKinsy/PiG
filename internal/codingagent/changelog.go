@@ -1,9 +1,11 @@
 package codingagent
 
 import (
-	"regexp"
+	"slices"
 	"strconv"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // `/changelog` slash command and parser.
@@ -30,7 +32,7 @@ type ChangelogEntry struct {
 // versionHeaderRE mirrors upstream's regex from utils/changelog.ts:35.
 //
 //	/##\s+\[?(\d+)\.(\d+)\.(\d+)\]?/
-var versionHeaderRE = regexp.MustCompile(`^##\s+\[?(\d+)\.(\d+)\.(\d+)\]?`)
+var versionHeaderRE = lazyregexp.New(`^##\s+\[?(\d+)\.(\d+)\.(\d+)\]?`)
 
 // ParseChangelog walks the markdown content of a CHANGELOG.md and
 // returns one ChangelogEntry per `## [x.y.z]`-style header. Order is
@@ -105,40 +107,24 @@ func CompareChangelogEntries(a, b ChangelogEntry) int {
 	return 0
 }
 
-// FormatChangelogForChat takes parsed entries and produces the markdown
-// block /changelog appends to the chat. Mirrors upstream
-// `handleChangelogCommand` (interactive-mode.ts:4795-4814) shape:
-//   - reverse the entries (so they read oldest-at-top, newest-at-bottom
-//     within the inline block: matches upstream's `.reverse().map(...)`),
-//   - join their content with two newlines,
-//   - wrap in a bold "What's New" header and horizontal-rule "borders"
-//     (pig's markdown renderer paints `---` as a separator line; this
-//     is the parity-correct equivalent of upstream's DynamicBorder).
-//
-// Empty input returns the upstream-verbatim "No changelog entries found."
-// fallback so a user with a missing/empty CHANGELOG sees a sensible
-// message instead of an empty bordered block.
+// FormatChangelogForChat wraps the released entries for a plain Markdown output sink. The interactive command uses separate border, title and padded Markdown components.
 func FormatChangelogForChat(entries []ChangelogEntry) string {
 	if len(entries) == 0 {
 		return "No changelog entries found."
 	}
-	// Reverse in place on a copy.
-	rev := make([]ChangelogEntry, len(entries))
-	for i, e := range entries {
-		rev[len(entries)-1-i] = e
-	}
-	parts := make([]string, 0, len(rev))
-	for _, e := range rev {
-		parts = append(parts, e.Content)
-	}
-	body := strings.Join(parts, "\n\n")
+	return "---\n\n**What's New**\n\n" + changelogMarkdown(entries) + "\n\n---"
+}
 
-	var b strings.Builder
-	b.WriteString("---\n\n")
-	b.WriteString("**What's New**\n\n")
-	b.WriteString(body)
-	b.WriteString("\n\n---")
-	return b.String()
+// changelogMarkdown renders entries in reverse file order, with the newest release at the bottom.
+func changelogMarkdown(entries []ChangelogEntry) string {
+	if len(entries) == 0 {
+		return "No changelog entries found."
+	}
+	parts := make([]string, 0, len(entries))
+	for _, entry := range slices.Backward(entries) {
+		parts = append(parts, entry.Content)
+	}
+	return strings.Join(parts, "\n\n")
 }
 
 // compareVersions compares two ChangelogEntry values by version number.

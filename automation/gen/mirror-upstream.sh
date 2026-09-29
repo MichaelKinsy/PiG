@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 # Materialize a read-only Pi source tree for the exact version pinned in
-# coding/pigversion/pigversion.go. The mirror provides local source, tests,
+# internal/coding/pigversion/pigversion.go. The mirror provides local source, tests,
 # and documentation for parity work without adding upstream files to this
 # repository.
 #
 # The script:
 #   1. reads UpstreamVersion and UpstreamCommit from
-#      coding/pigversion/pigversion.go;
+#      internal/coding/pigversion/pigversion.go;
 #   2. resolves the release tag to its exact peeled commit;
 #   3. reuses the public tarball cache under
 #      ${XDG_CACHE_HOME:-~/.cache}/checkouts/github.com/earendil-works/pi/tarballs/;
@@ -24,7 +24,7 @@
 #   ./automation/gen/mirror-upstream.sh --help
 #
 # --version materializes an additional release for comparison. It does not
-# change coding/pigversion/pigversion.go.
+# change internal/coding/pigversion/pigversion.go.
 #
 # Requires: curl, tar, git
 # Optional: GH_PUBLIC_TOKEN
@@ -66,7 +66,7 @@ read_pinned_commit() {
   # Capture then slice rather than piping into head: under pipefail, head
   # closing early makes the writer fail on SIGPIPE.
   local matches
-  matches=$(sed -nE 's/^const UpstreamCommit = "([0-9a-f]{40})"$/\1/p' "$REPO_ROOT/coding/pigversion/pigversion.go")
+  matches=$(sed -nE 's/^const UpstreamCommit = "([0-9a-f]{40})"$/\1/p' "$REPO_ROOT/internal/coding/pigversion/pigversion.go")
   printf '%s' "${matches%%$'\n'*}"
 }
 
@@ -152,10 +152,10 @@ done
 if [[ -n "$OVERRIDE_TAG" ]]; then
   TARGET_TAG="$OVERRIDE_TAG"
 else
-  CURRENT_VERSION=$(grep -E '^const UpstreamVersion = "' "$REPO_ROOT/coding/pigversion/pigversion.go" \
+  CURRENT_VERSION=$(grep -E '^const UpstreamVersion = "' "$REPO_ROOT/internal/coding/pigversion/pigversion.go" \
     | sed -E 's/.*"([^"]+)".*/\1/')
   if [[ -z "$CURRENT_VERSION" ]]; then
-    echo "error: could not parse UpstreamVersion from coding/pigversion/pigversion.go" >&2
+    echo "error: could not parse UpstreamVersion from internal/coding/pigversion/pigversion.go" >&2
     exit 1
   fi
   TARGET_TAG="v${CURRENT_VERSION}"
@@ -166,7 +166,7 @@ RESOLVED_COMMIT=$(resolve_tag_commit "$TARGET_TAG") || exit 1
 if [[ -z "$OVERRIDE_TAG" ]]; then
   PINNED_COMMIT=$(read_pinned_commit)
   if [[ -z "$PINNED_COMMIT" ]]; then
-    echo "error: coding/pigversion/pigversion.go has no exact UpstreamCommit pin" >&2
+    echo "error: internal/coding/pigversion/pigversion.go has no exact UpstreamCommit pin" >&2
     exit 1
   fi
   if [[ "$RESOLVED_COMMIT" != "$PINNED_COMMIT" ]]; then
@@ -339,7 +339,7 @@ rg "createBashTool" .upstream/current/packages/coding-agent/
 # diff a Go port against the TS source
 code -d internal/codingagent/tools/tools.go .upstream/current/packages/coding-agent/src/core/tools/bash.ts
 
-# refresh after updating coding/pigversion/pigversion.go
+# refresh after updating internal/coding/pigversion/pigversion.go
 make upstream-mirror
 
 # clean up older mirrors
@@ -349,7 +349,7 @@ make upstream-mirror
 ## How it gets here
 
 Run `make upstream-mirror` from the PiG repository root. It reads
-`UpstreamVersion` and `UpstreamCommit` from `coding/pigversion/pigversion.go`, downloads the
+`UpstreamVersion` and `UpstreamCommit` from `internal/coding/pigversion/pigversion.go`, downloads the
 matching public release tarball into
 `${XDG_CACHE_HOME:-~/.cache}/checkouts/github.com/earendil-works/pi/`, validates its provenance,
 and extracts it here.

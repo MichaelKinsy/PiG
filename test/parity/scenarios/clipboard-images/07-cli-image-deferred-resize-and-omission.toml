@@ -1,0 +1,34 @@
+# Behavior family: clipboard-images
+# Pi 0.87.1 main.ts:222 defers image resizing until AgentSession selects the
+# model after before_agent_start. file-processor.ts:53-56 turns processing
+# failures into omission notes instead of aborting the CLI. large.png is a
+# 2400x100 grayscale PNG; bad.bmp has the exact 1x1 BMP header but no pixels.
+# The extension records the original input dimensions before any model resize.
+# No paths, ANSI or whitespace are removed from either artifact.
+name = "07-cli-image-deferred-resize-and-omission"
+description = "CLI keeps original image dimensions for hooks and omits unconvertible attachments without aborting"
+covers = ["packages/coding-agent/src/main.ts", "packages/coding-agent/src/cli/file-processor.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "@large.png", "@bad.bmp", "What is 20+22?"]
+cwd = "testdata/resize-callers"
+snapshot_cwd = true
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/images.json"
+
+[env]
+# Pass the directory token alone: the runner resolves relative env paths before token expansion.
+pig = ["PIG_TEST_FAUX=1", "PARITY_IMAGE_DIR={{TEMP}}"]
+pi = ["PI_SKIP_VERSION_CHECK=1", "PARITY_IMAGE_DIR={{TEMP}}"]
+pig_extensions = ["testdata/resize-callers/observe.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/resize-callers/observe.mjs"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_contain = ["42"]
+artifact_equal = true
+artifact_both_contain = ['"dimensions":[[2400,100]]', '"omitted":true']

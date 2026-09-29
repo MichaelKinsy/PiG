@@ -25,7 +25,7 @@ func TestAgentEndContainsOnlyCurrentRunMessages(t *testing.T) {
 			t.Fatalf("run %d messages=%v", i, roles(msgs))
 		}
 	}
-	if ended[0][0].User.Content[0] == ended[1][0].User.Content[0] {
+	if ended[0][0].ContentBlocks()[0] == ended[1][0].ContentBlocks()[0] {
 		t.Fatal("run message snapshots share earlier user prompt")
 	}
 }

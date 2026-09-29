@@ -16,14 +16,20 @@ package tui
 
 import (
 	"fmt"
-	"regexp"
 	"slices"
 	"strings"
 	"time"
-	"unicode/utf8"
 
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
+
+// treeNodeWithLabelUpdate permits the selector to publish label edits before notifying its persistence callback.
+type treeNodeWithLabelUpdate interface {
+	SetNodeBranchLabel(label, timestamp string)
+}
 
 // TreeNode is the shape TreeSelect operates on. SessionTreeNode in
 // codingagent satisfies this via a thin adapter.
@@ -80,6 +86,11 @@ type TreeNodeSearchableText interface {
 	NodeSearchableText() string
 }
 
+// TreeNodeWithCopyText exposes complete copyable entry content separately from its abbreviated display label.
+type TreeNodeWithCopyText interface {
+	NodeCopyText() *string
+}
+
 // TreeSelect overlay. Done()/Cancelled()/SelectedID() mirror the
 // FilterableList contract.
 type TreeSelect struct {
@@ -95,10 +106,13 @@ type TreeSelect struct {
 	// the visible `rows` (re-derived from allRows whenever
 	// foldedNodes changes). On a freshly-constructed picker the
 	// two slices are identical until the user folds something.
-	allRows []treeRow
-	rows    []treeRow
-	cursor  int
-	scroll  int
+	allRows        []treeRow
+	root           TreeNode
+	activePathIds  map[string]bool
+	rows           []treeRow
+	cursor         int
+	lastSelectedId string
+	scroll         int
 
 	// foldedNodes contains the IDs of nodes whose descendants are
 	// hidden via Ctrl+Left / Alt+Left fold. Recomputed-from-source
@@ -121,14 +135,10 @@ type TreeSelect struct {
 	// node and formats labels at render time (~20 visible rows); pig used
 	// to format every node's markdown label AND unmarshal its message
 	// twice during flatten, making /tree slow to open on large sessions.
-	// Labels are stable for a tree's lifetime (no live label-edit update),
-	// so the caches never need invalidation.
+	// Label saves invalidate the affected node's cached metadata.
 	labelCache map[string]string
 	tagsCache  map[string][]string
 	// searchCache memoizes each row's searchable lowercase text.
-	// Neither labels, tags nor searchable text change for a tree's
-	// lifetime (no live label-edit reindex), so the caches never need
-	// invalidation.
 	searchCache map[string]string
 
 	// showLabelTimestamps toggles inline `hh:mm` (or longer) display
@@ -137,8 +147,7 @@ type TreeSelect struct {
 	// at keybindings.ts:126-129). Defaults off.
 	showLabelTimestamps bool
 
-	// filterMode is one of filterModes. Tab cycles forward and Shift+Tab
-	// cycles backward. Each /tree open resets it to default.
+	// Configured app.tree.filter actions select or cycle the filter. Each open starts in default mode.
 	filterMode  string
 	filterModes []string
 
@@ -148,18 +157,16 @@ type TreeSelect struct {
 	// (tree-selector.ts:113). Empty when no search is active.
 	searchQuery string
 
-	// Inline label editing. `editingLabel` is true when
-	// the user has pressed Shift+L to rename the highlighted row.
-	// `labelBuf` accumulates typed characters; Enter commits, Esc
-	// cancels. Mirrors upstream `onLabelEdit` flow at
-	// tree-selector.ts:985-993 + session-manager.ts:1006-1024.
-	editingLabel bool
-	labelBuf     string
+	// The shared Input owns label editing; nil means the tree list is active.
+	labelInput *TextInput
+	labelNode  TreeNode
 	// OnLabelEdit is called when the user commits a label (Enter).
 	// entryID is the target entry; label is the new name (empty string
 	// clears any existing label, matching upstream undefined→delete).
 	// The caller is responsible for persisting via Session.AppendLabelChange.
 	OnLabelEdit func(entryID, label string)
+	// OnCopy receives the full selected entry text, or nil when the entry has no copyable text.
+	OnCopy func(*string)
 
 	done       bool
 	cancelled  bool
@@ -281,13 +288,23 @@ func (t *TreeSelect) visibleLines() int {
 	return treeWindow
 }
 
+// NewTreeSelect builds a selector in the default filter mode.
 func NewTreeSelect(title string, root TreeNode) *TreeSelect {
+	return NewTreeSelectWithInitialFilter(title, root, "default")
+}
+
+// NewTreeSelectWithInitialFilter builds a selector whose first visibility pass uses initialFilterMode, mirroring the TreeSelectorComponent initialFilterMode argument (tree-selector.ts constructor). An unknown mode falls back to "default".
+func NewTreeSelectWithInitialFilter(title string, root TreeNode, initialFilterMode string) *TreeSelect {
 	t := &TreeSelect{
 		Title:       title,
+		root:        root,
 		foldedNodes: make(map[string]bool),
 		// Keep the cycle order aligned with the filter-mode hint.
 		filterMode:  "default",
 		filterModes: []string{"default", "no-tools", "user-only", "labeled-only", "all"},
+	}
+	if slices.Contains(t.filterModes, initialFilterMode) {
+		t.filterMode = initialFilterMode
 	}
 	if root == nil {
 		return t
@@ -319,17 +336,29 @@ func NewTreeSelect(title string, root TreeNode) *TreeSelect {
 	return t
 }
 
-// SetInitialCursor positions the cursor on the current leaf (or an explicit
-// initialSelectedID when given), so /tree opens where the user currently is
-// rather than at the bottom row. When the target is filtered or folded out it
-// walks up to the nearest visible ancestor. Mirrors upstream
-// TreeSelectorComponent's `targetId = initialSelectedId ?? currentLeafId`
-// initial selection (tree-selector.ts:143-145). When neither is resolvable the
-// cursor keeps NewTreeSelect's last-visible-row default (upstream's fallback).
-//
-// Must be called after construction (rows are built) and before the first
-// render.
+// SetInitialCursor orders and marks the active root-to-leaf path, then selects initialSelectedID or the current leaf. A hidden target resolves to its nearest visible ancestor. Call it after construction and before rendering.
 func (t *TreeSelect) SetInitialCursor(currentLeafID, initialSelectedID string) {
+	parents := make(map[string]string, len(t.allRows))
+	for _, row := range t.allRows {
+		parents[row.id] = row.parentID
+	}
+	t.activePathIds = make(map[string]bool)
+	for id := currentLeafID; id != ""; id = parents[id] {
+		t.activePathIds[id] = true
+	}
+	if t.root != nil {
+		t.allRows = t.allRows[:0]
+		roots := t.activeFirst(t.root.NodeChildren())
+		multiple := len(roots) > 1
+		indent := 0
+		if multiple {
+			indent = 1
+		}
+		for i, root := range roots {
+			t.flatten(root, "", multiple, indent, multiple, i == len(roots)-1, multiple, multiple, multiple, nil, 0)
+		}
+		t.recomputeVisible()
+	}
 	target := initialSelectedID
 	if target == "" {
 		target = currentLeafID
@@ -338,6 +367,22 @@ func (t *TreeSelect) SetInitialCursor(currentLeafID, initialSelectedID string) {
 		t.cursor = idx
 		t.fixScroll()
 	}
+}
+
+// activeFirst preserves sibling order except for moving the active branch first.
+func (t *TreeSelect) activeFirst(nodes []TreeNode) []TreeNode {
+	if len(nodes) < 2 {
+		return nodes
+	}
+	for i, node := range nodes {
+		if t.activePathIds[node.NodeID()] && i > 0 {
+			ordered := slices.Clone(nodes)
+			copy(ordered[1:i+1], nodes[:i])
+			ordered[0] = node
+			return ordered
+		}
+	}
+	return nodes
 }
 
 // nearestVisibleIndex returns the index in the visible rows of entryID, or of
@@ -394,7 +439,7 @@ func (t *TreeSelect) flatten(n TreeNode, parentID string, parentMultipleChildren
 		displayIndent = max(indent-1, 0)
 	}
 
-	kids := n.NodeChildren()
+	kids := t.activeFirst(n.NodeChildren())
 	labelTs := ""
 	if lt, ok := n.(TreeNodeWithLabelTimestamp); ok {
 		labelTs = lt.NodeLabelTimestamp()
@@ -451,11 +496,7 @@ func (t *TreeSelect) flatten(n TreeNode, parentID string, parentMultipleChildren
 	}
 }
 
-// buildTreePrefix renders the upstream char-grid prefix
-// (tree-selector.ts:631-666 minus fold markers and active-path
-// bullets, which pig does not yet support). Width = displayIndent
-// × 3. Each level is either a gutter cell ("│  " or "   "), the
-// connector cell ("├─ "/"└─ "), or three blanks.
+// buildTreePrefix renders the connector and gutter cells. Fold and active-path markers are composed by Render.
 func buildTreePrefix(displayIndent int, showConnector, isLast bool, gutters []gutterInfo) string {
 	if displayIndent <= 0 {
 		// Top-level row in single-root case: no leading prefix.
@@ -510,11 +551,11 @@ func (t *TreeSelect) usageRows() map[string]bool {
 	return skip
 }
 
-// recomputeVisible rebuilds `t.rows` from `t.allRows` by stripping
-// every descendant of any node in `t.foldedNodes`. Mirrors upstream
-// `applyFilter`'s fold-filter pass at tree-selector.ts:343-352.
-// Cursor is clamped to the new visible range.
+// recomputeVisible rebuilds the visible geometry from the complete tree. It preserves the selected entry through empty results and otherwise walks to its nearest visible ancestor, falling back to the last row.
 func (t *TreeSelect) recomputeVisible() {
+	if t.cursor >= 0 && t.cursor < len(t.rows) {
+		t.lastSelectedId = t.rows[t.cursor].id
+	}
 	// Two-pass filter (matches upstream tree-selector.ts:282-352
 	// pre-recomputeVisualStructure):
 	//
@@ -599,14 +640,74 @@ func (t *TreeSelect) recomputeVisible() {
 		}
 		t.rows = append(t.rows, r)
 	}
-	if t.cursor >= len(t.rows) {
-		t.cursor = len(t.rows) - 1
+	if t.lastSelectedId != "" {
+		if index, ok := t.nearestVisibleIndex(t.lastSelectedId); ok {
+			t.cursor = index
+		} else {
+			t.cursor = max(0, len(t.rows)-1)
+		}
+	} else {
+		t.cursor = max(0, min(t.cursor, len(t.rows)-1))
 	}
-	if t.cursor < 0 {
-		t.cursor = 0
+	if len(t.rows) > 0 {
+		t.lastSelectedId = t.rows[t.cursor].id
 	}
+	t.recalculateVisualStructure()
 	t.computeFoldable()
 	t.fixScroll()
+}
+
+// recalculateVisualStructure attaches filtered descendants to their nearest visible ancestor before deriving connectors. The full DFS order makes ancestor lookup linear even through long hidden chains.
+func (t *TreeSelect) recalculateVisualStructure() {
+	indices := make(map[string]int, len(t.rows))
+	for i, row := range t.rows {
+		indices[row.id] = i
+	}
+	nearest := make(map[string]string, len(t.allRows))
+	children := make(map[string][]int)
+	for _, row := range t.allRows {
+		parent := nearest[row.parentID]
+		if i, visible := indices[row.id]; visible {
+			t.rows[i].parentID = parent
+			children[parent] = append(children[parent], i)
+			nearest[row.id] = row.id
+		} else {
+			nearest[row.id] = parent
+		}
+	}
+	multipleRoots := len(children[""]) > 1
+	for i := range t.rows {
+		row := &t.rows[i]
+		siblings := children[row.parentID]
+		row.nChildren = len(children[row.id])
+		row.parentMultipleChildren = len(siblings) > 1
+		row.isLast = siblings[len(siblings)-1] == i
+		row.isVirtualRootChild = row.parentID == "" && multipleRoots
+		row.showConnector = row.parentMultipleChildren && row.parentID != ""
+		indent := 0
+		row.gutters = nil
+		if row.parentID == "" {
+			if multipleRoots {
+				indent = 1
+			}
+		} else {
+			parent := t.rows[indices[row.parentID]]
+			indent = parent.depth
+			if parent.nChildren > 1 || (parent.parentMultipleChildren && indent > 0) {
+				indent++
+			}
+			row.gutters = parent.gutters
+			if parent.showConnector {
+				row.gutters = append(slices.Clone(parent.gutters), gutterInfo{position: max(parent.displayIndent-1, 0), show: !parent.isLast})
+			}
+		}
+		row.depth = indent
+		row.displayIndent = indent
+		if multipleRoots {
+			row.displayIndent = max(0, indent-1)
+		}
+		row.prefix = buildTreePrefix(row.displayIndent, row.showConnector, row.isLast, row.gutters)
+	}
 }
 
 // rowLabel returns the node's rendered label, computing it lazily and
@@ -750,28 +851,31 @@ func (t *TreeSelect) Done() bool         { return t.done }
 func (t *TreeSelect) Cancelled() bool    { return t.cancelled }
 func (t *TreeSelect) SelectedID() string { return t.selectedID }
 
-// Render draws header + visible rows.
+func (t *TreeSelect) getStatusLabels() string {
+	labels := ""
+	switch t.filterMode {
+	case "no-tools":
+		labels = " [no-tools]"
+	case "user-only":
+		labels = " [user]"
+	case "labeled-only":
+		labels = " [labeled]"
+	case "all":
+		labels = " [all]"
+	}
+	if t.showLabelTimestamps {
+		labels += " [+label time]"
+	}
+	return labels
+}
+
+// Render draws the header and tree rows or the active label input, followed by the closing border. Label hints show the current configured keys.
 func (t *TreeSelect) Render(width int) []string {
 	// Every row is padded or truncated to width, so narrow renders stay
 	// within the terminal instead of overflowing a floor.
 	width = max(width, 0)
-	// When editing a label, show the input prompt in the header
-	// instead of the normal hint. Mirrors upstream label-edit UI at
-	// tree-selector.ts:990-993 which focuses the selector's inline input.
-	//
-	// Otherwise the header mirrors upstream tree-selector.ts:
-	//   ─── (top border, DynamicBorder)
-	//   ␣␣Session Tree     (bold)
-	//   TreeHelp rows      (chunk-aware wrapped key help)
-	//   ␣␣Type to search:
-	//   ─── (bottom border)
-	//
-	// The active type-to-search query renders on the search line after a
-	// muted "Type to search:" label, mirroring upstream SearchLine.
+	// The header and search query remain visible while label input replaces the tree rows.
 	headerHint := treeHelpLines(width)
-	if t.editingLabel {
-		headerHint = []string{fmt.Sprintf("  Label: %s\u2588  (Enter commit · Esc cancel)", t.labelBuf)}
-	}
 	sep := strings.Repeat("─", width)
 	// The /tree overlay frame is drawn in the Border color (upstream renders
 	// it via the box component), not faint gray.
@@ -783,22 +887,30 @@ func (t *TreeSelect) Render(width int) []string {
 		searchLine += " " + fg(ActiveTheme().Accent, t.searchQuery)
 	}
 	lines := []string{
+		"",
 		padOrTrunc(border, width),
-		padOrTrunc("   \033[1mSession Tree\033[0m", width),
 	}
+	lines = append(lines, NewPaddedText("\033[1m  Session Tree\033[0m", 1, 0, nil).Render(width)...)
 	for _, line := range headerHint {
 		lines = append(lines, padOrTrunc(line, width))
 	}
 	lines = append(lines, padOrTrunc(searchLine, width), padOrTrunc(border, width))
+	if t.labelInput != nil {
+		lines = append(lines, "", widthx.TruncateToWidth("  "+fg(ActiveTheme().Muted, "Label (empty to remove):"), width, "...", false))
+		for _, line := range t.labelInput.Render(max(1, width-2)) {
+			lines = append(lines, widthx.TruncateToWidth("  "+line, width, "...", false))
+		}
+		lines = append(lines, widthx.TruncateToWidth("  "+RawKeyHint(strings.Join(GetTUIKeybindings().GetKeys(KBSelectConfirm), "/"), "save")+"  "+RawKeyHint(strings.Join(GetTUIKeybindings().GetKeys(KBSelectCancel), "/"), "cancel"), width, "...", false))
+		return append(lines, "", padOrTrunc(border, width))
+	}
 	if len(t.rows) == 0 {
-		lines = append(lines, padOrTrunc("", width))
+		lines = append(lines, "")
 		lines = append(lines, padOrTrunc(fg(ActiveTheme().Muted, "  No entries found"), width))
-		lines = append(lines, padOrTrunc(fg(ActiveTheme().Muted, "  (0/0)"), width))
-		lines = append(lines, padOrTrunc(border, width))
+		lines = append(lines, padOrTrunc(fg(ActiveTheme().Muted, "  (0/0)"+t.getStatusLabels()), width))
+		lines = append(lines, "", padOrTrunc(border, width))
 		return lines
 	}
-	// Spacer before the items, mirroring upstream Spacer(1).
-	lines = append(lines, padOrTrunc("", width))
+	lines = append(lines, "")
 	now := time.Now()
 	// Cap rendered rows to match the scroll window used by fixScroll.
 	// Without this cap the tree could emit up to 50 rows which overflow
@@ -812,11 +924,7 @@ func (t *TreeSelect) Render(width int) []string {
 			break
 		}
 		r := t.rows[idx]
-		// Upstream composes each line as cursor + prefix + foldMarker +
-		// activePath bullet + content. pig does not yet track the full
-		// active-path set, but the current visible branch is the active
-		// path in the scenarios we cover here, so every visible row keeps
-		// the `• ` marker.
+		// Cursor, tree geometry, active-path marker, then entry content.
 		cursor := "  "
 		isSelected := idx == t.cursor
 		if isSelected {
@@ -855,9 +963,13 @@ func (t *TreeSelect) Render(width int) []string {
 				branchLabel = fg(ActiveTheme().Warning, "["+s+"] ")
 			}
 		}
+		labelTimestamp := r.labelTimestamp
+		if node, ok := r.node.(TreeNodeWithLabelTimestamp); ok {
+			labelTimestamp = node.NodeLabelTimestamp()
+		}
 		labelTs := ""
-		if t.showLabelTimestamps && r.labelTimestamp != "" {
-			if s := formatLabelTimestamp(r.labelTimestamp, now); s != "" {
+		if t.showLabelTimestamps && labelTimestamp != "" {
+			if s := formatLabelTimestamp(labelTimestamp, now); s != "" {
 				labelTs = dim(s) + " "
 			}
 		}
@@ -867,7 +979,10 @@ func (t *TreeSelect) Render(width int) []string {
 		// bolded (upstream `isSelected ? theme.bold(result)`), closed with
 		// the scoped intensity reset (SGR 22) so the selected-row background
 		// survives.
-		pathMarker := fg(ActiveTheme().Accent, "• ")
+		pathMarker := ""
+		if t.activePathIds[r.id] {
+			pathMarker = fg(ActiveTheme().Accent, "• ")
+		}
 		prefixPart := fg(ActiveTheme().Dim, prefix) + foldMarker + pathMarker
 		label := t.rowLabel(r)
 		if isSelected {
@@ -893,8 +1008,8 @@ func (t *TreeSelect) Render(width int) []string {
 		}
 		lines = append(lines, padded)
 	}
-	lines = append(lines, padOrTrunc(fg(ActiveTheme().Muted, fmt.Sprintf("  (%d/%d)", t.cursor+1, len(t.rows))), width))
-	lines = append(lines, padOrTrunc("", width))
+	lines = append(lines, padOrTrunc(fg(ActiveTheme().Muted, fmt.Sprintf("  (%d/%d)%s", t.cursor+1, len(t.rows), t.getStatusLabels())), width))
+	lines = append(lines, "")
 	lines = append(lines, padOrTrunc(border, width))
 	return lines
 }
@@ -996,15 +1111,15 @@ func swapConnectorMiddle(prefix string, folded, foldable bool) string {
 	return string(runes)
 }
 
-// HandleInput moves the cursor or commits the selection.
+// HandleInput moves the cursor, commits the selection, or delegates label editing to the shared Input.
 //
 // Ctrl+Left/Alt+Left folds the highlighted branch or moves to the current
 // branch segment start. Ctrl+Right/Alt+Right unfolds it or moves to the next
-// branch segment. Shift+T toggles label timestamps.
+// branch segment. Shift+T toggles label timestamps. Colliding bindings use upstream's action priority.
 func (t *TreeSelect) HandleInput(data string) {
 	// When in label-edit mode, intercept all keystrokes
 	// for the inline editor instead of the normal navigation handlers.
-	if t.editingLabel {
+	if t.labelInput != nil {
 		t.handleLabelInput(data)
 		t.Invalidate()
 		return
@@ -1015,43 +1130,16 @@ func (t *TreeSelect) HandleInput(data string) {
 	// tree-selector.ts handleInput.
 	kb := GetTUIKeybindings()
 	switch {
-	case kb.Matches(data, KBSelectCancel):
-		// Esc with an active search clears the query instead of
-		// closing the picker, mirroring upstream tree-selector.ts:1032-1035.
-		if t.searchQuery != "" {
-			t.searchQuery = ""
-			t.recomputeVisible()
-			break
-		}
-		t.cancelled = true
-		t.done = true
-	case kb.Matches(data, KBSelectConfirm):
-		if len(t.rows) > 0 && t.cursor < len(t.rows) {
-			t.selectedID = t.rows[t.cursor].id
-			t.done = true
-		}
 	case kb.Matches(data, KBSelectUp):
-		if t.cursor > 0 {
-			t.cursor--
+		if len(t.rows) > 0 {
+			t.cursor = (t.cursor + len(t.rows) - 1) % len(t.rows)
 			t.fixScroll()
 		}
 	case kb.Matches(data, KBSelectDown):
-		if t.cursor < len(t.rows)-1 {
-			t.cursor++
+		if len(t.rows) > 0 {
+			t.cursor = (t.cursor + 1) % len(t.rows)
 			t.fixScroll()
 		}
-	case kb.Matches(data, KBEditorCursorLeft) || kb.Matches(data, KBSelectPageUp):
-		t.cursor -= t.visibleLines()
-		if t.cursor < 0 {
-			t.cursor = 0
-		}
-		t.fixScroll()
-	case kb.Matches(data, KBEditorCursorRight) || kb.Matches(data, KBSelectPageDown):
-		t.cursor += t.visibleLines()
-		if t.cursor >= len(t.rows) {
-			t.cursor = len(t.rows) - 1
-		}
-		t.fixScroll()
 	case kb.Matches(data, "app.tree.foldOrUp"):
 		if len(t.rows) == 0 {
 			break
@@ -1076,6 +1164,43 @@ func (t *TreeSelect) HandleInput(data string) {
 			t.cursor = t.findBranchSegmentStart("down")
 			t.fixScroll()
 		}
+	case kb.Matches(data, KBEditorCursorLeft) || kb.Matches(data, KBSelectPageUp):
+		t.cursor -= t.visibleLines()
+		if t.cursor < 0 {
+			t.cursor = 0
+		}
+		t.fixScroll()
+	case kb.Matches(data, KBEditorCursorRight) || kb.Matches(data, KBSelectPageDown):
+		t.cursor += t.visibleLines()
+		if t.cursor >= len(t.rows) {
+			t.cursor = len(t.rows) - 1
+		}
+		t.fixScroll()
+	case kb.Matches(data, KBSelectConfirm):
+		if len(t.rows) > 0 && t.cursor < len(t.rows) {
+			t.selectedID = t.rows[t.cursor].id
+			t.done = true
+		}
+	case kb.Matches(data, "app.message.copy"):
+		if t.OnCopy != nil {
+			var text *string
+			if t.cursor >= 0 && t.cursor < len(t.rows) {
+				if node, ok := t.rows[t.cursor].node.(TreeNodeWithCopyText); ok {
+					text = node.NodeCopyText()
+				}
+			}
+			t.OnCopy(text)
+		}
+	case kb.Matches(data, KBSelectCancel):
+		// Esc with an active search clears the query instead of closing the picker.
+		if t.searchQuery != "" {
+			t.searchQuery = ""
+			clear(t.foldedNodes)
+			t.recomputeVisible()
+			break
+		}
+		t.cancelled = true
+		t.done = true
 	case kb.Matches(data, "app.tree.filter.default"):
 		t.setFilterMode("default")
 	case kb.Matches(data, "app.tree.filter.noTools"):
@@ -1090,36 +1215,23 @@ func (t *TreeSelect) HandleInput(data string) {
 		t.cycleFilterMode(-1)
 	case kb.Matches(data, "app.tree.filter.cycleForward"):
 		t.cycleFilterMode(+1)
-	case data == "1":
-		t.setFilterMode("default")
-	case data == "2":
-		t.setFilterMode("no-tools")
-	case data == "3":
-		t.setFilterMode("user-only")
-	case data == "4":
-		t.setFilterMode("labeled-only")
-	case data == "5":
-		t.setFilterMode("all")
-	case kb.Matches(data, "app.tree.editLabel"):
-		if len(t.rows) > 0 && t.cursor < len(t.rows) && t.OnLabelEdit != nil {
-			t.labelBuf = t.rowLabel(t.rows[t.cursor])
-			t.editingLabel = true
-		}
-	case kb.Matches(data, "app.tree.toggleLabelTimestamp"):
-		t.showLabelTimestamps = !t.showLabelTimestamps
-	case kb.Matches(data, KBInputTab): // Tab: cycle filter mode forward
-		t.cycleFilterMode(+1)
-	case data == "\x1b[Z": // Shift+Tab: cycle filter mode backward
-		t.cycleFilterMode(-1)
 	case kb.Matches(data, KBEditorDeleteCharBack):
-		// Backspace removes the last character of the search query,
-		// mirroring upstream tree-selector.ts:1078-1082.
 		if t.searchQuery != "" {
-			_, sz := lastRuneSize(t.searchQuery)
-			t.searchQuery = t.searchQuery[:len(t.searchQuery)-sz]
+			t.searchQuery = jsstring.Slice(t.searchQuery, 0, -1)
 			t.foldedNodes = map[string]bool{}
 			t.recomputeVisible()
 		}
+	case kb.Matches(data, "app.tree.editLabel"):
+		if len(t.rows) > 0 && t.cursor >= 0 && t.cursor < len(t.rows) {
+			t.labelNode = t.rows[t.cursor].node
+			t.labelInput = NewInput(InputOptions{})
+			t.labelInput.Focused = true
+			if node, ok := t.labelNode.(TreeNodeWithBranchLabel); ok {
+				t.labelInput.SetValue(node.NodeBranchLabel())
+			}
+		}
+	case kb.Matches(data, "app.tree.toggleLabelTimestamp"):
+		t.showLabelTimestamps = !t.showLabelTimestamps
 	default:
 		// Type-to-search: any printable rune appends to the query.
 		// Mirrors upstream tree-selector.ts:1104-1110. Control codes
@@ -1141,57 +1253,38 @@ func (t *TreeSelect) HandleInput(data string) {
 	t.Invalidate()
 }
 
-// handleLabelInput processes a keystroke while in label-edit mode.
-// Enter commits the label; Esc cancels. All other printable characters
-// are appended; backspace removes the last rune.
+// handleLabelInput saves or cancels the label; all editing operations belong to the shared Input.
 func (t *TreeSelect) handleLabelInput(data string) {
 	kb := GetTUIKeybindings()
 	switch {
-	case kb.Matches(data, KBSelectConfirm): // Enter: commit
-		if len(t.rows) > 0 && t.cursor < len(t.rows) && t.OnLabelEdit != nil {
-			t.OnLabelEdit(t.rows[t.cursor].id, t.labelBuf)
+	case kb.Matches(data, KBSelectConfirm):
+		label := widthx.JSTrim(t.labelInput.GetValue())
+		timestamp := ""
+		if label != "" {
+			timestamp = time.Now().UTC().Format(time.RFC3339Nano)
 		}
-		t.editingLabel = false
-		t.labelBuf = ""
-	case kb.Matches(data, KBSelectCancel): // Esc: cancel
-		t.editingLabel = false
-		t.labelBuf = ""
-	case data == "\x7f" || data == "\b": // Backspace: remove last rune
-		if len(t.labelBuf) > 0 {
-			_, sz := lastRuneSize(t.labelBuf)
-			t.labelBuf = t.labelBuf[:len(t.labelBuf)-sz]
+		if node, ok := t.labelNode.(treeNodeWithLabelUpdate); ok {
+			node.SetNodeBranchLabel(label, timestamp)
 		}
+		id := t.labelNode.NodeID()
+		delete(t.labelCache, id)
+		delete(t.tagsCache, id)
+		delete(t.searchCache, id)
+		if t.OnLabelEdit != nil {
+			t.OnLabelEdit(id, label)
+		}
+		t.labelInput, t.labelNode = nil, nil
+	case kb.Matches(data, KBSelectCancel):
+		t.labelInput, t.labelNode = nil, nil
 	default:
-		// Accept printable characters (guard: skip raw control codes).
-		hasControl := false
-		for _, r := range data {
-			code := int(r)
-			if code < 32 || code == 0x7f || (code >= 0x80 && code <= 0x9f) {
-				hasControl = true
-				break
-			}
-		}
-		if !hasControl {
-			t.labelBuf += data
-		}
+		t.labelInput.HandleInput(data)
 	}
 }
 
-// cycleFilterMode advances `filterMode` by `direction` (+1 forward,
-// -1 backward) within `filterModes`, then re-derives the visible row
-// list. Mirrors upstream `app.tree.filter.cycleForward` /
-// `cycleBackward` at `tree-selector.ts:940-983`. Tries to preserve
-// the cursor on the same node id across the transition; if the row
-// disappears under the new mode (e.g. cursor on a label row that
-// `default` mode hides), recomputeVisible's bounds-clamp lands the
-// cursor on the nearest still-visible row.
+// cycleFilterMode cycles the filter, clears folds, and preserves selection through the shared visibility rebuild.
 func (t *TreeSelect) cycleFilterMode(direction int) {
 	if len(t.filterModes) <= 1 {
 		return
-	}
-	curID := ""
-	if t.cursor >= 0 && t.cursor < len(t.rows) {
-		curID = t.rows[t.cursor].id
 	}
 	idx := 0
 	for i, m := range t.filterModes {
@@ -1202,41 +1295,18 @@ func (t *TreeSelect) cycleFilterMode(direction int) {
 	}
 	next := (idx + direction + len(t.filterModes)) % len(t.filterModes)
 	t.filterMode = t.filterModes[next]
+	clear(t.foldedNodes)
 	t.recomputeVisible()
-	if curID != "" {
-		for i, r := range t.rows {
-			if r.id == curID {
-				t.cursor = i
-				t.fixScroll()
-				break
-			}
-		}
-	}
 }
 
-// setFilterMode switches to the named mode and recomputes visible rows,
-// preserving the cursor on the same id when still visible. Mirrors the
-// toggle-then-recompute pattern at upstream tree-selector.ts:940-983.
-// No-ops if mode is already active.
+// setFilterMode toggles a non-default filter back to default when selected again. Every direct filter action clears folds, including reselecting default.
 func (t *TreeSelect) setFilterMode(mode string) {
 	if t.filterMode == mode {
-		return
-	}
-	curID := ""
-	if t.cursor >= 0 && t.cursor < len(t.rows) {
-		curID = t.rows[t.cursor].id
+		mode = "default"
 	}
 	t.filterMode = mode
+	clear(t.foldedNodes)
 	t.recomputeVisible()
-	if curID != "" {
-		for i, r := range t.rows {
-			if r.id == curID {
-				t.cursor = i
-				t.fixScroll()
-				break
-			}
-		}
-	}
 }
 
 // fixScroll keeps the cursor inside the visible window. Mirrors upstream
@@ -1262,16 +1332,6 @@ func (t *TreeSelect) fixScroll() {
 	t.scroll = desired
 }
 
-// lastRuneSize returns the last rune in s and its byte size.
-// Returns (0,0) for empty string.
-func lastRuneSize(s string) (rune, int) {
-	if s == "" {
-		return 0, 0
-	}
-	r, sz := utf8.DecodeLastRuneInString(s)
-	return r, sz
-}
-
 // treeHelpItems mirrors upstream TREE_HELP_ITEMS (tree-selector.ts).
 var treeHelpItems = []struct {
 	keys       []string
@@ -1292,15 +1352,15 @@ var treeHelpItems = []struct {
 }
 
 var treeHelpKeyWords = []struct {
-	pattern *regexp.Regexp
+	pattern *lazyregexp.Regexp
 	text    string
 }{
-	{regexp.MustCompile(`\bpageUp\b`), "pgup"},
-	{regexp.MustCompile(`\bpageDown\b`), "pgdn"},
-	{regexp.MustCompile(`\bup\b`), "↑"},
-	{regexp.MustCompile(`\bdown\b`), "↓"},
-	{regexp.MustCompile(`\bleft\b`), "←"},
-	{regexp.MustCompile(`\bright\b`), "→"},
+	{lazyregexp.New(`\bpageUp\b`), "pgup"},
+	{lazyregexp.New(`\bpageDown\b`), "pgdn"},
+	{lazyregexp.New(`\bup\b`), "↑"},
+	{lazyregexp.New(`\bdown\b`), "↓"},
+	{lazyregexp.New(`\bleft\b`), "←"},
+	{lazyregexp.New(`\bright\b`), "→"},
 }
 
 // formatTreeHelpKeys mirrors upstream formatHelpKeys: the first key of each

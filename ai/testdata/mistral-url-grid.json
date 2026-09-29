@@ -1,0 +1,237 @@
+[
+  {
+    "Base": "http://example.test:00080/root",
+    "Want": "http://example.test/root/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "http://example.test:65536/root",
+    "Want": "",
+    "Invalid": true
+  },
+  {
+    "Base": "http://example.test:+80/root",
+    "Want": "",
+    "Invalid": true
+  },
+  {
+    "Base": "http://user:pass@example.test/root",
+    "Want": "http://user:pass@example.test/root/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "http://us@er:pass@example.test/root",
+    "Want": "http://us%40er:pass@example.test/root/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "http://user:%zz@example.test/root",
+    "Want": "http://user:%zz@example.test/root/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "http://[0:0:0:0:0:0:0:1]/root",
+    "Want": "http://[::1]/root/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "http://[::1]:80/root",
+    "Want": "http://[::1]/root/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "http://0177.1/root",
+    "Want": "http://127.0.0.1/root/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "http://0x7f.1/root",
+    "Want": "http://127.0.0.1/root/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "http://127.1/root",
+    "Want": "http://127.0.0.1/root/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "http://localhost/root",
+    "Want": "http://localhost/root/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "http://example.test//root///",
+    "Want": "http://example.test//root/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a^b",
+    "Want": "https://example.test/a%5Eb/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a|b",
+    "Want": "https://example.test/a|b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a[b",
+    "Want": "https://example.test/a[b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a]b",
+    "Want": "https://example.test/a]b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a`b",
+    "Want": "https://example.test/a%60b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a{b",
+    "Want": "https://example.test/a%7Bb/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a}b",
+    "Want": "https://example.test/a%7Db/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a<b",
+    "Want": "https://example.test/a%3Cb/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a>b",
+    "Want": "https://example.test/a%3Eb/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a\"b",
+    "Want": "https://example.test/a%22b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a'b",
+    "Want": "https://example.test/a'b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a!b",
+    "Want": "https://example.test/a!b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a$b",
+    "Want": "https://example.test/a$b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a&b",
+    "Want": "https://example.test/a&b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a(b",
+    "Want": "https://example.test/a(b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a)b",
+    "Want": "https://example.test/a)b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a*b",
+    "Want": "https://example.test/a*b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a+b",
+    "Want": "https://example.test/a+b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a,b",
+    "Want": "https://example.test/a,b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a;b",
+    "Want": "https://example.test/a;b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a:b",
+    "Want": "https://example.test/a:b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a=b",
+    "Want": "https://example.test/a=b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a@b",
+    "Want": "https://example.test/a@b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a_b",
+    "Want": "https://example.test/a_b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a~b",
+    "Want": "https://example.test/a~b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a%b",
+    "Want": "https://example.test/a%b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a%2b",
+    "Want": "https://example.test/a%2b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a%zzb",
+    "Want": "https://example.test/a%zzb/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a%20b",
+    "Want": "https://example.test/a%20b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a%2fb",
+    "Want": "https://example.test/a%2fb/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a%2eb",
+    "Want": "https://example.test/a%2eb/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a%2e%2eb",
+    "Want": "https://example.test/a%2e%2eb/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/aéb",
+    "Want": "https://example.test/a%C3%A9b/v1/chat/completions",
+    "Invalid": false
+  },
+  {
+    "Base": "https://example.test/a😀b",
+    "Want": "https://example.test/a%F0%9F%98%80b/v1/chat/completions",
+    "Invalid": false
+  }
+]

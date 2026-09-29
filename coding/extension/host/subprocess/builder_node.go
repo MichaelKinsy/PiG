@@ -1,8 +1,9 @@
 package subprocess
 
 import (
+	"archive/zip"
 	"context"
-	"embed"
+	_ "embed"
 	"fmt"
 	"io/fs"
 	"os"
@@ -10,7 +11,9 @@ import (
 	"path/filepath"
 	"runtime"
 	"strings"
+	"sync"
 
+	"github.com/klauspost/compress/zstd"
 	"golang.org/x/mod/semver"
 
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
@@ -18,8 +21,7 @@ import (
 
 const nodeRuntimeVersion = "v2"
 
-// minimumNodeRuntimeVersion is the first Node release that exposes
-// node:module.stripTypeScriptTypes, which the embedded loader imports.
+// minimumNodeRuntimeVersion is the oldest Node release PiG supports for the extension runtime. Pi 0.87.1 itself declares Node 22.19 or newer.
 const minimumNodeRuntimeVersion = "v22.13.0"
 
 // nodeLauncherFormat identifies the generated launcher shape, including the
@@ -32,8 +34,41 @@ const nodeLauncherFormat = "direct-node-v3"
 // extension entry the launcher runs.
 const nodeEntryFile = "entry"
 
-//go:embed runtime-node/*.mjs runtime-node/shims/*.mjs runtime-node/shims/get-east-asian-width runtime-node/shims/highlight.js runtime-node/shims/marked runtime-node/shims/partial-json all:runtime-node/shims/pi-dist runtime-node/shims/yaml
-var nodeRuntimeFS embed.FS
+//go:generate go run ./internal/noderuntimegen
+//go:embed runtime-node.zip
+var nodeRuntimeArchive string
+
+// The archive is opened only on materialization. Warm cache keys use the generated digest without reading or decompressing the runtime.
+var nodeRuntimeZip = sync.OnceValues(func() (*zip.Reader, error) {
+	reader, err := zip.NewReader(strings.NewReader(nodeRuntimeArchive), int64(len(nodeRuntimeArchive)))
+	if err != nil {
+		return nil, err
+	}
+	reader.RegisterDecompressor(zstd.ZipMethodWinZip, zstd.ZipDecompressor())
+	return reader, nil
+})
+
+var nodeRuntimeDigest = func() []byte { return []byte(nodeRuntimeHash) }
+
+var nodeRuntimeFS nodeArchiveFS
+
+type nodeArchiveFS struct{}
+
+func (nodeArchiveFS) Open(name string) (fs.File, error) {
+	archive, err := nodeRuntimeZip()
+	if err != nil {
+		return nil, err
+	}
+	return archive.Open(name)
+}
+
+func (nodeArchiveFS) ReadFile(name string) ([]byte, error) {
+	archive, err := nodeRuntimeZip()
+	if err != nil {
+		return nil, err
+	}
+	return fs.ReadFile(archive, name)
+}
 
 func isNodeSourcePath(path string) bool {
 	ext := strings.ToLower(filepath.Ext(path))
@@ -78,6 +113,15 @@ func resolveNodeEntrypoint(src string) (string, error) {
 		return "", err
 	}
 	if len(declared) == 1 {
+		// Upstream keeps a declared directory, such as "./", as the extension
+		// path and jiti imports it; Node refuses a directory import.
+		if info, err := os.Stat(declared[0]); err == nil && info.IsDir() {
+			file, ok := extsource.NodeDirectoryImport(declared[0])
+			if !ok {
+				return "", fmt.Errorf("package %s: pi.extensions directory %s cannot be imported: it has no index file or package.json main", src, declared[0])
+			}
+			return file, nil
+		}
 		return declared[0], nil
 	}
 	if len(declared) > 1 {
@@ -183,7 +227,7 @@ func nodeLauncherCommand(ctx context.Context, binPath string) (*exec.Cmd, bool) 
 	return cmd, true
 }
 
-func buildNode(srcPath, outPath string) error {
+func buildNode(ctx context.Context, cacheRoot, srcPath, outPath string) error {
 	entry, err := resolveNodeEntrypoint(srcPath)
 	if err != nil {
 		return err
@@ -193,7 +237,7 @@ func buildNode(srcPath, outPath string) error {
 	if err := os.MkdirAll(filepath.Join(runtimeDir, "shims"), 0o755); err != nil {
 		return err
 	}
-	if err := copyEmbeddedTree(nodeRuntimeFS, "runtime-node", runtimeDir); err != nil {
+	if err := materializeNodeRuntime(ctx, cacheRoot, runtimeDir); err != nil {
 		return err
 	}
 	if err := os.WriteFile(filepath.Join(runtimeDir, nodeEntryFile), []byte(entry), 0o644); err != nil {
@@ -210,13 +254,14 @@ func buildNode(srcPath, outPath string) error {
 	return os.Rename(tmpPath, outPath)
 }
 
-func copyEmbeddedTree(efs embed.FS, root, dst string) error {
-	return fs.WalkDir(efs, root, func(path string, d fs.DirEntry, err error) error {
+func copyEmbeddedTree(efs fs.FS, root, dst string) error {
+	type file struct{ source, target string }
+	var files []file
+	if err := fs.WalkDir(efs, root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-		rel := strings.TrimPrefix(path, root)
-		rel = strings.TrimPrefix(rel, string(filepath.Separator))
+		rel := strings.TrimPrefix(strings.TrimPrefix(path, root), "/")
 		if rel == "" {
 			return nil
 		}
@@ -224,16 +269,38 @@ func copyEmbeddedTree(efs embed.FS, root, dst string) error {
 		if d.IsDir() {
 			return os.MkdirAll(target, 0o755)
 		}
-		data, err := efs.ReadFile(path)
+		files = append(files, file{source: path, target: target})
+		return nil
+	}); err != nil {
+		return err
+	}
+	// Independent files are joined before the launcher is published. Limit
+	// concurrent filesystem operations rather than spawning one task per file.
+	jobs := make(chan int)
+	errors := make([]error, len(files))
+	var workers sync.WaitGroup
+	for range min(8, runtime.GOMAXPROCS(0), len(files)) {
+		workers.Go(func() {
+			for index := range jobs {
+				data, err := fs.ReadFile(efs, files[index].source)
+				if err == nil {
+					err = os.WriteFile(files[index].target, data, 0o644)
+				}
+				errors[index] = err
+			}
+		})
+	}
+	for index := range files {
+		jobs <- index
+	}
+	close(jobs)
+	workers.Wait()
+	for _, err := range errors {
 		if err != nil {
 			return err
 		}
-		mode := fs.FileMode(0o644)
-		if runtime.GOOS != "windows" && strings.HasSuffix(target, ".mjs") {
-			mode = 0o644
-		}
-		return os.WriteFile(target, data, mode)
-	})
+	}
+	return nil
 }
 
 func fileExists(path string) bool {

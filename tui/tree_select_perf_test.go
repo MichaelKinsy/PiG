@@ -19,21 +19,7 @@ func TestTreeSelectLargeNavigationFast(t *testing.T) {
 	// paths that were quadratic.
 	const branches = 60
 	const depth = 40 // 60*40 = 2400 nodes, ~the reported session size
-	kids := make([]TreeNode, branches)
-	for b := range branches {
-		// deepest-first chain build
-		var node *fakeNode
-		for d := depth - 1; d >= 0; d-- {
-			id := fmt.Sprintf("b%dd%d", b, d)
-			n := &fakeNode{id: id, label: id}
-			if node != nil {
-				n.kids = []TreeNode{node}
-			}
-			node = n
-		}
-		kids[b] = node
-	}
-	root := &fakeNode{id: "root", kids: kids}
+	root := branchingTree(branches, depth)
 
 	start := time.Now()
 	ts := NewTreeSelect("big", root)
@@ -54,5 +40,35 @@ func TestTreeSelectLargeNavigationFast(t *testing.T) {
 	// enough to never flake yet fails hard on a quadratic regression.
 	if elapsed > 5*time.Second {
 		t.Fatalf("large tree navigation too slow: %v (quadratic regression?)", elapsed)
+	}
+}
+
+func branchingTree(branches, depth int) TreeNode {
+	kids := make([]TreeNode, branches)
+	for b := range branches {
+		var node *fakeNode
+		for d := depth - 1; d >= 0; d-- {
+			id := fmt.Sprintf("b%dd%d", b, d)
+			n := &fakeNode{id: id, label: id}
+			if node != nil {
+				n.kids = []TreeNode{node}
+			}
+			node = n
+		}
+		kids[b] = node
+	}
+	return &fakeNode{id: "root", kids: kids}
+}
+
+func BenchmarkTreeSelectSearchAndClear(b *testing.B) {
+	ts := NewTreeSelect("", branchingTree(60, 40))
+	ts.SetInitialCursor("b0d39", "")
+	b.ReportAllocs()
+	for b.Loop() {
+		ts.HandleInput("b0d39")
+		ts.HandleInput("\x1b")
+		ts.HandleInput("absent")
+		ts.HandleInput("\x1b")
+		ts.Render(100)
 	}
 }

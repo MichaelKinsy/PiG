@@ -23,7 +23,7 @@ type listResultDetails struct {
 	Truncated          bool
 	MaxBytes           int
 	MatchLimitReached  float64
-	ResultLimitReached int
+	ResultLimitReached float64
 	EntryLimitReached  float64
 	LinesTruncated     bool
 }
@@ -45,7 +45,9 @@ func listDetailsFrom(details any) listResultDetails {
 	case *tools.FindDetails:
 		if d != nil {
 			out.Truncated, out.MaxBytes = fromTruncation(d.Truncation)
-			out.ResultLimitReached = d.ResultLimitReached
+			if d.ResultLimitReached != nil {
+				out.ResultLimitReached = *d.ResultLimitReached
+			}
 		}
 	case *tools.LsDetails:
 		if d != nil {
@@ -59,7 +61,7 @@ func listDetailsFrom(details any) listResultDetails {
 				MaxBytes  int  `json:"maxBytes"`
 			} `json:"truncation"`
 			MatchLimitReached  float64 `json:"matchLimitReached"`
-			ResultLimitReached int     `json:"resultLimitReached"`
+			ResultLimitReached float64 `json:"resultLimitReached"`
 			EntryLimitReached  float64 `json:"entryLimitReached"`
 			LinesTruncated     bool    `json:"linesTruncated"`
 		}
@@ -96,7 +98,7 @@ func listToolWarnings(toolName string, d listResultDetails) []string {
 	switch toolName {
 	case "grep":
 		if d.MatchLimitReached != 0 {
-			warnings = append(warnings, strconv.FormatFloat(d.MatchLimitReached, 'f', -1, 64)+" matches limit")
+			warnings = append(warnings, tools.FormatJSNumber(d.MatchLimitReached)+" matches limit")
 		}
 		if d.Truncated {
 			warnings = append(warnings, limit())
@@ -106,14 +108,14 @@ func listToolWarnings(toolName string, d listResultDetails) []string {
 		}
 	case "find":
 		if d.ResultLimitReached != 0 {
-			warnings = append(warnings, strconv.Itoa(d.ResultLimitReached)+" results limit")
+			warnings = append(warnings, tools.FormatJSNumber(d.ResultLimitReached)+" results limit")
 		}
 		if d.Truncated {
 			warnings = append(warnings, limit())
 		}
 	case "ls":
 		if d.EntryLimitReached != 0 {
-			warnings = append(warnings, strconv.FormatFloat(d.EntryLimitReached, 'f', -1, 64)+" entries limit")
+			warnings = append(warnings, tools.FormatJSNumber(d.EntryLimitReached)+" entries limit")
 		}
 		if d.Truncated {
 			warnings = append(warnings, limit())

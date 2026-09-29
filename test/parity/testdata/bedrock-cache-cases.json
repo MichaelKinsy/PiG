@@ -1,0 +1,10 @@
+[
+  {"name":"explicit-none","model":"us.anthropic.claude-sonnet-4-5-20250929-v1:0","option":"none","env":"long","force":"","ambientForce":""},
+  {"name":"explicit-long","model":"us.anthropic.claude-sonnet-4-5-20250929-v1:0","option":"long","env":"none","force":"","ambientForce":""},
+  {"name":"explicit-short","model":"us.anthropic.claude-sonnet-4-5-20250929-v1:0","option":"short","env":"long","force":"","ambientForce":""},
+  {"name":"environment-long","model":"us.anthropic.claude-sonnet-4-5-20250929-v1:0","option":"","env":"long","force":"","ambientForce":""},
+  {"name":"environment-none","model":"us.anthropic.claude-sonnet-4-5-20250929-v1:0","option":"","env":"none","force":"","ambientForce":""},
+  {"name":"scoped-force-on","model":"arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/example","option":"short","env":"","force":"1","ambientForce":""},
+  {"name":"scoped-force-off","model":"arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/example","option":"short","env":"","force":"0","ambientForce":"1"},
+  {"name":"scoped-force-nova","model":"amazon.nova-lite-v1:0","option":"short","env":"","force":"1","ambientForce":""}
+]

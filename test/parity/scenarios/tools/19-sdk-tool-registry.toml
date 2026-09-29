@@ -1,0 +1,30 @@
+# Probed exact Pi 0.87.1 SDK creation, resource-loader session_start registration,
+# defaultTools selection, allow/exclude filters, no-builtin selection and source
+# metadata. The Unicode probe preserves NEL and trims BOM exactly as JS trim.
+# Both sides assert persisted Session environment values and opt-out
+# before printing the validation marker. Registry arrays, active order and actual
+# tool-snippet lines are compared exactly; fixture paths and session IDs never
+# enter those lines. Go exercises the direct Session/reference-runner boundary,
+# not late registration over a subprocess wire.
+name = "19-sdk-tool-registry"
+description = "SDK tool registries retain inactive definitions and apply selection, registration and session context"
+covers = ["packages/coding-agent/src/core/sdk.ts", "packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/system-prompt.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/tool-registry-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/tool-registry-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['REGISTRY allow [[],[],[]]', 'REGISTRY env validated', '- dynamic_tool: Run dynamic test behavior']
+runs = 3

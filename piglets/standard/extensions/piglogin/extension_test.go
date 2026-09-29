@@ -3,6 +3,7 @@ package standardlogin
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 )
@@ -22,7 +23,9 @@ func TestVariantStateDefaultsAndPersists(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Mode().Perm() != 0o600 {
+	if runtime.GOOS == "windows" {
+		t.Log("owner-only state mode is POSIX-only; Windows ACL for Standard is a follow-up")
+	} else if info.Mode().Perm() != 0o600 {
 		t.Fatalf("state mode = %o, want 600", info.Mode().Perm())
 	}
 	if filepath.Dir(statePath(root)) != filepath.Join(root, "state", "pig-standard") {

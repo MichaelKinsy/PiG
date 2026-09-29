@@ -30,7 +30,11 @@ func TestStartupSelectorRetainsTypeaheadAfterConfirmation(t *testing.T) {
 	m := &InteractiveMode{}
 	readCh := make(chan inputChunk)
 	errCh := make(chan error, 1)
-	go m.pumpTerminalInput(context.Background(), strings.NewReader(""), readCh, errCh)
+	go func() {
+		if err := m.pumpTerminalInput(context.Background(), strings.NewReader(""), readCh, errCh); err != nil {
+			t.Error(err)
+		}
+	}()
 	var delivered []string
 	for chunk := range readCh {
 		delivered = append(delivered, string(chunk.data))

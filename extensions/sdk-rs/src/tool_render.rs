@@ -173,8 +173,17 @@ impl ToolRenderers {
                 );
             }),
         };
+        let registered = conn.registered_tools.lock().unwrap().get(tool).cloned();
+        let call = match &registered {
+            Some(definition) => definition.render_call.as_ref(),
+            None => self.call.get(tool),
+        };
+        let result = match &registered {
+            Some(definition) => definition.render_result.as_ref(),
+            None => self.result.get(tool),
+        };
         let lines = if request.phase == "result" {
-            match self.result.get(tool) {
+            match result {
                 Some(handler) => handler(
                     ctx,
                     request.result.unwrap_or_default(),
@@ -185,7 +194,7 @@ impl ToolRenderers {
                 None => Err(format!("tool {tool} has no result renderer")),
             }
         } else {
-            match self.call.get(tool) {
+            match call {
                 Some(handler) => handler(ctx, request.args, &mut render, request.width),
                 None => Err(format!("tool {tool} has no call renderer")),
             }

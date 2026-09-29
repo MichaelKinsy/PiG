@@ -1,0 +1,24 @@
+# Pi 0.87.1 loader.ts:599-642 awaits factories in path order and shares the resource loader's event bus. PiG's middle factory is Python; Pi's equivalent writes the same B side effect. The asserted command checks both ordered effects and synchronous A/C reference sharing, not only registration. TestNodeCellInterleavedGoFactoryKeepsOrderAndBus separately drives the same production admission path with a compiled Go middle factory, including reload.
+name = "52-interleaved-node-admission"
+description = "A native factory between Node factories preserves configured order and their shared Pi bus"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts", "packages/coding-agent/src/core/event-bus.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["testdata/admission/a.mjs", "testdata/admission/middle", "testdata/admission/c.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/admission/a.mjs", "testdata/admission/middle.mjs", "testdata/admission/c.mjs"]
+
+# The print driver snapshots cwd per binary/run; the relative order file is writable only in that disposable snapshot.
+[print]
+prompt = "/admission-probe"
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+both_contain = ['order="ABC" shared={"a":true,"c":true}']
+both_not_contain = ["Failed to load", "panic:"]
+output_equal = true
+runs = 3

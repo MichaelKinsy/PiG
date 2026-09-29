@@ -18,7 +18,7 @@ func TestContext_Mode_DefaultsToPrint(t *testing.T) {
 
 // TestContext_Mode_ReportsInjected verifies a bound mode is returned verbatim.
 func TestContext_Mode_ReportsInjected(t *testing.T) {
-	c := NewContext("/work", nil, func() error { return nil }, ContextActions{Mode: ModeTUI})
+	c := NewContext("/work", nil, func() error { return nil }, ContextActions{GetMode: func() ExtensionMode { return ModeTUI }})
 	got, err := c.Mode()
 	if err != nil {
 		t.Fatalf("Mode() error = %v", err)
@@ -55,11 +55,14 @@ func TestCommandContext_GetSystemPromptOptions_ReturnsSource(t *testing.T) {
 		Cwd:           "/probe",
 	}
 	base := NewContext("/runner/cwd", nil, func() error { return nil },
-		ContextActions{GetSystemPromptOptions: func() BuildSystemPromptOptions { return want }})
+		ContextActions{GetSystemPromptOptions: func() *BuildSystemPromptOptions { return &want }})
 	cc := NewCommandContext(base, CommandActions{})
 	got, err := cc.GetSystemPromptOptions()
 	if err != nil {
 		t.Fatalf("GetSystemPromptOptions() error = %v", err)
+	}
+	if got != &want {
+		t.Fatal("system prompt options lost live source identity")
 	}
 	if got.CustomPrompt != want.CustomPrompt || got.Cwd != want.Cwd || len(got.SelectedTools) != 2 {
 		t.Fatalf("GetSystemPromptOptions() = %+v, want %+v", got, want)

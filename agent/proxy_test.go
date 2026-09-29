@@ -171,7 +171,8 @@ func TestStreamProxyReconstructsPartialsAndPreservesRequestAndTerminalMetadata(t
 		t.Errorf("tool call = %#v", result.Content[2])
 	}
 	firstToolDelta := events[9].(ai.ToolCallDeltaEvent)
-	if got := firstToolDelta.Partial.Content[2].(ai.ToolCall).Arguments["value"]; got != "hel" {
+	// pig divergence (D82): the proxy reader runs outside the JavaScript-order executor, so a queued partial is its emission-time snapshot.
+	if got := firstToolDelta.Partial.Observe().Content[2].(ai.ToolCall).Arguments["value"]; got != "hel" {
 		t.Errorf("first partial tool argument = %#v, want hel", got)
 	}
 
@@ -402,6 +403,7 @@ func TestProxyEventConverterRestartsToolIndex(t *testing.T) {
 	}
 }
 
+// upstream: packages/agent/src/proxy.ts:352-356 retains parseStreamingJson's numeric values. Observation must not replace the converter's float64 numbers with json.Number.
 func TestStreamProxyRestartsToolIndex(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 		writeProxyEvents(t, writer, []ProxyAssistantMessageEvent{
@@ -432,12 +434,12 @@ func TestStreamProxyRestartsToolIndex(t *testing.T) {
 		partial *ai.AssistantMessage
 		want    ai.ToolCall
 	}{
-		{"old delta", events[2].(ai.ToolCallDeltaEvent).Partial, ai.ToolCall{ID: "old", Name: "lookup", Arguments: ai.JsonObject{"stale": json.Number("1")}}},
+		{"old delta", events[2].(ai.ToolCallDeltaEvent).Partial, ai.ToolCall{ID: "old", Name: "lookup", Arguments: ai.JsonObject{"stale": float64(1)}}},
 		{"new start", events[3].(ai.ToolCallStartEvent).Partial, ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{}}},
-		{"new delta", events[4].(ai.ToolCallDeltaEvent).Partial, ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{"fresh": json.Number("2")}}},
+		{"new delta", events[4].(ai.ToolCallDeltaEvent).Partial, ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{"fresh": float64(2)}}},
 		{"result", result, ai.ToolCall{ID: "new", Name: "lookup", Arguments: ai.JsonObject{"fresh": float64(2)}}},
 	} {
-		if got, want := check.partial.Content, []ai.AssistantContentBlock{check.want}; !reflect.DeepEqual(got, want) {
+		if got, want := check.partial.Observe().Content, []ai.AssistantContentBlock{check.want}; !reflect.DeepEqual(got, want) {
 			t.Errorf("%s content = %#v, want %#v", check.name, got, want)
 		}
 	}

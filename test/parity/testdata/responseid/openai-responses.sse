@@ -1,0 +1,4 @@
+data: {"type":"response.created","response":{"id":"first","model":"resolved"}}
+
+data: {"type":"response.completed","response":{"id":"final","model":"resolved","status":"completed","output":[],"usage":{"input_tokens":1,"output_tokens":1}}}
+

@@ -1,0 +1,53 @@
+# Upstream evidence: Pi 0.87.1, tmux 100x30, probed 2026-09-26.
+# components/scroll-view.ts:41-236 constructs a local Container, reserves
+# a scrollbar column in regular rendering, clamps movement and returns the remainder.
+# interactive-mode.ts:2434-2460 installs the factory's component as the footer.
+# gentle-pi@3.7.0 constructs ScrollView and binds its inherited handleMouse while
+# installing its footer, including in regular mode. The old shim throws at construction.
+# A later extension owns no footer; its state updates must not erase this one.
+# It creates .git after the footer binds: Pi's FooterDataProvider retains its
+# original null gitPaths (footer-data-provider.ts:120-123,239-241,308-309).
+# Observe beyond PiG's five-second Git poll to expose accidental late discovery.
+# The capture includes the command notification, editor and complete two-row footer.
+name = "53-node-scrollview-footer"
+description = "Node footer factories use Pi's real ScrollView with retained scroll state"
+covers = [
+  "packages/tui/src/components/scroll-view.ts",
+  "packages/coding-agent/src/core/footer-data-provider.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/scroll-footer.mjs", "testdata/ext/passive-surface.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/scroll-footer.mjs", "testdata/ext/passive-surface.mjs"]
+
+[tmux]
+width = 100
+height = 30
+ready_pattern_pig = "SCROLL FOOTER 界"
+ready_pattern_pi = "SCROLL FOOTER 界"
+ready_timeout_seconds = 30
+capture_start = "SCROLL FOOTER RESULT FINAL"
+
+[[tmux.steps]]
+keys = ["/scroll-footer", "Enter"]
+wait_contains = ["SCROLL FOOTER RESULT", "top=0 viewport=3 follow=false remainder=-14"]
+wait_timeout_seconds = 20
+settle_seconds = 6
+
+[[tmux.steps]]
+keys = ["/refresh-footer-state", "Enter"]
+wait_contains = ["SCROLL FOOTER RESULT FINAL"]
+wait_timeout_seconds = 20
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["SCROLL FOOTER 界", "top=0 viewport=3 follow=false remainder=-14 branch=none"]
+both_not_contain = ["render failed", "panic:"]
+escaped_output_equal = true
+runs = 3

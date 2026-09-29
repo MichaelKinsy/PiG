@@ -1,0 +1,29 @@
+# Upstream evidence: Pi 0.87.1 tui-render.test.ts and tui-main-screen.ts define bounded writes, reserved-image placement, ordered cleanup, keyboard preemption and diagnostic paths.
+# Compare complete JSON-quoted frame bytes and per-write UTF-16 lengths, not normalized terminal text.
+# The terminal fixture's hideCursor operation is a no-op on both sides, as in the upstream BoundedWriteTerminal.
+# Diagnostic observations retain the actual filename and message body; only the nondeterministic wall-clock timestamp is not included in the structured observation.
+# The keyboard caller observation comes from InteractiveMode.handleKey's regression; the wrapper rejects failed tests or absent observations.
+name = "15-main-screen-upstream-render"
+description = "Main-screen frame bytes, bounded writes, Kitty placement and cleanup, keyboard scheduling and diagnostic paths match Pi."
+covers = ["packages/tui/src/tui-main-screen.ts", "packages/tui/src/tui.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig = ["PI_TUI_DEBUG_REDRAW="]
+pi = ["PI_TUI_DEBUG_REDRAW="]
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/main-screen-render-pig.mjs", "{{TEMP}}"]
+pi_args = ["node", "./test/parity/testdata/main-screen-render-pi.mjs", "{{TEMP}}"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"name":"keyboard","renders":1', '"name":"keyboard-caller","requests":3', 'pi-tui-debug.log', 'pi-tui-crash.log']
+runs = 3

@@ -31,7 +31,9 @@ func TestParseSSE_ReasoningFieldSignatureReplaysOnLaterTurns(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			sse := `data: {"choices":[{"delta":{"` + test.field + `":"think"},"finish_reason":"stop"}]}` + "\n\n" +
+			// Pi openai-completions.ts:1385-1395 replays reasoning only on an assistant message that also has content or tool calls.
+			sse := `data: {"choices":[{"delta":{"` + test.field + `":"think"},"finish_reason":null}]}` + "\n\n" +
+				`data: {"choices":[{"delta":{"content":"answer"},"finish_reason":"stop"}]}` + "\n\n" +
 				"data: [DONE]\n"
 			message := runOpenAICompletionsSSEForProvider(t, test.providerID, sse)
 			thinking, ok := message.Content[0].(ThinkingContent)
@@ -46,7 +48,7 @@ func TestParseSSE_ReasoningFieldSignatureReplaysOnLaterTurns(t *testing.T) {
 			if err != nil {
 				t.Fatalf("convertMessages: %v", err)
 			}
-			if len(converted) != 1 || converted[0].ReasoningContent == nil || *converted[0].ReasoningContent != "think" {
+			if len(converted) != 1 || converted[0].Content != "answer" || converted[0].ReasoningContent == nil || *converted[0].ReasoningContent != "think" {
 				t.Fatalf("replayed message = %#v, want reasoning_content=think", converted)
 			}
 		})
@@ -58,7 +60,8 @@ func TestParseSSE_ReasoningDetailsBecomeThinkingSignatureAndReplay(t *testing.T)
 		"{\"type\":\"reasoning.text\",\"text\":\"signed thought\",\"signature\":\"sig\"}," +
 		"{\"type\":\"reasoning.encrypted\",\"id\":\"enc\",\"data\":\"ciphertext\"}," +
 		"{\"type\":\"reasoning.summary\",\"summary\":\"summary\"}" +
-		"]},\"finish_reason\":\"stop\"}]}\n\n" +
+		"]},\"finish_reason\":null}]}\n\n" +
+		"data: {\"choices\":[{\"delta\":{\"content\":\"answer\"},\"finish_reason\":\"stop\"}]}\n\n" +
 		"data: [DONE]\n"
 	message := runOpenAICompletionsSSE(t, sse)
 	thinking, ok := message.Content[0].(ThinkingContent)
@@ -77,7 +80,7 @@ func TestParseSSE_ReasoningDetailsBecomeThinkingSignatureAndReplay(t *testing.T)
 	if err != nil {
 		t.Fatalf("convertMessages: %v", err)
 	}
-	if len(converted) != 1 || len(converted[0].ReasoningDetails) != 3 || converted[0].Reasoning != "" {
+	if len(converted) != 1 || converted[0].Content != "answer" || len(converted[0].ReasoningDetails) != 3 || converted[0].Reasoning != "" {
 		t.Fatalf("replayed message = %#v", converted)
 	}
 }

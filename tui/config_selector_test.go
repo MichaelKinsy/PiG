@@ -165,3 +165,43 @@ func TestBuildResourceGroups_GroupByBaseDirAndFormatAutoLabels(t *testing.T) {
 		seen[g.Key] = true
 	}
 }
+
+// config-selector.ts:487-493 checks tui.select.cancel before matchesKey(data, "ctrl+c"):
+// by default (escape, ctrl+c) both keys cancel, and once the user rebinds cancel
+// Ctrl+C still exits, in legacy and Kitty CSI-u encodings.
+func TestConfigSelectorCancelAndExitKeys(t *testing.T) {
+	prev := GetTUIKeybindings()
+	defer SetTUIKeybindings(prev)
+	kitty := IsKittyProtocolActive()
+	defer SetKittyProtocolActive(kitty)
+	for _, tc := range []struct {
+		name       string
+		bindings   map[string][]string
+		kitty      bool
+		key        string
+		wantCancel bool
+		wantExit   bool
+	}{
+		{"default escape", nil, false, "\x1b", true, false},
+		{"default ctrl+c cancels first", nil, false, "\x03", true, false},
+		{"default kitty ctrl+c cancels first", nil, true, "\x1b[99;5u", true, false},
+		{"default kitty escape", nil, true, "\x1b[27u", true, false},
+		{"rebound legacy ctrl+c exits", map[string][]string{"tui.select.cancel": {"escape"}}, false, "\x03", false, true},
+		{"rebound kitty ctrl+c exits", map[string][]string{"tui.select.cancel": {"escape"}}, true, "\x1b[99;5u", false, true},
+		{"rebound kitty ctrl+c press event exits", map[string][]string{"tui.select.cancel": {"escape"}}, true, "\x1b[99;5:1u", false, true},
+		{"rebound escape cancels", map[string][]string{"tui.select.cancel": {"escape"}}, true, "\x1b[27u", true, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			SetTUIKeybindings(NewTUIKeybindingsManager(tc.bindings))
+			SetKittyProtocolActive(tc.kitty)
+			cs := NewConfigSelector(nil, 0)
+			var cancelled, exited bool
+			cs.OnCancel = func() { cancelled = true }
+			cs.OnExit = func() { exited = true }
+			cs.HandleInput(tc.key)
+			if cancelled != tc.wantCancel || exited != tc.wantExit {
+				t.Fatalf("%q: cancelled=%v exited=%v, want %v/%v", tc.key, cancelled, exited, tc.wantCancel, tc.wantExit)
+			}
+		})
+	}
+}

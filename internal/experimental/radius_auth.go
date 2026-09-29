@@ -5,15 +5,14 @@ import (
 	"context"
 	"errors"
 	"io"
-	"net/url"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
 // EnvRadiusGateway is the upstream experimental gateway override.
@@ -178,19 +177,11 @@ func readAuthFile(ctx context.Context, path string) ([]byte, error) {
 	return data, err
 }
 
+// authFilePath is radius-auth.ts resolvePath(this.#input.path): Pi's resolvePath with its default base, process.cwd(), which Node evaluates before it looks at the path. An unreadable working directory is therefore an error even for an absolute path, and a file:// URL goes through fileURLToPath. The working directory is read here first because ResolvePath with an empty base reads it only for a relative input.
 func authFilePath(path string) (string, error) {
-	if strings.HasPrefix(path, "file://") {
-		parsed, err := url.Parse(path)
-		if err != nil {
-			return "", err
-		}
-		if parsed.Host != "" && parsed.Host != "localhost" {
-			return "", errors.New("File URL host must be localhost or empty")
-		}
-		if strings.Contains(strings.ToLower(parsed.EscapedPath()), "%2f") {
-			return "", errors.New("File URL path must not include encoded / characters")
-		}
-		path = parsed.Path
+	process := nodepath.Process()
+	if process.CwdErr != nil {
+		return "", process.CwdErr
 	}
-	return filepath.Abs(codingagent.ExpandTildePath(path))
+	return codingagent.ResolvePath(path, process.Cwd)
 }

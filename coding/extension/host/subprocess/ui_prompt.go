@@ -1,7 +1,7 @@
 package subprocess
 
 import (
-	"encoding/json"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
 )

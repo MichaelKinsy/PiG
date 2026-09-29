@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
+	"strconv"
 	"strings"
 )
 
@@ -190,7 +190,7 @@ func hasJSONSchemaKey(schema map[string]any, key string) bool {
 	return ok
 }
 
-func makeJSONSchemaNodeStrict(value any) error {
+func makeJSONSchemaNodeStrict(value any, order schemaObjectOrder, path string) error {
 	schema, ok := value.(map[string]any)
 	if !ok {
 		return strictSchemaError("boolean schemas are unsupported")
@@ -206,11 +206,11 @@ func makeJSONSchemaNodeStrict(value any) error {
 		if !ok || len(variants) == 0 {
 			return strictSchemaError("anyOf must contain at least one schema")
 		}
-		for _, variant := range variants {
+		for index, variant := range variants {
 			if isStructuredJSONSchema(variant) {
 				return strictSchemaError("object and array unions are unsupported")
 			}
-			if err := makeJSONSchemaNodeStrict(variant); err != nil {
+			if err := makeJSONSchemaNodeStrict(variant, order, schemaPath(schemaPath(path, "anyOf"), strconv.Itoa(index))); err != nil {
 				return err
 			}
 		}
@@ -220,7 +220,7 @@ func makeJSONSchemaNodeStrict(value any) error {
 		if _, tuple := items.([]any); tuple {
 			return strictSchemaError("tuple schemas are unsupported")
 		}
-		if err := makeJSONSchemaNodeStrict(items); err != nil {
+		if err := makeJSONSchemaNodeStrict(items, order, schemaPath(path, "items")); err != nil {
 			return err
 		}
 	}
@@ -256,13 +256,13 @@ func makeJSONSchemaNodeStrict(value any) error {
 		}
 	}
 
-	propertyNames := slices.Sorted(maps.Keys(properties))
+	propertyNames := orderedSchemaKeys(properties, order, schemaPath(path, "properties"))
 	if propertyNames == nil {
 		propertyNames = []string{}
 	}
 	for _, name := range propertyNames {
 		property := properties[name]
-		if err := makeJSONSchemaNodeStrict(property); err != nil {
+		if err := makeJSONSchemaNodeStrict(property, order, schemaPath(schemaPath(path, "properties"), name)); err != nil {
 			return err
 		}
 		if !slices.Contains(required, name) && !jsonSchemaAllowsNull(property) {
@@ -277,6 +277,10 @@ func makeJSONSchemaNodeStrict(value any) error {
 // makeStrictJSONSchema converts a tool schema to the strict subset accepted by
 // provider constrained sampling without mutating the authored schema.
 func makeStrictJSONSchema(parameters map[string]any) (map[string]any, error) {
+	return makeStrictJSONSchemaWithOrder(parameters, nil)
+}
+
+func makeStrictJSONSchemaWithOrder(parameters map[string]any, order schemaObjectOrder) (map[string]any, error) {
 	body, err := json.Marshal(parameters)
 	if err != nil {
 		return nil, err
@@ -285,7 +289,7 @@ func makeStrictJSONSchema(parameters map[string]any) (map[string]any, error) {
 	if err := json.Unmarshal(body, &cloned); err != nil {
 		return nil, err
 	}
-	if err := makeJSONSchemaNodeStrict(cloned); err != nil {
+	if err := makeJSONSchemaNodeStrict(cloned, order, ""); err != nil {
 		return nil, err
 	}
 	if cloned["type"] != "object" {
@@ -296,7 +300,7 @@ func makeStrictJSONSchema(parameters map[string]any) (map[string]any, error) {
 
 func getJSONSchemaToolParameters(tool ToolSchema, strict *bool) (map[string]any, error) {
 	if strict != nil && *strict {
-		return makeStrictJSONSchema(tool.Parameters)
+		return makeStrictJSONSchemaWithOrder(tool.Parameters, tool.parameterOrder)
 	}
 	return tool.Parameters, nil
 }
@@ -344,8 +348,8 @@ func resolveGrammarConstrainedSampling(tool ToolSchema, supportsOpenAIGrammarToo
 
 	lark := config.Variants[GrammarFormatOpenAILark]
 	regex := config.Variants[GrammarFormatOpenAIRegex]
-	hasLark := strings.TrimSpace(lark) != ""
-	hasRegex := strings.TrimSpace(regex) != ""
+	hasLark := trimJSWhitespace(lark) != ""
+	hasRegex := trimJSWhitespace(regex) != ""
 	if !hasLark && !hasRegex {
 		return nil, fmt.Errorf("Tool %q cannot use grammar constrained sampling: no supported grammar variant was provided.", tool.Name)
 	}

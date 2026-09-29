@@ -1,0 +1,54 @@
+# Upstream evidence: Pi 0.87.1, probed with the steps and isolated agent directory below.
+# interactive-mode.ts:5879-5975 and model-resolver.ts:50 select and persist
+# opencode-go/kimi-k2.6. The final stats row is:
+#   0.0%/262k (auto) ... kimi-k2.6 • high
+# The compiling mutation that negates isUnknownModel in finishAuthentication
+# leaves PiG's footer at unknown and fails the selection wait and escaped comparator.
+# Offline mode prevents catalog requests; the synthetic key is never sent.
+# The complete two-row footer proves the selected model and thinking level.
+name = "21-post-login-default-model"
+description = "An OpenCode Go API-key login selects its default model from an empty home"
+covers = [
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+  "packages/coding-agent/src/core/model-resolver.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 120
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 25
+capture_start = "parity-snap-cwd-"
+capture_start_last = true
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/login", "Enter"]
+wait_contains = ["Select authentication method:"]
+
+[[tmux.steps]]
+keys = ["Down", "Enter"]
+wait_contains = ["Select provider"]
+
+[[tmux.steps]]
+keys = ["OpenCode Go", "Enter"]
+wait_contains = ["API key"]
+
+[[tmux.steps]]
+keys = ["fake-opencode-key", "Enter"]
+wait_contains = ["Saved API key for OpenCode Go. Selected kimi-k2.6."]
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/post-login-agent", "HOME={{TEMP}}/home", "PIG_OFFLINE=1"]
+pi = ["PI_CODING_AGENT_DIR=testdata/post-login-agent", "HOME={{TEMP}}/home", "PI_OFFLINE=1"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["0.0%/262k (auto)", "kimi-k2.6 • high"]
+escaped_output_equal = true
+runs = 3

@@ -1,18 +1,17 @@
 import { eastAsianWidth } from "../../get-east-asian-width/index.js";
 // segmenters (shared instance)
-const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: "grapheme" });
-const wordSegmenter = new Intl.Segmenter(undefined, { granularity: "word" });
+import { graphemeSegmenter, wordSegmenter, getGraphemeSegmenter as nativeGraphemeSegmenter, getWordSegmenter as nativeWordSegmenter } from "../../pi-tui-segmenters.mjs";
 /**
  * Get the shared grapheme segmenter instance.
  */
 export function getGraphemeSegmenter() {
-    return graphemeSegmenter;
+    return nativeGraphemeSegmenter();
 }
 /**
  * Get the shared word segmenter instance.
  */
 export function getWordSegmenter() {
-    return wordSegmenter;
+    return nativeWordSegmenter();
 }
 /**
  * Check if a grapheme cluster (after segmentation) could possibly be an RGI emoji.
@@ -38,7 +37,7 @@ const markCharRegex = /^\p{Mark}$/v;
 // Marks that terminals allocate cells for when attached to a base character.
 // This includes Unicode spacing marks and non-spacing exceptions in legacy wcwidth tables.
 const terminalSpacingMarkRegex = /^(?:[\p{Spacing_Mark}--[\u1734\u302E\u302F]]|[\u065F\u0F7F\u102B\u102C\u1031\u1033-\u1035\u1038\u103A-\u103E])+$/v;
-const rgiEmojiRegex = /^\p{RGI_Emoji}$/v;
+import { rgiEmojiRegex } from "../../pi-tui-emoji-lazy.mjs";
 // Cache for non-ASCII strings
 const WIDTH_CACHE_SIZE = 512;
 const widthCache = new Map();

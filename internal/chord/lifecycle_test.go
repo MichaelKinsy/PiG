@@ -346,8 +346,11 @@ func TestKeyedGenerationsObservationAndStaleCalls(t *testing.T) {
 	stop, err := ObserveRemote(fixture.binding, keyedCounterDefinition, func(observeCtx context.Context, service *RemoteService) error {
 		entry := observation{generation: service.Address().Generation, service: service, cancelled: make(chan struct{})}
 		observed <- entry
-		<-observeCtx.Done()
-		close(entry.cancelled)
+		// The handler runs within delivery; its cancellation watch is a task it owns and ties to observeCtx.
+		go func() {
+			<-observeCtx.Done()
+			close(entry.cancelled)
+		}()
 		return nil
 	})
 	if err != nil {

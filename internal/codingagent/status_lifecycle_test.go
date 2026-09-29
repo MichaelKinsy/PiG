@@ -86,8 +86,9 @@ func assertLifecycleStatus(t *testing.T, m *InteractiveMode, kind, message strin
 func TestResumeClearsStatusBeforeLoading(t *testing.T) {
 	m := statusBorderMode(t, true)
 	m.startWorkingLoader()
-	if err := m.buildSlashContext(t.Context()).LoadSessionPath(t.TempDir() + "/missing.jsonl"); err == nil {
-		t.Fatal("expected missing session failure")
+	// A directory is an invalid load target. A missing file opens a fresh Session in Pi.
+	if err := m.buildSlashContext(t.Context()).LoadSessionPath(t.TempDir()); err == nil {
+		t.Fatal("expected invalid session failure")
 	}
 	if m.activeStatusIndicator != nil {
 		t.Fatal("resume retained a status from the outgoing session")
@@ -98,6 +99,7 @@ func TestNewSessionDisposesQueuedCountdown(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m := statusBorderMode(t, true)
 		m.opts.SessionDir = t.TempDir()
+		bindReplacementTestHandle(t, m)
 		m.handleAgentEvent(agent.AutoRetryStartEvent{Attempt: 1, MaxAttempts: 3, DelayMs: 30000})
 		time.Sleep(time.Second)
 		synctest.Wait()

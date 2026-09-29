@@ -29,8 +29,9 @@ Return to the [maintainer docs router](README.md).
 - Every contained extension keeps its own registration socket and
   identity, even when several share one process.
 - Packing is an optimization, never an author-facing grouping model.
+- Node crash recovery quarantines only an attributable culprit. It restarts an unknown group once, then bisects repeated failures and rejoins healthy members after identification. It never replays interrupted callbacks.
 - Incompatible or quarantined extensions run in isolated cells.
-- Reload is atomic: a failed replacement does not remove a working registry.
+- Reload publishes the staged replacement registry. A failed extension is reported and removed; a config-loading failure preserves the existing registry.
 - Stock Pig carries no Piglet-specific fused registrations or managed component
   closure; generic support is inert until a Piglet build/release populates it.
 
@@ -44,7 +45,7 @@ Return to the [maintainer docs router](README.md).
 | packed | compatible same-language factories in one process |
 | release-materialized | prebuilt component stored in a managed Piglet release or `agentEnv` |
 | fused | compatible Go factory linked into a Piglet Binary and registered in-process |
-| quarantine/fission | after a packed-cell crash, split members back into isolated cells |
+| quarantine/fission | contain a failed native cell; diagnose a Node culprit and keep healthy Node members together |
 
 ## Placement summary
 
@@ -59,8 +60,7 @@ Packing requires a conventional Go, Rust, Python, or Node factory. All exact
 standalones (including a shebang Node script) stay isolated. A Node cell packs
 without compiling anything: it caches one copy of the embedded Node runtime
 plus a manifest naming each member's resolved entry, and reads every member's
-TS/JS source fresh at process start through the same type-stripping loader an
-isolated Node extension uses. Authors do not configure placement.
+TS/JS source fresh through the same jiti loader an isolated Node extension uses. The host admits each Node member in configured order over a private startup channel, so `[Node A, Go B, Node C]` starts factories A, B, C while A and C share one bus. Authors do not configure groups.
 
 ## Runtime and Piglet artifacts
 
@@ -114,4 +114,4 @@ duplicate fields from the conventional source and runtime registration contract.
 | reload transaction/quarantine | `coding/extension/host/subprocess/reload_cells.go`, `packed_quarantine.go` |
 | runtime report | `reload_report.go` and tests |
 | protocol | `coding/extension/host/subprocess/protocol.go` |
-| cross-SDK behavior | `tests/extension-conformance/` |
+| cross-SDK behavior | `test/extension-conformance/` |

@@ -125,8 +125,42 @@ func TestSlashClone_CallsCloneCurrent(t *testing.T) {
 	if !called {
 		t.Errorf("CloneCurrent not called")
 	}
-	if !strings.Contains(out.String(), "/tmp/cloned.jsonl") {
-		t.Errorf("path missing from output: %q", out.String())
+	if out.String() != "Cloned to new session\n" {
+		t.Errorf("clone status: %q", out.String())
+	}
+}
+
+// Ports packages/coding-agent/test/interactive-mode-clone-command.test.ts:23,51.
+func TestCloneCommandUpstream(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		leaf       *string
+		wantCalls  int
+		wantEditor []string
+		wantStatus string
+	}{
+		{"clones the current leaf into a new session", new("leaf-123"), 1, []string{""}, "Cloned to new session"},
+		{"shows a status message when there is nothing to clone", nil, 0, nil, "Nothing to clone yet"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			calls, clears := 0, 0
+			var editor, status, unexpected []string
+			session := &Session{leafID: tc.leaf}
+			sc := &SlashContext{
+				CurrentSession: func() *Session { return session },
+				CloneCurrent:   func() (string, error) { calls++; return "/new/session.jsonl", nil },
+				SetEditorText:  func(text string) { editor = append(editor, text) },
+				ShowStatus:     func(text string) { status = append(status, text) },
+				Append:         func(text string) { unexpected = append(unexpected, text) },
+				Clear:          func() { clears++ },
+			}
+			if err := cloneHandler(sc); err != nil {
+				t.Fatal(err)
+			}
+			if calls != tc.wantCalls || clears != 0 || !slices.Equal(editor, tc.wantEditor) || !slices.Equal(status, []string{tc.wantStatus}) || len(unexpected) != 0 {
+				t.Fatalf("clone=%d clears=%d editor=%q status=%q unexpected=%q", calls, clears, editor, status, unexpected)
+			}
+		})
 	}
 }
 
@@ -185,7 +219,7 @@ func TestSlashReloadExplainIncludesDiagnostics(t *testing.T) {
 	sc, out := newFakeSlashCtx()
 	reloaded := false
 	sc.Args = "--explain"
-	sc.Reload = func() { reloaded = true }
+	sc.Reload = func() error { reloaded = true; return nil }
 	sc.ReloadDiagnostics = func() ReloadDiag {
 		return ReloadDiag{ContextFiles: 1, Skills: 2, Prompts: 3, Extensions: 4, Themes: 5}
 	}
@@ -209,7 +243,7 @@ func TestSlashReloadExplainIncludesDiagnostics(t *testing.T) {
 func TestSlashReloadExplainRendersCellPlacement(t *testing.T) {
 	sc, out := newFakeSlashCtx()
 	sc.Args = "--explain"
-	sc.Reload = func() {}
+	sc.Reload = func() error { return nil }
 	sc.ReloadDiagnostics = func() ReloadDiag {
 		return ReloadDiag{
 			ContextFiles:   0,
@@ -631,9 +665,8 @@ func TestSetSessionNamePersistsToDisk(t *testing.T) {
 
 // ─── 3.2h: /compact handler tests ────────────────────────────────────────────
 
-// TestCompactHandlerGuard verifies that /compact with < 2 session messages
-// calls flashOrAppend and does NOT invoke CompactSession.
-func TestCompactHandlerGuard(t *testing.T) {
+// Pi 0.87.1 interactive-mode.ts:6822-6829 delegates empty Sessions to compact; the Session emits the failure event.
+func TestCompactHandlerDelegatesEmptySession(t *testing.T) {
 	sc, out := newFakeSlashCtx()
 	compactCalled := false
 	sc.CompactSession = func(instructions string) error {
@@ -649,15 +682,15 @@ func TestCompactHandlerGuard(t *testing.T) {
 	if err := compactHandler(sc); err != nil {
 		t.Fatalf("compactHandler: %v", err)
 	}
-	if compactCalled {
-		t.Error("CompactSession should NOT be called when msgCount < 2")
+	if !compactCalled {
+		t.Error("CompactSession must be called for an empty Session")
 	}
-	if got := strings.TrimSpace(out.String()); got != "Warning: Nothing to compact (no messages yet)" {
-		t.Errorf("guard message = %q", got)
+	if got := out.String(); got != "" {
+		t.Errorf("handler must leave error display to Session events: %q", got)
 	}
 }
 
-func TestCompactHandlerGuardUsesWarningSurface(t *testing.T) {
+func TestCompactHandlerDoesNotInventEmptyWarning(t *testing.T) {
 	sc, _ := newFakeSlashCtx()
 	sc.SessionInfo = func() (string, string, int) { return "sess-1", "/tmp", 1 }
 	var warning string
@@ -666,7 +699,7 @@ func TestCompactHandlerGuardUsesWarningSurface(t *testing.T) {
 	if err := compactHandler(sc); err != nil {
 		t.Fatal(err)
 	}
-	if warning != "Nothing to compact (no messages yet)" {
+	if warning != "" {
 		t.Fatalf("warning = %q", warning)
 	}
 }
@@ -684,7 +717,7 @@ func TestCompactHandlerInvokes(t *testing.T) {
 		{name: "no custom instructions", args: "", wantInstr: "", msgCount: 3, wantCompact: true},
 		{name: "with custom instructions", args: "custom focus here", wantInstr: "custom focus here", msgCount: 3, wantCompact: true},
 		{name: "exactly 2 messages: at threshold", args: "", wantInstr: "", msgCount: 2, wantCompact: true},
-		{name: "below threshold (1 message) does not compact", args: "", msgCount: 1, wantCompact: false},
+		{name: "one message delegates to Session", args: "", msgCount: 1, wantCompact: true},
 		// Regression: the guard must count message-type *entries* (upstream
 		// getEntries().filter(type===message)), not the live agent context.
 		// A long, already-compacted session whose live context is small must
@@ -778,22 +811,19 @@ func TestSettingsHandlerReadOnly(t *testing.T) {
 	}
 }
 
-func TestSettingsHandlerTUI_HTTPIdleTimeoutPersistsTimeoutMsAndStatusLabel(t *testing.T) {
+// Upstream SettingsList keeps the chosen label on the row and prints nothing
+// (settings-list.ts:284-291).
+func TestSettingsHandlerTUI_HTTPIdleTimeoutPersistsTimeoutMsAndKeepsLabel(t *testing.T) {
 	tmp := t.TempDir()
 	sm := NewSettingsManager(tmp, tmp)
 	var out []string
-	var appliedID, appliedValue string
-	showCount := 0
+	var appliedID, appliedValue, shown string
 
 	sc := &SlashContext{
 		Append:          func(s string) { out = append(out, s) },
 		SettingsManager: sm,
-		ShowSettingsList: func(items []tui.SettingItem) (string, string, bool) {
-			showCount++
-			if showCount == 1 {
-				return "http-idle-timeout", "disabled", true
-			}
-			return "", "", false
+		ShowSettingsList: func(items []tui.SettingItem, onChange func(id, value string) string) {
+			shown = onChange("http-idle-timeout", "disabled")
 		},
 		OnSettingApplied: func(id, value string) {
 			appliedID, appliedValue = id, value
@@ -809,8 +839,8 @@ func TestSettingsHandlerTUI_HTTPIdleTimeoutPersistsTimeoutMsAndStatusLabel(t *te
 	if appliedID != "http-idle-timeout" || appliedValue != "0" {
 		t.Fatalf("OnSettingApplied = (%q,%q), want (http-idle-timeout,0)", appliedID, appliedValue)
 	}
-	if len(out) == 0 || !strings.Contains(out[0], "HTTP idle timeout: disabled") {
-		t.Fatalf("status output = %v, want HTTP idle timeout: disabled", out)
+	if shown != "disabled" || len(out) != 0 {
+		t.Fatalf("row shows %q and printed %v, want disabled and nothing", shown, out)
 	}
 }
 
@@ -818,18 +848,13 @@ func TestSettingsHandlerTUI_ThemeSubmenuPersistsSelectedTheme(t *testing.T) {
 	tmp := t.TempDir()
 	sm := NewSettingsManager(tmp, tmp)
 	var out []string
-	var appliedID, appliedValue string
-	showCount := 0
+	var appliedID, appliedValue, shown string
 
 	sc := &SlashContext{
 		Append:          func(s string) { out = append(out, s) },
 		SettingsManager: sm,
-		ShowSettingsList: func(items []tui.SettingItem) (string, string, bool) {
-			showCount++
-			if showCount == 1 {
-				return "theme", "dark", true
-			}
-			return "", "", false
+		ShowSettingsList: func(items []tui.SettingItem, onChange func(id, value string) string) {
+			shown = onChange("theme", "dark")
 		},
 		ShowThemeSelector: func(currentTheme string) (string, bool) {
 			if currentTheme != tui.ActiveTheme().Name {
@@ -851,8 +876,8 @@ func TestSettingsHandlerTUI_ThemeSubmenuPersistsSelectedTheme(t *testing.T) {
 	if appliedID != "theme" || appliedValue != "light" {
 		t.Fatalf("OnSettingApplied = (%q,%q), want (theme,light)", appliedID, appliedValue)
 	}
-	if len(out) == 0 || !strings.Contains(out[0], "Theme: light") {
-		t.Fatalf("status output = %v, want Theme: light", out)
+	if shown != "light" || len(out) != 0 {
+		t.Fatalf("row shows %q and printed %v, want light and nothing", shown, out)
 	}
 }
 
@@ -881,7 +906,7 @@ func TestSettingsHandlerTUI_ModelThinkingSubmenuSetsPerModelOverride(t *testing.
 	sc := &SlashContext{
 		Append:          func(string) {},
 		SettingsManager: sm,
-		ShowSettingsList: func(items []tui.SettingItem) (string, string, bool) {
+		ShowSettingsList: func(items []tui.SettingItem, _ func(id, value string) string) {
 			list := tui.NewSettingsList(items)
 			list.HandleInput("Default thinking level per model")
 			list.HandleInput("\r")
@@ -901,7 +926,6 @@ func TestSettingsHandlerTUI_ModelThinkingSubmenuSetsPerModelOverride(t *testing.
 			if got := strings.Join(list.Render(100), "\n"); !strings.Contains(got, "1 configured") || !strings.Contains(got, "> Default thinking level per model") {
 				t.Fatalf("summary/filter after returning: %s", got)
 			}
-			return "", "", false
 		},
 		ModelThinkingSubmenu: func(_ string, done func(*string)) tui.Component {
 			model, ok := ai.LookupModelExact(spec)
@@ -967,7 +991,7 @@ func TestSettingsHandlerTUI_ModelThinkingSubmenuClearsOverride(t *testing.T) {
 	sc := &SlashContext{
 		Append:          func(string) {},
 		SettingsManager: sm,
-		ShowSettingsList: func(items []tui.SettingItem) (string, string, bool) {
+		ShowSettingsList: func(items []tui.SettingItem, _ func(id, value string) string) {
 			list := tui.NewSettingsList(items)
 			list.HandleInput("Default thinking level per model")
 			list.HandleInput("\r")
@@ -979,7 +1003,6 @@ func TestSettingsHandlerTUI_ModelThinkingSubmenuClearsOverride(t *testing.T) {
 			list.HandleInput("\x1b[A")
 			list.HandleInput("\r")
 			list.HandleInput("\x1b")
-			return "", "", false
 		},
 		ModelThinkingSubmenu: func(_ string, done func(*string)) tui.Component {
 			model, ok := ai.LookupModelExact(spec)
@@ -1039,7 +1062,7 @@ func TestExportHandler_PrerendersCustomToolHTML(t *testing.T) {
 				RenderResult: func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, theme extension.Theme, context extension.ToolRenderContext) extension.Component {
 					toolResult := result.(agent.AgentToolResult)
 					if options.Expanded {
-						return exportTestComponent{lines: []string{"\x1b[32mRESULT: " + toolResult.Content + "\x1b[0m"}}
+						return exportTestComponent{lines: []string{"\x1b[32mRESULT: " + toolResult.Text() + "\x1b[0m"}}
 					}
 					return exportTestComponent{lines: []string{"preview"}}
 				},
@@ -1117,101 +1140,152 @@ func TestUpdateGlobalPersists(t *testing.T) {
 	}
 }
 
-func TestImportHandlerNoArgs(t *testing.T) {
-	var out []string
-	sc := &SlashContext{
-		Args:   "",
-		Append: func(s string) { out = append(out, s) },
-	}
-	_ = importHandler(sc)
-	if len(out) == 0 || !strings.Contains(out[0], "Usage: /import") {
-		t.Errorf("expected usage hint, got %v", out)
-	}
+// importCommandFixture records what upstream's handleImportCommand test
+// context records (interactive-mode-import-command.test.ts): the confirm
+// prompts, the importFromJsonl calls, the status lines and the fatal path.
+type importCommandFixture struct {
+	prompts   []string
+	answers   []string
+	imports   [][2]string
+	results   []error
+	cancelled bool
+	status    []string
+	fatal     []string
 }
 
-func TestImportHandlerNotJsonl(t *testing.T) {
-	var out []string
-	sc := &SlashContext{
-		Args:   "session.txt",
-		Append: func(s string) { out = append(out, s) },
-	}
-	_ = importHandler(sc)
-	if len(out) == 0 || !strings.Contains(out[0], "Only .jsonl") {
-		t.Errorf("expected .jsonl error, got %v", out)
-	}
-}
-
-func TestImportHandlerFileNotFound(t *testing.T) {
-	var out []string
-	sc := &SlashContext{
-		Args:           "/nonexistent/path.jsonl",
-		Append:         func(s string) { out = append(out, s) },
-		CurrentSession: func() *Session { return nil },
-	}
-	_ = importHandler(sc)
-	if len(out) == 0 || !strings.Contains(out[0], "File not found") {
-		t.Errorf("expected file not found, got %v", out)
-	}
-}
-
-func TestImportHandlerSuccess(t *testing.T) {
-	// Create a temp JSONL file with a minimal session.
-	tmp := t.TempDir()
-	srcFile := filepath.Join(tmp, "test-session.jsonl")
-	header := `{"type":"session_start","id":"s1","cwd":"/tmp","model":"test"}` + "\n"
-	if err := os.WriteFile(srcFile, []byte(header), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	sessionDir := filepath.Join(tmp, "sessions")
-	if err := os.MkdirAll(sessionDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	existingSession := filepath.Join(sessionDir, "current.jsonl")
-	if err := os.WriteFile(existingSession, []byte(header), 0o644); err != nil {
-		t.Fatal(err)
-	}
-
-	// Build a minimal Session so CurrentSession and LoadSessionPath work.
-	sess := &Session{path: existingSession, header: SessionHeader{CWD: tmp}}
-	var loadedPath string
-	var out []string
-	cleared := false
-
-	sc := &SlashContext{
-		Args:           srcFile,
-		Append:         func(s string) { out = append(out, s) },
-		Clear:          func() { cleared = true },
-		CurrentSession: func() *Session { return sess },
-		LoadSessionPath: func(p string) error {
-			loadedPath = p
-			return nil
+func (f *importCommandFixture) context(args string) *SlashContext {
+	return &SlashContext{
+		Args:   args,
+		Append: func(s string) { f.status = append(f.status, "append:"+s) },
+		ShowExtensionSelector: func(title string, options []string, _ string) (string, bool) {
+			f.prompts = append(f.prompts, title+" "+strings.Join(options, "/"))
+			if len(f.answers) == 0 {
+				return "", false
+			}
+			answer := f.answers[0]
+			f.answers = f.answers[1:]
+			return answer, true
 		},
-		ShowStatus: func(msg string) {
-			out = append(out, msg)
+		ImportSession: func(inputPath, cwdOverride string) (bool, error) {
+			f.imports = append(f.imports, [2]string{inputPath, cwdOverride})
+			var err error
+			if len(f.results) > 0 {
+				err = f.results[0]
+				f.results = f.results[1:]
+			}
+			return f.cancelled, err
+		},
+		ShowStatus: func(message string) { f.status = append(f.status, message) },
+		FatalRuntimeError: func(prefix string, err error) error {
+			f.fatal = append(f.fatal, prefix)
+			return ErrInteractiveCrashed
 		},
 	}
-	if err := importHandler(sc); err != nil {
-		t.Fatal(err)
-	}
+}
 
-	// Should have copied to session dir and loaded.
-	expectedDst := filepath.Join(sessionDir, "test-session.jsonl")
-	if loadedPath != expectedDst {
-		t.Errorf("loaded path = %q, want %q", loadedPath, expectedDst)
-	}
-	if !cleared {
-		t.Error("expected Clear() to be called")
-	}
-	// Flash message should reference original arg.
-	found := false
-	for _, s := range out {
-		if strings.Contains(s, "imported from") {
-			found = true
+// interactive-mode-import-command.test.ts "strips quotes from /import path
+// arguments" and "preserves apostrophes in unquoted /import path arguments".
+func TestImportPathArgumentMatchesUpstream(t *testing.T) {
+	for _, tc := range []struct{ args, want string }{
+		{`"path/to/session.jsonl"`, "path/to/session.jsonl"},
+		{`"path with spaces/session.jsonl"`, "path with spaces/session.jsonl"},
+		{"john's/session.jsonl", "john's/session.jsonl"},
+		{"/tmp/session.jsonl", "/tmp/session.jsonl"},
+	} {
+		if got := pathCommandArgument(tc.args); got != tc.want {
+			t.Errorf("pathCommandArgument(%q) = %q, want %q", tc.args, got, tc.want)
 		}
 	}
-	if !found {
-		t.Errorf("no import confirmation in output: %v", out)
+}
+
+// interactive-mode-import-command.test.ts "enforces command token
+// boundaries": /important and /exporter are not /import and /export.
+func TestImportCommandTokenBoundaries(t *testing.T) {
+	registry := NewSlashRegistry()
+	for line, want := range map[string]string{"/important /tmp/session.jsonl": "", "/exporter out.html": "", "/import /tmp/session.jsonl": "import"} {
+		name, _ := parseSlashLine(line)
+		got, ok := registry.Resolve(name)
+		if !ok {
+			got = ""
+		}
+		if got != want {
+			t.Errorf("%q resolves to %q, want %q", line, got, want)
+		}
+	}
+}
+
+// interactive-mode-import-command.test.ts "passes unquoted path to
+// runtimeHost.importFromJsonl" and its apostrophe variant: confirm with Pi's
+// title and message, import the parsed path, then report it.
+func TestImportHandlerConfirmsAndImportsParsedPath(t *testing.T) {
+	for args, want := range map[string]string{`"path/to/session.jsonl"`: "path/to/session.jsonl", "john's/session.jsonl": "john's/session.jsonl"} {
+		f := &importCommandFixture{answers: []string{"Yes"}}
+		if err := importHandler(f.context(args)); err != nil {
+			t.Fatalf("%s: %v", args, err)
+		}
+		if wantPrompt := "Import session\nReplace current session with " + want + "? Yes/No"; !slices.Equal(f.prompts, []string{wantPrompt}) {
+			t.Fatalf("%s: prompts = %q", args, f.prompts)
+		}
+		if !slices.Equal(f.imports, [][2]string{{want, ""}}) {
+			t.Fatalf("%s: imports = %q", args, f.imports)
+		}
+		if !slices.Equal(f.status, []string{"Session imported from: " + want}) || f.fatal != nil {
+			t.Fatalf("%s: status = %q, fatal = %q", args, f.status, f.fatal)
+		}
+	}
+}
+
+// interactive-mode-import-command.test.ts "shows a non-fatal error when
+// /import path does not exist".
+func TestImportHandlerMissingFileIsNotFatal(t *testing.T) {
+	f := &importCommandFixture{answers: []string{"Yes"}, results: []error{&SessionImportFileNotFoundError{FilePath: "/tmp/missing-session.jsonl"}}}
+	err := importHandler(f.context("/tmp/missing-session.jsonl"))
+	if err == nil || err.Error() != "Failed to import session: File not found: /tmp/missing-session.jsonl" {
+		t.Fatalf("err = %v", err)
+	}
+	if f.status != nil || f.fatal != nil {
+		t.Fatalf("status = %q, fatal = %q", f.status, f.fatal)
+	}
+}
+
+// Upstream handleImportCommand reports usage through showError and stops at a
+// declined confirmation or a session_before_switch cancel.
+func TestImportHandlerUsageAndCancellation(t *testing.T) {
+	f := &importCommandFixture{}
+	if err := importHandler(f.context("   ")); err == nil || err.Error() != "Usage: /import <path.jsonl>" {
+		t.Fatalf("usage err = %v", err)
+	}
+	for name, fx := range map[string]*importCommandFixture{
+		"declined":      {answers: []string{"No"}},
+		"escaped":       {},
+		"before_switch": {answers: []string{"Yes"}, cancelled: true},
+		"cwd prompt no": {answers: []string{"Yes", "No"}, results: []error{&MissingSessionCwdError{Issue: SessionCwdIssue{SessionCwd: "/gone", FallbackCwd: "/here"}}}},
+	} {
+		if err := importHandler(fx.context("session.jsonl")); err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		if !slices.Equal(fx.status, []string{"Import cancelled"}) || fx.fatal != nil {
+			t.Fatalf("%s: status = %q, fatal = %q", name, fx.status, fx.fatal)
+		}
+	}
+}
+
+// Upstream promptForMissingSessionCwd offers the current cwd and retries
+// importFromJsonl with it.
+func TestImportHandlerRetriesWithOfferedCwd(t *testing.T) {
+	issue := SessionCwdIssue{SessionFile: "/sessions/moved.jsonl", SessionCwd: "/gone", FallbackCwd: "/here"}
+	f := &importCommandFixture{answers: []string{"Yes", "Yes"}, results: []error{&MissingSessionCwdError{Issue: issue}, nil}}
+	if err := importHandler(f.context("moved.jsonl")); err != nil {
+		t.Fatal(err)
+	}
+	if want := "Session cwd not found\n" + FormatMissingSessionCwdPrompt(issue) + " Yes/No"; len(f.prompts) != 2 || f.prompts[1] != want {
+		t.Fatalf("prompts = %q", f.prompts)
+	}
+	if !slices.Equal(f.imports, [][2]string{{"moved.jsonl", ""}, {"moved.jsonl", "/here"}}) {
+		t.Fatalf("imports = %q", f.imports)
+	}
+	if !slices.Equal(f.status, []string{"Session imported from: moved.jsonl"}) {
+		t.Fatalf("status = %q", f.status)
 	}
 }
 

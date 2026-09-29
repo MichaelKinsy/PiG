@@ -1,0 +1,28 @@
+# Pi 0.87.1 core/cache-warmer.ts:38-44 honors explicit retention, including none.
+# runner.ts:1020-1040 awaits cache_warming_decision overrides; sdk.ts binds the emitter to the Session warmer.
+# Both fixtures run an actual Session request against a deterministic provider and a stop override.
+# The custom eleven-second cache lifetime schedules its first decision after one second; no provider refresh should run.
+# Mutations: ignore explicit retention, or bypass Session extension dispatch. Each compiles and changes the asserted TTL/status or fails to reach the stopped-by-extension state.
+name = "12-cache-warming-decisions"
+description = "Explicit retention controls cache lifetime and Session extensions can veto a scheduled refresh."
+covers = ["packages/coding-agent/src/core/cache-warmer.ts", "packages/coding-agent/src/core/extensions/runner.ts", "packages/coding-agent/src/core/sdk.ts"]
+tags = ["fast", "hermetic", "extensions"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/cache-decision-pig"]
+pi_args = ["node", "./test/parity/testdata/cache-decision-pi.mjs"]
+pig = ["PI_CACHE_RETENTION="]
+pi = ["PI_CACHE_RETENTION="]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

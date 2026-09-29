@@ -21,6 +21,8 @@ Set `PIG_CODING_AGENT_DIR` to read the file from a different directory.
 
 Use `/hotkeys` to list the keys that are active in the current session.
 
+A custom `tui.input.submit` binding submits messages and slash commands through the normal interactive handler. Enabling `PIG_DEBUG_KEYS` does not change that binding.
+
 If two actions claim the same key, PiG records the conflict and keeps both
 bindings. Both actions then answer that key, so give one of them a different key.
 
@@ -139,7 +141,13 @@ Rebind them in `keybindings.json` the same way as `app.*` actions.
 | `tui.editor.yankPop` | `alt+y` | Cycle through deleted text after a yank |
 | `tui.editor.undo` | `ctrl+-` | Undo the last edit |
 
+Undo groups consecutive word characters. A space starts a new group, and each newline or paste is a separate edit. Undo restores the cursor and any large-paste content with the text. Submission clears the undo stack.
+
+Consecutive word or line deletions accumulate in the kill ring. Typing or replacing the editor text ends that accumulation. Yank-pop replaces the last yank, including multiline text, and keeps the ring's rotated order.
+
 ### Input and selection
+
+During initial theme detection and managed-tool setup, submitting keeps the text in the editor and shows `Startup is still in progress`. Submit again after startup completes.
 
 | Action | Default key | Effect |
 |---|---|---|

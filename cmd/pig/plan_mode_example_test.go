@@ -129,18 +129,10 @@ func TestRPCPlanModeResumeRebuildsOnlyWholeDoneMarkers(t *testing.T) {
 		t.Fatal(err)
 	}
 	appendAssistant("[DONE:", "1]", "[DONE:2]")
-	id, err := codingagent.GenerateEntryID()
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := session.AppendEntry(codingagent.CustomEntry{
-		SessionEntryBase: codingagent.SessionEntryBase{Type: "custom", ID: id, ParentID: session.LeafID(), Timestamp: codingagent.RFC3339NowNano()},
-		CustomType:       "plan-mode",
-		Data: map[string]any{"enabled": false, "executing": true, "todos": []map[string]any{
-			{"step": 1, "text": "Inspect the implementation", "completed": false},
-			{"step": 2, "text": "Verify the result", "completed": false},
-		}},
-	}); err != nil {
+	if _, err := session.AppendCustomEntry("plan-mode", map[string]any{"enabled": false, "executing": true, "todos": []map[string]any{
+		{"step": 1, "text": "Inspect the implementation", "completed": false},
+		{"step": 2, "text": "Verify the result", "completed": false},
+	}}); err != nil {
 		t.Fatal(err)
 	}
 	p := startRPCProcessAt(t, cwd, []string{

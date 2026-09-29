@@ -1,3 +1,4 @@
+// Ports packages/coding-agent/src/cli/file-processor.ts.
 package codingagent
 
 import (
@@ -8,8 +9,16 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/imageprocessing"
 	"github.com/MichaelKinsy/PiG/internal/text"
 )
+
+var processFileImage = imageprocessing.ProcessImage
+
+// ProcessFileOptions controls CLI attachment resizing. A nil AutoResizeImages uses the upstream default, true.
+type ProcessFileOptions struct {
+	AutoResizeImages *bool
+}
 
 // ProcessedCLIArgs is the upstream-shaped result of processing CLI @file
 // arguments: text placeholders plus image attachments.
@@ -18,12 +27,12 @@ type ProcessedCLIArgs struct {
 	Images []ai.ImageContent
 }
 
-// ProcessCLIFileArguments expands CLI @file arguments into the upstream
-// initial-message payload. Text files are wrapped as
-// <file name="/abs/path">\ncontent\n</file>\n. Image files are attached as
-// ai.ImageContent blocks and represented in the text stream as either an empty
-// <file> tag (no resize needed) or a dimension note when resized.
-func ProcessCLIFileArguments(fileArgs []string, cwd string) (ProcessedCLIArgs, error) {
+// ProcessCLIFileArguments expands CLI @file arguments into text and images. Text files use <file name="/abs/path">\ncontent\n</file>\n, including the separator when content ends in a newline. Images carry conversion or dimension hints; processing failures become omission notes. AutoResizeImages defaults to true and can be disabled until the request model is selected.
+func ProcessCLIFileArguments(fileArgs []string, cwd string, options ...ProcessFileOptions) (ProcessedCLIArgs, error) {
+	autoResize := true
+	if len(options) > 0 && options[0].AutoResizeImages != nil {
+		autoResize = *options[0].AutoResizeImages
+	}
 	if len(fileArgs) == 0 {
 		return ProcessedCLIArgs{}, nil
 	}
@@ -47,9 +56,10 @@ func ProcessCLIFileArguments(fileArgs []string, cwd string) (ProcessedCLIArgs, e
 			return ProcessedCLIArgs{}, fmt.Errorf("could not read file %s: %w", absPath, err)
 		}
 		if mime := DetectSupportedImageMimeType(content); mime != "" {
-			resized, resizedMime, note, err := PrepareCLIImageAttachment(content, mime)
+			resized, resizedMime, note, err := processFileImage(content, mime, autoResize, nil)
 			if err != nil {
-				return ProcessedCLIArgs{}, fmt.Errorf("could not process image %s: %w", absPath, err)
+				out.WriteString(`<file name="` + absPath + `">` + err.Error() + "</file>\n")
+				continue
 			}
 			images = append(images, ai.ImageContent{
 				MimeType: resizedMime,
@@ -68,9 +78,7 @@ func ProcessCLIFileArguments(fileArgs []string, cwd string) (ProcessedCLIArgs, e
 		out.WriteString(`">`)
 		out.WriteByte('\n')
 		out.Write(content)
-		if len(content) == 0 || content[len(content)-1] != '\n' {
-			out.WriteByte('\n')
-		}
+		out.WriteByte('\n')
 		out.WriteString("</file>\n")
 	}
 	return ProcessedCLIArgs{Text: out.String(), Images: images}, nil

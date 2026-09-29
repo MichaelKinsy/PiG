@@ -330,7 +330,44 @@ func parseNode(chars []rune, start int, g *graph) (index, next int, ok bool) {
 	if !ok {
 		return 0, 0, false
 	}
-	return idx, sh.after, true
+	next = sh.after
+	if end := styleTagEnd(chars, next); end > next {
+		next = end
+	}
+	return idx, next, true
+}
+
+// styleTagEnd leaves trailing hyphens for an adjacent link, as in A:::x-->B.
+func styleTagEnd(chars []rune, start int) int {
+	if !runesEqualAt(chars, start, ":::") {
+		return start
+	}
+	k := start + 3
+	for k < len(chars) && (isIdChar(chars[k]) || chars[k] == '-') {
+		k++
+	}
+	for k > start+3 && chars[k-1] == '-' {
+		k--
+	}
+	if k > start+3 {
+		return k
+	}
+	return start
+}
+
+// dropStyleTags removes classes before state/class parsers split colon labels.
+func dropStyleTags(st string) string {
+	chars := []rune(st)
+	var out strings.Builder
+	for i := 0; i < len(chars); {
+		if end := styleTagEnd(chars, i); end > i {
+			i = end
+			continue
+		}
+		out.WriteRune(chars[i])
+		i++
+	}
+	return out.String()
 }
 
 type shaped struct {
@@ -544,6 +581,7 @@ func parseState(src string) *graph {
 			}
 			continue
 		}
+		st = dropStyleTags(st)
 		first := asciiLower(firstWord(st))
 		switch {
 		case first == "direction":
@@ -781,6 +819,8 @@ func parseClass(src string) (*graph, []classInfo, bool) {
 			}
 			continue
 		}
+
+		st = dropStyleTags(st)
 
 		first := asciiLower(firstWord(st))
 		if first == "direction" {

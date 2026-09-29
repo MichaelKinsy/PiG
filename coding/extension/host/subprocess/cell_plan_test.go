@@ -72,18 +72,8 @@ func TestPlanCellsPreservesConfiguredCellAndMemberOrder(t *testing.T) {
 	}
 }
 
-// TestPlanCellsSplitsPackGroupAcrossInterleavedIsolatedCell is CNEO-001's
-// regression: a Node factory, an isolated extension (any language; a
-// packable Go factory forced isolated stands in for the interleaved-Go
-// example in the finding, since PlanCells' contiguous-run logic makes no
-// language distinction here), and a second Node factory in that order must
-// activate in that order. Before the fix, PlanCells grouped every packable
-// config sharing a packGroupKey regardless of what sat between them, so the
-// two Node factories packed into one cell ordered at the first one's index -
-// activating the second Node factory (in the same cell/process, per
-// cell.mjs's plan-order install loop) before the isolated extension, even
-// though it was configured after it.
-func TestPlanCellsSplitsPackGroupAcrossInterleavedIsolatedCell(t *testing.T) {
+// Node factories share a process across native cells. Ordered admission, rather than separate processes, preserves the configured factory order (TestNodeCellInterleavedGoFactoryKeepsOrderAndBus).
+func TestPlanCellsKeepsNodeGroupAcrossInterleavedIsolatedCell(t *testing.T) {
 	middle := packableConfig("go-mid-isolated", "hmid")
 	middle.Isolation = "isolated"
 	configs := []ExtConfig{
@@ -92,20 +82,17 @@ func TestPlanCellsSplitsPackGroupAcrossInterleavedIsolatedCell(t *testing.T) {
 		packableNodeConfig("node-c", "hnode-c"),
 	}
 	cells := PlanCells(configs, nil)
-	if len(cells) != 3 {
-		t.Fatalf("cells = %+v, want 3: packed(node-a), isolated(go-mid-isolated), packed(node-c)", cells)
+	if len(cells) != 2 {
+		t.Fatalf("cells = %+v, want one Node cell and one isolated native cell", cells)
 	}
-	if cells[0].Strategy != CellStrategyPackedNode || !slices.Equal(cellExtNames(cells[0]), []string{"node-a"}) {
-		t.Fatalf("first cell = %+v, want a Node cell holding only node-a", cells[0])
+	if cells[0].Strategy != CellStrategyPackedNode || !slices.Equal(cellExtNames(cells[0]), []string{"node-a", "node-c"}) {
+		t.Fatalf("first cell = %+v, want both Node members", cells[0])
 	}
 	if cells[1].Strategy != CellStrategyIsolated || cells[1].Extensions[0].Name != "go-mid-isolated" {
 		t.Fatalf("second cell = %+v, want the isolated middle extension", cells[1])
 	}
-	if cells[2].Strategy != CellStrategyPackedNode || !slices.Equal(cellExtNames(cells[2]), []string{"node-c"}) {
-		t.Fatalf("third cell = %+v, want a separate Node cell holding only node-c", cells[2])
-	}
-	if cells[0].Order >= cells[1].Order || cells[1].Order >= cells[2].Order {
-		t.Fatalf("cell Order = [%d %d %d], want strictly increasing (configured order)", cells[0].Order, cells[1].Order, cells[2].Order)
+	if cells[0].Order != 0 || cells[1].Order != 1 {
+		t.Fatalf("cell admission starts = %d, %d, want 0, 1", cells[0].Order, cells[1].Order)
 	}
 }
 

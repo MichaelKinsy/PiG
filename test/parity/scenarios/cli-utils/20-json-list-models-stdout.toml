@@ -1,0 +1,21 @@
+# Pi main.ts:129-130,638-642 exempts only plain metadata. Explicit JSON list-models reserves stdout before startup and renders the catalog on stderr.
+# The configured single model requires no endpoint; --offline prevents metadata network work. Compare both streams without normalization.
+name = "20-json-list-models-stdout"
+description = "Explicit JSON list-models writes no protocol stdout and keeps its complete catalog on stderr"
+covers = ["packages/coding-agent/src/main.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/metadata-routing/agent", "FORCE_COLOR=0"]
+pi = ["PI_CODING_AGENT_DIR=testdata/metadata-routing/agent", "FORCE_COLOR=0"]
+
+[cli]
+args = ["--offline", "--no-extensions", "--mode", "json", "--list-models", "routing-model"]
+timeout_seconds = 15
+
+[assert]
+exit_code = 0
+output_equal = true
+stderr_equal = true
+runs = 3

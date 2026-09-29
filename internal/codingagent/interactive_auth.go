@@ -12,6 +12,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -24,7 +25,11 @@ var authSelectorProviderNames = map[string]string{
 }
 
 // oauthProviderList returns the auth providers available to /login and /logout.
-func (m *InteractiveMode) oauthProviderList(mode string) []tui.OAuthProvider {
+func (m *InteractiveMode) oauthProviderList(mode string, includeStatus ...bool) []tui.OAuthProvider {
+	if mode == "logout" {
+		providers, _ := m.getLogoutProviderOptions()
+		return providers
+	}
 	var all []tui.OAuthProvider
 	for _, provider := range m.oauthProviders() {
 		name := provider.Name()
@@ -37,14 +42,25 @@ func (m *InteractiveMode) oauthProviderList(mode string) []tui.OAuthProvider {
 		return strings.Compare(a.Name, b.Name)
 	})
 	if mode == "login-api-key" {
-		// Pull the canonical API-key provider list from ai/ so any drift between
-		// the selector and the rest of the codebase is impossible. github-copilot
-		// is intentionally excluded: it belongs to the OAuth/subscription list.
+		// The API-key list includes providers that also expose OAuth.
 		all = nil
 		for _, p := range ai.APIKeyProviders() {
 			all = append(all, tui.OAuthProvider{ID: p.ID, Name: p.Name, AuthType: "api_key"})
 		}
 		all = m.withLlamaLoginProvider(all)
+	}
+	for i := range all {
+		method := m.providerAuth(all[i].ID)
+		if all[i].AuthType == "api_key" && method.APIKey != nil {
+			all[i].MethodName = method.APIKey.Name
+		}
+		if all[i].AuthType == "oauth" && method.OAuth != nil {
+			all[i].MethodName = method.OAuth.Name
+			all[i].LoginLabel = method.OAuth.LoginLabel
+		}
+	}
+	if len(includeStatus) > 0 && !includeStatus[0] {
+		return all
 	}
 	auth, err := ai.NewAuthStorage(filepath.Join(m.opts.AgentDir, "auth.json"))
 	if err != nil {
@@ -69,24 +85,19 @@ func (m *InteractiveMode) oauthProviderList(mode string) []tui.OAuthProvider {
 				}
 			}
 		}
-		if all[i].AuthType == "api_key" {
+		if !all[i].Stored {
 			status := auth.GetAuthStatus(all[i].ID)
-			if !all[i].Stored {
+			status.Configured = status.Source != ""
+			if m.opts.ModelRegistry != nil {
+				status = m.opts.ModelRegistry.GetProviderAuthStatus(all[i].ID)
+			}
+			if status.Configured {
 				all[i].AuthStatusSource = string(status.Source)
 				all[i].AuthStatusLabel = status.Label
 			}
 		}
 	}
 	m.applyLlamaAuthStatus(all)
-	if mode == "logout" {
-		logged := make([]tui.OAuthProvider, 0, len(all))
-		for _, p := range all {
-			if p.Stored {
-				logged = append(logged, p)
-			}
-		}
-		return logged
-	}
 	return all
 }
 
@@ -106,8 +117,8 @@ func (m *InteractiveMode) maskSecretInput() bool {
 	return m.opts.Settings.GetMaskSecretInput()
 }
 
-func (m *InteractiveMode) newLoginDialog(name string, cancel func()) *tui.LoginDialog {
-	dialog := tui.NewLoginDialog(name, cancel)
+func (m *InteractiveMode) newLoginDialog(name string, cancel func(), titleOverride ...string) *tui.LoginDialog {
+	dialog := tui.NewLoginDialog(name, cancel, titleOverride...)
 	dialog.SetMaskSecretInput(m.maskSecretInput())
 	return dialog
 }
@@ -243,7 +254,7 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 		}
 	}
 	manualCode := func(ctx context.Context) (string, error) {
-		ch := dlg.ShowInput("Paste redirect URL below, or complete login in browser:", "")
+		ch := dlg.ShowManualInput("Paste redirect URL below, or complete login in browser:")
 		notify()
 		extension.CallInitiated(ctx)
 		select {
@@ -273,11 +284,8 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 		OnPrompt:        func(value ai.OAuthPrompt) (string, error) { return prompt(context.Background(), value) },
 		OnPromptContext: prompt,
 		OnDeviceCode: func(info ai.OAuthDeviceCodeInfo) {
-			dlg.ShowAuth(info.VerificationURI, fmt.Sprintf("Enter code: %s", info.UserCode))
+			showDeviceCode(dlg, info.VerificationURI, info.UserCode)
 			notify()
-			if !parityHarnessEnabled() {
-				_ = openBrowser(info.VerificationURI)
-			}
 		},
 		OnAuth: func(info ai.OAuthAuthInfo) {
 			dlg.ShowAuth(info.URL, info.Instructions)
@@ -313,7 +321,10 @@ func (m *InteractiveMode) runLoginRegisteredOAuth(loginCtx context.Context, prov
 			// pig additive (D40): a contributed credential store reports its own saved location.
 			authPath, err = store.StoreOAuthCredentials(cred)
 		} else {
-			err = auth.Set(provider.ID(), ai.Credential{Type: ai.CredentialOAuth, Refresh: cred.Refresh, Access: cred.Access, Expires: cred.Expires, ProjectID: cred.ProjectID, Scope: cred.Scope})
+			var credential ai.Credential
+			if credential, err = ai.CredentialFromOAuth(cred); err == nil {
+				err = auth.Set(provider.ID(), credential)
+			}
 		}
 		if err != nil {
 			dlg.ShowProgress(fmt.Sprintf("Failed to store credentials: %v", err))
@@ -376,11 +387,8 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 			return loginMethod, nil
 		},
 		OnDeviceCode: func(info ai.OAuthDeviceCodeInfo) {
-			dlg.ShowAuth(info.VerificationURI, fmt.Sprintf("Enter code: %s", info.UserCode))
+			showDeviceCode(dlg, info.VerificationURI, info.UserCode)
 			notify()
-			if !parityHarnessEnabled() {
-				_ = openBrowser(info.VerificationURI)
-			}
 		},
 		OnAuth: func(info ai.OAuthAuthInfo) {
 			dlg.ShowAuth(info.URL, info.Instructions)
@@ -390,7 +398,7 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 			}
 		},
 		OnManualCodeInput: func() (string, error) {
-			ch := dlg.ShowInput("Paste redirect URL below, or complete login in browser:", "")
+			ch := dlg.ShowManualInput("Paste redirect URL below, or complete login in browser:")
 			notify()
 			select {
 			case v, ok := <-ch:
@@ -420,13 +428,11 @@ func (m *InteractiveMode) runLoginOpenAICodex(loginCtx context.Context) error {
 			return
 		}
 
-		codexCred := ai.Credential{
-			Type:    ai.CredentialOAuth,
-			Refresh: cred.Refresh,
-			Access:  cred.Access,
-			Expires: cred.Expires,
+		codexCred, err := ai.CredentialFromOAuth(cred)
+		if err == nil {
+			err = auth.Set("openai-codex", codexCred)
 		}
-		if err := auth.Set("openai-codex", codexCred); err != nil {
+		if err != nil {
 			dlg.ShowProgress(fmt.Sprintf("Failed to store credentials: %v", err))
 			notify()
 			return
@@ -486,11 +492,8 @@ func (m *InteractiveMode) runLoginGitHubCopilotDialog(loginCtx context.Context) 
 			}
 		},
 		OnAuth: func(verificationURL, userCode string) {
-			dlg.ShowAuth(verificationURL, fmt.Sprintf("Enter code: %s", userCode))
+			showDeviceCode(dlg, verificationURL, userCode)
 			notify()
-			if !parityHarnessEnabled() {
-				_ = openBrowser(verificationURL)
-			}
 		},
 		OnProgress: func(msg string) {
 			dlg.ShowProgress(msg)
@@ -529,53 +532,9 @@ func (m *InteractiveMode) runLoginGitHubCopilotDialog(loginCtx context.Context) 
 	return nil
 }
 
-// showAPIKeyInput displays the standard API-key auth method's secret prompt in the editor slot.
-func (m *InteractiveMode) showAPIKeyInput(providerID string) (string, bool) {
-	if m.layout == nil || m.tuiInst == nil {
-		return "", false
-	}
-	dialog := m.newLoginDialog(buildAuthProviderName(providerID), nil)
-	// pig divergence (D80): the API-key method honors the configured input privacy policy.
-	methodName := "API key"
-	if auth, err := ai.BuiltinProviderAuth(providerID); err == nil && auth.APIKey != nil {
-		methodName = auth.APIKey.Name
-	}
-	answer := dialog.ShowSecretInput("Enter "+methodName, "")
-	m.editorContainer.SetChildren(dialog)
-	m.tuiInst.Render()
-	defer func() { m.editorContainer.SetChildren(m.editor); m.tuiInst.Render() }()
-	inputCh, releaseInput := m.acquireModalInputChannel()
-	defer releaseInput()
-	var done <-chan struct{}
-	if m.runCtx != nil {
-		done = m.runCtx.Done()
-	}
-	for {
-		select {
-		case value, ok := <-answer:
-			return value, ok
-		case buf, ok := <-inputCh:
-			if !ok {
-				return "", false
-			}
-			for _, chunk := range dropKeyReleases(dialog, []string{string(buf)}) {
-				dialog.HandleInput(chunk)
-				select {
-				case value, ok := <-answer:
-					return value, ok
-				default:
-				}
-			}
-		case <-done:
-			return "", false
-		}
-		m.tuiInst.Render()
-	}
-}
-
 // runOAuthLogout removes stored OAuth credentials for a provider.
 // Mirrors upstream showOAuthSelector logout branch (interactive-mode.ts:4296-4308).
-func (m *InteractiveMode) runOAuthLogout(provider string) error {
+func (m *InteractiveMode) runOAuthLogout(ctx context.Context, provider string) error {
 	auth, err := ai.NewAuthStorage(filepath.Join(m.opts.AgentDir, "auth.json"))
 	if err != nil {
 		return fmt.Errorf("auth storage: %w", err)
@@ -583,7 +542,7 @@ func (m *InteractiveMode) runOAuthLogout(provider string) error {
 
 	deleted := false
 	if _, ok, _ := auth.Get(provider); ok {
-		if err := auth.Delete(provider); err != nil {
+		if err := auth.Delete(ctx, provider); err != nil {
 			return fmt.Errorf("logout: %w", err)
 		}
 		deleted = true
@@ -693,9 +652,16 @@ func (m *InteractiveMode) footerUsageTotals() footerUsageTotals {
 	return session.FooterUsageTotals()
 }
 
-// openBrowser opens a URL in the default browser.
-// Mirrors upstream LoginDialogComponent (login-dialog.ts:122-124).
-func openBrowser(url string) error {
+// showDeviceCode shows a device-code login and waits, as Pi's notifyAuthDialog does for a device_code event (interactive-mode.ts:6112-6114). Pi opens a browser only for an auth URL, never for a device code.
+func showDeviceCode(dlg *tui.LoginDialog, verificationURI, userCode string) {
+	dlg.ShowDeviceCode(verificationURI, userCode)
+	dlg.ShowWaiting("Waiting for authentication...")
+}
+
+// openBrowser opens a URL in the default browser without a shell.
+// Ports packages/coding-agent/src/utils/open-browser.ts
+// On Windows, cmd /c start would re-parse &, |, ^ in the URL, truncating OAuth URLs and running commands carried by a server-supplied device-code URI, so rundll32 receives the URL as one argument.
+var openBrowser = func(url string) error {
 	var cmd string
 	var args []string
 	switch runtime.GOOS {
@@ -703,42 +669,16 @@ func openBrowser(url string) error {
 		cmd = "open"
 		args = []string{url}
 	case "windows":
-		cmd = "cmd"
-		args = []string{"/c", "start", url}
+		cmd = "rundll32"
+		args = []string{"url.dll,FileProtocolHandler", url}
 	default: // linux, freebsd, etc.
 		cmd = "xdg-open"
 		args = []string{url}
 	}
-	return exec.Command(cmd, args...).Start()
-}
-
-func formatProviderErrorForDisplay(stopReason, raw string) (statusText, chatText string) {
-	clean := compactProviderError(raw)
-	if strings.Contains(clean, "github-copilot") && (strings.Contains(clean, "Bad credentials") || strings.Contains(clean, "HTTP 401") || strings.Contains(clean, "token refresh failed")) {
-		// Mirrors upstream agent-session.ts: name both possible causes rather
-		// than asserting expiry, since a refresh also fails on rate limits,
-		// network loss, and provider outages. The provider's own text renders
-		// in the assistant block below and carries the specific reason.
-		return "GitHub Copilot authentication failed: credentials may have expired or network is unavailable; run pig login", clean
-	}
-	verb := "failed"
-	if stopReason == "aborted" {
-		verb = "aborted"
-	}
-	statusText = "Provider request " + verb
-	chatText = clean
-	if len(chatText) > 360 {
-		chatText = chatText[:357] + "..."
-	}
-	return statusText, chatText
-}
-
-func compactProviderError(raw string) string {
-	clean := strings.TrimSpace(raw)
-	clean = strings.ReplaceAll(clean, "\r\n", " ")
-	clean = strings.ReplaceAll(clean, "\n", " ")
-	clean = strings.Join(strings.Fields(clean), " ")
-	return clean
+	command := exec.Command(cmd, args...)
+	// Upstream's spawn finds the launcher with libuv's search on Windows.
+	nodespawn.SetProgram(command)
+	return command.Start()
 }
 
 // finalizeRunningTools freezes every tool component still in ToolStateRunning,

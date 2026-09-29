@@ -1,0 +1,26 @@
+# Pi's loader reports the thrown Error.message, independent of its stack's
+# first line. A Node TypeScript parser stack may start with a location and
+# source excerpt. Use that real layout with a portable factory Error so parser
+# implementation wording does not enter the comparison. D19 adds subprocess
+# transport context around PiG's cause, as in scenario31; retain the full cause
+# sentinel rather than accepting the location alone.
+name = "37-multiline-factory-error"
+description = "A multiline factory stack retains its owned error message"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["testdata/ext/multiline-failure.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/multiline-failure.ts"]
+
+[cli]
+args = ["--no-session", "--model", "test-faux/faux-1", "-p", "ignored"]
+timeout_seconds = 30
+
+[assert]
+exit_code = 1
+both_contain = ["Failed to load extension", "PT_MULTILINE_FACTORY_FAILURE"]
+both_not_contain = ["ExperimentalWarning", "Use `node --trace-warnings"]
+runs = 3

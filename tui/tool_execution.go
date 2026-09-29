@@ -154,6 +154,10 @@ type ToolExecutionComponent struct {
 	definitionDirty           atomic.Bool
 	definitionCall            Component
 	definitionResultComponent Component
+	mouseChild                Component
+	mouseWidth                int
+	mouseHeight               int
+	mouseDirty                atomic.Bool
 
 	// compactHeader is the collapsed read card's upstream compact label
 	// (FormatCompactReadHeader), or "" for the full header.
@@ -270,6 +274,7 @@ func (c *ToolExecutionComponent) IsDirty() bool {
 // its renderers, as upstream ToolExecutionComponent.invalidate calls
 // updateDisplay.
 func (c *ToolExecutionComponent) Invalidate() {
+	c.mouseDirty.Store(true)
 	c.definitionDirty.Store(true)
 	c.invalidatable.Invalidate()
 }
@@ -484,7 +489,7 @@ func (c *ToolExecutionComponent) renderImages(width int) []string {
 		out = append(out, "") // spacer between images
 		result := RenderImage(img.Data, dims, ImageRenderOptions{
 			MaxWidthCells:       maxW,
-			PreserveAspectRatio: true,
+			PreserveAspectRatio: new(true),
 			Name:                "",
 		})
 		if result != nil {
@@ -531,14 +536,49 @@ func (c *ToolExecutionComponent) runningElapsedRows(width int) []string {
 	return NewPaddedText("\n"+line, 0, 0, nil).Render(max(width, 1))
 }
 
-// Render emits header + (optional) body lines, all bg-painted in the
-// lifecycle color (pending / success / error). Row 2.9a.
-//
-// Upstream wraps content in Box(paddingX=1, paddingY=1, bgFn) which
-// adds 1-row vertical padding above and below, plus 1-column left
-// padding on each content line. We replicate this layout exactly:
-// top-pad, header, separator, body, bottom-pad: all bg-painted.
+// HandleMouse delegates to nested renderer components before toggling a completed or partial result. Images and the outer spacer never toggle the card.
+func (c *ToolExecutionComponent) HandleMouse(event TuiMouseEvent) *TuiMouseDispatchResult {
+	if c.definition == nil && (event.Type != MouseClick || event.Button != MouseButtonLeft || !c.definitionHasResult()) {
+		return nil
+	}
+	if c.mouseWidth != event.Width || c.mouseDirty.Load() {
+		c.Render(event.Width)
+	}
+	if event.Y < 1 || event.Y > c.mouseHeight {
+		return nil
+	}
+	if c.mouseChild != nil {
+		event.Y--
+		event.Height = c.mouseHeight
+		return DispatchMouseEvent(c.mouseChild, event)
+	}
+	if HasBuiltInToolRenderers(c.Name) && (event.X < 1 || event.X-1 >= max(1, event.Width-2) || event.Y < 2 || event.Y >= c.mouseHeight) {
+		return nil
+	}
+	if result := c.handleResultMouse(event); result != nil {
+		return &TuiMouseDispatchResult{TuiMouseEventResult: *result}
+	}
+	return nil
+}
+
+func (c *ToolExecutionComponent) handleResultMouse(event TuiMouseEvent) *TuiMouseEventResult {
+	if !c.definitionHasResult() || event.Type != MouseClick || event.Button != MouseButtonLeft {
+		return nil
+	}
+	c.Toggle()
+	return &TuiMouseEventResult{Handled: true}
+}
+
+func (c *ToolExecutionComponent) appendToolImages(lines []string, width int) []string {
+	c.mouseChild = nil
+	c.mouseWidth = width
+	c.mouseHeight = max(0, len(lines)-1)
+	return append(lines, c.renderImages(width)...)
+}
+
+// Render emits lifecycle-colored tool content followed by images. Definition-backed tools use their Box or self shell; native built-ins retain the same padded content layout.
 func (c *ToolExecutionComponent) Render(width int) []string {
+	c.mouseDirty.Store(false)
 	if c.definition != nil {
 		return c.renderDefinition(width)
 	}
@@ -590,7 +630,7 @@ func (c *ToolExecutionComponent) Render(width int) []string {
 			out = append(out, paintBgWith(bgOpen, " "+line, width))
 		}
 		out = append(out, paintBgWith(bgOpen, "", width)) // close the frame
-		out = append(out, c.renderImages(width)...)
+		out = c.appendToolImages(out, width)
 		c.saveCachedRender(width, out)
 		return out
 	}
@@ -605,7 +645,7 @@ func (c *ToolExecutionComponent) Render(width int) []string {
 			out = append(out, paintBgWith(bgOpen, " "+line, width))
 		}
 		out = append(out, paintBgWith(bgOpen, "", width)) // bottom pad
-		out = append(out, c.renderImages(width)...)
+		out = c.appendToolImages(out, width)
 		c.saveCachedRender(width, out)
 		return out
 	}
@@ -639,7 +679,7 @@ func (c *ToolExecutionComponent) Render(width int) []string {
 	// Bottom padding row: mirrors upstream Box paddingY=1.
 	out = append(out, paintBgWith(bgOpen, "", width))
 
-	out = append(out, c.renderImages(width)...)
+	out = c.appendToolImages(out, width)
 	c.saveCachedRender(width, out)
 	return out
 }

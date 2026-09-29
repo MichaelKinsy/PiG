@@ -91,6 +91,45 @@ func TestDefinitionCardFallbacksAndExpansion(t *testing.T) {
 	}
 }
 
+// packages/coding-agent/test/tool-execution-component.test.ts:435-463 supplies a definition with neither renderer. The definition fallback must show ten leading lines, not the separate generic-tool preview.
+func TestDefinitionCardFallbackResultsUpstream(t *testing.T) {
+	card := NewToolExecutionComponent("custom_tool", "")
+	card.SetDefinition(&ToolDefinitionRenderers{}, json.RawMessage(`{"foo":"bar"}`))
+	output := make([]string, 15)
+	for i := range output {
+		output[i] = fmt.Sprintf("line-%d", i+1)
+	}
+	card.SetResult(strings.Join(output, "\n"), false, 0)
+
+	// Pi 0.87.1 with its default app keybindings renders a spacer, Box(1, 1), call, result, and bottom padding. Preserve every display row and padding cell.
+	const width = 120
+	padded := func(text string) string { return text + strings.Repeat(" ", width-len(text)) }
+	for _, expanded := range []bool{false, true} {
+		t.Run(fmt.Sprintf("expanded=%t", expanded), func(t *testing.T) {
+			card.SetExpanded(expanded)
+			want := []string{"", padded(""), padded(" custom_tool")}
+			display := output
+			if !expanded {
+				display = output[:10]
+			}
+			for _, line := range display {
+				want = append(want, padded(" "+line))
+			}
+			if !expanded {
+				want = append(want, padded(" ... (5 more lines, ctrl+o to expand)"))
+			}
+			want = append(want, padded(""))
+			got := slices.Clone(card.Render(width))
+			for i := range got {
+				got[i] = widthx.StripAnsi(got[i])
+			}
+			if !slices.Equal(got, want) {
+				t.Fatalf("fallback rows = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
 func prefixed(lines []string) []string {
 	out := make([]string, len(lines))
 	for i, line := range lines {

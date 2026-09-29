@@ -11,6 +11,49 @@ import (
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts:3985-4025.
+func countDroppedThinkingBlocks(message *agent.AssistantMessage) int {
+	count := 0
+	for _, diagnostic := range message.Diagnostics {
+		if diagnostic.Type != "anthropic_input_transformations" {
+			continue
+		}
+		switch transformations := diagnostic.Details["transformations"].(type) {
+		case []any:
+			for _, value := range transformations {
+				if transformation, ok := value.(map[string]any); ok && transformation["type"] == "thinking_dropped" {
+					count++
+				}
+			}
+		case []map[string]any:
+			for _, transformation := range transformations {
+				if transformation["type"] == "thinking_dropped" {
+					count++
+				}
+			}
+		}
+	}
+	return count
+}
+
+// maybeShowThinkingDropNotice compares with the preceding displayed response. Session persistence can overtake queued UI events, so the owner loop keeps this scalar and branch rebuilds initialize it in their existing history walk.
+func (m *InteractiveMode) maybeShowThinkingDropNotice(message *agent.AssistantMessage) {
+	if !m.showCacheMissNotices() {
+		return
+	}
+	count := countDroppedThinkingBlocks(message)
+	if count == 0 || count <= m.previousThinkingDroppedCount {
+		return
+	}
+	noun := "thinking blocks"
+	if count == 1 {
+		noun = "thinking block"
+	}
+	text := fmt.Sprintf("Anthropic dropped %d %s (details in session)", count, noun)
+	m.chatContainer.Add(tui.NewSpacer(1))
+	m.chatContainer.Add(tui.NewPaddedText(tui.ActiveTheme().FgText("warning", text), 1, 0, nil))
+}
+
 func (m *InteractiveMode) finalizeRunningTools() {
 	m.toolMu.Lock()
 	for id, start := range m.toolStarts {
@@ -41,6 +84,11 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		return
 	}
 	switch e := ev.(type) {
+	case agent.SessionInfoChangedEvent:
+		tui.SetTerminalTitle(tui.BuildTerminalTitle(e.Name, m.opts.CWD))
+		m.statusLine.SetName(e.Name)
+		m.tuiInst.RequestRender()
+
 	case agent.EntryAppendedEvent:
 		m.handleEntryAppended(e.Entry)
 
@@ -78,6 +126,17 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		m.tuiInst.RequestRender()
 
 	case agent.TurnStartEvent:
+		if m.opts.Settings.GetShowTerminalProgress() {
+			setTerminalProgress(true)
+		}
+		if m.workingVisible {
+			if m.activeStatusIndicator == nil || m.activeStatusIndicator.Kind != "working" {
+				m.startWorkingLoader()
+			}
+		} else {
+			m.clearStatusIndicator("")
+		}
+		m.tuiInst.RequestRender()
 
 	case agent.TurnEndEvent:
 		m.evTurnIndex = e.TurnIndex + 1
@@ -120,15 +179,17 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		case ai.ToolCallStartEvent:
 			toolIndex = event.ContentIndex
 			hasToolUpdate = true
-			if event.Partial != nil && toolIndex < len(event.Partial.Content) {
-				if call, ok := event.Partial.Content[toolIndex].(ai.ToolCall); ok {
+			partial := event.Partial.Observe()
+			if partial != nil && toolIndex < len(partial.Content) {
+				if call, ok := partial.Content[toolIndex].(ai.ToolCall); ok {
 					toolID, toolName = call.ID, call.Name
 				}
 			}
 		case ai.ToolCallDeltaEvent:
 			toolIndex, argsDelta, hasToolUpdate = event.ContentIndex, event.Delta, true
-			if event.Partial != nil && toolIndex < len(event.Partial.Content) {
-				if call, ok := event.Partial.Content[toolIndex].(ai.ToolCall); ok {
+			partial := event.Partial.Observe()
+			if partial != nil && toolIndex < len(partial.Content) {
+				if call, ok := partial.Content[toolIndex].(ai.ToolCall); ok {
 					toolID, toolName = call.ID, call.Name
 				}
 			}
@@ -200,10 +261,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 					m.appendChatBlock(tui.NewText("\033[33m" + notice + "\033[0m"))
 				}
 			}
-			if (e.Message.Assistant.StopReason == "error" || e.Message.Assistant.StopReason == "aborted") && e.Message.Assistant.ErrorMessage != "" {
-				statusText, _ := formatProviderErrorForDisplay(string(e.Message.Assistant.StopReason), e.Message.Assistant.ErrorMessage)
-				m.statusLine.Flash(statusText, 5*time.Second)
-			}
+			m.maybeSuggestBugReport(e.Message.Assistant)
 		}
 		// Mirrors upstream message_end (interactive-mode.ts:2774-2793):
 		// On abort/error → push the error into every pending tool component
@@ -222,7 +280,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 				errMsg = e.Message.Assistant.ErrorMessage
 			}
 			for _, comp := range m.toolByID {
-				comp.SetResultValue(agent.AgentToolResult{Content: errMsg, IsError: true})
+				comp.SetResultValue(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: errMsg}}, IsError: true})
 				comp.SetResult(errMsg, true, 0)
 			}
 			clear(m.toolByID)
@@ -240,6 +298,12 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		// Clear pendingArgs for next message.
 		clear(m.pendingArgs)
 		m.toolMu.Unlock()
+		if e.Message.Assistant != nil {
+			if !isAbortOrError && m.evCurrentBlock != nil {
+				m.maybeShowThinkingDropNotice(e.Message.Assistant)
+			}
+			m.previousThinkingDroppedCount = countDroppedThinkingBlocks(e.Message.Assistant)
+		}
 		m.evCurrentBlock = nil
 		m.tuiInst.CancelPendingRender()
 
@@ -319,7 +383,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		}
 		if comp.HasDefinition() {
 			// Upstream hands a partial result to renderResult with isPartial.
-			comp.SetResultValue(agent.AgentToolResult{Content: e.Content, Details: e.Details})
+			comp.SetResultValue(agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: e.Content}}, Details: e.Details})
 		}
 		comp.SetStreaming(e.Content)
 		m.tuiInst.RequestRender()
@@ -333,7 +397,7 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		call, hasFileCall := m.toolFileCalls[e.ToolCallID]
 		delete(m.toolFileCalls, e.ToolCallID)
 		m.toolMu.Unlock()
-		debugLog("tool end id=%q name=%q matched=%v outlen=%d", e.ToolCallID, e.ToolName, comp != nil, len(e.Result.Content))
+		debugLog("tool end id=%q name=%q matched=%v outlen=%d", e.ToolCallID, e.ToolName, comp != nil, len(e.Result.Text()))
 		if comp == nil {
 			return
 		}
@@ -352,15 +416,16 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 		}
 		// Wire image blocks from tool results so they render inline.
 		// Mirrors upstream tool-execution.ts updateResult → image block handling.
-		if len(e.Result.Images) > 0 {
-			blocks := make([]tui.ImageBlock, len(e.Result.Images))
-			for i, img := range e.Result.Images {
+		images := e.Result.Images()
+		if len(images) > 0 {
+			blocks := make([]tui.ImageBlock, len(images))
+			for i, img := range images {
 				blocks[i] = tui.ImageBlock{Data: img.Data, MIMEType: img.MimeType}
 			}
 			comp.ImageBlocks = blocks
 		}
 		comp.SetResultValue(e.Result)
-		comp.SetResult(e.Result.Content, e.Result.IsError, elapsed)
+		comp.SetResult(e.Result.Text(), e.Result.IsError, elapsed)
 		m.maybeConvertImagesForKitty(comp)
 		m.tuiInst.Render()
 
@@ -388,25 +453,25 @@ func (m *InteractiveMode) handleAgentEvent(ev agent.AgentEvent) {
 			if e.Reason == "manual" {
 				// Pi uses showError for manual cancellation, so the result remains
 				// in conversation history instead of disappearing as a footer flash.
-				m.appendChatBlock(tui.NewText("\033[31mError: Compaction cancelled\033[0m"))
+				m.showError("Compaction cancelled")
 			} else {
 				m.statusLine.Flash("Auto-compaction cancelled", 2*time.Second)
 			}
 		case e.Summary != "":
-			// Successful compaction: rebuild chat from session entries.
-			// rebuildChatFromSession walks the JSONL and renders the
-			// CompactionSummaryComponent inline at the boundary position.
-			// No separate appendToChat needed: would duplicate the chip.
-			m.rebuildChatFromSession()
+			var entries []SessionEntry
+			if session := m.currentSession(); session != nil {
+				entries = BuildContextEntries(session.GetBranch())
+			}
+			m.renderCompactionResult(e, entries)
 			m.statusLine.Invalidate()
 		case e.ErrorMessage != "":
 			// Manual compaction errors surface as a persistent transcript line
 			// "Error: <message>" (upstream showError); auto/overflow errors are
 			// appended without the "Error: " prefix (upstream error-color Text).
 			if e.Reason == "manual" {
-				m.appendToChat(tui.NewText("\x1b[31mError: " + e.ErrorMessage + "\x1b[0m"))
+				m.showError(e.ErrorMessage)
 			} else {
-				m.appendToChat(tui.NewText("\x1b[31m" + e.ErrorMessage + "\x1b[0m"))
+				m.appendChatBlock(tui.NewPaddedText(tui.ActiveTheme().FgText("error", e.ErrorMessage), 1, 0, nil))
 			}
 		}
 		// handleAgentEvent runs on the input loop, so queue delivery and any

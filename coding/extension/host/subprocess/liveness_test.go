@@ -431,7 +431,7 @@ func TestEventAndShortcutWaitWhileHeartbeatStaysHealthy(t *testing.T) {
 			conn := newConnWithOptions(test.name, hostEnd, connOptions{Clock: clock, HeartbeatInterval: 2 * time.Second, HeartbeatTimeout: time.Second})
 			conn.Start(t.Context())
 			host := NewHost(t.TempDir())
-			managed := &managedExt{config: ExtConfig{Name: test.name}, host: host, conn: conn}
+			managed := withConn(&managedExt{config: ExtConfig{Name: test.name}, host: host}, conn)
 			result := make(chan error, 1)
 			go func() { result <- test.request(managed)(t.Context()) }()
 			request := readLivenessEnvelope(t, peer)
@@ -541,8 +541,8 @@ func TestSlowPackedMemberDoesNotKillHealthySibling(t *testing.T) {
 	connA.Start(t.Context())
 	connB.Start(t.Context())
 	host := NewHost(t.TempDir())
-	memberA := &managedExt{config: ExtConfig{Name: "member-a"}, host: host, conn: connA, packedCellKey: "cell-live"}
-	memberB := &managedExt{config: ExtConfig{Name: "member-b"}, host: host, conn: connB, packedCellKey: "cell-live"}
+	memberA := withConn(&managedExt{config: ExtConfig{Name: "member-a"}, host: host, packedCellKey: "cell-live"}, connA)
+	memberB := withConn(&managedExt{config: ExtConfig{Name: "member-b"}, host: host, packedCellKey: "cell-live"}, connB)
 	host.exts["member-a"] = memberA
 	host.exts["member-b"] = memberB
 
@@ -652,7 +652,7 @@ func TestCancelledEventHandlerGenerationCanRunAgain(t *testing.T) {
 	conn := newConnWithOptions("events", hostEnd, connOptions{Clock: clock, HeartbeatInterval: time.Hour})
 	conn.Start(t.Context())
 	host := NewHost(t.TempDir())
-	managed := &managedExt{config: ExtConfig{Name: "events"}, host: host, conn: conn}
+	managed := withConn(&managedExt{config: ExtConfig{Name: "events"}, host: host}, conn)
 	handler := managed.makeEventHandler("turn_end", 7)
 	ctx, cancel := context.WithCancel(t.Context())
 	result := make(chan error, 1)
@@ -731,11 +731,11 @@ func TestPackedMemberHeartbeatFailureDisablesOnlyLogicalMember(t *testing.T) {
 			disabled <- name
 		}
 	})
-	memberA := &managedExt{config: ExtConfig{Name: "member-a"}, host: host, conn: connA, packedCellKey: "cell-live"}
-	memberB := &managedExt{config: ExtConfig{Name: "member-b"}, host: host, conn: connB, packedCellKey: "cell-live"}
+	memberA := withConn(&managedExt{config: ExtConfig{Name: "member-a"}, host: host, packedCellKey: "cell-live"}, connA)
+	memberB := withConn(&managedExt{config: ExtConfig{Name: "member-b"}, host: host, packedCellKey: "cell-live"}, connB)
 	host.exts["member-a"] = memberA
 	host.exts["member-b"] = memberB
-	go host.handleIncoming(memberA)
+	go host.handleIncoming(memberA, memberA.connection())
 	result := startLivenessRequest(t, connA)
 	request := readLivenessEnvelope(t, peerA)
 	requestBody, err := json.Marshal(request)
@@ -839,7 +839,7 @@ func TestCancelledShortcutHandlerGenerationCanRunAgain(t *testing.T) {
 	conn := newConnWithOptions("shortcuts", hostEnd, connOptions{Clock: clock, HeartbeatInterval: time.Hour})
 	conn.Start(t.Context())
 	host := NewHost(t.TempDir())
-	managed := &managedExt{config: ExtConfig{Name: "shortcuts"}, host: host, conn: conn}
+	managed := withConn(&managedExt{config: ExtConfig{Name: "shortcuts"}, host: host}, conn)
 	handler := host.makeShortcutHandler(managed, "ctrl+x")
 	ctx, cancel := context.WithCancel(t.Context())
 	result := make(chan error, 1)
@@ -886,8 +886,8 @@ func TestParentCancellationCancelsBlockedHostCall(t *testing.T) {
 	bridge.SetUIContext(ui)
 	host := NewHost(t.TempDir())
 	host.SetUIBridge(bridge)
-	managed := &managedExt{config: ExtConfig{Name: "parent-cancel"}, host: host, conn: conn}
-	go host.handleIncoming(managed)
+	managed := withConn(&managedExt{config: ExtConfig{Name: "parent-cancel"}, host: host}, conn)
+	go host.handleIncoming(managed, managed.connection())
 
 	ctx, cancel := context.WithCancel(t.Context())
 	requestResult := make(chan error, 1)
@@ -947,14 +947,13 @@ func TestIsolatedHeartbeatFailureRoutesThroughSupervisor(t *testing.T) {
 			reason   string
 		}{delay, disabled, reason}
 	})
-	managed := &managedExt{
+	managed := withConn(&managedExt{
 		config:     ExtConfig{Name: "isolated", Path: "/does/not/run"},
 		host:       host,
-		conn:       conn,
 		supervisor: NewSupervisor(SupervisorConfig{MaxCrashes: 1, InitialDelay: time.Hour}),
-	}
+	}, conn)
 	host.exts["isolated"] = managed
-	go host.handleIncoming(managed)
+	go host.handleIncoming(managed, managed.connection())
 	result := startLivenessRequest(t, conn)
 	request := readLivenessEnvelope(t, peer)
 	requestBody, err := json.Marshal(request)
@@ -1000,11 +999,11 @@ func TestPackedMemberTransportClosureDoesNotProveProcessDeath(t *testing.T) {
 		}
 	})
 	process := &packedProcessState{key: "cell-live"}
-	memberA := &managedExt{config: ExtConfig{Name: "member-a"}, host: host, conn: connA, packedCellKey: "cell-live", packedProcess: process, stderrLogPath: "/tmp/pig-packed-cell-live-fake.log"}
-	memberB := &managedExt{config: ExtConfig{Name: "member-b"}, host: host, conn: connB, packedCellKey: "cell-live", packedProcess: process}
+	memberA := withConn(&managedExt{config: ExtConfig{Name: "member-a"}, host: host, packedCellKey: "cell-live", packedProcess: process, stderrLogPath: "/tmp/pig-packed-cell-live-fake.log"}, connA)
+	memberB := withConn(&managedExt{config: ExtConfig{Name: "member-b"}, host: host, packedCellKey: "cell-live", packedProcess: process}, connB)
 	host.exts["member-a"] = memberA
 	host.exts["member-b"] = memberB
-	go host.handleIncoming(memberA)
+	go host.handleIncoming(memberA, memberA.connection())
 	_ = peerA.Close()
 	var got crashEvent
 	select {
@@ -1033,5 +1032,90 @@ func TestPackedMemberTransportClosureDoesNotProveProcessDeath(t *testing.T) {
 	}
 	if connB.closed.Load() || host.QuarantinedCells()["cell-live"] != "" {
 		t.Fatal("one socket closure killed sibling or quarantined unproven process death")
+	}
+}
+
+// A retiring peer that reads the shutdown frame and then neither closes nor answers a ping is bounded by the heartbeat: the wait for its teardown is outstanding work.
+func TestRetireOfAPeerThatNeverClosesIsBoundedByTheHeartbeat(t *testing.T) {
+	clock := newManualLivenessClock()
+	host, peer := net.Pipe()
+	defer func() { _ = peer.Close() }()
+	conn := newConnWithOptions("retiring", host, connOptions{Clock: clock, HeartbeatInterval: 10 * time.Second, HeartbeatTimeout: 3 * time.Second})
+	conn.Start(t.Context())
+	<-conn.heartbeatReady
+	result := make(chan error, 1)
+	go func() { result <- conn.Retire("reload") }()
+	if shutdown := readLivenessEnvelope(t, peer); shutdown.Type != MsgShutdown {
+		t.Fatalf("first frame = %+v", shutdown)
+	}
+	clock.advance(t, 10*time.Second)
+	if err := peer.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	if ping := readLivenessEnvelope(t, peer); ping.Type != MsgPing {
+		t.Fatalf("heartbeat = %+v", ping)
+	}
+	clock.expectTimer(t, 3*time.Second)
+	select {
+	case err := <-result:
+		t.Fatalf("Retire returned before the pong deadline: %v", err)
+	default:
+	}
+	// The ping's own write renews the first deadline once, so expire each deadline the heartbeat arms until the peer is failed.
+	deadline := time.After(10 * time.Second)
+	for {
+		clock.elapse(3 * time.Second)
+		select {
+		case <-result:
+			var unresponsive *ExtensionUnresponsiveError
+			if err := conn.failureError(); !errors.As(err, &unresponsive) {
+				t.Fatalf("failure = %T %v", err, err)
+			}
+			return
+		case <-deadline:
+			t.Fatal("Retire of a peer that never closes was not bounded by the heartbeat")
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
+}
+
+// A retiring peer that answers its heartbeat is still tearing down, so Retire keeps waiting until it closes.
+func TestRetireKeepsWaitingForAPeerThatAnswersItsHeartbeat(t *testing.T) {
+	clock := newManualLivenessClock()
+	host, peer := net.Pipe()
+	defer func() { _ = peer.Close() }()
+	conn := newConnWithOptions("retiring", host, connOptions{Clock: clock, HeartbeatInterval: 10 * time.Second, HeartbeatTimeout: 3 * time.Second})
+	conn.Start(t.Context())
+	<-conn.heartbeatReady
+	result := make(chan error, 1)
+	go func() { result <- conn.Retire("reload") }()
+	if shutdown := readLivenessEnvelope(t, peer); shutdown.Type != MsgShutdown {
+		t.Fatalf("first frame = %+v", shutdown)
+	}
+	if err := peer.SetReadDeadline(time.Now().Add(5 * time.Second)); err != nil {
+		t.Fatal(err)
+	}
+	for range 3 {
+		clock.advance(t, 10*time.Second)
+		ping := readLivenessEnvelope(t, peer)
+		if ping.Type != MsgPing {
+			t.Fatalf("heartbeat = %+v", ping)
+		}
+		clock.expectTimer(t, 3*time.Second)
+		writeLivenessEnvelope(t, peer, Envelope{Type: MsgPong, Pong: &PongPayload{Nonce: ping.Ping.Nonce}})
+	}
+	select {
+	case err := <-result:
+		t.Fatalf("Retire returned while the peer still answered its heartbeat: %v", err)
+	default:
+	}
+	_ = peer.Close()
+	select {
+	case err := <-result:
+		if err != nil {
+			t.Logf("Retire after the peer closed: %v", err)
+		}
+	case <-time.After(10 * time.Second):
+		t.Fatal("Retire did not return after the peer closed")
 	}
 }

@@ -2,8 +2,8 @@ package ai
 
 import "slices"
 
-var imageModelRegistry = func() map[ImagesProvider]map[string]ImagesModel {
-	out := make(map[ImagesProvider]map[string]ImagesModel)
+var imageModelRegistry = func() map[ImagesProviderId]map[string]ImagesModel {
+	out := make(map[ImagesProviderId]map[string]ImagesModel)
 	for _, model := range GeneratedImageModels {
 		providerModels := out[model.Provider]
 		if providerModels == nil {
@@ -16,7 +16,7 @@ var imageModelRegistry = func() map[ImagesProvider]map[string]ImagesModel {
 }()
 
 // GetImageModel returns a generated image model by provider and id.
-func GetImageModel(provider ImagesProvider, modelID string) (ImagesModel, bool) {
+func GetImageModel(provider ImagesProviderId, modelID string) (ImagesModel, bool) {
 	providerModels := imageModelRegistry[provider]
 	if providerModels == nil {
 		return ImagesModel{}, false
@@ -26,8 +26,8 @@ func GetImageModel(provider ImagesProvider, modelID string) (ImagesModel, bool) 
 }
 
 // GetImageProviders returns the generated image providers in stable order.
-func GetImageProviders() []ImagesProvider {
-	providers := make([]ImagesProvider, 0, len(imageModelRegistry))
+func GetImageProviders() []ImagesProviderId {
+	providers := make([]ImagesProviderId, 0, len(imageModelRegistry))
 	for provider := range imageModelRegistry {
 		providers = append(providers, provider)
 	}
@@ -36,7 +36,7 @@ func GetImageProviders() []ImagesProvider {
 }
 
 // GetImageModels returns generated image models for provider in stable ID order.
-func GetImageModels(provider ImagesProvider) []ImagesModel {
+func GetImageModels(provider ImagesProviderId) []ImagesModel {
 	providerModels := imageModelRegistry[provider]
 	if providerModels == nil {
 		return nil

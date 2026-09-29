@@ -1,8 +1,7 @@
 package ai
 
-// Ports .upstream/current/packages/ai/test/qwen-token-plan-models.test.ts.
-// The findEnvKeys case is not here: env API-key resolution lives in
-// ai/auth.go and internal/codingagent/model_registry.go.
+// Ports packages/ai/test/qwen-token-plan-models.test.ts.
+// The environment-variable case (:130) is TestEnvAPIKeysQwenIndividualReusesInternationalTokenPlanVariable in auth_env_keys_test.go.
 
 import (
 	"context"
@@ -110,36 +109,49 @@ func captureCatalogCompletionsPayload(t *testing.T, provider, modelID string, le
 }
 
 func TestQwenTokenPlanIndividualExposesExactlyDocumentedTextModels(t *testing.T) {
-	got := generatedModelIDs("qwen-token-plan-individual")
-	slices.Sort(got)
-	want := slices.Clone(qwenIndividualTextModels)
-	slices.Sort(want)
-	if !slices.Equal(got, want) {
-		t.Fatalf("qwen-token-plan-individual models = %v, want %v", got, want)
-	}
+	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:122
+	t.Run("exposes exactly the documented Individual text models", func(t *testing.T) {
+		got := generatedModelIDs("qwen-token-plan-individual")
+		slices.Sort(got)
+		want := slices.Clone(qwenIndividualTextModels)
+		slices.Sort(want)
+		if !slices.Equal(got, want) {
+			t.Fatalf("qwen-token-plan-individual models = %v, want %v", got, want)
+		}
+	})
 }
 
 func TestQwenTokenPlanExposesTextModelsAndOmitsImageModels(t *testing.T) {
 	for _, provider := range qwenTokenPlanProviders[:2] {
-		ids := generatedModelIDs(provider)
-		for _, expected := range qwenTextModels {
-			if !slices.Contains(ids, expected) {
-				t.Errorf("%s should include %s", provider, expected)
+		// upstream: packages/ai/test/qwen-token-plan-models.test.ts:136
+		t.Run("exposes all text models on "+provider, func(t *testing.T) {
+			ids := generatedModelIDs(provider)
+			for _, expected := range qwenTextModels {
+				if !slices.Contains(ids, expected) {
+					t.Errorf("%s should include %s", provider, expected)
+				}
 			}
-		}
-		for _, excluded := range qwenImageModels {
-			if slices.Contains(ids, excluded) {
-				t.Errorf("%s should not include %s", provider, excluded)
+		})
+		// upstream: packages/ai/test/qwen-token-plan-models.test.ts:143
+		t.Run("omits image models from "+provider, func(t *testing.T) {
+			ids := generatedModelIDs(provider)
+			for _, excluded := range qwenImageModels {
+				if slices.Contains(ids, excluded) {
+					t.Errorf("%s should not include %s", provider, excluded)
+				}
 			}
-		}
+		})
 	}
 }
 
 func TestQwenTokenPlanOmitsRetiredQwen38MaxPreview(t *testing.T) {
+	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:220
 	for _, provider := range qwenTokenPlanProviders {
-		if slices.Contains(generatedModelIDs(provider), "qwen3.8-max-preview") {
-			t.Errorf("%s still lists qwen3.8-max-preview", provider)
-		}
+		t.Run("omits retired qwen3.8-max-preview on "+provider, func(t *testing.T) {
+			if slices.Contains(generatedModelIDs(provider), "qwen3.8-max-preview") {
+				t.Errorf("%s still lists qwen3.8-max-preview", provider)
+			}
+		})
 	}
 }
 
@@ -162,47 +174,62 @@ func assertThinkingLevelMap(t *testing.T, model *GeneratedModel, want map[Thinki
 }
 
 func TestQwenTokenPlanExposesReasoningEffortLevels(t *testing.T) {
+	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:184
 	for _, test := range qwenReasoningEffortCases() {
-		assertThinkingLevelMap(t, mustGeneratedModel(t, test.provider, test.modelID), map[ThinkingLevel]string{
-			ThinkingMinimal: "", ThinkingLow: "", ThinkingMedium: "", ThinkingHigh: "high", ThinkingXHigh: "", ThinkingMax: "max",
+		t.Run("exposes Qwen reasoning_effort levels for "+test.provider+"/"+test.modelID, func(t *testing.T) {
+			assertThinkingLevelPresence(t, mustGeneratedModel(t, test.provider, test.modelID), map[ThinkingLevel]*string{
+				ThinkingMinimal: nil, ThinkingLow: nil, ThinkingMedium: nil, ThinkingHigh: ptrString("high"), ThinkingXHigh: nil, ThinkingMax: ptrString("max"),
+			})
 		})
 	}
+	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:202
 	for _, test := range qwen38Cases() {
-		assertThinkingLevelMap(t, mustGeneratedModel(t, test.provider, test.modelID), map[ThinkingLevel]string{
-			ThinkingMinimal: "", ThinkingLow: "low", ThinkingMedium: "medium", ThinkingHigh: "", ThinkingXHigh: "xhigh", ThinkingMax: "",
+		t.Run("exposes qwen3.8 reasoning_effort levels for "+test.provider+"/"+test.modelID, func(t *testing.T) {
+			assertThinkingLevelPresence(t, mustGeneratedModel(t, test.provider, test.modelID), map[ThinkingLevel]*string{
+				ThinkingMinimal: nil, ThinkingLow: ptrString("low"), ThinkingMedium: ptrString("medium"), ThinkingHigh: nil, ThinkingXHigh: ptrString("xhigh"), ThinkingMax: nil,
+			})
 		})
 	}
 }
 
 func TestQwenTokenPlanSendsQwenThinkingFields(t *testing.T) {
+	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:151
 	for _, test := range qwenThinkingCases() {
-		payload := captureCatalogCompletionsPayload(t, test.provider, test.modelID, ThinkingHigh)
-		if payload["enable_thinking"] != true {
-			t.Errorf("%s/%s enable_thinking = %v, want true", test.provider, test.modelID, payload["enable_thinking"])
-		}
-		if _, exists := payload["thinking"]; exists {
-			t.Errorf("%s/%s payload has thinking: %v", test.provider, test.modelID, payload["thinking"])
-		}
+		t.Run("sends Qwen thinking fields for "+test.provider+"/"+test.modelID, func(t *testing.T) {
+			payload := captureCatalogCompletionsPayload(t, test.provider, test.modelID, ThinkingHigh)
+			if payload["enable_thinking"] != true {
+				t.Errorf("%s/%s enable_thinking = %v, want true", test.provider, test.modelID, payload["enable_thinking"])
+			}
+			if _, exists := payload["thinking"]; exists {
+				t.Errorf("%s/%s payload has thinking: %v", test.provider, test.modelID, payload["thinking"])
+			}
+		})
 	}
 }
 
 func TestQwenTokenPlanSendsReasoningEffort(t *testing.T) {
+	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:228
 	for _, test := range qwenReasoningEffortCases() {
-		payload := captureCatalogCompletionsPayload(t, test.provider, test.modelID, ThinkingHigh)
-		if payload["reasoning_effort"] != "high" {
-			t.Errorf("%s/%s reasoning_effort = %v, want high", test.provider, test.modelID, payload["reasoning_effort"])
-		}
+		t.Run("sends Qwen reasoning_effort for "+test.provider+"/"+test.modelID, func(t *testing.T) {
+			payload := captureCatalogCompletionsPayload(t, test.provider, test.modelID, ThinkingHigh)
+			if payload["reasoning_effort"] != "high" {
+				t.Errorf("%s/%s reasoning_effort = %v, want high", test.provider, test.modelID, payload["reasoning_effort"])
+			}
+		})
 	}
 }
 
 func TestQwenTokenPlanSendsQwen38XHighReasoningEffort(t *testing.T) {
+	// upstream: packages/ai/test/qwen-token-plan-models.test.ts:260
 	for _, test := range qwen38Cases() {
-		payload := captureCatalogCompletionsPayload(t, test.provider, test.modelID, ThinkingXHigh)
-		if payload["enable_thinking"] != true || payload["reasoning_effort"] != "xhigh" {
-			t.Errorf("%s/%s enable_thinking=%v reasoning_effort=%v, want true/xhigh", test.provider, test.modelID, payload["enable_thinking"], payload["reasoning_effort"])
-		}
-		if _, exists := payload["thinking"]; exists {
-			t.Errorf("%s/%s payload has thinking", test.provider, test.modelID)
-		}
+		t.Run("sends qwen3.8 xhigh reasoning_effort for "+test.provider+"/"+test.modelID, func(t *testing.T) {
+			payload := captureCatalogCompletionsPayload(t, test.provider, test.modelID, ThinkingXHigh)
+			if payload["enable_thinking"] != true || payload["reasoning_effort"] != "xhigh" {
+				t.Errorf("%s/%s enable_thinking=%v reasoning_effort=%v, want true/xhigh", test.provider, test.modelID, payload["enable_thinking"], payload["reasoning_effort"])
+			}
+			if _, exists := payload["thinking"]; exists {
+				t.Errorf("%s/%s payload has thinking", test.provider, test.modelID)
+			}
+		})
 	}
 }

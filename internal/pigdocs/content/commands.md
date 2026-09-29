@@ -50,7 +50,7 @@ Product distributions may contribute additional top-level or nested command path
 | `pig package validate <dir> [--json]` | Validate ordinary Package source and Resource membership without installing. |
 | `pig status [--json]` | Side-effect-free Package/Resource/Piglet health and canonical path overview; invalid state exits non-zero. |
 | `pig login --list [--json]` | List generic built-in and contributed authentication targets without reading credentials. |
-| `pig piglet list\|show\|validate\|schema\|add\|remove\|build\|keygen\|verify\|trust` | Current Piglet YAML, registration, inspection, build, and Binary-signing surface. Owned verbs use full words. |
+| `pig piglet list\|show\|validate\|schema\|add\|pull\|update\|publish\|remove\|build\|keygen\|verify\|trust` | Current Piglet source, signed release distribution, inspection, build, and Binary-signing surface (D18). Owned verbs use full words. |
 | `pig piglet build <name> --format script --out <path\|->` | Write an explicit source-bound entry script: a POSIX shell script, or a cmd.exe batch file on Windows (D69). Creates no Pig state or records. |
 | `pig piglet build <name> --format binary --out <path> [--sign-key <private-key>]` | Build a Piglet Binary and managed v1 resolution/Binary records. The optional Ed25519 signature is checked before command dispatch. |
 | `pig piglet keygen <private-key>` | Create an Ed25519 private key and `<private-key>.pub` without replacing existing files. |
@@ -205,7 +205,7 @@ other product commands.
 
 ### Parity harness (only when `PIG_PARITY_HARNESS=1`)
 
-`/probe-*` family - internal scenarios used by `parity/scenarios/`. Not user-facing.
+`/probe-*` family - internal scenarios used by `test/parity/scenarios/`. Not user-facing.
 
 ## Keyboard shortcuts
 

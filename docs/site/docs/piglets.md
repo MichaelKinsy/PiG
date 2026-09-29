@@ -224,7 +224,21 @@ PiG fetches the package or repository, finds the Piglet file, validates it, and 
 
 PiG reads the Piglet path from the `pig.piglet` field of the package's `package.json`. Without that field, it reads `piglet.yaml` at the package or repository root. The path must stay inside the package.
 
-A remote Piglet must be portable. PiG refuses a Piglet that uses local sources, and a Git URL that contains credentials. The command fails before it fetches anything when `PIG_OFFLINE` or `PI_OFFLINE` is set.
+A remote Piglet must be portable. PiG refuses a Git URL that contains credentials. The command fails before it fetches anything when `PIG_OFFLINE` or `PI_OFFLINE` is set.
+
+### Add from a monorepo
+
+Select a repository subdirectory with the existing Git source selector and a full lowercase commit SHA (D18). The Piglet monorepo is `MichaelKinsy/pigpen`. Replace `<full-commit-sha>` with the reviewed commit:
+
+```bash
+pig piglet add 'git:https://github.com/MichaelKinsy/pigpen.git@<full-commit-sha>#subdirectory=piglets%2Fpig-with-batteries'
+```
+
+PiG reads `pig.piglet` or `piglet.yaml` inside that selected directory. It never falls back to the repository-root Piglet. The checkout must match the pinned commit and contain no modified or untracked files in the selected directory.
+
+For this pinned subdirectory form, PiG copies declared relative local Packages, extensions, skills, and prompt files into `~/.pig/piglets/<name>.source/<commit>/`. It rewrites only their paths in the registered YAML. It preserves explicit empty tool scopes and executable permissions. Each local path must exist beneath the Piglet file's directory. Absolute paths, parent traversal, symlinks, Git metadata, non-regular files, and closures exceeding 4,096 entries or 32 MiB fail before registration. Keep a Resource's required build files inside its declared local directory. Use explicit YAML fields rather than aliases or merge keys for this form. `extends`, local agent environments, Dev Containers, and file-based secrets remain unsupported for remote registration.
+
+The origin record includes the selected source, commit, original and registered Piglet digests, and each copied file's digest. Inventory checks those digests. Removing the source removes its recorded closure without touching sibling Piglets. Other remote source forms still reject local Resource origins.
 
 A Piglet with relative local Resource origins remains source-bound. Run that source directly unless all required relative content is registered with it.
 
@@ -264,22 +278,21 @@ Publish signed per-target Binaries, `SHA256SUMS`, and a signed release index as 
 pig piglet publish research --to github --repo acme/research --sign-key ./research-signing.key
 ```
 
-Publish is a dry run until you add `--yes`. See [Publish to GitHub Releases](/docs/latest/piglet-binaries#publish-to-github-releases).
+Publish is a dry run until you add `--yes`. For `pig-with-batteries` in `MichaelKinsy/pigpen`, pass `--tag-prefix pig-with-batteries/` and pull a published version with `github:MichaelKinsy/pigpen/pig-with-batteries@<version>`. The prefix must match the Piglet name. `pig piglet update pig-with-batteries` updates an installed GitHub Binary within its signed namespace, not the repository-wide latest release. See [Publish to GitHub Releases](/docs/latest/piglet-binaries#publish-to-github-releases).
 
-## Planned (not in this release): source publication, named updates, and Image artifacts
+## Planned (not in this release): source publication and Image artifacts
 
 Piglet source will publish through npm with the `pig-piglet` keyword or through a Git ref. Signed per-target Piglet Binaries already publish to GitHub Releases with `pig piglet publish --to github` and install from a direct signed-index URL or `github:` ref with [`pig piglet pull`](/docs/latest/piglet-binaries#pull-a-published-binary). The pi-in-go.dev catalog will index npm daily and label community listings as unreviewed; it will not accept uploads.
 
 ```bash
 pig piglet publish <name> --to npm
 pig piglet pull <name>
-pig piglet update [<name>]
 pig piglet build <name> --format image --out <reference>
 pig piglet build <name> --format binary|image --locked
 pig piglet build <name> --format binary|image --record <path>
 ```
 
-The source publication and named update commands above and reserved artifact flags are not available in this release. `publish --to npm` will default to a dry run unless `--yes` is present, as `publish --to github` does. The planned `/piglets` catalog and `/piglets/<name>` detail page will show npm source, targets, signing, and provenance without using pi.dev data.
+The source publication and catalog-name pull commands above and reserved artifact flags are not available in this release. `publish --to npm` will default to a dry run unless `--yes` is present, as `publish --to github` does. The planned `/piglets` catalog and `/piglets/<name>` detail page will show npm source, targets, signing, and provenance without using pi.dev data.
 
 ## PiG Standard
 

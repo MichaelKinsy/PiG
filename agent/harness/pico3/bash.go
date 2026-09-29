@@ -7,6 +7,8 @@ import (
 	"os/exec"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 // BashTool runs a shell command. Output is piped to the kernel; bounds come
@@ -36,6 +38,10 @@ func runBash(ctx context.Context, args JsonValue, api *ToolApi) (ToolResult, err
 	// upstream kills the child on abort.
 	command := exec.Command("bash", "-c", str(input, "command"))
 	command.Dir = str(input, "cwd")
+	// Upstream's spawn finds bash with libuv's search, starting in cwd, and
+	// gives it Node's libuv command line on Windows.
+	nodespawn.SetProgram(command)
+	nodespawn.SetCommandLine(command)
 	stdout, err := command.StdoutPipe()
 	if err != nil {
 		return ToolResult{}, err

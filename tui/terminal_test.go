@@ -145,7 +145,7 @@ func TestReadInput_SwallowsKittyProtocolResponse(t *testing.T) {
 		_, _ = w.Write([]byte("\x1b[?7ua"))
 	}()
 
-	got, err := ReadInput(r)
+	got, err := readTestInput(r)
 	if err != nil {
 		t.Fatalf("ReadInput: %v", err)
 	}

@@ -47,7 +47,7 @@ func TestSendUserMessageFollowUpFromAgentEndContinuesRun(t *testing.T) {
 			once.Do(func() {
 				// A slow handler: post-run handling must still wait for it.
 				time.Sleep(20 * time.Millisecond)
-				if err := s.SendUserMessage("continue please", extension.DeliverAsFollowUp); err != nil {
+				if err := s.SendExtensionUserMessage("continue please", &extension.SendUserMessageOptions{DeliverAs: extension.DeliverAsFollowUp}); err != nil {
 					t.Error(err)
 				}
 			})
@@ -79,7 +79,7 @@ func TestSendUserMessageFromAgentSettledRunsBeforeSendReturns(t *testing.T) {
 				if s.IsStreaming() {
 					t.Error("session still streaming while agent_settled is dispatched")
 				}
-				if err := s.SendUserMessage("next task", ""); err != nil {
+				if err := s.SendExtensionUserMessage("next task", nil); err != nil {
 					t.Error(err)
 				}
 			})
@@ -103,7 +103,7 @@ func TestSendUserMessageFromAgentSettledRunsBeforeSendReturns(t *testing.T) {
 func TestSendUserMessageWithoutDeliveryModeWhileStreamingReportsError(t *testing.T) {
 	h := runStateHarness(t, map[string]func(*Session){
 		"agent_start": func(s *Session) {
-			if err := s.SendUserMessage("too early", ""); err != nil {
+			if err := s.SendExtensionUserMessage("too early", nil); err != nil {
 				t.Error(err)
 			}
 		},
@@ -156,6 +156,9 @@ func TestAbortStopsExtensionStartedRun(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	if err := services.Auth().Set("faux", ai.Credential{Type: ai.CredentialAPIKey, Key: "faux-key"}); err != nil {
+		t.Fatal(err)
+	}
 	session, err := NewSession(services, SessionOptions{
 		Model:            &ai.Model{ID: "faux-1", Provider: provider, Capabilities: ai.ModelCapabilities{ContextWindow: 128_000}},
 		SkipBuiltinTools: true,
@@ -171,7 +174,7 @@ func TestAbortStopsExtensionStartedRun(t *testing.T) {
 	}()
 	t.Cleanup(func() { _ = session.Close(); <-drained })
 
-	if err := session.SendUserMessage("background work", ""); err != nil {
+	if err := session.SendExtensionUserMessage("background work", nil); err != nil {
 		t.Fatal(err)
 	}
 	select {

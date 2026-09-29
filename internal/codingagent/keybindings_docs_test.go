@@ -20,7 +20,7 @@ import (
 // exporting it only so a test in another package could read it would add public
 // surface for no production caller.
 
-const keybindingsDocPath = "../../internal/pigdocs/content/keybindings.md"
+const keybindingsDocPath = "../pigdocs/content/keybindings.md"
 
 var docRowRE = regexp.MustCompile("(?m)^\\| `(app\\.[a-zA-Z.]+)` \\| (.+?) \\|")
 

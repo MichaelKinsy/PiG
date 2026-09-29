@@ -669,22 +669,9 @@ func snapshotEvent(event ai.AssistantMessageEvent) ai.AssistantMessageEvent {
 	}
 }
 
+// snapshotPartial observes independently owned data from a live partial view.
 func snapshotPartial(partial *ai.AssistantMessage) *ai.AssistantMessage {
-	if partial == nil {
-		return nil
-	}
-	copied := *partial
-	copied.Content = make([]ai.AssistantContentBlock, len(partial.Content))
-	for index, block := range partial.Content {
-		if call, ok := block.(ai.ToolCall); ok {
-			if arguments, ok := cloneJSON(map[string]any(call.Arguments)).(map[string]any); ok {
-				call.Arguments = arguments
-			}
-			block = call
-		}
-		copied.Content[index] = block
-	}
-	return &copied
+	return partial.Observe()
 }
 
 func streamFailure(model *ai.Model, err error, rt *Runtime) *ai.AssistantMessage {

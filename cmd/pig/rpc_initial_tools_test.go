@@ -33,13 +33,20 @@ func TestRPCInitialActiveToolsPreserveFullRegistry(t *testing.T) {
 		}
 		return out
 	}
-	registered := names(session.Tools())
+	registeredNames := func() []string {
+		var out []string
+		for _, tool := range session.GetAllTools() {
+			out = append(out, tool.Name)
+		}
+		return out
+	}
+	registered := registeredNames()
 	defaults := []string{"read", "bash", "edit", "write"}
 	rpcSetInitialActiveTools(session, defaults)
 	if got := names(session.Agent().Tools()); !slices.Equal(got, defaults) {
 		t.Fatalf("active %v", got)
 	}
-	if got := names(session.Tools()); !slices.Equal(got, registered) || !slices.Contains(got, "grep") {
+	if got := registeredNames(); !slices.Equal(got, registered) || !slices.Contains(got, "grep") {
 		t.Fatalf("registry shrunk: %v", got)
 	}
 	rpcSetInitialActiveTools(session, []string{"grep", "find", "ls"})

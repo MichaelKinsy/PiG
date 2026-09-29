@@ -1,29 +1,25 @@
 # Divergences
 
-Pig preserves upstream pi-coding-agent's observable behavior unless an entry below records an intentional exception. Numbers are stable identifiers; do not reuse a retired one. The authoritative records, with call sites and evidence, are `DIVERGENCES.md` (behavior differences) and `docs/additive-features.md` (PiG-only additions) in the pig source tree. This page lists every active divergence and the additive features an agent is most likely to meet.
+Pig preserves upstream pi-coding-agent's observable behavior unless an entry below records an intentional exception. Numbers are stable identifiers; do not reuse a retired one. The authoritative records, with call sites and evidence, are `docs/parity/DIVERGENCES.md` (behavior differences) and `docs/additive-features.md` (PiG-only additions) in the pig source tree. This page lists every active divergence and the additive features an agent is most likely to meet.
 
 ## Behavior differences
 
 | ID | Title | Summary |
 |---|---|---|
-| D2 | Pig branding | Banner says "PiG", binary is `pig`, config root is `~/.pig`. A binary named `pi` refuses to run. Avoids upstream collisions. |
+| D2 | Pig branding | Banner says "PiG", binary is `pig`, config root defaults to `~/.pig`. `PIG_USE_PI_DIRS=1` explicitly selects Pi's agent directory and project `.pi` resources. See [Configuration](config.md#using-pis-directories). A binary named `pi` refuses to run. |
 | D14 | Archive extraction | The tools manager extracts archives with the Go standard library instead of spawning `tar`, `unzip`, or PowerShell. |
 | D26 | Provider attribution headers | Attribution headers carry PiG branding, respect the telemetry setting, and are sent only to OpenRouter. |
-| D27 | Word navigation | Word-wise cursor movement classifies per grapheme instead of per `Intl.Segmenter` word segment. |
+| D27 | Word segmentation engine cache | Word segmentation always matches ICU with a warm dictionary-engine cache; a fresh Pi process can place one boundary differently at a U+30FC or U+FF70 span start. |
 | D30 | Extension runner scope | The extension runner belongs to the host and is not rebuilt on an in-process session switch. |
-| D35 | Easter-egg commands | Pi's two hidden animated easter-egg slash commands (arminsayshi and dementedelves) are not ported. |
 | D37 | Stale thinking signatures | When a provider rejects stale thinking-block signatures, Pig retries once with the signatures stripped. |
 | D39 | Self-update | A standalone binary updates itself from a release instead of through a package manager. |
 | D44 | Herdr image capability | With `HERDR_ENV=1`, Pig ignores inherited outer-terminal image hints. |
 | D48 | Orphaned tool results | Orphaned and duplicate tool results are removed from normalized history. |
-| D50 | Unrenderable Mermaid | A Mermaid diagram Pig cannot draw gets one line saying why. |
-| D51 | Signal termination | A signal-terminated interactive session restores the terminal before exit. |
+| D51 | Interactive SIGINT | SIGINT restores the interactive terminal before numeric exit 130. Print/JSON leave SIGINT to the default signal action. Both products restore a live terminal on SIGTERM/SIGHUP; a disconnected terminal exits 129. |
 | D53 | Wrapped-row clearing | The renderer fully clears when a differential rewrite would leave wrapped rows behind. |
-| D54 | Code block wrapping | Fenced code block lines wrap instead of losing their tail. |
 | D55 | Debug hotkey | The `ctrl+shift+d` debug hotkey fires once per press, not again on key release. |
 | D56 | Subprocess liveness | Heartbeats, request-state reporting, and renderer isolation for subprocess extensions. See [Extension API](extension-api.md). |
 | D57 | Unloadable install source refused | `pig install` fails when a complete conventional extension source is selected as a Package root and nothing would load, and records nothing. Pi reports success and the resources never load. Empty packages still install. See [Extensions](extensions.md). |
-| D58 | Over-wide Mermaid | A Mermaid diagram wider than the message area is laid out again, narrower, until it fits. |
 | D59 | Recoverable generic tool details | An extension tool card without renderers uses a width-aware argument preview. Press Ctrl+O to show the complete retained arguments and available result. Pi hides arguments when a registered extension tool provides no renderers. |
 | D61 | Session replacement | Replacing the session keeps the startup project's Services and Resources. |
 | D62 | `/bug` | Writes a local report archive and prints a prefilled PiG issue link. Nothing is uploaded. |
@@ -31,13 +27,23 @@ Pig preserves upstream pi-coding-agent's observable behavior unless an entry bel
 | D64 | Hosted endpoints | The share viewer, install report, version check, and installer API use `https://pi-in-go.dev` instead of pi.dev, with the same paths and overrides. |
 | D65 | PiG User-Agent | HTTP providers and local bug-report metadata use `pig/<coding.Version> (<platform> <release>; <arch>)` instead of Pi's package-specific `pi...` identities. Configured provider headers retain upstream precedence: they override ordinary defaults, while Codex forces the product identity; Anthropic OAuth keeps `claude-cli/2.1.280`. |
 | D66 | Narrow TUI rows | Truncated text reduces fixed padding and the user-message selector clips list rows when an unusually narrow pane cannot fit upstream's full row. PiG stays within the requested width; Pi terminates only if an over-wide row reaches its differential-render overflow check. |
-| D67 | Windows container build user | A Windows host has no numeric uid or gid, so Piglet container builds pass no `--user` there and run as the builder image's default user; Linux and macOS pass the invoking user's `uid:gid`. |
 | D68 | Windows owner-only files | Windows has no POSIX mode bits, so files PiG keeps owner-only (Piglet secrets and signing keys, the staged secret environment, the update transport CA, and the standalone update receipt) are checked and written by DACL there: only the owner, SYSTEM, and Administrators may have access. Elsewhere they use mode `0600`. |
-| D69 | Windows Piglet scripts | `pig piglet build --format script` writes a cmd.exe batch file on Windows (`@setlocal DisableDelayedExpansion` then `@pig --piglet "<source>" %*`, CRLF); Linux and macOS get a POSIX shell script. Name the Windows output `.cmd`. |
-| D70 | Module state across reload | `/reload` restarts every extension in a fresh process, so module-level state resets. Pi re-runs every factory too, but keeps an `.mjs` module's module-level state in Node's module cache. Keep per-reload state inside the factory. |
-| D73 | Host-bound Pi exports in extensions | Extensions can import every value Pi's packages export. Pi's own code backs the pure ones, including pi-tui's `Input`, `Editor`, `SelectList`, `Markdown` and `KeybindingsManager`, pi-ai's utilities, and the syntax highlighter; the theme helpers color with PiG's active theme. Values that belong to Pi's own process (its UI components, session and runtime construction, package loading, the terminal and its capabilities, images, pi-ai's session-resource cleanups) and a few helpers not yet ported (compaction entry, diff and image helpers) throw a named error if an extension calls them. Keybinding overrides and `app.*` keys stay in the host, and an extension cannot construct or switch themes. |
+| D70 | Module state across session replacement | Every session replacement (`/new`, `/resume`, `/fork`, `/clone`, `ctx.newSession()`, `ctx.fork()`, `ctx.switchSession()` and their RPC equivalents) starts extensions in fresh runtime processes, so module-level state and `process.env`/`globalThis` changes reset. Pi keeps an `.mjs` module's state in Node's module cache. `/reload` is not affected: it re-invokes each factory in the process that holds its module, as Pi does. Keep per-session state inside the factory. |
+| D73 | Live main-process object identity | Extensions use Pi's pinned coding-agent and TUI implementations for imported objects, including independent Sessions, ModelRuntime, themes, ScrollView, terminal/image helpers, and caller-created screens. These objects do not expose the live Go Main Screen or arbitrary Go component references. An overlay's `unfocus({target})` accepts `null`, the extension's installed editor component or another of its mounted overlays and throws for any other component. Editor input and rendered frames cross the subprocess connection. |
+||||||| af7bcf89c
 | D74 | Pi-ai provider calls in extensions | An extension's `stream`, `complete`, `streamSimple` and `completeSimple` use Pi's own dispatch and credential rules, and the request runs on PiG's port of the same provider. Provider-specific `stream()` options beyond the common ones are not forwarded, results lack `responseId` and `rawStopReason`, and OpenRouter image generation returns an error. |
+| D78 | SDK Provider object carriers (known gap) | Registered-native methods cross SDK processes. Builtin/composed native SDK retrieval remains incomplete, and foreign registered configuration is snapshot data rather than an author's live object. Owner-approved for 0.3.x on 2026-09-28, not completed parity. |
+| D79 | User-package metadata registry isolation | User-scoped package version lookups run from managed storage, not the invoking project's cwd, so its `.npmrc` cannot redirect them. The selected command and user configuration remain active. Trusted project-scoped packages keep Pi's behavior. |
 | D80 | Secret-input privacy | `maskSecretInput` defaults to true and shows dots, a count and a last-four suffix for secret login input. False restores Pi's plain-text behavior. Change **Mask secret input** in `/settings`. |
+| D82 | Partial-message observation (RPC33) | Foreign partial messages are snapshots, not live references. Initial content/usage/stop state and named parser scratch fields can differ. The strict RPC33 comparison retains its raw failure. |
+| D83 | Cross-process event-bus boundaries (known gap) | Every Node extension shares one `pi.events` bus and listeners in other processes receive the original payload by reference. Independent tasks in different processes are ordered by timing, only a listener's first post-await continuation is ordered with the emitter's microtasks, cross-process reference cycles are released when a process exits, and brand checks such as `util.types.isMap` fail on foreign objects, where `util.types.isProxy` also returns true. Because V8 offers no hook, `util.inspect` with `customInspect: false` (`console.dir`) prints an empty placeholder object (inside `Proxy(...)` on Node 26.0.0 and later), `util.inspect` with `showProxy: true` shows the Proxy wrapper, and on Node 26.0.0 and later `util.inspect` of a non-extensible foreign payload prints it inside `Proxy(...)`; Node 25 and earlier print that payload as Pi does. Every other inspect, clone and write case must match Pi; the Promise nesting level and cross-owner shared clones are open defects targeted at 0.3.1. |
+| D84 | Direct Go provider registration | A Go caller that registers a Provider directly on the Model Registry or Model Runtime, without an extension host, sees the synchronous projection until its next awaited model-runtime call runs Pi's local refresh. Extension-host registrations match Pi. |
+
+## Known gaps for 0.3.x
+
+D78, D82 and D83 are owner-approved known gaps (2026-09-28), not waivers or evidence of parity. Same-process objects must keep Pi's identity and mutation behavior. Foreign configuration readers (D78) and partial-message observers (D82) receive snapshots. D83 was narrowed on 2026-09-29: foreign bus listeners receive the original payload by reference, and only the named cross-process boundaries remain. The earlier no-sharing rule for isolated extensions is retired.
+
+RPC33 retains complete JSON and stderr comparison and three declared runs. Its raw partial-observation failure stays visible. Approval does not permit missing events, changed order, wrong deltas, broken cancellation, bad final results, persistence errors or lifecycle leaks. The authoritative integration boundary and outstanding same-process defects are in `docs/findings/0.3.0-known-gaps.md` in the source tree.
 
 ## Additive features
 
@@ -50,11 +56,15 @@ These add PiG-only capability without changing a Pi behavior. The additive ledge
 | D20 | Packed runtime cells | Host-side factory-extension packing; observationally identical to isolated mode. See [Runtime cells](runtime-cells.md). |
 | D21 | Reload report telemetry | Pull-only `LastReloadReport()` + `Metrics()`. No background samplers or external push. |
 | D22 | Stock documentation | `pig docs` materializes the reference bundle that matches the running binary. |
+| D67 | Windows container build user | Piglet container builds use the image default user on Windows and the invoking uid/gid on Unix. This is additive builder policy, not a Pi divergence. |
+| D69 | Windows Piglet scripts | Piglet script builds emit a quoted CRLF cmd.exe launcher on Windows and a POSIX launcher on Unix. Name Windows output `.cmd`. |
 
 ## Non-divergences
 
 Items below are sometimes mistaken for divergences but are intentional **parity**:
 
+- **Mermaid fallback.** Unsupported or oversized diagrams retain the original code block. Pig does not add an unsupported-diagram hint or narrow labels to force a diagram to fit.
+- **Fenced-code wrapping.** Pi 0.87.1 wraps code rows in the final Markdown content-width pass. PiG uses the same pass and breakpoints.
 - **TUI scrollback.** Pig now emits `\x1b[2J\x1b[H\x1b[3J` on full redraw, matching upstream `pi-tui`. Earlier pig builds omitted the `3J` (scrollback clear); that was a parity drift, fixed.
 - **Model cycling.** `Ctrl+P` / `Shift+Ctrl+P` cycle through provider-qualified specs. Bare model IDs are legacy-accepted but always rewritten on save.
 - **Provider auth precedence.** Environment variables override stored credentials at request time, identical to upstream.
@@ -72,7 +82,7 @@ These are explicit non-options. Calling them out so the coding agent does not pr
 
 ## When to write a new divergence
 
-Add an entry to `DIVERGENCES.md` when:
+Add an entry to `docs/parity/DIVERGENCES.md` when:
 
 - Pig behavior differs from upstream pi in a way a user can observe (output, exit code, file layout, command surface).
 - A capability is unsupported on the subprocess bridge and returns a typed `unsupported` error rather than silently no-op-ing.

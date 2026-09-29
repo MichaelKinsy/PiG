@@ -1,0 +1,26 @@
+# Pi 0.87.1 rpc-mode.ts:755-771 forwards V8's UTF-16 diagnostic through JSON.stringify.
+# An unquoted supplementary character makes V8 report a lone high surrogate. Raw equality must distinguish that escape from U+FFFD; parsed Go strings cannot prove it.
+name = "37-rpc-json-utf16-wire"
+description = "RPC parse diagnostics preserve lone UTF-16 units and continue to the next command"
+covers = ["packages/coding-agent/src/modes/rpc/jsonl.ts", "packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+[[rpc.steps]]
+line = "😀\n         😀               \n{\"type\":\"hello\"}"
+wait_event = '{"type":"response","command":"hello"}'
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--offline", "--model", "test-faux/echo", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+exit_code = 0
+output_equal = true
+stderr_equal = true
+runs = 3

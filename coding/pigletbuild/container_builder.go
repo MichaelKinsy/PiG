@@ -11,12 +11,13 @@ import (
 	"os/user"
 	"path"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"slices"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"go.yaml.in/yaml/v3"
 
@@ -27,8 +28,8 @@ import (
 )
 
 var (
-	containerBuilderNamePattern = regexp.MustCompile(`^[a-z][a-z0-9-]*$`)
-	containerImagePattern       = regexp.MustCompile(`^[^@\s]+@sha256:[0-9a-f]{64}$`)
+	containerBuilderNamePattern = lazyregexp.New(`^[a-z][a-z0-9-]*$`)
+	containerImagePattern       = lazyregexp.New(`^[^@\s]+@sha256:[0-9a-f]{64}$`)
 )
 
 type ContainerBuilderConfig struct {
@@ -538,7 +539,7 @@ func containerUserArgs() ([]string, error) {
 // numeric uid does not have. That is the normal case for the environments a
 // container build targets, so the kernel's own view of the ids is the fallback.
 func containerUserArgsFor(goos string, lookup func() (*user.User, error), getuid, getgid func() int) ([]string, error) {
-	// pig divergence (D67): a Windows host maps no uid:gid into the build container.
+	// pig additive (D67): a Windows host maps no uid:gid into the build container.
 	if goos == "windows" {
 		return nil, nil
 	}

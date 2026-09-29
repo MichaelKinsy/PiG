@@ -1,0 +1,1 @@
+{"name":"glob-collisions","pi":{"skills":["second/SKILL.md","first/SKILL.md","suite","!**/excluded/SKILL.md","!suite"],"prompts":["prompts/**/*.md","!**/skip*.md","+prompts/deep/more/skip-keep.md"]}}

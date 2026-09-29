@@ -208,7 +208,8 @@ func TestGeneratedLoginExtensionIsIdentifiedThroughPigletResolution(t *testing.T
 		t.Fatalf("Piglet extension load errors=%v count=%d", loadErrors, len(loaded))
 	}
 	runner := inproc.NewRunner(loaded, pigletDir)
-	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{UI: ui, Mode: extension.ModeTUI}, nil)
+	runner.SetUIContext(ui, extension.ModeTUI)
+	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{}, nil)
 	if _, err := runner.Emit(ctx, extension.SessionStartEvent{Type: "session_start", Reason: "startup"}); err != nil {
 		t.Fatal(err)
 	}

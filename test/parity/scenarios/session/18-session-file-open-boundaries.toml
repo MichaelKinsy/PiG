@@ -1,0 +1,26 @@
+# Pi 0.87.1 session-manager.ts:627-672 repairs only validated session files;
+# :1029-1055 initializes explicit empty files and preserves invalid nonempty files.
+# session-cwd.ts and agent-session-runtime.ts:423 reject a missing effective cwd
+# before invoking the factory. Both probes execute those production boundaries.
+name = "18-session-file-open-boundaries"
+description = "Session opening preserves invalid files, repairs tails and validates cwd before creation"
+covers = ["packages/coding-agent/src/core/session-manager.ts", "packages/coding-agent/src/core/session-cwd.ts", "packages/coding-agent/src/core/agent-session-runtime.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-file-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/session-file-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SESSION_FILE repaired=true override=true initialized=true preserved=true", "SESSION_CWD blocked=true factory=false"]
+runs = 3

@@ -158,16 +158,10 @@ export default function (pi: ExtensionAPI) {
         return [theme.dim(`ts-footer`.padEnd(Math.max(1, width)).slice(0, width))];
       },
     }));
-    // Exercise setEditorComponent decoration mode so we have a parity
-    // regression: capture border color, mode label, and history.
-    const mod: any = await import("@earendil-works/pi-coding-agent");
-    const CustomEditor = mod.CustomEditor;
+    // Pi's editor component retains history and receives real input.
+    const { CustomEditor } = await import("@earendil-works/pi-coding-agent");
     ctx.ui.setEditorComponent((tui: any, theme: any, kb: any) => {
-      const editor = new (CustomEditor as any)(tui, theme, kb);
-      editor.modeLabelProvider = () => "ts-mode";
-      editor.modeLabelColor = (text: string) => `\u001b[35m${text}\u001b[0m`;
-      editor.borderColor = (text: string) => `\u001b[31m${text}\u001b[0m`;
-      editor.lockBorderColor();
+      const editor = new CustomEditor(tui, theme, kb);
       editor.addToHistory("history-1");
       editor.addToHistory("history-2");
       return editor;

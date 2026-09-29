@@ -23,39 +23,36 @@ type editParams struct {
 	Edits []editEntry `json:"edits"`
 }
 
+// EditOperations delegates file editing. Each callback completes before the mutation queue advances.
+// Ports packages/coding-agent/src/core/tools/edit.ts.
+type EditOperations struct {
+	ReadFile  func(string) ([]byte, error)
+	WriteFile func(string, string) error
+	Access    func(string) error
+}
+
 // EditTool performs exact-text-replacement edits on files.
 // Mirrors upstream packages/coding-agent/src/core/tools/edit.ts.
 type EditTool struct {
-	CWD   string
-	Queue *FileMutationQueue // serialises concurrent edits
+	CWD        string
+	Queue      *FileMutationQueue // serialises concurrent edits
+	Operations *EditOperations
+}
+
+func (t *EditTool) operations() EditOperations {
+	if t.Operations != nil {
+		return *t.Operations
+	}
+	return EditOperations{ReadFile: os.ReadFile, WriteFile: func(path, content string) error { return os.WriteFile(path, []byte(content), 0o644) }, Access: accessReadWrite}
 }
 
 func (t *EditTool) Name() string  { return "edit" }
 func (t *EditTool) Label() string { return "" }
 
 func (t *EditTool) Schema() ai.ToolSchema {
-	return ai.ToolSchema{
-		Name:        "edit",
-		Description: "Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.",
-		Parameters: map[string]any{
-			"type": "object",
-			"properties": map[string]any{
-				"path": map[string]any{"type": "string", "description": "Path to the file to edit (relative or absolute)"},
-				"edits": map[string]any{
-					"type":        "array",
-					"description": "One or more targeted replacements. Each edit is matched against the original file, not incrementally. Do not include overlapping or nested edits. If two changes touch the same block or nearby lines, merge them into one edit instead.",
-					"items": map[string]any{
-						"type": "object",
-						"properties": map[string]any{
-							"oldText": map[string]any{"type": "string", "description": "Exact text for one targeted replacement. It must be unique in the original file and must not overlap with any other edits[].oldText in the same call."},
-							"newText": map[string]any{"type": "string", "description": "Replacement text for this targeted edit."},
-						},
-						"required": []string{"oldText", "newText"},
-					},
-				},
-			},
-			"required": []string{"path", "edits"},
-		},
+	return toolSchemaWithParameters(ai.ToolSchema{
+		Name:                "edit",
+		Description:         "Edit a single file using exact text replacement. Every edits[].oldText must match a unique, non-overlapping region of the original file. If two changes affect the same block or nearby lines, merge them into one edit instead of emitting overlapping edits. Do not include large unchanged regions just to connect distant changes.",
 		ConstrainedSampling: strictToolSampling(),
 		PromptGuidelines: []string{
 			"Use edit for precise changes (edits[].oldText must match exactly)",
@@ -63,7 +60,13 @@ func (t *EditTool) Schema() ai.ToolSchema {
 			"Each edits[].oldText is matched against the original file, not after earlier edits are applied. Do not emit overlapping or nested edits. Merge nearby changes into one edit.",
 			"Keep edits[].oldText as small as possible while still being unique in the file. Do not pad with large unchanged regions.",
 		},
-	}
+	}, `{"type":"object","required":["path","edits"],"properties":{
+		"path":{"type":"string","description":"Path to the file to edit (relative or absolute)"},
+		"edits":{"type":"array","items":{"type":"object","required":["oldText","newText"],"properties":{
+			"oldText":{"type":"string","description":"Exact text for one targeted replacement. It must be unique in the original file and must not overlap with any other edits[].oldText in the same call."},
+			"newText":{"type":"string","description":"Replacement text for this targeted edit."}
+		}},"description":"One or more targeted replacements. Each edit is matched against the original file, not incrementally. Do not include overlapping or nested edits. If two changes touch the same block or nearby lines, merge them into one edit instead."}
+	}}`)
 }
 
 // ExecutionMode is parallel: upstream's edit definition sets no
@@ -84,7 +87,11 @@ func (t *EditTool) ReserveMutationOrder(rawParams json.RawMessage) (*agent.Mutat
 	if err != nil || len(p.Edits) == 0 {
 		return nil, false
 	}
-	ticket, err := t.Queue.Reserve(resolvePath(t.CWD, p.Path))
+	path, err := resolvePath(t.CWD, p.Path)
+	if err != nil {
+		return nil, false
+	}
+	ticket, err := t.Queue.Reserve(path)
 	if err != nil {
 		return nil, false
 	}
@@ -174,7 +181,14 @@ func (t *EditTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 	if len(p.Edits) == 0 {
 		return editError("Edit tool input is invalid. edits must contain at least one replacement."), nil
 	}
-	absPath := resolvePath(t.CWD, p.Path)
+	cwd, err := toolCWD(ctx, t.CWD)
+	if err != nil {
+		return agent.AgentToolResult{}, err
+	}
+	absPath, err := resolvePath(cwd, p.Path)
+	if err != nil {
+		return agent.AgentToolResult{}, err
+	}
 
 	var result agent.AgentToolResult
 	err = runQueued(ctx, t.Queue, absPath, func() error {
@@ -188,7 +202,7 @@ func (t *EditTool) Execute(ctx context.Context, _ string, rawParams json.RawMess
 }
 
 func editError(message string) agent.AgentToolResult {
-	return agent.AgentToolResult{Content: message, IsError: true}
+	return agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: message}}, Details: map[string]any{}, IsError: true}
 }
 
 func (t *EditTool) editLocked(ctx context.Context, absPath string, p editParams) agent.AgentToolResult {
@@ -196,7 +210,8 @@ func (t *EditTool) editLocked(ctx context.Context, absPath string, p editParams)
 	if aborted() {
 		return editError("Operation aborted")
 	}
-	if err := accessReadWrite(absPath); err != nil {
+	ops := t.operations()
+	if err := ops.Access(absPath); err != nil {
 		if aborted() {
 			return editError("Operation aborted")
 		}
@@ -206,9 +221,12 @@ func (t *EditTool) editLocked(ctx context.Context, absPath string, p editParams)
 		}
 		return editError(fmt.Sprintf("Could not edit file: %s. %s.", p.Path, detail))
 	}
-	data, err := os.ReadFile(absPath)
+	if aborted() {
+		return editError("Operation aborted")
+	}
+	data, err := ops.ReadFile(absPath)
 	if err != nil {
-		return editError(nodeFSError(err, "read", ""))
+		return editError(NodeFSError(err, "read", ""))
 	}
 	if aborted() {
 		return editError("Operation aborted")
@@ -225,8 +243,8 @@ func (t *EditTool) editLocked(ctx context.Context, absPath string, p editParams)
 		return editError("Operation aborted")
 	}
 	final := bom + restoreLineEndings(applied.newContent, originalEnding)
-	if err := os.WriteFile(absPath, []byte(final), 0o644); err != nil {
-		return editError(nodeFSError(err, "open", absPath))
+	if err := ops.WriteFile(absPath, final); err != nil {
+		return editError(NodeFSError(err, "open", absPath))
 	}
 	if aborted() {
 		return editError("Operation aborted")
@@ -234,7 +252,7 @@ func (t *EditTool) editLocked(ctx context.Context, absPath string, p editParams)
 	diff, firstChangedLine := GenerateDiffString(applied.baseContent, applied.newContent)
 	patch := GenerateUnifiedPatch(p.Path, applied.baseContent, applied.newContent)
 	return agent.AgentToolResult{
-		Content: fmt.Sprintf("Successfully replaced %d block(s) in %s.", len(p.Edits), p.Path),
+		Content: []ai.ToolResultMessageContent{ai.TextContent{Text: fmt.Sprintf("Successfully replaced %d block(s) in %s.", len(p.Edits), p.Path)}},
 		Details: &EditToolDetails{Diff: diff, Patch: patch, FirstChangedLine: firstChangedLine},
 	}
 }

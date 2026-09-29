@@ -1,0 +1,44 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:2560 returns editor.getExpandedText() to extensions. Terminal callbacks must see paste contents rather than the compact editor marker.
+# The callback retains its Context after the command returns. The crop contains its complete JSON value and fixed end marker, including the incorrect compact marker on a broken host; no normalization is applied.
+name = "49-terminal-input-expanded-editor"
+description = "A retained terminal callback reads complete paste contents from the live editor"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/expanded-editor-state.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/expanded-editor-state.mjs"]
+
+[tmux]
+width = 100
+height = 30
+ready_pattern_pig = "PASTE_FIXTURE_READY"
+ready_pattern_pi = "PASTE_FIXTURE_READY"
+ready_timeout_seconds = 30
+capture_start = "PASTE_VALUE"
+capture_end = "PASTE_END"
+
+[[tmux.steps]]
+keys = ["/seed-paste", "Enter"]
+wait_contains = ["PASTE_LISTENER_READY"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+# Bracketed paste of eleven lines through the real terminal/editor path.
+keys = ["hex:1b 5b 32 30 30 7e 70 0a 70 0a 70 0a 70 0a 70 0a 70 0a 70 0a 70 0a 70 0a 70 0a 7a 1b 5b 32 30 31 7e"]
+wait_contains = ["[paste #1 +11 lines]"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["~"]
+wait_contains = ["PASTE_VALUE", "PASTE_END"]
+wait_timeout_seconds = 20
+
+[assert]
+output_equal = true
+both_contain = ['PASTE_VALUE "p\np\np\np\np\np\np\np\np\np\nz" PASTE_END']
+runs = 3

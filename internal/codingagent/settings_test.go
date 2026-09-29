@@ -5,6 +5,7 @@ import (
 	"math"
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -175,7 +176,7 @@ func TestModelRegistryLiteralAPIKeyPreserved(t *testing.T) {
 // canonical defaults (Enabled=true, ReserveTokens=16384, KeepRecentTokens=20000).
 func TestGetCompactionSettings_Defaults(t *testing.T) {
 	sm := &SettingsManager{}
-	got := sm.GetCompactionSettings()
+	got := compactionConfigForTest(t, sm)
 	if !got.Enabled {
 		t.Errorf("Enabled: want true, got false")
 	}
@@ -258,7 +259,7 @@ func TestSettingsManager_GettersExposeUpstreamHelperSurface(t *testing.T) {
 	trueVal := true
 	idleTimeout := 12_345
 	sm := &SettingsManager{merged: Settings{
-		Compaction:           &CompactionSettingsJSON{Enabled: &falseVal, ReserveTokens: new(8192), KeepRecentTokens: new(4096)},
+		Compaction:           &CompactionSettingsJSON{Enabled: &falseVal, ReserveTokens: new(8192.), KeepRecentTokens: new(4096.)},
 		BranchSummary:        &BranchSummaryConfig{SkipPrompt: true},
 		Retry:                &RetrySettingsJSON{Enabled: &falseVal},
 		ShowTerminalProgress: &trueVal,
@@ -267,10 +268,10 @@ func TestSettingsManager_GettersExposeUpstreamHelperSurface(t *testing.T) {
 	if sm.GetCompactionEnabled() {
 		t.Fatal("GetCompactionEnabled() = true, want false")
 	}
-	if got := sm.GetCompactionReserveTokens(); got != 8192 {
+	if got, err := sm.GetCompactionReserveTokens(); got != 8192 || err != nil {
 		t.Fatalf("GetCompactionReserveTokens() = %d, want 8192", got)
 	}
-	if got := sm.GetCompactionKeepRecentTokens(); got != 4096 {
+	if got, err := sm.GetCompactionKeepRecentTokens(); got != 4096 || err != nil {
 		t.Fatalf("GetCompactionKeepRecentTokens() = %d, want 4096", got)
 	}
 	if !sm.GetBranchSummarySkipPrompt() {
@@ -478,7 +479,7 @@ func TestSettingsManager_GetReturnsClonedSettings(t *testing.T) {
 	sm := &SettingsManager{merged: Settings{
 		Extensions:    []string{"/a"},
 		ShowImages:    &showImages,
-		Compaction:    &CompactionSettingsJSON{ReserveTokens: new(10)},
+		Compaction:    &CompactionSettingsJSON{ReserveTokens: new(10.)},
 		NpmCommand:    []string{"npm"},
 		Packages:      []PackageSource{{Source: "npm:foo", Prompts: []string{}}},
 		EnabledModels: []string{"a"},
@@ -617,6 +618,90 @@ func TestSettingsManager_UpdateGlobalRefusesToClobberInvalidFile(t *testing.T) {
 	}
 }
 
+// Ports packages/coding-agent/test/settings-manager-bug.test.ts:37,79,109,138.
+func TestSettingsManagerExternalEditPreservationUpstream(t *testing.T) {
+	for _, tc := range []struct {
+		name, initial, external, want string
+		project                       bool
+		update                        func(*SettingsManager) error
+	}{
+		{
+			name:     "packages survive an unrelated theme change",
+			initial:  `{"theme":"dark","packages":["npm:pi-mcp-adapter"]}`,
+			external: `{"theme":"dark","packages":[]}`,
+			want:     `{"theme":"light","packages":[]}`,
+			update:   func(sm *SettingsManager) error { return sm.SetTheme("light") },
+		},
+		{
+			name:     "extensions survive an unrelated thinking level change",
+			initial:  `{"theme":"dark","extensions":["/old/extension.ts"]}`,
+			external: `{"theme":"dark","extensions":["/new/extension.ts"]}`,
+			want:     `{"theme":"dark","extensions":["/new/extension.ts"],"defaultThinkingLevel":"high"}`,
+			update:   func(sm *SettingsManager) error { return sm.SetDefaultThinkingLevel("high") },
+		},
+		{
+			name: "external project prompts survive an extension update", project: true,
+			initial:  `{"extensions":["./old-extension.ts"],"prompts":["./old-prompt.md"]}`,
+			external: `{"extensions":["./old-extension.ts"],"prompts":["./new-prompt.md"]}`,
+			want:     `{"extensions":["./updated-extension.ts"],"prompts":["./new-prompt.md"]}`,
+			update: func(sm *SettingsManager) error {
+				return sm.SetProjectExtensionPaths([]string{"./updated-extension.ts"})
+			},
+		},
+		{
+			name: "in-memory project extensions override external same-field changes", project: true,
+			initial:  `{"extensions":["./initial-extension.ts"]}`,
+			external: `{"extensions":["./external-extension.ts"]}`,
+			want:     `{"extensions":["./in-memory-extension.ts"]}`,
+			update: func(sm *SettingsManager) error {
+				return sm.SetProjectExtensionPaths([]string{"./in-memory-extension.ts"})
+			},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cwd, agentDir := t.TempDir(), t.TempDir()
+			dir := agentDir
+			if tc.project {
+				dir = filepath.Join(cwd, CONFIG_DIR_NAME)
+				if err := os.MkdirAll(dir, 0o755); err != nil {
+					t.Fatal(err)
+				}
+			}
+			path := filepath.Join(dir, "settings.json")
+			if err := os.WriteFile(path, []byte(tc.initial), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			sm := NewSettingsManager(cwd, agentDir)
+			if !tc.project && strings.Contains(tc.initial, "packages") {
+				if got := sm.GetPackages(); len(got) != 1 || got[0].Source != "npm:pi-mcp-adapter" {
+					t.Fatalf("initial packages = %#v", got)
+				}
+			}
+			if err := os.WriteFile(path, []byte(tc.external), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			// Go setters synchronously persist; their return is Pi's flush boundary.
+			if err := tc.update(sm); err != nil {
+				t.Fatal(err)
+			}
+			data, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			var got, want map[string]any
+			if err := json.Unmarshal(data, &got); err != nil {
+				t.Fatal(err)
+			}
+			if err := json.Unmarshal([]byte(tc.want), &want); err != nil {
+				t.Fatal(err)
+			}
+			if !reflect.DeepEqual(got, want) {
+				t.Fatalf("persisted settings = %s, want %s", data, tc.want)
+			}
+		})
+	}
+}
+
 func TestSettingsManager_UpdateGlobalPreservesExternalUnrelatedChanges(t *testing.T) {
 	cwd := t.TempDir()
 	agentDir := t.TempDir()
@@ -751,7 +836,7 @@ func anyStrings(value any) []string {
 // overrides the default Enabled=true.
 func TestGetCompactionSettings_DisabledOverride(t *testing.T) {
 	sm := &SettingsManager{merged: Settings{Compaction: &CompactionSettingsJSON{Enabled: new(false)}}}
-	got := sm.GetCompactionSettings()
+	got := compactionConfigForTest(t, sm)
 	if got.Enabled {
 		t.Errorf("Enabled: want false, got true")
 	}
@@ -760,8 +845,8 @@ func TestGetCompactionSettings_DisabledOverride(t *testing.T) {
 // TestGetCompactionSettings_ReserveTokensOverride proves a non-zero
 // ReserveTokens overrides the default 16384.
 func TestGetCompactionSettings_ReserveTokensOverride(t *testing.T) {
-	sm := &SettingsManager{merged: Settings{Compaction: &CompactionSettingsJSON{ReserveTokens: new(8192)}}}
-	got := sm.GetCompactionSettings()
+	sm := &SettingsManager{merged: Settings{Compaction: &CompactionSettingsJSON{ReserveTokens: new(8192.)}}}
+	got := compactionConfigForTest(t, sm)
 	if got.ReserveTokens != 8192 {
 		t.Errorf("ReserveTokens: want 8192, got %d", got.ReserveTokens)
 	}
@@ -948,11 +1033,50 @@ func TestModelRegistryUpstreamSchema_PerModelCompat(t *testing.T) {
 }
 
 func TestModelRegistryLoadError(t *testing.T) {
+	// upstream: packages/coding-agent/src/core/model-config.ts:281-311
+	for _, tc := range []struct {
+		name, content, want string
+	}{
+		{"blank", "", "Failed to parse models.json: Unexpected end of JSON input"},
+		{"malformed", "{\n  \"providers\": {\n", "Failed to parse models.json: Expected property name or '}' in JSON at position 19 (line 3 column 1)"},
+		{"invalid token", `{ invalid json }`, "Failed to parse models.json: Expected property name or '}' in JSON at position 2 (line 1 column 3)"},
+		{"schema", `{"providers":{"custom":{"models":[{}]}}}`, "Invalid models.json schema:\nprovider \"custom\": model at index 0: \"id\" is required"},
+		{"ordinary", `{"providers":{}}`, ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dir := t.TempDir()
+			writeModelsJSON(t, dir, tc.content)
+			want := tc.want
+			if want != "" {
+				want += "\n\nFile: " + filepath.Join(dir, "models.json")
+			}
+			if got := NewModelRegistry(dir).LoadError(); got != want {
+				t.Fatalf("LoadError() = %q, want %q", got, want)
+			}
+		})
+	}
+}
+
+func TestModelRegistryReadError(t *testing.T) {
+	// upstream: packages/coding-agent/src/core/model-config.ts:281-293: only ENOENT is silent.
 	dir := t.TempDir()
-	writeModelsJSON(t, dir, `{ invalid json }`)
-	r := NewModelRegistry(dir)
-	if r.LoadError() == "" {
-		t.Error("expected load error for invalid JSON")
+	path := filepath.Join(dir, "models.json")
+	if got := NewModelRegistry(dir).LoadError(); got != "" {
+		t.Fatalf("missing file: %q", got)
+	}
+	if got := NewModelRegistryWithModelsPath("").LoadError(); got != "" {
+		t.Fatalf("disabled file: %q", got)
+	}
+	if err := os.Mkdir(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	_, readErr := os.ReadFile(path)
+	if readErr == nil {
+		t.Fatal("reading a directory as models.json must fail")
+	}
+	want := "Failed to load models.json: " + readErr.Error() + "\n\nFile: " + path
+	if got := NewModelRegistry(dir).LoadError(); got != want {
+		t.Fatalf("LoadError() = %q, want %q", got, want)
 	}
 }
 
@@ -1392,7 +1516,7 @@ func TestSettingsManager_Setters(t *testing.T) {
 	if sm2.GetTreeFilterMode() != "user-only" {
 		t.Errorf("TreeFilterMode = %q, want 'user-only'", sm2.GetTreeFilterMode())
 	}
-	cs := sm2.GetCompactionSettings()
+	cs := compactionConfigForTest(t, sm2)
 	if cs.Enabled {
 		t.Error("CompactionEnabled should be false")
 	}

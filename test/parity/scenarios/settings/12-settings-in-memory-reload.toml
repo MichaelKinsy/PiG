@@ -1,0 +1,25 @@
+# Pi 0.87.1 regression3616 exercises direct reload, resource reload, and setter/flush/reload with the original explicit-false inputs.
+# Go's resource reload is owned by the interactive reload action and snapshot provider. The probe drives that action with all resources disabled.
+# The adapters serialize sorted object keys; only absent optional string getters map to Go's empty-string representation.
+name = "12-settings-in-memory-reload"
+description = "In-memory settings survive direct and resource reload without filesystem writes"
+covers = ["packages/coding-agent/src/core/settings-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/settings-memory-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/settings-memory-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SETTINGS_MEMORY", "high", "dark", "autoResize"]
+runs = 3

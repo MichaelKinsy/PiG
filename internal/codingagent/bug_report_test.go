@@ -25,7 +25,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
-	"github.com/MichaelKinsy/PiG/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
 // Upstream: test/bug-report.test.ts "removes URL credentials and secret query
@@ -146,7 +146,7 @@ func (s *bugDialogScript) context(session *Session) *SlashContext {
 func bugReportSession(t *testing.T) *Session {
 	t.Helper()
 	session := NewSession("session-bug", t.TempDir())
-	if _, err := session.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "TRANSCRIPT-MARKER please read the file"}}, Timestamp: 1}}); err != nil {
+	if _, err := session.AppendMessage(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "TRANSCRIPT-MARKER please read the file"}}, Timestamp: 1}}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := session.AppendMessage(agent.AgentMessage{Assistant: &agent.AssistantMessage{Role: "assistant", Timestamp: 2, Provider: "openai", ModelID: "gpt-test", API: "openai-responses", StopReason: ai.StopReasonError, ErrorMessage: "Unexpected internal state"}}); err != nil {

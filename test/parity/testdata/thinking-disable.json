@@ -1,0 +1,11 @@
+[
+ {"provider":"anthropic","model":"claude-sonnet-4-5","maxTokens":320},
+ {"provider":"anthropic","model":"claude-sonnet-4-6","maxTokens":320},
+ {"provider":"google","model":"gemini-2.5-flash","maxTokens":160},
+ {"provider":"google","model":"gemini-3-flash-preview","maxTokens":160},
+ {"provider":"google","model":"gemini-3.1-pro-preview","maxTokens":512},
+ {"provider":"google-vertex","model":"gemini-2.5-flash","maxTokens":160},
+ {"provider":"google-vertex","model":"gemini-3-flash-preview","maxTokens":160},
+ {"provider":"openai","model":"gpt-5.4-mini","maxTokens":160},
+ {"provider":"openrouter","model":"qwen/qwen3.5-plus-02-15","maxTokens":160}
+]

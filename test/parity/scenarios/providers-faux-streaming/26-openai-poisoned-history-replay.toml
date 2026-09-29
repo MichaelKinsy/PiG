@@ -1,0 +1,23 @@
+# Pi 0.87.1 transform-messages.ts drops failed turns, transforms foreign thinking and holds system updates
+# until pending tool results complete. The adapters print every message field for both OpenAI paths.
+# Go uses the production session JSON decoder but does not pre-normalize with Agent, so provider mutations remain observable.
+# JSON object keys are emitted in deterministic order by each producer; array order and all values remain exact.
+name = "26-openai-poisoned-history-replay"
+description = "Both OpenAI paths normalize aborted turns, model/provider handoffs and held tool-state updates."
+covers = ["packages/ai/src/api/transform-messages.ts", "packages/ai/src/api/openai-completions.ts", "packages/ai/src/api/openai-responses-shared.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/replay-history-pig"]
+pi_args = ["node", "./test/parity/testdata/replay-history-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['"case":"aborted"', '"text":"Double 21"', '"content":null,"role":"assistant"', '"output":"done"']
+runs = 3

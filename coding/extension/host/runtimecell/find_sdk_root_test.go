@@ -17,6 +17,8 @@ func TestFindSDKRoot_InstalledSourceRoot(t *testing.T) {
 	t.Chdir(tmp)
 	t.Setenv("HOME", filepath.Join(tmp, "home"))
 	t.Setenv("USERPROFILE", filepath.Join(tmp, "home"))
+	// This case exercises source-root fallback without an ambient staged SDK.
+	t.Setenv("PIG_HOME", "")
 	t.Setenv("PIG_SDK_GO_ROOT", "")
 
 	srcRoot := filepath.Join(tmp, "pig-source")
@@ -45,6 +47,7 @@ func TestFindSDKRoot_NoSourceRootErrors(t *testing.T) {
 	t.Chdir(tmp)
 	t.Setenv("HOME", filepath.Join(tmp, "home"))
 	t.Setenv("USERPROFILE", filepath.Join(tmp, "home"))
+	t.Setenv("PIG_HOME", "")
 	t.Setenv("PIG_SDK_GO_ROOT", "")
 	t.Setenv("PIG_SOURCE_ROOT", filepath.Join(tmp, "does-not-exist"))
 

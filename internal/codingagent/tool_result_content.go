@@ -13,29 +13,33 @@ import (
 
 // ToolResultEventContent preserves text and images at the extension boundary.
 func ToolResultEventContent(result agent.AgentToolResult) []any {
-	content := make([]any, 0, 1+len(result.Images))
-	if result.Content != "" {
-		content = append(content, map[string]any{"type": "text", "text": result.Content})
-	}
-	for _, image := range result.Images {
-		content = append(content, map[string]any{"type": "image", "data": image.Data, "mimeType": image.MimeType})
+	content := make([]any, 0, len(result.Content))
+	for _, block := range result.Content {
+		switch value := block.(type) {
+		case ai.TextContent:
+			text := map[string]any{"type": "text", "text": value.Text}
+			if value.TextSignature != "" {
+				text["textSignature"] = value.TextSignature
+			}
+			content = append(content, text)
+		case ai.ImageContent:
+			content = append(content, map[string]any{"type": "image", "data": value.Data, "mimeType": value.MimeType})
+		}
 	}
 	return content
 }
 
-// ToolResultEventOverride decodes the runner's complete, chained content. An
-// empty image list intentionally clears images replaced by a text-only result.
+// ToolResultEventOverride decodes the runner's complete, chained content without coalescing text or moving images. An empty array clears the prior content.
 func ToolResultEventOverride(result *extension.ToolResultEventResult) agent.AfterToolCallResult {
-	var text strings.Builder
-	images := make([]ai.ImageContent, 0)
+	content := make([]ai.ToolResultMessageContent, 0, len(result.Content))
 	for _, block := range result.Content {
 		switch value := block.(type) {
 		case string:
-			text.WriteString(value)
+			content = append(content, ai.TextContent{Text: value})
 		case ai.TextContent:
-			text.WriteString(value.Text)
+			content = append(content, value)
 		case ai.ImageContent:
-			images = append(images, value)
+			content = append(content, value)
 		default:
 			// Upstream keeps the handler's blocks as they are, so a text or
 			// image block whose fields are not strings still reaches the model;
@@ -45,14 +49,14 @@ func ToolResultEventOverride(result *extension.ToolResultEventResult) agent.Afte
 			fields := toolResultBlockFields(block)
 			switch fields["type"] {
 			case "text":
-				text.WriteString(jsStringValue(fields["text"]))
+				signature, _ := fields["textSignature"].(string)
+				content = append(content, ai.TextContent{Text: jsStringValue(fields["text"]), TextSignature: signature})
 			case "image":
-				images = append(images, ai.ImageContent{Data: jsStringValue(fields["data"]), MimeType: jsStringValue(fields["mimeType"])})
+				content = append(content, ai.ImageContent{Data: jsStringValue(fields["data"]), MimeType: jsStringValue(fields["mimeType"])})
 			}
 		}
 	}
-	content := text.String()
-	return agent.AfterToolCallResult{Content: &content, Images: &images, Details: result.Details, IsError: result.IsError, Usage: toolResultUsage(result.Usage)}
+	return agent.AfterToolCallResult{Content: content, Details: result.Details, IsError: result.IsError, Usage: toolResultUsage(result.Usage)}
 }
 
 // toolResultUsage decodes a handler's usage override; nil keeps the tool's own.

@@ -21,6 +21,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/coding/packagecontent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 )
 
 type authContribution struct {
@@ -126,12 +127,13 @@ func discoverAuthContributionsFor(targetID string) (*authContributionRegistry, e
 // authExtensionConfigs keeps Package validation strict for every enabled
 // non-extension resource, but turns an enabled extension's missing or invalid
 // source into an inventory diagnostic. A broken Package extension therefore
-// cannot erase healthy authentication targets.
+// cannot erase healthy authentication targets. Project deltas retain disabled entries to suppress inherited authentication extensions.
 func authExtensionConfigs(cwd, agentDir string, settings *codingagent.SettingsManager) ([]subprocess.ExtConfig, []authInspectionDiagnostic, error) {
 	var configs []subprocess.ExtConfig
 	var diagnostics []authInspectionDiagnostic
-	for _, pkg := range configuredPackagesForResolution(cwd, settings) {
-		if pkg.InstalledPath == "" {
+	seenExtensions := make(map[string]struct{})
+	for _, pkg := range packagemanager.ResolvedConfiguredPackageSources(cwd, settings.AgentDir(), settings, true) {
+		if packagemanager.ConfiguredPackageNeedsInstall(pkg) {
 			continue
 		}
 		filters, err := effectiveConfiguredPackageFilters(pkg)
@@ -147,19 +149,31 @@ func authExtensionConfigs(cwd, agentDir string, settings *codingagent.SettingsMa
 		if err != nil {
 			return nil, nil, fmt.Errorf("%s Package %q at %s is invalid: %w", pkg.Scope, pkg.Source.Source, pkg.InstalledPath, err)
 		}
-		for _, member := range missing {
-			if member.Kind == packagecontent.Extensions {
-				if packagecontent.ResourceEnabled(member.Pattern, filters[packagecontent.Extensions]) {
-					diagnostics = append(diagnostics, authInspectionDiagnostic{Extension: member.Pattern, Error: fmt.Sprintf("extension source %s does not exist", member.Path)})
-				}
+		items := packagemanager.PackageResourceItemsFromInventory(pkg.InstalledPath, pkg, resources, missing, filters)
+		selected := items[:0]
+		for _, item := range items {
+			if item.ResourceType != "extensions" {
 				continue
+			}
+			if _, seen := seenExtensions[item.Path]; seen {
+				continue
+			}
+			seenExtensions[item.Path] = struct{}{}
+			if item.Enabled {
+				selected = append(selected, item)
 			}
 		}
-		for _, source := range resources.ExtensionEntries {
-			relative, _ := filepath.Rel(pkg.InstalledPath, source)
-			if !packagecontent.ResourceEnabled(filepath.ToSlash(relative), filters[packagecontent.Extensions]) {
+		for _, item := range selected {
+			if item.Health == "missing" {
+				diagnostics = append(diagnostics, authInspectionDiagnostic{Extension: item.Pattern, Error: fmt.Sprintf("extension source %s does not exist", item.Path)})
+			}
+		}
+		for _, item := range selected {
+			if item.Health == "missing" {
 				continue
 			}
+			source := item.Path
+			relative, _ := filepath.Rel(pkg.InstalledPath, source)
 			name, err := packagecontent.PublicName(packagecontent.Extensions, source, "")
 			if err != nil {
 				diagnostics = append(diagnostics, authInspectionDiagnostic{Extension: filepath.ToSlash(relative), Error: err.Error()})
@@ -178,7 +192,9 @@ func authExtensionConfigs(cwd, agentDir string, settings *codingagent.SettingsMa
 	packageConfigs := configs
 	configs = nil
 	var topLevel []subprocess.ExtConfig
-	if projectRoot, ok := projectResourceRoot(cwd); ok {
+	// Project trust gates project extensions, as addAutoDiscoveredResources does (package-manager.ts:2417-2424): inspection starts each extension, so an untrusted project's code must not run.
+	if settings.IsProjectTrusted() {
+		projectRoot := codingagent.ProjectConfigDir(cwd)
 		topLevel = append(topLevel, collectTopLevelExtensionConfigs(filepath.Join(projectRoot, "extensions"), settings.GetProjectSettings().Extensions, "project")...)
 	}
 	topLevel = append(topLevel, collectTopLevelExtensionConfigs(filepath.Join(agentDir, "extensions"), settings.GetGlobalSettings().Extensions, "user")...)

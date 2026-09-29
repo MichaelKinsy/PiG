@@ -1,0 +1,11 @@
+[
+  {
+    "reference": "node_modules/undici/lib/core/connect.js",
+    "manifest": "packages/coding-agent/package.json",
+    "package": "undici",
+    "version": "8.10.2",
+    "source": "test/parity/dependency-sources/undici/8.10.2/lib/core/connect.js",
+    "sha256": "4bf7ce84d6d31ffacebb0130164d50e619645b79cf6c4221ac374ab5ada677e3",
+    "integrity": "sha512-/y4/bH9YNU5hi9NIrpOuvGXFcxrj3CMrV+/AYpowAYTpHn8gX/XPFjNy766FPoYY0miQhdW977JFWKGNhBdwyQ=="
+  }
+]

@@ -1,0 +1,27 @@
+# Pi provider-retry.ts retains the SDK error's message when rejecting an
+# excessive Retry-After. The Go Model Runtime path and Pi provider both receive
+# HTTP 429 with Retry-After 277403 and body "rate limited". This compares the
+# original upstream test's observable error-cause predicates and attempt count,
+# not language-specific exception wrappers or ephemeral endpoint strings.
+name = "18-provider-retry-error-body"
+description = "An excessive provider retry delay preserves the provider error body and fails after one attempt."
+covers = ["packages/ai/src/utils/provider-retry.ts", "packages/ai/src/api/openai-completions.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/provider-retry-body-pig"]
+pi_args = ["node", "./test/parity/testdata/provider-retry-body-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['{"stopReason":"error","limit":true,"detail":true,"attempts":1}']
+runs = 3

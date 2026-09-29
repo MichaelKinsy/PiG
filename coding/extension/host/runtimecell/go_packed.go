@@ -6,18 +6,23 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
+	"go/parser"
+	"go/token"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
+	"slices"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+
 	"golang.org/x/mod/modfile"
 	"golang.org/x/mod/semver"
-	"golang.org/x/term"
 
 	extsource "github.com/MichaelKinsy/PiG/coding/extension/source"
 	"github.com/MichaelKinsy/PiG/internal/buildprogress"
@@ -107,8 +112,7 @@ type GoPackedCell struct {
 	// (pig additive, CNC-002), claimed by the caller before any build work so
 	// an async crash report for a process this attempt is replacing cannot
 	// mistake itself for still current. Zero (the default, for callers that
-	// never claim one) always compares equal to an un-bumped counter, so
-	// leaving it unset preserves prior behavior exactly.
+	// never claim one) makes the host claim the generation at spawn.
 	Generation int
 }
 
@@ -171,10 +175,6 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 				for i, ext := range normalized {
 					names[i] = ext.Name
 				}
-				// pig additive (D18): explicit builds own their progress display; runtime loads retain their normal diagnostics.
-				if !buildprogress.Enabled(ctx) && term.IsTerminal(int(os.Stderr.Fd())) {
-					fmt.Fprintf(os.Stderr, "Building extensions %s (first run, will be cached)...\n", strings.Join(names, ", "))
-				}
 				// Build generated source outside the cache root. A user's home can contain
 				// an unrelated or malformed .git directory; Go VCS discovery must not bind
 				// a generated cell to that parent repository. The finished artifact is
@@ -185,7 +185,7 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 				}
 				defer func() { _ = os.RemoveAll(buildDir) }()
 				if requiresLegacyGoSDK(normalized) {
-					if err := stageLegacyGoSDK(sdkRoot, filepath.Join(buildDir, legacyGoSDKDir)); err != nil {
+					if err := StageLegacyGoSDK(sdkRoot, filepath.Join(buildDir, legacyGoSDKDir)); err != nil {
 						return "", err
 					}
 				}
@@ -231,9 +231,6 @@ func buildGoPackedCell(ctx context.Context, cacheRoot, key string, extensions []
 			var dur time.Duration
 			if !entry.Reused {
 				dur = time.Since(start)
-				if !buildprogress.Enabled(ctx) && term.IsTerminal(int(os.Stderr.Fd())) {
-					fmt.Fprintf(os.Stderr, "Built extensions in %s (cached for next run)\n", dur.Round(time.Millisecond))
-				}
 			}
 			return &GoPackedCell{Key: key, Hash: hash, CacheDir: entry.Dir, BinaryPath: entry.ArtifactPath, Cached: entry.Reused, BuildDuration: dur, Extensions: normalized}, nil
 		})
@@ -496,12 +493,7 @@ func renderGoMod(extensions []GoExtension, sdkRoot string) string {
 		modulePaths = append(modulePaths, modulePath)
 	}
 	sort.Strings(modulePaths)
-	for _, modulePath := range modulePaths {
-		fmt.Fprintf(&b, "require %s v0.0.0\n", modulePath)
-	}
-	// Promote transitive requirements and local replacements from extension
-	// modules into the generated main module. Go ignores replacement directives
-	// declared by dependency modules.
+	// Promote requirements and local replacements from extension and workspace modules into the generated main module. Go ignores dependency-module replacements; local sources still retain their minimum-version constraints.
 	extraReqs, extraReps := collectExtensionDeps(extensions)
 	extraVersions := map[string]string{}
 	for _, requirement := range extraReqs {
@@ -509,12 +501,18 @@ func renderGoMod(extensions []GoExtension, sdkRoot string) string {
 		if len(fields) < 2 {
 			continue
 		}
-		if _, localModule := modules[fields[0]]; localModule {
-			continue
-		}
 		if current := extraVersions[fields[0]]; current == "" || semver.Compare(fields[1], current) > 0 {
 			extraVersions[fields[0]] = fields[1]
 		}
+	}
+	// pig additive (D20): local source replacements retain the maximum required version.
+	for _, modulePath := range modulePaths {
+		version := extraVersions[modulePath]
+		if version == "" {
+			version = "v0.0.0"
+		}
+		fmt.Fprintf(&b, "require %s %s\n", modulePath, version)
+		delete(extraVersions, modulePath)
 	}
 	extraModules := make([]string, 0, len(extraVersions))
 	for modulePath := range extraVersions {
@@ -527,7 +525,7 @@ func renderGoMod(extensions []GoExtension, sdkRoot string) string {
 	b.WriteString("\n")
 	fmt.Fprintf(&b, "replace github.com/MichaelKinsy/PiG/extensions/sdk => %s\n", modfile.AutoQuote(filepath.ToSlash(sdkRoot)))
 	// A legacy SDK import resolves to a build-local copy of the current SDK
-	// (see stageLegacyGoSDK). The extension's own legacy replace is dropped with
+	// (see StageLegacyGoSDK). The extension's own legacy replace is dropped with
 	// its other SDK lines: it names the SDK staged by an older Pig, whose wire
 	// may not match this host.
 	if legacySDK {
@@ -547,14 +545,30 @@ func renderGoMod(extensions []GoExtension, sdkRoot string) string {
 	return b.String()
 }
 
+func goModuleRoots(extensions []GoExtension) []string {
+	var roots []string
+	for _, ext := range extensions {
+		if ext.Root != "" {
+			roots = append(roots, ext.Root)
+		}
+		for _, root := range ext.WorkspaceModules {
+			if root != "" {
+				roots = append(roots, root)
+			}
+		}
+	}
+	slices.Sort(roots)
+	return slices.Compact(roots)
+}
+
 func sdkVersionFor(extensions []GoExtension) string {
 	version := "v0.0.0"
-	for _, ext := range extensions {
-		data, err := os.ReadFile(filepath.Join(ext.Root, "go.mod"))
+	for _, root := range goModuleRoots(extensions) {
+		data, err := os.ReadFile(filepath.Join(root, "go.mod"))
 		if err != nil {
 			continue
 		}
-		file, err := modfile.Parse(filepath.Join(ext.Root, "go.mod"), data, nil)
+		file, err := modfile.Parse(filepath.Join(root, "go.mod"), data, nil)
 		if err != nil {
 			continue
 		}
@@ -575,43 +589,42 @@ const legacyGoSDKDir = "legacy-sdk"
 // requiresLegacyGoSDK reports whether any extension module (or one of its
 // workspace modules) requires the legacy Go SDK module path.
 func requiresLegacyGoSDK(extensions []GoExtension) bool {
-	for _, ext := range extensions {
-		for _, root := range append([]string{ext.Root}, ext.WorkspaceModules...) {
-			data, err := os.ReadFile(filepath.Join(root, "go.mod"))
-			if err != nil {
-				continue
-			}
-			file, err := modfile.Parse(filepath.Join(root, "go.mod"), data, nil)
-			if err != nil {
-				continue
-			}
-			for _, requirement := range file.Require {
-				if requirement.Mod.Path == extsource.LegacyGoSDKModulePath {
-					return true
-				}
+	for _, root := range goModuleRoots(extensions) {
+		data, err := os.ReadFile(filepath.Join(root, "go.mod"))
+		if err != nil {
+			continue
+		}
+		file, err := modfile.Parse(filepath.Join(root, "go.mod"), data, nil)
+		if err != nil {
+			continue
+		}
+		for _, requirement := range file.Require {
+			if requirement.Mod.Path == extsource.LegacyGoSDKModulePath {
+				return true
 			}
 		}
 	}
 	return false
 }
 
-// stageLegacyGoSDK copies the current SDK package from sdkRoot into dst and
-// declares it as the legacy module path, so a legacy import compiles against
-// the SDK that speaks this host's protocol.
-func stageLegacyGoSDK(sdkRoot, dst string) error {
-	entries, err := os.ReadDir(sdkRoot)
-	if err != nil {
-		return fmt.Errorf("read Go SDK for legacy module path: %w", err)
-	}
-	if err := os.MkdirAll(dst, 0o755); err != nil {
-		return fmt.Errorf("create legacy Go SDK copy: %w", err)
-	}
-	for _, entry := range entries {
-		name := entry.Name()
-		if !entry.Type().IsRegular() || strings.HasSuffix(name, "_test.go") {
-			continue
+// StageLegacyGoSDK copies the SDK module and its subpackages into dst under the legacy import path. Self-imports follow the alias, including internal packages. Authored SDK sources remain untouched.
+// pig additive (D19): legacy Go imports use the running host's SDK contract.
+func StageLegacyGoSDK(sdkRoot, dst string) error {
+	return filepath.WalkDir(sdkRoot, func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return fmt.Errorf("read Go SDK for legacy module path: %w", err)
 		}
-		data, err := os.ReadFile(filepath.Join(sdkRoot, name))
+		name, err := filepath.Rel(sdkRoot, path)
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return os.MkdirAll(filepath.Join(dst, name), 0o755)
+		}
+		if !entry.Type().IsRegular() || strings.HasSuffix(name, "_test.go") {
+			return nil
+		}
+		data, err := os.ReadFile(path)
 		if err != nil {
 			return fmt.Errorf("copy Go SDK for legacy module path: %w", err)
 		}
@@ -626,12 +639,40 @@ func stageLegacyGoSDK(sdkRoot, dst string) error {
 			if data, err = file.Format(); err != nil {
 				return fmt.Errorf("format legacy Go SDK module: %w", err)
 			}
+		} else if strings.HasSuffix(name, ".go") {
+			data, err = aliasGoSDKImports(path, data)
+			if err != nil {
+				return err
+			}
 		}
 		if err := os.WriteFile(filepath.Join(dst, name), data, 0o644); err != nil {
 			return fmt.Errorf("write legacy Go SDK copy: %w", err)
 		}
+		return nil
+	})
+}
+
+func aliasGoSDKImports(path string, data []byte) ([]byte, error) {
+	positions := token.NewFileSet()
+	file, err := parser.ParseFile(positions, path, data, parser.ImportsOnly)
+	if err != nil {
+		return nil, fmt.Errorf("parse SDK imports: %w", err)
 	}
-	return nil
+	// Replace from the end so import offsets remain valid. Do not rewrite strings or comments outside import declarations.
+	for _, spec := range slices.Backward(file.Imports) {
+		literal := spec.Path
+		path, err := strconv.Unquote(literal.Value)
+		if err != nil {
+			return nil, err
+		}
+		if path != extsource.GoSDKModulePath && !strings.HasPrefix(path, extsource.GoSDKModulePath+"/") {
+			continue
+		}
+		replacement := strconv.Quote(extsource.LegacyGoSDKModulePath + strings.TrimPrefix(path, extsource.GoSDKModulePath))
+		start, end := positions.Position(literal.Pos()).Offset, positions.Position(literal.End()).Offset
+		data = append(append(append([]byte(nil), data[:start]...), replacement...), data[end:]...)
+	}
+	return data, nil
 }
 
 func modulePathAt(root string) (string, error) {
@@ -651,7 +692,7 @@ func modulePathAt(root string) (string, error) {
 func renderGoRunner(extensions []GoExtension) string {
 	var b strings.Builder
 	b.WriteString("package main\n\nimport (\n")
-	b.WriteString("\t\"fmt\"\n\t\"net\"\n\t\"os\"\n\t\"slices\"\n\t\"strings\"\n\t\"sync\"\n\n")
+	b.WriteString("\t\"bufio\"\n\t\"fmt\"\n\t\"net\"\n\t\"os\"\n\t\"slices\"\n\t\"strings\"\n\t\"sync\"\n\n")
 	for _, ext := range extensions {
 		pkgName := extPackageName(ext.Name)
 		fmt.Fprintf(&b, "\t%s %q\n", pkgName, ext.Package)
@@ -665,15 +706,84 @@ func renderGoRunner(extensions []GoExtension) string {
 		fmt.Fprintf(&b, "\t\t{name: %q, env: %q, run: func(sock string) error { return %s.%s().RunWithSocket(sock) }},\n", ext.Name, SocketEnvName(ext.Name), pkgName, ext.Factory)
 	}
 	b.WriteString("\t}\n")
-	b.WriteString("\tvar wg sync.WaitGroup\n\terrs := make(chan error, len(items))\n")
-	b.WriteString("\tactive := os.Getenv(\"PIG_EXT_ACTIVE_MEMBERS\")\n")
-	b.WriteString("\tfor _, it := range items {\n\t\tit := it\n\t\tif active != \"\" && !slices.Contains(strings.Split(active, \",\"), it.name) { continue }\n\t\tsock := os.Getenv(it.env)\n\t\tif sock == \"\" && len(items) == 1 { sock = os.Getenv(\"PIG_EXT_SOCKET\") }\n\t\tif sock == \"\" { errs <- fmt.Errorf(\"%s not set for %s\", it.env, it.name); continue }\n\t\twg.Add(1)\n\t\tgo func() { defer wg.Done(); if err := it.run(sock); err != nil && !strings.Contains(err.Error(), \"use of closed network connection\") { fmt.Fprintf(os.Stderr, \"%s: %v\\n\", it.name, err); if c, dialErr := net.Dial(\"unix\", sock); dialErr == nil { _ = c.Close() }; errs <- fmt.Errorf(\"%s: %w\", it.name, err) } }()\n\t}\n")
-	b.WriteString("\twg.Wait()\n\tclose(errs)\n\tfor err := range errs { if err != nil { fmt.Fprintln(os.Stderr, err); os.Exit(1) } }\n")
+	b.WriteString(goRunnerBody)
 	b.WriteString("}\n")
 	return b.String()
 }
 
-var nonEnv = regexp.MustCompile(`[^A-Za-z0-9_]`)
+// goRunnerBody starts each member's factory, then admits a further generation of a member's factory for every "admit" line on stdin: Pi re-invokes an extension's factory in the process that already holds its package state. The runner exits once every generation has ended, unless the host parked it for a replacement Session. A "park" line names a socket the runner connects to once it holds the process open, so the host retires its last generation only after the notice took effect.
+const goRunnerBody = `	var mu sync.Mutex
+	cond := sync.NewCond(&mu)
+	live, parked, inputClosed := 0, false, false
+	var failures []error
+	start := func(it item, sock string) {
+		mu.Lock()
+		live++
+		mu.Unlock()
+		go func() {
+			err := it.run(sock)
+			if err != nil && !strings.Contains(err.Error(), "use of closed network connection") {
+				fmt.Fprintf(os.Stderr, "%s: %v\n", it.name, err)
+				if c, dialErr := net.Dial("unix", sock); dialErr == nil { _ = c.Close() }
+				mu.Lock()
+				failures = append(failures, fmt.Errorf("%s: %w", it.name, err))
+				mu.Unlock()
+			}
+			mu.Lock()
+			live--
+			cond.Broadcast()
+			mu.Unlock()
+		}()
+	}
+	active := os.Getenv("PIG_EXT_ACTIVE_MEMBERS")
+	for _, it := range items {
+		if active != "" && !slices.Contains(strings.Split(active, ","), it.name) { continue }
+		sock := os.Getenv(it.env)
+		if sock == "" && len(items) == 1 { sock = os.Getenv("PIG_EXT_SOCKET") }
+		if sock == "" { mu.Lock(); failures = append(failures, fmt.Errorf("%s not set for %s", it.env, it.name)); mu.Unlock(); continue }
+		start(it, sock)
+	}
+	// The host percent-encodes the four characters that delimit a control line (packed_go.go encodeAdmissionField); one pass decodes each escape.
+	unescape := strings.NewReplacer("%25", "%", "%09", "\t", "%0A", "\n", "%0D", "\r")
+	go func() {
+		input := bufio.NewScanner(os.Stdin)
+		input.Buffer(make([]byte, 0, 64*1024), 1<<20)
+		for input.Scan() {
+			fields := strings.Split(input.Text(), "\t")
+			for i := range fields { fields[i] = unescape.Replace(fields[i]) }
+			switch fields[0] {
+			case "park":
+				mu.Lock()
+				parked = true
+				cond.Broadcast()
+				mu.Unlock()
+				if len(fields) > 2 && fields[2] != "" { if c, dialErr := net.Dial("unix", fields[2]); dialErr == nil { _ = c.Close() } }
+			case "admit":
+				if len(fields) < 3 { continue }
+				for _, it := range items {
+					if it.name == fields[1] {
+						mu.Lock()
+						parked = false
+						mu.Unlock()
+						start(it, fields[2])
+					}
+				}
+			}
+		}
+		mu.Lock()
+		inputClosed = true
+		cond.Broadcast()
+		mu.Unlock()
+	}()
+	mu.Lock()
+	for live > 0 || (parked && !inputClosed) { cond.Wait() }
+	failed := failures
+	mu.Unlock()
+	for _, err := range failed { fmt.Fprintln(os.Stderr, err) }
+	if len(failed) > 0 { os.Exit(1) }
+`
+
+var nonEnv = lazyregexp.New(`[^A-Za-z0-9_]`)
 
 // SocketEnvName returns the environment variable used to pass one extension's
 // socket into a packed-cell runner.
@@ -684,7 +794,7 @@ func SocketEnvName(name string) string {
 
 // extPackageName converts an extension name to a valid Go package name for
 // the local subpackage used in packed cells. Hyphens become underscores.
-var nonIdent = regexp.MustCompile(`[^a-zA-Z0-9_]`)
+var nonIdent = lazyregexp.New(`[^a-zA-Z0-9_]`)
 
 func extPackageName(name string) string {
 	return "ext_" + nonIdent.ReplaceAllString(strings.ReplaceAll(name, "-", "_"), "")
@@ -694,20 +804,12 @@ func extPackageName(name string) string {
 // or fused extension registry.
 func ExtPackageName(name string) string { return extPackageName(name) }
 
-// collectExtensionDeps reads each extension's go.mod and collects the require
-// and replace directives that do not name the SDK, formatted as go.mod
-// directive bodies. This ensures third-party dependencies work in the packed
-// cell. A relative local replacement is made absolute against the extension
-// root, and a path that needs quoting (for example one containing a space) is
-// quoted.
+// collectExtensionDeps reads extension and workspace go.mod files and collects non-SDK require and replace directives as go.mod directive bodies. Relative replacements become absolute against their declaring module root; paths containing spaces are quoted.
 func collectExtensionDeps(extensions []GoExtension) (requires, replaces []string) {
 	seenReq := map[string]bool{}
 	seenRep := map[string]bool{}
-	for _, ext := range extensions {
-		if ext.Root == "" {
-			continue
-		}
-		path := filepath.Join(ext.Root, "go.mod")
+	for _, root := range goModuleRoots(extensions) {
+		path := filepath.Join(root, "go.mod")
 		data, err := os.ReadFile(path)
 		if err != nil {
 			continue
@@ -733,7 +835,7 @@ func collectExtensionDeps(extensions []GoExtension) (requires, replaces []string
 			if extsource.IsGoSDKModulePath(replacement.Old.Path) || extsource.IsGoSDKModulePath(replacement.New.Path) {
 				continue
 			}
-			value := extensionReplaceDirective(ext.Root, replacement)
+			value := extensionReplaceDirective(root, replacement)
 			if !seenRep[value] {
 				seenRep[value] = true
 				replaces = append(replaces, value)
@@ -761,17 +863,12 @@ func extensionReplaceDirective(root string, replacement *modfile.Replace) string
 	return old + " => " + target
 }
 
-// mergeGoSum reads go.sum from all extensions and returns the union of all
-// entries. This avoids needing network access (go mod tidy/download) during
-// packed cell builds.
+// mergeGoSum returns the union of extension and workspace checksums so packed builds do not need go mod tidy or downloads.
 func mergeGoSum(extensions []GoExtension) string {
 	seen := map[string]bool{}
 	var lines []string
-	for _, ext := range extensions {
-		if ext.Root == "" {
-			continue
-		}
-		data, err := os.ReadFile(filepath.Join(ext.Root, "go.sum"))
+	for _, root := range goModuleRoots(extensions) {
+		data, err := os.ReadFile(filepath.Join(root, "go.sum"))
 		if err != nil {
 			continue
 		}

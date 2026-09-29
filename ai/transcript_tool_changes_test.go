@@ -365,9 +365,8 @@ func TestTranscriptToolChangesAnthropicPoisonedHistory(t *testing.T) {
 		"system(text,tool_addition:late_tool:tool_reference)",
 		"assistant(tool_use:call_1_fc_1)",
 		"user(tool_result:call_1_fc_1)",
+		"user(string)",
 		"system(text)",
-		"assistant(tool_use:call_2)",
-		"user(text)",
 	}
 	signatureError := `{"type":"error","error":{"type":"invalid_request_error","message":"Invalid signature in thinking block"}}`
 	requests := captureAnthropicToolChanges(t, "custom-claude", nativeAnthropicCompat, poisonedToolChangeContext(),
@@ -542,19 +541,19 @@ func TestTranscriptToolChangesOpenAIResponsesAdditionalToolsItem(t *testing.T) {
 func TestTranscriptToolChangesOpenAIResponsesPoisonedHistory(t *testing.T) {
 	compat := &OpenAIResponsesCompat{SupportsMidConvoSystemMessages: new(true), SupportsAdditionalTools: new(true)}
 	request := captureResponsesToolChanges(t, compat, poisonedToolChangeContext())
+	// Pi 0.87.1 transformMessages drops failed turns and holds system updates behind tool results.
 	want := []string{
-		"developer", "user", "message",
+		"developer", "user",
 		"additional_tools[late_tool]", "developer", "user",
-		"function_call:call_1", "developer", "function_call_output:call_1",
-		"message", "function_call:call_2", "user",
+		"function_call:call_1", "function_call_output:call_1", "developer", "user",
 	}
 	input := jsonItems(request.body["input"])
-	// This fixture calls the converter directly, before agent.NormalizeMessages filters failed turns. Responses retains the empty text block here.
-	empty, err := json.Marshal(input[2])
+	// Pi 0.87.1 replay-history-pi.mjs drops failed turns and places the held update after the real result.
+	encoded, err := json.Marshal(input)
 	if err != nil {
 		t.Fatal(err)
 	}
-	assertShapeJSON(t, empty, `{"type":"message","role":"assistant","content":[{"type":"output_text","text":"","annotations":[]}],"status":"completed","id":"msg_pi_1"}`)
+	assertShapeJSON(t, encoded, `[{"content":"base prompt","role":"developer"},{"content":[{"text":"before","type":"input_text"}],"role":"user"},{"role":"developer","tools":[{"description":"late_tool tool","name":"late_tool","parameters":{"properties":{},"type":"object"},"type":"function"}],"type":"additional_tools"},{"content":"load late tool","role":"developer"},{"content":[{"text":"retry","type":"input_text"}],"role":"user"},{"arguments":"{}","call_id":"call_1","name":"late_tool","type":"function_call"},{"call_id":"call_1","output":"done","type":"function_call_output"},{"content":"between call and result","role":"developer"},{"content":[{"text":"go on","type":"input_text"}],"role":"user"}]`)
 	if got := responsesInputShape(input); !slices.Equal(got, want) {
 		t.Errorf("input = %v, want %v", got, want)
 	}
@@ -621,12 +620,11 @@ func completionsMessageShape(messages []map[string]any) []string {
 	return out
 }
 
-// completionsSystemContents lists every system message's content; a
-// tool-bearing message has none.
+// completionsSystemContents lists instruction-message content; a tool-bearing message has none.
 func completionsSystemContents(messages []map[string]any) []string {
 	var out []string
 	for _, message := range messages {
-		if message["role"] != "system" {
+		if message["role"] != "system" && message["role"] != "developer" {
 			continue
 		}
 		content, ok := message["content"].(string)
@@ -677,7 +675,7 @@ func TestTranscriptToolChangesOpenAICompletionsRequests(t *testing.T) {
 		{
 			name: "folds OpenAI-compatible updates into the system prompt without native support", providerID: "custom-provider", transcript: foldContext(),
 			tools:  []string{"late_tool"},
-			shape:  []string{"system", "user"},
+			shape:  []string{"developer", "user"},
 			system: []string{foldedPrompt},
 		},
 	} {
@@ -729,8 +727,7 @@ func TestTranscriptToolChangesOpenAICompletionsPoisonedHistory(t *testing.T) {
 	want := []string{
 		"system", "user",
 		"system[late_tool]", "system", "user",
-		"assistant:call_1_fc_1", "system", "tool:call_1_fc_1",
-		"assistant:call_2", "user",
+		"assistant:call_1_fc_1", "tool:call_1_fc_1", "system", "user",
 	}
 	if got := completionsMessageShape(jsonItems(request.body["messages"])); !slices.Equal(got, want) {
 		t.Errorf("messages = %v, want %v", got, want)

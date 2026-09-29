@@ -83,15 +83,25 @@ func buildSmallPigletBinary(t *testing.T, extraArgs ...string) string {
 	return artifact
 }
 
-// startPigletBinary runs the binary through its startup verification to a
-// command that exits without any model call, and returns the exit code (-1
-// when the OS killed it) and combined output.
+// startPigletBinary runs startup verification without a model call or access to the caller's home, project, or trust stores. It returns the exit code (-1 when the OS killed it) and combined output.
 func startPigletBinary(t *testing.T, path string, args ...string) (int, string) {
 	t.Helper()
 	if len(args) == 0 {
 		args = []string{"--offline", "--list-models"}
 	}
-	output, err := exec.Command(path, args...).CombinedOutput()
+	home := t.TempDir()
+	cmd := exec.CommandContext(t.Context(), path, args...)
+	cmd.Dir = t.TempDir()
+	// Agent-directory overrides take precedence over HOME, including Pi's override when shared-directory mode is selected.
+	cmd.Env = append(os.Environ(),
+		"HOME="+home,
+		"USERPROFILE="+home,
+		"XDG_CONFIG_HOME="+filepath.Join(home, ".config"),
+		"PIG_HOME="+filepath.Join(home, ".pig"),
+		"PIG_CODING_AGENT_DIR="+filepath.Join(home, ".pig", "agent"),
+		"PI_CODING_AGENT_DIR="+filepath.Join(home, ".pi", "agent"),
+	)
+	output, err := cmd.CombinedOutput()
 	var exit *exec.ExitError
 	switch {
 	case err == nil:
@@ -141,9 +151,7 @@ func TestNativePigletBinaryBuildLeavesSourceTreeUntouched(t *testing.T) {
 	if !bytes.Contains(binary, []byte(`{"kind":"piglet-resolution","piglet":"small"`)) {
 		t.Fatal("built binary does not embed the overlaid resolution record")
 	}
-	if code, output := startPigletBinary(t, artifact); code != 0 {
-		t.Fatalf("unsigned Piglet Binary did not start: exit %d\n%s", code, output)
-	}
+	assertPigletStartupIgnoresParentHomes(t, artifact)
 	status, err := signature.Check(artifact, signature.Policy{RequireKnownSigner: true})
 	if err != nil || status.Signed {
 		t.Fatalf("unsigned build signature status = %+v, %v", status, err)

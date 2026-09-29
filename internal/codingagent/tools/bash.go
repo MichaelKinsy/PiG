@@ -10,7 +10,8 @@ import (
 
 // ─── Bash Tool ────────────────────────────────────────────────────────────────
 
-// BashTool executes shell commands.
+// BashTool executes shell commands with local or caller-supplied operations.
+// Ports packages/coding-agent/src/core/tools/bash.ts.
 //
 // Contract (mirrors upstream tools/bash.ts):
 //   - One-shot spawn per call. cwd does NOT persist between calls.
@@ -26,6 +27,8 @@ import (
 //     success; error results carry none (upstream throws).
 type BashTool struct {
 	CWD string
+	// Operations delegates command execution; nil selects local bash.
+	Operations BashOperations
 	// Settings is consulted via GetShellConfig to resolve shellPath. nil
 	// falls through to the platform default.
 	Settings SettingsView
@@ -55,11 +58,15 @@ func (t *BashTool) ExecutionMode() agent.ToolExecutionMode { return agent.ToolMo
 // createShellToolDefinition with the bash config: getShellConfig-resolved
 // bash, the settings command prefix, and pig-bash temp files).
 func (t *BashTool) Execute(ctx context.Context, _ string, rawParams json.RawMessage, onUpdate agent.ToolUpdateCallback) (agent.AgentToolResult, error) {
+	operations := t.Operations
+	if operations == nil {
+		operations = &LocalShellOperations{ShellName: "bash", ResolveShell: func() (ShellConfig, error) { return GetShellConfig(t.Settings) }}
+	}
 	return executeShellTool(ctx, t.CWD, shellToolConfig{
 		name:                     "bash",
 		shellName:                "bash",
 		tempFilePrefix:           "pi-bash",
-		operations:               &LocalShellOperations{ShellName: "bash", ResolveShell: func() (ShellConfig, error) { return GetShellConfig(t.Settings) }},
+		operations:               operations,
 		commandPrefix:            t.CommandPrefix,
 		exposeSessionEnvironment: !t.HideSessionEnvironment,
 		binDir:                   t.BinDir,

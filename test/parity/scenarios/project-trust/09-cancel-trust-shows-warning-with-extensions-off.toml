@@ -1,0 +1,57 @@
+# Behavior family: project-trust
+# Upstream evidence: Pi 0.87.1 probe: --offline --no-extensions --no-skills --no-prompt-templates
+# --no-themes --no-session in a project containing only .pi/settings.json.
+# Escape cancels the trust prompt, then renderInitialMessages shows the warning
+# even with quietStartup=true. main.ts:756-773; core/project-trust.ts:83-94;
+# modes/interactive/interactive-mode.ts:4056-4091. Before the fix PiG reaches
+# the footer but the warning crop is absent. The full warning includes its ANSI
+# color and horizontal padding; no general warning prefix or extra blank row.
+name = "09-cancel-trust-shows-warning-with-extensions-off"
+description = "Cancelling startup trust shows the complete untrusted-project warning, even with quiet startup and extensions disabled."
+covers = [
+  "packages/coding-agent/src/core/project-trust.ts",
+  "packages/coding-agent/src/modes/interactive/interactive-mode.ts",
+]
+tags = ["hermetic", "fast", "security", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pi = ["PI_CODING_AGENT_DIR=testdata/warning-agent", "PI_SKIP_VERSION_CHECK=1"]
+pig = ["PIG_CODING_AGENT_DIR=testdata/warning-agent"]
+override_base_args = true
+pi_args = ["--offline", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-session"]
+pig_args = ["--offline", "--no-extensions", "--no-skills", "--no-prompt-templates", "--no-themes", "--no-session"]
+
+[tmux]
+width = 180
+height = 35
+cwd = "testdata/warning-project"
+ready_pattern_pig = "Trust project folder?"
+ready_pattern_pi = "Trust project folder?"
+ready_timeout_seconds = 30
+capture_start = "This project is not trusted."
+capture_end_regex = 'then restart pi(g)?\.'
+
+[[tmux.steps]]
+keys = ["Escape"]
+wait_contains = ["This project is not trusted."]
+wait_timeout_seconds = 30
+
+[assert]
+both_reach_ready = true
+both_contain = ["This project is not trusted.", "resources and packages are ignored. Use /trust to save a trust decision, then restart"]
+both_not_contain = ["Warning:", "panic:"]
+escaped_output_equal = true
+runs = 3
+
+# normalize-rationale: D2 changes only the configuration and command identity.
+# Width 180 keeps both warning variants on one row; ANSI and padding stay exact.
+[[assert.normalize_replace]]
+pattern = '\.pig'
+with = ".pi"
+reason = "D2: the complete warning crop contains only the product-owned project configuration name, not user content."
+
+[[assert.normalize_replace]]
+pattern = 'restart pig\.'
+with = "restart pi."
+reason = "D2: only the warning's restart command names the host executable."

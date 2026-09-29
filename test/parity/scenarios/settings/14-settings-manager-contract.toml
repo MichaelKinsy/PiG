@@ -1,0 +1,24 @@
+# Pi settings-manager.ts:403-410,515-563,780-792 owns memory snapshots, trust-scoped updates, and optional theme values.
+# The fixture compares complete persisted memory layers and actual getter/error values after first-half setters, flush, overrides, reload, and trust changes.
+# Object keys are sorted for JSON encoding only; values, empty arrays, whitespace and error text are not normalized.
+name = "14-settings-manager-contract"
+description = "Settings memory storage, explicit values, optional raw/fixed themes, and trust scope match Pi."
+covers = ["packages/coding-agent/src/core/settings-manager.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/settings-manager-contract.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/settings-manager-contract.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

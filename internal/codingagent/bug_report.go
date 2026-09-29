@@ -12,12 +12,13 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"slices"
 	"strings"
 	"time"
 	"unicode/utf8"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/google/uuid"
 
@@ -41,9 +42,9 @@ const (
 )
 
 var (
-	bugReportSensitiveKey = regexp.MustCompile(`(?i)(?:^|[-_])(api[-_]?key|secret|token|password|passwd|credential|authorization|cookie)(?:$|[-_])`)
-	bugReportCamelBreak   = regexp.MustCompile(`([a-z0-9])([A-Z])`)
-	bugReportNestedURL    = regexp.MustCompile(`(?i)^([a-z][a-z0-9+.-]*:)([a-z][a-z0-9+.-]*://.*)$`)
+	bugReportSensitiveKey = lazyregexp.New(`(?i)(?:^|[-_])(api[-_]?key|secret|token|password|passwd|credential|authorization|cookie)(?:$|[-_])`)
+	bugReportCamelBreak   = lazyregexp.New(`([a-z0-9])([A-Z])`)
+	bugReportNestedURL    = lazyregexp.New(`(?i)^([a-z][a-z0-9+.-]*:)([a-z][a-z0-9+.-]*://.*)$`)
 	// WHATWG special schemes serialize an empty path as "/".
 	bugReportSpecialSchemes = []string{"ftp", "file", "http", "https", "ws", "wss"}
 )

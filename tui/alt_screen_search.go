@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
+
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -47,7 +49,7 @@ type AltScreenSearchMatch struct {
 	Segments []AltScreenSearchSegment
 }
 
-var printableASCII = regexp.MustCompile(`^[\x20-\x7e]*$`)
+var printableASCII = lazyregexp.New(`^[\x20-\x7e]*$`)
 
 // jsIsSpace mirrors the ECMAScript \s class (WhiteSpace and LineTerminator).
 func jsIsSpace(r rune) bool {

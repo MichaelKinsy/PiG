@@ -3,8 +3,9 @@ package codingagent
 import (
 	"context"
 	"runtime"
-	"strings"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // clipboardTextTimeout bounds each clipboard text command, matching upstream
@@ -15,19 +16,14 @@ const clipboardTextTimeout = 5 * time.Second
 // clipboardGOOS is the platform readClipboardText reads for; tests override it.
 var clipboardGOOS = runtime.GOOS
 
-// nativeClipboardText stands in for pi-tui NativeClipboard.getText. A nil
-// result represents null or undefined.
+// nativeClipboardText reads text through the native helper. A nil result represents null or undefined.
 type nativeClipboardText func(context.Context) (*string, error)
-
-// getNativeClipboardText is injectable because upstream tests mock
-// getNativeClipboard separately from the Linux command chain.
-var getNativeClipboardText = hostNativeClipboardText
 
 // readClipboardText returns the system clipboard text, or "" when there is
 // none or it cannot be read. Mirrors upstream readClipboardText
 // (utils/clipboard.ts): on Linux it tries termux-clipboard-get, wl-paste, then
-// xclip and xsel in that order before the native reader. PiG loads no native
-// addons, so its host native reader uses pbpaste or PowerShell where available.
+// xclip and xsel in that order before the native helper's getText, which is
+// the only reader on macOS and Windows.
 func readClipboardText(parent context.Context) string {
 	var commands [][]string
 	if clipboardGOOS == "linux" {
@@ -49,10 +45,10 @@ func readClipboardText(parent context.Context) string {
 		out, err := clipboardRun(ctx, command[0], command[1:]...)
 		cancel()
 		if err == nil {
-			return strings.ToValidUTF8(string(out), "�")
+			return jsstring.FromUTF8(out)
 		}
 	}
-	native := getNativeClipboardText()
+	native := hostNativeClipboardText()
 	if native == nil || parent.Err() != nil {
 		return ""
 	}
@@ -65,25 +61,19 @@ func readClipboardText(parent context.Context) string {
 	return *text
 }
 
+// hostNativeClipboardText looks up the native helper lazily, after the commands, as upstream does. It returns nil without a helper or GetText; an unavailable read yields no text.
+// upstream: packages/coding-agent/src/utils/clipboard.ts:readClipboardText
 func hostNativeClipboardText() nativeClipboardText {
-	var name string
-	var args []string
-	switch clipboardGOOS {
-	case "darwin":
-		name = "pbpaste"
-	case "windows":
-		name = "powershell.exe"
-		args = []string{"-NoProfile", "-NonInteractive", "-Command", "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); [Console]::Write((Get-Clipboard -Raw))"}
-	default:
+	helper := getNativeClipboard()
+	if helper == nil || helper.GetText == nil {
 		return nil
 	}
 	return func(ctx context.Context) (*string, error) {
-		out, err := clipboardRun(ctx, name, args...)
-		if err != nil {
+		text, available, err := helper.GetText(ctx)
+		if err != nil || !available {
 			return nil, err
 		}
-		text := strings.ToValidUTF8(string(out), "�")
-		return &text, nil
+		return text, nil
 	}
 }
 

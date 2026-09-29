@@ -1,0 +1,49 @@
+# Behavior family: extensions-runtime
+# Scenario: a TypeScript extension whose factory throws is reported with the
+# thrown message, as Pi's loader words it, and nothing else.
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-26):
+#   pi --no-extensions -e test-faux-provider.ts -e load-failure.ts \
+#     --model test-faux/faux-1 --print hello
+#   Error: Failed to load extension "<path>/load-failure.ts": Failed to load extension: pi.notAThing is not a function
+#   Hint: Start without extensions using "pi -ne".
+#   exit: 1
+#
+# Pi discards process warnings (cli/setup.ts). PiG named the last line its
+# extension process wrote to stderr instead, Node's "(Use `node
+# --trace-warnings ...`)" line left over from the stripTypeScriptTypes
+# ExperimentalWarning, and kept the real error in a /tmp log (pi-cc-extensions,
+# @henryqw/pi-subagent, @gotgenes/pi-permission-system, gentle-pi,
+# confluence-cli).
+
+name = "32-extension-load-failure-message"
+description = "An extension whose factory throws is reported with Pi's loader message"
+covers = [
+  "packages/coding-agent/src/cli/setup.ts",
+  "packages/coding-agent/src/core/extensions/loader.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_extensions = ["testdata/ext/load-failure.ts"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/load-failure.ts"]
+
+[print]
+prompt = "hello"
+timeout_seconds = 60
+
+[assert]
+exit_code = 1
+both_contain = ["Failed to load extension: pi.notAThing is not a function"]
+both_not_contain = ["trace-warnings", "ExperimentalWarning", "panic:"]
+output_normalized_equal = true
+runs = 3
+
+# normalize-rationale: the hint names each binary's own command.
+[[assert.normalize_replace]]
+pattern = '"pig? -ne"'
+with = '"<bin> -ne"'
+reason = "D2: the quoted no-extensions remediation command names the host executable; retain all error prose."

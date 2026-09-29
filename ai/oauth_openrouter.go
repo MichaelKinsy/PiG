@@ -51,7 +51,7 @@ func openRouterCallbackHost() string {
 // pasted redirect URL, a `code=`-bearing query fragment, or a bare code.
 // Mirrors upstream parseAuthorizationInput.
 func parseOpenRouterAuthorizationInput(input string) string {
-	v := strings.TrimSpace(input)
+	v := trimJSWhitespace(input)
 	if v == "" {
 		return ""
 	}
@@ -309,7 +309,7 @@ func openRouterCallbackPath() (string, error) {
 
 // LoginOpenRouter runs the OpenRouter OAuth PKCE flow: a loopback callback
 // raced against a manual paste. A claimed browser callback always wins over a
-// racing paste. Mirrors upstream loginOpenRouter.
+// racing paste. Context-aware manual prompts are cancelled and drained when login settles.
 func LoginOpenRouter(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuthCredentials, error) {
 	pkce, err := GeneratePKCE()
 	if err != nil {
@@ -348,9 +348,24 @@ func LoginOpenRouter(ctx context.Context, callbacks OAuthLoginCallbacks) (OAuthC
 		val string
 		err error
 	}, 1)
-	if callbacks.OnManualCodeInput != nil {
+	manual := callbacks.OnManualCodeInputContext
+	if manual == nil && callbacks.OnManualCodeInput != nil {
+		manual = func(context.Context) (string, error) { return callbacks.OnManualCodeInput() }
+	}
+	if manual != nil {
+		// The callback owns parent cancellation; the manual prompt is aborted only when login settles.
+		manualCtx, abortManual := context.WithCancel(context.WithoutCancel(ctx))
+		manualDone := make(chan struct{})
+		defer func() {
+			abortManual()
+			// Non-context callbacks cannot be interrupted; context-aware callbacks release their prompt on cancellation.
+			if callbacks.OnManualCodeInputContext != nil {
+				<-manualDone
+			}
+		}()
 		go func() {
-			v, e := callbacks.OnManualCodeInput()
+			defer close(manualDone)
+			v, e := manual(manualCtx)
 			manualCh <- struct {
 				val string
 				err error

@@ -2,13 +2,11 @@ package tools
 
 import (
 	"context"
-	"errors"
-	"io/fs"
 	"path/filepath"
 	"sync"
-	"syscall"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/internal/nodepath"
 )
 
 // FileMutationQueue serialises concurrent mutations targeting the same
@@ -121,7 +119,7 @@ func (t *MutationTicket) Release() {
 // resolve. Every other EvalSymlinks error (permission denied, too many
 // levels of symlinks, and so on) propagates, matching upstream's rethrow.
 func canonicalKey(p string) (string, error) {
-	abs, err := filepath.Abs(p)
+	abs, err := nodepath.Resolve(p)
 	if err != nil {
 		return "", err
 	}
@@ -135,11 +133,17 @@ func canonicalKey(p string) (string, error) {
 	return "", err
 }
 
-// isMissingPathError mirrors upstream's isMissingPathError: only ENOENT and
-// ENOTDIR are treated as "the path does not exist yet"; every other error
-// (EACCES, ELOOP, and so on) is a real failure the caller must see.
+// isMissingPathError mirrors upstream's isMissingPathError: only the Node
+// codes ENOENT and ENOTDIR are treated as "the path does not exist yet";
+// every other error (EACCES, EPERM, ELOOP, and so on) is a real failure the
+// caller must see. On Windows every system error libuv names ENOENT
+// (ERROR_INVALID_NAME, ERROR_DIRECTORY, and so on) counts as missing.
 func isMissingPathError(err error) bool {
-	return errors.Is(err, fs.ErrNotExist) || errors.Is(err, syscall.ENOTDIR)
+	switch nodeErrorCode(err) {
+	case "ENOENT", "ENOTDIR":
+		return true
+	}
+	return false
 }
 
 // runQueued runs fn serialised against path through q, honoring a queue

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
 
@@ -19,7 +20,7 @@ func TestInteractiveBuiltinFileResultsWithoutPrivateDetails(t *testing.T) {
 			m, _ := newTickRenderProbe(t, "regular")
 			m.handleAgentEvent(agent.ToolExecutionStartEvent{ToolCallID: "file", ToolName: tc.name, Args: json.RawMessage(tc.args)})
 			card := m.toolByID["file"]
-			m.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "file", ToolName: tc.name, Result: agent.AgentToolResult{Content: tc.output}})
+			m.handleAgentEvent(agent.ToolExecutionEndEvent{ToolCallID: "file", ToolName: tc.name, Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: tc.output}}}})
 			collapsed := widthx.StripAnsi(strings.Join(card.Render(80), "\n"))
 			if tc.name == "read" && strings.Contains(collapsed, tc.body) {
 				t.Fatalf("collapsed read exposed body without details: %s", collapsed)

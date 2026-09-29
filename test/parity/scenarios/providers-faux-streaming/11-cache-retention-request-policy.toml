@@ -1,0 +1,30 @@
+# Upstream oracle: installed Pi 0.87.1 api/{anthropic-messages,openai-completions,openai-responses}.js.
+# Inputs reproduce cache-retention.test.ts:167,217,272,295,355,408,457, plus explicit-option precedence and no-session cases.
+# onPayload aborts before network I/O in both implementations. Assert every owning cache field, including absent values, without normalizing cache policy differences.
+# Pre-fix Go omitted explicit Anthropic retention, proxy Completions cache fields, Responses retention without a session, and modern Responses write/TTL options.
+name = "11-cache-retention-request-policy"
+description = "Provider payloads preserve requested cache retention, explicit writes, and model-specific TTL fields."
+covers = [
+  "packages/ai/src/api/anthropic-messages.ts",
+  "packages/ai/src/api/openai-completions.ts",
+  "packages/ai/src/api/openai-responses.ts",
+]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/scenarios/providers-faux-streaming/testdata/cache-retention/pig"]
+pi_args = ["node", "./test/parity/scenarios/providers-faux-streaming/testdata/cache-retention/pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_not_contain = ["panic:", "Error:"]
+runs = 3

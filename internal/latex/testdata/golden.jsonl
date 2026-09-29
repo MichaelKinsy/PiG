@@ -384,7 +384,7 @@
 {"input":"\\sqrt[3]{x}","inline":"∛x","display":"∛x"}
 {"input":"\\sqrt[5]{y}","inline":"⁵√y","display":"⁵√y"}
 {"input":"\\binom{n}{k}","inline":"(n choose k)","display":"(n choose k)"}
-{"input":"\\boxed{x=1}","inline":"[x=1]","display":"[x=1]"}
+{"input":"\\boxed{x=1}","inline":"[x = 1]","display":"[x = 1]"}
 {"input":"\\not\\in","inline":"∉","display":"∉"}
 {"input":"\\not<","inline":"≮","display":"≮"}
 {"input":"\\not{R}","inline":"R̸","display":"R̸"}
@@ -399,7 +399,7 @@
 {"input":"\\int_0^1 f(x) dx","inline":"∫₀¹ f(x) dx","display":"1\n∫ f(x) dx\n0"}
 {"input":"\\lim_{x\\to\\infty} f","inline":"lim[x→∞] f","display":"lim f\nx→∞"}
 {"input":"\\prod_{k=1}^{n} k","inline":"∏ₖ₌₁ⁿ k","display":" n\n ∏  k\nk=1"}
-{"input":"\\begin{cases} a & x>0 \\\\ b & \\text{otherwise} \\end{cases}","inline":"⎧ a if x>0\n⎩ b otherwise","display":"⎧ a if x>0\n⎩ b otherwise"}
+{"input":"\\begin{cases} a & x>0 \\\\ b & \\text{otherwise} \\end{cases}","inline":"⎧ a if x > 0\n⎨\n⎩ b otherwise","display":"⎧ a if x > 0\n⎨\n⎩ b otherwise"}
 {"input":"\\begin{pmatrix} a & b \\\\ c & d \\end{pmatrix}","inline":"⎛ a │ b ⎞\n⎝ c │ d ⎠","display":"⎛ a │ b ⎞\n⎝ c │ d ⎠"}
 {"input":"\\begin{bmatrix} 1 & 0 \\\\ 0 & 1 \\end{bmatrix}","inline":"⎡ 1 │ 0 ⎤\n⎣ 0 │ 1 ⎦","display":"⎡ 1 │ 0 ⎤\n⎣ 0 │ 1 ⎦"}
 {"input":"\\begin{aligned} a &= b \\\\ c &= d \\end{aligned}","inline":"a = b\nc = d","display":"a = b\nc = d"}
@@ -425,7 +425,7 @@
 {"input":"\\frac{\\frac{\\frac{\\frac{a}{b}}{c}}{d}}{e}","inline":"(((a/b)/c)/d)/e","display":"((a/b)/c)/d\n───────────\n     e"}
 {"input":"\\text{😀}","inline":"😀","display":"😀"}
 {"input":"😀","inline":"😀","display":"😀"}
-{"input":"x^{😀}","inline":"x^😀","display":"x^😀"}
+{"input":"x^{😀}","inline":"x^😀","display":" 😀\nx"}
 {"input":"\\text{日本語}","inline":"日本語","display":"日本語"}
 {"input":"日本語 + x","inline":"日本語 + x","display":"日本語 + x"}
 {"input":"\\hat{😀}","inline":"😀̂","display":"😀̂"}

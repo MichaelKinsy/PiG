@@ -1,0 +1,5 @@
+{
+  "defaultProvider": "openai",
+  "defaultModel": "gpt-5.5",
+  "enabledModels": ["fixture/unavailable-one", "fixture/unavailable-two"]
+}

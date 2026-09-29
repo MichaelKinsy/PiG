@@ -97,7 +97,8 @@ func resolveProjectTrusted(ctx context.Context, opts projectTrustResolutionOptio
 }
 
 func formatProjectTrustPrompt(cwd string) string {
-	return fmt.Sprintf("Trust project folder?\n%s\n\nThis allows pig to load project settings, resources, and instructions, install missing project packages, and execute project extensions.", cwd)
+	// pig divergence (D2): the prompt names PiG's command and configuration directory.
+	return fmt.Sprintf("Trust project folder?\n%s\n\nThis allows pig to load %s settings and resources, install missing project packages, and execute project extensions.", cwd, codingagent.ConfigDirName())
 }
 
 type startupTrustUI struct {

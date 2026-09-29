@@ -2,9 +2,10 @@ package tui
 
 import (
 	"math"
-	"regexp"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -21,7 +22,7 @@ import (
 // osc133ZonePrefix matches a run of OSC 133 A/B/C shell-integration zone marks
 // at the start of a line, which the paint path strips. Mirrors upstream
 // OSC133_ZONE_PREFIX.
-var osc133ZonePrefix = regexp.MustCompile("^(?:\x1b\\]133;[ABC](?:\x07|\x1b\\\\))+")
+var osc133ZonePrefix = lazyregexp.New("^(?:\x1b\\]133;[ABC](?:\x07|\x1b\\\\))+")
 
 // osc133ZoneMark is the fixed start of every mark osc133ZonePrefix matches.
 const osc133ZoneMark = "\x1b]133;"

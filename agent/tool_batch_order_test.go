@@ -40,7 +40,7 @@ func TestParallelToolBatchEventOrder(t *testing.T) {
 			}
 			mu.Unlock()
 			awaitSignal(t, release[id], "release of "+id)
-			return AgentToolResult{Content: id}, nil
+			return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: id}}}, nil
 		}}
 	rec = newEventRecorder(nil)
 	calls := make([]ai.ToolCall, len(ids))

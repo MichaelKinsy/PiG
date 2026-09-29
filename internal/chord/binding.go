@@ -37,7 +37,9 @@ type RemoteServiceBinding struct {
 	mu                sync.Mutex
 	modes             map[string]ServiceMode
 	singletons        map[string]*singletonBinding
+	singletonOrder    []string
 	keyed             map[string]*keyedBinding
+	keyedOrder        []string
 	bound             bool
 	readinessRevision int
 	transition        *task
@@ -164,6 +166,7 @@ func (binding *RemoteServiceBinding) Use(serviceId string) (*RemoteService, erro
 		return single.active && !binding.disposed && binding.bound
 	}, binding.assertHandleAccess, binding.reportError)
 	binding.singletons[serviceId] = single
+	binding.singletonOrder = append(binding.singletonOrder, serviceId)
 	binding.readinessRevision++
 	if binding.bound {
 		binding.launchSingletonLocked(serviceId, single, single.revision)
@@ -244,9 +247,12 @@ func (binding *RemoteServiceBinding) startSingleton(serviceId string, single *si
 }
 
 // ObserveRemote observes each live instance of keyed service def. The handler
-// runs on its own goroutine with a context cancelled when the instance
-// closes, is replaced by a newer generation, or the observation stops. The
-// returned stop function is idempotent.
+// runs synchronously within the delivery that admits the instance, before
+// that snapshot or update completes, with a context cancelled when the
+// instance closes, is replaced by a newer generation, or the observation
+// stops. It must not block on that delivery; work that outlives the call runs
+// in a task the handler owns and ties to the context. The returned stop
+// function is idempotent.
 func ObserveRemote[T any](binding *RemoteServiceBinding, def pico3.ServiceDefinition[T], handler func(context.Context, *RemoteService) error) (func(), error) {
 	if def.Local() {
 		return nil, remoteError(ErrServiceNotAllowed, "Service %s is process-local", def.Id())
@@ -266,6 +272,7 @@ func (binding *RemoteServiceBinding) Observe(serviceId string, handler func(cont
 	if !ok {
 		keyed = newKeyedBinding(binding, serviceId, binding.bound)
 		binding.keyed[serviceId] = keyed
+		binding.keyedOrder = append(binding.keyedOrder, serviceId)
 		binding.readinessRevision++
 	}
 	binding.mu.Unlock()
@@ -275,93 +282,12 @@ func (binding *RemoteServiceBinding) Observe(serviceId string, handler func(cont
 // Ready waits until every currently acquired service has installed its
 // initial snapshot, repeating while new services are acquired concurrently.
 func (binding *RemoteServiceBinding) Ready(ctx context.Context) error {
-	for {
-		binding.mu.Lock()
-		if binding.disposed {
-			binding.mu.Unlock()
-			return errors.New("Remote service binding is disposed")
-		}
-		revision := binding.readinessRevision
-		waits := []*task{binding.transition}
-		for _, single := range binding.singletons {
-			if single.starting != nil {
-				waits = append(waits, single.starting)
-			}
-		}
-		keyed := make([]*keyedBinding, 0, len(binding.keyed))
-		for _, entry := range binding.keyed {
-			keyed = append(keyed, entry)
-		}
-		binding.mu.Unlock()
-		for _, entry := range keyed {
-			waits = append(waits, entry.ready())
-		}
-		for _, waiting := range waits {
-			if err := waiting.wait(ctx); err != nil {
-				return err
-			}
-		}
-		binding.mu.Lock()
-		disposed, same := binding.disposed, revision == binding.readinessRevision
-		binding.mu.Unlock()
-		if disposed {
-			return errors.New("Remote service binding is disposed")
-		}
-		if same {
-			return nil
-		}
-	}
+	return binding.BeginReady(ctx).Wait()
 }
 
-// Rebind closes every subscription, clears replicas, and when bound
-// resubscribes and rehydrates. Each call supersedes earlier transitions.
+// Rebind closes every subscription, clears replicas, and when bound resubscribes and rehydrates. It waits for every transition; context cancellation belongs to underlying operations, not this join.
 func (binding *RemoteServiceBinding) Rebind(ctx context.Context, bound bool) error {
-	binding.mu.Lock()
-	if binding.disposed {
-		binding.mu.Unlock()
-		return errors.New("Remote service binding is disposed")
-	}
-	binding.bound = bound
-	binding.readinessRevision++
-	var transitions []*task
-	for serviceId, single := range binding.singletons {
-		single.revision++
-		single.facade.fence()
-		subscription := single.subscription
-		single.subscription = nil
-		revision := single.revision
-		serviceId, single := serviceId, single
-		single.starting = startTask(func() error {
-			if subscription != nil {
-				if err := subscription.Close(ctx); err != nil {
-					return err
-				}
-			}
-			if bound {
-				return binding.startSingleton(serviceId, single, revision)
-			}
-			return nil
-		})
-		transitions = append(transitions, single.starting)
-	}
-	for _, keyed := range binding.keyed {
-		transitions = append(transitions, startTask(func() error { return keyed.rebind(ctx, bound) }))
-	}
-	completion := startTask(func() error {
-		var errs []error
-		for _, transition := range transitions {
-			if err := transition.wait(context.Background()); err != nil {
-				errs = append(errs, err)
-			}
-		}
-		if len(errs) > 0 {
-			return fmt.Errorf("Failed to rebind services: %w", errors.Join(errs...))
-		}
-		return nil
-	})
-	binding.transition = completion
-	binding.mu.Unlock()
-	return completion.wait(ctx)
+	return binding.BeginRebind(ctx, bound).Wait()
 }
 
 // Dispose closes every subscription exactly once and waits for pending
@@ -374,7 +300,8 @@ func (binding *RemoteServiceBinding) Dispose(ctx context.Context) error {
 	}
 	binding.disposed = true
 	var closes []*task
-	for _, single := range binding.singletons {
+	for _, id := range binding.singletonOrder {
+		single := binding.singletons[id]
 		single.active = false
 		single.facade.fence()
 		if single.starting != nil {
@@ -386,11 +313,13 @@ func (binding *RemoteServiceBinding) Dispose(ctx context.Context) error {
 			closes = append(closes, startTask(func() error { return subscription.Close(ctx) }))
 		}
 	}
-	for _, keyed := range binding.keyed {
+	for _, id := range binding.keyedOrder {
+		keyed := binding.keyed[id]
 		closes = append(closes, startTask(func() error { return keyed.close(ctx) }))
 	}
 	binding.singletons = map[string]*singletonBinding{}
 	binding.keyed = map[string]*keyedBinding{}
+	binding.singletonOrder, binding.keyedOrder = nil, nil
 	binding.mu.Unlock()
 	var errs []error
 	for _, closing := range closes {
@@ -399,7 +328,7 @@ func (binding *RemoteServiceBinding) Dispose(ctx context.Context) error {
 		}
 	}
 	if len(errs) > 0 {
-		return fmt.Errorf("Failed to dispose services: %w", errors.Join(errs...))
+		return NewAggregateError("Failed to dispose services", errs)
 	}
 	return nil
 }
@@ -453,13 +382,17 @@ func (service *RemoteService) State(member string) (*ReplicatedStateReplica, err
 
 // CallResult invokes member and decodes its JSON result into R.
 func CallResult[R any](ctx context.Context, service *RemoteService, member string, args ...any) (R, error) {
-	var result R
 	raw, err := service.Call(ctx, member, args...)
+	return decodeCallResult[R](raw, err, service.facade.serviceId, member)
+}
+
+func decodeCallResult[R any](raw json.RawMessage, err error, serviceId, member string) (R, error) {
+	var result R
 	if err != nil {
 		return result, err
 	}
 	if raw == nil {
-		return result, remoteError(ErrServiceInvalidValue, "Remote service method %s.%s returned no value", service.facade.serviceId, member)
+		return result, remoteError(ErrServiceInvalidValue, "Remote service method %s.%s returned no value", serviceId, member)
 	}
 	err = json.Unmarshal(raw, &result)
 	return result, err
@@ -527,20 +460,28 @@ func (facade *serviceFacade) setDescriptionLocked(member, kind string) error {
 }
 
 func (facade *serviceFacade) call(ctx context.Context, member string, args []any) (json.RawMessage, error) {
+	call, err := facade.prepareCall(member, args)
+	if err != nil {
+		return nil, err
+	}
+	return facade.transport.Invoke(ctx, call)
+}
+
+func (facade *serviceFacade) prepareCall(member string, args []any) (ServiceCall, error) {
 	facade.mu.Lock()
 	err := facade.expectLocked(member, MemberMethod)
 	facade.mu.Unlock()
 	if err != nil {
-		return nil, err
+		return ServiceCall{}, err
 	}
 	if !facade.isActive() {
-		return nil, remoteError(ErrServiceStaleInstance, "Remote service %s binding is closed", facade.serviceId)
+		return ServiceCall{}, remoteError(ErrServiceStaleInstance, "Remote service %s binding is closed", facade.serviceId)
 	}
 	encoded := make([]json.RawMessage, len(args))
 	for index, arg := range args {
 		raw, err := json.Marshal(arg)
 		if err != nil {
-			return nil, remoteError(ErrServiceInvalidValue, "Remote service method %s.%s argument %d is not JSON: %v", facade.serviceId, member, index, err)
+			return ServiceCall{}, remoteError(ErrServiceInvalidValue, "Remote service method %s.%s argument %d is not JSON: %v", facade.serviceId, member, index, err)
 		}
 		encoded[index] = raw
 	}
@@ -549,7 +490,7 @@ func (facade *serviceFacade) call(ctx context.Context, member string, args []any
 		copied := *facade.address
 		call.Instance = &copied
 	}
-	return facade.transport.Invoke(ctx, call)
+	return call, nil
 }
 
 func (facade *serviceFacade) state(member string) (*replicaCore, error) {

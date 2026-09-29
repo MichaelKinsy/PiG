@@ -9,13 +9,28 @@
 // the SDK on a clean host (findRustSDKRoot's staged-source strategy).
 package rssdk
 
-import "embed"
+import (
+	"embed"
+	"io/fs"
+	"slices"
+)
 
-//go:embed LICENSE Cargo.toml Cargo.lock src/lib.rs src/context.rs src/extension.rs src/login.rs src/oauth.rs src/protocol.rs src/tool_render.rs src/transport.rs
+//go:embed LICENSE Cargo.toml Cargo.lock src
 var Source embed.FS
 
 // BundledFiles lists the embedded files, relative to the crate root, in a stable
 // order. Paths use forward slashes; a stager recreates subdirectories.
 func BundledFiles() []string {
-	return []string{"LICENSE", "Cargo.toml", "Cargo.lock", "src/lib.rs", "src/context.rs", "src/extension.rs", "src/login.rs", "src/oauth.rs", "src/protocol.rs", "src/tool_render.rs", "src/transport.rs"}
+	var files []string
+	err := fs.WalkDir(Source, ".", func(path string, entry fs.DirEntry, err error) error {
+		if err == nil && !entry.IsDir() {
+			files = append(files, path)
+		}
+		return err
+	})
+	if err != nil {
+		panic(err)
+	}
+	slices.Sort(files)
+	return files
 }

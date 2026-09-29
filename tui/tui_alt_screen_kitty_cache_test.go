@@ -53,7 +53,8 @@ func registerKittyCacheImages(firstImageID, count, widthPx, heightPx int) []stri
 }
 
 func transmitsImage(writes string, imageID int) bool {
-	return strings.Contains(writes, kittyTransmitPrefix) && strings.Contains(writes, "i="+strconv.Itoa(imageID)+",")
+	// packages/tui/src/terminal-image.ts:229-232 puts C=1 before geometry and the image ID last.
+	return strings.Contains(writes, "\x1b_Ga=T,f=100,q=2,C=1,c=2,r=1,i="+strconv.Itoa(imageID)+";AAAA\x1b\\")
 }
 
 // Upstream: "retains recently offscreen Kitty images for placement-only reuse".

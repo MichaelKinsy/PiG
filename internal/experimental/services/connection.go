@@ -7,6 +7,8 @@ import (
 	"slices"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/internal/chord"
 )
 
 // RoutedServiceBinding activates a source-owned host binding on first Ready.
@@ -18,6 +20,7 @@ type RoutedServiceBinding struct {
 	mu                 sync.Mutex
 	activated          bool
 	activationDone     chan struct{}
+	activationError    error
 	activationComplete bool
 }
 
@@ -29,6 +32,11 @@ func (binding *RoutedServiceBinding) Observe(service Service, handler func(conte
 }
 
 func (binding *RoutedServiceBinding) Ready(ctx context.Context) error {
+	return binding.BeginReady(ctx)()
+}
+
+// BeginReady starts first-activation fencing before returning its continuation. The caller runs that continuation exactly once and owns any goroutine used to await it.
+func (binding *RoutedServiceBinding) BeginReady(ctx context.Context) func() error {
 	binding.mu.Lock()
 	first := !binding.activated
 	if first {
@@ -37,32 +45,44 @@ func (binding *RoutedServiceBinding) Ready(ctx context.Context) error {
 	}
 	done := binding.activationDone
 	binding.mu.Unlock()
+	var rebind <-chan error
 	if first {
-		err := <-binding.beginRebind(ctx, binding.getBound())
-		close(done)
-		if err != nil {
+		rebind = binding.beginRebind(ctx, binding.getBound())
+	}
+	return func() error {
+		if first {
+			err := <-rebind
+			binding.mu.Lock()
+			binding.activationError = err
+			binding.mu.Unlock()
+			close(done)
+		} else if err := waitDone(ctx, done); err != nil {
 			return err
 		}
-	} else if err := waitDone(ctx, done); err != nil {
-		return err
-	}
-	ready := make(chan error, 1)
-	binding.services.Ready(ctx, func(err error) { ready <- err })
-	if err := <-ready; err != nil {
-		return err
-	}
-	binding.mu.Lock()
-	complete := binding.activationComplete
-	binding.mu.Unlock()
-	if !complete && binding.onActivate != nil {
-		if err := binding.onActivate(ctx); err != nil {
+		binding.mu.Lock()
+		activationError := binding.activationError
+		binding.mu.Unlock()
+		if activationError != nil {
+			return activationError
+		}
+		ready := make(chan error, 1)
+		binding.services.Ready(ctx, func(err error) { ready <- err })
+		if err := <-ready; err != nil {
 			return err
 		}
+		binding.mu.Lock()
+		complete := binding.activationComplete
+		binding.mu.Unlock()
+		if !complete && binding.onActivate != nil {
+			if err := binding.onActivate(ctx); err != nil {
+				return err
+			}
+		}
+		binding.mu.Lock()
+		binding.activationComplete = true
+		binding.mu.Unlock()
+		return nil
 	}
-	binding.mu.Lock()
-	binding.activationComplete = true
-	binding.mu.Unlock()
-	return nil
 }
 
 func (binding *RoutedServiceBinding) beginRebind(ctx context.Context, bound bool) <-chan error {
@@ -528,26 +548,8 @@ func throwFailures(failures []error, message string) error {
 }
 
 // AggregateError retains every failure while exposing the upstream aggregate message.
-type AggregateError struct {
-	Message string
-	Errors  []any
-}
-
-func (err *AggregateError) Error() string { return err.Message }
-func (err *AggregateError) Unwrap() []error {
-	var causes []error
-	for _, value := range err.Errors {
-		if cause, ok := value.(error); ok {
-			causes = append(causes, cause)
-		}
-	}
-	return causes
-}
+type AggregateError = chord.AggregateError
 
 func newAggregateError(message string, failures []error) *AggregateError {
-	values := make([]any, len(failures))
-	for i, failure := range failures {
-		values[i] = failure
-	}
-	return &AggregateError{Message: message, Errors: values}
+	return chord.NewAggregateError(message, failures)
 }

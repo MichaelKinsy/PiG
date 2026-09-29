@@ -122,7 +122,7 @@ func TestPostCodexTokenFormSuccess(t *testing.T) {
 	if err := json.Unmarshal(respBody, &tok); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
-	if tok.AccessToken != "at" || tok.RefreshToken != "rt" || tok.ExpiresIn != 3600 {
+	if string(tok.AccessToken) != `"at"` || string(tok.RefreshToken) != `"rt"` || string(tok.ExpiresIn) != "3600" {
 		t.Errorf("decoded fields wrong: %+v", tok)
 	}
 }

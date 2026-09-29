@@ -69,6 +69,8 @@ func RunCommand(args []string, stdout, stderr io.Writer) int {
 		return cmdSchema(rest, stdout, stderr)
 	case "add":
 		return cmdAdd(rest, stdout, stderr)
+	case "update":
+		return cmdUpdate(rest, stdout, stderr)
 	case "pull":
 		return cmdPull(rest, stdout, stderr)
 	case "remove":
@@ -95,6 +97,7 @@ func printHelp(w io.Writer) {
   pig piglet schema                Print the published Piglet JSON Schema v1
   pig piglet add <path|npm:ref|git:ref>
                                       Install one validated Piglet source
+  pig piglet update <name>          Update an installed signed GitHub Binary release
   pig piglet pull <release-ref>      Install one signed Piglet Binary release
   pig piglet publish <name|path> --to github --repo <owner/repo> --sign-key <key> [--yes]
                                       Dry-run or publish signed Binaries to GitHub Releases
@@ -765,6 +768,7 @@ type resolvedPigletAddSource struct {
 	path             string
 	originSource     string
 	materializedRoot string
+	bundled          bool
 }
 
 func resolvePigletAddSource(raw string, stdout, stderr io.Writer) (resolvedPigletAddSource, error) {
@@ -789,6 +793,9 @@ func resolvePigletAddSource(raw string, stdout, stderr io.Writer) (resolvedPigle
 		if err := validateRemotePigletOriginSource(ref); err != nil {
 			return resolvedPigletAddSource{}, err
 		}
+		if ref.Kind == sourceref.KindGit && ref.GitSubdir != "" && !validGitCommit(ref.GitRef) {
+			return resolvedPigletAddSource{}, fmt.Errorf("Piglet Git subdirectory sources require a full lowercase commit SHA")
+		}
 		if remotePigletAddOffline() {
 			return resolvedPigletAddSource{}, fmt.Errorf("cannot add remote Piglet %q while offline; unset PIG_OFFLINE and PI_OFFLINE to allow fetching", raw)
 		}
@@ -796,11 +803,17 @@ func resolvePigletAddSource(raw string, stdout, stderr io.Writer) (resolvedPigle
 		if err != nil {
 			return resolvedPigletAddSource{}, err
 		}
+		bundled := ref.Kind == sourceref.KindGit && ref.GitSubdir != ""
+		if bundled {
+			if err := verifyPinnedPigletRoot(ref, materializedRoot); err != nil {
+				return resolvedPigletAddSource{}, err
+			}
+		}
 		path, err := findMaterializedPiglet(materializedRoot)
 		if err != nil {
 			return resolvedPigletAddSource{}, err
 		}
-		return resolvedPigletAddSource{path: path, originSource: raw, materializedRoot: materializedRoot}, nil
+		return resolvedPigletAddSource{path: path, originSource: raw, materializedRoot: materializedRoot, bundled: bundled}, nil
 	}
 	if ref.Kind != sourceref.KindContributed {
 		return resolvedPigletAddSource{}, fmt.Errorf("Piglet source %q must be a local path, npm or Git source, or contributed Piglet source", raw)
@@ -868,7 +881,7 @@ func isCatalogPigletSource(path string) bool {
 	return err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
-func validatePortableCatalogPiglet(p *Piglet) error {
+func validatePortableCatalogPiglet(p *Piglet, bundled bool) error {
 	for _, secret := range p.Secrets {
 		if secret.From.File != "" {
 			return fmt.Errorf("catalog Piglet secret %q uses a machine-local file source", secret.Name)
@@ -892,20 +905,20 @@ func validatePortableCatalogPiglet(p *Piglet) error {
 		source := p.Packages[alias]
 		if ref, err := validateTypedSource(source, sourceref.BareReject); err != nil {
 			return err
-		} else if ref.Kind == sourceref.KindLocal {
+		} else if ref.Kind == sourceref.KindLocal && !bundled {
 			return fmt.Errorf("catalog Piglet package %q uses local source %q", alias, source)
 		}
 	}
 	for _, extension := range p.Extensions {
 		for _, origin := range extension.Origins {
-			if err := validatePortableOrigin("extension", extension.Name, origin); err != nil {
+			if err := validatePortableOrigin("extension", extension.Name, origin, bundled); err != nil {
 				return err
 			}
 		}
 	}
 	for _, skill := range p.Skills {
 		for _, origin := range skill.Origins {
-			if err := validatePortableOrigin("skill", skill.Name, origin); err != nil {
+			if err := validatePortableOrigin("skill", skill.Name, origin, bundled); err != nil {
 				return err
 			}
 		}
@@ -913,7 +926,7 @@ func validatePortableCatalogPiglet(p *Piglet) error {
 	return nil
 }
 
-func validatePortableOrigin(kind, name, origin string) error {
+func validatePortableOrigin(kind, name, origin string, bundled bool) error {
 	if strings.HasPrefix(origin, "package:") {
 		return nil
 	}
@@ -921,7 +934,7 @@ func validatePortableOrigin(kind, name, origin string) error {
 	if err != nil {
 		return err
 	}
-	if ref.Kind == sourceref.KindLocal {
+	if ref.Kind == sourceref.KindLocal && !bundled {
 		return fmt.Errorf("catalog Piglet %s %q uses local source %q", kind, name, origin)
 	}
 	return nil
@@ -932,6 +945,7 @@ type pigletAddCandidate struct {
 	origin         *pigletOrigin
 	extensionCount int
 	skillCount     int
+	modes          map[string]os.FileMode
 	files          map[string][]byte
 }
 
@@ -1000,14 +1014,14 @@ func cmdAddHuman(args []string, stdout, stderr io.Writer) int {
 	if candidate.origin != nil {
 		destination := filepath.Join(pigletsDir, candidate.piglet.Name+".yaml")
 		if _, err := os.Stat(destination); err == nil {
-			_, _ = fmt.Fprintf(stderr, "error: Piglet %q is already installed; run `pig piglet update %s` to refresh its origin\n", candidate.piglet.Name, candidate.piglet.Name)
+			_, _ = fmt.Fprintf(stderr, "error: Piglet %q source is already installed; run `pig piglet remove %s --source` before adding a replacement\n", candidate.piglet.Name, candidate.piglet.Name)
 			return 1
 		} else if !os.IsNotExist(err) {
 			_, _ = fmt.Fprintf(stderr, "error: inspect destination %s: %v\n", destination, err)
 			return 1
 		}
 	}
-	if err := commitPigletAddFiles(candidate.files); err != nil {
+	if err := commitPigletAddFiles(candidate.files, candidate.modes); err != nil {
 		_, _ = fmt.Fprintf(stderr, "error: %v\n", err)
 		return 1
 	}
@@ -1029,9 +1043,12 @@ func planPigletAdd(source resolvedPigletAddSource, pigletsDir string) (pigletAdd
 		return pigletAddCandidate{}, fmt.Errorf("Piglet add cannot copy an agentEnv.devContainer closure; run the Piglet from its source path")
 	}
 	if source.originSource != "" || isCatalogPigletSource(source.path) {
-		if err := validatePortableCatalogPiglet(p); err != nil {
+		if err := validatePortableCatalogPiglet(p, source.bundled); err != nil {
 			return pigletAddCandidate{}, err
 		}
+	}
+	if source.bundled {
+		return planBundledPigletAdd(source, p, pigletsDir)
 	}
 	if err := validatePigletAddOrigins(p); err != nil {
 		return pigletAddCandidate{}, err
@@ -1148,9 +1165,12 @@ func writePigletCommandJSON(output pigletCommandOutput, stdout io.Writer) {
 	_, _ = fmt.Fprintln(stdout, string(data))
 }
 
-func commitPigletAddFiles(files map[string][]byte) error {
+func commitPigletAddFiles(files map[string][]byte, modes map[string]os.FileMode) error {
 	targets := slices.Sorted(maps.Keys(files))
 	for _, target := range targets {
+		if err := rejectPigletDestinationSymlinks(target); err != nil {
+			return err
+		}
 		if existing, err := os.ReadFile(target); err == nil {
 			if !bytes.Equal(existing, files[target]) {
 				return fmt.Errorf("destination %s already exists with different content; remove it explicitly before replacing", target)
@@ -1178,7 +1198,11 @@ func commitPigletAddFiles(files map[string][]byte) error {
 			removePigletInstallStages(stages)
 			return err
 		}
-		if err := stage.Chmod(0o644); err != nil {
+		mode := os.FileMode(0o644)
+		if modes[target] != 0 {
+			mode = modes[target]
+		}
+		if err := stage.Chmod(mode); err != nil {
 			_ = stage.Close()
 			removePigletInstallStages(stages)
 			return err
@@ -1312,6 +1336,17 @@ func cmdRemoveHuman(args []string, stdout, stderr io.Writer) int {
 	removals := make([]pigletFacetRemoval, 0, 1+len(records)*2)
 	if removeSource {
 		removals = append(removals, pigletFacetRemoval{path: sourceInfo.Path, label: "source"})
+		origin, err := readPigletOrigin(sourceInfo.Path)
+		if err != nil {
+			_, _ = fmt.Fprintf(stderr, "error: %v\n", err)
+			return 1
+		}
+		if origin != nil {
+			// pig additive (D18): source removal owns only this Piglet's recorded local closure.
+			for _, relative := range slices.Sorted(maps.Keys(origin.Files)) {
+				removals = append(removals, pigletFacetRemoval{path: filepath.Join(filepath.Dir(sourceInfo.Path), filepath.FromSlash(relative)), label: "source closure"})
+			}
+		}
 		originPath := originPathForPiglet(sourceInfo.Path)
 		if _, err := os.Stat(originPath); err == nil {
 			removals = append(removals, pigletFacetRemoval{path: originPath, label: "origin record"})
@@ -1351,6 +1386,9 @@ func cmdRemoveHuman(args []string, stdout, stderr io.Writer) int {
 	}
 	for _, removal := range removals {
 		_, _ = fmt.Fprintf(stdout, "removed %s: %s\n", removal.label, removal.path)
+	}
+	if removeSource {
+		pruneEmptyRecordDirs(filepath.Join(codingagent.PigletsDir(), name+".source"))
 	}
 	if removeBinary {
 		pruneEmptyRecordDirs(filepath.Join(codingagent.PigletRecordsDir(), name))

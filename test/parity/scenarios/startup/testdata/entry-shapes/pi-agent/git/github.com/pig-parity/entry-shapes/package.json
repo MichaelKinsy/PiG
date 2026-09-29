@@ -1,0 +1,10 @@
+{
+  "name": "entry-shapes",
+  "type": "module",
+  "pi": {
+    "extensions": ["./"],
+    "skills": ["skills/planner/SKILL.md", "suite"],
+    "prompts": ["./prompts"],
+    "themes": [".shapes/themes"]
+  }
+}

@@ -1,0 +1,28 @@
+# Pi 0.87.1 validation.ts:312-349 converts command:42 to "42", so it does not
+# test rejection. command:[] cannot convert to a string. The faux provider now
+# echoes the actual tool result instead of an unconditional success marker.
+# Probe: --model test-faux/faux-1 --print "Run: bash with invalid args"
+# outputs Pi's complete validation error, including the original command:[] input.
+
+name = "05-print-faux-validation-reject"
+description = "Faux sends tool call with invalid args → validation rejects → both produce same response"
+covers = [
+  "packages/ai/src/utils/validation.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[print]
+prompt = "Run: bash with invalid args"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+both_contain = ['Validation failed for tool "bash":', '  - command: must be string', '"command": []']
+output_equal = true
+runs = 3

@@ -82,9 +82,9 @@ func TestGrepLiteralPatternStartingWithDash(t *testing.T) {
 		t.Fatalf("execute: %v", err)
 	}
 	if res.IsError {
-		t.Fatalf("expected success, got error: %s", res.Content)
+		t.Fatalf("expected success, got error: %s", res.Text())
 	}
-	if !strings.Contains(res.Content, "sample.txt:1: -n flag") {
-		t.Fatalf("unexpected grep output: %q", res.Content)
+	if !strings.Contains(res.Text(), "sample.txt:1: -n flag") {
+		t.Fatalf("unexpected grep output: %q", res.Text())
 	}
 }

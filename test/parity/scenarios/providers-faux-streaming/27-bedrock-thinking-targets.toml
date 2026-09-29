@@ -1,0 +1,21 @@
+# Pi 0.87.1: packages/ai/test/bedrock-thinking-payload.test.ts:106-163 and api/bedrock-converse-stream.ts:763-810,854-873,1225-1293.
+# Probe the complete thinking fields before network and the presence of both prompt-cache points.
+# Shared cases include model/name matching, native xhigh precedence, and GovCloud ID/ARN/option/scoped-env targets.
+name = "27-bedrock-thinking-targets"
+description = "Bedrock thinking and prompt caching match the model capabilities and GovCloud target."
+covers = ["packages/ai/src/api/bedrock-converse-stream.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/bedrock-thinking-pig"]
+pi_args = ["node", "./test/parity/testdata/bedrock-thinking-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+[assert]
+exit_code = 0
+json_output_equal = true
+runs = 3

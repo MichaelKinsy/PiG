@@ -1,0 +1,34 @@
+# Upstream evidence: W3 C5-C8: Pi interactive-mode.ts:5345,5378-5396; agent-session-runtime.ts:312-316.
+# WSL acceptance C6 established the unsaved clone refusal before this fix.
+name = "12-unsaved-clone-fork"
+description = "Empty fork status and unsaved clone error match Pi without creating a stub session."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/coding-agent/src/core/agent-session-runtime.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[tmux]
+width = 160
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+capture_start = " No messages to fork from"
+capture_end = "before cloning or forking it."
+
+[[tmux.steps]]
+keys = ["/fork", "Enter"]
+wait_visible_contains = ["No messages to fork from"]
+
+[[tmux.steps]]
+keys = ["/clone", "Enter"]
+wait_visible_contains = ["before cloning or forking it."]
+
+[assert]
+runs = 3
+both_contain = [" No messages to fork from", " Error: This session has not been saved yet. Wait for the first assistant response before cloning or forking it."]
+both_not_contain = ["Cloned", "Fork cancelled"]
+output_equal = true

@@ -2,11 +2,11 @@ package coding
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -17,7 +17,7 @@ import (
 func treeNavigationTarget(entry icodingagent.SessionEntry) (newLeafID *string, editorText string) {
 	if message, ok := entry.AsMessage(); ok && message.Message.User != nil {
 		var text strings.Builder
-		for _, block := range message.Message.User.Content {
+		for _, block := range message.Message.ContentBlocks() {
 			if textBlock, ok := block.(ai.TextContent); ok {
 				text.WriteString(textBlock.Text)
 			}

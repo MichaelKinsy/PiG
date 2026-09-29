@@ -215,23 +215,16 @@ func recordBugReport(sc *SlashContext, bundle BugReportBundle, archivePath strin
 	if session == nil {
 		return nil
 	}
-	id, err := generateEntryID()
-	if err != nil {
-		return err
-	}
-	return session.AppendEntry(CustomEntry{
-		SessionEntryBase: SessionEntryBase{Type: "custom", ID: id, ParentID: session.LeafID(), Timestamp: isoTimestamp(time.Now())},
-		CustomType:       BugReportCustomEntryType,
-		Data: BugReportSessionEntryData{
-			ID:              bundle.Metadata.ID,
-			CreatedAt:       bundle.Metadata.CreatedAt,
-			Hint:            bundle.Metadata.Hint,
-			SessionIncluded: bundle.Metadata.Session.Included,
-			SummaryIncluded: bundle.Metadata.Session.SummaryIncluded,
-			Delivery:        "zip",
-			Path:            archivePath,
-		},
+	_, err := session.AppendCustomEntry(BugReportCustomEntryType, BugReportSessionEntryData{
+		ID:              bundle.Metadata.ID,
+		CreatedAt:       bundle.Metadata.CreatedAt,
+		Hint:            bundle.Metadata.Hint,
+		SessionIncluded: bundle.Metadata.Session.Included,
+		SummaryIncluded: bundle.Metadata.Session.SummaryIncluded,
+		Delivery:        "zip",
+		Path:            archivePath,
 	})
+	return err
 }
 
 // bugReportCrashLogPath locates the crash log /bug attaches, or "" (no log)

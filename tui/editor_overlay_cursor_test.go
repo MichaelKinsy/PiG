@@ -105,7 +105,7 @@ func TestEditorCursorAfterLineFillingLayoutWidth(t *testing.T) {
 			editor := NewEditor()
 			editor.SetPaddingX(tc.padX)
 			editor.SetText(tc.text)
-			if got := editor.Render(tc.width)[2]; got != tc.want {
+			if got := editor.Render(tc.width)[1]; got != tc.want {
 				t.Fatalf("cursor row = %q, want %q", got, tc.want)
 			}
 		})
@@ -119,7 +119,7 @@ func TestEditorCursorAtWidthOneStaysInBounds(t *testing.T) {
 	for text, want := range map[string]string{"g": "\x1b[7mg\x1b[0m", "": "\x1b[7m \x1b[0m"} {
 		editor := NewEditor()
 		editor.SetText(text)
-		if got := editor.Render(1)[2]; got != want {
+		if got := editor.Render(1)[1]; got != want {
 			t.Fatalf("width-1 row for %q = %q, want %q", text, got, want)
 		}
 	}

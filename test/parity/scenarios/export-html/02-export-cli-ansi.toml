@@ -1,0 +1,43 @@
+# Behavior family: export-html
+# Scenario: CLI --export with ANSI-colored session content.
+#
+# Re-probed with real Pi 0.87.1: index.ts:144-177 embeds session data and all assets.
+# ANSI escapes remain data; this CLI path does not invoke the TUI ANSI-to-HTML converter.
+#
+# This exercises the session data base64 encoding with binary-safe
+# content (ANSI escape bytes) and verifies the payload is identical.
+#
+# Probe: pi --export <fixture>/ansi.jsonl <isolated>/out.html.
+# Complete HTML equality is re-probed against Pi 0.87.1, including the pinned assets.
+# Raw evidence and hashes: docs/findings/fix-export-html.md.
+
+name = "02-export-cli-ansi"
+description = "CLI --export with ANSI-colored content produces identical HTML"
+covers = [
+  "packages/coding-agent/src/core/export-html/index.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_HOME=testdata/pig-home"]
+pig_args = ["--export", "testdata/sessions/ansi.jsonl", "{{TEMP}}/out.html"]
+pi_args = ["--export", "testdata/sessions/ansi.jsonl", "{{TEMP}}/out.html"]
+
+[cli]
+timeout_seconds = 15
+cwd = "."
+artifact_path = "{{TEMP}}/out.html"
+
+[assert]
+exit_code = 0
+both_contain = ["Exported to:"]
+output_equal = true
+artifact_equal = true
+runs = 3
+
+# normalize-rationale: Pig and Pi receive independent temporary export paths.
+[[assert.normalize_replace]]
+pattern = '(?m)^(Exported to: )/[^\r\n]*/parity-cli-02-export-cli-ansi-(pig|pi)-[0-9]+'
+with = '${1}<TEMP>'
+reason = "D2: replace only this scenario's allocated temporary root, preserving the entire destination suffix and status line."

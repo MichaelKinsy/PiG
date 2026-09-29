@@ -15,6 +15,16 @@ owner = "next-div-ai-oauth"
 summary = "OAuth HTTP deadlines with no upstream counterpart: Codex token post 30 s, xAI requests 30 s, Radius callback ReadHeaderTimeout 10 s, OpenRouter callback shutdown 2 s. Upstream passes only the caller signal."
 
 [[finding]]
+id = "GUARD-13"
+owner = "reviewed-node-default"
+summary = "Reviewed, permanent: a Node built-in default that no pinned Pi or dependency-snapshot file spells, so no `// upstream:` marker can verify it. internal/codingagent/session_selector_delete.go trashMaxBuffer = 1024*1024 is child_process.spawnSync's default maxBuffer (Node docs: 'maxBuffer ... Default: 1024 * 1024'). Pi relies on that default at packages/coding-agent/src/modes/interactive/components/session-selector.ts:659, spawnSync(\"trash\", trashArgs, { encoding: \"utf-8\" }), which passes no maxBuffer. Not a Pi divergence; it is not a candidate for removal."
+
+[[finding]]
+id = "GUARD-14"
+owner = "reviewed-wire-encoding"
+summary = "Reviewed, permanent: coding/extension/host/subprocess/conn.go encodedRawSize adds the bytes Go's encoding/json emits when it escapes <, >, & (six bytes for one, so +5) and U+2028/U+2029 (six bytes for three, so +3). The subprocess wire is a Pig-owned format that Pi does not have, so no pinned Pi file spells these sizes and no `// upstream:` marker can verify them. They are byte counts of the encoder's output, not caps or limits; TestEncodedRawSize_MatchesEncoder proves them against the encoder. Not a Pi divergence."
+
+[[finding]]
 id = "GUARD-12"
 owner = "div-modes-interactive"
 summary = "Windows resize is polled every 120 ms; upstream reacts to the stdout resize event."
@@ -23,11 +33,6 @@ summary = "Windows resize is polled every 120 ms; upstream reacts to the stdout 
 id = "AGENT-01"
 owner = "div-agent-core"
 summary = "agent.emit drops events once the run context is cancelled: the event send races a Done case, so aborted message_end, turn_end and agent_end are lost."
-
-[[finding]]
-id = "AGENT-05"
-owner = "div-agent-core"
-summary = "Session persistence errors are swallowed: AppendMessage and AppendBashExecution failures only skip bookkeeping, so a full disk loses the transcript silently."
 
 [[finding]]
 id = "AGENT-15"
@@ -43,11 +48,6 @@ summary = "recover() calls in session event dispatch discard the panic value: th
 id = "AI-08"
 owner = "next-div-ai-sse"
 summary = "Stream chunks that are not valid JSON are skipped silently, so a turn ends as a success with content or the stop reason missing."
-
-[[finding]]
-id = "AI-23"
-owner = "next-div-ai-sse"
-summary = "SSE lines have a 32/64 MiB size cap that upstream does not have."
 
 [[finding]]
 id = "AI-28"
@@ -117,20 +117,6 @@ summary = "Extension login preview deadline; add `pig additive (D60)` at the lit
 [[hit]]
 check = "bare-recover"
 file = "coding/session.go"
-func = "Session.emitOrderedEvent"
-snippet = "defer func() { _ = recover() }()"
-finding = "AGENT-16"
-
-[[hit]]
-check = "bare-recover"
-file = "coding/session.go"
-func = "Session.emitOrderedEventSync"
-snippet = "defer func() { _ = recover() }()"
-finding = "AGENT-16"
-
-[[hit]]
-check = "bare-recover"
-file = "coding/session.go"
 func = "emitExtensionError"
 snippet = "if recover() != nil {"
 finding = "AGENT-16"
@@ -159,8 +145,8 @@ finding = "EXT-17"
 [[hit]]
 check = "default-drop-send"
 file = "coding/extension/host/subprocess/conn.go"
-func = "Conn.readLoop"
-snippet = "case ch <- *env.RequestState:"
+func = "Conn.deliverRequestState"
+snippet = "case ch <- state:"
 finding = "D56"
 
 [[hit]]
@@ -199,13 +185,6 @@ snippet = "_ = os.WriteFile(marker, []byte(fp), 0o644)"
 finding = "D20"
 
 [[hit]]
-check = "discarded-io-error"
-file = "coding/session.go"
-func = "Session.appendBashLocked"
-snippet = "if _, err := s.inner.AppendBashExecution("
-finding = "AGENT-05"
-
-[[hit]]
 check = "magic-literal"
 file = "ai/anthropic.go"
 func = "anthropicProvider.buildParams"
@@ -235,13 +214,6 @@ finding = "AI-29"
 
 [[hit]]
 check = "magic-literal"
-file = "ai/models_store.go"
-func = "withSidecarLock"
-snippet = "time.Sleep(20 * time.Millisecond)"
-finding = "AI-29"
-
-[[hit]]
-check = "magic-literal"
 file = "ai/oauth_openai_codex.go"
 func = "postCodexTokenForm"
 snippet = "ctx2, cancel := context.WithTimeout(ctx, 30*time.Second)"
@@ -267,13 +239,6 @@ file = "ai/oauth_xai.go"
 func = "xaiRequestTimeout"
 snippet = "xaiRequestTimeout = 30 * time.Second"
 finding = "GUARD-02"
-
-[[hit]]
-check = "magic-literal"
-file = "ai/pi_messages.go"
-func = "readPiMessagesEvents"
-snippet = "scanner.Buffer(make([]byte, 0, 64*1024), 64*1024*1024)"
-finding = "AI-23"
 
 [[hit]]
 check = "magic-literal"
@@ -330,6 +295,20 @@ file = "coding/extension/host/runtimecell/cellcache.go"
 func = "staleScratchAge"
 snippet = "const staleScratchAge = 24 * time.Hour"
 finding = "D20"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/host/subprocess/conn.go"
+func = "encodedRawSize"
+snippet = "size += 3"
+finding = "GUARD-14"
+
+[[hit]]
+check = "magic-literal"
+file = "coding/extension/host/subprocess/conn.go"
+func = "encodedRawSize"
+snippet = "size += 5"
+finding = "GUARD-14"
 
 [[hit]]
 check = "magic-literal"
@@ -445,6 +424,13 @@ finding = "D39"
 
 [[hit]]
 check = "magic-literal"
+file = "internal/codingagent/session_selector_delete.go"
+func = "trashMaxBuffer"
+snippet = "const trashMaxBuffer = 1024 * 1024"
+finding = "GUARD-13"
+
+[[hit]]
+check = "magic-literal"
 file = "tui/select_filterable.go"
 func = "FilterableList.Render"
 snippet = "maxRows = 20"
@@ -467,7 +453,7 @@ finding = "GUARD-12"
 [[hit]]
 check = "stream-parse-continue"
 file = "ai/openai_responses.go"
-func = "openAIResponsesProvider.parseResponsesSSE"
+func = "openAIResponsesProvider.parseResponses"
 snippet = "if err := json.Unmarshal(event.Item, &item); err != nil {"
 finding = "AI-08"
 count = 2
@@ -475,6 +461,6 @@ count = 2
 [[hit]]
 check = "stream-parse-continue"
 file = "ai/openai_responses.go"
-func = "openAIResponsesProvider.parseResponsesSSE"
+func = "openAIResponsesProvider.parseResponses"
 snippet = "if json.Unmarshal([]byte(block.ThinkingSignature), &stored) != nil {"
 finding = "AI-08"

@@ -17,7 +17,7 @@ import (
 func TestPrintModelList_ShowsRegisteredExtensionProvider(t *testing.T) {
 	dir := t.TempDir()
 	reg := codingagent.NewModelRegistry(dir)
-	reg.RegisterProvider("parity-prov", extension.ProviderConfig{
+	if err := reg.RegisterProvider("parity-prov", extension.ProviderConfig{
 		Name:    "Parity Prov",
 		BaseURL: "http://127.0.0.1:9",
 		APIKey:  "x",
@@ -25,7 +25,9 @@ func TestPrintModelList_ShowsRegisteredExtensionProvider(t *testing.T) {
 		Models: []extension.ProviderModelConfig{
 			{ID: "parity-model", Name: "parity-model", Input: []string{"text"}},
 		},
-	})
+	}); err != nil {
+		t.Error(err)
+	}
 
 	out := captureStdout(func() { printModelList(reg, dir, "") })
 

@@ -25,7 +25,7 @@ func createEntry(index, payloadBytes int) session.Entry {
 	}
 	text := prefix + strings.Repeat("x", max(0, payloadBytes-len(prefix)))
 	return session.Entry{ID: id, ParentID: parentID, Type: session.EntryTypeMessage, Message: agent.AgentMessage{
-		User: &agent.UserMessage{Role: agent.RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: text}}, Timestamp: messageTimestamp},
+		User: &agent.UserMessage{Role: agent.RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: text}}, Timestamp: messageTimestamp},
 	}}
 }
 

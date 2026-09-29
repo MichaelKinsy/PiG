@@ -48,6 +48,8 @@ the value depends on what it detects.
 | `thinkingBudgets` | object |  | Token budget per thinking level: `minimal`, `low`, `medium`, `high`. |
 | `transport` | string | `auto` | Transport for providers that support more than one: `auto`, `sse`, `websocket`, or `websocket-cached`. |
 | `retry` | object | see meaning | Retry policy: `enabled` (default `true`), `maxRetries` (default `3`), `baseDelayMs` (default `2000`), `maxAgentDelayMs` (the cap on each retry delay, default `60000`), and a per-`provider` override. An explicit `0` is kept. |
+| `httpProxy` | string | unset | Global HTTP/HTTPS proxy URL. Sets only absent `HTTP_PROXY` and `HTTPS_PROXY` environment variables. Provider requests use CONNECT tunnels; `NO_PROXY` controls bypasses. |
+| `websocketConnectTimeoutMs` | number | provider default | WebSocket opening-handshake timeout in milliseconds. `0` or `"disabled"` turns it off. Explicit request options override the setting. |
 | `httpIdleTimeoutMs` | number | `300000` | Idle timeout for provider requests, in milliseconds. `0` or `"disabled"` turns it off. |
 | `cacheWarming` | string | `streaming` | `off`, `streaming`, or `idle`. Keeps the provider's prompt cache warm with periodic requests. Global setting only: PiG ignores it in a project file. See [cache warming](#cache-warming). |
 
@@ -94,7 +96,7 @@ set it in `~/.pig/agent/settings.json`:
 
 | Key | Type | Default | Meaning |
 |---|---|---|---|
-| `theme` | string |  | Active theme name. |
+| `theme` | string |  | Fixed theme name or slash-separated automatic light/dark theme pair. |
 | `tuiMode` | string | `regular` | `regular` or `fullscreen`. |
 | `fullscreenScrollbar` | string | `auto` | Scrollbar in fullscreen mode: `auto`, `always`, or `hidden`. No effect in regular mode. |
 | `fullscreenExitOutput` | string | `transcript` | `transcript` prints the final transcript when fullscreen exits. `resume-hint` restores the previous screen and prints only the resume hint. |

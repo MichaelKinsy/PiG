@@ -19,7 +19,10 @@ func init() {
 // SKILL.md reads as "[skill] <directory>", the agent's own documentation as
 // "read docs <path>", and a context file as "read resource <path>".
 func classifyCompactRead(rawPath, cwd string) (tui.CompactReadClassification, bool) {
-	absolutePath := tools.ResolveToCwd(rawPath, cwd)
+	absolutePath, err := tools.ResolveToCwd(rawPath, cwd)
+	if err != nil {
+		return tui.CompactReadClassification{}, false
+	}
 	fileName := filepath.Base(absolutePath)
 	if fileName == "SKILL.md" {
 		label := filepath.Base(filepath.Dir(absolutePath))

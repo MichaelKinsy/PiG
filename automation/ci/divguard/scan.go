@@ -63,10 +63,10 @@ var generatedRe = regexp.MustCompile(`(?m)^// Code generated .* DO NOT EDIT\.$`)
 type env struct {
 	Root     string
 	Upstream *upstreamIndex
-	// Divergences holds every D<N> id recorded in DIVERGENCES.md or
+	// Divergences holds every D<N> id recorded in docs/parity/DIVERGENCES.md or
 	// docs/additive-features.md.
 	Divergences map[string]bool
-	// PortMap maps a Go file to the upstream files PORT_MAP.md says it ports.
+	// PortMap maps a Go file to the upstream files docs/parity/PORT_MAP.md says it ports.
 	PortMap map[string][]string
 	// ErrorFuncs indexes which declared functions return error.
 	ErrorFuncs errorFuncs
@@ -74,7 +74,7 @@ type env struct {
 
 func loadEnv(root, upstreamDir string) (*env, error) {
 	e := &env{Root: root, Divergences: map[string]bool{}}
-	for _, ledger := range []string{"DIVERGENCES.md", "docs/additive-features.md"} {
+	for _, ledger := range []string{"docs/parity/DIVERGENCES.md", "docs/additive-features.md"} {
 		data, err := os.ReadFile(filepath.Join(root, ledger))
 		if err != nil {
 			if os.IsNotExist(err) {
@@ -88,6 +88,9 @@ func loadEnv(root, upstreamDir string) (*env, error) {
 	}
 	idx, err := loadUpstreamIndex(upstreamDir)
 	if err != nil {
+		return nil, err
+	}
+	if err := idx.loadDependencySources(root); err != nil {
 		return nil, err
 	}
 	e.Upstream = idx
@@ -300,7 +303,7 @@ func (fc *fileCtx) dnMarked(lines ...int) bool {
 				if fc.Env.Divergences[m[1]] {
 					return true
 				}
-				fc.problem(fmt.Sprintf("%s:%d: marker names %s, which DIVERGENCES.md does not record", fc.Rel, ln, m[1]))
+				fc.problem(fmt.Sprintf("%s:%d: marker names %s, which docs/parity/DIVERGENCES.md does not record", fc.Rel, ln, m[1]))
 			}
 		}
 	}

@@ -3,6 +3,7 @@ package tui
 import (
 	"strings"
 	"testing"
+	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -44,11 +45,11 @@ func TestEditorGrapheme_LeftRightMovement(t *testing.T) {
 		wantEnd int
 	}{
 		{name: "ascii", text: "ab", wantMid: 1, wantEnd: 2},
-		{name: "emoji", text: "😊a", wantMid: len("😊"), wantEnd: len("😊a")},
-		{name: "zwj", text: "👩‍💻a", wantMid: len("👩‍💻"), wantEnd: len("👩‍💻a")},
-		{name: "skin-tone", text: "👋🏽a", wantMid: len("👋🏽"), wantEnd: len("👋🏽a")},
-		{name: "flag", text: "🇺🇸a", wantMid: len("🇺🇸"), wantEnd: len("🇺🇸a")},
-		{name: "cjk", text: "界a", wantMid: len("界"), wantEnd: len("界a")},
+		{name: "emoji", text: "😊a", wantMid: 2, wantEnd: 3},
+		{name: "zwj", text: "👩‍💻a", wantMid: 5, wantEnd: 6},
+		{name: "skin-tone", text: "👋🏽a", wantMid: 4, wantEnd: 5},
+		{name: "flag", text: "🇺🇸a", wantMid: 4, wantEnd: 5},
+		{name: "cjk", text: "界a", wantMid: 1, wantEnd: 2},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -85,7 +86,7 @@ func TestEditorGrapheme_BackspaceAndDelete(t *testing.T) {
 		t.Run(tc.name+"/backspace", func(t *testing.T) {
 			e := NewEditor()
 			e.SetText(tc.text)
-			e.cursor = [2]int{0, len(tc.text) - len("B")}
+			e.cursor = [2]int{0, len(utf16.Encode([]rune(tc.text))) - 1}
 			e.HandleInput("\x7f")
 			if got := e.Text(); got != "AB" {
 				t.Fatalf("backspace got=%q want=%q", got, "AB")
@@ -103,37 +104,34 @@ func TestEditorGrapheme_BackspaceAndDelete(t *testing.T) {
 	}
 }
 
-func TestByteOffsetForColumnGrapheme(t *testing.T) {
-	cases := []struct {
-		name   string
-		text   string
-		target int
-		want   int
-	}{
-		{name: "zwj-width-2-col-1", text: "👩‍💻", target: 1, want: 0},
-		{name: "zwj-width-2-col-2", text: "👩‍💻", target: 2, want: len("👩‍💻")},
-		{name: "flag-width-2-col-1", text: "🇺🇸", target: 1, want: 0},
-		{name: "flag-width-2-col-2", text: "🇺🇸", target: 2, want: len("🇺🇸")},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			if got := byteOffsetForColumnGrapheme(tc.text, tc.target); got != tc.want {
-				t.Fatalf("byteOffsetForColumnGrapheme(%q, %d) = %d want %d", tc.text, tc.target, got, tc.want)
+func TestEditorMouseGraphemeBoundaries(t *testing.T) {
+	for _, text := range []string{"👩‍💻", "🇺🇸"} {
+		for _, target := range []int{1, 2} {
+			e := NewEditor()
+			e.SetText(text)
+			e.Render(80)
+			e.HandleMouse(TuiMouseEvent{Type: MouseClick, Button: MouseButtonLeft, X: target, Y: 1, Width: 80})
+			want := 0
+			if target == 2 {
+				want = len(utf16.Encode([]rune(text)))
 			}
-		})
+			if got := e.GetCursor().Col; got != want {
+				t.Fatalf("mouse(%q,%d)=%d want=%d", text, target, got, want)
+			}
+		}
 	}
 }
 
-func TestChunkByWidthGrapheme(t *testing.T) {
-	chunks, starts := chunkByWidth("👩‍💻a", 2)
+func TestWordWrapLineGraphemeBoundary(t *testing.T) {
+	chunks := wordWrapLine("👩‍💻a", 2, nil)
 	if len(chunks) != 2 {
 		t.Fatalf("len(chunks)=%d want 2 (%v)", len(chunks), chunks)
 	}
-	if chunks[0] != "👩‍💻" || starts[0] != 0 {
-		t.Fatalf("first chunk=%q start=%d", chunks[0], starts[0])
+	if chunks[0].text != "👩‍💻" || chunks[0].startIndex != 0 {
+		t.Fatalf("first chunk=%+v", chunks[0])
 	}
-	if chunks[1] != "a" || starts[1] != len("👩‍💻") {
-		t.Fatalf("second chunk=%q start=%d want start=%d", chunks[1], starts[1], len("👩‍💻"))
+	if chunks[1].text != "a" || chunks[1].startIndex != 5 {
+		t.Fatalf("second chunk=%+v want UTF-16 start=5", chunks[1])
 	}
 }
 

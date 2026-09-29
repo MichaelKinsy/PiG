@@ -85,12 +85,13 @@ func TestListSessionsCustomDirFiltersCurrentCWDAndListAllDoesNot(t *testing.T) {
 	}
 }
 
+// Ports packages/coding-agent/test/suite/regressions/7497-session-discovery-symlink.test.ts:41.
 func TestListSessionsAcrossRootDiscoversDirectorySymlink(t *testing.T) {
 	root := t.TempDir()
 	target := t.TempDir()
 	writeSessionInfoFixture(t, target, "linked", t.TempDir())
 	alias := filepath.Join(root, "--linked--")
-	testenv.Symlink(t, target, alias)
+	testenv.RequireDirectoryLink(t, target, alias)
 
 	sessions, err := listSessionsAcrossRoot(root)
 	if err != nil {
@@ -104,6 +105,7 @@ func TestListSessionsAcrossRootDiscoversDirectorySymlink(t *testing.T) {
 	}
 }
 
+// Ports packages/coding-agent/test/suite/regressions/7497-session-discovery-symlink.test.ts:53.
 func TestListSessionsAcrossRootIgnoresBrokenDirectorySymlink(t *testing.T) {
 	root := t.TempDir()
 	regular := filepath.Join(root, "--regular--")
@@ -115,7 +117,7 @@ func TestListSessionsAcrossRootIgnoresBrokenDirectorySymlink(t *testing.T) {
 	if err := os.Mkdir(target, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	testenv.Symlink(t, target, filepath.Join(root, "--broken--"))
+	testenv.RequireDirectoryLink(t, target, filepath.Join(root, "--broken--"))
 	if err := os.Remove(target); err != nil {
 		t.Fatal(err)
 	}
@@ -129,6 +131,7 @@ func TestListSessionsAcrossRootIgnoresBrokenDirectorySymlink(t *testing.T) {
 	}
 }
 
+// Ports packages/coding-agent/test/suite/regressions/7497-session-discovery-symlink.test.ts:65.
 func TestListSessionsAcrossRootIgnoresSymlinkToFile(t *testing.T) {
 	root := t.TempDir()
 	regular := filepath.Join(root, "--regular--")
@@ -154,7 +157,7 @@ func TestListSessionsAcrossRootIgnoresSymlinkToFile(t *testing.T) {
 func writeSessionInfoFixture(t *testing.T, dir, id, cwd string) {
 	t.Helper()
 	path := filepath.Join(dir, id+".jsonl")
-	header := fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"timestamp\":\"2026-08-04T00:00:00Z\",\"cwd\":%q}\n", id, cwd)
+	header := fmt.Sprintf("{\"type\":\"session\",\"version\":3,\"id\":%q,\"timestamp\":\"2026-08-03T00:00:00.000Z\",\"cwd\":%q}\n", id, cwd)
 	if err := os.WriteFile(path, []byte(header), 0o644); err != nil {
 		t.Fatal(err)
 	}

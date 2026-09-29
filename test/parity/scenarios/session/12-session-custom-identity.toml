@@ -1,0 +1,26 @@
+# Pi 0.87.1 session-manager.ts:268-274 validates explicitly supplied IDs;
+# newSession:1059-1082 and forkFrom preserve a supplied ID in header and filename.
+# Both probes use real constructors/file-backed forks. Random identity checks and
+# invalid-input assertions run inside the adapters, without output normalization.
+name = "12-session-custom-identity"
+description = "Custom session IDs validate before persistence and survive file-backed forks"
+covers = ["packages/coding-agent/src/core/session-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-custom-id-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/session-custom-id-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SESSION_ID custom=forked-session-id parent=true filename=true"]
+runs = 3

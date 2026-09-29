@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -94,19 +95,11 @@ func runLoginCommand(args []string) int {
 	}
 	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
+		printCLIError("%v", err)
 		return 1
 	}
-	agentDir := os.Getenv("PIG_CODING_AGENT_DIR")
-	if agentDir == "" {
-		agentDir = codingagent.DefaultAgentDir()
-	}
+	agentDir := codingagent.AgentDir()
 	authPath := filepath.Join(agentDir, "auth.json")
-	store, err := ai.NewAuthStorage(authPath)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, "error:", err)
-		return 1
-	}
 	_ = cwd
 
 	switch opts.command {
@@ -122,10 +115,19 @@ func runLoginCommand(args []string) int {
 			return 1
 		}
 		credentialPath := "auth.json"
+		// pig additive (D40): extension-owned credentials do not open core storage; failed logins do not create it.
 		if credentialStore, ok := provider.(ai.OAuthCredentialStore); ok {
 			credentialPath, err = credentialStore.StoreOAuthCredentials(cred)
 		} else {
-			err = store.Set(provider.ID(), ai.Credential{Type: ai.CredentialOAuth, Refresh: cred.Refresh, Access: cred.Access, Expires: cred.Expires, ProjectID: cred.ProjectID, Scope: cred.Scope})
+			store, openErr := ai.NewAuthStorage(authPath)
+			if openErr != nil {
+				printCLIError("%v", openErr)
+				return 1
+			}
+			var credential ai.Credential
+			if credential, err = ai.CredentialFromOAuth(cred); err == nil {
+				err = store.Set(provider.ID(), credential)
+			}
 		}
 		if err != nil {
 			fmt.Fprintln(os.Stderr, "Error:", err)
@@ -134,6 +136,11 @@ func runLoginCommand(args []string) int {
 		fmt.Printf("\nCredentials saved to %s\n", credentialPath)
 		return 0
 	case authLogout:
+		store, err := ai.NewAuthStorage(authPath)
+		if err != nil {
+			printCLIError("%v", err)
+			return 1
+		}
 		if opts.provider == "" {
 			contributions, err = discoverAuthContributions()
 			if err != nil {
@@ -163,7 +170,7 @@ func runLoginCommand(args []string) int {
 				}
 			}
 		}
-		if err := store.Delete(providerID); err != nil {
+		if err := store.Delete(context.Background(), providerID); err != nil {
 			fmt.Fprintln(os.Stderr, "Error:", err)
 			return 1
 		}

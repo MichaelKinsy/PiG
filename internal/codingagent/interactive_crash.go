@@ -159,7 +159,12 @@ func (m *InteractiveMode) requestedExitError() error {
 // uncaughtCrash reports a crash recovered on the UI goroutine after the
 // terminal has been restored. Mirrors upstream InteractiveMode.uncaughtCrash.
 func (m *InteractiveMode) uncaughtCrash(value any, stack []byte, stderr io.Writer) {
-	_, _ = fmt.Fprintf(stderr, "%s exiting due to uncaughtException:\n%s\n%s", AppName, uncaughtValueText(value), stack)
+	if failure, ok := value.(error); ok && extension.ErrorStack(failure) != "" {
+		stack = []byte(extension.ErrorStack(failure))
+		_, _ = fmt.Fprintf(stderr, "%s exiting due to uncaughtException:\n%s\n", AppName, stack)
+	} else {
+		_, _ = fmt.Fprintf(stderr, "%s exiting due to uncaughtException:\n%s\n%s", AppName, uncaughtValueText(value), stack)
+	}
 	if hint := m.crashExtensionHint(string(stack)); hint != "" {
 		_, _ = fmt.Fprintf(stderr, "\n%s\n", hint)
 	}
@@ -168,13 +173,23 @@ func (m *InteractiveMode) uncaughtCrash(value any, stack []byte, stderr io.Write
 	}
 }
 
+// uncaughtError carries an upstream Error that no caller awaits to Run's uncaughtException handler.
+type uncaughtError struct{ err error }
+
+func (e uncaughtError) Error() string { return e.err.Error() }
+func (e uncaughtError) Unwrap() error { return e.err }
+
 // uncaughtValueText formats a recovered value for the uncaughtException
-// report. The renderer overflow is upstream's thrown Error, which Node's
-// console.error prints as "Error: <message>" before its stack.
+// report. The renderer overflow and an unawaited rejection are upstream's
+// thrown Errors, which Node's console.error prints as "Error: <message>"
+// before the stack.
 func uncaughtValueText(value any) string {
 	var overflow *tui.RenderOverflowError
 	if err, ok := value.(error); ok && errors.As(err, &overflow) {
 		return "Error: " + overflow.Error()
+	}
+	if rejection, ok := value.(uncaughtError); ok {
+		return "Error: " + rejection.Error()
 	}
 	return fmt.Sprint(value)
 }

@@ -21,7 +21,27 @@ func TestExtensionSelectorMultilineTitleRendersOneLinePerSegment(t *testing.T) {
 	}
 }
 
+func TestExtensionSelectorMultilineTitleUsesScopedBoldAndDimKeys(t *testing.T) {
+	// Pi 0.87.1 extension-selector.ts:48 uses theme.bold (chalk), which closes/reopens at newlines; keybinding-hints.ts:42-47 uses dim keys and muted descriptions.
+	theme := ActiveTheme()
+	title := "first\n\nsecond"
+	selector := NewExtensionSelector(title, []string{"Trust"})
+	wantTitle := NewPaddedText(theme.FgText("accent", "\x1b[1mfirst\x1b[22m\n\x1b[1m\x1b[22m\n\x1b[1msecond\x1b[22m"), 1, 0, nil).Render(80)
+	got := selector.Render(80)
+	if !slices.Equal(got[2:2+len(wantTitle)], wantTitle) {
+		t.Fatalf("title rows = %q, want %q", got[2:2+len(wantTitle)], wantTitle)
+	}
+	wantHint := NewPaddedText(theme.FgText("dim", "↑↓")+theme.FgText("muted", " navigate")+"  "+theme.FgText("dim", "enter")+theme.FgText("muted", " select")+"  "+theme.FgText("dim", "escape/ctrl+c")+theme.FgText("muted", " cancel"), 1, 0, nil).Render(80)
+	if !slices.Equal(got[len(got)-3:len(got)-2], wantHint) {
+		t.Fatalf("hint = %q, want %q", got[len(got)-3:len(got)-2], wantHint)
+	}
+}
+
 func TestExtensionSelectorHandleInput_TogglesToolsExpandedShortcut(t *testing.T) {
+	// Pi's coding-agent installs its merged app/tui manager before opening dialogs.
+	previous := GetKeybindings()
+	SetKeybindings(NewTUIKeybindingsManager(map[string][]string{"app.tools.expand": {"ctrl+o"}}))
+	t.Cleanup(func() { SetKeybindings(previous) })
 	called := 0
 	sel := NewExtensionSelector("Pick one", []string{"a", "b"}, func() { called++ })
 

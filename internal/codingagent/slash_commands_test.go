@@ -1,7 +1,6 @@
 package codingagent
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +10,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/tui"
 )
 
 func newTestSlashContext() (*SlashContext, *strings.Builder, *bool, *bool) {
@@ -249,8 +249,9 @@ func TestModelHandlerEmptyArgsPickerCancelled(t *testing.T) {
 	if called {
 		t.Errorf("SwitchModel should not be called on cancel")
 	}
-	if !strings.Contains(out.String(), "cancelled") {
-		t.Errorf("expected cancel message, got: %q", out.String())
+	// Pi's showModelSelector cancel callback only restores the editor.
+	if out.Len() != 0 {
+		t.Errorf("cancel appended transcript output: %q", out.String())
 	}
 }
 
@@ -392,22 +393,23 @@ func TestBuiltinSlashCommands_MatchesRegistry(t *testing.T) {
 	}
 }
 
+func configureTestSlashAuth(sc *SlashContext) {
+	providers := []tui.OAuthProvider{{ID: "github-copilot", Name: "GitHub Copilot", AuthType: "oauth"}, {ID: "anthropic", Name: "Anthropic", AuthType: "oauth"}, {ID: "openai", Name: "OpenAI", AuthType: "api_key"}}
+	sc.LoginProviders = func() []tui.OAuthProvider { return providers }
+	sc.LogoutProviders = func() ([]tui.OAuthProvider, error) { return providers[:1], nil }
+	sc.SelectAuthMethod = func([]tui.OAuthProvider) (string, bool) { return "oauth", true }
+	sc.SelectAuthProvider = func(_ string, options []tui.OAuthProvider, _ string) (tui.OAuthProvider, bool) {
+		return options[0], true
+	}
+}
+
 func TestSlashLoginDefaultProvider(t *testing.T) {
 	r := NewSlashRegistry()
 	sc, out, _, _ := newTestSlashContext()
 
+	configureTestSlashAuth(sc)
 	var loginCalled string
-	sc.ShowLoginAuthType = func() (string, bool) { return "oauth", true }
-	sc.Login = func(_ context.Context, provider string) error {
-		loginCalled = provider
-		return nil
-	}
-	sc.ShowOAuthSelector = func(mode string) (string, bool) {
-		if mode != "login-oauth" {
-			t.Errorf("expected mode=login-oauth, got %q", mode)
-		}
-		return "github-copilot", true
-	}
+	sc.StartProviderLogin = func(provider tui.OAuthProvider) error { loginCalled = provider.ID; return nil }
 
 	if err := r.Dispatch(sc, "/login", nil); err != nil {
 		t.Fatalf("/login: %v", err)
@@ -424,23 +426,20 @@ func TestSlashLoginExplicitProvider(t *testing.T) {
 	r := NewSlashRegistry()
 	sc, out, _, _ := newTestSlashContext()
 
+	configureTestSlashAuth(sc)
 	var loginCalled string
-	sc.ShowLoginAuthType = func() (string, bool) { return "oauth", true }
-	sc.Login = func(_ context.Context, provider string) error {
-		loginCalled = provider
-		return nil
-	}
-	sc.ShowOAuthSelector = func(mode string) (string, bool) {
-		return "anthropic", true
+	sc.StartProviderLogin = func(provider tui.OAuthProvider) error { loginCalled = provider.ID; return nil }
+	sc.SelectAuthProvider = func(string, []tui.OAuthProvider, string) (tui.OAuthProvider, bool) {
+		t.Fatal("exact provider must not open picker")
+		return tui.OAuthProvider{}, false
 	}
 
-	// With picker-based flow, args are ignored; the picker decides.
+	// Pi interactive-mode.ts:5689-5704 uses an exact provider argument.
 	if err := r.Dispatch(sc, "/login github-copilot", nil); err != nil {
 		t.Fatalf("/login github-copilot: %v", err)
 	}
-	// Picker returns anthropic regardless of args.
-	if loginCalled != "anthropic" {
-		t.Errorf("expected anthropic, got %q", loginCalled)
+	if loginCalled != "github-copilot" {
+		t.Errorf("expected github-copilot, got %q", loginCalled)
 	}
 	_ = out
 }
@@ -452,13 +451,9 @@ func TestSlashLoginUnsupportedProvider(t *testing.T) {
 	r := NewSlashRegistry()
 	sc, _, _, _ := newTestSlashContext()
 
-	sc.Login = func(_ context.Context, provider string) error {
-		t.Fatalf("login should not be called on cancel")
-		return nil
-	}
-	sc.ShowOAuthSelector = func(mode string) (string, bool) {
-		return "", false // user cancelled
-	}
+	configureTestSlashAuth(sc)
+	sc.StartProviderLogin = func(tui.OAuthProvider) error { t.Fatal("login should not be called on cancel"); return nil }
+	sc.SelectAuthProvider = func(string, []tui.OAuthProvider, string) (tui.OAuthProvider, bool) { return tui.OAuthProvider{}, false }
 
 	if err := r.Dispatch(sc, "/login bogus-provider", nil); err != nil {
 		t.Fatalf("/login bogus-provider: %v", err)
@@ -471,14 +466,11 @@ func TestSlashLoginAnthropic(t *testing.T) {
 	r := NewSlashRegistry()
 	sc, _, _, _ := newTestSlashContext()
 
+	configureTestSlashAuth(sc)
 	var loginCalled string
-	sc.ShowLoginAuthType = func() (string, bool) { return "oauth", true }
-	sc.Login = func(_ context.Context, provider string) error {
-		loginCalled = provider
-		return nil
-	}
-	sc.ShowOAuthSelector = func(mode string) (string, bool) {
-		return "anthropic", true
+	sc.StartProviderLogin = func(provider tui.OAuthProvider) error { loginCalled = provider.ID; return nil }
+	sc.SelectAuthProvider = func(string, []tui.OAuthProvider, string) (tui.OAuthProvider, bool) {
+		return tui.OAuthProvider{ID: "anthropic", AuthType: "oauth"}, true
 	}
 
 	if err := r.Dispatch(sc, "/login", nil); err != nil {
@@ -511,11 +503,12 @@ func TestSlashLogoutDefault(t *testing.T) {
 		logoutCalled = provider
 		return nil
 	}
-	sc.ShowOAuthSelector = func(mode string) (string, bool) {
+	configureTestSlashAuth(sc)
+	sc.SelectAuthProvider = func(mode string, providers []tui.OAuthProvider, _ string) (tui.OAuthProvider, bool) {
 		if mode != "logout" {
-			t.Errorf("expected mode=logout, got %q", mode)
+			t.Errorf("mode = %q", mode)
 		}
-		return "github-copilot", true
+		return providers[0], true
 	}
 
 	if err := r.Dispatch(sc, "/logout", nil); err != nil {
@@ -541,29 +534,15 @@ func TestSlashLogoutNilHandler(t *testing.T) {
 func TestSlashLoginAPIKeyFlow(t *testing.T) {
 	r := NewSlashRegistry()
 	sc, out, _, _ := newTestSlashContext()
-	sc.ShowLoginAuthType = func() (string, bool) { return "api_key", true }
-	sc.ShowOAuthSelector = func(mode string) (string, bool) {
-		if mode != "login-api-key" {
-			t.Fatalf("mode = %q, want login-api-key", mode)
-		}
-		return "openai", true
-	}
-	sc.ShowAPIKeyInput = func(provider string) (string, bool) {
-		if provider != "openai" {
-			t.Fatalf("secret prompt provider = %q, want openai", provider)
-		}
-		return "sk-test", true
-	}
-	var setProvider, setValue string
-	sc.SetAPIKey = func(provider, value string) error {
-		setProvider, setValue = provider, value
-		return nil
-	}
+	configureTestSlashAuth(sc)
+	sc.SelectAuthMethod = func([]tui.OAuthProvider) (string, bool) { return "api_key", true }
+	var setProvider string
+	sc.StartProviderLogin = func(provider tui.OAuthProvider) error { setProvider = provider.ID; return nil }
 	if err := r.Dispatch(sc, "/login", nil); err != nil {
 		t.Fatalf("/login api key: %v", err)
 	}
-	if setProvider != "openai" || setValue != "sk-test" {
-		t.Fatalf("SetAPIKey = (%q,%q)", setProvider, setValue)
+	if setProvider != "openai" {
+		t.Fatalf("provider = %q", setProvider)
 	}
 	if out.Len() != 0 {
 		t.Fatalf("unexpected output: %q", out.String())
@@ -574,13 +553,7 @@ func TestSlashLogoutShowsStatusName(t *testing.T) {
 	r := NewSlashRegistry()
 	sc, out, _, _ := newTestSlashContext()
 	sc.Logout = func(provider string) error { return nil }
-	sc.LogoutProviderName = func(provider string) string {
-		if provider != "github-copilot" {
-			t.Fatalf("provider = %q", provider)
-		}
-		return "GitHub Copilot"
-	}
-	sc.ShowOAuthSelector = func(mode string) (string, bool) { return "github-copilot", true }
+	configureTestSlashAuth(sc)
 	if err := r.Dispatch(sc, "/logout", nil); err != nil {
 		t.Fatalf("/logout: %v", err)
 	}
@@ -608,8 +581,8 @@ func TestSessionHandlerMessageCounting(t *testing.T) {
 
 	// 2 plain user messages.
 	userEntries := []SessionEntry{
-		makeEntry(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "hi"}}}}),
-		makeEntry(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "hello"}}}}),
+		makeEntry(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hi"}}}}),
+		makeEntry(agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hello"}}}}),
 	}
 	// 3 assistant messages; 2nd and 3rd each have one tool_use block.
 	assistEntries := []SessionEntry{
@@ -674,14 +647,14 @@ func TestSessionHandlerUsesAllEntryUsage(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	appendMessage("user", agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "hello"}}}})
+	appendMessage("user", agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hello"}}}})
 	appendMessage("assistant", agent.AgentMessage{Assistant: &agent.AssistantMessage{
 		Role: "assistant", Provider: "provider", ModelID: "model", ResponseModel: "resolved-model",
 		Content: []ai.AssistantContentBlock{ai.TextContent{Text: "done"}, ai.ToolCall{ID: "call", Name: "read"}},
 		Usage:   &ai.Usage{Input: 10, Output: 5, CacheRead: 20, CacheWrite: 3, Cost: ai.UsageCost{Total: 0.5}},
 	}})
 	appendMessage("tool", agent.AgentMessage{ToolResult: &agent.ToolResultMessage{Role: agent.RoleToolResult, ToolCallID: "call", ToolName: "read", Usage: &ai.Usage{Input: 2, Output: 1, Cost: ai.UsageCost{Total: 0.1}}}})
-	if _, err := sess.AppendBashExecution("pwd", "/tmp", nil, false, false, "", false); err != nil {
+	if _, err := sess.AppendBashExecution(BashExecutionMessage{Command: "pwd", Output: "/tmp", Timestamp: 1}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := sess.AppendCompaction("summary", "user", 1, nil, false, &ai.Usage{Input: 4, Output: 2, Cost: ai.UsageCost{Total: 0.2}}); err != nil {
@@ -716,7 +689,7 @@ func TestSessionHandlerRepeatedCallAllocationsDoNotScaleWithEntries(t *testing.T
 		t.Helper()
 		sess := NewSession("stats-session", "/tmp")
 		for i := range entries {
-			entry := MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: fmt.Sprintf("u%d", i), Timestamp: "2025-01-01T00:00:00Z"}, Message: agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: strings.Repeat("x", 1024)}}}}}
+			entry := MessageEntry{SessionEntryBase: SessionEntryBase{Type: "message", ID: fmt.Sprintf("u%d", i), Timestamp: "2025-01-01T00:00:00Z"}, Message: agent.AgentMessage{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: strings.Repeat("x", 1024)}}}}}
 			if err := sess.AppendEntry(entry); err != nil {
 				t.Fatal(err)
 			}

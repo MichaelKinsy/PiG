@@ -278,9 +278,8 @@ func TestGetGrammarToolInput(t *testing.T) {
 	}
 }
 
-// TestAppendGrammarToolInputJSONDelta pins the append-only buffer against the
-// upstream oracle: reconstructed deltas parse back to the input, an idempotent
-// close yields no delta, and a post-close change errors.
+// .upstream/v0.87.1/packages/ai/test/constrained-sampling.test.ts:259 — keeps grammar input JSON deltas append-only.
+// Reconstructed deltas preserve the input; an idempotent close yields no delta, and a post-close change errors.
 func TestAppendGrammarToolInputJSONDelta(t *testing.T) {
 	buf := &grammarToolInputJSONBuffer{}
 	first, ok1, err1 := appendGrammarToolInputJSONDelta(buf, "payload", `a"`, false)
@@ -292,7 +291,7 @@ func TestAppendGrammarToolInputJSONDelta(t *testing.T) {
 	if err := json.Unmarshal([]byte(first+second), &out); err != nil {
 		t.Fatalf("reconstructed JSON invalid: %q: %v", first+second, err)
 	}
-	if out["payload"] != "a\"\nb" {
+	if !reflect.DeepEqual(out, map[string]any{"payload": "a\"\nb"}) {
 		t.Fatalf("reconstructed payload = %q, want %q", out["payload"], "a\"\nb")
 	}
 	// Idempotent close → no delta.
@@ -301,7 +300,7 @@ func TestAppendGrammarToolInputJSONDelta(t *testing.T) {
 	}
 	// Change after close → error.
 	if _, _, err := appendGrammarToolInputJSONDelta(buf, "payload", "changed", true); err == nil ||
-		!strings.Contains(err.Error(), `changed after it was closed`) {
+		!strings.Contains(err.Error(), `grammar tool input for property "payload" changed after it was closed`) {
 		t.Fatalf("post-close change err = %v", err)
 	}
 }

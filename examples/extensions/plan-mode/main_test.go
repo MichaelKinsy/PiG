@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"reflect"
 	"slices"
 	"sync/atomic"
 	"testing"
@@ -114,7 +115,7 @@ func startExtensionHost(t *testing.T, activeTools []string) *extensionHost {
 			"height": 30,
 			"state": map[string]any{
 				"activeTools":    activeTools,
-				"isIdle":         true,
+				"isIdle":         false,
 				"projectTrusted": true,
 				"hasUI":          true,
 			},
@@ -313,6 +314,7 @@ func TestExtensionRegistersPlanModeSurface(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-extension.test.ts:106 — preserves custom active tools while toggling plan mode.
 func TestPlanModePreservesCustomActiveToolsWhileToggling(t *testing.T) {
 	host := startExtensionHost(t, []string{"read", "bash", "edit", "write", "echo_tool"})
 	host.invokeCommand("plan")
@@ -326,8 +328,17 @@ func TestPlanModePreservesCustomActiveToolsWhileToggling(t *testing.T) {
 	if !slices.Equal(host.activeTools, wantNormal) {
 		t.Fatalf("restored tools = %v, want %v", host.activeTools, wantNormal)
 	}
+	calls := host.callsFor("setActiveTools")
+	want := []hostCall{
+		{method: "setActiveTools", args: map[string]any{"tools": []any{"read", "bash", "echo_tool", "grep", "find", "ls", "questionnaire"}}},
+		{method: "setActiveTools", args: map[string]any{"tools": []any{"read", "bash", "edit", "write", "echo_tool"}}},
+	}
+	if !reflect.DeepEqual(calls, want) {
+		t.Fatalf("setActiveTools calls = %#v, want %#v", calls, want)
+	}
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-extension.test.ts:130 — does not prompt when the assistant response contains no plan.
 func TestPlanModeDoesNotPromptWithoutAPlan(t *testing.T) {
 	host := startExtensionHost(t, []string{"read", "bash", "edit", "write"})
 	host.invokeCommand("plan")
@@ -344,6 +355,7 @@ func TestPlanModeDoesNotPromptWithoutAPlan(t *testing.T) {
 	}
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-extension.test.ts:140 — queues plan refinement as a follow-up user message.
 func TestPlanModeQueuesRefinementAsFollowUpUserMessage(t *testing.T) {
 	host := startExtensionHost(t, []string{"read", "bash", "edit", "write"})
 	host.selectValue = "Refine the plan"
@@ -362,11 +374,12 @@ func TestPlanModeQueuesRefinementAsFollowUpUserMessage(t *testing.T) {
 		t.Fatalf("sendUserMessage content = %#v", calls[0].args["content"])
 	}
 	options, _ := calls[0].args["options"].(map[string]any)
-	if options["deliverAs"] != "followUp" {
+	if !reflect.DeepEqual(options, map[string]any{"deliverAs": "followUp"}) {
 		t.Fatalf("sendUserMessage options = %v", options)
 	}
 }
 
+// .upstream/v0.87.1/packages/coding-agent/test/plan-mode-extension.test.ts:152 — queues plan execution as a follow-up custom message.
 func TestPlanModeQueuesExecutionAsFollowUpCustomMessage(t *testing.T) {
 	host := startExtensionHost(t, []string{"read", "bash", "edit", "write", "echo_tool"})
 	host.selectValue = "Execute the plan (track progress)"
@@ -392,15 +405,23 @@ func TestPlanModeQueuesExecutionAsFollowUpCustomMessage(t *testing.T) {
 		t.Fatalf("sendMessage calls = %v, want plan-mode-execute", calls)
 	}
 	options, _ := execution.args["options"].(map[string]any)
-	if options["triggerTurn"] != true || options["deliverAs"] != "followUp" {
+	if !reflect.DeepEqual(options, map[string]any{"triggerTurn": true, "deliverAs": "followUp"}) {
 		t.Fatalf("execution options = %v", options)
 	}
 }
 
 func assistantMessage(text string) map[string]any {
 	return map[string]any{
-		"role":       "assistant",
-		"content":    []any{map[string]any{"type": "text", "text": text}},
+		"role":     "assistant",
+		"content":  []any{map[string]any{"type": "text", "text": text}},
+		"api":      "anthropic-messages",
+		"provider": "anthropic",
+		"model":    "mock",
+		"usage": map[string]any{
+			"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "totalTokens": 0,
+			"cost": map[string]any{"input": 0, "output": 0, "cacheRead": 0, "cacheWrite": 0, "total": 0},
+		},
 		"stopReason": "stop",
+		"timestamp":  time.Now().UnixMilli(),
 	}
 }

@@ -168,7 +168,7 @@ func TestRunOnMain_NoGoroutineLeakProfile(t *testing.T) {
 func TestCreateInteractiveTuiTickBindsOwnerLoopNotAbortCtx(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		m := newRunOnMainProbe(t)
-		m.opts.Settings.TuiMode = "fullscreen"
+		m.opts.TuiMode = "fullscreen"
 
 		abortCtx, abortCancel := context.WithCancel(context.Background())
 		abortCancel() // canceled turn context

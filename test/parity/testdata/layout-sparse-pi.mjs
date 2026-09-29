@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {readFileSync,realpathSync} from 'node:fs';
+import {join} from 'node:path';
+import {pathToFileURL} from 'node:url';
+const root=process.env.PI_PACKAGE_ROOT??realpathSync('extensions/sdk-ts/node_modules/@earendil-works/pi-coding-agent');
+assert.equal(JSON.parse(readFileSync(join(root,'package.json'),'utf8')).version,'0.87.1');
+const dist=join(root,'node_modules/@earendil-works/pi-tui/dist');
+const {ScrollView}=await import(pathToFileURL(join(dist,'components/scroll-view.js')).href);
+const {renderLayoutFrame}=await import(pathToFileURL(join(dist,'layout.js')).href);
+const count=1000000000,lines=[];lines.length=count;
+lines[count-4]='before';lines[count-3]='visible 1';lines[count-2]='visible 2';lines[count-1]='visible 3';
+const view=new ScrollView({render:()=>lines,invalidate(){}},{follow:'end'});
+const frame=renderLayoutFrame(view,10,3,()=>{});
+console.log(JSON.stringify({lines:frame.lines,scrollTop:view.scrollTop,contentHeight:frame.root.children[0].rect.height}));

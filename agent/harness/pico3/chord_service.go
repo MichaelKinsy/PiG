@@ -44,15 +44,26 @@ type ServiceDefinition[T any] struct {
 	local bool
 }
 
+// ServiceOptions selects whether a service stays on the local control plane.
+// Upstream: packages/chord/src/api.ts:70-82.
+type ServiceOptions struct {
+	Local bool
+}
+
 // DefineService declares a transport-visible service token without activating it. It panics for empty or reserved identifiers.
 func DefineService[T any](id string) ServiceDefinition[T] {
+	return DefineServiceWithOptions[T](id, ServiceOptions{})
+}
+
+// DefineServiceWithOptions is upstream defineService(id, options) (chord/src/api.ts:70-82). Go has no overloads and DefineService keeps its published function type, so the optional options argument is a separate function. Local services never cross the transport boundary. It panics for empty or reserved identifiers.
+func DefineServiceWithOptions[T any](id string, options ServiceOptions) ServiceDefinition[T] {
 	if id == "" {
 		panic("Service ID must not be empty")
 	}
 	if strings.HasPrefix(id, "$chord.") {
 		panic("Service IDs beginning with $chord. are reserved")
 	}
-	return ServiceDefinition[T]{id: id}
+	return ServiceDefinition[T]{id: id, local: options.Local}
 }
 
 // Id is the upstream service registration identifier.

@@ -11,14 +11,11 @@ import (
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
-// Runtime is the top-level SDK factory: it owns a Services container,
-// an extension runner, and produces *Session values for fresh /
-// resumed / cloned sessions.
-//
-// Legacy ExtensionRunner removed: only inproc.Runner remains.
+// Runtime constructs Sessions and, when created with CreateAgentSessionRuntime, owns replacement through the retained cwd-bound factory.
 type Runtime struct {
-	services *Services
-	extCtx   *icodingagent.ExtensionContext
+	replacement runtimeReplacement
+	services    *Services
+	extCtx      *icodingagent.ExtensionContext
 
 	// beforeSessionInvalidate runs synchronously before the extension runner is
 	// invalidated. Mirrors upstream session-replacement teardown ordering for
@@ -48,14 +45,29 @@ type RuntimeOptions struct {
 
 // SessionStartOptions configures a single Session within a Runtime.
 type SessionStartOptions struct {
+	// SessionManager selects the actual log to wrap, ahead of file loading or creation.
+	SessionManager *SessionManager
+
+	// ScopedModels supplies the read-only cycling scope, including optional per-model thinking levels.
+	ScopedModels []extension.ScopedModel
+
 	// Model is the LLM the agent calls. Required.
 	Model *ai.Model
+
+	// ThinkingLevel overrides restored and configured preferences before model clamping. Empty uses the Session or settings preference.
+	ThinkingLevel ai.ThinkingLevel
 
 	// SystemPrompt is the system prompt.
 	SystemPrompt string
 
 	// SystemPromptSections carries the caller-built structured prompt.
 	SystemPromptSections ai.OrderedSections
+
+	// SystemPromptResources is the resource-loader state behind SystemPromptSections.
+	SystemPromptResources *SystemPromptResources
+
+	// ResourceLoader supplies the Session's resources. See SessionOptions.ResourceLoader.
+	ResourceLoader ResourceLoader
 
 	// AllowedTools restricts which tools may execute.
 	AllowedTools map[string]struct{}
@@ -93,6 +105,8 @@ type SessionStartOptions struct {
 
 	// ResumePath, when non-empty, loads an existing JSONL.
 	ResumePath string
+	// CWDOverride selects the effective cwd when opening a Session.
+	CWDOverride *string
 
 	// SessionDir overrides the on-disk session directory for new sessions
 	// and session lookups such as Resume/Continue.
@@ -139,20 +153,48 @@ func NewRuntime(opts RuntimeOptions) (*Runtime, error) {
 }
 
 // Services returns the underlying dependency container.
-func (rt *Runtime) Services() *Services { return rt.services }
+func (rt *Runtime) Services() *Services {
+	if current := rt.replacement.current.Load(); current != nil {
+		return current.Services
+	}
+	return rt.services
+}
 
 // ExtensionContext returns the shared extension context.
 func (rt *Runtime) ExtensionContext() *icodingagent.ExtensionContext { return rt.extCtx }
 
 // NewExtensionRunner returns the extension runner.
-func (rt *Runtime) NewExtensionRunner() *inproc.Runner { return rt.newRunner }
+func (rt *Runtime) NewExtensionRunner() *inproc.Runner {
+	if session := rt.Session(); session != nil {
+		return session.currentRunner()
+	}
+	return rt.newRunner
+}
 
 // SetBeforeSessionInvalidate installs a synchronous teardown hook that runs
 // before the runner is invalidated.
 func (rt *Runtime) SetBeforeSessionInvalidate(fn func()) { rt.beforeSessionInvalidate = fn }
 
-// Close releases Runtime-level resources.
+// Close releases Runtime-level resources. Services supplied by the caller remain caller-owned and must be closed separately.
 func (rt *Runtime) Close() error {
+	if current := rt.replacement.current.Load(); current != nil {
+		if !rt.replacement.closed.CompareAndSwap(false, true) {
+			return nil
+		}
+		rt.EmitQuitShutdown()
+		if rt.beforeSessionInvalidate != nil {
+			rt.beforeSessionInvalidate()
+		}
+		if runner := current.Session.currentRunner(); runner != nil {
+			runner.Invalidate("")
+		}
+		err := current.Session.Close()
+		current.retireResources("quit")
+		if rt.extCtx != nil && rt.extCtx.AbortFunc != nil {
+			rt.extCtx.AbortFunc()
+		}
+		return err
+	}
 	if rt.extCtx != nil && rt.extCtx.AbortFunc != nil {
 		rt.extCtx.AbortFunc()
 	}
@@ -172,7 +214,7 @@ func (rt *Runtime) New(opts SessionStartOptions) (*Session, error) {
 
 // Resume loads an existing Session by id.
 func (rt *Runtime) Resume(id string, opts SessionStartOptions) (*Session, error) {
-	sm := sessionManagerForDir(rt.services.CWD(), opts.SessionDir)
+	sm := newSessionManagerForDir(rt.Services(), opts.SessionDir)
 	path := sm.FindByID(id)
 	if path == "" {
 		return nil, fmt.Errorf("coding: Resume: session id %q not found in %s", id, sm.SessionDir())
@@ -192,7 +234,7 @@ func (rt *Runtime) Open(path string, opts SessionStartOptions) (*Session, error)
 
 // Continue resumes the most-recent Session.
 func (rt *Runtime) Continue(opts SessionStartOptions) (*Session, error) {
-	sm := sessionManagerForDir(rt.services.CWD(), opts.SessionDir)
+	sm := newSessionManagerForDir(rt.Services(), opts.SessionDir)
 	path := sm.FindMostRecent()
 	if path == "" {
 		return nil, fmt.Errorf("coding: Continue: no prior session in %s", sm.SessionDir())
@@ -203,54 +245,56 @@ func (rt *Runtime) Continue(opts SessionStartOptions) (*Session, error) {
 
 // ListSessions returns SessionInfo summaries.
 func (rt *Runtime) ListSessions() ([]SessionInfo, error) {
-	sm := icodingagent.NewSessionManager(rt.services.CWD())
+	sm := newSessionManagerForDir(rt.Services(), "")
 	return sm.ListSessions()
 }
 
 // startSession is the common construction path.
 func (rt *Runtime) startSession(opts SessionStartOptions) (*Session, error) {
-	var tools []agent.AgentTool
-	if !opts.SkipExtensionTools {
-		// Bridge tools from the extension runner.
-		if rt.newRunner != nil {
-			bridged, _ := BridgeNewRunnerTools(rt.newRunner.Tools())
-			tools = append(tools, bridged...)
-		}
-	}
-	if len(opts.ExtraTools) > 0 {
-		tools = append(tools, opts.ExtraTools...)
-	}
-
-	var allowedTools map[string]struct{}
-	if opts.AllowedTools != nil {
-		allowedTools = opts.AllowedTools
-	} else if opts.NoTools == "all" {
-		allowedTools = map[string]struct{}{}
-	}
-	skipBuiltinTools := opts.SkipBuiltinTools || opts.NoTools == "builtin"
-
-	return NewSession(rt.services, SessionOptions{
-		Model:                opts.Model,
-		SystemPrompt:         opts.SystemPrompt,
-		SystemPromptSections: opts.SystemPromptSections,
-		Tools:                tools,
-		AllowedTools:         allowedTools,
-		ActiveBuiltinTools:   opts.ActiveBuiltinTools,
-		ExcludedTools:        opts.ExcludedTools,
-		SkipBuiltinTools:     skipBuiltinTools,
-		BeforeToolCall:       opts.BeforeToolCall,
-		Runner:               rt.newRunner,
-		ResumePath:           opts.ResumePath,
-		SessionDir:           opts.SessionDir,
-		SessionID:            opts.SessionID,
-		NoSession:            opts.NoSession,
-		Transport:            ai.Transport(rt.services.Settings().Transport),
-	})
+	return rt.startSessionWithFactory(opts, NewSession)
 }
 
-func sessionManagerForDir(cwd, sessionDir string) *icodingagent.SessionManager {
-	if sessionDir != "" {
-		return icodingagent.NewSessionManagerWithDir(cwd, sessionDir)
+func (rt *Runtime) startSessionWithFactory(opts SessionStartOptions, create func(*Services, SessionOptions) (*Session, error)) (*Session, error) {
+	var resumed *icodingagent.Session
+	if opts.SessionManager == nil && opts.ResumePath != "" {
+		var override []string
+		if opts.CWDOverride != nil {
+			override = []string{*opts.CWDOverride}
+		}
+		target, err := newSessionManagerForDir(rt.Services(), opts.SessionDir).Open(opts.ResumePath, override...)
+		if err != nil {
+			return nil, err
+		}
+		if err := icodingagent.AssertSessionCwdExists(target, rt.Services().CWD()); err != nil {
+			return nil, err
+		}
+		resumed = target
 	}
-	return icodingagent.NewSessionManager(cwd)
+	return create(rt.Services(), SessionOptions{
+		resumed:               resumed,
+		SessionManager:        opts.SessionManager,
+		ScopedModels:          opts.ScopedModels,
+		Model:                 opts.Model,
+		ThinkingLevel:         opts.ThinkingLevel,
+		SystemPrompt:          opts.SystemPrompt,
+		SystemPromptSections:  opts.SystemPromptSections,
+		SystemPromptResources: opts.SystemPromptResources,
+		ResourceLoader:        opts.ResourceLoader,
+		Tools:                 opts.ExtraTools,
+		NoTools:               opts.NoTools,
+		skipExtensionTools:    opts.SkipExtensionTools,
+		AllowedTools:          opts.AllowedTools,
+		ActiveBuiltinTools:    opts.ActiveBuiltinTools,
+		ExcludedTools:         opts.ExcludedTools,
+		SkipBuiltinTools:      opts.SkipBuiltinTools,
+		BeforeToolCall:        opts.BeforeToolCall,
+		Runner:                rt.NewExtensionRunner(),
+		ResumePath:            opts.ResumePath,
+		CWDOverride:           opts.CWDOverride,
+		SessionDir:            opts.SessionDir,
+		SessionID:             opts.SessionID,
+		NoSession:             opts.NoSession,
+		Transport:             ai.Transport(rt.Services().Settings().Transport),
+		runnerShared:          true,
+	})
 }

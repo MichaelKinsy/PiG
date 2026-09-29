@@ -1,0 +1,61 @@
+# Pi 0.87.1 sdk.ts:231-255,405-412 chooses the CLI level before persisting initial metadata.
+# A reasoning model, medium settings default, and --thinking off distinguish the override from fallback.
+# Complete state, get_entries records and stderr use the shared typed JSON comparator. The probe emits raw identities and retains the full RPC stream.
+name = "34-rpc-initial-thinking"
+description = "Initial persisted thinking equals the explicit CLI state, without RPC startup diagnostics"
+covers = ["packages/coding-agent/src/core/sdk.ts", "packages/coding-agent/src/modes/rpc/rpc-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["python3", "./test/parity/testdata/rpc-wire-drift.py", "pig", "{{TEMP}}/rpc", "--initial"]
+pi_args = ["python3", "./test/parity/testdata/rpc-wire-drift.py", "pi", "{{TEMP}}/rpc", "--initial"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+artifact_path = "{{TEMP}}/rpc/raw.json"
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3
+
+[[assert.json_aliases]]
+paths = ["/**/id", "/**/sessionId"]
+kind = "id"
+group = "session"
+pattern = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+reason = "Session UUIDs are allocated independently; preserve their syntax, field presence and bijective references."
+[[assert.json_aliases]]
+paths = ["/**/id", "/**/parentId", "/**/leafId"]
+kind = "id"
+group = "entry"
+pattern = '^[0-9a-f]{8}$'
+reason = "Pi allocates eight-hex entry identities; preserve their shape and every reference without rewriting command or model IDs."
+[[assert.json_aliases]]
+paths = ["/**/sessionFile"]
+kind = "session_file"
+group = "session"
+roots = ["temp"]
+pattern = '[0-9]Z_[0-9a-f-]+\.jsonl$'
+reason = "Generated filenames require Pi's millisecond syntax and their embedded UUID remains bound to the session."
+[[assert.json_aliases]]
+paths = ["/**/cwd"]
+kind = "path"
+roots = ["temp"]
+reason = "Only the run-owned temporary root varies in the explicitly configured fixture directories."
+[[assert.json_aliases]]
+paths = ["/**/baseUrl"]
+kind = "id"
+group = "provider-url"
+pattern = '^http://127\.0\.0\.1:[0-9]+$'
+reason = "The loopback provider receives an allocated port; preserve scheme, host and endpoint identity."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent clocks vary; preserve numeric/string type and valid timestamp syntax instead of accepting arbitrary substituted values."

@@ -10,6 +10,8 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 )
 
 // buildArgsEcho builds a program that prints its arguments as JSON, and a
@@ -71,7 +73,7 @@ func TestRunCmdPassesArgumentsToNpmShimsExactly(t *testing.T) {
 		{"install", "demo", "--prefix", `C:\Users\Jane Smith\.pig\agent\npm`},
 		{`quote"inside`, "amp&pipe|lt<gt>", "caret^excl!", "paren(x)", "semi;comma,star*q?"},
 	} {
-		out, err := runCmd(shim, args...)
+		out, err := packagemanager.RunCmd(shim, args...)
 		if err != nil {
 			t.Fatalf("runCmd(%q): %v", args, err)
 		}
@@ -99,7 +101,7 @@ func TestRunCmdPassesArgumentsToCmdShimsExactly(t *testing.T) {
 		{"amp&pipe|lt<gt>", "caret^pct%excl!", "paren(x)", "semi;comma,star*q?"},
 		{""},
 	} {
-		out, err := runCmd(shim, args...)
+		out, err := packagemanager.RunCmd(shim, args...)
 		if err != nil {
 			t.Fatalf("runCmd(%q): %v", args, err)
 		}

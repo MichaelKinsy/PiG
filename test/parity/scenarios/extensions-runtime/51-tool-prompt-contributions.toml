@@ -1,0 +1,28 @@
+# Pi 0.87.1 agent-session.ts:1347-1394,3178-3194 normalizes definition metadata;
+# system-prompt.ts:108-116,148-152 lists only active snippets and deduplicates
+# guideline bullets in active-tool order. A read override without a snippet
+# removes the built-in snippet, and a description never substitutes for it.
+name = "51-tool-prompt-contributions"
+description = "Registered tool snippets and guidelines follow active order and override built-in metadata"
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/system-prompt.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+model = "event-prompt-probe/probe"
+
+[env]
+pig = ["PIG_HOME=testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/pi-agent"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/provider-prompt.mjs"]
+pi_extensions = ["testdata/ext/provider-prompt.mjs"]
+
+[print]
+prompt = "prompt"
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["- zeta: Zeta summary\n- alpha: Alpha summary", "- shared\n- zeta rule\n- override read\n- alpha rule\n- Be concise in your responses"]
+both_not_contain = ["- read:", "- hidden:", "This description must not become a snippet"]
+runs = 3

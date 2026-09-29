@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"math"
 	"math/rand/v2"
+	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 	"strings"
 	"sync"
@@ -43,10 +45,10 @@ type ImageDimensions struct {
 type ImageRenderOptions struct {
 	MaxWidthCells       int
 	MaxHeightCells      int
-	PreserveAspectRatio bool
+	PreserveAspectRatio *bool // nil preserves the aspect ratio
 	ImageID             int
 	Name                string
-	MoveCursor          bool // if false, Kitty C=1 suppresses terminal-side cursor movement
+	MoveCursor          *bool // nil permits Kitty cursor movement; false emits C=1
 }
 
 type renderedImage struct {
@@ -139,13 +141,6 @@ func detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink func() bool, goos s
 	hasTrueColorHint := colorTerm == "truecolor" || colorTerm == "24bit"
 	isWindowsConsole := goos == "windows"
 
-	// pig divergence (D44): require Herdr's explicit image-forwarding signal.
-	if os.Getenv("HERDR_ENV") == "1" {
-		if os.Getenv("HERDR_KITTY_GRAPHICS") == "1" {
-			return TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true}
-		}
-		return TerminalCapabilities{Images: "", TrueColor: hasTrueColorHint, Hyperlinks: false}
-	}
 	// Emit OSC 8 hyperlinks only when tmux confirms it forwards. Image
 	// protocols are unreliable under tmux, so leave images off.
 	if os.Getenv("TMUX") != "" || strings.HasPrefix(term, "tmux") {
@@ -153,6 +148,13 @@ func detectCapabilitiesFromEnvironment(tmuxForwardsHyperlink func() bool, goos s
 	}
 	// screen does not forward OSC 8 hyperlinks, so keep them off there.
 	if strings.HasPrefix(term, "screen") {
+		return TerminalCapabilities{Images: "", TrueColor: hasTrueColorHint, Hyperlinks: false}
+	}
+	// pig divergence (D44): require Herdr's explicit image-forwarding signal at the immediate terminal boundary.
+	if os.Getenv("HERDR_ENV") == "1" {
+		if os.Getenv("HERDR_KITTY_GRAPHICS") == "1" {
+			return TerminalCapabilities{Images: ImageProtocolKitty, TrueColor: true, Hyperlinks: true}
+		}
 		return TerminalCapabilities{Images: "", TrueColor: hasTrueColorHint, Hyperlinks: false}
 	}
 	if os.Getenv("KITTY_WINDOW_ID") != "" || termProgram == "kitty" {
@@ -295,6 +297,9 @@ func AllocateImageID() int {
 func EncodeKitty(base64Data string, columns, rows, imageID int, moveCursor ...bool) string {
 	const chunkSize = 4096
 	params := []string{"a=T", "f=100", "q=2"}
+	if len(moveCursor) > 0 && !moveCursor[0] {
+		params = append(params, "C=1")
+	}
 	if columns > 0 {
 		params = append(params, fmt.Sprintf("c=%d", columns))
 	}
@@ -303,10 +308,6 @@ func EncodeKitty(base64Data string, columns, rows, imageID int, moveCursor ...bo
 	}
 	if imageID > 0 {
 		params = append(params, fmt.Sprintf("i=%d", imageID))
-	}
-	// C=1 suppresses Kitty's built-in cursor movement after placement
-	if len(moveCursor) > 0 && !moveCursor[0] {
-		params = append(params, "C=1")
 	}
 	if len(base64Data) <= chunkSize {
 		return "\x1b_G" + strings.Join(params, ",") + ";" + base64Data + "\x1b\\"
@@ -338,8 +339,17 @@ func DeleteAllKittyImages() string { return "\x1b_Ga=d,d=A,q=2\x1b\\" }
 // deleteAllKittyPlacements.
 func DeleteAllKittyPlacements() string { return "\x1b_Ga=d,d=a,q=2\x1b\\" }
 
+// EncodeITerm2 includes the decoded payload byte length in OSC 1337 metadata.
 func EncodeITerm2(base64Data string, width any, height any, name string, preserveAspect bool) string {
-	params := []string{"inline=1"}
+	// Node Buffer.byteLength(value, "base64") counts UTF-16 units and trailing padding without decoding the payload.
+	size := utf16Length(base64Data)
+	if strings.HasSuffix(base64Data, "=") {
+		size--
+	}
+	if strings.HasSuffix(base64Data, "==") {
+		size--
+	}
+	params := []string{"inline=1", fmt.Sprintf("size=%d", size/4*3+size%4*3/4)}
 	if width != nil {
 		params = append(params, fmt.Sprintf("width=%v", width))
 	}
@@ -485,6 +495,7 @@ func GetImageDimensions(base64Data, mimeType string) *ImageDimensions {
 	}
 }
 
+// RenderImage preserves aspect ratio and permits Kitty cursor movement unless explicitly disabled in options.
 func RenderImage(base64Data string, imageDimensions ImageDimensions, options ImageRenderOptions) *renderedImage {
 	caps := GetCapabilities()
 	if caps.Images == "" {
@@ -506,13 +517,10 @@ func RenderImage(base64Data string, imageDimensions ImageDimensions, options Ima
 				HeightPx: imageDimensions.HeightPx,
 			})
 		}
-		seq := EncodeKitty(base64Data, size.Columns, size.Rows, options.ImageID, options.MoveCursor)
+		seq := EncodeKitty(base64Data, size.Columns, size.Rows, options.ImageID, options.MoveCursor == nil || *options.MoveCursor)
 		return &renderedImage{Sequence: seq, Rows: size.Rows, ImageID: options.ImageID}
 	case ImageProtocolITerm2:
-		preserve := true
-		if !options.PreserveAspectRatio {
-			preserve = false
-		}
+		preserve := options.PreserveAspectRatio == nil || *options.PreserveAspectRatio
 		seq := EncodeITerm2(base64Data, size.Columns, "auto", "", preserve)
 		return &renderedImage{Sequence: seq, Rows: size.Rows}
 	default:
@@ -524,10 +532,28 @@ func Hyperlink(text, url string) string {
 	return "\x1b]8;;" + url + "\x1b\\" + text + "\x1b]8;;\x1b\\"
 }
 
+// ImageFallback shortens home-prefixed paths and links absolute paths when the terminal supports hyperlinks.
 func ImageFallback(mimeType string, dimensions *ImageDimensions, filename string) string {
 	parts := []string{}
 	if filename != "" {
-		parts = append(parts, filename)
+		display := filename
+		if home, err := os.UserHomeDir(); err == nil && home != "" && (filename == home || strings.HasPrefix(filename, home+"/") || strings.HasPrefix(filename, home+"\\")) {
+			display = "~" + filename[len(home):]
+		}
+		if GetCapabilities().Hyperlinks && filepath.IsAbs(filename) {
+			path := filepath.ToSlash(filepath.Clean(filename))
+			fileURL := url.URL{Scheme: "file", Path: path}
+			if runtime.GOOS == "windows" {
+				if strings.HasPrefix(path, "//") {
+					fileURL.Host, fileURL.Path, _ = strings.Cut(path[2:], "/")
+					fileURL.Path = "/" + fileURL.Path
+				} else {
+					fileURL.Path = "/" + path
+				}
+			}
+			display = Hyperlink(display, fileURL.String())
+		}
+		parts = append(parts, display)
 	}
 	parts = append(parts, "["+mimeType+"]")
 	if dimensions != nil {

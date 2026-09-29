@@ -1,0 +1,45 @@
+# Upstream evidence: Pi 0.87.1 extension-input.ts:53-88 renders the title, a bare Input and
+# resolved selection hints in the editor slot. The fixture calls ctx.ui.input
+# without starting a model request. Compare every content row with its ANSI
+# palette and reset scopes; outer DynamicBorder rows are not claimed here.
+# Both binaries receive the same light theme. The former Pi fixture selected
+# light while the PiG env pointed above its settings file; plain text hid that
+# input mismatch.
+name = "11-extension-input"
+description = "Extension input dialogs preserve Pi's content layout, palette and resolved hints."
+covers = [
+  "packages/coding-agent/src/modes/interactive/components/extension-input.ts",
+]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "Probe Title"
+capture_end = "escape/ctrl+c cancel"
+
+[[tmux.steps]]
+keys = ["/probe-input", "Enter"]
+wait_contains = ["Probe Title", "escape/ctrl+c cancel"]
+wait_timeout_seconds = 10
+settle_seconds = 2
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/dialogs-default"]
+pi = ["PI_CODING_AGENT_DIR=testdata/dialogs-default"]
+pi_extensions = ["../../testdata/test-ui-extension.ts"]
+pig_extensions = ["../../testdata/test-ui-extension.ts"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_not_contain = ["panic:", "goroutine "]
+both_contain = ["Probe Title", "enter submit", "escape/ctrl+c cancel"]
+escaped_output_equal = true
+runtime_ratio_max = 2.00
+runs = 3

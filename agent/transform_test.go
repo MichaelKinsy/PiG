@@ -12,7 +12,7 @@ import (
 // NormalizeMessages unchanged.
 func TestNormalizeMessages_OpenAI_Passthrough(t *testing.T) {
 	msgs := []AgentMessage{
-		{User: &UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "hello"}}}},
+		{User: &UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hello"}}}},
 		{Assistant: &AssistantMessage{Role: "assistant", StopReason: "stop", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "world"}}}},
 	}
 	got := NormalizeMessages(msgs, nil)
@@ -25,7 +25,7 @@ func TestNormalizeMessages_OpenAI_Passthrough(t *testing.T) {
 // StopReason="aborted" are dropped from the normalized output.
 func TestNormalizeMessages_SkipsAborted(t *testing.T) {
 	msgs := []AgentMessage{
-		{User: &UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "hi"}}}},
+		{User: &UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hi"}}}},
 		{Assistant: &AssistantMessage{Role: "assistant", StopReason: "aborted"}},
 		{Assistant: &AssistantMessage{Role: "assistant", StopReason: "stop", Content: []ai.AssistantContentBlock{ai.TextContent{Text: "done"}}}},
 	}
@@ -43,7 +43,7 @@ func TestNormalizeMessages_SkipsAborted(t *testing.T) {
 // StopReason="error" are dropped.
 func TestNormalizeMessages_SkipsErrored(t *testing.T) {
 	msgs := []AgentMessage{
-		{User: &UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "hi"}}}},
+		{User: &UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hi"}}}},
 		{Assistant: &AssistantMessage{Role: "assistant", StopReason: "error", ErrorMessage: "network error"}},
 	}
 	got := NormalizeMessages(msgs, nil)
@@ -112,7 +112,7 @@ func TestNormalizeMessages_OrphanedToolCall_StopTurn(t *testing.T) {
 			},
 		}},
 		// No tool result follows: simulate truncated session.
-		{User: &UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "continue"}}}},
+		{User: &UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "continue"}}}},
 	}
 	got := NormalizeMessages(msgs, nil)
 	// Should be: assistant + synthetic tool result + user = 3 messages.
@@ -137,7 +137,7 @@ func TestNormalizeMessages_OrphanedToolCall_StopTurn(t *testing.T) {
 func TestNormalizeMessages_OrphanedToolResult(t *testing.T) {
 	msgs := []AgentMessage{
 		// Compaction summary replaced the original conversation.
-		{User: &UserMessage{Role: "user", Content: []ai.UserContentBlock{
+		{User: &UserMessage{Role: "user", Content: ai.UserContentBlocks{
 			ai.TextContent{Text: "compaction summary"},
 		}}},
 		// Orphaned tool result from before compaction: no matching tool_use.
@@ -145,7 +145,7 @@ func TestNormalizeMessages_OrphanedToolResult(t *testing.T) {
 			Role: RoleToolResult, ToolCallID: "call_juCALP1trjCh5UT1mSMlKFwG", ToolName: "bash",
 			Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "ok"}},
 		}},
-		{User: &UserMessage{Role: "user", Content: []ai.UserContentBlock{
+		{User: &UserMessage{Role: "user", Content: ai.UserContentBlocks{
 			ai.TextContent{Text: "continue"},
 		}}},
 	}
@@ -250,7 +250,7 @@ func TestNormalizeMessages_NilModelKeepsThinking(t *testing.T) {
 // whole request ("No tool call found for function call output").
 func TestNormalizeMessages_ErroredAssistantOrphansToolResult(t *testing.T) {
 	msgs := []AgentMessage{
-		{User: &UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "run it"}}}},
+		{User: &UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "run it"}}}},
 		{Assistant: &AssistantMessage{
 			Role: "assistant", StopReason: "aborted",
 			Content: []ai.AssistantContentBlock{ai.ToolCall{ID: "call_race", Name: "bash"}},
@@ -260,7 +260,7 @@ func TestNormalizeMessages_ErroredAssistantOrphansToolResult(t *testing.T) {
 			Role: RoleToolResult, ToolCallID: "call_race", ToolName: "bash",
 			Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "output"}},
 		}},
-		{User: &UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "again"}}}},
+		{User: &UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "again"}}}},
 	}
 	got := NormalizeMessages(msgs, nil)
 	// Aborted assistant dropped; its now-orphaned tool result stripped; two
@@ -301,7 +301,7 @@ func TestNormalizeMessages_PartialOrphanSynthesizesMissingResult(t *testing.T) {
 			Role: RoleToolResult, ToolCallID: "call_ghost", ToolName: "bash",
 			Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "stale"}},
 		}},
-		{User: &UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "next"}}}},
+		{User: &UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "next"}}}},
 	}
 	got := NormalizeMessages(msgs, nil)
 	// Expect: assistant, the real tool result (call_a only, call_ghost stripped),

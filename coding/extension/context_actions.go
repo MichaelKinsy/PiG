@@ -13,15 +13,13 @@ import "context"
 //   - Percent: usage as percentage of context window, or nil if Tokens
 //     is unknown.
 //
-// Pointer-typed nullable fields mirror upstream's `number | null`
-// shape; using `*int` rather than `int` distinguishes "unknown" from
-// "zero".
+// Pointer-typed nullable fields distinguish unknown from zero; percentages retain JavaScript number precision.
 //
 // upstream: types.ts:276-283
 type ContextUsage struct {
-	Tokens        *int `json:"tokens"`
-	ContextWindow int  `json:"contextWindow"`
-	Percent       *int `json:"percent"`
+	Tokens        *int     `json:"tokens"`
+	ContextWindow int      `json:"contextWindow"`
+	Percent       *float64 `json:"percent"`
 }
 
 // CompactOptions mirrors upstream `CompactOptions` (types.ts:284-288).
@@ -79,6 +77,10 @@ type ContextActions struct {
 	// upstream: types.ts:305 (Model<any> | undefined)
 	GetModel func() Model
 
+	// GetScopedModels returns the current read-only model scope. Context creation captures this callback, not its result.
+	// upstream: packages/coding-agent/src/core/extensions/runner.ts:createContext
+	GetScopedModels func() []ScopedModel
+
 	// IsIdle backs Context.IsIdle().
 	// upstream: types.ts:307
 	IsIdle func() bool
@@ -127,16 +129,15 @@ type ContextActions struct {
 	// options, matching upstream's
 	// `getSystemPromptOptions ?? (() => ({ cwd: this.cwd }))` default.
 	// upstream: types.ts:1512, runner.ts:303,653
-	GetSystemPromptOptions func() BuildSystemPromptOptions
+	GetSystemPromptOptions func() *BuildSystemPromptOptions
 
-	// Mode backs Context.Mode(). The empty value normalizes to
-	// ModePrint, matching upstream's Runner default (runner.ts:229).
-	// upstream: types.ts:304 (`mode: ExtensionMode`)
-	Mode ExtensionMode
+	// GetMode reads the current runner mode. Nil means print.
+	// upstream: runner.ts:createContext
+	GetMode func() ExtensionMode
 
-	// UI backs Context.UI(). Must be non-nil; pass
-	// [NoopUIContext] when no UI is available.
-	UI UIContext
+	// GetUIContext reads the current runner UI binding. Nil uses the constructor's UI binding.
+	// upstream: runner.ts:createContext
+	GetUIContext func() UIContext
 
 	// GetAllTools returns metadata about all registered tools.
 	// Used by piglet scoping to enumerate available tools.
@@ -166,14 +167,17 @@ type CancelledResult struct {
 //
 // upstream: types.ts:334-338 (ExtensionCommandContext.newSession options)
 type NewSessionOptions struct {
-	ParentSession string
+	ParentSession string                              `json:"parentSession,omitempty"`
+	Setup         func(SessionManager) error          `json:"-"`
+	WithSession   func(*ReplacedSessionContext) error `json:"-"`
 }
 
 // ForkOptions mirrors upstream's fork options.
 //
 // upstream: types.ts:342-343
 type ForkOptions struct {
-	Position string // "before" | "at"
+	Position    string                              `json:"position,omitempty"` // "before" | "at"
+	WithSession func(*ReplacedSessionContext) error `json:"-"`
 }
 
 // NavigateTreeOptions mirrors upstream's navigateTree options.
@@ -189,7 +193,9 @@ type NavigateTreeOptions struct {
 // SwitchSessionOptions mirrors upstream's switchSession options.
 //
 // upstream: types.ts:354-356
-type SwitchSessionOptions struct{}
+type SwitchSessionOptions struct {
+	WithSession func(*ReplacedSessionContext) error `json:"-"`
+}
 
 // CommandActions is the host-side injection of command-specific
 // callbacks. These are the extra surfaces available only in command

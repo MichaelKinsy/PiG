@@ -93,7 +93,7 @@ func loadBaseline(path string, e *env, checks []check) (map[string]baselineEntry
 		case !findingRe.MatchString(h.Finding):
 			errs = append(errs, where+": finding must be an audit id (AGENT-01), GUARD-NN or D<N>, got "+fmt.Sprintf("%q", h.Finding))
 		case strings.HasPrefix(h.Finding, "D") && !e.Divergences[h.Finding]:
-			errs = append(errs, where+": "+h.Finding+" is not recorded in DIVERGENCES.md")
+			errs = append(errs, where+": "+h.Finding+" is not recorded in docs/parity/DIVERGENCES.md")
 		case h.Count < 0 || h.Count == 1:
 			errs = append(errs, where+": count is omitted for one hit and must be >= 2 otherwise")
 		}

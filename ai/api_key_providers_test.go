@@ -1,6 +1,10 @@
 package ai
 
 import (
+	"os"
+	"path/filepath"
+	"regexp"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -28,6 +32,40 @@ func TestAPIKeyProvidersStable(t *testing.T) {
 	}
 }
 
+// Pi's login list includes every provider with auth.apiKey (interactive-mode.ts:5648).
+// Derive the built-in identities and labels from the pinned provider definitions.
+func TestAPIKeyProvidersMatchPinnedProviderDefinitions(t *testing.T) {
+	paths, err := filepath.Glob("../.upstream/current/packages/ai/src/providers/*.ts")
+	if err != nil || len(paths) == 0 {
+		t.Fatalf("upstream providers: %v", err)
+	}
+	identity := regexp.MustCompile(`id: "([^"]+)",\s+name: "([^"]+)"`)
+	want := map[string]string{"radius": "Radius"}
+	for _, path := range paths {
+		data, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(data), "apiKey:") {
+			continue
+		}
+		if match := identity.FindSubmatch(data); match != nil {
+			want[string(match[1])] = string(match[2])
+		}
+	}
+	got := APIKeyProviders()
+	for id, name := range want {
+		if !slices.Contains(got, APIKeyProviderInfo{ID: id, Name: name}) {
+			t.Errorf("missing %s (%s)", id, name)
+		}
+	}
+	for _, provider := range got {
+		if want[provider.ID] != provider.Name {
+			t.Errorf("unexpected provider %+v", provider)
+		}
+	}
+}
+
 func TestAPIKeyProviderNameLookup(t *testing.T) {
 	if got := APIKeyProviderName("openai"); got != "OpenAI" {
 		t.Errorf("openai display name: got %q want %q", got, "OpenAI")
@@ -38,18 +76,9 @@ func TestAPIKeyProviderNameLookup(t *testing.T) {
 }
 
 func TestAPIKeyProvidersOverlapOnlyForDualAuthProviders(t *testing.T) {
-	// Upstream providers may deliberately support both a pasted API key and an
-	// account OAuth flow. Every overlap must be named here so an accidental
-	// duplicate such as the historical GitHub Copilot entry still fails.
-	allowed := map[string]bool{
-		"anthropic":      true,
-		"github-copilot": true,
-		"kimi-coding":    true,
-		"meta":           true,
-		"openrouter":     true,
-		"radius":         true,
-		"xai":            true,
-	}
+	// Pi exposes both auth.apiKey and auth.oauth for these providers, including
+	// GitHub Copilot (providers/github-copilot.ts:15-16).
+	allowed := map[string]bool{"anthropic": true, "github-copilot": true, "meta": true, "kimi-coding": true, "openrouter": true, "radius": true, "xai": true}
 	oauth := map[string]bool{}
 	for _, p := range GetOAuthProviders() {
 		oauth[p.ID()] = true

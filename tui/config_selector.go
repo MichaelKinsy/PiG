@@ -404,15 +404,15 @@ func (cs *ConfigSelectorComponent) HandleInput(data string) {
 		if target >= 0 {
 			cs.cursor = target
 		}
-	case data == "\x1b": // Esc: cancel (cs has its own OnCancel/OnExit split)
+	case kb.Matches(data, KBSelectCancel): // config-selector.ts:487: tui.select.cancel (Esc, and Ctrl+C by default)
 		if cs.OnCancel != nil {
 			cs.OnCancel()
 		}
-	case data == "\x03": // Ctrl+C: exit
+	case MatchesKeyID(data, "ctrl+c"): // config-selector.ts:491: Ctrl+C when tui.select.cancel is rebound; CSI-u under the Kitty protocol
 		if cs.OnExit != nil {
 			cs.OnExit()
 		}
-	case data == "\t" && cs.projectModeAvailable:
+	case kb.Matches(data, KBInputTab) && cs.projectModeAvailable:
 		if cs.writeScope == "global" {
 			cs.writeScope = "project"
 		} else {

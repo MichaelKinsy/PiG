@@ -12,7 +12,7 @@ import (
 )
 
 func TestMergeHeadersMatchesPinnedPiSource(t *testing.T) {
-	command := exec.Command("node", "parity/testdata/provider-headers-pi.mjs")
+	command := exec.Command("node", "test/parity/testdata/provider-headers-pi.mjs")
 	command.Dir = filepath.Join("..", "..")
 	output, err := command.Output()
 	if err != nil {

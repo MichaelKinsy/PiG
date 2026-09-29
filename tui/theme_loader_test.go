@@ -1,6 +1,8 @@
 package tui
 
 import (
+	"encoding/json"
+	"maps"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -296,5 +298,112 @@ func TestLoadThemeFileExportVarErrorLeavesExportUnset(t *testing.T) {
 	}
 	if th.ExportPageBg != "" || th.ExportCardBg != "" || th.ExportInfoBg != "" {
 		t.Fatalf("export colors = %q %q %q, want all unset", th.ExportPageBg, th.ExportCardBg, th.ExportInfoBg)
+	}
+}
+
+// Ports packages/coding-agent/test/theme-export.test.ts:38,72.
+// Export values use the same recursive vars as colors; palette indexes become hex and an empty export color stays unset.
+func TestThemeExportColorsUpstream(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		vars   map[string]any
+		export map[string]any
+		want   map[string]string
+	}{
+		{
+			name: "custom-export-vars",
+			vars: map[string]any{
+				"pageBgVar": "#112233", "pageBgAlias": "pageBgVar", "infoBgVar": "#445566", "cardBgVar": "#223344",
+			},
+			export: map[string]any{"pageBg": "pageBgAlias", "cardBg": "cardBgVar", "infoBg": "infoBgVar"},
+			want:   map[string]string{"pageBg": "#112233", "cardBg": "#223344", "infoBg": "#445566"},
+		},
+		{
+			name: "custom-export-recursive",
+			vars: map[string]any{
+				"deepPageBg": "#abcdef", "pageBgAlias": "deepPageBg", "cardBgAnsi": 24,
+			},
+			export: map[string]any{"pageBg": "pageBgAlias", "cardBg": "cardBgAnsi", "infoBg": ""},
+			// The native Theme fields use an empty string for Pi's undefined export color; the HTML exporter applies its fallback only then.
+			want: map[string]string{"pageBg": "#abcdef", "cardBg": "#005f87", "infoBg": ""},
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			dark, err := builtinThemes.ReadFile("theme_dark.json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var theme map[string]any
+			if err := json.Unmarshal(dark, &theme); err != nil {
+				t.Fatal(err)
+			}
+			theme["name"] = tc.name
+			maps.Copy(theme["vars"].(map[string]any), tc.vars)
+			theme["export"] = tc.export
+			data, err := json.MarshalIndent(theme, "", "  ")
+			if err != nil {
+				t.Fatal(err)
+			}
+			agentDir := filepath.Join(t.TempDir(), "agent")
+			themesDir := filepath.Join(agentDir, "themes")
+			if err := os.MkdirAll(themesDir, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(themesDir, tc.name+".json"), data, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			registry := NewThemeRegistry()
+			if err := registry.LoadDir(themesDir); err != nil {
+				t.Fatal(err)
+			}
+			loaded := registry.Get(tc.name)
+			if loaded == nil {
+				t.Fatalf("theme %q was not loaded from the agent themes directory", tc.name)
+			}
+			got := map[string]string{"pageBg": loaded.ExportPageBg, "cardBg": loaded.ExportCardBg, "infoBg": loaded.ExportInfoBg}
+			if !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("export colors = %v, want %v", got, tc.want)
+			}
+		})
+	}
+}
+
+// Pi's startup listing and getAllThemes report the file every theme loaded
+// from, a single theme file as well as a themes directory, under the theme's
+// own name.
+func TestThemeRegistryRecordsSourceFiles(t *testing.T) {
+	dir := t.TempDir()
+	file := filepath.Join(dir, "single.json")
+	if err := os.WriteFile(file, []byte(completeThemeJSON(t, "from-file", `"accent":"#aaaaaa"`)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	themesDir := filepath.Join(dir, "themes")
+	if err := os.MkdirAll(themesDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	renamed := filepath.Join(themesDir, "file-name.json")
+	if err := os.WriteFile(renamed, []byte(completeThemeJSON(t, "theme-name", `"accent":"#bbbbbb"`)), 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	r := NewThemeRegistry()
+	th, err := LoadThemeFile(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	r.AddFile(th, file)
+	if err := r.LoadDir(themesDir); err != nil {
+		t.Fatal(err)
+	}
+	if got := r.PathOf("from-file"); got != file {
+		t.Errorf("PathOf(from-file) = %q, want %q", got, file)
+	}
+	if got := r.PathOf("theme-name"); got != renamed {
+		t.Errorf("PathOf(theme-name) = %q, want %q", got, renamed)
+	}
+	// A theme added without a file replaces the recorded source.
+	r.Add(&Theme{Name: "from-file"})
+	if got := r.PathOf("from-file"); got != "" {
+		t.Errorf("PathOf after pathless Add = %q, want empty", got)
 	}
 }

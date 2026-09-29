@@ -77,7 +77,7 @@ func TestObserveOnlyHandlerKeepsEarlierResults(t *testing.T) {
 	later := observeOnly("/later", "session_before_compact", "user_bash")
 	bashHandler := newFakeExtension("/bash")
 	bashHandler.Handlers["user_bash"] = []extension.HandlerFn{func(...any) (any, error) {
-		return &extension.UserBashEventResult{Result: map[string]any{"output": "remote", "cancelled": false, "truncated": false}}, nil
+		return &extension.UserBashEventResult{Result: map[string]any{"output": "remote", "exitCode": 0, "cancelled": false, "truncated": false}}, nil
 	}}
 	runner := inproc.NewRunner([]extension.Extension{first, later, bashHandler}, t.TempDir())
 

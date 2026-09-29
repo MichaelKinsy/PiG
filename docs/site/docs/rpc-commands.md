@@ -265,7 +265,7 @@ Switch to an existing Session:
 PiG keeps the startup project Resources when the target Session uses a different
 working directory. Direct RPC Bash uses the target working directory. Built-in
 tools, project settings, context files, prompts, skills, themes, and the system
-prompt still use the startup project. See [D61](https://github.com/MichaelKinsy/PiG/blob/main/DIVERGENCES.md#d61-session-replacement-keeps-startup-project-services-and-resources).
+prompt still use the startup project. See [D61](https://github.com/MichaelKinsy/PiG/blob/main/docs/parity/DIVERGENCES.md#d61-session-replacement-keeps-startup-project-services-and-resources).
 
 Fork before a user message:
 

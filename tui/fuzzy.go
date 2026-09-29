@@ -1,29 +1,18 @@
 package tui
 
-// Fuzzy filter for slash-command autocomplete.
-//
-// Port of upstream `.upstream/current/packages/tui/src/fuzzy.ts`
-// (133 LOC). The autocomplete provider needs upstream-parity matching
-// (e.g. `/hlp` → `/help`, `opus anthropic` → `provider/id` arg
-// completions) which the existing `select_filterable.go` substring
-// matcher does not provide.
-//
-// Algorithm (verbatim from upstream):
-//   - All query characters must appear in `text` in order (not
-//     necessarily consecutive). Lower score = better match.
-//   - Reward consecutive matches (-5 * run length) and word-boundary
-//     matches (-10). Penalize gaps (+2 per skipped char) and a tiny
-//     positional drift (+0.1 per char-index).
-//   - If primary pass fails, retry with letter/digit halves swapped
-//     (e.g. "5opus" ↔ "opus5") and add +5 penalty.
-//   - `FuzzyFilter` splits the query on runs of whitespace and `/` into
-//     AND tokens; each token must match independently.
+// Ports packages/tui/src/fuzzy.ts.
+// Lower scores reward consecutive and word-boundary matches; gaps and later UTF-16 positions add penalties.
 
 import (
 	"cmp"
 	"slices"
 	"strings"
 	"unicode"
+
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
+
+	"github.com/MichaelKinsy/PiG/internal/jsstring"
 )
 
 // FuzzyMatch is the result of matching a single query against a text.
@@ -33,14 +22,13 @@ type FuzzyMatch struct {
 	Score   float64
 }
 
-// FuzzyMatch performs a single-pass fuzzy match: returns Matches=true
-// iff every char of `query` appears in `text` in order (case-insensitive).
-// Score is lower-is-better.
+// FuzzyMatchScore matches an ordered, case-insensitive UTF-16 subsequence and returns Pi's lower-is-better score.
 func FuzzyMatchScore(query, text string) FuzzyMatch {
-	q := strings.ToLower(query)
-	t := strings.ToLower(text)
+	lower := cases.Lower(language.Und)
+	q := lower.String(query)
+	t := jsstring.ToUTF16(lower.String(text))
 
-	primary := matchQuery(q, t)
+	primary := matchQuery(jsstring.ToUTF16(q), t)
 	if primary.Matches {
 		return primary
 	}
@@ -50,14 +38,14 @@ func FuzzyMatchScore(query, text string) FuzzyMatch {
 	if swapped == "" {
 		return primary
 	}
-	sw := matchQuery(swapped, t)
+	sw := matchQuery(jsstring.ToUTF16(swapped), t)
 	if !sw.Matches {
 		return primary
 	}
 	return FuzzyMatch{Matches: true, Score: sw.Score + 5}
 }
 
-func matchQuery(query, text string) FuzzyMatch {
+func matchQuery(query, text []uint16) FuzzyMatch {
 	if len(query) == 0 {
 		return FuzzyMatch{Matches: true, Score: 0}
 	}
@@ -95,7 +83,7 @@ func matchQuery(query, text string) FuzzyMatch {
 	if queryIdx < len(query) {
 		return FuzzyMatch{Matches: false}
 	}
-	if query == text {
+	if slices.Equal(query, text) {
 		score -= 100
 	}
 	return FuzzyMatch{Matches: true, Score: score}
@@ -106,7 +94,7 @@ func isBoundaryChar(r rune) bool {
 	case '-', '_', '.', '/', ':':
 		return true
 	}
-	return unicode.IsSpace(r)
+	return isJSWhitespace(r)
 }
 
 // swapAlphaDigit handles the upstream convenience case: a query

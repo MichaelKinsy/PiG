@@ -1,0 +1,27 @@
+# Pi 0.87.1 interactive-mode.ts:4138-4157,4179-4185,4231-4246.
+# Probe the complete CLI with /scoped-models in focus. A live SIGHUP or SIGTERM
+# must finish shutdown without another key. Terminal loss is covered separately
+# by session/10-terminal-disconnect-exit and the tmux runner's descendant check.
+# Unlike a pane close alone, live signals cannot race an EOF into emergency exit
+# and conceal a selector that never observes cancellation.
+name = "23-scoped-models-shutdown"
+description = "Signals exit while scoped models owns input"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["python3", "test/parity/testdata/session-wire.py", "--case", "modal-shutdown"]
+pi_args = ["python3", "test/parity/testdata/session-wire.py", "--bin", "extensions/sdk-ts/node_modules/.bin/pi", "--case", "modal-shutdown"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

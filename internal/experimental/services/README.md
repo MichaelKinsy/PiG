@@ -24,7 +24,15 @@ Create and remove refresh the directory only after the application operation suc
 
 Attachment release removes subscriptions immediately and rejects new calls. Server disposal releases current attachments before joining the queued mutations. It does not cancel admitted application operations. The mutation queue creates no background goroutines. It retains one completion channel per in-flight call and one settled tail. The caller owns admission and cancellation of external requests. An application callback must not wait on a mutation that it queues behind itself.
 
-These factories exercise the concrete local Chord host, endpoint, operation stream, and replica. The package does not supply a durable lane watch/snapshot/reducer implementation or a Session worker host. The controller's narrow `AgentLane` adapter is not that durable observation contract. The connection sources still require the client's binding adapter and routed transport.
+These factories exercise the concrete local Chord host, endpoint, operation stream, and replica. The package does not supply a durable AgentLane implementation or a worker process host. The controller's narrow `AgentLane` adapter is not that durable observation contract. The connection sources still require the client's binding adapter and routed transport.
+
+## Worker service composition
+
+`CreateSessionWorkerServices` activates controller, Models, Transcript, and Session plugin-reload facets with a supplied facet loader. It returns only after activation finishes. Each server-connection/attachment pair owns an endpoint and its subscriptions. Reloads load and activate a candidate generation in admission order, cut over the Chord host, and then dispose the retired loaded set. A failed candidate is disposed without retiring the previous loaded set. Disposal removes subscriptions, waits for queued reloads, disposes the host, and attempts both loaded-set cleanups. This composes the local worker services; it does not spawn a Session worker or load JavaScript bundles.
+
+## Local slash-command contributions
+
+`CreateSlashCommandsRuntimeFacet` provides the local `SlashCommands` service on a Chord host. `SlashCommandRegistry` preserves name insertion order and stages replacements until the preceding registration retires. Closing a staged replacement leaves the current command intact. Closing a registration twice publishes only once. Subscriptions hydrate immediately and publish synchronously. Call registry methods and listeners on the owning presentation executor. The service is local because contributions carry callbacks; it never appears in a remote service catalogue. This library does not enable commands in the stable CLI.
 
 ## Go representations
 

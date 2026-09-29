@@ -77,11 +77,14 @@ var bundleHashes = map[string]*bundleHashCache{
 	"go": {}, "python": {}, "rust": {},
 }
 
+// Staged SDK directories relative to the config root. Checking that one exists must not enumerate the embedded files, which bundles does.
+var stagedSDKDirs = [...]string{"state/pigsdk/sdk", "state/pigsdk/sdk-py", "state/pigsdk/sdk-rs"}
+
 func bundles() []sdkBundle {
 	return []sdkBundle{
-		{lang: "go", relDir: "state/pigsdk/sdk", files: sdk.BundledFiles(), fsys: sdk.Source},
-		{lang: "python", relDir: "state/pigsdk/sdk-py", files: pysdk.BundledFiles(), fsys: pysdk.Source},
-		{lang: "rust", relDir: "state/pigsdk/sdk-rs", files: rssdk.BundledFiles(), fsys: rssdk.Source},
+		{lang: "go", relDir: stagedSDKDirs[0], files: sdk.BundledFiles(), fsys: sdk.Source},
+		{lang: "python", relDir: stagedSDKDirs[1], files: pysdk.BundledFiles(), fsys: pysdk.Source},
+		{lang: "rust", relDir: stagedSDKDirs[2], files: rssdk.BundledFiles(), fsys: rssdk.Source},
 	}
 }
 
@@ -121,49 +124,160 @@ func (b sdkBundle) hash() (string, error) {
 func (b sdkBundle) computeHash() (string, error) {
 	h := sha256.New()
 	_, _ = h.Write([]byte("staging-v2\x00"))
+	buffer := make([]byte, 64<<10)
 	for _, name := range b.files {
-		data, err := fs.ReadFile(b.fsys, name)
-		if err != nil {
+		if err := hashEmbeddedFile(h, b, name, buffer); err != nil {
 			return "", fmt.Errorf("pig reload: read embedded %s/%s: %w", b.lang, name, err)
 		}
-		_, _ = fmt.Fprintf(h, "%s\x00%d\x00", name, len(data))
-		h.Write(data)
 	}
 	return hex.EncodeToString(h.Sum(nil))[:16], nil
 }
 
+// hashEmbeddedFile feeds "name\x00size\x00contents" to h, streaming the contents so the warm-start check does not copy every embedded SDK file into memory.
+func hashEmbeddedFile(h io.Writer, b sdkBundle, name string, buffer []byte) error {
+	f, err := b.fsys.Open(name)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = f.Close() }()
+	info, err := f.Stat()
+	if err != nil {
+		return err
+	}
+	if _, err := fmt.Fprintf(h, "%s\x00%d\x00", name, info.Size()); err != nil {
+		return err
+	}
+	n, err := io.CopyBuffer(h, struct{ io.Reader }{f}, buffer)
+	if err != nil {
+		return err
+	}
+	if n != info.Size() {
+		return fmt.Errorf("read %d bytes, size is %d", n, info.Size())
+	}
+	return nil
+}
+
+// sync replaces the staged directory with the embedded SDK. It builds the new tree beside the old one and swaps it in by renames that keep the previous tree until the new one is in place, so the marker only ever appears with every file it vouches for and a failed swap leaves the previous SDK. Callers hold the SDK stage lock, which excludes builds reading the tree.
 func (b sdkBundle) sync(configRoot string) ([]string, error) {
 	dir := filepath.Join(configRoot, filepath.FromSlash(b.relDir))
-	if err := os.RemoveAll(dir); err != nil {
-		return nil, fmt.Errorf("pig reload: replace staged %s SDK: %w", b.lang, err)
+	hash, err := b.hash()
+	if err != nil {
+		return nil, err
+	}
+	if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
+		return nil, fmt.Errorf("pig reload: mkdir %s: %w", filepath.Dir(dir), err)
+	}
+	b.settleStaging(configRoot)
+	staging, err := os.MkdirTemp(filepath.Dir(dir), ".stage-"+b.lang+"-")
+	if err != nil {
+		return nil, fmt.Errorf("pig reload: stage %s SDK: %w", b.lang, err)
+	}
+	renamed := false
+	defer func() {
+		if !renamed {
+			_ = os.RemoveAll(staging)
+		}
+	}()
+	if err := os.Chmod(staging, 0o755); err != nil {
+		return nil, fmt.Errorf("pig reload: chmod %s: %w", staging, err)
 	}
 	written := make([]string, 0, len(b.files))
+	made := map[string]bool{staging: true}
 	for _, name := range b.files {
 		data, err := fs.ReadFile(b.fsys, name)
 		if err != nil {
 			return nil, fmt.Errorf("pig reload: read embedded %s/%s: %w", b.lang, name, err)
 		}
-		target := filepath.Join(dir, filepath.FromSlash(name))
-		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
-			return nil, fmt.Errorf("pig reload: mkdir %s: %w", filepath.Dir(target), err)
+		target := filepath.Join(staging, filepath.FromSlash(name))
+		if parent := filepath.Dir(target); !made[parent] {
+			if err := os.MkdirAll(parent, 0o755); err != nil {
+				return nil, fmt.Errorf("pig reload: mkdir %s: %w", parent, err)
+			}
+			made[parent] = true
 		}
-		if err := writeFileAtomic(target, data, 0o644); err != nil {
+		if err := writeFile(target, data, 0o644); err != nil {
 			return nil, err
 		}
 		written = append(written, name)
 	}
-	hash, err := b.hash()
-	if err != nil {
+	if err := writeFile(filepath.Join(staging, markerFile), []byte(hash+"\n"), 0o644); err != nil {
 		return nil, err
 	}
-	if err := os.MkdirAll(dir, 0o755); err != nil {
-		return nil, fmt.Errorf("pig reload: mkdir %s: %w", dir, err)
+	if err := replaceDir(dir, staging); err != nil {
+		return nil, fmt.Errorf("pig reload: replace staged %s SDK: %w", b.lang, err)
 	}
-	if err := writeFileAtomic(filepath.Join(dir, markerFile), []byte(hash+"\n"), 0o644); err != nil {
-		return nil, err
-	}
+	renamed = true
 	sort.Strings(written)
 	return written, nil
+}
+
+// stagePrefix names the private trees this bundle's syncs build beside its directory, and the aside copies of the tree they replace.
+func (b sdkBundle) stagePrefix() string { return ".stage-" + b.lang + "-" }
+
+// settleStaging removes the trees that syncs stranded by dying or failing mid-swap. The caller holds the SDK stage lock, so no tree found is owned by a live sync. An aside copy (`.old`) may be the only intact SDK, when the swap died or failed to restore it after moving it aside, so a missing target is restored from one before any tree is removed. If that restore fails, the aside copies stay.
+func (b sdkBundle) settleStaging(configRoot string) {
+	dir := filepath.Join(configRoot, filepath.FromSlash(b.relDir))
+	leftovers, _ := filepath.Glob(filepath.Join(filepath.Dir(dir), b.stagePrefix()+"*"))
+	if _, err := os.Lstat(dir); errors.Is(err, fs.ErrNotExist) {
+		if asides := slices.DeleteFunc(slices.Clone(leftovers), func(path string) bool { return !strings.HasSuffix(path, ".old") }); len(asides) > 0 {
+			// Glob returns lexical order; any aside is a complete previous tree.
+			if err := renameDir(asides[len(asides)-1], dir); err != nil {
+				leftovers = slices.DeleteFunc(leftovers, func(path string) bool { return strings.HasSuffix(path, ".old") })
+			} else {
+				leftovers = slices.DeleteFunc(leftovers, func(path string) bool { return path == asides[len(asides)-1] })
+			}
+		}
+	}
+	for _, leftover := range leftovers {
+		_ = os.RemoveAll(leftover)
+	}
+}
+
+// stagingNames lists the staging entries beside the staged SDKs, or nil when there are none. It reads one directory and takes no lock, so a live sync's tree also counts; callers take the stage lock before they remove anything.
+func stagingNames(configRoot string) []string {
+	entries, err := os.ReadDir(filepath.Join(configRoot, "state", "pigsdk"))
+	if err != nil {
+		return nil
+	}
+	var names []string
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), ".stage-") {
+			names = append(names, entry.Name())
+		}
+	}
+	return names
+}
+
+// ownsAny reports whether one of names is a staging entry of this bundle.
+func (b sdkBundle) ownsAny(names []string) bool {
+	return slices.ContainsFunc(names, func(name string) bool { return strings.HasPrefix(name, b.stagePrefix()) })
+}
+
+// renameDir is os.Rename; tests replace it to fail a swap step.
+var renameDir = os.Rename
+
+// replaceDir moves the complete tree staging to dir. An existing dir is renamed aside first and removed only after the new tree is in place, so a failed rename restores it. A crash or rollback failure between the two renames leaves dir absent and the previous tree aside; the next settleStaging under the stage lock restores it before anything is removed.
+func replaceDir(dir, staging string) error {
+	aside := staging + ".old"
+	hadPrevious := true
+	if err := renameDir(dir, aside); err != nil {
+		if !errors.Is(err, fs.ErrNotExist) {
+			return err
+		}
+		hadPrevious = false
+	}
+	if err := renameDir(staging, dir); err != nil {
+		if hadPrevious {
+			if restoreErr := renameDir(aside, dir); restoreErr != nil {
+				return errors.Join(err, restoreErr)
+			}
+		}
+		return err
+	}
+	if hadPrevious {
+		_ = os.RemoveAll(aside)
+	}
+	return nil
 }
 
 func (b sdkBundle) current(configRoot string) (bool, error) {
@@ -188,6 +302,7 @@ func (b sdkBundle) ensure(configRoot string) (bool, error) {
 		return false, err
 	}
 	if current {
+		b.settleStaging(configRoot)
 		return false, nil
 	}
 	if _, err := b.sync(configRoot); err != nil {
@@ -284,8 +399,29 @@ func LiveFingerprints(configRoot string) (map[string]string, error) {
 	return live, nil
 }
 
+// anyStagedSDK reports whether any language has a staged directory.
+func anyStagedSDK(configRoot string) bool {
+	for _, relDir := range stagedSDKDirs {
+		if info, err := os.Stat(filepath.Join(configRoot, filepath.FromSlash(relDir))); err == nil && info.IsDir() {
+			return true
+		}
+	}
+	return false
+}
+
 // Prune drops extension builds the staged SDKs can no longer select.
 func Prune(configRoot string, _ bool, dryRun bool) (runtimecell.CacheReport, error) {
+	cacheRoot := filepath.Join(configRoot, "cache")
+	// Fingerprints only classify existing entries. With none, hashing every staged tree cannot change the report, so a first start skips it and still requires a staged SDK. HasCacheEntries reads outside the cache GC lock, so the empty answer is confirmed by a dry run under that lock; a build published in between takes the classified path below.
+	if entries, err := runtimecell.HasCacheEntries(cacheRoot); err == nil && !entries {
+		if !anyStagedSDK(configRoot) {
+			return runtimecell.CacheReport{}, fmt.Errorf("no staged SDK found under %s; run `pig reload` first", configRoot)
+		}
+		confirmed, err := runtimecell.PruneCaches(runtimecell.CacheLifecycleOptions{CacheRoot: cacheRoot, DryRun: true})
+		if err != nil || len(confirmed.Entries) == 0 {
+			return confirmed, err
+		}
+	}
 	live, err := LiveFingerprints(configRoot)
 	if err != nil {
 		return runtimecell.CacheReport{}, err
@@ -298,7 +434,7 @@ func Prune(configRoot string, _ bool, dryRun bool) (runtimecell.CacheReport, err
 		fingerprints[fingerprint] = struct{}{}
 	}
 	return runtimecell.PruneCaches(runtimecell.CacheLifecycleOptions{
-		CacheRoot: filepath.Join(configRoot, "cache"), LiveFingerprints: fingerprints, DryRun: dryRun,
+		CacheRoot: cacheRoot, LiveFingerprints: fingerprints, DryRun: dryRun,
 	})
 }
 
@@ -316,12 +452,13 @@ func EnsureSynced(configRoot string) error {
 // EnsureSyncedContext is EnsureSynced with a caller-owned lock-wait lifetime.
 func EnsureSyncedContext(ctx context.Context, configRoot string) error {
 	current := true
+	leftovers := stagingNames(configRoot)
 	for _, b := range bundles() {
 		bundleCurrent, err := b.current(configRoot)
 		if err != nil {
 			return err
 		}
-		current = current && bundleCurrent
+		current = current && bundleCurrent && !b.ownsAny(leftovers)
 	}
 	if current {
 		return nil
@@ -356,7 +493,7 @@ func EnsureSyncedLang(configRoot, lang string) error {
 	if err != nil {
 		return err
 	}
-	if current {
+	if current && !b.ownsAny(stagingNames(configRoot)) {
 		return nil
 	}
 	return withSDKStageLock(context.Background(), configRoot, func() error {
@@ -391,27 +528,22 @@ func withSDKStageLock(ctx context.Context, configRoot string, work func() error)
 	return work()
 }
 
-func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
-	dir := filepath.Dir(path)
-	tmp, err := os.CreateTemp(dir, ".pigsdk-*")
+// writeFile creates path with exactly mode. The file lives in a private staging tree, so no reader observes it before the tree is renamed into place.
+func writeFile(path string, data []byte, mode os.FileMode) error {
+	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, mode)
 	if err != nil {
-		return fmt.Errorf("pig reload: temp: %w", err)
+		return fmt.Errorf("pig reload: create %s: %w", path, err)
 	}
-	tmpName := tmp.Name()
-	defer func() { _ = os.Remove(tmpName) }()
-	if _, err := tmp.Write(data); err != nil {
-		_ = tmp.Close()
+	if _, err := f.Write(data); err != nil {
+		_ = f.Close()
 		return fmt.Errorf("pig reload: write %s: %w", path, err)
 	}
-	if err := tmp.Chmod(mode); err != nil {
-		_ = tmp.Close()
+	if err := f.Chmod(mode); err != nil {
+		_ = f.Close()
 		return fmt.Errorf("pig reload: chmod %s: %w", path, err)
 	}
-	if err := tmp.Close(); err != nil {
+	if err := f.Close(); err != nil {
 		return fmt.Errorf("pig reload: close %s: %w", path, err)
-	}
-	if err := os.Rename(tmpName, path); err != nil {
-		return fmt.Errorf("pig reload: rename %s: %w", path, err)
 	}
 	return nil
 }

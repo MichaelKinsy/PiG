@@ -1,0 +1,24 @@
+# Upstream evidence: actual Pi 0.87.1 runner.ts:811-844 captures getScopedModels while constructing a context, invokes it on reads, and retains the supplied list identity. Command contexts retain the same property descriptors (889-897).
+# Complete default/bound/replaced/callback-rebound/stale records are compared through real runner APIs, without normalization.
+name = "44-scoped-model-callback-capture"
+description = "Scoped-model getters capture their callback and preserve live list identity"
+covers = ["packages/coding-agent/src/core/extensions/runner.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/scoped-models"]
+pi_args = ["node", "./test/parity/testdata/scoped-models-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ['["default",[]]', '["bound",[{"model":{"id":"scoped-test"},"thinkingLevel":"high"}],true,true,[]]', '["captured",[{"model":{"id":"second"}}],[]]']
+runs = 3

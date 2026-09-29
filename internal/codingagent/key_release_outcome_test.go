@@ -98,7 +98,9 @@ func driveModalInputFromReader(t *testing.T, component *tui.ExtensionInputCompon
 	pumpDone := make(chan struct{})
 	go func() {
 		defer close(pumpDone)
-		m.pumpTerminalInput(ctx, source, readCh, errCh)
+		if err := m.pumpTerminalInput(ctx, source, readCh, errCh); err != nil {
+			t.Error(err)
+		}
 	}()
 	for !component.Done() {
 		buf := <-inputCh

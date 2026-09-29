@@ -17,6 +17,7 @@ package tui
 // mirroring the picker's default `scoped` view.
 
 import (
+	"context"
 	"strings"
 )
 
@@ -44,11 +45,11 @@ type SlashCommand struct {
 	Description            string
 	ArgumentHint           string
 	GetArgumentCompletions func(argPrefix string) []AutocompleteItem
+	// AwaitArgumentCompletions is the Promise-returning form. The editor invokes it on its owned query worker, not while reading/rendering input.
+	AwaitArgumentCompletions func(argPrefix string) ([]AutocompleteItem, error)
 }
 
-// AutocompleteProvider is the editor-facing surface. Synchronous -
-// upstream's async/AbortController machinery is deferred until
-// extension-supplied providers need it (out of scope for 2.6a).
+// AutocompleteProvider supplies the local synchronous portion of a query. Deferred callbacks and filesystem searches are captured by AsyncSuggestionPlanner and AsyncFileSearcher; extension chains use AsyncAutocompleteProvider.
 type AutocompleteProvider interface {
 	// GetSuggestions returns suggestions for the given buffer state.
 	// Return nil when no popup should be shown (no match, wrong context).
@@ -68,16 +69,7 @@ type ForcefulAutocompleteProvider interface {
 	GetSuggestionsForce(lines []string, cursorLine, cursorCol int) *AutocompleteSuggestions
 }
 
-// SlashOnlyProvider serves builtin slash commands and (when the buffer
-// is `/<cmd> <args>`) delegates argument completion to the matched
-// command's GetArgumentCompletions callback. No `@<file>`, no path
-// completion, no async machinery: just slash.
-//
-// Naming note: previously called "StaticProvider" during the port.
-// Renamed to SlashOnlyProvider because the per-command
-// GetArgumentCompletions callback makes it non-static (e.g. `/model`
-// computes a fresh model list each invocation). The defining trait is
-// "slash only, no @/path", which the name reflects.
+// SlashOnlyProvider serves command names and their immediate or awaited argument completions. It does not perform path or attachment completion.
 type SlashOnlyProvider struct {
 	Commands []SlashCommand
 }
@@ -113,12 +105,8 @@ func (p *SlashOnlyProvider) GetSuggestions(lines []string, cursorLine, cursorCol
 	if !strings.HasPrefix(before, "/") {
 		return nil
 	}
-	if cursorLine != 0 {
-		return nil
-	}
 
-	spaceIdx := strings.IndexAny(before, " \t")
-	if spaceIdx == -1 {
+	if !strings.Contains(before, " ") {
 		// `/partial`: name completion.
 		prefix := before[1:] // strip leading "/"
 		type item struct {
@@ -160,8 +148,7 @@ func (p *SlashOnlyProvider) GetSuggestions(lines []string, cursorLine, cursorCol
 	}
 
 	// `/<cmd> <args>`: argument completion path.
-	name := before[1:spaceIdx]
-	argText := before[spaceIdx+1:]
+	name, argText, _ := slashArgumentPrefix(before)
 	for _, c := range p.Commands {
 		if c.Name != name {
 			continue
@@ -176,6 +163,39 @@ func (p *SlashOnlyProvider) GetSuggestions(lines []string, cursorLine, cursorCol
 		return &AutocompleteSuggestions{Items: items, Prefix: argText}
 	}
 	return nil
+}
+
+func slashArgumentPrefix(before string) (string, string, bool) {
+	if !strings.HasPrefix(before, "/") {
+		return "", "", false
+	}
+	space := strings.IndexByte(before, ' ')
+	if space < 0 {
+		return "", "", false
+	}
+	return before[1:space], before[space+1:], true
+}
+
+// SuggestionTask captures a Promise-returning command callback without invoking it on the input loop.
+func (p *SlashOnlyProvider) SuggestionTask(lines []string, line, col int, _ bool) (string, func(context.Context) ([]AutocompleteItem, error), bool) {
+	if line < 0 || line >= len(lines) || col < 0 {
+		return "", nil, false
+	}
+	name, prefix, ok := slashArgumentPrefix(lines[line][:min(col, len(lines[line]))])
+	if !ok {
+		return "", nil, false
+	}
+	for _, command := range p.Commands {
+		if command.Name == name && command.AwaitArgumentCompletions != nil {
+			return prefix, func(ctx context.Context) ([]AutocompleteItem, error) {
+				if err := ctx.Err(); err != nil {
+					return nil, err
+				}
+				return command.AwaitArgumentCompletions(prefix)
+			}, true
+		}
+	}
+	return "", nil, false
 }
 
 // ApplyCompletion replaces the trailing `prefix` chars of the current

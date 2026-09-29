@@ -79,9 +79,10 @@ func TestRPCUICancelAndTimeout(t *testing.T) {
 	}
 
 	started := time.Now()
+	// rpc-mode.ts:115-120,143-146: a timed-out dialog resolves its default (false for confirm) like a cancelled one.
 	confirmed, err := ui.Confirm(context.Background(), "Confirm", "Continue?", map[string]any{"timeout": 20})
-	if err != nil {
-		t.Fatal(err)
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("timed out confirmation error = %v, want context.Canceled", err)
 	}
 	if confirmed {
 		t.Fatal("timed out confirmation returned true")
@@ -113,6 +114,37 @@ func TestRPCUIFireAndForgetShape(t *testing.T) {
 		}
 		if id, _ := request["id"].(string); id == "" {
 			t.Fatalf("request has no id: %#v", request)
+		}
+	}
+}
+
+// rpc-mode.ts:115-120,138-150: the request echoes the raw timeout number and any truthy value, including a
+// negative or beyond-int32 one, arms a Node timer that runs after about one millisecond.
+func TestRPCUIDialogTimeoutIsAJavaScriptNumber(t *testing.T) {
+	for _, timeout := range []float64{4294967296.5, -5, 0.5} {
+		requests := make(chan map[string]any, 1)
+		ui := newRPCUIContext(func(value any) {
+			data, _ := json.Marshal(value)
+			var request map[string]any
+			_ = json.Unmarshal(data, &request)
+			requests <- request
+		})
+		done := make(chan error, 1)
+		go func() {
+			_, err := ui.Select(context.Background(), "Choose", []string{"a"}, map[string]any{"timeout": timeout})
+			done <- err
+		}()
+		if got := (<-requests)["timeout"]; got != timeout {
+			t.Errorf("echoed timeout = %v, want %v", got, timeout)
+		}
+		select {
+		case err := <-done:
+			// rpc-mode.ts:138-140: a timed-out select resolves undefined, the cancelled form, not "".
+			if !errors.Is(err, context.Canceled) {
+				t.Errorf("timeout %v: error = %v, want context.Canceled", timeout, err)
+			}
+		case <-time.After(3 * time.Second):
+			t.Errorf("timeout %v did not dismiss the dialog", timeout)
 		}
 	}
 }

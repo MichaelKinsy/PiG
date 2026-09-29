@@ -22,19 +22,25 @@ func TestStatusLifecycleProbe(t *testing.T) {
 	type trace struct {
 		Mode          string  `json:"mode"`
 		Embedded      bool    `json:"embedded"`
+		Remote        bool    `json:"remote"`
 		ClearOnShrink bool    `json:"clearOnShrink"`
 		Phases        []phase `json:"phases"`
 	}
 	var traces []trace
 	for _, mode := range []string{"regular", "fullscreen"} {
-		for _, embedded := range []bool{false, true} {
+		for _, editorMode := range []string{"standalone", "embedded", "custom"} {
+			embedded := editorMode == "embedded"
+			remote := editorMode == "custom"
 			for _, clearOnShrink := range []bool{false, true} {
 				synctest.Test(t, func(t *testing.T) {
-					m := statusBorderMode(t, embedded)
-					m.opts.Settings.TuiMode = mode
+					m := statusBorderMode(t, embedded || remote)
+					if remote {
+						m.setRemoteEditor(&fakeRemoteEditor{})
+					}
+					m.opts.TuiMode = mode
 					m.tuiInst.SetClearOnShrink(clearOnShrink)
 					t.Cleanup(func() { m.clearStatusIndicator("") })
-					result := trace{Mode: mode, Embedded: embedded, ClearOnShrink: clearOnShrink}
+					result := trace{Mode: mode, Embedded: embedded, Remote: remote, ClearOnShrink: clearOnShrink}
 					sample := func() {
 						p := phase{Embedded: m.activeWorkingIndicatorEmbedded, StandaloneRows: len(m.statusContainer.Render(120))}
 						if indicator := m.activeStatusIndicator; indicator != nil {

@@ -291,7 +291,7 @@ func extractAnyText(m agent.AgentMessage) string {
 	switch {
 	case m.User != nil:
 		var b strings.Builder
-		for _, c := range m.User.Content {
+		for _, c := range m.ContentBlocks() {
 			if t, ok := c.(ai.TextContent); ok {
 				b.WriteString(t.Text)
 			}

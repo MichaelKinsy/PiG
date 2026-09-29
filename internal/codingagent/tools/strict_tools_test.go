@@ -1,6 +1,7 @@
 package tools
 
 import (
+	"encoding/json"
 	"slices"
 	"testing"
 )
@@ -20,7 +21,14 @@ func TestBuiltinToolsPreferStrictSampling(t *testing.T) {
 		} else if cs != nil {
 			t.Errorf("%s constrained sampling = %+v, want none", tool.Name(), cs)
 		}
-		required, _ := s.Parameters["required"].([]string)
+		raw, err := json.Marshal(s.Parameters["required"])
+		if err != nil {
+			t.Fatal(err)
+		}
+		var required []string
+		if err := json.Unmarshal(raw, &required); err != nil {
+			t.Fatal(err)
+		}
 		switch tool.Name() {
 		case "read":
 			if !slices.Equal(required, []string{"path"}) {

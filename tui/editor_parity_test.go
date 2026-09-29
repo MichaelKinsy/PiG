@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"unicode/utf16"
 
 	"github.com/MichaelKinsy/PiG/tui/widthx"
 )
@@ -41,7 +42,7 @@ func TestWordWrapLine_ParityCases(t *testing.T) {
 			}
 			var reconstructed strings.Builder
 			for _, chunk := range chunks {
-				reconstructed.WriteString(tc.line[chunk.startIndex:chunk.endIndex])
+				reconstructed.WriteString(string(utf16.Decode(utf16.Encode([]rune(tc.line))[chunk.startIndex:chunk.endIndex])))
 			}
 			if reconstructed.String() != tc.line {
 				t.Fatalf("reconstructed = %q, want %q", reconstructed.String(), tc.line)

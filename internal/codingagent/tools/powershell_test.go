@@ -112,17 +112,17 @@ func TestPowerShellToolExecute(t *testing.T) {
 		t.Fatalf("first update = %q, want the initial empty update", updates)
 	}
 	if runtime.GOOS != "windows" {
-		if !res.IsError || res.Content != "The powershell tool is only available on Windows." || res.Details != nil {
+		if !res.IsError || res.Text() != "The powershell tool is only available on Windows." || !jsonEqual(t, res.Details, map[string]any{}) {
 			t.Fatalf("result = %+v, want the Windows-only tool error", res)
 		}
 		return
 	}
 	if res.IsError {
-		t.Fatalf("PowerShell execution failed: %s", res.Content)
+		t.Fatalf("PowerShell execution failed: %s", res.Text())
 	}
 	for _, want := range []string{"héllo €", "Bypass"} {
-		if !strings.Contains(res.Content, want) {
-			t.Errorf("output missing %q: %q", want, res.Content)
+		if !strings.Contains(res.Text(), want) {
+			t.Errorf("output missing %q: %q", want, res.Text())
 		}
 	}
 }
@@ -155,7 +155,7 @@ func TestShellToolWrapsCommandBeforeSpawn(t *testing.T) {
 	cfg := posixShellConfig(t, "powershell", "PowerShell")
 	cfg.operations.(*LocalShellOperations).WrapCommand = func(command string) string { return "echo wrapped\n" + command }
 	res := runShell(t, t.Context(), t.TempDir(), cfg, bashParams{Command: "echo body"})
-	if res.IsError || res.Content != "wrapped\nbody\n" {
+	if res.IsError || res.Text() != "wrapped\nbody\n" {
 		t.Fatalf("result = %+v, want wrapped output", res)
 	}
 }
@@ -164,12 +164,12 @@ func TestShellToolTimeoutValidationMirrorsResolveTimeoutMs(t *testing.T) {
 	cfg := posixShellConfig(t, "bash", "bash")
 	for _, raw := range []string{`{"command":"echo x","timeout":0}`, `{"command":"echo x","timeout":-2}`} {
 		res, err := executeShellTool(t.Context(), t.TempDir(), cfg, json.RawMessage(raw), nil)
-		if err != nil || !res.IsError || res.Content != "Invalid timeout: must be a finite number of seconds" {
+		if err != nil || !res.IsError || res.Text() != "Invalid timeout: must be a finite number of seconds" {
 			t.Errorf("%s: result = %+v, %v", raw, res, err)
 		}
 	}
 	res := runShell(t, t.Context(), t.TempDir(), cfg, bashParams{Command: "echo x", Timeout: maxBashTimeoutSeconds + 1})
-	if !res.IsError || res.Content != "Invalid timeout: maximum is 2147483.647 seconds" {
+	if !res.IsError || res.Text() != "Invalid timeout: maximum is 2147483.647 seconds" {
 		t.Errorf("over-large timeout result = %+v", res)
 	}
 }
@@ -179,7 +179,7 @@ func TestShellToolTimeoutValidationMirrorsResolveTimeoutMs(t *testing.T) {
 func TestShellToolTimeoutAndAbortStatus(t *testing.T) {
 	cfg := posixShellConfig(t, "bash", "bash")
 	res := runShell(t, t.Context(), t.TempDir(), cfg, bashParams{Command: "sleep 5", Timeout: 0.5})
-	if !res.IsError || res.Content != "Command timed out after 0.5 seconds" || res.Details != nil {
+	if !res.IsError || res.Text() != "Command timed out after 0.5 seconds" || !jsonEqual(t, res.Details, map[string]any{}) {
 		t.Errorf("timeout result = %+v", res)
 	}
 
@@ -195,7 +195,7 @@ func TestShellToolTimeoutAndAbortStatus(t *testing.T) {
 	}()
 	select {
 	case r := <-done:
-		if !r.IsError || r.Content != "Command aborted" {
+		if !r.IsError || r.Text() != "Command aborted" {
 			t.Errorf("abort result = %+v, want only the status", r)
 		}
 	case <-time.After(5 * time.Second):
@@ -208,7 +208,7 @@ func TestShellToolMissingWorkingDirectory(t *testing.T) {
 	missing := filepath.Join(t.TempDir(), "gone")
 	res := runShell(t, t.Context(), missing, posixShellConfig(t, "powershell", "PowerShell"), bashParams{Command: "echo x"})
 	want := "Working directory does not exist: " + missing + "\nCannot execute PowerShell commands."
-	if !res.IsError || res.Content != want {
+	if !res.IsError || res.Text() != want {
 		t.Fatalf("result = %+v, want %q", res, want)
 	}
 }
@@ -282,7 +282,7 @@ func TestShellToolPreservesTruncationSnapshot(t *testing.T) {
 	if !tr.Truncated || tr.TotalLines != 12000 || tr.TotalBytes != 252000 || tr.OutputLines != 2000 || tr.TruncatedBy != "lines" {
 		t.Fatalf("snapshot = %+v", *tr)
 	}
-	if !strings.Contains(res.Content, "[Showing lines 10001-12000 of 12000. Full output:") {
-		t.Fatalf("missing whole-stream footer: %q", res.Content[len(res.Content)-200:])
+	if !strings.Contains(res.Text(), "[Showing lines 10001-12000 of 12000. Full output:") {
+		t.Fatalf("missing whole-stream footer: %q", res.Text()[len(res.Text())-200:])
 	}
 }

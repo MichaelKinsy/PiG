@@ -1,21 +1,29 @@
 package ai
 
-import "context"
+import (
+	"context"
+	"encoding/json"
+)
 
 // Mirrors upstream .upstream/current/packages/ai/src/utils/oauth/types.ts.
 
 // OAuthCredentials holds the tokens returned by an OAuth flow.
 type OAuthCredentials struct {
-	Refresh string `json:"refresh"`
-	Access  string `json:"access"`
-	Expires int64  `json:"expires"` // Unix millis
+	Extra   map[string]json.RawMessage `json:"-"`
+	Refresh string                     `json:"refresh"`
+	Access  string                     `json:"access"`
+	// Expires is the truncated integer projection of expires in Unix milliseconds. ExpiresMillis returns Pi's exact JavaScript number, including a fraction or an absent property.
+	// Expiry decisions must use ExpiresMillis. SetExpiresMillis stores a fraction; assigning Expires replaces any retained exact value.
+	Expires int64 `json:"expires"`
 	// ProjectID is used by Google Cloud Code Assist / Antigravity OAuth.
-	// Upstream OAuthCredentials is open-ended (`[key: string]: unknown`);
-	// pig models the only currently-used extra field explicitly so
-	// auth.json round-trips the Google credential shape.
+	// Other provider-owned fields are retained in Extra.
 	ProjectID string `json:"projectId,omitempty"`
+	// AccountID is the provider account associated with the access token.
+	AccountID string `json:"accountId,omitempty"`
 	// Scope is the granted scope returned by flows that report one (Radius).
 	Scope string `json:"scope,omitempty"`
+
+	expiry credentialExpiry
 }
 
 // OAuthPrompt describes an interactive prompt during the OAuth flow.

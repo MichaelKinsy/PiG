@@ -1,0 +1,17 @@
+# Pi 0.87.1 cli/args.ts:128-134 preserves --name ""; main.ts:694-701 rejects it when creating a Session.
+# Probe: pi --offline --no-extensions --name '' --no-session -p exits 1 with the complete diagnostic below.
+name = "12-cli-empty-session-name"
+description = "An explicitly empty session name fails validation before starting a prompt"
+covers = ["packages/coding-agent/src/cli/args.ts", "packages/coding-agent/src/main.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--offline", "--no-extensions", "--name", "", "--no-session", "-p"]
+timeout_seconds = 10
+
+[assert]
+exit_code = 1
+output_equal = true
+both_contain = ["Error: --name requires a non-empty value"]
+runs = 3

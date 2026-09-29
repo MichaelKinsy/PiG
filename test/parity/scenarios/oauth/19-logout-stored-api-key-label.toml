@@ -1,0 +1,31 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:5664-5674 supplies stored credential type and source to logout; oauth-selector.ts:164-179 renders a matching stored credential as configured.
+# Both hosts use the same synthetic API-key fixture, and --offline prevents catalog/network activity.
+name = "19-logout-stored-api-key-label"
+description = "Logout lists API-key-only providers with Pi's configured indicator"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/coding-agent/src/modes/interactive/components/oauth-selector.ts"]
+tags = ["hermetic", "tui", "fixture-auth"]
+driver = "interactive-tmux"
+model = "openai/gpt-5.5"
+[tmux]
+width = 200
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Select provider to logout:"
+capture_end = "✓ configured"
+settle_seconds = 1
+cwd = "../selectors/testdata/login-empty-project"
+[[tmux.steps]]
+keys = ["/logout", "Enter"]
+wait_contains = ["Select provider to logout:", "OpenAI ✓ configured"]
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/w3-stored-key", "PI_CODING_AGENT_DIR=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["PI_CODING_AGENT_DIR=testdata/w3-stored-key", "PIG_CODING_AGENT_DIR=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--offline", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--offline", "--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+[assert]
+both_reach_ready = true
+both_contain = ["Select provider to logout:", "OpenAI ✓ configured"]
+escaped_output_equal = true
+runs = 3

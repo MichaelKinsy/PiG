@@ -97,15 +97,23 @@ type ToolDefinition struct {
 	Execute             ToolExecuteFunc          `json:"-"`
 	RenderCall          ToolRenderCallFunc       `json:"-"`
 	RenderResult        ToolRenderResultFunc     `json:"-"`
+	// BuiltInRenderers names the built-in tool whose renderers draw the card
+	// halves this definition does not render itself. A subprocess extension
+	// sets it for a tool built from Pi's create<Tool>ToolDefinition, whose
+	// renderers are that built-in tool's (D73).
+	BuiltInRenderers string `json:"-"`
+	// ValidationParameters is the host-only representation of non-enumerable TypeBox metadata.
+	ValidationParameters json.RawMessage `json:"-"`
 }
 
 // ToolInfo mirrors upstream ToolInfo: the read-only view returned by
 // [API.GetAllTools].
 type ToolInfo struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description"`
-	Parameters  json.RawMessage `json:"parameters"`
-	SourceInfo  SourceInfo      `json:"sourceInfo"`
+	Name             string          `json:"name"`
+	Description      string          `json:"description"`
+	Parameters       json.RawMessage `json:"parameters"`
+	PromptGuidelines []string        `json:"promptGuidelines,omitempty"`
+	SourceInfo       SourceInfo      `json:"sourceInfo"`
 }
 
 // RegisteredTool mirrors upstream RegisteredTool: the host's bookkeeping

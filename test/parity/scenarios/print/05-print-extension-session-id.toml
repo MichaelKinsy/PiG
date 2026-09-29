@@ -1,0 +1,38 @@
+# Pi 0.87.1, probed with test-faux/faux-1 and this extension in -p,
+# -p --no-session, --mode json and --mode rpc: every session has a fresh UUIDv7.
+# session-manager.ts:1057-1087,1752-1755,1801-1802 creates the id/header independently
+# of persistence. main.ts:363-364 selects inMemory for --no-session;
+# print-mode.ts:76-104 binds the SessionManager before dispatching extensions.
+# Tip 4 already matches after 828ce33067. Making the shared getSessionID
+# callback return an empty string reproduces #83 and fails this scenario.
+# The artifact projects random identity into checked predicates: the fixture
+# asserts UUIDv7 spelling, header equality and stability before recording a row.
+# Exact artifact equality retains lifecycle order and file-persistence booleans.
+name = "05-print-extension-session-id"
+description = "Print tools see the session UUIDv7 and header without persisting --no-session"
+covers = [
+  "packages/coding-agent/src/modes/print-mode.ts",
+  "packages/coding-agent/src/core/session-manager.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--print", "Run: extension echo hello"]
+artifact_path = "{{TEMP}}/session-id.jsonl"
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "SESSION_ID_REPORT={{TEMP}}/session-id.jsonl"]
+pi = ["SESSION_ID_REPORT={{TEMP}}/session-id.jsonl"]
+pig_extensions = ["../testdata/extension-session-id.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../testdata/extension-session-id.mjs"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+both_contain = ["echo-bridge: hello"]
+both_not_contain = ["Extension error", "AssertionError"]
+artifact_equal = true
+artifact_both_contain = ['"event":"tool","uuidv7":true,"headerMatches":true,"stable":true,"persisted":false,"fileAssigned":false,"fileExists":false', '"event":"session_shutdown"']

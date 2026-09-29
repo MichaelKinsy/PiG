@@ -172,9 +172,9 @@ func (c *ToolExecutionComponent) resultFallback() Component {
 }
 
 func (c *ToolExecutionComponent) definitionComponents() []Component {
-	components := []Component{c.definitionCall}
+	components := []Component{NewMouseRegion(c.definitionCall, c.handleResultMouse)}
 	if c.definitionResultComponent != nil {
-		components = append(components, c.definitionResultComponent)
+		components = append(components, NewMouseRegion(c.definitionResultComponent, c.handleResultMouse))
 	}
 	return components
 }
@@ -215,10 +215,9 @@ func (c *ToolExecutionComponent) renderDefinition(width int) []string {
 	}
 	images := c.renderImages(width)
 	if c.definition.Self {
-		var content []string
-		for _, component := range c.definitionComponents() {
-			content = append(content, component.Render(width)...)
-		}
+		container := NewContainer(c.definitionComponents()...)
+		content := container.Render(width)
+		c.mouseChild, c.mouseWidth, c.mouseHeight = container, width, len(content)
 		if len(content) == 0 && len(images) == 0 {
 			return []string{}
 		}
@@ -232,6 +231,8 @@ func (c *ToolExecutionComponent) renderDefinition(width int) []string {
 	for _, component := range c.definitionComponents() {
 		box.AddChild(component)
 	}
-	out := append([]string{""}, box.Render(width)...)
+	content := box.Render(width)
+	c.mouseChild, c.mouseWidth, c.mouseHeight = box, width, len(content)
+	out := append([]string{""}, content...)
 	return append(out, images...)
 }

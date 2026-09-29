@@ -1,5 +1,3 @@
-//go:build ignore
-
 // Command gentables extracts the static lookup tables from upstream pi's
 // tui/src/latex.ts into Go source (symbols.go), so the LaTeX->Unicode port
 // never hand-transcribes ~230 symbol rows. Re-run after an upstream bump with:
@@ -7,7 +5,6 @@
 //	go run ./internal/latex/gentables
 //
 // It reads the pinned mirror at .upstream/current and writes internal/latex/symbols.go.
-// symbols_test.go gates every generated entry against pi's own renderLatex output.
 package main
 
 import (
@@ -28,7 +25,7 @@ var recordTables = []string{"SYMBOLS", "NEGATED_SYMBOLS", "BLACKBOARD", "SUPERSC
 var setTables = []string{
 	"NAMED_OPERATORS", "LIMIT_OPERATORS", "DISPLAY_LIMIT_SYMBOLS",
 	"SPACING_COMMANDS", "NEGATIVE_SPACING_COMMANDS", "IGNORED_COMMANDS",
-	"SIZE_COMMANDS", "PLAIN_WRAPPERS",
+	"SIZE_COMMANDS", "PLAIN_WRAPPERS", "RELATION_COMMANDS", "FONT_SWITCH_COMMANDS",
 }
 
 func main() {

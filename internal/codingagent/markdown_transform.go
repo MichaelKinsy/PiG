@@ -31,6 +31,9 @@ func applyMarkdownTransformers(
 ) string {
 	transformed := markdown
 	for _, transformer := range transformers {
+		if ctx.Context != nil && ctx.Context.Err() != nil {
+			return transformed
+		}
 		transformed = applyOne(transformed, ctx, transformer)
 	}
 	return transformed

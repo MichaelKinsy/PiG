@@ -1,0 +1,33 @@
+# Pi 0.87.1 core/package-manager.ts:1150-1164,1511-1530 explicitly uses the invoking cwd for npm view.
+# D79 changes only user-package metadata cwd. The loopback server and argv recorder prove
+# that a selected command performs a real lookup, not an unconditional reinstall.
+name = "19-user-package-registry-isolation"
+description = "User-package metadata ignores a denied project's npmrc under approved security divergence D79."
+covers = ["packages/coding-agent/src/core/package-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+# This wrapper launches the real CLI with per-run loopback registries and reports the measured traffic.
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["python3", "./test/parity/testdata/npm-registry-scope.py", "pig", "user"]
+pi_args = ["python3", "./test/parity/testdata/npm-registry-scope.py", "pi", "user"]
+pig = ["SCOPE_PROBE_TEMP={{TEMP}}"]
+pi = ["SCOPE_PROBE_TEMP={{TEMP}}"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 45
+
+[assert]
+exit_code = 0
+both_contain = ["selected-command=yes; installs=0"]
+both_match_regex = ['^metadata cwd=(user|project); registry=(user|project); selected-command=yes; installs=0\n$']
+runs = 3
+
+[diverge]
+pig_contains = ["metadata cwd=user; registry=user; selected-command=yes; installs=0"]
+pi_contains = ["metadata cwd=project; registry=project; selected-command=yes; installs=0"]
+reason = "D79 SCRUTINIZED:approved. Approved by owner Michael Kinsy 2026-09-27: user-package metadata runs from managed storage, not the invoking project. Trusted project packages retain Pi's lookup cwd."

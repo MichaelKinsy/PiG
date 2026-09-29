@@ -38,10 +38,6 @@ type canvas struct {
 	style    []byte
 	occupied []byte
 	curStyle byte
-	// splitWord records that a label was broken inside a word to fit its box.
-	// Narrowing to fit an area must not do this: a box of sliced fragments is
-	// less readable than the source it replaced.
-	splitWord bool
 }
 
 func newCanvas(w, h int) *canvas {

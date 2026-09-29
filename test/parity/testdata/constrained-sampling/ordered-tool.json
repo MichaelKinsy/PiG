@@ -1,0 +1,1 @@
+{"name":"sample_tool","description":"Sample tool","parameters":{"type":"object","properties":{"path":{"type":"string"},"offset":{"type":"number"},"metadata":{"type":"object","properties":{"enabled":{"type":"boolean"}}},"nullable":{"anyOf":[{"type":"string"},{"type":"null"}]}},"required":["path","metadata"]},"constrainedSampling":{"type":"json_schema","strict":"prefer"}}

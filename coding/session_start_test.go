@@ -205,7 +205,7 @@ func BenchmarkSessionStartupWithoutTranscript(b *testing.B) {
 	}
 }
 
-func TestSessionCloneBeforePromptRetainsDeferredInstructions(t *testing.T) {
+func TestSessionCloneBeforePromptRefusesAndRetainsDeferredInstructions(t *testing.T) {
 	sess, err := NewSession(newTestServices(t), SessionOptions{Model: fakeModel(), SystemPrompt: "configured instructions"})
 	if err != nil {
 		t.Fatal(err)
@@ -216,24 +216,16 @@ func TestSessionCloneBeforePromptRetainsDeferredInstructions(t *testing.T) {
 		}
 	}()
 	cloned, err := sess.Clone()
-	if err != nil {
-		t.Fatal(err)
+	if err == nil || cloned != nil {
+		t.Fatalf("clone=%v error=%v", cloned, err)
 	}
-	defer func() {
-		if err := cloned.Close(); err != nil {
-			t.Error(err)
-		}
-	}()
-	if len(cloned.Messages()) != 0 {
-		t.Fatal("clone published unprompted system message")
-	}
-	if _, err := cloned.Send(context.Background(), "cloned first prompt"); err != nil {
-		t.Fatal(err)
-	}
-	assertStartupTranscript(t, cloned, []string{"system", "user", "assistant"})
 	if len(sess.Messages()) != 0 {
-		t.Fatal("clone changed original transcript")
+		t.Fatal("failed clone published unprompted system message")
 	}
+	if _, err := sess.Send(context.Background(), "first prompt"); err != nil {
+		t.Fatal(err)
+	}
+	assertStartupTranscript(t, sess, []string{"system", "user", "assistant"})
 }
 
 func TestSessionResumeEmptySystemDoesNotInsertConfiguredBaseline(t *testing.T) {

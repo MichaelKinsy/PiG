@@ -1,0 +1,14 @@
+[
+  {"name":"anthropic-none","api":"anthropic-messages","model":"claude-haiku-4-5","retention":"none"},
+  {"name":"anthropic-long","api":"anthropic-messages","model":"claude-haiku-4-5","retention":"long"},
+  {"name":"anthropic-short-over-env-long","api":"anthropic-messages","model":"claude-haiku-4-5","retention":"short","env":"long"},
+  {"name":"responses-env-long-without-session","api":"openai-responses","model":"gpt-4o-mini","env":"long"},
+  {"name":"responses-proxy-long-without-session","api":"openai-responses","model":"gpt-4o-mini","retention":"long","proxy":true},
+  {"name":"responses-modern-none","api":"openai-responses","model":"gpt-5.6-sol","retention":"none","session":"session-1"},
+  {"name":"responses-modern-long","api":"openai-responses","model":"gpt-6-astra","retention":"long","session":"session-2"},
+  {"name":"responses-modern-sol-long","api":"openai-responses","model":"gpt-6-sol","retention":"long","session":"session-2"},
+  {"name":"responses-modern-luna-long","api":"openai-responses","model":"gpt-6-luna","retention":"long","session":"session-2"},
+  {"name":"completions-proxy-long","api":"openai-completions","model":"test-model","retention":"long","session":"session-completions","proxy":true},
+  {"name":"completions-long-without-session","api":"openai-completions","model":"test-model","retention":"long","proxy":true},
+  {"name":"completions-none-over-env-long","api":"openai-completions","model":"test-model","retention":"none","env":"long","session":"session-1"}
+]

@@ -1,0 +1,44 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:5689-5722 routes an exact provider argument to its method.
+# cloudflare-auth.ts:76-87 awaits key, account ID and gateway ID; login-dialog.ts:156-190 retains each submitted prompt.
+# Compare the entire ongoing dialog through the last input, with D80 masking disabled in both isolated settings files.
+name = "15-cloudflare-provider-login"
+description = "Provider-owned follow-up prompts stay in the login dialog"
+covers = ["packages/ai/src/providers/cloudflare-auth.ts", "packages/coding-agent/src/modes/interactive/interactive-mode.ts", "packages/coding-agent/src/modes/interactive/components/login-dialog.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+[tmux]
+width = 120
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "Login to Cloudflare AI Gateway"
+capture_end = "> gateway-456"
+settle_seconds = 1
+cwd = "../selectors/testdata/login-empty-project"
+[[tmux.steps]]
+keys = ["/login cloudflare-ai-gateway"]
+wait_contains = ["Cloudflare AI Gateway · API key"]
+[[tmux.steps]]
+keys = ["Escape", "Enter"]
+wait_contains = ["Enter Cloudflare API key"]
+[[tmux.steps]]
+keys = ["fake-key", "Enter"]
+wait_contains = ["Enter Cloudflare account ID"]
+[[tmux.steps]]
+keys = ["account-123", "Enter"]
+wait_contains = ["Enter Cloudflare AI Gateway ID"]
+[[tmux.steps]]
+keys = ["gateway-456"]
+wait_visible_contains = ["> gateway-456"]
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/privacy-pi-compatible", "PI_CODING_AGENT_DIR=", "PIG_HOME=../selectors/testdata/pig-home-noauth", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pi = ["PI_CODING_AGENT_DIR=testdata/privacy-pi-compatible", "PIG_CODING_AGENT_DIR=", "PIG_HOME=", "HOME={{TEMP}}/home", "PATH={{FAKE_BIN}}:{{PATH}}"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+[assert]
+both_reach_ready = true
+both_contain = ["Login to Cloudflare AI Gateway", "Enter Cloudflare account ID", "Enter Cloudflare AI Gateway ID", "> fake-key", "> account-123", "> gateway-456"]
+both_not_contain = ["Input hidden", "characters", "Saved API key"]
+escaped_output_equal = true
+runs = 3

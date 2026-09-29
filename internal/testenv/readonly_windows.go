@@ -10,9 +10,11 @@ import (
 
 // ReadOnlyDir lets the current user list and traverse dir but not add or
 // remove its entries until the test ends: a protected, inherited DACL that
-// grants the user only read and execute, the Windows form of mode 0555.
+// grants the user only read and execute, the Windows form of mode 0555. The
+// test must start with RunUnprivileged.
 func ReadOnlyDir(t testing.TB, dir string) {
 	t.Helper()
+	requireUnprivileged(t)
 	user, err := windows.GetCurrentProcessToken().GetTokenUser()
 	if err != nil {
 		t.Fatal(err)

@@ -1,0 +1,24 @@
+# Pi 0.87.1 model-runtime-cloudflare-compat.test.ts:60,76 and model-runtime.ts:598-632 carry scoped credentials into native and compatibility streaming.
+# The fixture uses the real ModelRuntime/ModelRegistry and provider HTTP lowering on both sides. It records exact URL, gateway header, and presence/value of suppressed auth headers.
+# Payloads and unrelated SDK attribution headers are outside this assertion. No values or whitespace are normalized.
+name = "30-cloudflare-scoped-request-auth"
+description = "Model Runtime and compatibility auth materialize scoped Cloudflare endpoints without leaking default authentication headers."
+covers = ["packages/coding-agent/src/core/model-runtime.ts", "packages/coding-agent/src/core/model-registry.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/model-runtime-cloudflare-auth.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/model-runtime-cloudflare-auth.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

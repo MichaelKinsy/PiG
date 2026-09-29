@@ -1,0 +1,24 @@
+# Pi 0.87.1 main.ts:896-914 reports runtime/settings diagnostics, not prompt-resource
+# warnings, in headless modes. Invalid frontmatter still cannot hide valid siblings.
+# Real CLI startup loads both files and /valid reaches the hermetic provider.
+name = "10-prompt-template-yaml-diagnostic"
+description = "Headless prompt loading keeps valid siblings without printing resource warnings"
+covers = ["packages/coding-agent/src/core/prompt-templates.ts", "packages/coding-agent/src/utils/frontmatter.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[cli]
+args = ["--no-session", "--model", "test-faux/faux-1", "--prompt-template", "testdata/yaml-prompts", "-p", "/valid"]
+cwd = "."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["prompt-template-ok"]
+both_not_contain = ["Warning:", "invalid.md", "Nested mappings"]
+runs = 3

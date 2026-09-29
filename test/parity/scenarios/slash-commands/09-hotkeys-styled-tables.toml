@@ -1,0 +1,47 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:6541-6654 renders three Markdown tables
+# between DynamicBorders, with an accent/bold title and one-cell padding.
+# A tall pane retains the complete command output, including all tables.
+name = "09-hotkeys-styled-tables"
+description = "Hotkeys renders Pi's bordered, padded tables with effective keybindings"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 150
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 20
+capture_start = "Session name set: hotkeys-anchor"
+capture_end = "Session name set: hotkeys-end"
+
+[[tmux.steps]]
+keys = ["/name hotkeys-anchor", "Enter"]
+wait_contains = ["Session name set: hotkeys-anchor"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["/hotkeys", "Enter"]
+wait_contains = ["Ctrl+G"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[[tmux.steps]]
+keys = ["/name hotkeys-end", "Enter"]
+wait_contains = ["Session name set: hotkeys-end"]
+wait_timeout_seconds = 5
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../model-resolver-selector/testdata/model-picker-defaults"]
+pi = ["PI_CODING_AGENT_DIR=../model-resolver-selector/testdata/model-picker-defaults"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Keyboard Shortcuts", "Navigation", "Editing", "Other", "Run bash command (excluded from context)"]
+output_equal = true
+escaped_output_equal = true
+runs = 3

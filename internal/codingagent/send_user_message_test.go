@@ -213,11 +213,11 @@ func TestSendUserMessageActiveInputTransformReplacesTextAndImages(t *testing.T) 
 	}
 	drainOneUITask(t, m)
 	queued := m.agent.ClearSteeringQueue()
-	if len(queued) != 1 || queued[0].User == nil || len(queued[0].User.Content) != 2 {
+	if len(queued) != 1 || queued[0].User == nil || len(queued[0].User.Content.(ai.UserContentBlocks)) != 2 {
 		t.Fatalf("queued = %#v", queued)
 	}
-	text, textOK := queued[0].User.Content[0].(ai.TextContent)
-	image, imageOK := queued[0].User.Content[1].(ai.ImageContent)
+	text, textOK := queued[0].User.Content.(ai.UserContentBlocks)[0].(ai.TextContent)
+	image, imageOK := queued[0].User.Content.(ai.UserContentBlocks)[1].(ai.ImageContent)
 	if !textOK || text.Text != "transformed" || !imageOK || image.Data != "replacement" || image.MimeType != "image/webp" {
 		t.Fatalf("transformed content = %#v", queued[0].User.Content)
 	}
@@ -376,7 +376,7 @@ func TestInteractiveMode_SendUserMessageRendersAfterSameHandlerNotify(t *testing
 	}
 	m.handleAgentEvent(agent.MessageStartEvent{Message: agent.AgentMessage{User: &agent.UserMessage{
 		Role:    agent.RoleUser,
-		Content: []ai.UserContentBlock{ai.TextContent{Text: "remember the tests"}},
+		Content: ai.UserContentBlocks{ai.TextContent{Text: "remember the tests"}},
 	}}})
 
 	rendered := strings.Join(m.chatContainer.Render(100), "\n")

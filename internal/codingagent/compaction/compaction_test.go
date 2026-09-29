@@ -297,7 +297,7 @@ func TestPrepareCompaction_PriorCompactionKeptFromRoot(t *testing.T) {
 		if m.User == nil {
 			continue
 		}
-		for _, c := range m.User.Content {
+		for _, c := range m.ContentBlocks() {
 			if tc, ok := c.(ai.TextContent); ok && strings.Contains(tc.Text, marker) {
 				found = true
 			}
@@ -332,7 +332,7 @@ type orderedCompleter struct {
 func (c *orderedCompleter) CompleteSimple(_ context.Context, _ *ai.Model, _ string, messages []agent.AgentMessage, _ ai.StreamOptions) (string, *ai.Usage, error) {
 	var prompt strings.Builder
 	if len(messages) > 0 && messages[0].User != nil {
-		for _, block := range messages[0].User.Content {
+		for _, block := range messages[0].ContentBlocks() {
 			if text, ok := block.(ai.TextContent); ok {
 				prompt.WriteString(text.Text)
 			}
@@ -351,7 +351,7 @@ func TestCompactCustomInstructionsReachSummaryPrompt(t *testing.T) {
 	var prompt strings.Builder
 	completer := simpleCompleterFunc(func(_ context.Context, _ *ai.Model, _ string, messages []agent.AgentMessage, _ ai.StreamOptions) (string, *ai.Usage, error) {
 		if len(messages) > 0 && messages[0].User != nil {
-			for _, block := range messages[0].User.Content {
+			for _, block := range messages[0].ContentBlocks() {
 				if text, ok := block.(ai.TextContent); ok {
 					prompt.WriteString(text.Text)
 				}
@@ -362,7 +362,7 @@ func TestCompactCustomInstructionsReachSummaryPrompt(t *testing.T) {
 	prep := CompactionPreparation{
 		FirstKeptEntryID: "keep-1",
 		MessagesToSummarize: []agent.AgentMessage{{User: &agent.UserMessage{
-			Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "history"}},
+			Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "history"}},
 		}}},
 		Settings: CompactionSettings{ReserveTokens: 1000},
 	}
@@ -389,10 +389,10 @@ func TestCompactSplitTurnAwaitsHistoryBeforePrefix(t *testing.T) {
 	prep := CompactionPreparation{
 		FirstKeptEntryID: "keep-1",
 		MessagesToSummarize: []agent.AgentMessage{{User: &agent.UserMessage{
-			Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "history"}},
+			Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "history"}},
 		}}},
 		TurnPrefixMessages: []agent.AgentMessage{{User: &agent.UserMessage{
-			Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "prefix"}},
+			Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "prefix"}},
 		}}},
 		IsSplitTurn: true,
 		Settings:    CompactionSettings{ReserveTokens: 1000},
@@ -432,7 +432,7 @@ func TestCompactTurnPrefixCancellationSurfacesUpstreamError(t *testing.T) {
 	prep := CompactionPreparation{
 		FirstKeptEntryID: "keep-1",
 		TurnPrefixMessages: []agent.AgentMessage{{User: &agent.UserMessage{
-			Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "prefix"}},
+			Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "prefix"}},
 		}}},
 		IsSplitTurn: true,
 		Settings:    CompactionSettings{ReserveTokens: 1000},
@@ -463,7 +463,7 @@ func (*cancelledCompleter) CompleteSimple(context.Context, *ai.Model, string, []
 func TestCompact_UsesMaxTokensBudget(t *testing.T) {
 	prep := CompactionPreparation{
 		FirstKeptEntryID:    "kept-entry-1",
-		MessagesToSummarize: []agent.AgentMessage{{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "hello"}}}}},
+		MessagesToSummarize: []agent.AgentMessage{{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hello"}}}}},
 		TokensBefore:        1000,
 		FileOps:             NewFileOps(),
 		Settings:            CompactionSettings{ReserveTokens: 1000, KeepRecentTokens: 20000},
@@ -490,7 +490,7 @@ func TestCompact_UsesMaxTokensBudget(t *testing.T) {
 func TestCompact_UsesStreamFnWhenProvided(t *testing.T) {
 	prep := &CompactionPreparation{
 		FirstKeptEntryID:    "keep-1",
-		MessagesToSummarize: []agent.AgentMessage{{User: &agent.UserMessage{Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "hello"}}}}},
+		MessagesToSummarize: []agent.AgentMessage{{User: &agent.UserMessage{Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hello"}}}}},
 		Settings:            CompactionSettings{ReserveTokens: 1000},
 		FileOps:             FileOperations{},
 	}
@@ -526,7 +526,7 @@ func TestCompact_FakeCompleter(t *testing.T) {
 			{
 				User: &agent.UserMessage{
 					Role:    "user",
-					Content: []ai.UserContentBlock{ai.TextContent{Text: "do something"}},
+					Content: ai.UserContentBlocks{ai.TextContent{Text: "do something"}},
 				},
 			},
 		},
@@ -577,7 +577,7 @@ func TestCompactPropagatesUsage(t *testing.T) {
 	prep := CompactionPreparation{
 		FirstKeptEntryID: "keep-1",
 		MessagesToSummarize: []agent.AgentMessage{{User: &agent.UserMessage{
-			Role: "user", Content: []ai.UserContentBlock{ai.TextContent{Text: "hi"}},
+			Role: "user", Content: ai.UserContentBlocks{ai.TextContent{Text: "hi"}},
 		}}},
 		Settings: CompactionSettings{ReserveTokens: 1000},
 	}

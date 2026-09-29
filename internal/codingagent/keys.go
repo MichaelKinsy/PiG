@@ -14,7 +14,7 @@ import (
 //
 // Split: Ctrl+C and Esc map to *different* actions even
 // though both can abort while working. The dispatcher decides what
-// to do based on idle/working state. classifyKey itself is pure.
+// to do based on idle/working state. Classification does not change bindings.
 type keyAction int
 
 const (
@@ -43,13 +43,7 @@ const (
 	actionBracketedPaste                      // ESC[200~…ESC[201~ bracketed-paste payload
 )
 
-// classifyKey maps a single (post-split) keystroke chunk to a
-// keyAction. Pure function: no I/O, no state: so the test suite
-// can assert the whole mapping table.
-func classifyKey(data string) keyAction {
-	return classifyKeyWithBindings(data, DefaultKeybindingsManager())
-}
-
+// classifyKeyWithBindings maps a framed keystroke to an application action without installing or changing the TUI keybinding manager.
 func classifyKeyWithBindings(data string, kb *KeybindingsManager) keyAction {
 	if kb != nil {
 		// CustomEditor.handleInput checks these bindings independently and in

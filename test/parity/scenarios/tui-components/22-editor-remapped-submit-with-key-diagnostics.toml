@@ -1,0 +1,41 @@
+# Behavior family: tui-components
+# Upstream evidence: Pi 0.87.1 CustomEditor.handleInput delegates ordinary input
+# to Editor's configured tui.input.submit binding (editor.ts:884-899). With the
+# original ctrl+s JSON override, raw0x13 after /login opens the auth-method picker.
+# Enabling Pig's key diagnostics must not replace the installed keybindings.
+name = "22-editor-remapped-submit-with-key-diagnostics"
+description = "Raw Ctrl+S submits /login with the configured binding even when key diagnostics are enabled"
+covers = ["packages/tui/src/components/editor.ts", "packages/coding-agent/src/modes/interactive/components/custom-editor.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/ctrl-s-agent", "PIG_DEBUG_KEYS=1", "PIG_DEBUG="]
+pi = ["PI_CODING_AGENT_DIR=testdata/ctrl-s-agent"]
+pig_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--session-dir", "{{TEMP}}/sessions"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "Warning: No models available."
+ready_timeout_seconds = 25
+capture_start = "Select authentication method:"
+capture_end = ""
+
+[[tmux.steps]]
+keys = ["/login"]
+wait_contains = ["/login"]
+wait_timeout_seconds = 5
+
+[[tmux.steps]]
+keys = ["hex:13"]
+wait_contains = ["Select authentication method:", "Sign in with an account", "Sign in with an API key"]
+wait_timeout_seconds = 5
+
+[assert]
+both_reach_ready = true
+runs = 3
+escaped_output_equal = true
+both_contain = ["Select authentication method:", "Sign in with an account", "Sign in with an API key"]

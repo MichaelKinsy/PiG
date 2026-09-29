@@ -4,6 +4,8 @@ import (
 	"context"
 	"sync"
 	"time"
+
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // This file ports packages/agent/src/harness/context.ts together with the
@@ -87,6 +89,7 @@ func ContextValue[T any](ctx Context, key ContextKey[T]) (T, bool) {
 type abortContext struct {
 	std       context.Context // cancel state and values; not a stdlib child of parent
 	stdCancel context.CancelCauseFunc
+	done      <-chan struct{} // supplied signal's channel when the parent cannot cancel
 	parent    Context
 	upstreams []abortUpstream // parent then signal, each able to cancel
 
@@ -125,7 +128,7 @@ func (ctx *abortContext) Deadline() (time.Time, bool) { return ctx.parent.Deadli
 // Done returns the cancellation channel after synchronizing with upstreams.
 func (ctx *abortContext) Done() <-chan struct{} {
 	ctx.observe()
-	return ctx.std.Done()
+	return ctx.done
 }
 
 // Err reports cancellation after synchronizing with upstreams. An upstream
@@ -275,7 +278,7 @@ func sourceOf(ctx Context) *abortContext {
 		return nil
 	}
 	done := ctx.Done()
-	if done == nil || source.std.Done() != done {
+	if done == nil || source.Done() != done {
 		return nil
 	}
 	return source
@@ -338,7 +341,11 @@ func (ctx *abortContext) fire() {
 // optional extra signal.
 func newAbortable(parent Context, signal Context) *abortContext {
 	std, stdCancel := context.WithCancelCause(context.WithoutCancel(parent))
-	ctx := &abortContext{std: std, stdCancel: stdCancel, parent: parent}
+	ctx := &abortContext{std: std, stdCancel: stdCancel, done: std.Done(), parent: parent}
+	// upstream: packages/chord/src/context/index.ts:withAbortSignal
+	if signal != nil && parent.Done() == nil {
+		ctx.done = signal.Done()
+	}
 	for _, upstream := range []Context{parent, signal} {
 		if upstream != nil && upstream.Done() != nil {
 			ctx.upstreams = append(ctx.upstreams, abortUpstream{ctx: upstream, owner: sourceOf(upstream)})
@@ -384,7 +391,7 @@ func (ctx *abortContext) follow(index int) bool {
 // AbortSignal.any; a signal already aborted aborts the derived context before
 // this function returns. Other contexts propagate promptly through
 // context.AfterFunc. The parent context remains unchanged. A nil signal returns
-// the parent unchanged.
+// the parent unchanged. When only the supplied signal can cancel, Done retains that signal's channel identity while values still come from the parent.
 func WithAbortSignal(parent Context, signal Context) Context {
 	if signal == nil {
 		return parent
@@ -435,69 +442,43 @@ func AwaitWithContext(ctx Context, done <-chan struct{}) error {
 
 // AttributeValue is a telemetry attribute value: string, number (int, int64 or
 // float64), bool, or a slice of one of those (upstream AttributeValue).
-type AttributeValue = any
+type AttributeValue = telemetry.AttributeValue
 
 // SpanAttributes maps attribute names to values (upstream SpanAttributes).
-type SpanAttributes map[string]AttributeValue
+type SpanAttributes = telemetry.SpanAttributes
 
 // SpanOptions names a span and supplies its start attributes (upstream
 // SpanOptions).
-type SpanOptions struct {
-	Name       string
-	Attributes SpanAttributes
-}
+type SpanOptions = telemetry.SpanOptions
 
 // SpanStatusCode is "ok" or "error".
-type SpanStatusCode string
+type SpanStatusCode = telemetry.SpanStatusCode
 
 // Span status codes.
 const (
-	SpanStatusCodeOK    SpanStatusCode = "ok"
-	SpanStatusCodeError SpanStatusCode = "error"
+	SpanStatusCodeOK    = telemetry.SpanStatusCodeOK
+	SpanStatusCodeError = telemetry.SpanStatusCodeError
 )
 
 // SpanStatusError carries optional error details for an error status.
-type SpanStatusError struct {
-	Name    string
-	Message string
-}
+type SpanStatusError = telemetry.SpanStatusError
 
 // SpanStatus is a span's final status (upstream SpanStatus).
-type SpanStatus struct {
-	Status SpanStatusCode
-	// Error is optional and only meaningful when Status is SpanStatusCodeError.
-	Error *SpanStatusError
-}
+type SpanStatus = telemetry.SpanStatus
 
 // TelemetryContext starts child spans (upstream pi-telemetry TelemetryContext).
 // Upstream startSpan returns the callback's value; Go callers capture results
 // in the callback closure and StartSpan returns the callback's error.
-type TelemetryContext interface {
-	StartSpan(options SpanOptions, callback func(span TelemetrySpan) error) error
-}
+type TelemetryContext = telemetry.TelemetryContext
 
 // TelemetrySpan is an active span that can itself parent children (upstream
 // TelemetrySpan).
-type TelemetrySpan interface {
-	TelemetryContext
-	AddEvent(name string, attributes SpanAttributes)
-	SetAttributes(attributes SpanAttributes)
-	SetStatus(status SpanStatus)
-}
-
-type noopTelemetrySpan struct{}
-
-func (noopTelemetrySpan) StartSpan(_ SpanOptions, callback func(span TelemetrySpan) error) error {
-	return callback(NoopTelemetryContext)
-}
-func (noopTelemetrySpan) AddEvent(string, SpanAttributes) {}
-func (noopTelemetrySpan) SetAttributes(SpanAttributes)    {}
-func (noopTelemetrySpan) SetStatus(SpanStatus)            {}
+type TelemetrySpan = telemetry.TelemetrySpan
 
 // NoopTelemetryContext is the shared telemetry context used when an
 // application does not provide one (upstream NOOP_TELEMETRY_CONTEXT). It is
 // also a span, so children started from it receive it again.
-var NoopTelemetryContext TelemetrySpan = noopTelemetrySpan{}
+var NoopTelemetryContext = telemetry.NoopTelemetryContext
 
 var telemetryContextKey = CreateContextKey[TelemetryContext]("pi.telemetryContext")
 

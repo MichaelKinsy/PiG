@@ -67,6 +67,7 @@ func TestSetModelAppliesPerModelThinkingLevel(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer func() { _ = rt.Close() }()
+	svcs.Registry().SetRuntimeAPIKey("anthropic", "test-key")
 	opus := svcs.ModelRuntime().GetModel("anthropic", "claude-opus-4-8")
 	sonnet := svcs.ModelRuntime().GetModel("anthropic", "claude-sonnet-4-5")
 	sess, err := rt.New(SessionStartOptions{Model: opus, NoSession: true})

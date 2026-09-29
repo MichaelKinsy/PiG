@@ -1,0 +1,1345 @@
+# SPDX-FileCopyrightText: Copyright Hewlett Packard Enterprise Development LP
+# SPDX-License-Identifier: MIT
+#
+# Symbol map for docs/extension-sdk-surface.md (go run ./test/parity/cmd/sdksurface).
+#
+# The generator enumerates every extension-facing surface from Pi's types.ts.
+# A row needs an entry here only where a runtime spells the surface
+# differently from the default naming rule (pi.x -> Extension.X / Context.X,
+# ctx.ui.x -> Context.X, snake_case in Rust and Python, the Node runtime's
+# `pi` object and classes), or where its realization is a stand-in.
+#
+# An entry never decides a status by itself: the generator looks each named
+# symbol up in the runtime's source, and a symbol that does not exist is
+# `missing`. Symbol notation per runtime:
+#   node:   api.key, Class.member, read:obj.prop (a property the runtime reads)
+#   go:     Name, Type.Method, Type.Field
+#   rust:   name, Type::method, Type.field
+#   python: name, Class.member, Class.method(param)
+# "a|b" lists alternatives. `wire` names the host decoding the value crosses
+# (extension.Type.field or subprocess.Type.field, JSON names; literal:name for
+# a string the host reads; none), and a field the host drops is `missing`.
+# `partial`/`<runtime>_partial` make a cell a stand-in with that reason.
+
+# ── pi (ExtensionAPI) ──────────────────────────────────────────────────────
+
+[[row]]
+key = "pi.registerTool"
+go = "Extension.RegisterTool"
+rust = "Extension::register_tool"
+python = "Extension.register_tool"
+
+[[row]]
+key = "pi.registerCommand"
+rust = "Extension::command"
+python = "Extension.command"
+
+[[row]]
+key = "pi.registerShortcut"
+go = "Extension.Shortcut"
+rust = "Extension::shortcut"
+python = "Extension.shortcut"
+
+[[row]]
+key = "pi.registerShortcut(options.description)"
+node = "read:s.description"
+go = "Extension.Shortcut"
+rust = "Extension::shortcut"
+python = "Extension.shortcut(description)"
+
+[[row]]
+key = "pi.registerShortcut(options.handler)"
+node = "read:shortcut.handler"
+go = "ShortcutFunc"
+rust = "ShortcutHandler"
+python = "Extension.shortcut(handler)"
+
+[[row]]
+key = "pi.registerFlag"
+go = "Extension.Flag"
+rust = "Extension::flag"
+python = "Extension.flag"
+
+[[row]]
+key = "pi.registerFlag(options.description)"
+node = "read:f.description"
+go = "FlagOptions.Description"
+rust = "FlagOptions.description"
+python = "Extension.flag(description)"
+
+[[row]]
+key = "pi.registerFlag(options.type)"
+node = "read:f.type"
+go = "FlagOptions.Type"
+rust = "FlagOptions.flag_type"
+python = "Extension.flag(flag_type)"
+
+[[row]]
+key = "pi.registerFlag(options.default)"
+node = "read:f.default"
+go = "FlagOptions.Default"
+rust = "FlagOptions.default"
+python = "Extension.flag(default)"
+
+[[row]]
+key = "pi.registerMessageRenderer"
+go = "Extension.MessageRenderer"
+rust = "Extension::message_renderer"
+python = "Extension.message_renderer"
+partial = "renders lines at the requested width: a Pi Component cannot cross the process boundary"
+node_partial = "the renderer's Component renders to lines at the requested width inside the extension process"
+
+[[row]]
+key = "pi.registerEntryRenderer"
+go = "Extension.EntryRenderer"
+rust = "Extension::entry_renderer"
+python = "Extension.entry_renderer"
+partial = "renders lines at the requested width: a Pi Component cannot cross the process boundary"
+node_partial = "the renderer's Component renders to lines at the requested width inside the extension process"
+
+[[row]]
+key = "pi.sendMessage(message.customType)"
+node = "api.sendMessage"
+go = "CustomMessage.CustomType"
+rust = "CustomMessage.custom_type"
+python = "Context.send_message(custom_type)"
+wire = "extension.CustomMessageRef.customType"
+
+[[row]]
+key = "pi.sendMessage(message.content)"
+node = "api.sendMessage"
+go = "CustomMessage.Content"
+rust = "CustomMessage.content"
+python = "Context.send_message(content)"
+wire = "extension.CustomMessageRef.content"
+
+[[row]]
+key = "pi.sendMessage(message.display)"
+node = "api.sendMessage"
+go = "CustomMessage.Display"
+rust = "CustomMessage.display"
+python = "Context.send_message(display)"
+wire = "extension.CustomMessageRef.display"
+
+[[row]]
+key = "pi.sendMessage(message.details)"
+node = "api.sendMessage"
+go = "CustomMessage.Details"
+rust = "CustomMessage.details"
+python = "Context.send_message(details)"
+wire = "extension.CustomMessageRef.details"
+
+[[row]]
+key = "pi.sendMessage(options.triggerTurn)"
+node = "api.sendMessage"
+go = "SendMessageOptions.TriggerTurn"
+rust = "SendMessageOptions.trigger_turn"
+python = "Context.send_message(trigger_turn)"
+wire = "subprocess.SendMessageOptions.triggerTurn"
+
+[[row]]
+key = "pi.sendMessage(options.deliverAs)"
+node = "api.sendMessage"
+go = "SendMessageOptions.DeliverAs"
+rust = "SendMessageOptions.deliver_as"
+python = "Context.send_message(deliver_as)"
+wire = "subprocess.SendMessageOptions.deliverAs"
+
+[[row]]
+key = "pi.sendUserMessage(options.deliverAs)"
+node = "api.sendUserMessage"
+go = "Context.SendUserMessage"
+rust = "Context::send_user_message"
+python = "Context.send_user_message(deliver_as)"
+wire = "subprocess.SendUserMessageOptions.deliverAs"
+
+[[row]]
+key = "pi.sendUserMessage(options.expandPromptTemplates)"
+node = "api.sendUserMessage"
+go = "-"
+rust = "-"
+python = "-"
+wire = "subprocess.SendUserMessageOptions.expandPromptTemplates"
+
+[[row]]
+key = "pi.exec"
+node = "api.exec"
+go = "Context.ExecWithOptions|Context.Exec"
+rust = "Context::exec_with_options|Context::exec"
+python = "Context.exec"
+
+[[row]]
+key = "pi.exec(options.signal)"
+node = "api.exec"
+go = "Context.Done"
+rust = "Context::is_cancelled"
+python = "Context.is_cancelled"
+wire = "none"
+partial = "the command is killed when the calling request is cancelled (ctx.signal); an AbortSignal of its own cannot cross the process boundary"
+
+[[row]]
+key = "pi.exec(options.timeout)"
+node = "api.exec"
+go = "ExecOptions.Timeout"
+rust = "ExecOptions.timeout"
+python = "Context.exec(timeout)"
+wire = "extension.ExecOptions.timeout"
+
+[[row]]
+key = "pi.exec(options.cwd)"
+node = "api.exec"
+go = "ExecOptions.Cwd"
+rust = "ExecOptions.cwd"
+python = "Context.exec(cwd)"
+wire = "extension.ExecOptions.cwd"
+
+[[row]]
+key = "pi.exec → stdout"
+node = "api.exec"
+go = "ExecResult.Stdout"
+rust = "ExecResult.stdout"
+python = "ExecResult.stdout"
+wire = "extension.ExecResult.stdout"
+
+[[row]]
+key = "pi.exec → stderr"
+node = "api.exec"
+go = "ExecResult.Stderr"
+rust = "ExecResult.stderr"
+python = "ExecResult.stderr"
+wire = "extension.ExecResult.stderr"
+
+[[row]]
+key = "pi.exec → code"
+node = "api.exec"
+go = "ExecResult.ExitCode"
+rust = "ExecResult.exit_code"
+python = "ExecResult.exit_code"
+wire = "extension.ExecResult.code"
+
+[[row]]
+key = "pi.exec → killed"
+node = "api.exec"
+go = "ExecResult.Killed"
+rust = "ExecResult.killed"
+python = "ExecResult.killed"
+wire = "extension.ExecResult.killed"
+
+[[row]]
+key = "pi.getAllTools → name"
+node = "api.getAllTools"
+go = "ToolInfo.Name"
+rust = "ToolInfo.name"
+python = "Context.get_all_tools"
+wire = "subprocess.ToolInfo.name"
+
+[[row]]
+key = "pi.getAllTools → description"
+node = "api.getAllTools"
+go = "ToolInfo.Description"
+rust = "ToolInfo.description"
+python = "Context.get_all_tools"
+wire = "subprocess.ToolInfo.description"
+
+[[row]]
+key = "pi.getAllTools → promptGuidelines"
+node = "api.getAllTools"
+go = "ToolInfo.PromptGuidelines"
+rust = "ToolInfo.prompt_guidelines"
+python = "Context.get_all_tools"
+wire = "subprocess.ToolInfo.promptGuidelines"
+
+[[row]]
+key = "pi.getAllTools → parameters"
+node = "api.getAllTools"
+go = "ToolInfo.Parameters"
+rust = "ToolInfo.parameters"
+python = "Context.get_all_tools"
+wire = "subprocess.ToolInfo.parameters"
+
+[[row]]
+key = "pi.getAllTools → sourceInfo"
+node = "api.getAllTools"
+go = "ToolInfo.SourceInfo"
+rust = "ToolInfo.source_info"
+python = "Context.get_all_tools"
+wire = "subprocess.ToolInfo.sourceInfo"
+
+[[row]]
+key = "pi.getCommands → name"
+node = "api.getCommands"
+go = "CommandInfo.Name"
+rust = "CommandInfo.name"
+python = "Context.get_commands"
+wire = "subprocess.CommandInfo.name"
+
+[[row]]
+key = "pi.getCommands → description"
+node = "api.getCommands"
+go = "CommandInfo.Description"
+rust = "CommandInfo.description"
+python = "Context.get_commands"
+wire = "subprocess.CommandInfo.description"
+
+[[row]]
+key = "pi.getCommands → source"
+node = "api.getCommands"
+go = "CommandInfo.Source"
+rust = "CommandInfo.source"
+python = "Context.get_commands"
+wire = "subprocess.CommandInfo.source"
+
+[[row]]
+key = "pi.getCommands → sourceInfo"
+node = "api.getCommands"
+go = "CommandInfo.SourceInfo"
+rust = "CommandInfo.source_info"
+python = "Context.get_commands"
+wire = "subprocess.CommandInfo.sourceInfo"
+
+[[row]]
+key = "pi.registerProvider"
+node_partial = "config registration reaches the host; native callback providers remain process-local"
+go_partial = "registration declaration is applied at load; use ModelRegistry.RegisterProvider for live config registration"
+rust_partial = "registration declaration is applied at load; use ModelRegistry.register_provider for live config registration"
+python_partial = "registration declaration is applied at load; use ModelRegistry.register_provider for live config registration"
+
+[[row]]
+key = "pi.unregisterProvider"
+node_partial = "config removal reaches the host; native providers remain process-local"
+go_partial = "registration declarations are removed at load; live config removal is exposed by ModelRegistry.UnregisterProvider"
+rust_partial = "registration declarations are removed at load; live config removal is exposed by ModelRegistry.unregister_provider"
+python_partial = "registration declarations are removed at load; live config removal is exposed by ModelRegistry.unregister_provider"
+
+[[row]]
+key = "pi.getThinkingLevel"
+go = "Context.GetThinkingLevel"
+
+[[row]]
+key = "pi.getFlag"
+go = "Context.GetFlag"
+
+# ── Events ──────────────────────────────────────────────────────────────────
+
+[[row]]
+key = "pi.on(\"after_provider_response\")"
+partial = "subscribable, but PiG's host does not emit after_provider_response yet (host gap shared with in-process extensions)"
+
+[[row]]
+key = "session_before_compact event.signal"
+node = "read:event.signal"
+go = "Context.Done"
+rust = "Context::is_cancelled"
+python = "Context.is_cancelled"
+wire = "none"
+partial = "the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary"
+node_partial = "event.signal is the handler request's AbortSignal, aborted when the host cancels the request"
+
+[[row]]
+key = "session_before_tree event.signal"
+node = "read:event.signal"
+go = "Context.Done"
+rust = "Context::is_cancelled"
+python = "Context.is_cancelled"
+wire = "none"
+partial = "the handler's request cancellation stands in for the AbortSignal, which cannot cross the process boundary"
+node_partial = "event.signal is the handler request's AbortSignal, aborted when the host cancels the request"
+
+[[row]]
+key = "input return.action"
+wire = "literal:action"
+
+[[row]]
+key = "input return.text"
+wire = "extension.InputEventResultTransform.text"
+
+[[row]]
+key = "input return.images"
+wire = "extension.InputEventResultTransform.images"
+
+[[row]]
+key = "user_bash return.operations"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+# ── ctx (ExtensionContext) ─────────────────────────────────────────────────
+
+[[row]]
+key = "ctx.hasUI"
+go = "Context.HasUI"
+rust = "Context::has_ui"
+python = "Context.has_ui"
+
+[[row]]
+key = "ctx.sessionManager"
+go = "SessionManager"
+rust = "SessionManager"
+python = "SessionManager"
+
+[[row]]
+key = "ctx.model"
+go = "Context.GetModelInfo"
+rust = "Context::get_model_info"
+python = "Context.get_model_info"
+partial = "the current model's metadata from the host's model registry"
+
+[[row]]
+key = "ctx.thinkingLevel"
+node = "RuntimeContext.thinkingLevel"
+go = "Context.GetThinkingLevel"
+rust = "Context::get_thinking_level"
+python = "Context.get_thinking_level"
+
+[[row]]
+key = "ctx.signal"
+go = "Context.Done"
+rust = "Context::is_cancelled"
+python = "Context.is_cancelled"
+partial = "the handler request's cancellation: Go's Context.Done/Err, Rust's and Python's is_cancelled and cancellation_reason"
+
+[[row]]
+key = "ctx.getContextUsage → tokens"
+node = "RuntimeContext.getContextUsage"
+go = "ContextUsage.Tokens"
+rust = "ContextUsage.tokens"
+python = "Context.get_context_usage"
+wire = "subprocess.extensionContextUsageDTO.tokens"
+
+[[row]]
+key = "ctx.getContextUsage → contextWindow"
+node = "RuntimeContext.getContextUsage"
+go = "ContextUsage.ContextWindow"
+rust = "ContextUsage.context_window"
+python = "Context.get_context_usage"
+wire = "subprocess.extensionContextUsageDTO.contextWindow"
+
+[[row]]
+key = "ctx.getContextUsage → percent"
+node = "RuntimeContext.getContextUsage"
+go = "ContextUsage.Percent"
+rust = "ContextUsage.percent"
+python = "Context.get_context_usage"
+wire = "subprocess.extensionContextUsageDTO.percent"
+
+[[row]]
+key = "ctx.compact(options.customInstructions)"
+node = "RuntimeContext.compact"
+go = "CompactOptions.CustomInstructions"
+rust = "CompactOptions.custom_instructions"
+python = "Context.compact(custom_instructions)"
+wire = "extension.CompactOptions.customInstructions"
+
+[[row]]
+key = "ctx.compact(options.onComplete)"
+node = "RuntimeContext.compact"
+go = "CompactOptions.OnComplete"
+rust = "CompactOptions.on_complete"
+python = "Context.compact(on_complete)"
+wire = "literal:awaitCompletion"
+
+[[row]]
+key = "ctx.compact(options.onError)"
+node = "RuntimeContext.compact"
+go = "CompactOptions.OnError"
+rust = "CompactOptions.on_error"
+python = "Context.compact(on_error)"
+wire = "literal:awaitCompletion"
+
+# ── ctx (ExtensionCommandContext) ──────────────────────────────────────────
+
+[[row]]
+key = "ctx.modelRegistry.registerProvider"
+node_partial = "config registration reaches the host; native callback providers remain process-local"
+go_partial = "config overload only; native Provider callback objects are not implemented"
+rust_partial = "config overload only; native Provider callback objects are not implemented"
+python_partial = "config overload only; native Provider callback objects are not implemented"
+
+[[row]]
+key = "ctx.modelRegistry.getAvailable"
+partial = "host snapshot filters configured auth; Pi's checked-auth availability snapshot remains unported"
+
+[[row]]
+key = "ctx.newSession(options.parentSession)"
+node = "RuntimeContext.newSession"
+go = "Context.NewSession"
+rust = "Context::new_session"
+python = "Context.new_session"
+wire = "extension.NewSessionOptions.parentSession"
+
+[[row]]
+key = "ctx.newSession(options.setup)"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "ctx.newSession(options.withSession)"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "ctx.newSession → cancelled"
+node = "RuntimeContext.newSession"
+go = "CancelledResult.Cancelled"
+rust = "Context::new_session"
+python = "Context.new_session"
+wire = "extension.CancelledResult.cancelled"
+
+[[row]]
+key = "ctx.fork(options.position)"
+node = "RuntimeContext.fork"
+go = "Context.Fork"
+rust = "Context::fork"
+python = "Context.fork"
+wire = "literal:position"
+
+[[row]]
+key = "ctx.fork(options.withSession)"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "ctx.fork → cancelled"
+node = "RuntimeContext.fork"
+go = "CancelledResult.Cancelled"
+rust = "Context::fork"
+python = "Context.fork"
+wire = "extension.CancelledResult.cancelled"
+
+[[row]]
+key = "ctx.navigateTree(options.summarize)"
+node = "RuntimeContext.navigateTree"
+go = "Context.NavigateTree"
+rust = "Context::navigate_tree"
+python = "Context.navigate_tree"
+wire = "extension.NavigateTreeOptions.summarize"
+
+[[row]]
+key = "ctx.navigateTree(options.customInstructions)"
+node = "RuntimeContext.navigateTree"
+go = "Context.NavigateTree"
+rust = "Context::navigate_tree"
+python = "Context.navigate_tree"
+wire = "extension.NavigateTreeOptions.customInstructions"
+
+[[row]]
+key = "ctx.navigateTree(options.replaceInstructions)"
+node = "RuntimeContext.navigateTree"
+go = "Context.NavigateTree"
+rust = "Context::navigate_tree"
+python = "Context.navigate_tree"
+wire = "extension.NavigateTreeOptions.replaceInstructions"
+
+[[row]]
+key = "ctx.navigateTree(options.label)"
+node = "RuntimeContext.navigateTree"
+go = "Context.NavigateTree"
+rust = "Context::navigate_tree"
+python = "Context.navigate_tree"
+wire = "extension.NavigateTreeOptions.label"
+
+[[row]]
+key = "ctx.navigateTree → cancelled"
+node = "RuntimeContext.navigateTree"
+go = "CancelledResult.Cancelled"
+rust = "Context::navigate_tree"
+python = "Context.navigate_tree"
+wire = "extension.CancelledResult.cancelled"
+
+[[row]]
+key = "ctx.switchSession(options.withSession)"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "ctx.switchSession → cancelled"
+node = "RuntimeContext.switchSession"
+go = "CancelledResult.Cancelled"
+rust = "Context::switch_session"
+python = "Context.switch_session"
+wire = "extension.CancelledResult.cancelled"
+
+# ── ctx (ReplacedSessionContext): passed to withSession, which no runtime has
+
+[[row]]
+key = "withSession ctx.sendMessage"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "withSession ctx.sendMessage(message.customType)"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "withSession ctx.sendMessage(message.content)"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "withSession ctx.sendMessage(message.display)"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "withSession ctx.sendMessage(message.details)"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "withSession ctx.sendMessage(options.triggerTurn)"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "withSession ctx.sendMessage(options.deliverAs)"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "withSession ctx.sendUserMessage"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "withSession ctx.sendUserMessage(options.deliverAs)"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "withSession ctx.sendUserMessage(options.expandPromptTemplates)"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+# ── ctx.ui (ExtensionUIContext) ────────────────────────────────────────────
+
+[[row]]
+key = "ctx.ui.select(opts.signal)"
+node = "RuntimeUI.select"
+go = "Context.Done"
+rust = "Context::is_cancelled"
+python = "Context.is_cancelled"
+wire = "none"
+partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+
+[[row]]
+key = "ctx.ui.select(opts.timeout)"
+node = "RuntimeUI.select"
+go = "DialogOptions.Timeout"
+rust = "DialogOptions.timeout"
+python = "Context.select(timeout)"
+wire = "literal:timeout"
+partial = "RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions)"
+
+[[row]]
+key = "ctx.ui.confirm(opts.signal)"
+node = "RuntimeUI.confirm"
+go = "Context.Done"
+rust = "Context::is_cancelled"
+python = "Context.is_cancelled"
+wire = "none"
+partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+
+[[row]]
+key = "ctx.ui.confirm(opts.timeout)"
+node = "RuntimeUI.confirm"
+go = "DialogOptions.Timeout"
+rust = "DialogOptions.timeout"
+python = "Context.confirm(timeout)"
+wire = "literal:timeout"
+partial = "RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions)"
+
+[[row]]
+key = "ctx.ui.input(opts.signal)"
+node = "RuntimeUI.input"
+go = "Context.Done"
+rust = "Context::is_cancelled"
+python = "Context.is_cancelled"
+wire = "none"
+partial = "the dialog closes when the calling request is cancelled; an AbortSignal of its own cannot cross the process boundary"
+
+[[row]]
+key = "ctx.ui.input(opts.timeout)"
+node = "RuntimeUI.input"
+go = "DialogOptions.Timeout"
+rust = "DialogOptions.timeout"
+python = "Context.input(timeout)"
+wire = "literal:timeout"
+partial = "RPC mode honors the timeout; PiG's interactive dialogs ignore it for every extension (host gap shared with in-process extensions)"
+
+[[row]]
+key = "ctx.ui.setWorkingIndicator(options.frames)"
+node = "RuntimeUI.setWorkingIndicator"
+go = "Context.SetWorkingIndicator"
+rust = "Context::set_working_indicator"
+python = "Context.set_working_indicator"
+wire = "literal:frames"
+
+[[row]]
+key = "ctx.ui.setWorkingIndicator(options.intervalMs)"
+node = "RuntimeUI.setWorkingIndicator"
+go = "Context.SetWorkingIndicator"
+rust = "Context::set_working_indicator"
+python = "Context.set_working_indicator"
+wire = "literal:intervalMs"
+
+[[row]]
+key = "ctx.ui.setWidget"
+rust = "Context::set_widget_value|Context::set_widget"
+partial = "string lines, or undefined to clear; a component factory cannot cross the process boundary"
+node_partial = "a component factory renders to lines inside the extension process and is re-rendered on invalidate and resize"
+
+[[row]]
+key = "ctx.ui.setWidget(options.placement)"
+node = "RuntimeUI.setWidget"
+go = "Context.SetWidget"
+rust = "Context::set_widget_value"
+python = "Context.set_widget"
+wire = "literal:placement"
+
+[[row]]
+key = "ctx.ui.setFooter"
+go = "Context.SetFooter"
+rust = "Context::set_footer"
+python = "Context.set_footer"
+partial = "pre-rendered lines, or nil to restore the built-in footer; a component factory cannot cross the process boundary"
+node_partial = "the factory's component renders to lines inside the extension process, with Pi's footer data provider"
+
+[[row]]
+key = "ctx.ui.setHeader"
+go = "Context.SetHeader"
+rust = "Context::set_header"
+python = "Context.set_header"
+partial = "pre-rendered lines, or nil to restore the built-in header; a component factory cannot cross the process boundary"
+node_partial = "the factory's component renders to lines inside the extension process"
+
+[[row]]
+key = "ctx.ui.custom"
+go = "Context.Custom"
+rust = "Context::custom_component"
+python = "Context.custom"
+partial = "a RemoteComponent renders lines and handles input inside the extension; the host overlay owns focus"
+node_partial = "the factory's component runs inside the extension process and renders lines into a host overlay"
+
+[[row]]
+key = "ctx.ui.custom(options.overlay)"
+node = "RuntimeUI.custom"
+go = "RemoteOverlayOptions.Overlay"
+rust = "Context::custom_component"
+python = "Context.custom"
+wire = "subprocess.RemoteOverlayOpenPayload.overlay"
+
+[[row]]
+key = "ctx.ui.custom(options.overlayOptions)"
+node = "RuntimeUI.custom"
+go = "RemoteOverlayOptions.OverlayOptions"
+rust = "Context::custom_component"
+python = "Context.custom"
+wire = "subprocess.RemoteOverlayOpenPayload.overlayOptions"
+partial = "the serializable layout fields; a dynamic overlayOptions function and the visible callback cannot cross the process boundary"
+
+[[row]]
+key = "ctx.ui.custom(options.onHandle)"
+node = "RuntimeUI.custom"
+node_partial = "mounted visibility/focus/bounds controls use synchronous host acknowledgement; explicit main-process unfocus targets remain D73"
+wire = "subprocess.RemoteOverlayOpenPayload.hasHandle"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "ctx.ui.addAutocompleteProvider"
+
+[[row]]
+key = "ctx.ui.setEditorComponent"
+rust = "Context::clear_editor_component"
+python = "Context.clear_editor_component"
+partial = "clears the custom editor only; an editor factory cannot cross the process boundary"
+node_partial = "the factory runs once inside the extension; its CustomEditor decoration (border color, mode label, history) is forwarded to PiG's editor (D73)"
+
+[[row]]
+key = "ctx.ui.getEditorComponent"
+partial = "always nil: no editor factory crosses the process boundary"
+node_partial = "returns the factory this extension last set"
+
+[[row]]
+key = "ctx.ui.theme"
+go = "Context.UITheme"
+rust = "Context::theme"
+python = "Context.theme"
+
+[[row]]
+key = "ctx.ui.getAllThemes → name"
+node = "RuntimeUI.getAllThemes"
+go = "ThemeMeta.Name"
+rust = "Context::get_all_themes"
+python = "Context.get_all_themes"
+wire = "subprocess.themeMetaDTO.name"
+
+[[row]]
+key = "ctx.ui.getAllThemes → path"
+node = "RuntimeUI.getAllThemes"
+go = "ThemeMeta.Path"
+rust = "Context::get_all_themes"
+python = "Context.get_all_themes"
+wire = "subprocess.themeMetaDTO.path"
+
+[[row]]
+key = "ctx.ui.setTheme"
+partial = "by name only: a Theme object cannot cross the process boundary"
+
+[[row]]
+key = "ctx.ui.setTheme → success"
+node = "RuntimeUI.setTheme"
+go = "Context.SetTheme"
+rust = "Context::set_theme"
+python = "Context.set_theme"
+wire = "literal:success"
+node_partial = "returns { success: true } before the host applies the theme"
+
+[[row]]
+key = "ctx.ui.setTheme → error"
+node = "-"
+go = "Context.SetTheme"
+rust = "Context::set_theme"
+python = "Context.set_theme"
+wire = "literal:error"
+
+# ── ctx.ui.theme (Theme): the host's active theme palette ──────────────────
+
+[[row]]
+key = "ctx.ui.theme.name"
+go = "UITheme.Name"
+rust = "Theme.name"
+
+[[row]]
+key = "ctx.ui.theme.sourcePath"
+go = "UITheme.SourcePath"
+rust = "Theme.source_path"
+
+[[row]]
+key = "ctx.ui.theme.sourceInfo"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "ctx.ui.theme.fg"
+go = "UITheme.Fg"
+
+[[row]]
+key = "ctx.ui.theme.bg"
+go = "UITheme.Bg"
+
+[[row]]
+key = "ctx.ui.theme.bold"
+go = "UITheme.Bold"
+
+[[row]]
+key = "ctx.ui.theme.italic"
+go = "UITheme.Italic"
+
+[[row]]
+key = "ctx.ui.theme.underline"
+go = "UITheme.Underline"
+
+[[row]]
+key = "ctx.ui.theme.inverse"
+go = "UITheme.Inverse"
+
+[[row]]
+key = "ctx.ui.theme.strikethrough"
+go = "UITheme.Strikethrough"
+
+[[row]]
+key = "ctx.ui.theme.getFgAnsi"
+go = "UITheme.GetFgAnsi"
+
+[[row]]
+key = "ctx.ui.theme.getBgAnsi"
+go = "UITheme.GetBgAnsi"
+
+[[row]]
+key = "ctx.ui.theme.getColorMode"
+go = "UITheme.GetColorMode"
+
+[[row]]
+key = "ctx.ui.theme.getThinkingBorderColor"
+go = "UITheme.GetThinkingBorderColor"
+
+[[row]]
+key = "ctx.ui.theme.getBashModeBorderColor"
+go = "UITheme.GetBashModeBorderColor"
+
+# ── Tool definition ─────────────────────────────────────────────────────────
+
+[[row]]
+key = "tool.promptSnippet"
+wire = "subprocess.ToolDecl.prompt_snippet"
+partial = "reaches the host's tool definition, but PiG's system prompt does not yet list extension tools' snippets (host gap shared with in-process extensions)"
+
+[[row]]
+key = "tool.execute"
+partial = "params arrive as JSON; onUpdate is ctx.OnUpdate/on_update and the AbortSignal is the request's cancellation"
+node_partial = "the AbortSignal is the tool request's, aborted when the host cancels it"
+
+[[row]]
+key = "tool.renderCall"
+partial = "returns lines at the requested width: a Pi Component cannot cross the process boundary"
+node_partial = "the returned Component renders to lines inside the extension process"
+
+[[row]]
+key = "tool.renderResult"
+partial = "returns lines at the requested width: a Pi Component cannot cross the process boundary"
+node_partial = "the returned Component renders to lines inside the extension process"
+
+[[row]]
+key = "tool execute result.content"
+node = "read:result.content"
+go = "ToolResult.Content"
+rust = "ToolResult::json"
+python = "Extension.tool"
+wire = "literal:content"
+
+[[row]]
+key = "tool execute result.details"
+node = "read:result.details"
+go = "ToolResult.Details"
+rust = "ToolResult::json"
+python = "Extension.tool"
+wire = "subprocess.ToolResult.details"
+
+[[row]]
+key = "tool execute result.usage"
+node = "read:result.usage"
+go = "ToolResult.Usage"
+rust = "ToolResult::json"
+python = "Extension.tool"
+wire = "subprocess.ToolResult.usage"
+
+[[row]]
+key = "tool execute result.terminate"
+node = "read:result.terminate"
+go = "ToolResult.Terminate"
+rust = "ToolResult::json"
+python = "Extension.tool"
+wire = "subprocess.ToolResult.terminate"
+
+[[row]]
+key = "tool render context.args"
+node = "read:payload.args"
+wire = "subprocess.RenderToolPayload.args"
+
+[[row]]
+key = "tool render context.toolCallId"
+node = "read:payload.context"
+wire = "subprocess.RenderToolContext.toolCallId"
+
+[[row]]
+key = "tool render context.invalidate"
+node = "read:payload.card"
+rust = "ToolRenderContext::invalidate"
+python = "ToolRenderContext.invalidate"
+
+[[row]]
+key = "tool render context.lastComponent"
+node = "read:card.state"
+go = "-"
+rust = "-"
+python = "-"
+node_partial = "the component this card's renderer last returned, kept inside the extension process"
+
+[[row]]
+key = "tool render context.state"
+node = "read:card.state"
+
+[[row]]
+key = "tool render context.cwd"
+node = "read:payload.context"
+wire = "subprocess.RenderToolContext.cwd"
+
+[[row]]
+key = "tool render context.executionStarted"
+node = "read:payload.context"
+wire = "subprocess.RenderToolContext.executionStarted"
+
+[[row]]
+key = "tool render context.argsComplete"
+node = "read:payload.context"
+wire = "subprocess.RenderToolContext.argsComplete"
+
+[[row]]
+key = "tool render context.isPartial"
+node = "read:payload.context"
+wire = "subprocess.RenderToolContext.isPartial"
+
+[[row]]
+key = "tool render context.expanded"
+node = "read:payload.context"
+wire = "subprocess.RenderToolContext.expanded"
+
+[[row]]
+key = "tool render context.showImages"
+node = "read:payload.context"
+wire = "subprocess.RenderToolContext.showImages"
+
+[[row]]
+key = "tool render context.isError"
+node = "read:payload.context"
+wire = "subprocess.RenderToolContext.isError"
+
+[[row]]
+key = "tool renderResult options.expanded"
+node = "read:payload.options"
+python = "Extension.tool_renderers(render_result)"
+wire = "extension.ToolRenderResultOptions.expanded"
+
+[[row]]
+key = "tool renderResult options.isPartial"
+node = "read:payload.options"
+python = "Extension.tool_renderers(render_result)"
+wire = "extension.ToolRenderResultOptions.isPartial"
+
+# ── Command definition ──────────────────────────────────────────────────────
+
+[[row]]
+key = "command.description"
+rust = "Extension::command"
+python = "Extension.command(description)"
+
+[[row]]
+key = "command.getArgumentCompletions"
+rust = "Extension::command_argument_completions"
+python = "Extension.command(get_argument_completions)"
+
+[[row]]
+key = "command.handler"
+rust = "CommandHandler"
+python = "Extension.command(handler)"
+
+# ── Provider definition ─────────────────────────────────────────────────────
+
+[[row]]
+key = "provider.name"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderConfig.name"
+
+[[row]]
+key = "provider.baseUrl"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderConfig.baseUrl"
+
+[[row]]
+key = "provider.apiKey"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderConfig.apiKey"
+
+[[row]]
+key = "provider.api"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderConfig.api"
+
+[[row]]
+key = "provider.streamSimple"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "provider.headers"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderConfig.headers"
+
+[[row]]
+key = "provider.authHeader"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderConfig.authHeader"
+
+[[row]]
+key = "provider.models"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderConfig.models"
+
+[[row]]
+key = "provider.refreshModels"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "provider.oauth"
+node = "api.registerProvider"
+go = "OAuthProvider"
+rust = "Extension::register_oauth_provider"
+python = "Extension.register_oauth_provider"
+wire = "extension.ProviderConfig.oauth"
+
+[[row]]
+key = "provider.oauth.name"
+node = "read:oauth.name"
+go = "OAuthProvider.Name"
+rust = "OAuthProvider.name"
+python = "OAuthProvider.name"
+wire = "subprocess.ProviderOAuthConfig.name"
+
+[[row]]
+key = "provider.oauth.isSubscription"
+node = "read:oauth.isSubscription"
+go = "OAuthProvider.IsSubscription"
+rust = "OAuthProvider.is_subscription"
+python = "OAuthProvider.is_subscription"
+wire = "subprocess.ProviderOAuthConfig.isSubscription"
+
+[[row]]
+key = "provider.oauth.usesCallbackServer"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "provider.oauth.login"
+node = "read:oauth.login"
+go = "OAuthProvider.Login"
+rust = "OAuthProvider.login"
+python = "OAuthProvider.login"
+wire = "subprocess.ProviderOAuthConfig.has_login"
+
+[[row]]
+key = "provider.oauth.refreshToken"
+node = "read:oauth.refreshToken"
+go = "OAuthProvider.RefreshToken"
+rust = "OAuthProvider.refresh_token"
+python = "OAuthProvider.refresh_token"
+wire = "subprocess.ProviderOAuthConfig.has_refresh"
+
+[[row]]
+key = "provider.oauth.getApiKey"
+node = "read:oauth.getApiKey"
+go = "OAuthProvider.GetAPIKey"
+rust = "OAuthProvider.get_api_key"
+python = "OAuthProvider.get_api_key"
+wire = "subprocess.ProviderOAuthConfig.has_get_api_key"
+
+[[row]]
+key = "provider.oauth.modifyModels"
+node = "-"
+go = "-"
+rust = "-"
+python = "-"
+
+[[row]]
+key = "provider model.id"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.id"
+
+[[row]]
+key = "provider model.name"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.name"
+
+[[row]]
+key = "provider model.api"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.api"
+
+[[row]]
+key = "provider model.baseUrl"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.baseUrl"
+
+[[row]]
+key = "provider model.reasoning"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.reasoning"
+
+[[row]]
+key = "provider model.thinkingLevelMap"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.thinkingLevelMap"
+
+[[row]]
+key = "provider model.input"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.input"
+
+[[row]]
+key = "provider model.inputLimits"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.inputLimits"
+
+[[row]]
+key = "provider model.cost"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.cost"
+
+[[row]]
+key = "provider model.promptCache"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.promptCache"
+
+[[row]]
+key = "provider model.contextWindow"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.contextWindow"
+
+[[row]]
+key = "provider model.maxTokens"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.maxTokens"
+
+[[row]]
+key = "provider model.headers"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.headers"
+
+[[row]]
+key = "provider model.compat"
+node = "api.registerProvider"
+go = "Extension.RegisterProvider"
+rust = "Extension::register_provider"
+python = "Extension.register_provider"
+wire = "extension.ProviderModelConfig.compat"
+
+# ── Renderers ───────────────────────────────────────────────────────────────
+
+[[row]]
+key = "pi.registerMarkdownTransformer"
+node = "api.registerMarkdownTransformer"
+go = "Extension.MarkdownTransformer"
+rust = "Extension::markdown_transformer"
+python = "Extension.markdown_transformer"
+
+[[row]]
+key = "markdown transform context.messageType"
+node = "api.registerMarkdownTransformer"
+go = "MarkdownTransformContext.MessageType"
+rust = "MarkdownTransformContext.message_type"
+python = "Extension.markdown_transformer"
+wire = "literal:messageType"
+
+[[row]]
+key = "markdown transform context.isStreaming"
+node = "api.registerMarkdownTransformer"
+go = "MarkdownTransformContext.IsStreaming"
+rust = "MarkdownTransformContext.is_streaming"
+python = "Extension.markdown_transformer"
+wire = "literal:isStreaming"
+
+[[row]]
+key = "markdown transform context.availableWidth"
+node = "api.registerMarkdownTransformer"
+go = "MarkdownTransformContext.AvailableWidth"
+rust = "MarkdownTransformContext.available_width"
+python = "Extension.markdown_transformer"
+wire = "literal:availableWidth"
+
+[[row]]
+key = "message renderer options.expanded"
+node = "read:payload.options"
+python = "Extension.message_renderer"
+wire = "literal:expanded"
+
+[[row]]
+key = "message renderer options.outputPad"
+node = "read:payload.options"
+python = "Extension.message_renderer"
+wire = "literal:outputPad"
+
+[[row]]
+key = "entry renderer options.expanded"
+node = "read:payload.options"
+python = "Extension.entry_renderer"
+wire = "literal:expanded"

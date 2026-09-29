@@ -30,7 +30,7 @@ import (
 // a partial SDK when session_mirror.go was added: the file compiled into pig, was
 // never staged, and every extension kept building against an SDK missing it.
 //
-//go:embed LICENSE go.mod *.go
+//go:embed LICENSE go.mod *.go json/*.go json/LICENSE
 var Source embed.FS
 
 // BundledFiles lists the embedded filenames in a stable order. It is the
@@ -40,17 +40,18 @@ var Source embed.FS
 // bundle.go and _test.go files are excluded: the staged module is a plain
 // package sdk with no embed of its own and no tests.
 func BundledFiles() []string {
-	entries, err := fs.ReadDir(Source, ".")
+	files := []string{}
+	err := fs.WalkDir(Source, ".", func(name string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if !entry.IsDir() && name != "bundle.go" && !strings.HasSuffix(name, "_test.go") {
+			files = append(files, name)
+		}
+		return nil
+	})
 	if err != nil {
 		panic("pig sdk: read embedded source: " + err.Error())
-	}
-	files := make([]string, 0, len(entries))
-	for _, e := range entries {
-		name := e.Name()
-		if e.IsDir() || name == "bundle.go" || strings.HasSuffix(name, "_test.go") {
-			continue
-		}
-		files = append(files, name)
 	}
 	slices.Sort(files)
 	return files

@@ -2,7 +2,7 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const assert = require('node:assert/strict');
-const ts = require(path.resolve('parity/interface-extractor/node_modules/typescript'));
+const ts = require(path.resolve('test/parity/interface-extractor/node_modules/typescript'));
 function load(file, dependencies) {
   const source = fs.readFileSync(path.join('.upstream/current/packages/coding-agent/src/experimental', file), 'utf8');
   const js = ts.transpileModule(source, { compilerOptions: { target: ts.ScriptTarget.ES2022, module: ts.ModuleKind.CommonJS } }).outputText;

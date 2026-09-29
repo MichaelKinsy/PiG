@@ -37,6 +37,7 @@ func TestConnectedNodeProviderPreservesModelListPresence(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(services.Close)
 	requests := make(chan http.Header, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests <- request.Header.Clone()
@@ -50,15 +51,18 @@ func TestConnectedNodeProviderPreservesModelListPresence(t *testing.T) {
 		name   string
 		config extension.ProviderConfig
 	}, 3)
-	host.SetProviderCallbacks(func(name string, config extension.ProviderConfig) {
+	host.SetProviderCallbacks(func(name string, config extension.ProviderConfig) error {
 		if name == "node-collision" {
 			config.BaseURL = server.URL
 		}
-		services.Registry().RegisterProvider(name, config)
+		if err := services.Registry().RegisterProvider(name, config); err != nil {
+			return err
+		}
 		registrations <- struct {
 			name   string
 			config extension.ProviderConfig
 		}{name: name, config: config}
+		return nil
 	}, services.Registry().UnregisterProvider)
 
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)

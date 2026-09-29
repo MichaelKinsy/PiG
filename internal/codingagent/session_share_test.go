@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"testing"
 	"time"
 
@@ -228,50 +227,88 @@ func serverOrigin(request *http.Request) string {
 	return "http://" + request.Host
 }
 
-// Mirrors upstream session-share.test.ts: concurrent exports use independent
-// temporary files and upload the matching session.
+// Upstream packages/coding-agent/test/session-share.test.ts:27: keeps concurrent session exports isolated.
+// D64 changes the transport to JSONL/HTTP. Both exports exist before A uploads, B waits until A completes, uploads are [A, B], and neither operation fails.
 func TestShareSessionKeepsConcurrentExportsIsolated(t *testing.T) {
-	var mu sync.Mutex
-	var uploads []string
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		body, err := io.ReadAll(request.Body)
-		if err != nil {
-			t.Error(err)
-		}
-		mu.Lock()
-		uploads = append(uploads, string(body))
-		mu.Unlock()
-		_, _ = w.Write([]byte(`{"artifact":{"canonical_url":"` + serverOrigin(request) + `/session/p_concurrent"}}`))
-	}))
-	defer server.Close()
-
-	sessions := map[string]*Session{
-		"SESSION-A": shareTestSession(t, "SESSION-A"),
-		"SESSION-B": shareTestSession(t, "SESSION-B"),
-	}
-	var wg sync.WaitGroup
-	for marker, session := range sessions {
-		wg.Go(func() {
-			if _, err := shareSession(t.Context(), session, ShareState{SystemPrompt: marker}, server.URL, server.Client(), func(string) {}); err != nil {
-				t.Errorf("share %s: %v", marker, err)
+	t.Setenv("TMPDIR", t.TempDir())
+	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
+	defer cancel()
+	aWritten, bWritten, releaseB := make(chan struct{}), make(chan struct{}), make(chan struct{})
+	var uploads, bodies, paths []string
+	client := func(name string) *http.Client {
+		return &http.Client{Transport: fakeRoundTripper(func(request *http.Request) (*http.Response, error) {
+			defer func() { _ = request.Body.Close() }()
+			ready, wait := aWritten, bWritten
+			if name == "B" {
+				ready, wait = bWritten, releaseB
 			}
-		})
-	}
-	wg.Wait()
-	mu.Lock()
-	defer mu.Unlock()
-	if len(uploads) != 2 {
-		t.Fatalf("uploads = %d", len(uploads))
-	}
-	for _, marker := range []string{"SESSION-A", "SESSION-B"} {
-		count := 0
-		for _, upload := range uploads {
-			if strings.Contains(upload, marker) {
-				count++
+			close(ready)
+			select {
+			case <-wait:
+			case <-ctx.Done():
+				return nil, ctx.Err()
 			}
+			body, err := io.ReadAll(request.Body)
+			if err != nil {
+				return nil, err
+			}
+			lines := strings.Split(strings.TrimSpace(string(body)), "\n")
+			var presentation shareEntry
+			if err := json.Unmarshal([]byte(lines[len(lines)-1]), &presentation); err != nil {
+				return nil, err
+			}
+			uploads = append(uploads, presentation.Data.SystemPrompt)
+			bodies = append(bodies, string(body))
+			if file, ok := request.Body.(*os.File); ok {
+				paths = append(paths, file.Name())
+			}
+			return &http.Response{StatusCode: http.StatusCreated, Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"artifact":{"canonical_url":"https://share.example/` + name + `"}}`))}, nil
+		})}
+	}
+	share := func(name string, session *Session) <-chan error {
+		done := make(chan error, 1)
+		go func() {
+			_, err := shareSession(ctx, session, ShareState{SystemPrompt: name}, "https://share.example", client(name), func(string) {})
+			done <- err
+		}()
+		return done
+	}
+	a := shareTestSession(t, "A")
+	b := shareTestSession(t, "B")
+	doneA := share("A", a)
+	select {
+	case <-aWritten:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+	doneB := share("B", b)
+	select {
+	case <-bWritten:
+	case <-ctx.Done():
+		t.Fatal(ctx.Err())
+	}
+	errA := <-doneA
+	close(releaseB)
+	errB := <-doneB
+	if errA != nil || errB != nil {
+		t.Fatalf("errors = [%v, %v], want none", errA, errB)
+	}
+	if !slices.Equal(uploads, []string{"A", "B"}) {
+		t.Fatalf("uploads = %q, want [A B]", uploads)
+	}
+	for i, name := range []string{"A", "B"} {
+		records := parseJSONL(t, bodies[i])
+		content := records[1]["message"].(map[string]any)["content"].([]any)
+		if got := content[0].(map[string]any)["text"]; got != name {
+			t.Fatalf("upload %s conversation = %v", name, got)
 		}
-		if count != 1 {
-			t.Fatalf("marker %s appears in %d uploads: %q", marker, count, uploads)
+	}
+	if len(paths) != 2 || paths[0] == paths[1] {
+		t.Fatalf("export paths are not independent: %v", paths)
+	}
+	for _, path := range paths {
+		if _, err := os.Stat(filepath.Dir(path)); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("temporary export directory remains: %s: %v", path, err)
 		}
 	}
 }
@@ -398,55 +435,84 @@ func TestSharePrivacyNoticeRemainsVisibleAfterResult(t *testing.T) {
 }
 
 func TestShareLoaderEscapeCancelsUpload(t *testing.T) {
-	started := make(chan struct{})
-	release := make(chan struct{})
-	server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
-		close(started)
-		<-release
-	}))
-	defer func() {
-		close(release)
-		server.Close()
-	}()
-	t.Setenv("PI_SHARE_GATEWAY_URL", server.URL)
+	for _, action := range []string{"escape", "shutdown"} {
+		t.Run(action, func(t *testing.T) {
+			started := make(chan struct{})
+			release := make(chan struct{})
+			server := httptest.NewServer(http.HandlerFunc(func(_ http.ResponseWriter, _ *http.Request) {
+				close(started)
+				<-release
+			}))
+			defer func() {
+				close(release)
+				server.Close()
+			}()
+			t.Setenv("PI_SHARE_GATEWAY_URL", server.URL)
 
-	editor := tui.NewEditor()
-	editorContainer := tui.NewContainer()
-	editorContainer.Add(editor)
-	mode := &InteractiveMode{
-		chatContainer:   tui.NewContainer(),
-		editor:          editor,
-		editorContainer: editorContainer,
-		tuiInst:         tui.NewWithOutput(io.Discard, 100, 30),
-	}
-	for i := range 60 {
-		mode.chatContainer.Add(tui.NewText(fmt.Sprintf("transcript line %d", i)))
-	}
-	done := make(chan error, 1)
-	session := shareTestSession(t, "cancel-loader")
-	go func() {
-		_, err := mode.shareSessionWithLoader(t.Context(), session, ShareState{}, func(string) {})
-		done <- err
-	}()
+			editor := tui.NewEditor()
+			editorContainer := tui.NewContainer()
+			editorContainer.Add(editor)
+			mode := &InteractiveMode{
+				chatContainer:   tui.NewContainer(),
+				uiTaskCh:        make(chan func(), 8),
+				editor:          editor,
+				editorContainer: editorContainer,
+				tuiInst:         tui.NewWithOutput(io.Discard, 100, 30),
+			}
+			for i := range 60 {
+				mode.chatContainer.Add(tui.NewText(fmt.Sprintf("transcript line %d", i)))
+			}
+			done := make(chan error, 1)
+			session := shareTestSession(t, "cancel-loader")
+			go func() {
+				_, err := mode.shareSessionWithLoader(t.Context(), session, ShareState{}, func(string) {})
+				done <- err
+			}()
 
-	select {
-	case <-started:
-	case <-time.After(5 * time.Second):
-		t.Fatal("share upload did not start")
+			select {
+			case <-started:
+			case <-time.After(5 * time.Second):
+				t.Fatal("share upload did not start")
+			}
+			if visible := len(mode.chatContainer.Render(200)); visible < 61 {
+				t.Fatalf("share loader capped the transcript at %d lines; want the complete transcript", visible)
+			}
+			if action == "shutdown" {
+				mode.requestShutdown()
+			} else {
+				deliverModalInput(t, mode, []byte("\x1b"))
+			}
+			select {
+			case err := <-done:
+				if !errors.Is(err, errShareCancelled) {
+					t.Fatalf("err = %v, want share cancellation", err)
+				}
+			case <-time.After(5 * time.Second):
+				t.Fatalf("%s did not cancel the share upload", action)
+			}
+			if screen := strings.Join(mode.chatContainer.Render(200), "\n"); !strings.Contains(screen, "Privacy:") {
+				t.Fatalf("privacy notice missing after cancellation: %q", screen)
+			}
+		})
 	}
-	if visible := len(mode.chatContainer.Render(200)); visible < 61 {
-		t.Fatalf("share loader capped the transcript at %d lines; want the complete transcript", visible)
+}
+
+// Pi's Radius share (the flow D64 replaces) serializes the branch from memory
+// through exportSessionForShare, so an in-memory session shares too.
+func TestShareHandlerSharesInMemorySession(t *testing.T) {
+	session := NewSession("share-in-memory", t.TempDir())
+	exportTestUser(t, session, "in-memory")
+	sc, out := newFakeSlashCtx()
+	sc.CurrentSession = func() *Session { return session }
+	shared := false
+	sc.ShareSession = func(got *Session, _ ShareState, _ func(string)) (string, error) {
+		shared = got == session
+		return "Share URL: https://pi-in-go.dev/session/p_memory", nil
 	}
-	deliverModalInput(t, mode, []byte("\x1b"))
-	select {
-	case err := <-done:
-		if !errors.Is(err, errShareCancelled) {
-			t.Fatalf("err = %v, want share cancellation", err)
-		}
-	case <-time.After(5 * time.Second):
-		t.Fatal("Escape did not cancel the share upload")
+	if err := shareHandler(sc); err != nil {
+		t.Fatal(err)
 	}
-	if screen := strings.Join(mode.chatContainer.Render(200), "\n"); !strings.Contains(screen, "Privacy:") {
-		t.Fatalf("privacy notice missing after cancellation: %q", screen)
+	if !shared || out.String() != "Share URL: https://pi-in-go.dev/session/p_memory\n" {
+		t.Fatalf("shared = %v, output = %q", shared, out.String())
 	}
 }

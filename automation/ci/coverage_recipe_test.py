@@ -1,4 +1,5 @@
 import os
+import runpy
 from pathlib import Path
 import shutil
 import subprocess
@@ -9,6 +10,25 @@ ROOT = Path(__file__).resolve().parents[2]
 
 
 class CoverageRecipeTest(unittest.TestCase):
+    def test_drift_ignores_only_the_generated_last_run_column(self):
+        strip = runpy.run_path(str(ROOT / "automation/ci/check-coverage-drift.py"))["strip_run_column"]
+        report = (ROOT / "test/parity/coverage.md").read_text()
+        lines = report.splitlines()
+        header = next(line for line in lines if line.startswith("| upstream |"))
+        columns = [cell.strip() for cell in header.split("|")]
+        row = next(line for line in lines if line.startswith("| `"))
+        cells = row.split("|")
+
+        def changed(column, value):
+            modified = cells.copy()
+            modified[columns.index(column)] = f" {value} "
+            return report.replace(row, "|".join(modified), 1)
+
+        self.assertEqual(strip(report), strip(changed("last run", "3 pass")))
+        for column in ("upstream", "port", "scenarios", "behavioral", "unit tests"):
+            with self.subTest(column=column):
+                self.assertNotEqual(strip(report), strip(changed(column, "changed evidence")))
+
     def test_failed_generation_preserves_reports(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -16,7 +36,7 @@ class CoverageRecipeTest(unittest.TestCase):
             shutil.copytree(ROOT / "automation" / "make", root / "automation" / "make")
             (root / "coding").mkdir()
             shutil.copy(ROOT / "coding" / "upstream.go", root / "coding" / "upstream.go")
-            reports = ["parity/coverage.md", "AGENTS.md", ".github/badges/parity-coverage.svg"]
+            reports = ["test/parity/coverage.md", "AGENTS.md", ".github/badges/parity-coverage.svg"]
             for name in reports:
                 path = root / name
                 path.parent.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,40 @@
+# Behavior family: startup
+# Upstream evidence: Pi 0.87.1 interactive-mode-startup-input.test.ts:57-89 and interactive-mode.ts init/getUserInput. A manual upstream-first tmux probe holds session_start on a terminal-input barrier: early Enter queues a prompt, later typing edits the draft, and input hooks run only after startup completes. The final notification reports both independent values; the test handler consumes the prompt without a provider request.
+name = "10-startup-input-before-session-start-completes"
+description = "The mounted editor accepts input during awaited extension startup and queues submissions until the normal input consumer starts"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/startup-input/observe.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/startup-input/observe.mjs"]
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "STARTUP INPUT HOLD"
+ready_pattern_pi = "STARTUP INPUT HOLD"
+ready_timeout_seconds = 30
+capture_start = "STARTUP INPUT READY: early prompt; draft=draft"
+capture_end = "STARTUP INPUT READY: early prompt; draft=draft"
+
+[[tmux.steps]]
+keys = ["early prompt", "Enter", "draft"]
+wait_contains = ["draft"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["~"]
+wait_contains = ["STARTUP INPUT READY: early prompt; draft=draft"]
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["STARTUP INPUT READY: early prompt; draft=draft"]
+both_not_contain = ["STARTUP INPUT EARLY", "panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3

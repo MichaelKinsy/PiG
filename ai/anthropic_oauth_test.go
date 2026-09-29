@@ -63,12 +63,37 @@ func clearAnthropicAuthEnv(t *testing.T) {
 	}
 }
 
-// runAnthropicWire streams one request through a local server that answers
-// with sse (or the SSE its responder returns for the request body) and returns
-// the captured request and the emitted events.
+// runAnthropicWire streams one request through a local server that answers with the SSE its responder returns for the request body, and returns the captured request and the emitted events. The server sends the whole response at once. The consumer reserves its continuation before the provider runs, as the Agent does (agent/agent_loop.go requestStream creates the stream, awaits it and iterates it inside one ai.RunStreamContinuation): Pi's for-await consumer attaches in the tick that created the stream, before any response I/O can complete (packages/agent/src/agent-loop.ts:408-453), and a queued event is materialized at the consumer's tick. An iterator attached after Stream returns could run after the provider had read the whole buffered body.
 func runAnthropicWire(t *testing.T, cfg AnthropicConfig, context Context, opts StreamOptions, respond func(body map[string]any) string) (anthropicWireCapture, []AssistantMessageEvent) {
 	t.Helper()
-	var captured anthropicWireCapture
+	captured, baseURL := serveAnthropicWire(t, respond, nil)
+	cfg.BaseURL = baseURL
+	if cfg.Model == "" {
+		cfg.Model = "claude-test"
+	}
+	ctx := WithStreamContinuations(t.Context())
+	var events []AssistantMessageEvent
+	err := RunStreamContinuation(ctx, func(observation *StreamObservation) error {
+		stream, err := NewAnthropicProvider(cfg).Stream(ctx, NormalizeContext(context), opts)
+		observation.Yield()
+		if err != nil {
+			return err
+		}
+		for event := range stream.Events(observation.Context(ctx)) {
+			events = append(events, event)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatalf("Stream: %v", err)
+	}
+	return *captured, events
+}
+
+// serveAnthropicWire starts a local Anthropic endpoint that records the request and answers with respond's SSE. A non-nil release makes the server flush the response headers and withhold the body until release is closed or the request ends.
+func serveAnthropicWire(t *testing.T, respond func(body map[string]any) string, release <-chan struct{}) (*anthropicWireCapture, string) {
+	t.Helper()
+	captured := &anthropicWireCapture{}
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		raw, _ := io.ReadAll(r.Body)
 		captured.header = r.Header.Clone()
@@ -76,22 +101,20 @@ func runAnthropicWire(t *testing.T, cfg AnthropicConfig, context Context, opts S
 			t.Errorf("request body is not JSON: %v", err)
 		}
 		w.Header().Set("Content-Type", "text/event-stream")
-		_, _ = io.WriteString(w, respond(captured.body))
+		body := respond(captured.body)
+		if release != nil {
+			w.WriteHeader(http.StatusOK)
+			w.(http.Flusher).Flush()
+			select {
+			case <-release:
+			case <-r.Context().Done():
+				return
+			}
+		}
+		_, _ = io.WriteString(w, body)
 	}))
 	t.Cleanup(server.Close)
-	cfg.BaseURL = server.URL
-	if cfg.Model == "" {
-		cfg.Model = "claude-test"
-	}
-	stream, err := NewAnthropicProvider(cfg).Stream(t.Context(), NormalizeContext(context), opts)
-	if err != nil {
-		t.Fatalf("Stream: %v", err)
-	}
-	var events []AssistantMessageEvent
-	for event := range stream.Events(t.Context()) {
-		events = append(events, event)
-	}
-	return captured, events
+	return captured, server.URL
 }
 
 func endTurn(map[string]any) string { return anthropicEndTurnSSE }
@@ -483,7 +506,7 @@ func TestAnthropicOAuthToolNameRoundTrip(t *testing.T) {
 					continue
 				}
 				toolEvents++
-				if call, ok := partial.Content[0].(ToolCall); !ok || call.Name != tc.tool {
+				if call, ok := partial.Observe().Content[0].(ToolCall); !ok || call.Name != tc.tool {
 					t.Errorf("%s partial tool call = %#v, want name %q", event.EventType(), partial.Content[0], tc.tool)
 				}
 			}

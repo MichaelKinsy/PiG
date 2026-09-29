@@ -1,0 +1,25 @@
+# Pi settings-manager.ts preserves explicit empty arrays across clone/save/reload. Collection getters default to [], but defaultTools remains optional.
+# The Go probe additionally checks file-backed replacement and persisted JSON. The Pi probe uses the public inMemory constructor with the same final arrays, then a setter/flush/reload.
+# Object keys are sorted in both adapters; array presence, contents and optional defaultTools are not normalized.
+name = "13-settings-empty-arrays"
+description = "Settings snapshots preserve explicit empty arrays and default collection getters"
+covers = ["packages/coding-agent/src/core/settings-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/settings-arrays-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/settings-arrays-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SETTINGS_ARRAYS", "SETTINGS_ARRAY_DEFAULTS [[],[],[],[],[],null,[]]"]
+runs = 3

@@ -1,0 +1,25 @@
+# Both sides execute the original #2860 assertions against real Runtime replacement.
+# Each marker is emitted after assertions verify rebound callback order, stale contexts and the replacement's messages.
+# Only this upstream test file explicitly filters native system messages from its conversation assertions.
+# This proves native replacement semantics, not subprocess callback transport closure.
+name = "27-replaced-session-context"
+description = "Fresh withSession contexts after new, fork and switch, with stale original context rejection"
+covers = ["packages/coding-agent/src/core/agent-session-runtime.ts", "packages/coding-agent/src/core/agent-session.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-replaced-pig.sh"]
+pi_args = ["node", "--experimental-import-meta-resolve", "./test/parity/testdata/session-runtime-pi.mjs", "replaced"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

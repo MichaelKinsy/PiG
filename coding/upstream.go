@@ -1,10 +1,10 @@
 // UpstreamVersion and UpstreamCommit are the exact upstream Pi pins. The CLI,
 // parity runner, source mirror, generated inventories, and Pig Porter consume
-// them. Change both together, in coding/pigversion/pigversion.go, then run
+// them. Change both together, in internal/coding/pigversion/pigversion.go, then run
 // the upgrade workflow in piglets/porter/skills/pig-porter/SKILL.md.
 package coding
 
-import "github.com/MichaelKinsy/PiG/coding/pigversion"
+import "github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 
 // PigVersion is PiG's release line. It advances independently of the upstream
 // Pi target.

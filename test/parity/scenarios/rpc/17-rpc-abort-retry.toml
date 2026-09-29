@@ -1,0 +1,65 @@
+# Behavior family: rpc
+# Surface: abort_retry cancels the active retry backoff and emits its terminal
+# event before the prompt run settles. The staged driver waits for the retry
+# start event, so cancellation does not depend on a fixed input delay.
+
+name = "17-rpc-abort-retry"
+description = "RPC abort_retry cancels an active retry delay and reports cancellation."
+covers = [
+  "packages/coding-agent/src/modes/rpc/rpc-mode.ts",
+  "packages/coding-agent/src/core/agent-session.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+timeout_seconds = 15
+settle_seconds = 1
+
+[[rpc.steps]]
+line = '{"id":"prompt","type":"prompt","message":"Trigger: retryable provider error"}'
+wait_contains = ['"type":"auto_retry_start"']
+wait_timeout_seconds = 10
+
+[[rpc.steps]]
+line = '{"id":"abort","type":"abort_retry"}'
+wait_contains = ['"id":"abort","type":"response","command":"abort_retry","success":true']
+wait_timeout_seconds = 5
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_HOME=testdata/pig-home"]
+pig_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC retry probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--system-prompt", "RPC retry probe.", "--no-context-files", "--no-skills", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+json_output_equal = true
+stderr_equal = true
+exit_code = 0
+both_contain = [
+  '"id":"prompt","type":"response","command":"prompt","success":true',
+  '"type":"auto_retry_start"',
+  '"attempt":1',
+  '"type":"auto_retry_end"',
+  '"success":false',
+  '"finalError":"Retry cancelled"',
+  '"id":"abort","type":"response","command":"abort_retry","success":true',
+]
+both_not_contain = [
+  'retry-ok',
+]
+runs = 3
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent message clocks vary; retain event order, field presence and timestamp type."
+[[assert.json_aliases]]
+paths = ["/**/sections/cwd"]
+kind = "path"
+reason = "D2: alias only the exact isolated cwd in the system section."
+[[assert.json_aliases]]
+paths = ["/*/entry/id", "/*/entry/parentId", "/*/entry/targetId"]
+kind = "id"
+group = "recovery-entry"
+pattern = '^[a-f0-9]{8,16}$'
+reason = "Recovery entry keys vary per process. A bijection preserves the appended entry's parent and omission target; no event or payload field is removed."

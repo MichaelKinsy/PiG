@@ -1,9 +1,4 @@
-// Command gen-models reads upstream pi's
-// `packages/ai/src/models.generated.ts` and emits
-// `ai/models_generated.go` with a parallel registry. The
-// upstream file is line-regular (one auto-generator emits all 871
-// models) so we parse with a small state machine rather than pulling
-// in a TypeScript dependency.
+// Command gen-models reads upstream pi's catalog and emits ai/models_generated.go. Optional raw models.dev and OpenRouter API snapshots regenerate verified effort controls before emission.
 //
 // Run via `go generate ./ai/...` or directly:
 //
@@ -15,6 +10,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"flag"
@@ -90,6 +86,7 @@ type ModelCompat struct {
 	SupportsToolReferences                      *bool                      `json:"supportsToolReferences,omitempty"`
 	ChatTemplateArgs                            map[string]any             `json:"chatTemplateArgs,omitempty"`
 	SupportsThinkingTokenBudget                 *bool                      `json:"supportsThinkingTokenBudget,omitempty"`
+	ThinkingTokenBudgetField                    string                     `json:"thinkingTokenBudgetField,omitempty"`
 	SupportsAdditionalTools                     *bool                      `json:"supportsAdditionalTools,omitempty"`
 	SupportsMidConvoEffort                      *bool                      `json:"supportsMidConvoEffort,omitempty"`
 	SupportsMidConvoSystemMessages              *bool                      `json:"supportsMidConvoSystemMessages,omitempty"`
@@ -129,7 +126,24 @@ var (
 func main() {
 	src := flag.String("src", "", "path to upstream models.generated.ts")
 	out := flag.String("out", "ai/models_generated.go", "output Go file")
+	modelsDev := flag.String("models-dev", "", "raw models.dev API JSON snapshot for verified reasoning controls")
+	openRouter := flag.String("openrouter", "", "raw OpenRouter models API JSON snapshot for reasoning controls")
+	strict := flag.Bool("strict", false, "validate models.dev Individual model membership before publication")
+	jsonOnly := flag.Bool("json-only", false, "emit the models.dev Fireworks and Qwen Token Plan stages as JSON without changing Go catalogs")
+	jsonOutput := flag.String("json-output", "", "output directory for models.dev JSON catalogs")
+	pretty := flag.Bool("pretty", false, "indent JSON catalog output")
 	flag.Parse()
+	if *src == "" && (*strict || *jsonOnly || *jsonOutput != "") {
+		if *jsonOnly && *jsonOutput == "" {
+			fmt.Fprintln(os.Stderr, "--json-only requires --json-output")
+			os.Exit(1)
+		}
+		if err := generateModelsDev(context.Background(), modelsDevGeneratorOptions{Strict: *strict, JSONOnly: *jsonOnly, JSONOutput: *jsonOutput, Pretty: *pretty, GoOutput: *out}); err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			os.Exit(1)
+		}
+		return
+	}
 	if *src == "" {
 		fmt.Fprintln(os.Stderr, "gen-models: -src is required")
 		os.Exit(2)
@@ -142,6 +156,10 @@ func main() {
 	}
 	if len(rows) == 0 {
 		fmt.Fprintln(os.Stderr, "gen-models: parsed 0 models: refusing to clobber output")
+		os.Exit(1)
+	}
+	if err := applyVendorReasoning(rows, *modelsDev, *openRouter); err != nil {
+		fmt.Fprintln(os.Stderr, "reasoning:", err)
 		os.Exit(1)
 	}
 	if err := emit(*out, *src, rows); err != nil {
@@ -270,7 +288,7 @@ type jsonCost struct {
 	Output     float64        `json:"output"`
 	CacheRead  float64        `json:"cacheRead"`
 	CacheWrite float64        `json:"cacheWrite"`
-	Tiers      []jsonCostTier `json:"tiers"`
+	Tiers      []jsonCostTier `json:"tiers,omitempty"`
 }
 
 type jsonCostTier struct {
@@ -1042,6 +1060,9 @@ func compatLiteral(jsonText string) string {
 	}
 	if compat.SupportsThinkingTokenBudget != nil {
 		fields = append(fields, fmt.Sprintf("SupportsThinkingTokenBudget:%s", boolPtrLit(*compat.SupportsThinkingTokenBudget)))
+	}
+	if compat.ThinkingTokenBudgetField != "" {
+		fields = append(fields, fmt.Sprintf("ThinkingTokenBudgetField:%q", compat.ThinkingTokenBudgetField))
 	}
 	if compat.SupportsAdditionalTools != nil {
 		fields = append(fields, fmt.Sprintf("SupportsAdditionalTools:%s", boolPtrLit(*compat.SupportsAdditionalTools)))

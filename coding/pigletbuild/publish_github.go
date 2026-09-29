@@ -8,13 +8,15 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
 	"slices"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	"golang.org/x/mod/semver"
 
@@ -23,7 +25,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/piglet/signature"
 )
 
-const publishUsageLine = "Usage: pig piglet publish <name|path> --to github --repo <owner/repo> --sign-key <key> [--targets os/arch,...] [--artifacts <dir>] [--dry-run|--yes]"
+const publishUsageLine = "Usage: pig piglet publish <name|path> --to github --repo <owner/repo> --sign-key <key> [--targets os/arch,...] [--artifacts <dir>] [--tag-prefix <name>/] [--dry-run|--yes]"
 
 const publishUsage = publishUsageLine + `
 
@@ -41,6 +43,7 @@ Options:
                                 host target, or every Binary in --artifacts)
   --artifacts <dir>             Publish prebuilt signed Binaries from dir; nothing is built
   --builder <auto|native|name>  Builder for each target when building (default auto)
+  --tag-prefix <name>/          Namespace tags by this Piglet's name (default: no prefix)
   --commit <sha>                Commit for a new release tag (default: the default branch)
   --source-ref <ref>            npm or Git source recorded in the index (default:
                                 git:github.com/<owner/repo>@<commit or tag>)
@@ -52,8 +55,8 @@ Options:
 `
 
 var (
-	publishTargetPartPattern = regexp.MustCompile(`^[a-z0-9][a-z0-9_-]*$`)
-	publishCommitPattern     = regexp.MustCompile(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
+	publishTargetPartPattern = lazyregexp.New(`^[a-z0-9][a-z0-9_-]*$`)
+	publishCommitPattern     = lazyregexp.New(`^(?:[0-9a-f]{40}|[0-9a-f]{64})$`)
 )
 
 // RunPigletPublishCommand handles `pig piglet publish`.
@@ -65,6 +68,7 @@ type publishRequest struct {
 	pigletRef   string
 	destination string
 	repo        string
+	tagPrefix   string
 	signKeyPath string
 	targets     string
 	artifacts   string
@@ -101,7 +105,8 @@ func runPublish(ctx context.Context, args []string, stdout, stderr io.Writer, bu
 func parsePublishArgs(args []string) (publishRequest, bool, error) {
 	request := publishRequest{builder: "auto"}
 	values := map[string]*string{
-		"--to": &request.destination, "--repo": &request.repo, "--sign-key": &request.signKeyPath,
+		"--tag-prefix": &request.tagPrefix,
+		"--to":         &request.destination, "--repo": &request.repo, "--sign-key": &request.signKeyPath,
 		"--targets": &request.targets, "--artifacts": &request.artifacts, "--builder": &request.builder,
 		"--commit": &request.commit, "--source-ref": &request.sourceRef, "--workspace": &request.workspace,
 	}
@@ -170,6 +175,7 @@ type publishRelease struct {
 	piglet       *piglet.Piglet
 	version      string
 	repo         string
+	tagPrefix    string
 	commit       string
 	sourceRef    string
 	workspace    string
@@ -191,7 +197,11 @@ type publishAsset struct {
 	manifest signature.Manifest
 }
 
-func (r publishRelease) tag() string { return "v" + r.version }
+func (r publishRelease) github() pigletrelease.GitHubRelease {
+	return pigletrelease.GitHubRelease{Repository: r.repo, TagPrefix: r.tagPrefix}
+}
+
+func (r publishRelease) tag() string { return r.github().Tag(r.version) }
 
 func publishGitHub(ctx context.Context, request publishRequest, stdout, stderr io.Writer, builders func() ([]BuilderBackend, error)) error {
 	release, err := preparePublishRelease(request)
@@ -248,6 +258,10 @@ func preparePublishRelease(request publishRequest) (publishRelease, error) {
 	if err != nil {
 		return publishRelease{}, err
 	}
+	// pig additive (D18): a named namespace is explicit and must match the selected Piglet.
+	if request.tagPrefix != "" && request.tagPrefix != p.Name+"/" {
+		return publishRelease{}, fmt.Errorf("--tag-prefix must be %q for Piglet %s", p.Name+"/", p.Name)
+	}
 	if p.Release == nil || p.Release.Version == "" {
 		return publishRelease{}, fmt.Errorf("Piglet %q release.version is required for publication", p.Name)
 	}
@@ -260,7 +274,8 @@ func preparePublishRelease(request publishRequest) (publishRelease, error) {
 	}
 	release := publishRelease{
 		pigletRef: request.pigletRef, piglet: p, version: p.Release.Version, repo: request.repo,
-		commit: request.commit, workspace: workspace, signKeyPath: request.signKeyPath, key: key,
+		tagPrefix: request.tagPrefix,
+		commit:    request.commit, workspace: workspace, signKeyPath: request.signKeyPath, key: key,
 		keyID: signature.KeyID(key.Public().(ed25519.PublicKey)), sourceDigest: sourceDigest,
 	}
 	if release.sourceRef, err = publishSourceRef(request, release.version); err != nil {
@@ -276,7 +291,7 @@ func preparePublishRelease(request publishRequest) (publishRelease, error) {
 // it is the Git commit or release tag the GitHub Release is created at.
 func publishSourceRef(request publishRequest, version string) (string, error) {
 	if request.sourceRef == "" {
-		selector := "v" + version
+		selector := request.tagPrefix + "v" + version
 		if request.commit != "" {
 			selector = request.commit
 		}
@@ -479,7 +494,7 @@ func renderPublishPlan(w io.Writer, release publishRelease, assets []publishAsse
 		}
 		_, _ = fmt.Fprintf(w, "  %-*s  %-*s  %s\n", nameWidth, asset.name, targetWidth, asset.target, origin)
 	}
-	_, _ = fmt.Fprintf(w, "  SHA256SUMS\n  piglet-release.json\nPull with: pig piglet pull github:%s@%s\n", release.repo, release.version)
+	_, _ = fmt.Fprintf(w, "  SHA256SUMS\n  piglet-release.json\nPull with: pig piglet pull %s\n", release.github().Reference(release.version))
 	if dryRun {
 		_, _ = fmt.Fprintln(w, "Dry run only; rerun with --yes to build, sign, and upload.")
 	}
@@ -569,7 +584,9 @@ func copyReleaseAsset(source, target string) error {
 // writeReleaseIndex writes SHA256SUMS and the signed piglet-release.json, then
 // checks every staged asset against the signed index exactly as pull will.
 func writeReleaseIndex(release publishRelease, assets []publishAsset, stage string) error {
+	github := release.github()
 	index := pigletrelease.Index{
+		GitHub: &github,
 		Piglet: release.piglet.Name, Version: release.version, PigVersion: assets[0].manifest.PigVersion,
 		SourceRef: release.sourceRef, Binaries: make(map[string]pigletrelease.Binary, len(assets)),
 	}
@@ -624,8 +641,8 @@ func uploadGitHubRelease(ctx context.Context, release publishRelease, assets []p
 		args = append(args, asset.name)
 		targets = append(targets, asset.target.String())
 	}
-	notes := fmt.Sprintf("Signed Piglet Binary release for %s %s.\n\nInstall it with PiG:\n\n    pig piglet pull github:%s@%s\n\nSigner: %s\nTargets: %s\nSource: %s\n\nEach Binary carries an Ed25519 signature trailer. piglet-release.json is the DSSE-signed release index, and SHA256SUMS lists the SHA-256 of each Binary.\n",
-		release.piglet.Name, release.version, release.repo, release.version, release.keyID, strings.Join(targets, ", "), release.sourceRef)
+	notes := fmt.Sprintf("Signed Piglet Binary release for %s %s.\n\nInstall it with PiG:\n\n    pig piglet pull %s\n\nSigner: %s\nTargets: %s\nSource: %s\n\nEach Binary carries an Ed25519 signature trailer. piglet-release.json is the DSSE-signed release index, and SHA256SUMS lists the SHA-256 of each Binary.\n",
+		release.piglet.Name, release.version, release.github().Reference(release.version), release.keyID, strings.Join(targets, ", "), release.sourceRef)
 	args = append(args, "SHA256SUMS", "piglet-release.json", "--repo", release.repo, "--title", release.piglet.Name+" "+release.tag(), "--notes", notes)
 	if release.commit != "" {
 		args = append(args, "--target", release.commit)
@@ -643,7 +660,7 @@ func uploadGitHubRelease(ctx context.Context, release publishRelease, assets []p
 		return ghError("create GitHub release "+release.tag()+" in "+release.repo, err, ghStderr.String())
 	}
 	_, _ = stderr.Write(ghStderr.Bytes())
-	_, _ = fmt.Fprintf(stdout, "Published %s %s to https://github.com/%s/releases/tag/%s\n", release.piglet.Name, release.version, release.repo, release.tag())
+	_, _ = fmt.Fprintf(stdout, "Published %s %s to https://github.com/%s/releases/tag/%s\n", release.piglet.Name, release.version, release.repo, url.PathEscape(release.tag()))
 	return nil
 }
 

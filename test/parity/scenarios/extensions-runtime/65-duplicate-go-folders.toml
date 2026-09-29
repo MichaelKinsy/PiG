@@ -1,0 +1,23 @@
+# Pi 0.87.1 loader.ts:599-636 retains both paths and reruns factories on reload. resource-loader.ts:1064-1084 reports duplicate tools after loading; it does not reject the second factory by its directory name.
+# Each copy's command owns a different counter. Compare the actual Go Host load/reload/dispatch and conflict detector with Pi's loader and conflict detector. This catches silently compiling both copies from one Go module root as well as registration-name mismatches.
+name = "65-duplicate-go-folders"
+description = "Duplicate folder identities retain their own code and report tool conflicts after load and reload"
+covers = ["packages/coding-agent/src/core/extensions/loader.ts", "packages/coding-agent/src/core/resource-loader.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/duplicate-go-folders"]
+pi_args = ["node", "./test/parity/testdata/duplicate-go-folders-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

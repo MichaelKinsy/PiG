@@ -1,0 +1,24 @@
+# Upstream evidence: Pi 0.87.1 print-mode.ts:137-146 emits the provider error on stderr and exits 1. Compare both streams independently so a correct stdout cannot conceal a wrong diagnostic.
+name = "04-print-real-provider-error"
+description = "Print mode preserves the exact provider HTTP error on stderr and exits unsuccessfully"
+covers = ["packages/coding-agent/src/modes/print-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "print-mode"
+openai_fixture = true
+model = "strict-wire/strict"
+
+[print]
+prompt = "HTTP_ERROR"
+timeout_seconds = 30
+
+[env]
+pig = ["PIG_HOME=../rpc/testdata/pig-home"]
+pi = ["PI_CODING_AGENT_DIR=../rpc/testdata/pi-home/agent"]
+pig_args = ["--offline", "--no-extensions", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+pi_args = ["--offline", "--no-extensions", "--system-prompt", "Strict wire probe.", "--no-context-files", "--no-skills", "--no-session"]
+
+[assert]
+exit_code = 1
+output_equal = true
+stderr_equal = true
+runs = 3

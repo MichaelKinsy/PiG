@@ -6,6 +6,7 @@ import (
 	"sync"
 
 	"github.com/MichaelKinsy/PiG/coding/extension"
+	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -15,6 +16,7 @@ import (
 // subprocess extension's listener answers across a socket through remote,
 // which never runs on the owner loop.
 type terminalInputListener struct {
+	builtin bool
 	id      uint64
 	handler func(data string) extension.TerminalInputResult
 
@@ -28,14 +30,11 @@ func (m *InteractiveMode) addRemoteTerminalInputHandler(_ string, handler extens
 
 // inputChunk is one parsed terminal sequence routed to the owner loop. The
 // loop settles ticket once the chunk's terminal-input listeners are done.
-// more reports that further sequences parsed from input the pump has already
-// read follow this one. Upstream's StdinBuffer emits every sequence of one
-// read synchronously and paints once afterwards, so the owner loop handles
-// the rest of the read before any other work or paint.
+// readDone closes after the decoder processes the entire terminal read, including protocol-only suffixes. The owner loop waits for that boundary before painting, without letting later negotiation overtake earlier input listeners.
 type inputChunk struct {
-	data   []byte
-	ticket *inputTicket
-	more   bool
+	data     []byte
+	ticket   *inputTicket
+	readDone <-chan struct{}
 }
 
 type inputTicketState uint8
@@ -121,12 +120,19 @@ func (t *inputTicket) settle() {
 // handle's error when the pass ends without waiting for a remote verdict; a
 // pass that resumes after one reports handle's error to the input loop.
 func (m *InteractiveMode) passTerminalInput(ctx context.Context, data string, ticket *inputTicket, handle func(context.Context, string) error) error {
+	// Modal input also passes here without dispatchInputChunk. Terminal replies
+	// precede every listener and focused component, as in tui.ts handleTerminalInput.
+	if m.consumeTerminalThemeInput(data) {
+		return nil
+	}
 	m.terminalInputMu.Lock()
 	shortcutListener := m.extensionShortcutListener
 	listeners := slices.Clone(m.terminalInputListeners)
 	m.terminalInputMu.Unlock()
 	// Upstream runs extension shortcuts inside the focused editor, after its key-release delivery check. Raw terminal-input listeners below still receive releases.
-	if shortcutListener != nil && tui.ShouldDeliverKey(m.editor, data) && shortcutListener(data) {
+	// An extension editor component runs the shortcuts itself, from its
+	// onExtensionShortcut (remote_editor.go).
+	if shortcutListener != nil && !m.editor.IsRemote() && tui.ShouldDeliverKey(m.editor, data) && shortcutListener(data) {
 		ticket.settle()
 		return nil
 	}
@@ -136,6 +142,12 @@ func (m *InteractiveMode) passTerminalInput(ctx context.Context, data string, ti
 	pass.finish = func(data string, consumed bool) {
 		if consumed {
 			return
+		}
+		if m.remoteEditor != nil {
+			m.remoteEditor.ticket = ticket
+		} else {
+			// A native handler can synchronously enter a modal input loop. Its listeners are done, so release the pump before that handoff. Only the remote editor extends the ticket through its input acknowledgement.
+			ticket.settle()
 		}
 		handleErr := handle(ctx, data)
 		if !resumed {
@@ -200,7 +212,7 @@ func (p *terminalInputPass) apply(result extension.TerminalInputResult) bool {
 }
 
 func (p *terminalInputPass) end(data string, consumed bool) {
-	p.ticket.settle()
+	defer p.ticket.settle()
 	p.finish(data, consumed)
 }
 
@@ -209,7 +221,9 @@ func (p *terminalInputPass) end(data string, consumed bool) {
 // shutdown cancels the request.
 func (p *terminalInputPass) await(l terminalInputListener) {
 	m := p.m
-	ctx := m.backgroundCtx
+	// upstream: packages/coding-agent/src/modes/interactive/interactive-mode.ts:createExtensionUIContext
+	editorText := (&ExtUIContext{m: m}).GetEditorText()
+	ctx := subprocess.WithTerminalInputState(m.backgroundCtx, editorText, m.toolsExpanded)
 	data := p.data
 	p.ticket.await()
 	m.backgroundTasks.Go(func() {
@@ -230,11 +244,4 @@ func (m *InteractiveMode) failInputLoop(err error) {
 	if err != nil && m.inputLoopErr == nil {
 		m.inputLoopErr = err
 	}
-}
-
-// inputBacklog is the input pump's ordered queue: parsed input not yet routed,
-// and the routed chunk whose terminal-input listeners have not settled.
-type inputBacklog struct {
-	held    []string
-	waiting *inputTicket
 }

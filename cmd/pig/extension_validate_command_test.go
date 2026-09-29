@@ -483,7 +483,7 @@ func TestInstallValidateOnlyReportsRegistrationFailure(t *testing.T) {
 	if code == 0 {
 		t.Fatalf("install validate-only code = 0, want failure\nstdout=%s\nstderr=%s", stdout, stderr)
 	}
-	if !strings.Contains(stderr, "error:") {
+	if !strings.HasPrefix(stderr, "Error: ") {
 		t.Fatalf("stderr missing error:\n%s", stderr)
 	}
 }

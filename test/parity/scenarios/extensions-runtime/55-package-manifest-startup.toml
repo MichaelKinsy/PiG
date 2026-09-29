@@ -1,0 +1,44 @@
+# Pi 0.87.1 pi-manifest.ts:16-33 ignores invalid JSON and resource field types
+# without diagnostics. package-manager.ts:2153-2202 falls back to conventions
+# only without a pi manifest, preserves valid siblings, and skips missing paths.
+# Vendor plugin manifests are not read by Pi. Synthetic context-mode@1.0.169
+# copies retain its pi entry paths, Claude skills string and inline mcpServers.
+# The get_commands response proves loose TypeScript, packaged extensions,
+# valid sibling prompts and conventional resources survive all broken inputs.
+name = "55-package-manifest-startup"
+description = "Malformed Package metadata does not stop unrelated Resources at startup"
+covers = [
+  "packages/coding-agent/src/core/pi-manifest.ts",
+  "packages/coding-agent/src/core/package-manager.ts",
+]
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"commands","type":"get_commands"}']
+timeout_seconds = 30
+settle_seconds = 1
+canonical_json = true
+
+[env]
+override_base_args = true
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=testdata/package-manifests/agent"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1", "PI_CODING_AGENT_DIR=testdata/package-manifests/agent"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+
+[assert]
+exit_code = 0
+runs = 3
+output_equal = true
+stderr_equal = true
+both_contain = ['"name":"loose-probe"', '"name":"context-mode-probe"', '"name":"bad-json-prompt"', '"name":"bad-extensions-type-prompt"', '"name":"bad-skills-type-prompt"', '"name":"bad-themes-type-prompt"', '"name":"bad-missing-prompt"', '"name":"vendor-claude-prompt"', '"name":"vendor-cursor-prompt"', '"name":"vendor-plugin-prompt"', '"name":"context-mode-no-pi-prompt"']
+both_not_contain = ['"name":"bad-prompts-type-prompt"', '"name":"skill:bad-skills-type-skill"', 'Failed to load extension', 'configured Package validation failed']
+
+# normalize-rationale: the runner copies the same agent fixture independently.
+# Only that ephemeral prefix differs; all member paths and diagnostics remain.
+[[assert.normalize_replace]]
+pattern = '/[^" ]*parity-snap-(PI|PIG)_CODING_AGENT_DIR-[0-9]+'
+with = '<agent>'
+reason = "Isolated agent roots differ; preserve each resource path and its metadata."

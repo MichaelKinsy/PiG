@@ -1,0 +1,1 @@
+{"providers":{"scope-provider":{"api":"openai-completions","baseUrl":"https://example.invalid/v1","apiKey":"fixture-key","models":[{"id":"first","reasoning":true},{"id":"second","reasoning":true}]}}}

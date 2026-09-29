@@ -1,0 +1,24 @@
+# Pi0.87.1 original #5943 sites276/313/368 and stale-startup-rebind site23.
+# Go drives real factory Runtime replacement through the UI owner. Independently released startup/replacement callbacks prove stale completion cannot change subscription/title state.
+# Case records follow complete assertions; the scenario does not claim a terminal-frame comparison or subprocess factory-lifetime closure.
+name = "29-session-rebind-ui"
+description = "Replacement render and event subscription precede session_start; stale startup completion cannot resubscribe or update title"
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-rebind-ui-pig.sh"]
+pi_args = ["bash", "./test/parity/testdata/session-rebind-ui-pi.sh"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 // sessionVariables are the variables upstream's bash tool controls.
@@ -18,12 +19,13 @@ var sessionVariables = []string{"PI_SESSION_ID", "PI_SESSION_FILE", "PI_PROVIDER
 // sessionGuideline is upstream's bash prompt guideline for the variables.
 const sessionGuideline = "You can inspect PI_* environment variables for current model and session details."
 
-// GetShellEnv mirrors upstream getShellEnv: the process environment with
-// binDir (upstream getBinDir, <agentDir>/bin, where managed rg and fd live)
-// prepended to PATH unless PATH already lists it. The PATH key is matched
-// case-insensitively, as on Windows. An empty binDir leaves PATH unchanged.
+// GetShellEnv mirrors upstream getShellEnv: {...process.env}
+// (nodespawn.ProcessEnv) with binDir (upstream getBinDir, <agentDir>/bin,
+// where managed rg and fd live) prepended to PATH unless PATH already lists
+// it. The PATH key is matched case-insensitively, as on Windows. An empty
+// binDir leaves PATH unchanged.
 func GetShellEnv(binDir string) []string {
-	env := os.Environ()
+	env := nodespawn.ProcessEnv()
 	if binDir == "" {
 		return env
 	}

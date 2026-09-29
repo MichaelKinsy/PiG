@@ -59,8 +59,16 @@ func ListenExtension(sockPath string, node bool) (net.Listener, string, error) {
 // another client, as go-winio's listener does.
 //
 // Accept may be called concurrently. Each call waits on an instance of its
-// own, the listener records every one, and Close cancels them all. The
-// listener owns at most one spare instance that no Accept is waiting on.
+// own, the listener records every one, and Close ends them all. The listener
+// owns at most one spare instance that no Accept is waiting on.
+//
+// Close ends a pending connect by closing the instance's pipe handle, which
+// the pipe driver completes at once. A connect is issued on whichever thread
+// runs the listener code, and Go then runs other goroutines on that thread.
+// CancelIoEx of the connect waits until that thread can process the
+// cancellation, which it cannot while a goroutine holds it in a synchronous
+// read: os/exec copies a silent Node cell's output that way for as long as
+// the cell lives.
 type pipeListener struct {
 	path  string
 	attrs *windows.SecurityAttributes
@@ -71,11 +79,23 @@ type pipeListener struct {
 	accepting []*pipeInstance // the instance each waiting Accept waits on
 }
 
-// pipeInstance is one server instance of the pipe and its connect.
+// pipeInstance is one server instance of the pipe and its connect. While the
+// instance is the listener's spare or a waiting Accept's, Close may close its
+// pipe handle under the listener's lock.
+//
+// The connect never queues a completion packet: its overlapped carries the
+// event with the low-order bit set. Accept hands the handle to go-winio, which
+// associates it with its completion port, and the kernel sets a finished
+// connect's event before it looks for that port. A packet queued in between
+// would carry this overlapped to go-winio, which would take it for one of its
+// own operations.
 type pipeInstance struct {
 	handle     windows.Handle
+	event      windows.Handle
 	overlapped *windows.Overlapped
-	// done is set when the connect finished when it was issued.
+	// done is set once the connect has finished: when it was issued, or
+	// when wait saw its event set. The kernel no longer writes to the
+	// overlapped after that.
 	done       bool
 	clientGone bool
 }
@@ -135,7 +155,7 @@ func connectPipeInstance(path string, h windows.Handle) (*pipeInstance, error) {
 		_ = windows.CloseHandle(h)
 		return nil, err
 	}
-	instance := &pipeInstance{handle: h, overlapped: &windows.Overlapped{HEvent: event}}
+	instance := &pipeInstance{handle: h, event: event, overlapped: &windows.Overlapped{HEvent: event | 1}}
 	switch err := windows.ConnectNamedPipe(h, instance.overlapped); {
 	case err == nil, errors.Is(err, windows.ERROR_PIPE_CONNECTED):
 		instance.done = true
@@ -149,15 +169,24 @@ func connectPipeInstance(path string, h windows.Handle) (*pipeInstance, error) {
 	return instance, nil
 }
 
-// wait returns once a client has connected to the instance, or the connect
-// was cancelled.
+// wait returns once the instance's connect has finished: a client connected,
+// or Close closed the instance. It waits on the connect's event, not on the
+// pipe handle, which Close may already have closed. After wait returns, the
+// kernel no longer writes to the instance's overlapped.
 func (p *pipeInstance) wait() error {
 	if p.done {
 		return nil
 	}
-	var transferred uint32
-	err := windows.GetOverlappedResult(p.handle, p.overlapped, &transferred, true)
+	if _, err := windows.WaitForSingleObject(p.event, windows.INFINITE); err != nil {
+		return err
+	}
 	p.done = true
+	// The kernel stores the connect's NTSTATUS in the overlapped.
+	status := windows.NTStatus(p.overlapped.Internal)
+	if int32(status) >= 0 {
+		return nil
+	}
+	err := status.Errno()
 	if errors.Is(err, windows.ERROR_NO_DATA) {
 		p.clientGone = true
 		return nil
@@ -165,19 +194,19 @@ func (p *pipeInstance) wait() error {
 	return err
 }
 
-// cancel stops a pending connect and waits for the cancellation, so the
-// kernel no longer writes to the instance's overlapped.
-func (p *pipeInstance) cancel() {
-	if !p.done {
-		_ = windows.CancelIoEx(p.handle, p.overlapped)
-		_ = p.wait()
+// abort closes the instance's pipe handle. The pipe driver then completes a
+// pending connect at once, whatever the thread that issued it is doing.
+func (p *pipeInstance) abort() {
+	if p.handle != windows.InvalidHandle {
+		_ = windows.CloseHandle(p.handle)
+		p.handle = windows.InvalidHandle
 	}
 }
 
 // release closes the instance's event and, unless it was handed to a
 // connection, its pipe handle.
 func (p *pipeInstance) release() {
-	_ = windows.CloseHandle(p.overlapped.HEvent)
+	_ = windows.CloseHandle(p.event)
 	if p.handle != windows.InvalidHandle {
 		_ = windows.CloseHandle(p.handle)
 	}
@@ -217,7 +246,9 @@ func (l *pipeListener) Accept() (net.Conn, error) {
 		}
 	}
 	l.mu.Unlock()
-	if err != nil {
+	// A Close that ran while this instance was waiting closed its handle,
+	// even when a client had connected first.
+	if err != nil || closed {
 		instance.release()
 		if closed {
 			return nil, net.ErrClosed
@@ -255,11 +286,12 @@ func (l *pipeListener) Close() error {
 	}
 	l.closed = true
 	for _, instance := range l.accepting {
-		// The waiting Accept sees the cancellation and releases it.
-		_ = windows.CancelIoEx(instance.handle, instance.overlapped)
+		// The waiting Accept sees its connect end and releases the rest.
+		instance.abort()
 	}
 	if l.next != nil {
-		l.next.cancel()
+		l.next.abort()
+		_ = l.next.wait()
 		l.next.release()
 		l.next = nil
 	}

@@ -1,11 +1,20 @@
+// Ports packages/coding-agent/src/modes/interactive/interactive-mode.ts.
 package codingagent
 
 import (
 	"strings"
 
-	"github.com/MichaelKinsy/PiG/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 	"github.com/MichaelKinsy/PiG/tui"
 )
+
+// headerContainer keeps host spacing outside the replaceable header component, including when a custom header renders no rows.
+func (m *InteractiveMode) headerContainer() *tui.Container {
+	if !m.opts.LoginVisible {
+		return tui.NewContainer(m.extHeader)
+	}
+	return tui.NewContainer(tui.NewSpacer(1), m.extHeader, tui.NewSpacer(1))
+}
 
 // renderBuiltInHeader renders the current startup help expansion. Verbose seeds this state only at initialization; tool toggles and header restoration subsequently select it.
 func (m *InteractiveMode) renderBuiltInHeader(width int) []string {
@@ -65,7 +74,5 @@ func (m *InteractiveMode) renderBuiltInHeader(width int) []string {
 	}
 	// pig divergence (D2): self-help names PiG rather than the separate Pi executable.
 	onboarding := themeFg(theme.Dim, "PiG can explain its own features and look up its docs. Ask it how to use or extend PiG.")
-	out := []string{""}
-	out = append(out, tui.NewPaddedText(logo+"\n"+instructions+"\n\n"+onboarding, 1, 0, nil).Render(width)...)
-	return append(out, "")
+	return tui.NewPaddedText(logo+"\n"+instructions+"\n\n"+onboarding, 1, 0, nil).Render(width)
 }

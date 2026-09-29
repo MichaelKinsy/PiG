@@ -1,0 +1,45 @@
+# Upstream evidence: Pi 0.87.1 autocomplete.ts:337-351 awaits command argument
+# completions before a wrapper receives its first result. A cache-miss null followed
+# by a second query is not that contract. The fixture latches only the first answer.
+name = "11-extension-wrapper-arguments"
+description = "A wrapper receives actual awaited command arguments on its first delegation."
+covers = ["packages/tui/src/autocomplete.ts", "packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+
+[tmux]
+width = 100
+height = 35
+# The footer is drawn when the TUI mounts, before session_start installs the
+# wrapper provider (interactive-mode.ts:951-1036, 1911-1980). The no-model
+# warning follows init in both binaries (interactive-mode.ts:1149-1150), so
+# typing starts only after the wrapper and command completions are in place.
+ready_pattern_pig = "No models available"
+ready_pattern_pi = "No models available"
+ready_timeout_seconds = 30
+capture_start = "Argument results"
+capture_end = "escape/ctrl+c cancel"
+
+[[tmux.steps]]
+keys = ["/argument-proof", "Space"]
+wait_contains = ["Awaited argument"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["Tab", "Enter"]
+wait_contains = ["Argument results"]
+wait_timeout_seconds = 10
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=../selectors/testdata/dialogs-default"]
+pi = ["PI_CODING_AGENT_DIR=../selectors/testdata/dialogs-default"]
+pig_extensions = ["testdata/wrapper-arguments.ts"]
+pi_extensions = ["testdata/wrapper-arguments.ts"]
+pig_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--no-skills", "--no-prompt-templates", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["first=true", "called=true", "args=chosen"]
+escaped_output_equal = true
+runs = 3

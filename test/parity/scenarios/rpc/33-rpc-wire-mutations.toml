@@ -1,0 +1,63 @@
+# Pi 0.87.1 rpc-mode.ts:151-210,354-363,502-508,538-541 and agent-session.ts:1015-1028.
+# Both real RPC processes use the same local Anthropic SSE fixture and ordered UI extension.
+# Compare complete mutation/UI/recovery/compaction/fork/switch records and stderr through the shared typed JSON comparator.
+# The complete RPC stream is retained as the raw artifact; no identity is rewritten by the probe.
+# Non-recovery prompt stream events are outside this scenario's claim and remain in the raw probe artifact.
+name = "33-rpc-wire-mutations"
+description = "RPC events precede mutation responses, UI calls retain order, recovery entries publish, and missing session paths open"
+covers = ["packages/coding-agent/src/modes/rpc/rpc-mode.ts", "packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/session-manager.ts", "packages/coding-agent/src/core/agent-session-runtime.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["python3", "./test/parity/testdata/rpc-wire-drift.py", "pig", "{{TEMP}}/rpc"]
+pi_args = ["python3", "./test/parity/testdata/rpc-wire-drift.py", "pi", "{{TEMP}}/rpc"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+artifact_path = "{{TEMP}}/rpc/raw.json"
+
+[assert]
+exit_code = 0
+json_output_equal = true
+stderr_equal = true
+runs = 3
+
+[[assert.json_aliases]]
+paths = ["/**/id", "/**/sessionId"]
+kind = "id"
+group = "session"
+pattern = '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+reason = "Session and UI UUIDs are allocated independently; preserve their syntax, field presence and bijective references."
+[[assert.json_aliases]]
+paths = ["/**/id", "/**/parentId", "/**/targetId", "/**/leafId", "/**/firstKeptEntryId"]
+kind = "id"
+group = "entry"
+pattern = '^[0-9a-f]{8}$'
+reason = "Pi allocates eight-hex entry identities; preserve their shape and every reference without rewriting command or model IDs."
+[[assert.json_aliases]]
+paths = ["/**/sessionFile"]
+kind = "session_file"
+group = "session"
+roots = ["temp"]
+pattern = '[0-9]Z_[0-9a-f-]+\.jsonl$'
+reason = "Only generated session filenames vary; require Pi's millisecond filename syntax and bind the embedded UUID to its session."
+[[assert.json_aliases]]
+paths = ["/**/cwd", "/**/sessionFile"]
+kind = "path"
+roots = ["temp"]
+reason = "The fixture explicitly locates cwd, sessions and the missing target under the run-owned temporary root; retain every path suffix."
+[[assert.json_aliases]]
+paths = ["/**/baseUrl"]
+kind = "id"
+group = "provider-url"
+pattern = '^http://127\.0\.0\.1:[0-9]+$'
+reason = "The loopback provider receives an allocated port; preserve scheme, host, field presence and repeated endpoint identity."
+[[assert.json_aliases]]
+paths = ["/**/timestamp"]
+kind = "timestamp"
+reason = "Independent clocks vary; retain field presence, numeric/string type and timestamp syntax instead of replacing arbitrary values with zero."

@@ -1,0 +1,25 @@
+# Upstream evidence: Pi 0.87.1 main.ts:522-527 passes the resolved scope independently of the selected model. runner.ts:841-844 exposes it to both lifecycle and command contexts.
+# Compare every ordered provider/id/thinking tuple at both caller boundaries. JSON artifact comparison only parses formatting; records contain no paths or normalization rules.
+name = "45-headless-scoped-models"
+description = "An explicit startup model does not erase ordered scoped-model overrides"
+covers = ["packages/coding-agent/src/core/extensions/runner.ts", "packages/coding-agent/src/main.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/scoped-model-agent"]
+pi = ["PI_CODING_AGENT_DIR=testdata/scoped-model-agent"]
+pig_extensions = ["testdata/ext/scoped-models.mjs"]
+pi_extensions = ["testdata/ext/scoped-models.mjs"]
+
+[cli]
+args = ["--no-session", "--offline", "--model", "scope-provider/first", "--models", "scope-provider/second:high,scope-provider/first", "--scope-output", "{{TEMP}}/scope.json", "-p", "/scope"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/scope.json"
+
+[assert]
+exit_code = 0
+artifact_normalized_equal = true
+artifact_both_contain = ["second", "first", "high", "start", "command"]
+both_not_contain = ["Extension error", "TypeError"]
+runs = 3

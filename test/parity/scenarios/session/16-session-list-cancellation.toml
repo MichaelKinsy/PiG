@@ -1,0 +1,25 @@
+# Pi 0.87.1 session-manager/file-operations.test.ts:329 cancels listing from the
+# first partial snapshot and rejects a second listing with that same signal.
+# Both adapters create two persisted sessions and drive the real listing API.
+name = "16-session-list-cancellation"
+description = "Progress callbacks cancel session discovery cooperatively"
+covers = ["packages/coding-agent/src/core/session-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-list-progress-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/session-list-progress-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SESSION_LIST cancelled=true callbacks=1"]
+runs = 3

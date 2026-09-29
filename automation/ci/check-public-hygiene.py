@@ -12,16 +12,18 @@ import subprocess
 import sys
 
 # Assemble operator-specific literals so this policy does not exempt itself.
+# Domain probes search anywhere in a line; hostname prefixes add no matches and need no greedy scan.
 PRIVATE = re.compile(
     r"(?:/Users/|/home/)" + "kin" + r"sy(?:/|\b)|"
-    + "imla" + r"dris|(?:[\w.-]+\.)?hpe" + r"corp\.net|labs\.hpe" + r"corp|"
+    + "imla" + r"dris|hpe" + r"corp\.net|labs\.hpe" + r"corp|"
     + "pig" + r"-staging|(?:~/|\$HOME/)pig" + r"-lanes|"
     + r"\.dev" + r"cache/scratch|(?:/Users|/home)/[^/\s]+/PiG-launch"
 )
 LANE = re.compile(r"(^|/)(REVIEW[^/]*|QUESTIONS|REPORT|NATIVE-PROOF-REQUEST[^/]*|[^/]*-REPORT|TASK|[^/]*\.TASK)\.md$")
 ENV = re.compile(r"(^|/)(\.env(\.[^/]*)?|[^/]+\.env)$")
 PRIVATE_DIR = re.compile(r"(^|/)(\.dev" + r"cache|pig-handoff)/")
-UNCLEARED = re.compile(r"^media/demo/(demo-(f|full)\.(mp4|gif|png)|evidence/doom-[^/]*\.png)$")
+# Launch-video production files are not part of the public tree.
+UNCLEARED = re.compile(r"^docs/media/demo/")
 
 
 def findings(path, data):

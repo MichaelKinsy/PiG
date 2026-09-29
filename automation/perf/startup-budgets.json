@@ -1,0 +1,5 @@
+{
+  "runtime_archive_max_bytes": 12582912,
+  "no_extensions_over_baseline": 1.05,
+  "extension_over_pi": 1.15
+}

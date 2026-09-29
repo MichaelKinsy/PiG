@@ -80,7 +80,7 @@ func (echoTool) Schema() ai.ToolSchema {
 	return ai.ToolSchema{Name: "echo", Description: "echo"}
 }
 func (echoTool) Execute(_ context.Context, _ string, params json.RawMessage, _ ToolUpdateCallback) (AgentToolResult, error) {
-	return AgentToolResult{Content: string(params)}, nil
+	return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: string(params)}}}, nil
 }
 func (echoTool) ExecutionMode() ToolExecutionMode { return ToolModeSequential }
 
@@ -106,7 +106,7 @@ func (s *slowEchoTool) Execute(_ context.Context, _ string, params json.RawMessa
 	s.init()
 	s.delay.Done() // signal tool execution started
 	<-s.blockCh    // wait for unblock
-	return AgentToolResult{Content: string(params)}, nil
+	return AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: string(params)}}}, nil
 }
 func (s *slowEchoTool) ExecutionMode() ToolExecutionMode { return ToolModeSequential }
 
@@ -184,8 +184,8 @@ func TestSteering_MessageInjectedAfterToolExecution(t *testing.T) {
 		}
 		t.Fatal("message 4 should be a user message (steering)")
 	}
-	if tc, ok := steerMsg.User.Content[0].(ai.TextContent); !ok || tc.Text != "redirect to tests" {
-		t.Fatalf("steering text = %v, want 'redirect to tests'", steerMsg.User.Content[0])
+	if tc, ok := steerMsg.User.Content.(ai.UserContentBlocks)[0].(ai.TextContent); !ok || tc.Text != "redirect to tests" {
+		t.Fatalf("steering text = %v, want 'redirect to tests'", steerMsg.User.Content.(ai.UserContentBlocks)[0])
 	}
 
 	if msgs[5].Assistant == nil {
@@ -221,8 +221,8 @@ func TestFollowUp_ProcessedAfterAgentStops(t *testing.T) {
 	if followUpMsg.User == nil {
 		t.Fatal("message 2 should be a user message (follow-up)")
 	}
-	if tc, ok := followUpMsg.User.Content[0].(ai.TextContent); !ok || tc.Text != "follow up question" {
-		t.Fatalf("follow-up text = %v, want 'follow up question'", followUpMsg.User.Content[0])
+	if tc, ok := followUpMsg.User.Content.(ai.UserContentBlocks)[0].(ai.TextContent); !ok || tc.Text != "follow up question" {
+		t.Fatalf("follow-up text = %v, want 'follow up question'", followUpMsg.User.Content.(ai.UserContentBlocks)[0])
 	}
 }
 

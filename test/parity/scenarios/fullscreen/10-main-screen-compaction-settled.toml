@@ -1,0 +1,51 @@
+# Behavior family: fullscreen
+# Surface: Pi 0.84.0 main-screen semantic transcript replacement after compaction.
+# Upstream evidence: the isolated Pi 0.84.0 live probe removed obsolete
+# LIVE-STREAM rows and settled on one [compaction] replacement block.
+
+name = "10-main-screen-compaction-settled"
+description = "Settled compaction removes obsolete history and paints the same replacement as Pi."
+covers = [
+  "packages/tui/src/tui-main-screen.ts",
+]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "PIG_CODING_AGENT_DIR=../compaction/testdata/pig-agent", "TUI_LIVE_PROBE=1"]
+pi = ["PI_CODING_AGENT_DIR=../compaction/testdata/pi-agent", "PI_SKIP_VERSION_CHECK=1", "TUI_LIVE_PROBE=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts"]
+pig_args = ["--no-extensions", "--session-dir", "sessions", "-c"]
+pi_args = ["--session-dir", "sessions", "-c"]
+
+[tmux]
+width = 80
+height = 12
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+cwd = "../compaction/testdata/compact-session"
+capture_start = "[compaction]"
+capture_end = "faux-1"
+
+[[tmux.steps]]
+keys = ["TUI_LIVE_STREAM", "Enter"]
+wait_contains = ["LIVE-STREAM-24"]
+wait_timeout_seconds = 15
+
+[[tmux.steps]]
+keys = ["/compact", "Enter"]
+wait_contains = ["[compaction]"]
+wait_timeout_seconds = 15
+settle_seconds = 1
+
+[assert]
+both_reach_ready = true
+both_contain = ["[compaction]", "Compacted from"]
+both_not_contain = ["LIVE-STREAM-01", "LIVE-STREAM-24", "Compacting context", "panic:", "goroutine "]
+output_normalized_equal = true
+runtime_ratio_max = 2.0
+runs = 3
+
+# Compaction token totals and the complete footer are observable output. No accounting or row is erased.

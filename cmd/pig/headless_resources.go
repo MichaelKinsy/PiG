@@ -7,11 +7,26 @@ import (
 	"os"
 	"strings"
 
+	"github.com/MichaelKinsy/PiG/coding"
 	"github.com/MichaelKinsy/PiG/coding/extension"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/inproc"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
 	"github.com/MichaelKinsy/PiG/internal/codingagent/prompts"
 )
+
+// extensionPromptSkills is the Skill shape Pi hands extensions in systemPromptOptions.skills (skills.ts Skill).
+func extensionPromptSkills(skills []*codingagent.SkillDef) []extension.SystemPromptSkill {
+	return codingagent.SystemPromptSkills(skills)
+}
+
+// sessionPromptResources is the resource-loader state the Session reports as before_agent_start systemPromptOptions.
+func sessionPromptResources(resolved resolvedPromptInputs, contextFiles []codingagent.ContextFile, skills []*codingagent.SkillDef) *coding.SystemPromptResources {
+	files := make([]extension.SystemPromptContextFile, 0, len(contextFiles))
+	for _, file := range contextFiles {
+		files = append(files, extension.SystemPromptContextFile{Path: file.Path, Content: file.Content})
+	}
+	return &coding.SystemPromptResources{CustomPrompt: resolved.custom, CustomPromptSet: resolved.customSet, AppendSystemPrompt: resolved.append, ContextFiles: files, Skills: extensionPromptSkills(skills)}
+}
 
 // promptSkillsFor lists skills as the system prompt describes them.
 func promptSkillsFor(skills []*codingagent.SkillDef) []prompts.Skill {
@@ -27,17 +42,24 @@ func promptSkillsFor(skills []*codingagent.SkillDef) []prompts.Skill {
 // resources_discover handlers for resource paths, records each path's
 // discovering extension as its provenance, and adds the skills and prompt
 // templates the paths hold after the ones already loaded. It reports whether
-// the skills changed, so the caller rebuilds the system prompt.
-func (c *headlessCommandCatalog) extendFromExtensions(ctx context.Context, runner *inproc.Runner, reason string) bool {
+// the skills changed, so the caller rebuilds the system prompt. Path normalization errors return before publishing resources.
+func (c *headlessCommandCatalog) extendFromExtensions(ctx context.Context, runner *inproc.Runner, reason string) (bool, error) {
 	if runner == nil || !runner.HasHandlers(codingagent.EventResourcesDiscover) {
-		return false
+		return false, nil
 	}
 	discovered, err := runner.EmitResourcesDiscover(ctx, c.cwd, reason)
-	if err != nil || discovered == nil {
-		return false
+	if err != nil {
+		return false, err
+	}
+	discovered, err = codingagent.NormalizeExtensionPaths(c.cwd, discovered)
+	if err != nil {
+		return false, err
+	}
+	if discovered == nil {
+		return false, nil
 	}
 	if len(discovered.SkillPaths) == 0 && len(discovered.PromptPaths) == 0 && len(discovered.ThemePaths) == 0 {
-		return false
+		return false, nil
 	}
 	sourceInfo := make(map[string]codingagent.ResourceSourceInfo, len(c.sourceInfo)+len(discovered.SkillPaths)+len(discovered.PromptPaths))
 	maps.Copy(sourceInfo, c.sourceInfo)
@@ -70,7 +92,7 @@ func (c *headlessCommandCatalog) extendFromExtensions(ctx context.Context, runne
 		c.promptTemplates = templates
 	}
 	if len(skillPaths) == 0 {
-		return false
+		return false, nil
 	}
 	skills := append([]*codingagent.SkillDef(nil), c.skills...)
 	for _, path := range skillPaths {
@@ -87,6 +109,6 @@ func (c *headlessCommandCatalog) extendFromExtensions(ctx context.Context, runne
 			}
 		}
 	}
-	c.skills = codingagent.DeduplicateSkills(skills)
-	return true
+	c.skills = c.slashCatalog().WithSkillSources(codingagent.DeduplicateSkills(skills))
+	return true, nil
 }

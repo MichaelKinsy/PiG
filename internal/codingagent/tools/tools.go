@@ -15,7 +15,6 @@ import (
 	"encoding/base64"
 	"io"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"runtime"
 	"slices"
@@ -25,6 +24,7 @@ import (
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/nodespawn"
 )
 
 // upstream: coding-agent/src/core/tools/truncate.ts:DEFAULT_MAX_BYTES
@@ -62,11 +62,13 @@ func lookupSystemToolPath(tool string) string {
 // LookupToolPath resolves a tool to a usable binary path. Search order:
 //  1. agentBinDir (if non-empty): the auto-install location used by
 //     ToolsManager.downloadTool.
-//  2. exec.LookPath over systemBinaryNames (fd has "fdfind" fallback for
-//     Debian/Ubuntu).
+//  2. systemBinaryNames (fd has "fdfind" fallback for Debian/Ubuntu) that
+//     upstream's commandExists can spawn: nodespawn.LookPath, which on
+//     Windows finds only a .com or .exe file, from the working directory
+//     first unless NoDefaultCurrentDirectoryInExePath is set.
 //
 // Returns "" if nothing is found. On Windows, returns the bare command
-// name (matches upstream behavior so cmd.exe expansion works).
+// name, as upstream's getToolPath does.
 func LookupToolPath(tool, agentBinDir string) string {
 	config, ok := systemToolConfigs[tool]
 	if !ok {
@@ -83,7 +85,7 @@ func LookupToolPath(tool, agentBinDir string) string {
 		}
 	}
 	for _, name := range systemBinaryNames(config) {
-		if path, err := exec.LookPath(name); err == nil {
+		if path, err := nodespawn.LookPath(name, "", nil); err == nil {
 			if runtime.GOOS == "windows" {
 				return name
 			}
@@ -321,7 +323,7 @@ func ensureSearchTool(ctx context.Context, pinned string, manager *ToolsManager,
 // Delegates to resolveToCwd for ~ expansion + unicode normalization.
 //
 // upstream: path-utils.ts resolveToCwd
-func resolvePath(cwd, path string) string {
+func resolvePath(cwd, path string) (string, error) {
 	return resolveToCwd(path, cwd)
 }
 

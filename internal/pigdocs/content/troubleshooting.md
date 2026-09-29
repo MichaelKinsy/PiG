@@ -60,7 +60,7 @@ PiG runs without any toolchain. Extensions and Piglet builds need the tool for t
 
 ## Terminal display
 
-A real change of terminal width or height redraws the whole transcript, as Pi does. If the view jumps without a size change, set `PI_TUI_DEBUG_REDRAW=1`, reproduce the problem, and read `~/.pig/agent/pig-debug.log`: each full redraw appends its reason. For tmux settings, see [tmux](https://pi-in-go.dev/docs/latest/tmux/).
+A real change of terminal width or height redraws the whole transcript, as Pi does. If the view jumps without a size change, set `PI_TUI_DEBUG_REDRAW=1`, reproduce the problem, and read `pi-tui-debug.log` in the configured agent directory (normally `~/.pig/agent`): each full redraw appends its reason. For tmux settings, see [tmux](https://pi-in-go.dev/docs/latest/tmux/).
 
 ## Extensions that fail to load
 

@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"reflect"
 	"slices"
 	"strings"
 	"sync"
@@ -131,7 +132,7 @@ func TestMetaOAuthLogsInWithDeviceFlowAndMintsModelAPIKey(t *testing.T) {
 		// The first poll waits one interval (5s) and is pending; the second
 		// poll completes after another interval.
 		wantCredentials := OAuthCredentials{Refresh: "identity-token", Access: "LLM|minted-key", Expires: start.Add(10*time.Second + metaDay).UnixMilli()}
-		if credentials != wantCredentials {
+		if !reflect.DeepEqual(credentials, wantCredentials) {
 			t.Fatalf("credentials = %#v, want %#v", credentials, wantCredentials)
 		}
 	})
@@ -155,7 +156,7 @@ func TestMetaOAuthRefreshReMintsKeyFromStoredIdentityToken(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := OAuthCredentials{Refresh: "identity-token", Access: "LLM|fresh-key", Expires: now.Add(metaDay).UnixMilli()}
-	if got != want {
+	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("refreshed = %#v, want %#v", got, want)
 	}
 }
@@ -289,7 +290,7 @@ func TestMetaOAuthLoginContextCancellation(t *testing.T) {
 		t.Run(string(tc.step), func(t *testing.T) {
 			synctest.Test(t, func(t *testing.T) {
 				run := runMetaLoginCancelledAt(tc.step)
-				if run.err == nil || run.err.Error() != deviceCodeCancelMessage || run.credentials != (OAuthCredentials{}) {
+				if run.err == nil || run.err.Error() != deviceCodeCancelMessage || !reflect.DeepEqual(run.credentials, OAuthCredentials{}) {
 					t.Fatalf("LoginContext = %#v, %v; want %q", run.credentials, run.err, deviceCodeCancelMessage)
 				}
 				if run.elapsed != tc.elapsed {
@@ -327,7 +328,7 @@ func TestMetaOAuthRefreshTokenContextCancellation(t *testing.T) {
 			if inFlight {
 				wantRequests, wantElapsed = 1, time.Second
 			}
-			if err == nil || got != (OAuthCredentials{}) || requests != wantRequests || time.Since(start) != wantElapsed {
+			if err == nil || !reflect.DeepEqual(got, OAuthCredentials{}) || requests != wantRequests || time.Since(start) != wantElapsed {
 				t.Fatalf("in-flight=%v: refresh = %#v, %v after %v with %d requests", inFlight, got, err, time.Since(start), requests)
 			}
 		})

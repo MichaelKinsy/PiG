@@ -6,25 +6,24 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"runtime"
-	"strings"
 	"testing"
 	"testing/fstest"
 	"time"
 
+	"github.com/MichaelKinsy/PiG/agent"
+	"github.com/MichaelKinsy/PiG/ai"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/runtimecell"
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 )
 
-// hideGo restricts PATH so the go toolchain is unreachable, modeling a
-// consumer machine that installed a Piglet Binary without a compiler. It skips (not
-// fails) when go happens to live on the restricted PATH, so the test never
-// makes a false claim about being toolchain-free.
+// hideGo gives the consumer phase an empty PATH, so the serving proof cannot silently skip on machines that install Go under /usr/bin.
 func hideGo(t *testing.T) {
 	t.Helper()
-	t.Setenv("PATH", "/usr/bin:/bin")
+	t.Setenv("PATH", t.TempDir())
 	if p, err := exec.LookPath("go"); err == nil {
-		t.Skipf("go still reachable at %s under restricted PATH; cannot prove toolchain-free serving", p)
+		t.Fatalf("go unexpectedly reachable at %s under empty PATH", p)
 	}
 }
 
@@ -59,11 +58,20 @@ func writeHelloSource(t *testing.T) string {
 	return src
 }
 
-// TestServing_PigletBinaryServesCellToolchainFree is the Milestone B acceptance
-// proof: a Piglet Binary serves an embedded isolated cell end-to-end: extract →
-// resolver → Host.Load → live subprocess → tool round-trip: with the go
-// toolchain off PATH. It exercises the real cellpack resolver and a real
-// subprocess Host, not a fake.
+// assertServedTextResult checks the host's normalized AgentToolResult, not the SDK's text shorthand on the wire.
+func assertServedTextResult(t *testing.T, result any, want string) {
+	t.Helper()
+	got, ok := result.(agent.AgentToolResult)
+	if !ok {
+		t.Fatalf("served tool result type = %T, want agent.AgentToolResult", result)
+	}
+	expected := agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: want}}}
+	if !reflect.DeepEqual(got, expected) {
+		t.Fatalf("served tool result = %#v, want %#v", got, expected)
+	}
+}
+
+// TestServing_PigletBinaryServesCellToolchainFree proves extraction, resolver selection, subprocess loading and exact tool delivery with no compiler on the consumer PATH.
 func TestServing_PigletBinaryServesCellToolchainFree(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping serving integration test in short mode")
@@ -126,13 +134,7 @@ func TestServing_PigletBinaryServesCellToolchainFree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("tool execute through served binary: %v", err)
 	}
-	var got struct {
-		Content string `json:"content"`
-	}
-	_ = json.Unmarshal(mustJSON(t, result), &got)
-	if got.Content != "Hello, Piglet Binary!" {
-		t.Errorf("tool result content = %q, want %q", got.Content, "Hello, Piglet Binary!")
-	}
+	assertServedTextResult(t, result, "Hello, Piglet Binary!")
 }
 
 // TestServing_NoResolverNeedsToolchain is the fail-able counterpart: with no
@@ -237,9 +239,7 @@ func TestServing_PackedGoCellServedToolchainFree(t *testing.T) {
 	if err != nil {
 		t.Fatalf("execute tool through served packed binary: %v", err)
 	}
-	if got := string(mustJSON(t, result)); !strings.Contains(got, "packed-ok") {
-		t.Errorf("packed tool result = %s, want it to contain %q", got, "packed-ok")
-	}
+	assertServedTextResult(t, result, "packed-ok")
 }
 
 // writeGoFactorySource writes a minimal Go factory extension (Extension) that

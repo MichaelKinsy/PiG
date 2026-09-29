@@ -46,12 +46,19 @@ type ProviderModelConfig struct {
 	Reasoning        bool                `json:"reasoning"`
 	ThinkingLevelMap ai.ThinkingLevelMap `json:"thinkingLevelMap,omitempty"`
 	Input            []string            `json:"input"`
-	Cost             ProviderModelCost   `json:"cost"`
-	ContextWindow    int                 `json:"contextWindow"`
-	MaxTokens        int                 `json:"maxTokens"`
-	Headers          map[string]string   `json:"headers,omitempty"`
-	headerEntries    []providerHeaderEntry
-	Compat           any `json:"compat,omitempty"`
+	// InputLimits is upstream's provider input limits and cache-safe image
+	// preprocessing metadata.
+	InputLimits *ai.ModelInputLimits `json:"inputLimits,omitempty"`
+	Cost        ProviderModelCost    `json:"cost"`
+	// PromptCache is upstream's best-effort prompt cache lifetime in seconds
+	// per retention tier.
+	PromptCache    ai.ModelPromptCache `json:"promptCache,omitempty"`
+	SamplingParams map[string]any      `json:"samplingParams,omitempty"`
+	ContextWindow  int                 `json:"contextWindow"`
+	MaxTokens      int                 `json:"maxTokens"`
+	Headers        map[string]string   `json:"headers,omitempty"`
+	headerEntries  []providerHeaderEntry
+	Compat         any `json:"compat,omitempty"`
 }
 
 type providerHeaderEntry struct {
@@ -175,10 +182,11 @@ func replaceProviderHeaders(data []byte, entries []providerHeaderEntry) ([]byte,
 
 // ProviderModelCost mirrors upstream ProviderModelConfig.cost.
 type ProviderModelCost struct {
-	Input      float64 `json:"input"`
-	Output     float64 `json:"output"`
-	CacheRead  float64 `json:"cacheRead"`
-	CacheWrite float64 `json:"cacheWrite"`
+	Input      float64       `json:"input"`
+	Output     float64       `json:"output"`
+	CacheRead  float64       `json:"cacheRead"`
+	CacheWrite float64       `json:"cacheWrite"`
+	Tiers      []ai.CostTier `json:"tiers,omitzero"`
 }
 
 // ProviderOAuth mirrors upstream ProviderConfig.oauth.

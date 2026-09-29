@@ -9,51 +9,18 @@ import (
 	"syscall"
 
 	"github.com/MichaelKinsy/PiG/agent/harness"
+	"github.com/MichaelKinsy/PiG/internal/nodeerrno"
 )
-
-// errnoDescriptions are the libuv descriptions Node uses in fs error messages.
-var errnoDescriptions = map[string]string{
-	"ENOENT":       "no such file or directory",
-	"EACCES":       "permission denied",
-	"EPERM":        "operation not permitted",
-	"ENOTDIR":      "not a directory",
-	"EISDIR":       "illegal operation on a directory",
-	"EEXIST":       "file already exists",
-	"ENOTEMPTY":    "directory not empty",
-	"EINVAL":       "invalid argument",
-	"ELOOP":        "too many symbolic links encountered",
-	"ENAMETOOLONG": "name too long",
-	"EBUSY":        "resource busy or locked",
-	"EMFILE":       "too many open files",
-	"ENOSPC":       "no space left on device",
-	"EROFS":        "read-only file system",
-	"EXDEV":        "cross-device link not permitted",
-}
-
-var errnoNames = map[syscall.Errno]string{
-	syscall.ENOENT:       "ENOENT",
-	syscall.EACCES:       "EACCES",
-	syscall.EPERM:        "EPERM",
-	syscall.ENOTDIR:      "ENOTDIR",
-	syscall.EISDIR:       "EISDIR",
-	syscall.EEXIST:       "EEXIST",
-	syscall.ENOTEMPTY:    "ENOTEMPTY",
-	syscall.EINVAL:       "EINVAL",
-	syscall.ELOOP:        "ELOOP",
-	syscall.ENAMETOOLONG: "ENAMETOOLONG",
-	syscall.EBUSY:        "EBUSY",
-	syscall.EMFILE:       "EMFILE",
-	syscall.ENOSPC:       "ENOSPC",
-	syscall.EROFS:        "EROFS",
-	syscall.EXDEV:        "EXDEV",
-}
 
 // nodeErrorCode is an error this package raises itself with a fixed Node
 // error code, where the syscall.Errno of the same name would be ambiguous (on
 // Windows, syscall.ENOTDIR is ERROR_PATH_NOT_FOUND).
 type nodeErrorCode string
 
-func (code nodeErrorCode) Error() string { return errnoDescriptions[string(code)] }
+func (code nodeErrorCode) Error() string {
+	description, _ := nodeerrno.Description(string(code))
+	return description
+}
 
 // errnoCode returns the Node-style error code for an OS error, or "".
 func errnoCode(err error) string {
@@ -61,7 +28,7 @@ func errnoCode(err error) string {
 		return string(code)
 	}
 	if errno, ok := errors.AsType[syscall.Errno](err); ok {
-		if name, ok := systemErrnoName(errno); ok {
+		if name, ok := nodeerrno.Code(errno); ok {
 			return name
 		}
 	}
@@ -111,7 +78,7 @@ func toFileError(err error, call fsCall) *harness.FileError {
 }
 
 func nodeErrorMessage(err error, code string, call fsCall) string {
-	description, ok := errnoDescriptions[code]
+	description, ok := nodeerrno.Description(code)
 	if !ok {
 		return err.Error()
 	}

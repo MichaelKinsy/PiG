@@ -206,69 +206,22 @@ func TestReadClipboardImageNoImage(t *testing.T) {
 	}
 }
 
-func TestReadClipboardImageHeadlessLinuxReturnsEmpty(t *testing.T) {
-	// No DISPLAY, no WAYLAND_DISPLAY → headless. Must return (nil,"",nil)
-	// without invoking any subprocesses.
-	withEnv(t, map[string]string{})
-	fr := withRunner(t, &fakeRunner{calls: nil})
-	data, mime, err := readClipboardImageLinux()
-	if err != nil || data != nil || mime != "" {
-		t.Errorf("expected nil/empty/no-error on headless; got %q %q %v", data, mime, err)
-	}
-	if len(fr.log) != 0 {
-		t.Errorf("headless must not invoke subprocesses; called %v", fr.log)
+func TestReadClipboardImageHeadlessLinuxStillProbesXclip(t *testing.T) {
+	// Pi clipboard-image.ts:246 tries Xclip after an unavailable Wayland backend even without DISPLAY.
+	f := newClipboardImageFixture(t, "linux", map[string]string{})
+	f.missing = true
+	assertClipboardImage(t, nil)
+	if len(f.commands) != 5 || f.helperCalls != 1 {
+		t.Fatalf("commands=%v helper=%d; want TARGETS, four MIME probes, then native lookup", f.commands, f.helperCalls)
 	}
 }
 
-func TestReadClipboardImageMacOSShellout(t *testing.T) {
-	if runtime.GOOS != "darwin" {
-		t.Skip("macOS shellout test")
-	}
-	// Patch the runner so osascript "succeeds" by writing fake bytes
-	// to the tempfile path embedded in the script.
-	pngBody := []byte("\x89PNG\r\n\x1a\nfake-mac-png")
-	fr := withRunner(t, &fakeRunner{})
-	fr.calls = []fakeCall{
-		{
-			// Hook: parse the script for the tempfile path, write
-			// bytes there, return "ok".
-			out: nil, err: nil,
-		},
-	}
-	// Replace runner with one that performs the side-effect.
-	prev := clipboardRun
-	clipboardRun = func(_ context.Context, name string, args ...string) ([]byte, error) {
-		if name != "osascript" {
-			t.Fatalf("expected osascript; got %s", name)
-		}
-		// args are -e ... -e ...
-		full := strings.Join(args, " ")
-		if !strings.Contains(full, "«class PNGf»") {
-			t.Errorf("script missing PNGf clause: %s", full)
-		}
-		// Find tempfile path in script.
-		_, after, ok := strings.Cut(full, "POSIX file \"")
-		if !ok {
-			t.Fatalf("no tempfile in script: %s", full)
-		}
-		rest := after
-		j := strings.Index(rest, "\"")
-		if j < 0 {
-			t.Fatalf("malformed tempfile path: %s", rest)
-		}
-		path := rest[:j]
-		if err := os.WriteFile(path, pngBody, 0o600); err != nil {
-			return nil, err
-		}
-		return []byte("ok\n"), nil
-	}
-	t.Cleanup(func() { clipboardRun = prev })
-
-	data, mime, err := readClipboardImageMacOS()
-	if err != nil {
-		t.Fatalf("err: %v", err)
-	}
-	if mime != "image/png" || string(data) != string(pngBody) {
-		t.Errorf("got mime=%q data=%q", mime, data)
+func TestReadClipboardImageMacOSNative(t *testing.T) {
+	f := newClipboardImageFixture(t, "darwin", map[string]string{})
+	pngBody := []byte("\x89PNG\r\n\x1a\n\x00\x00\x00\x0dIHDRfake-mac-png")
+	f.getImage = func() ([]byte, bool, error) { return pngBody, true, nil }
+	assertClipboardImage(t, pngBody)
+	if f.imageCalls != 1 || len(f.commands) != 0 {
+		t.Fatalf("native reads=%d commands=%v", f.imageCalls, f.commands)
 	}
 }

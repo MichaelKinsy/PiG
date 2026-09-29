@@ -1,0 +1,24 @@
+# The oracle runs Pi's pinned model-data.ts validation with check-model-data.ts diagnostics.
+# The Go side executes the production check-model-data command. Fixture contents come from Pi's manifest creator.
+# Both commands use the same relative paths; no output paths, whitespace or diagnostics are normalized.
+name = "17-model-data-validation"
+description = "Catalog validation rejects invalid identities, hashes, stamps and shards with Pi's CLI diagnostics."
+covers = ["packages/ai/scripts/model-data.ts", "packages/ai/scripts/check-model-data.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["node", "./test/parity/testdata/model-data-validation.mjs", "pig"]
+pi_args = ["node", "./test/parity/testdata/model-data-validation.mjs", "pi"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 90
+
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

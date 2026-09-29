@@ -1,0 +1,10 @@
+[
+ {"name":"required","provider":"openai","model":"gpt-4o-mini","strip":true,"choice":"required","tools":true},
+ {"name":"none","provider":"openai","model":"gpt-4o-mini","strip":true,"choice":"none"},
+ {"name":"strict-order","provider":"groq","model":"openai/gpt-oss-20b","tools":true,"strict":true},
+ {"name":"groq-map","provider":"groq","model":"qwen/qwen3.6-27b","thinking":"medium"},
+ {"name":"zai","provider":"zai","model":"glm-5.2","thinking":"medium","tools":true},
+ {"name":"router-role","provider":"openrouter","model":"anthropic/claude-fable-5.1:batch"},
+ {"name":"raw-unmapped","provider":"ant-ling","model":"Ring-2.6-1T","raw":"medium"},
+ {"name":"raw-high","provider":"ant-ling","model":"Ring-2.6-1T","raw":"high"}
+]

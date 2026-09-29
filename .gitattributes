@@ -16,12 +16,18 @@
 *.webp binary
 *.zip binary
 
+# Vendored package trees and their compiler outputs retain the pinned bytes,
+# including published CRLF, intentional Markdown spaces and trailing blank lines.
+coding/extension/host/subprocess/runtime-node/shims/*/** -text whitespace=-blank-at-eol,-blank-at-eof linguist-vendored=true
+
 # Terminal goldens preserve blank screen rows and mixed space/tab indentation.
 tui/**/testdata/** whitespace=-blank-at-eof,-space-before-tab
+# Markdown's exact-width rows require trailing padding in this byte-faithful snapshot.
+tui/testdata/goldens/markdown-render.txt whitespace=-blank-at-eol,-blank-at-eof,-space-before-tab
 
 # Keep generated and vendored material out of GitHub language statistics and
 # review navigation without excluding it from source archives.
 ai/*_generated.go linguist-generated=true
 coding/extension/host/fusepack/registry_generated.go linguist-generated=true
 internal/mermaid/width_data.go linguist-generated=true
-parity/interfaces/*.json linguist-generated=true
+test/parity/interfaces/*.json linguist-generated=true

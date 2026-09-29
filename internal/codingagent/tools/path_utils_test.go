@@ -99,7 +99,7 @@ func TestResolveToCwd(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := resolveToCwd(tc.path, tc.cwd)
+			got := mustResolveToCwd(t, tc.path, tc.cwd)
 			if got != tc.want {
 				t.Errorf("resolveToCwd(%q, %q) = %q, want %q", tc.path, tc.cwd, got, tc.want)
 			}
@@ -123,7 +123,7 @@ func TestResolveReadPath_NFDFallback(t *testing.T) {
 	// the file via the NFD fallback. On Linux the file IS stored as-typed
 	// so NFD fallback may or may not apply. We test that resolveReadPath
 	// at least returns a valid path.
-	got := resolveReadPath(nfcName, dir)
+	got := mustResolveReadPath(t, nfcName, dir)
 
 	// The result should be a path that exists
 	if _, err := os.Stat(got); err != nil {
@@ -144,7 +144,7 @@ func TestResolveReadPath_CurlyQuoteFallback(t *testing.T) {
 
 	// User types straight apostrophe
 	userInput := "Capture d'écran.png"
-	got := resolveReadPath(userInput, dir)
+	got := mustResolveReadPath(t, userInput, dir)
 	if _, err := os.Stat(got); err != nil {
 		t.Errorf("resolveReadPath(%q) = %q, expected to find curly variant", userInput, got)
 	}
@@ -181,14 +181,14 @@ func TestNormalizeUnicodeSpaces(t *testing.T) {
 
 func TestResolvePath_BackwardsCompat(t *testing.T) {
 	// The old resolvePath(cwd, path) still works via resolveToCwd
-	if got, want := resolvePath("/cwd", "relative.go"), rooted(t, "/cwd/relative.go"); got != want {
+	if got, want := mustResolvePath(t, "/cwd", "relative.go"), rooted(t, "/cwd/relative.go"); got != want {
 		t.Errorf("resolvePath = %q, want %q", got, want)
 	}
-	if got, want := resolvePath("/cwd", "/absolute.go"), rooted(t, "/absolute.go"); got != want {
+	if got, want := mustResolvePath(t, "/cwd", "/absolute.go"), rooted(t, "/absolute.go"); got != want {
 		t.Errorf("resolvePath = %q, want %q", got, want)
 	}
 	home, _ := os.UserHomeDir()
-	if got, want := resolvePath("/cwd", "~/file.txt"), filepath.Join(home, "file.txt"); got != want {
+	if got, want := mustResolvePath(t, "/cwd", "~/file.txt"), filepath.Join(home, "file.txt"); got != want {
 		t.Errorf("resolvePath(~/file.txt) = %q, want %q", got, want)
 	}
 }

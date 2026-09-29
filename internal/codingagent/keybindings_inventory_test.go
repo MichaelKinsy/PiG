@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/parity/knowngaps"
+	"github.com/MichaelKinsy/PiG/test/parity/knowngaps"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -23,7 +23,7 @@ type upstreamAppKeybindingInventory struct {
 
 // TestAppKeybindingDefinitionsMatchUpstreamInventory compares every app.*
 // binding on each platform with the pinned Pi inventory. A missing, differing,
-// or extra binding is a gap keyed "keybinding:<id>"; parity/known-gaps.toml
+// or extra binding is a gap keyed "keybinding:<id>"; test/parity/known-gaps.toml
 // lists the tolerated ones, and a listed gap that closes fails the test.
 func TestAppKeybindingDefinitionsMatchUpstreamInventory(t *testing.T) {
 	root, err := filepath.Abs("../..")
@@ -34,7 +34,7 @@ func TestAppKeybindingDefinitionsMatchUpstreamInventory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data, err := os.ReadFile(filepath.Join(root, "parity", "interfaces", "behavior-inputs-v"+version+".json"))
+	data, err := os.ReadFile(filepath.Join(root, "test/parity", "interfaces", "behavior-inputs-v"+version+".json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +88,7 @@ func TestAppKeybindingDefinitionsMatchUpstreamInventory(t *testing.T) {
 		}
 	}
 	if stale := gaps.Stale(); len(stale) > 0 {
-		t.Errorf("parity/known-gaps.toml lists keybinding gaps that are now closed; remove them: %v", stale)
+		t.Errorf("test/parity/known-gaps.toml lists keybinding gaps that are now closed; remove them: %v", stale)
 	}
 }
 

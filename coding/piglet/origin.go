@@ -22,12 +22,14 @@ import (
 // pigletOrigin records the remote source resolution that produced an installed
 // Piglet source. The record lives beside the installed YAML.
 type pigletOrigin struct {
-	Source          string `json:"source"`
-	ResolvedVersion string `json:"resolvedVersion"`
-	Integrity       string `json:"integrity,omitempty"`
-	Commit          string `json:"commit,omitempty"`
-	PigletDigest    string `json:"pigletDigest"`
-	AddedAt         string `json:"addedAt"`
+	Source          string            `json:"source"`
+	ResolvedVersion string            `json:"resolvedVersion"`
+	Integrity       string            `json:"integrity,omitempty"`
+	Commit          string            `json:"commit,omitempty"`
+	SourceDigest    string            `json:"sourceDigest,omitempty"`
+	Files           map[string]string `json:"files,omitempty"`
+	PigletDigest    string            `json:"pigletDigest"`
+	AddedAt         string            `json:"addedAt"`
 }
 
 func newPigletOrigin(source, materializedRoot string, pigletData []byte, now time.Time) (pigletOrigin, error) {
@@ -46,6 +48,9 @@ func newPigletOrigin(source, materializedRoot string, pigletData []byte, now tim
 		Commit:          commit,
 		PigletDigest:    digestPigletData(pigletData),
 		AddedAt:         now.UTC().Format(time.RFC3339Nano),
+	}
+	if ref.GitSubdir != "" {
+		origin.SourceDigest = digestPigletData(pigletData)
 	}
 	if err := origin.validate(); err != nil {
 		return pigletOrigin{}, err
@@ -174,6 +179,14 @@ func (o pigletOrigin) validate() error {
 	default:
 		return fmt.Errorf("Piglet origin source %q must use npm or Git", o.Source)
 	}
+	if ref.GitSubdir != "" && (o.Commit != ref.GitRef || !validSHA256Digest(o.SourceDigest)) {
+		return fmt.Errorf("Git subdirectory Piglet origin requires a pinned commit and source digest")
+	}
+	for relative, digest := range o.Files {
+		if _, err := portableClosurePath(relative); err != nil || !validSHA256Digest(digest) {
+			return fmt.Errorf("invalid Piglet origin closure entry")
+		}
+	}
 	if !validSHA256Digest(o.PigletDigest) {
 		return fmt.Errorf("Piglet origin pigletDigest must be sha256:<64 lowercase hex characters>")
 	}
@@ -248,6 +261,9 @@ func readPigletOrigin(path string) (*pigletOrigin, error) {
 	}
 	if digest := digestPigletData(data); origin.PigletDigest != digest {
 		return nil, fmt.Errorf("Piglet origin %s digest %s does not match source digest %s", originPath, origin.PigletDigest, digest)
+	}
+	if err := verifyPigletOriginFiles(path, origin); err != nil {
+		return nil, err
 	}
 	return &origin, nil
 }

@@ -1,6 +1,7 @@
 package subprocess
 
 import (
+	"encoding/json"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -8,6 +9,67 @@ import (
 	"strings"
 	"testing"
 )
+
+// Ports packages/coding-agent/test/suite/regressions/6260-inline-extension-naming.test.ts:36,56,79,99.
+// The imported DefaultResourceLoader is the shipped independent Node SDK, not a mock of the parent host's resource state.
+func TestNodeInlineExtensionNamingUpstream(t *testing.T) {
+	nodeCellRequireNode(t)
+	shortSockDir(t)
+	fixture, err := os.ReadFile(filepath.Join("testdata", "inline-naming.mjs"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, isolation := range []string{"strict", "shared-ok"} {
+		t.Run(isolation, func(t *testing.T) {
+			root := t.TempDir()
+			entry := filepath.Join(root, "inline-naming.mjs")
+			if err := os.WriteFile(entry, fixture, 0o644); err != nil {
+				t.Fatal(err)
+			}
+			peer := filepath.Join(root, "peer.mjs")
+			if err := os.WriteFile(peer, []byte("export default function () {}\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			host := NewHost(root)
+			t.Cleanup(func() {
+				host.Shutdown("test complete")
+				if pids := nodeCellProcessesForMarker(t, root); len(pids) != 0 {
+					t.Errorf("Node processes remain after shutdown: %v", pids)
+				}
+			})
+			configs := []ExtConfig{
+				{Name: "inline-naming", Source: entry, Enabled: true, Isolation: isolation},
+				{Name: "peer", Source: peer, Enabled: true, Isolation: isolation},
+			}
+			loaded, errs := host.LoadAll(t.Context(), configs)
+			if len(errs) != 0 || len(loaded) != len(configs) {
+				t.Fatalf("load inline-naming and peer: extensions=%d errors=%v", len(loaded), errs)
+			}
+			wantProcesses := len(configs)
+			if isolation == "shared-ok" {
+				wantProcesses = 1
+			}
+			if pids := nodeCellProcessesForMarker(t, root); len(pids) != wantProcesses {
+				t.Fatalf("Node processes=%v, want %d for %s", pids, wantProcesses, isolation)
+			}
+			command, ok := loaded[0].Commands["inline-naming"]
+			if !ok {
+				t.Fatal("inline-naming command was not registered")
+			}
+			for _, scenario := range []string{"bare", "named", "hidden", "mixed"} {
+				t.Run(scenario, func(t *testing.T) {
+					args, err := json.Marshal(map[string]string{"root": t.TempDir(), "scenario": scenario})
+					if err != nil {
+						t.Fatal(err)
+					}
+					if err := command.Handler(t.Context(), string(args)); err != nil {
+						t.Fatal(err)
+					}
+				})
+			}
+		})
+	}
+}
 
 func TestNodeRuntimeLoader_SupportsLegacyAndCurrentNamespaces(t *testing.T) {
 	t.Parallel()
@@ -93,24 +155,6 @@ for (const [content, options] of [["one\\ntwo\\nthree", { maxLines: 2 }], ["éé
 	}
 }
 
-func TestNodeRuntimeLoaderResolvesExtensionlessTypeScript(t *testing.T) {
-	node, err := exec.LookPath("node")
-	if err != nil {
-		t.Fatalf("node is required for the loader fixture: %v", err)
-	}
-	modRoot := findModuleRoot(t)
-	runtimeRoot := filepath.Join(modRoot, "coding", "extension", "host", "subprocess", "runtime-node")
-	dir := t.TempDir()
-	write(t, filepath.Join(dir, "package.json"), `{"type":"module"}`)
-	write(t, filepath.Join(dir, "helper.ts"), `export const value: string = "resolved";`)
-	entry := filepath.Join(dir, "entry.ts")
-	write(t, entry, `import { value } from "./helper"; if (value !== "resolved") process.exit(1);`)
-	command := exec.Command(node, "--import", registerLoaderURL(t, runtimeRoot), entry)
-	if output, err := command.CombinedOutput(); err != nil {
-		t.Fatalf("extensionless TypeScript import: %v\n%s", err, output)
-	}
-}
-
 func TestTSFixture_UsesCurrentPiAINamespace(t *testing.T) {
 	t.Parallel()
 
@@ -140,16 +184,7 @@ func registerLoaderURL(t *testing.T, runtimeRoot string) string {
 	return loaderURL
 }
 
-// piVirtualModulesWithoutShim lists specifiers Pi serves from its own bundle
-// (core/extensions/virtual-modules.ts) that the Node runtime does not shim
-// yet. Imports of them resolve only through the extension's node_modules.
-var piVirtualModulesWithoutShim = map[string]string{
-	"@earendil-works/pi-agent-core": "no shim for the in-process Agent runtime",
-	"@mariozechner/pi-agent-core":   "no shim for the in-process Agent runtime",
-}
-
-// Every specifier in Pi's VIRTUAL_MODULES table is served by a loader shim
-// or listed above, so a new upstream virtual module fails here.
+// Every specifier in Pi's VIRTUAL_MODULES table is served by a loader shim, so a new upstream virtual module fails here.
 func TestNodeRuntimeLoaderCoversPiVirtualModules(t *testing.T) {
 	t.Parallel()
 	modRoot := findModuleRoot(t)
@@ -169,9 +204,8 @@ func TestNodeRuntimeLoaderCoversPiVirtualModules(t *testing.T) {
 	for _, match := range matches {
 		spec := match[1]
 		shimmed := strings.Contains(string(loader), `["`+spec+`", new URL(`)
-		_, missing := piVirtualModulesWithoutShim[spec]
-		if shimmed == missing {
-			t.Errorf("virtual module %q: shimmed=%t, listed without shim=%t", spec, shimmed, missing)
+		if !shimmed {
+			t.Errorf("virtual module %q has no shim", spec)
 		}
 	}
 }
@@ -214,6 +248,8 @@ func TestNodeRuntimeShimsExportEveryPinnedPiValue(t *testing.T) {
 		"@earendil-works/pi-ai":               "ai/src/compat.ts",
 		"@earendil-works/pi-ai/compat":        "ai/src/compat.ts",
 		"@earendil-works/pi-ai/providers/all": "ai/src/providers/all.ts",
+		"@earendil-works/pi-agent-core":       "agent/src/index.ts",
+		"@mariozechner/pi-agent-core":         "agent/src/index.ts",
 	} {
 		upstream := filepath.Join(modRoot, ".upstream", "current", "packages", filepath.FromSlash(entry))
 		script := `import fs from "node:fs";

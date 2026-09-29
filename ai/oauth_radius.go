@@ -20,6 +20,8 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+
+	"github.com/MichaelKinsy/PiG/internal/jsnumber"
 )
 
 const (
@@ -228,16 +230,17 @@ func (o *RadiusOAuth) requestOAuthToken(ctx context.Context, form url.Values) (O
 		return OAuthCredentials{}, readRadiusOAuthResponseError(status, body, "Radius OAuth token request failed")
 	}
 	var data struct {
-		AccessToken  string  `json:"access_token"`
-		RefreshToken string  `json:"refresh_token"`
-		ExpiresIn    float64 `json:"expires_in"`
-		Scope        string  `json:"scope"`
+		AccessToken  string          `json:"access_token"`
+		RefreshToken string          `json:"refresh_token"`
+		ExpiresIn    json.RawMessage `json:"expires_in"`
+		Scope        string          `json:"scope"`
 	}
 	if err := json.Unmarshal(body, &data); err != nil {
 		return OAuthCredentials{}, err
 	}
-	expires := o.now().UnixMilli() + int64(data.ExpiresIn*1000) - radiusTokenExpirySkew.Milliseconds()
-	return OAuthCredentials{Access: data.AccessToken, Refresh: data.RefreshToken, Expires: expires, Scope: data.Scope}, nil
+	creds := OAuthCredentials{Access: data.AccessToken, Refresh: data.RefreshToken, Scope: data.Scope}
+	creds.SetExpiresMillis(float64(o.now().UnixMilli()) + jsnumber.FromJSON(data.ExpiresIn)*1000 - float64(radiusTokenExpirySkew.Milliseconds()))
+	return creds, nil
 }
 
 func (o *RadiusOAuth) loginWithBrowser(ctx context.Context, authorizationEndpoint string, callbacks OAuthLoginCallbacks) (OAuthCredentials, error) {

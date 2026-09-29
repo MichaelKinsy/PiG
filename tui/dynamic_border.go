@@ -2,7 +2,7 @@ package tui
 
 // dynamic_border.go: horizontal rule border component.
 //
-// Ports upstream dynamic-border.ts (25 LOC).
+// Ports packages/coding-agent/src/modes/interactive/components/dynamic-border.ts.
 
 // DynamicBorder renders a full-width horizontal rule using "─".
 type DynamicBorder struct {
@@ -16,14 +16,14 @@ func NewDynamicBorder(color string) *DynamicBorder {
 	return &DynamicBorder{color: color}
 }
 
-// Render produces a single line of "─" repeated to fill width.
+// Render produces a full-width rule and resets only its foreground color.
 func (d *DynamicBorder) Render(width int) []string {
 	color := d.color
 	if color == "" {
 		return []string{ActiveTheme().FgText("border", repeatRune('─', max(1, width)))}
 	}
 	w := max(1, width)
-	line := color + repeatRune('─', w) + "\x1b[0m"
+	line := color + repeatRune('─', w) + "\x1b[39m"
 	return []string{line}
 }
 

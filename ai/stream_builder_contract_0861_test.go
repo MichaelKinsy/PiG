@@ -42,6 +42,9 @@ func TestParseStreamingJsonObjectMatchesPiPartialCases(t *testing.T) {
 		{`{"a":`, JsonObject{}},
 		{`{"a":[1,2`, JsonObject{"a": []any{float64(1), float64(2)}}},
 		{`{"a": tru`, JsonObject{"a": true}},
+		// Pi utils/json-parse.ts:109 tries repaired complete JSON before any partial result.
+		{"{\"path\":\"A\\H\",\"text\":\"col1\tcol2\"}", JsonObject{"path": "A\\H", "text": "col1\tcol2"}},
+		{`{"first":1,"path":"A\H"}`, JsonObject{"first": float64(1), "path": "A\\H"}},
 		{"{\"a\":\"x\\q", JsonObject{"a": "x"}},
 	} {
 		if got := parseStreamingJsonObject(test.raw); !reflect.DeepEqual(got, test.want) {

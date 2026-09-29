@@ -1,0 +1,20 @@
+# Exact Pi 0.87.1 agent-session-dynamic-provider.test.ts cases: active model and next prompt observe top-level, session_start, command and native provider registration.
+# Both fixtures create real Sessions; only the final provider request is replaced to record its model and stop before networking, as the upstream test does.
+name = "21-dynamic-provider"
+description = "Provider registrations rebind active Session models and subsequent requests."
+covers = ["packages/coding-agent/src/core/agent-session.ts", "packages/coding-agent/src/core/model-runtime.ts"]
+tags = ["fast", "hermetic"]
+driver = "cli-mode"
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/dynamic-provider-pig"]
+pi_args = ["node", "./test/parity/testdata/dynamic-provider-pi.mjs"]
+[cli]
+cwd = "../../../.."
+timeout_seconds = 40
+[assert]
+exit_code = 0
+output_equal = true
+runs = 3

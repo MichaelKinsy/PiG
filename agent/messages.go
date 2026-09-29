@@ -18,7 +18,7 @@ func ConvertToLLM(msgs []AgentMessage, model *ai.Model) []ai.Message {
 		case m.System != nil:
 			out = append(out, *m.System)
 		case m.User != nil:
-			out = append(out, ai.UserMessage{Content: ai.UserContentBlocks(m.User.Content), Timestamp: m.User.Timestamp})
+			out = append(out, m.User.LLMMessage())
 		case m.Assistant != nil:
 			message := m.Assistant.LLMMessage()
 			if len(message.Content) == 0 {
@@ -81,10 +81,14 @@ func customMessageContent(content any) (ai.UserContentBlocks, bool) {
 	if json.Unmarshal(raw, &decoded) != nil || decoded.User == nil {
 		return nil, false
 	}
-	if decoded.User.Content == nil {
+	switch content := decoded.User.Content.(type) {
+	case ai.UserText:
+		return ai.UserContentBlocks{ai.TextContent{Text: string(content)}}, true
+	case ai.UserContentBlocks:
+		return content, true
+	default:
 		return ai.UserContentBlocks{}, true
 	}
-	return ai.UserContentBlocks(decoded.User.Content), true
 }
 
 // customTimestamp returns a custom message's timestamp in Unix milliseconds,
@@ -104,9 +108,67 @@ func customTimestamp(m map[string]any) int64 {
 	return 0
 }
 
-// LLMMessage returns the provider-facing form of an assistant message. It
-// shares the content and diagnostics slices with m.
+// LLMMessage retains the user content variant and normalizes an omitted Go content value to an empty array.
+func (m *UserMessage) LLMMessage() ai.UserMessage {
+	content := m.Content
+	if content == nil {
+		content = ai.UserContentBlocks{}
+	}
+	return ai.UserMessage{Content: content, Timestamp: m.Timestamp}
+}
+
+// Observe returns an independently owned observation of the message. A streaming shallow view keeps its copied top-level values while observing its retained nested objects.
+func (m *AssistantMessage) Observe() *AssistantMessage {
+	if m == nil {
+		return nil
+	}
+	if m.streamView != nil {
+		return agentAssistantMessage(m.streamView.Observe())
+	}
+	message := m.LLMMessage()
+	owned := message.Observe()
+	out := *m
+	out.Content = owned.Content
+	out.Diagnostics = owned.Diagnostics
+	out.Deferred = owned.Deferred
+	out.EndTurn = owned.EndTurn
+	if m.Usage != nil {
+		out.Usage = &owned.Usage
+	}
+	return &out
+}
+
+// refreshed returns a copy whose exported fields equal the retained stream state at this call and that keeps its stream link. Messages without a stream view are returned unchanged.
+func (m *AssistantMessage) refreshed() *AssistantMessage {
+	if m == nil || m.streamView == nil {
+		return m
+	}
+	out := m.Observe()
+	out.streamView = m.streamView
+	return out
+}
+
+// ObserveUsage returns an owned usage snapshot without traversing message content or metadata. Streaming views observe their retained usage reference; ordinary absent usage stays absent.
+func (m *AssistantMessage) ObserveUsage() *ai.Usage {
+	if m == nil {
+		return nil
+	}
+	if m.streamView != nil {
+		usage := m.streamView.ObserveUsage()
+		return &usage
+	}
+	if m.Usage == nil {
+		return nil
+	}
+	usage := (&ai.AssistantMessage{Usage: *m.Usage}).ObserveUsage()
+	return &usage
+}
+
+// LLMMessage returns the provider-facing form of an assistant message. Plain messages share content and diagnostics slices with m; retained streaming views produce an owned observation.
 func (m *AssistantMessage) LLMMessage() ai.AssistantMessage {
+	if m.streamView != nil {
+		return *m.streamView.Observe()
+	}
 	usage := ai.Usage{}
 	if m.Usage != nil {
 		usage = *m.Usage

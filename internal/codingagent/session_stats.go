@@ -2,12 +2,12 @@ package codingagent
 
 import (
 	"bytes"
-	"encoding/json"
 	"slices"
 	"time"
 
 	"github.com/MichaelKinsy/PiG/agent"
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/extensions/sdk/json"
 )
 
 // SessionAccounting is the immutable all-entry accounting maintained with a Session.
@@ -44,6 +44,7 @@ type sessionAccountingAccumulator struct {
 	usageByKey map[string]SessionUsageBreakdown
 	usageOrder []string
 	cachePrev  *previousCacheRequest
+	prices     ModelPriceSource
 }
 
 type sessionAccountingEntry struct {
@@ -89,16 +90,34 @@ func (count *sessionToolCallCount) UnmarshalJSON(data []byte) error {
 	return nil
 }
 
+// SetCacheReadPriceSource binds runtime model prices during Session initialization or replacement. It rebuilds cache accounting only when historical misses need repricing; ordinary footer reads remain history-independent.
+func (s *Session) SetCacheReadPriceSource(prices ModelPriceSource) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	// Prices affect only a detected miss's cost, not miss detection or the previous-request state.
+	if s.stats.stats.CacheWaste.MissCount == 0 {
+		s.stats.prices = prices
+		return
+	}
+	rebuilt := sessionAccountingAccumulator{prices: prices}
+	for _, e := range s.entries {
+		rebuilt.add(e.raw, e.Base.Type)
+	}
+	s.stats.prices = prices
+	s.stats.cachePrev = rebuilt.cachePrev
+	s.stats.stats.CacheWaste = rebuilt.stats.CacheWaste
+}
+
 func (s *Session) Accounting() SessionAccounting {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 	return s.stats.snapshot()
 }
 
-func (a *sessionAccountingAccumulator) add(raw json.RawMessage, wireType string) string {
+func (a *sessionAccountingAccumulator) add(raw json.RawMessage, wireType string) {
 	var entry sessionAccountingEntry
 	if err := json.Unmarshal(raw, &entry); err != nil {
-		return wireType
+		return
 	}
 	if entry.Type != "" {
 		wireType = entry.Type
@@ -132,13 +151,10 @@ func (a *sessionAccountingAccumulator) add(raw json.RawMessage, wireType string)
 		case "toolResult":
 			a.stats.ToolResults++
 			a.addUsage("Tools/summaries", message.Usage)
-		case "bashExecution":
-			return "bash_execution"
 		}
 	case "bash_execution":
 		a.stats.TotalMessages++
 	}
-	return wireType
 }
 
 // latestCacheHitRate mirrors footer.ts: cacheRead over the whole prompt
@@ -202,7 +218,7 @@ func (a *sessionAccountingAccumulator) addCacheWaste(message sessionAccountingMe
 		ModelID:   message.ModelID,
 		Timestamp: message.Timestamp,
 	}
-	if miss := detectMiss(a.cachePrev, assistant); miss != nil {
+	if miss := detectMiss(a.cachePrev, assistant, a.prices); miss != nil {
 		a.stats.CacheWaste.MissedTokens += miss.missedTokens
 		a.stats.CacheWaste.MissedCost += miss.missedCost
 		a.stats.CacheWaste.MissCount++

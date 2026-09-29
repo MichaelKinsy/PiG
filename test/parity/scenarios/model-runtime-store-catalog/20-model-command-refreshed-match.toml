@@ -1,0 +1,40 @@
+# Upstream evidence: Pi 0.87.1 interactive-mode.ts:5039-5096 refreshes an unscoped /model miss, then selects an exact newly available model without opening the picker.
+# The user's shell command updates only the per-run copied agent directory. Its split sentinel appears only after the write completes, not in the echoed command.
+name = "20-model-command-refreshed-match"
+description = "A direct /model cache miss refreshes models.json and selects the new exact match."
+covers = ["packages/coding-agent/src/modes/interactive/interactive-mode.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "interactive-tmux"
+model = "fixture/cached"
+
+[tmux]
+width = 100
+height = 35
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 20
+capture_start = "Model: refreshed"
+capture_end = "Model: refreshed"
+
+[[tmux.steps]]
+keys = ["""!python3 -c 'import os,json; p=os.path.join(os.environ[os.environ["CATALOG_AGENT_ENV"]],"models.json"); d=json.load(open(p)); d["providers"]["fixture"]["models"].append({"id":"refreshed","name":"Refreshed"}); open(p,"w").write(json.dumps(d)); print("CATALOG"+"UPDATED")'""", "Enter"]
+wait_visible_contains = ["CATALOGUPDATED"]
+wait_timeout_seconds = 20
+
+[[tmux.steps]]
+keys = ["/model refreshed", "Enter"]
+wait_visible_contains = ["Model: refreshed"]
+wait_timeout_seconds = 20
+settle_seconds = 1
+
+[env]
+pig = ["PIG_CODING_AGENT_DIR=testdata/model-command-agent", "CATALOG_AGENT_ENV=PIG_CODING_AGENT_DIR"]
+pi = ["PI_CODING_AGENT_DIR=testdata/model-command-agent", "CATALOG_AGENT_ENV=PI_CODING_AGENT_DIR", "PI_SKIP_VERSION_CHECK=1"]
+pig_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+pi_args = ["--no-extensions", "--offline", "--session-dir", "{{TEMP}}/sessions"]
+
+[assert]
+both_reach_ready = true
+both_contain = ["Model: refreshed"]
+output_equal = true
+runs = 3

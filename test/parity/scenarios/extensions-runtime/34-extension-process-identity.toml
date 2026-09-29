@@ -1,0 +1,55 @@
+# Behavior family: extensions-runtime
+# Scenario: an extension sees Pi's process identity and can re-launch the
+# harness from process.argv[1].
+#
+# testdata/process-identity/identity.ts reads process.title, PI_CODING_AGENT
+# and AI_AGENT, checks that process warnings are silenced, finds the
+# @earendil-works/pi-coding-agent package whose "pi" bin is process.argv[1],
+# and runs `process.execPath process.argv[1] --version`, as
+# @henryqw/pi-subagent (which requires the title "pi") and pi-subagents
+# re-launch the harness. The results are the description of
+# /process-identity.
+#
+# Upstream evidence (Pi 0.87.1, probed 2026-09-26):
+#   PI_OFFLINE=1 PI_CODING_AGENT_DIR=<empty> pi --no-extensions \
+#     -e testdata/process-identity/identity.ts --mode rpc --no-session
+#   stdin: {"id":"cmds","type":"get_commands"}
+# describes /process-identity as {"title":"pi","piCodingAgent":"true",
+# "aiAgent":"pi","warned":false,"entryIsScript":true,"harness":{"name":
+# "@earendil-works/pi-coding-agent","binIsEntry":true},"relaunch":{"status":0,
+# "stdout":"0.87.1"}}. PiG's extension process was titled "node", its
+# argv[1] was the runtime's cell.mjs, and the re-launch ran that script.
+
+name = "34-extension-process-identity"
+description = "An extension sees Pi's process title and re-launches the harness from process.argv[1]"
+
+covers = [
+  "packages/coding-agent/src/cli/setup.ts",
+  "packages/coding-agent/src/cli.ts",
+]
+
+tags = ["hermetic", "fast"]
+driver = "rpc-mode"
+
+[rpc]
+input_lines = ['{"id":"cmds","type":"get_commands"}']
+timeout_seconds = 30
+settle_seconds = 1
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_args = ["--model", "test-faux/faux-1", "--no-session"]
+pig_extensions = ["testdata/process-identity/identity.ts"]
+pi = ["PI_OFFLINE=1", "PI_SKIP_VERSION_CHECK=1"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/process-identity/identity.ts"]
+pi_args = ["--model", "test-faux/faux-1", "--no-session"]
+
+[assert]
+exit_code = 0
+runs = 3
+both_not_contain = ["Failed to load extension", "panic:"]
+# The re-launched harness prints its own version: Pi's release, or PiG's
+# composite version ending in the Pi release it ports (D63).
+both_match_regex = [
+  '"name":"process-identity","description":"\{\\"title\\":\\"pi\\",\\"piCodingAgent\\":\\"true\\",\\"aiAgent\\":\\"pi\\",\\"warned\\":false,\\"entryIsScript\\":true,\\"harness\\":\{\\"name\\":\\"@earendil-works/pi-coding-agent\\",\\"binIsEntry\\":true\},\\"relaunch\\":\{\\"status\\":0,\\"stdout\\":\\"([0-9.]+\+)?0\.87\.1\\"\}\}"',
+]

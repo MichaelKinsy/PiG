@@ -97,7 +97,9 @@ func TestMalformedSessionFileFallsBackToHostFromCursorZero(t *testing.T) {
 	ext := New("malformed-session")
 	ext.conn = client
 	ext.sessionFile = path
-	ext.ensureSessionLog()
+	if err := ext.ensureSessionLog(); err != nil {
+		t.Fatal(err)
+	}
 	entries := ext.session.getEntries()
 	if len(entries) != 1 || string(entries[0]) != `{"type":"message","id":"host-entry"}` {
 		t.Fatalf("entries = %q", entries)

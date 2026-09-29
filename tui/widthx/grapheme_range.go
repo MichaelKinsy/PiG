@@ -1,14 +1,15 @@
 package widthx
 
 import (
-	"regexp"
 	"strings"
+
+	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 )
 
 // osc8HyperlinkPattern matches a complete OSC 8 hyperlink escape (as returned by
 // ExtractAnsiCode); group 1 is the URL. Mirrors upstream's inline regex in
 // getOsc8LinkAtColumn.
-var osc8HyperlinkPattern = regexp.MustCompile("^\x1b\\]8;[^;]*;([^\x07\x1b]*)(?:\x07|\x1b\\\\)$")
+var osc8HyperlinkPattern = lazyregexp.New("^\x1b\\]8;[^;]*;([^\x07\x1b]*)(?:\x07|\x1b\\\\)$")
 
 // StripTerminalSequences removes ANSI/OSC/APC escapes from s, leaving only
 // printable content with the upstream-compatible layout extractor.

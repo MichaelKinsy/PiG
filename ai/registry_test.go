@@ -10,7 +10,7 @@ import (
 	"slices"
 	"testing"
 
-	"github.com/MichaelKinsy/PiG/coding/pigversion"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigversion"
 )
 
 // TestImageCatalogPin0871 counts come from @earendil-works/pi-ai 0.87.1

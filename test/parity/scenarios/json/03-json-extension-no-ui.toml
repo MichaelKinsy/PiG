@@ -1,0 +1,26 @@
+# Pi 0.87.1 print-mode.ts:74-104, runner.ts:320-351,578-580: JSON uses print's no-op UI.
+# Probed with pi --mode json '/ui-probe <file>' on 2026-09-26. The artifact records every UI
+# method exactly. The stream's random session header is checked structurally, not normalized away.
+name = "03-json-extension-no-ui"
+description = "JSON extensions report hasUI false and use Pi's complete no-op UI"
+covers = ["packages/coding-agent/src/core/extensions/runner.ts", "packages/coding-agent/src/modes/print-mode.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[cli]
+args = ["--model", "test-faux/faux-1", "--no-session", "--mode", "json", "/ui-probe {{TEMP}}/ui.json"]
+timeout_seconds = 30
+artifact_path = "{{TEMP}}/ui.json"
+
+[env]
+pig = ["PIG_TEST_FAUX=1"]
+pig_extensions = ["../testdata/extension-ui-context.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "../testdata/extension-ui-context.mjs"]
+
+[assert]
+exit_code = 0
+runs = 3
+both_contain = ['"type":"session"']
+both_not_contain = ["HEADLESS_NOTIFICATION_MUST_NOT_APPEAR", "extension_error", '"type":"agent_start"']
+artifact_normalized_equal = true
+artifact_both_contain = ['"hasUI": false', '"select": "undefined"', '"factories": []']

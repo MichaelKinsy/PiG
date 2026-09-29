@@ -192,7 +192,7 @@ func TestResolveAndLoadSkills_BugRegression_PassingNoSkillsKillsLoad(t *testing.
 	skillPath := makeSkillDir(t, root, "alpha")
 
 	// The bug: passing true as noSkills short-circuits to nil
-	bugged, err := loadSkills([]string{skillPath}, true)
+	bugged, _, err := loadSkills([]string{skillPath}, true)
 	if err != nil {
 		t.Fatalf("loadSkills(true) error: %v", err)
 	}
@@ -201,7 +201,7 @@ func TestResolveAndLoadSkills_BugRegression_PassingNoSkillsKillsLoad(t *testing.
 	}
 
 	// The fix: passing false loads the skill
-	got, err := loadSkills([]string{skillPath}, false)
+	got, _, err := loadSkills([]string{skillPath}, false)
 	if err != nil {
 		t.Fatalf("loadSkills(false) error: %v", err)
 	}
@@ -252,7 +252,7 @@ func TestLoadSkillsSkipsMissingDescriptionAndMalformedSibling(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(malformed, "SKILL.md"), []byte("---\ndescription: [bad\n---\nbody"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	got, err := loadSkills([]string{malformed, missing, valid}, false)
+	got, _, err := loadSkills([]string{malformed, missing, valid}, false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +276,7 @@ func TestLoadSkillsUsesFirstSameNameDefinition(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	got, err := loadSkills([]string{first, last}, false)
+	got, _, err := loadSkills([]string{first, last}, false)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -226,12 +226,17 @@ type AssistantMessageFrameEncoder struct {
 	blocks   map[int]*encoderBlockState
 }
 
-// Encode converts one stream event into a frame. It returns a nil frame when
-// the event adds nothing replayable (terminal events and covered deltas).
+// Encode converts one stream event into an independently owned frame containing only public replay fields. It returns a nil frame when the event adds nothing replayable (terminal events and covered deltas).
 func (encoder *AssistantMessageFrameEncoder) Encode(event AssistantMessageEvent) (AssistantMessageFrame, error) {
 	if encoder.terminal {
 		return nil, fmt.Errorf("Assistant message event %s follows a terminal event", event.EventType())
 	}
+	event = mapAssistantEventPartial(event, func(message *AssistantMessage) *AssistantMessage {
+		if message != nil && message.observation != nil {
+			return message.Observe()
+		}
+		return message
+	})
 	switch event := event.(type) {
 	case StartEvent:
 		return encoder.encodeStart(event)
@@ -523,8 +528,10 @@ func cloneFrameToolCall(toolCall ToolCall) (ToolCall, error) {
 	if err != nil {
 		return ToolCall{}, err
 	}
-	toolCall.Arguments = arguments
-	return toolCall, nil
+	return ToolCall{
+		ID: toolCall.ID, Name: toolCall.Name, Arguments: arguments,
+		ThoughtSignature: toolCall.ThoughtSignature, Namespace: toolCall.Namespace,
+	}, nil
 }
 
 // cloneToolArguments deep-copies tool arguments. Go's nil map is the zero value

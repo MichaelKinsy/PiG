@@ -58,7 +58,7 @@ func TestPackedStderrLogLifecycle(t *testing.T) {
 			case <-t.Context().Done():
 				t.Fatal("crash was not reported")
 			}
-			<-process.watchDone
+			<-process.watcherDone
 			mu.Lock()
 			for name, reason := range reasons {
 				if !strings.HasSuffix(reason, "(stderr: "+crashLog+")") {

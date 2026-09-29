@@ -37,8 +37,8 @@ func TestExtensionThemeAPIsAreWired(t *testing.T) {
 	if _, err := ui.GetTheme("dark"); err != nil {
 		t.Errorf("GetTheme(dark) error = %v, want the built-in theme", err)
 	}
-	if _, err := ui.GetTheme("no-such-theme"); err == nil {
-		t.Error("GetTheme(no-such-theme) error = nil, want an unknown-theme error")
+	if got, err := ui.GetTheme("no-such-theme"); got != nil || err != nil {
+		t.Errorf("GetTheme(no-such-theme) = %v, %v, want absence as in Pi theme.ts:570-575", got, err)
 	}
 
 	if got := ui.SetTheme("light"); !got.Success {
@@ -48,14 +48,13 @@ func TestExtensionThemeAPIsAreWired(t *testing.T) {
 		t.Errorf("active theme = %q after SetTheme(light), want light", got)
 	}
 
-	// An unknown name must be refused rather than silently applied, otherwise
-	// the UI would switch to whatever fallback SetThemeSetting picks.
-	before := tui.ActiveTheme().Name
-	if got := ui.SetTheme("no-such-theme"); got.Success {
-		t.Error("SetTheme(no-such-theme) succeeded; unknown themes must be refused")
+	// Pi theme.ts setTheme catches a missing name, falls back to dark, and returns failure.
+	// The controller disables automatic sync before attempting the load.
+	if got := ui.SetTheme("no-such-theme"); got.Success || got.Error != "Theme not found: no-such-theme" {
+		t.Errorf("SetTheme(no-such-theme) = %+v", got)
 	}
-	if after := tui.ActiveTheme().Name; after != before {
-		t.Errorf("refused SetTheme still changed the theme: %q → %q", before, after)
+	if after := tui.ActiveTheme().Name; after != "dark" {
+		t.Errorf("refused SetTheme fallback = %q, want dark", after)
 	}
 
 	if got := ui.SetTheme(42); got.Success {

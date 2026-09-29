@@ -104,7 +104,7 @@ func TestNodeCompatCompletionAbortCancelsHostRequest(t *testing.T) {
 	default:
 		t.Fatal("the extension's abort did not cancel the host request")
 	}
-	if request["apiKey"] != "request-key" || request["thinking"] != "off" {
+	if request["apiKey"] != "request-key" || request["reasoning"] != "off" {
 		t.Fatalf("request = %#v, want apiKey request-key and thinking off", request)
 	}
 	if _, ok := request["signal"]; ok {

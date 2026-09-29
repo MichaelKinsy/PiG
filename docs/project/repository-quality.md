@@ -398,7 +398,7 @@ Every maintained nested Go module must pass with `GOWORK=off`. Fixture modules
 must also build in clean-clone verification. The root module requires each
 nested PiG module it imports at the release version and carries no `replace`
 directive, so `go install github.com/MichaelKinsy/PiG/cmd/pig@vX.Y.Z` works; a
-checkout builds it through `go.work`, and `tests/gomodule` keeps its `go.sum`
+checkout builds it through `go.work`, and `test/gomodule` keeps its `go.sum`
 pinned to the published nested module hashes.
 
 ## Pig Porter standard
@@ -464,9 +464,7 @@ Do not introduce `pkg/`, a TypeScript-style `packages/` tree, or decorative
 enterprise layers. Move a package only when ownership, dependency direction, or
 a supported API requires the move.
 
-Keep project governance and community files at the repository root for the
-initial publication. They are required by the approved repository runbook and
-must remain easy to find.
+Keep GitHub community-health files in `.github/`. Keep governance, maintainer, and repository quickstart guides in `docs/project/`. Link to them from the root README. Keep `LICENSE`, `LICENSES/`, `NOTICE`, `THIRD_PARTY_NOTICES.md`, `CITATION.cff`, and `REUSE.toml` at the root for licensing and discovery. Keep `AGENTS.md` at the root. Keep the parity maintenance authorities in `docs/parity/`.
 
 Group maintainer documentation only when the move improves navigation. Perform
 documentation moves separately from behavior changes.
@@ -537,8 +535,8 @@ cmd/
 internal/
 extensions/
 piglets/
-parity/
-tests/
+test/parity/
+test/
 examples/
 automation/
 ```
@@ -577,12 +575,12 @@ scripts/parity-coverage.sh
 ### Correct known stale material
 
 ```text
-parity/README.md
-tests/upstream-parity/README.md
+test/parity/README.md
+test/upstream-parity/README.md
 PROVENANCE.md
 docs/extension-authoring.md
 docs/additive-features.md
-PORT_MAP.md
+docs/parity/PORT_MAP.md
 internal/pigdocs/content/concepts.md
 internal/pigdocs/content/install.md
 coding/services.go
@@ -603,8 +601,8 @@ coding/extension/host/
 coding/packagecontent/
 coding/secretresolver/
 coding/source/
-tui/parity/
-tui/termsim/
+internal/tui/parity/
+internal/tui/termsim/
 tui/widthx/
 ```
 

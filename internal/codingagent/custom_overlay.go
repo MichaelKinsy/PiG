@@ -1,6 +1,7 @@
 package codingagent
 
 import (
+	"context"
 	"slices"
 	"sync"
 
@@ -34,12 +35,17 @@ type customOverlay struct {
 	// closedCh is closed exactly once by Close so a waiter blocked on input can
 	// observe an extension-initiated close instead of sitting on its input
 	// channel until the next keystroke happens to arrive.
+	control      func(context.Context, string, bool, *extension.RemoteOverlayFocusTarget) (extension.RemoteOverlayState, error)
+	inputCh      chan []byte
+	releaseInput func()
+	inputChanged chan struct{}
+
 	closedCh  chan struct{}
 	closeOnce sync.Once
 }
 
 func newCustomOverlay(onChange func()) *customOverlay {
-	return &customOverlay{onChange: onChange, closedCh: make(chan struct{})}
+	return &customOverlay{onChange: onChange, closedCh: make(chan struct{}), inputChanged: make(chan struct{})}
 }
 
 // Render returns cached lines only for their terminal geometry. It performs no socket I/O.

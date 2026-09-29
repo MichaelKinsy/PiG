@@ -38,7 +38,7 @@ func TestSettingsExplicitZeroKeepsItsValue(t *testing.T) {
 	if retry.MaxRetries != 0 || retry.BaseDelayMs != 0 {
 		t.Fatalf("retry = %+v, want maxRetries 0 (project) and baseDelayMs 0", retry)
 	}
-	if got := sm.GetCompactionSettings(); got.ReserveTokens != 0 || got.KeepRecentTokens != 0 {
+	if got := compactionConfigForTest(t, sm); got.ReserveTokens != 0 || got.KeepRecentTokens != 0 {
 		t.Fatalf("compaction = %+v, want zero tokens", got)
 	}
 	if got := sm.GetBranchSummarySettings().ReserveTokens; got != 0 {
@@ -58,7 +58,7 @@ func TestSettingsExplicitZeroKeepsItsValue(t *testing.T) {
 	if got := reloaded.GetRetrySettings(); got.MaxRetries != 5 || got.BaseDelayMs != 0 || got.Enabled {
 		t.Fatalf("reloaded global retry = %+v, want maxRetries 5, baseDelayMs 0, disabled", got)
 	}
-	if got := reloaded.GetCompactionSettings(); got.ReserveTokens != 0 {
+	if got := compactionConfigForTest(t, reloaded); got.ReserveTokens != 0 {
 		t.Fatalf("reloaded compaction = %+v, want the explicit 0 kept on save", got)
 	}
 }
@@ -69,7 +69,7 @@ func TestSettingsAbsentValuesUseDefaults(t *testing.T) {
 	if got := sm.GetRetrySettings(); got.MaxRetries != 3 || got.BaseDelayMs != 2000 || got.MaxDelayMs != 60000 || !got.Enabled {
 		t.Fatalf("retry defaults = %+v", got)
 	}
-	if got := sm.GetCompactionSettings(); got != defaultCompactionConfig {
+	if got := compactionConfigForTest(t, sm); got != defaultCompactionConfig {
 		t.Fatalf("compaction defaults = %+v", got)
 	}
 	if got := sm.GetBranchSummarySettings().ReserveTokens; got != 16384 {
@@ -298,16 +298,30 @@ func TestSettingsReloadKeepsUndrainedErrors(t *testing.T) {
 // TestAnalyticsSettings ports upstream first-time-setup.test.ts "analytics
 // settings".
 func TestAnalyticsSettings(t *testing.T) {
-	newManager := func(t *testing.T) *SettingsManager {
-		return NewSettingsManagerWithProjectTrust(t.TempDir(), t.TempDir(), false)
+	for _, tc := range []struct {
+		name       string
+		newManager func(*testing.T) *SettingsManager
+	}{
+		{"memory", func(*testing.T) *SettingsManager { return NewInMemorySettingsManager(Settings{}) }},
+		{"file", func(t *testing.T) *SettingsManager {
+			return NewSettingsManagerWithProjectTrust(t.TempDir(), t.TempDir(), false)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) { testAnalyticsSettings(t, tc.newManager) })
 	}
+}
+
+func testAnalyticsSettings(t *testing.T, newManager func(*testing.T) *SettingsManager) {
+	t.Helper()
 	uuidPattern := regexp.MustCompile(`^[0-9a-f-]{36}$`)
+	// upstream: packages/coding-agent/test/first-time-setup.test.ts:60
 	t.Run("defaults to disabled with no tracking identifier", func(t *testing.T) {
 		manager := newManager(t)
 		if manager.GetEnableAnalytics() || manager.GetTrackingID() != "" {
 			t.Fatalf("analytics = %v, trackingId = %q", manager.GetEnableAnalytics(), manager.GetTrackingID())
 		}
 	})
+	// upstream: packages/coding-agent/test/first-time-setup.test.ts:67
 	t.Run("generates a tracking identifier on opt-in", func(t *testing.T) {
 		manager := newManager(t)
 		if err := manager.SetEnableAnalytics(true); err != nil {
@@ -317,6 +331,7 @@ func TestAnalyticsSettings(t *testing.T) {
 			t.Fatalf("analytics = %v, trackingId = %q", manager.GetEnableAnalytics(), manager.GetTrackingID())
 		}
 	})
+	// upstream: packages/coding-agent/test/first-time-setup.test.ts:76
 	t.Run("does not generate a tracking identifier on opt-out", func(t *testing.T) {
 		manager := newManager(t)
 		if err := manager.SetEnableAnalytics(false); err != nil {
@@ -326,12 +341,11 @@ func TestAnalyticsSettings(t *testing.T) {
 			t.Fatalf("analytics = %v, trackingId = %q", manager.GetEnableAnalytics(), manager.GetTrackingID())
 		}
 	})
+	// upstream: packages/coding-agent/test/first-time-setup.test.ts:85
 	t.Run("keeps the tracking identifier when toggling analytics", func(t *testing.T) {
 		manager := newManager(t)
-		for _, enabled := range []bool{true, false, true} {
-			if err := manager.SetEnableAnalytics(enabled); err != nil {
-				t.Fatal(err)
-			}
+		if err := manager.SetEnableAnalytics(true); err != nil {
+			t.Fatal(err)
 		}
 		trackingID := manager.GetTrackingID()
 		if err := manager.SetEnableAnalytics(false); err != nil {

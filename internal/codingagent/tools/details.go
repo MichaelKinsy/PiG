@@ -63,6 +63,7 @@ type GrepDetails struct {
 // FindDetails mirrors upstream FindToolDetails (find.ts:32): a truncation
 // object when the byte limit was hit and the result-limit cap when reached.
 type FindDetails struct {
-	Truncation         *TruncationResult `json:"truncation,omitempty"`
-	ResultLimitReached int               `json:"resultLimitReached,omitempty"`
+	Truncation *TruncationResult `json:"truncation,omitempty"`
+	// Nil means no limit notice; a reached zero remains present on the wire.
+	ResultLimitReached *float64 `json:"resultLimitReached,omitempty"`
 }

@@ -1,0 +1,25 @@
+# Pi 0.87.1 latex.test.ts supplies every input (149 assertions, including all table rows).
+# latex-upstream-cases.mjs verifies the upstream expectations against installed Pi before producing the corpus.
+# Both probes call the real renderer in inline and display modes. JSON quoting preserves every layout space and newline.
+name = "13-latex-upstream-layout"
+description = "LaTeX relation spacing, joins, font switches, multiline arguments, matrices, cases and display scripts match Pi."
+covers = ["packages/tui/src/latex.ts"]
+tags = ["fast", "hermetic", "tui"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["go", "run", "./test/parity/testdata/latex-pig", "internal/latex/testdata/upstream-corpus.txt"]
+pi_args = ["node", "./test/parity/testdata/latex-pi.mjs", "internal/latex/testdata/upstream-corpus.txt"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 30
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["R ⋈ S, R ⋈ S", "⎨", "arg max"]
+runs = 3

@@ -627,6 +627,31 @@ func TestFramesDoNotChurnAllocations(t *testing.T) {
 	}
 }
 
+// The terminal's color support is read on every frame, so a change to the
+// environment reaches a view that is already open.
+func TestFrameFollowsColorEnvironmentChangesWithinView(t *testing.T) {
+	t.Setenv("COLORTERM", "")
+	t.Setenv("WT_SESSION", "")
+	g := newGame(160, 0)
+	g.resize(160)
+	g.intro = 0
+	g.camX = 0
+	s := newScene(defaultPalette())
+	before := strings.Join(s.render(g, 160, 50, nil), "\n")
+	if strings.Contains(before, ";2;") {
+		t.Fatalf("a terminal without 24-bit color drew truecolor SGR")
+	}
+	t.Setenv("COLORTERM", "truecolor")
+	after := strings.Join(s.render(g, 160, 50, nil), "\n")
+	if !strings.Contains(after, ";2;") {
+		t.Fatalf("the view kept 256-color SGR after COLORTERM=truecolor")
+	}
+	t.Setenv("COLORTERM", "")
+	if again := strings.Join(s.render(g, 160, 50, nil), "\n"); again != before {
+		t.Fatalf("the view did not fall back to the 256-color frame after COLORTERM was cleared")
+	}
+}
+
 func BenchmarkFrame200x60(b *testing.B) {
 	b.Setenv("COLORTERM", "truecolor")
 	g := newGame(198, 0)

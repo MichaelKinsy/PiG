@@ -193,15 +193,24 @@ func TestExportHTML_DoesNotInlineRawScriptTag(t *testing.T) {
 }
 
 func TestExportHTML_WhitespaceCSSRulePresent(t *testing.T) {
-	html := ToHTML(SessionData{Header: mustRaw(map[string]any{"type": "session", "id": "w", "cwd": "/tmp"})})
-	if !strings.Contains(html, ".output-preview,") || !strings.Contains(html, ".output-full {") || !strings.Contains(html, "white-space: pre-wrap;") {
-		t.Fatal("plain-text whitespace rule missing from CSS")
+	// Ports packages/coding-agent/test/export-html-whitespace.test.ts: plain-text lines preserve whitespace, not template indentation.
+	css := mustReadAsset("assets/template.css")
+	for _, pattern := range []string{
+		`\.output-preview > div:not\(\.expand-hint\),\s*\.output-full > div:not\(\.expand-hint\) \{[\s\S]*?white-space:\s*pre-wrap;`,
+		`\.ansi-line\s*\{[\s\S]*?white-space:\s*pre;`,
+	} {
+		if !regexp.MustCompile(pattern).MatchString(css) {
+			t.Errorf("missing whitespace rule %s", pattern)
+		}
+	}
+	if regexp.MustCompile(`\.output-preview,\s*\.output-full\s*\{[\s\S]*?white-space:\s*pre-wrap;`).MatchString(css) {
+		t.Error("template indentation must not be preserved as tool output")
 	}
 }
 
 func TestExportHTML_TemplateJSContainsXSSGuards(t *testing.T) {
 	html := ToHTML(SessionData{Header: mustRaw(map[string]any{"type": "session", "id": "safe", "cwd": "/tmp"})})
-	for _, want := range []string{"javascript:", "vbscript:", "escapeHtml(href)", "escapeHtml(img.mimeType"} {
+	for _, want := range []string{"sanitizeMarkdownUrl(token.href)", "escapeHtml(href)", "escapeHtml(img.mimeType"} {
 		if !strings.Contains(html, want) {
 			t.Fatalf("missing XSS guard marker %q", want)
 		}
@@ -270,7 +279,7 @@ func TestRenderCustomTools_PrerendersExtensionToolHTML(t *testing.T) {
 			RenderResult: func(result extension.AgentToolResult, options extension.ToolRenderResultOptions, theme extension.Theme, context extension.ToolRenderContext) extension.Component {
 				toolResult := result.(agent.AgentToolResult)
 				if options.Expanded {
-					return testComponent{lines: []string{"", "\x1b[32mRESULT: " + toolResult.Content + "\x1b[0m", ""}}
+					return testComponent{lines: []string{"", "\x1b[32mRESULT: " + toolResult.Text() + "\x1b[0m", ""}}
 				}
 				return testComponent{lines: []string{"", "preview", ""}}
 			},

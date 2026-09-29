@@ -77,7 +77,11 @@ func drainTerminalInputBurst(tb testing.TB, n int, listener string) {
 	}
 	readCh := make(chan inputChunk)
 	errCh := make(chan error, 1)
-	go m.pumpTerminalInput(ctx, strings.NewReader(strings.Repeat("x", n)), readCh, errCh)
+	go func() {
+		if err := m.pumpTerminalInput(ctx, strings.NewReader(strings.Repeat("x", n)), readCh, errCh); err != nil {
+			tb.Error(err)
+		}
+	}()
 	count := 0
 	for readCh != nil {
 		select {
@@ -175,7 +179,11 @@ func TestPendingTerminalInputBackpressuresReader(t *testing.T) {
 				source := &countedInputReader{data: "xyz"}
 				m := &InteractiveMode{}
 				readCh, errCh := make(chan inputChunk), make(chan error, 1)
-				go m.pumpTerminalInput(ctx, source, readCh, errCh)
+				go func() {
+					if err := m.pumpTerminalInput(ctx, source, readCh, errCh); err != nil {
+						t.Error(err)
+					}
+				}()
 				chunk := <-readCh
 				synctest.Wait()
 				// One routed read plus one held by the reader worker.

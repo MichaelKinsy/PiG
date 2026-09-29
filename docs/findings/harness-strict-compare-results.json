@@ -1,0 +1,630 @@
+{
+  "base_commit": "96284e76befed314dd69d4ef01b013ac6c40902e",
+  "upstream_version": "0.87.1",
+  "results": [
+    {
+      "name": "01-config-empty",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "01-conversation-fullscreen",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "01-export-cli-plain",
+      "driver": "cli-mode",
+      "passed": false,
+      "failures": [
+        "run 1 artifact mismatch: pig=\"<!DOCTYPE html>\\n<html lang=\\\"en\\\">\\n<head>\\n  <meta charset=\\\"UTF-8\\\">\\n  <meta name=\\\"viewport\\\" content=\\\"width=device-width, in…\" pi=\"<!DOCTYPE html>\\n<html lang=\\\"en\\\">\\n<head>\\n  <meta charset=\\\"UTF-8\\\">\\n  <meta name=\\\"viewport\\\" content=\\\"width=device-width, in…\""
+      ],
+      "evidence_run": "final",
+      "capture_hashes": {
+        "pi.artifact": "0bb57c895cebeb6d0af6a8a7414d7b3146b6737419bfd4939b446e85f29dabda",
+        "pi.stdout": "16ee17dca0fafe659ed88cd6afdac506de3012339d29335a848e6531f2bf8a6d",
+        "pig.artifact": "64ac67d779ff837886df6f3820b6bcab0f1dda0c23eed92a2c23b896a472951e",
+        "pig.stdout": "21e1497ca14506e76e14c84bfe7ea3c8fb4dbbb4c678cb59cedd5061f4491fcf",
+        "pi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "01-json-mode-streams-events",
+      "driver": "cli-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "01-rpc-malformed-input",
+      "driver": "rpc-mode",
+      "passed": false,
+      "failures": [
+        "run 1 JSON output: /1/error: pig=\"Failed to parse command: invalid character 'o' in literal null (expecting 'u')\" pi=\"Failed to parse command: Unexpected token 'o', \\\"not-json\\\" is not valid JSON\""
+      ],
+      "evidence_run": "final",
+      "capture_hashes": {
+        "pi.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.stdout": "2789d3d00373a7aa5c8f3c51f0c1390d3de1277209bf4d8d852230d4b8878620",
+        "pig.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stdout": "8e825fac8b0549d7fa568bac12b70239be0e834b2e67541e925bc0bfd3d37929",
+        "pi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.raw.stdout": "2789d3d00373a7aa5c8f3c51f0c1390d3de1277209bf4d8d852230d4b8878620",
+        "pig.raw.stdout": "8e825fac8b0549d7fa568bac12b70239be0e834b2e67541e925bc0bfd3d37929",
+        "pig.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "02-config-resources-list",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "02-export-cli-ansi",
+      "driver": "cli-mode",
+      "passed": false,
+      "failures": [
+        "run 1 artifact mismatch: pig=\"<!DOCTYPE html>\\n<html lang=\\\"en\\\">\\n<head>\\n  <meta charset=\\\"UTF-8\\\">\\n  <meta name=\\\"viewport\\\" content=\\\"width=device-width, in…\" pi=\"<!DOCTYPE html>\\n<html lang=\\\"en\\\">\\n<head>\\n  <meta charset=\\\"UTF-8\\\">\\n  <meta name=\\\"viewport\\\" content=\\\"width=device-width, in…\""
+      ],
+      "evidence_run": "final",
+      "capture_hashes": {
+        "pi.artifact": "8da4d54ba4cf9ce79af297687e192cdb6a3e2a2e4960dba08fc78551854ab7de",
+        "pi.stdout": "eadcd1a162ec3e24b0b83a6ade0da988795802595969a6f734274b16980894b5",
+        "pig.artifact": "6ea55867807210e5932e901516f5000c3703dd209dfcd6d266394c2f105c0be8",
+        "pig.stdout": "f6d9adb5f564a7d5bb39ca0701a7797b8e551d016fb1d52efee925fd7a592bf9",
+        "pi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "02-keyboard-navigation-fullscreen",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "02-startup-compact-help",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "refined"
+    },
+    {
+      "name": "03-config-filter-narrow",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "03-export-cli-tools",
+      "driver": "cli-mode",
+      "passed": false,
+      "failures": [
+        "run 1 artifact mismatch: pig=\"<!DOCTYPE html>\\n<html lang=\\\"en\\\">\\n<head>\\n  <meta charset=\\\"UTF-8\\\">\\n  <meta name=\\\"viewport\\\" content=\\\"width=device-width, in…\" pi=\"<!DOCTYPE html>\\n<html lang=\\\"en\\\">\\n<head>\\n  <meta charset=\\\"UTF-8\\\">\\n  <meta name=\\\"viewport\\\" content=\\\"width=device-width, in…\""
+      ],
+      "evidence_run": "final",
+      "capture_hashes": {
+        "pi.artifact": "52d1ceda8aa6a66c94eaa445da798d0a1f7122d325a9d659c91011efa487ad42",
+        "pi.stdout": "2d60a874ac65e34b123a81b26dcc17311db7c18feb213f6b796dcf6637b62504",
+        "pig.artifact": "051125fa441601b3b8aa4a0c059ce0f195ec7e503fc14b4c9f6dd4a7012e2e32",
+        "pig.stdout": "8f87c50822458f13ac55a3f22efb18c8905915fb80d1a6faddd6e4e59e593dd6",
+        "pi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "03-main-screen-assistant-settled",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "03-startup-expanded-help",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "refined"
+    },
+    {
+      "name": "03-tool-execution-bash",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "04-conversation-layout",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "04-export-cli-full-mix",
+      "driver": "cli-mode",
+      "passed": false,
+      "failures": [
+        "run 1 artifact mismatch: pig=\"<!DOCTYPE html>\\n<html lang=\\\"en\\\">\\n<head>\\n  <meta charset=\\\"UTF-8\\\">\\n  <meta name=\\\"viewport\\\" content=\\\"width=device-width, in…\" pi=\"<!DOCTYPE html>\\n<html lang=\\\"en\\\">\\n<head>\\n  <meta charset=\\\"UTF-8\\\">\\n  <meta name=\\\"viewport\\\" content=\\\"width=device-width, in…\""
+      ],
+      "evidence_run": "final",
+      "capture_hashes": {
+        "pi.artifact": "ffe3da4ac436edf50427568bc4497be56fd1c23b504a8fe64a6e60d3f4c097a9",
+        "pi.stdout": "e997aa5d528703d4dbc8e5a19a3f4768523e280113b1e8e9560c4596d3494916",
+        "pig.artifact": "bfcfc2dab24f4c9c719ab40231bca98029cc028587c77792c2603e724fa497a4",
+        "pig.stdout": "64fcc4e013c9427b50ae396a53f4947e6dde64f25182e06b288794a9a2c62162",
+        "pi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "04-json-real-provider-error",
+      "driver": "cli-mode",
+      "passed": false,
+      "failures": [
+        "run 1 JSON output: /7/message/api: pig=\"\" pi=\"openai-completions\""
+      ],
+      "evidence_run": "final",
+      "capture_hashes": {
+        "pi.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.stdout": "7b33c3ae5e4aaa2abc3e6fb9fc94f5dc207fb16546539bf5da1529486754c689",
+        "pig.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stdout": "e356ae6233eddb5458fedc4443fb9e9ddaa7c29189c28f19ebc18b6bdb61db4c",
+        "pi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "04-main-screen-assistant-streaming",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "04-missing-session-cwd-startup-selector",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "04-print-real-provider-error",
+      "driver": "print-mode",
+      "passed": false,
+      "failures": [
+        "run 1 stderr mismatch: pig=\"openai: HTTP 400: {\\\"error\\\":{\\\"message\\\":\\\"strict wire bad request\\\",\\\"type\\\":\\\"invalid_request_error\\\"}}\\n\" pi=\"400: {\\\"message\\\":\\\"strict wire bad request\\\",\\\"type\\\":\\\"invalid_request_error\\\"}\\n\""
+      ],
+      "evidence_run": "final",
+      "capture_hashes": {
+        "pi.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.stderr": "22b53b991428890d67b62114da3e52d6b0eb439eac04c4cebc99e757fa90b414",
+        "pi.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stderr": "55243546c3be3fb39ff0fab9f672942824b975a9ded29d81ddf48cd707b34a8e"
+      }
+    },
+    {
+      "name": "04-provider-wire-payloads",
+      "driver": "cli-mode",
+      "passed": false,
+      "failures": [
+        "pi output unexpectedly contains \"\\\"wireBody\\\":null\"",
+        "run 1 JSON output: /0/anthropic/wireBody/max_tokens: pig=16507 pi=123"
+      ],
+      "evidence_run": "provider-final",
+      "capture_hashes": {
+        "pi.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.stdout": "3a6d7cb9b076bc56e1fb37eccbcc158c170ae6d7ef8d7a9185b2d2c62da7ea76",
+        "pig.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.raw.stdout": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stdout": "7954ebeaef412320edaa82899d930096e3dd161d3d186c28f08f9588a91bb53d"
+      }
+    },
+    {
+      "name": "04-rpc-jsonl-framing",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "04-startup-verbose-collapse",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "refined"
+    },
+    {
+      "name": "05-export-interactive-slash",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "05-main-screen-tool-streaming",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "05-missing-session-cwd-headless-error",
+      "driver": "cli-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "05-rpc-query-commands",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "05-startup-loaded-resources",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "06-main-screen-tool-settled",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "06-rpc-chat-faux",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "refined"
+    },
+    {
+      "name": "06-startup-loaded-resources-expanded",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "07-login-dialog",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "refined"
+    },
+    {
+      "name": "07-main-screen-editor-growth",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "07-startup-package-entry-shapes",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "07-visual-truncate-bash-collapse",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "08-main-screen-editor-shrink",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "08-startup-package-entry-shapes-expanded",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "09-cancel-trust-shows-warning-with-extensions-off",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "09-main-screen-compaction-in-progress",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "09-startup-package-glob-collisions",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "10-main-screen-compaction-settled",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "10-startup-trust-prompt-wording",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "12-json-untrusted-project-has-no-warning",
+      "driver": "cli-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "12-rpc-export-html",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "14-resumed-denied-project-warning-follows-history",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "15-footer-status-reload-composition",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "15-rpc-compaction-result",
+      "driver": "rpc-mode",
+      "passed": false,
+      "failures": [
+        "run 1 JSON output: /1/aborted: field presence differs (pig=false pi=true)"
+      ],
+      "evidence_run": "final",
+      "capture_hashes": {
+        "pi.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.stdout": "af202e4dff89f735d9b3b2235ce1830834da2351f429b0f7fa8f0cb592dd8de8",
+        "pig.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stdout": "94967c84ecb617e9c055cf4a6f4879d9211bf39b5f9aba72c197ef27c80fb955",
+        "pi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.raw.stdout": "af202e4dff89f735d9b3b2235ce1830834da2351f429b0f7fa8f0cb592dd8de8",
+        "pig.raw.stdout": "94967c84ecb617e9c055cf4a6f4879d9211bf39b5f9aba72c197ef27c80fb955",
+        "pig.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "17-rpc-abort-retry",
+      "driver": "rpc-mode",
+      "passed": false,
+      "failures": [
+        "run 1 JSON output: /12/command: field presence differs (pig=true pi=false)"
+      ],
+      "evidence_run": "final",
+      "capture_hashes": {
+        "pi.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.stdout": "388180904ee4b71716f21d6658aab79bb9dad4329d24007a199a267050f1ec7b",
+        "pig.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stdout": "68b432f78ae9ed69ff343d13a75d0be0eabd1f1c1ef0fb59ed3a4e0a83e07b6e",
+        "pi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.raw.stdout": "388180904ee4b71716f21d6658aab79bb9dad4329d24007a199a267050f1ec7b",
+        "pig.raw.stdout": "68b432f78ae9ed69ff343d13a75d0be0eabd1f1c1ef0fb59ed3a4e0a83e07b6e",
+        "pig.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "19-rpc-extension-ui-select",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "20-message-output-padding",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "20-rpc-runtime-boundary-values",
+      "driver": "rpc-mode",
+      "passed": false,
+      "failures": [
+        "run 1 JSON output: /4/command: field presence differs (pig=true pi=false)"
+      ],
+      "evidence_run": "final",
+      "capture_hashes": {
+        "pi.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.stdout": "edc64dc69f2dd1c44f096406413d57693f7deacbe9e984681a44c9e58d349c61",
+        "pig.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stdout": "4b771e7b327e87abd029a250b6eabb2de68f068e96e2e39975916fa2d4405848",
+        "pi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.raw.stdout": "edc64dc69f2dd1c44f096406413d57693f7deacbe9e984681a44c9e58d349c61",
+        "pig.raw.stdout": "4b771e7b327e87abd029a250b6eabb2de68f068e96e2e39975916fa2d4405848",
+        "pig.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "21-rpc-extension-session-events",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "22-exit-final-layout",
+      "driver": "interactive-tmux",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "22-rpc-unknown-model-preflight",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "refined"
+    },
+    {
+      "name": "26-extension-load-order",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "26-rpc-session-stats-context-estimate",
+      "driver": "rpc-mode",
+      "passed": false,
+      "failures": [
+        "run 1 JSON output: /13/partialResult/content: array/record count pig=1 pi=0"
+      ],
+      "evidence_run": "identity-followup",
+      "capture_hashes": {
+        "pi.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.raw.stdout": "cdfc7353abfb8f5caf742341e3fc3f1df9a95513a4f73164927c98d531b29fd7",
+        "pi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.stdout": "cdfc7353abfb8f5caf742341e3fc3f1df9a95513a4f73164927c98d531b29fd7",
+        "pig.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.raw.stdout": "2c5e2d36a122b8b81172aa09934e8fcbfb3e32e0f1fbcce5a82e9b73cf530765",
+        "pig.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stdout": "2c5e2d36a122b8b81172aa09934e8fcbfb3e32e0f1fbcce5a82e9b73cf530765"
+      }
+    },
+    {
+      "name": "28-prompt-precedence",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "28-rpc-extension-has-ui",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "28-rpc-tool-result-wire",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "refined"
+    },
+    {
+      "name": "29-export-tool-renderers",
+      "driver": "rpc-mode",
+      "passed": false,
+      "failures": [
+        "run 1 JSON output: /3/message/toolsAdded/4/description: pig=\"Render a card whose renderers throw.\" pi=\"Render a card with custom call and result renderers.\""
+      ],
+      "evidence_run": "refined",
+      "capture_hashes": {
+        "pi.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.stdout": "b84d19b8b1d0082960f21b87914232c21b29e471249284075ed6f9ab263fed25",
+        "pig.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stdout": "ed774086d68a8c55e032b6f47a871c8d643ddb34877bdcf2021b904d5dcc3f68",
+        "pi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.raw.stdout": "b84d19b8b1d0082960f21b87914232c21b29e471249284075ed6f9ab263fed25",
+        "pig.raw.stdout": "ed774086d68a8c55e032b6f47a871c8d643ddb34877bdcf2021b904d5dcc3f68",
+        "pig.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "29-rpc-sigterm-open-stdin",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "31-rpc-cycle-await-interleaving",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "32-extension-load-failure-message",
+      "driver": "print-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    },
+    {
+      "name": "33-rpc-real-provider-records",
+      "driver": "rpc-mode",
+      "passed": false,
+      "failures": [
+        "run 1 JSON output: /7/message/content: array/record count pig=0 pi=1"
+      ],
+      "evidence_run": "refined",
+      "capture_hashes": {
+        "pi.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.stdout": "01a105493d1ec58763eb2b02c8be89fb8efceb9f85ca0b6c95514a93f4c0a325",
+        "pig.artifact": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pig.stdout": "278677a59298af139cabe69c9b6af5b5406901c910e9c072d9b94c809a2f2756",
+        "pi.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "pi.raw.stdout": "01a105493d1ec58763eb2b02c8be89fb8efceb9f85ca0b6c95514a93f4c0a325",
+        "pig.raw.stdout": "278677a59298af139cabe69c9b6af5b5406901c910e9c072d9b94c809a2f2756",
+        "pig.stderr": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "name": "41-rpc-extension-session-replacement",
+      "driver": "rpc-mode",
+      "passed": true,
+      "failures": [],
+      "evidence_run": "final"
+    }
+  ]
+}

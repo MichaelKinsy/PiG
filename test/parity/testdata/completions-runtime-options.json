@@ -1,0 +1,9 @@
+[
+ {"name":"default","provider":"openai","model":"gpt-4o-mini"},
+ {"name":"explicit","provider":"openai","model":"gpt-4o-mini","maxTokens":1234},
+ {"name":"context-default","provider":"openai","model":"gpt-4o-mini","length":8000,"window":10000,"cap":8000},
+ {"name":"context-explicit","provider":"openai","model":"gpt-4o-mini","length":8000,"window":10000,"cap":8000,"maxTokens":7000},
+ {"name":"tool-history","provider":"openai","model":"gpt-4o-mini","history":true},
+ {"name":"gateway","provider":"cloudflare-ai-gateway","model":"workers-ai/@cf/moonshotai/kimi-k2.6","maxTokens":1234,"thinking":"high","session":"session-1"},
+ {"name":"byok","provider":"cloudflare-ai-gateway","model":"gpt-5.1","headers":{"Authorization":"Bearer upstream-token"}}
+]

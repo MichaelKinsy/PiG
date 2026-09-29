@@ -10,7 +10,11 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"net/http"
 	"slices"
+
+	sdkjson "github.com/MichaelKinsy/PiG/extensions/sdk/json"
+	"github.com/MichaelKinsy/PiG/telemetry"
 )
 
 // maxSSETokenSize is the maximum buffer size for SSE line scanning across all
@@ -70,13 +74,18 @@ const (
 type TextContent struct {
 	Text          string `json:"text"`
 	TextSignature string `json:"textSignature,omitempty"`
+
+	scratch contentIndexScratch
 }
 
 func (TextContent) contentType() string { return "text" }
 
 func (content TextContent) MarshalJSON() ([]byte, error) {
-	type payload TextContent
-	return marshalContent(content.contentType(), payload(content))
+	return marshalContent(content.contentType(), struct {
+		Text          string `json:"text"`
+		TextSignature string `json:"textSignature,omitempty"`
+		Index         *int   `json:"index,omitempty"`
+	}{content.Text, content.TextSignature, content.scratch.wire()})
 }
 
 // ImageContent is a base64-encoded image in a message.
@@ -95,8 +104,9 @@ func (content ImageContent) MarshalJSON() ([]byte, error) {
 // JSONObject is a provider-facing JSON object.
 type JsonObject map[string]any
 
-// ToolCall is a tool invocation block in an assistant message.
+// ToolCall is a tool invocation block in an assistant message. Streaming OpenAI calls also serialize provider scratch fields until finalization or failure.
 type ToolCall struct {
+	scratch          toolCallScratch
 	ID               string     `json:"id"`
 	Name             string     `json:"name"`
 	Arguments        JsonObject `json:"arguments"`
@@ -111,11 +121,15 @@ func (content ToolCall) MarshalJSON() ([]byte, error) {
 		return nil, fmt.Errorf("tool call arguments: %w", err)
 	}
 	type payload ToolCall
-	return marshalContent(content.contentType(), payload(content))
+	return marshalContent(content.contentType(), struct {
+		payload
+		toolCallScratchJSON
+	}{payload(content), content.scratch.wire()})
 }
 
 func marshalContent(contentType string, content any) ([]byte, error) {
-	body, err := json.Marshal(content)
+	// sdkjson keeps a lone UTF-16 unit as an escape instead of replacing it, as JSON.stringify does.
+	body, err := sdkjson.Marshal(content)
 	if err != nil {
 		return nil, err
 	}
@@ -135,18 +149,46 @@ func marshalContent(contentType string, content any) ([]byte, error) {
 	return encoded, nil
 }
 
-// ThinkingContent is a thinking/reasoning block.
+// ThinkingContent is a thinking/reasoning block. JSON decoding and provider streams preserve the distinction between omitted and explicitly empty signatures.
 type ThinkingContent struct {
 	Thinking          string `json:"thinking"`
 	ThinkingSignature string `json:"thinkingSignature,omitempty"`
 	Redacted          bool   `json:"redacted,omitempty"`
+
+	thinkingSignatureEmpty bool
+	scratch                contentIndexScratch
 }
 
 func (ThinkingContent) contentType() string { return "thinking" }
 
 func (content ThinkingContent) MarshalJSON() ([]byte, error) {
+	var signature *string
+	if content.ThinkingSignature != "" || content.thinkingSignatureEmpty {
+		signature = &content.ThinkingSignature
+	}
+	return marshalContent(content.contentType(), struct {
+		Thinking          string  `json:"thinking"`
+		ThinkingSignature *string `json:"thinkingSignature,omitempty"`
+		Redacted          bool    `json:"redacted,omitempty"`
+		Index             *int    `json:"index,omitempty"`
+	}{content.Thinking, signature, content.Redacted, content.scratch.wire()})
+}
+
+func (content *ThinkingContent) UnmarshalJSON(data []byte) error {
 	type payload ThinkingContent
-	return marshalContent(content.contentType(), payload(content))
+	var decoded struct {
+		payload
+		ThinkingSignature *string `json:"thinkingSignature"`
+	}
+	if err := json.Unmarshal(data, &decoded); err != nil {
+		return err
+	}
+	*content = ThinkingContent(decoded.payload)
+	if decoded.ThinkingSignature != nil {
+		content.ThinkingSignature = *decoded.ThinkingSignature
+		content.thinkingSignatureEmpty = content.ThinkingSignature == ""
+	}
+	return nil
 }
 
 // ContentBlock is the closed union of provider-facing content types.
@@ -269,8 +311,9 @@ const (
 
 // ─── Tool Schema ──────────────────────────────────────────────────────────────
 
-// ToolSchema describes an LLM-callable tool in JSON Schema format.
+// ToolSchema describes an LLM-callable tool in JSON Schema format. JSON decoding and encoding retain schema declaration order for provider strict-schema derivation; directly authored Go maps use deterministic key order.
 type ToolSchema struct {
+	parameterOrder   schemaObjectOrder
 	Name             string         `json:"name"`
 	Description      string         `json:"description"`
 	Parameters       map[string]any `json:"parameters"`                 // JSON Schema object
@@ -279,6 +322,9 @@ type ToolSchema struct {
 	// request for this tool (nil = unset, equivalent to upstream's false).
 	// Mirrors upstream Tool.constrainedSampling (types.ts).
 	ConstrainedSampling *ConstrainedSamplingConfig `json:"constrainedSampling,omitempty"`
+	// ConstrainedSamplingDisabled records upstream's explicit `constrainedSampling: false`. It behaves like an
+	// unset request for providers, but transcript tool declarations keep it (transcript.ts:123-129).
+	ConstrainedSamplingDisabled bool `json:"-"`
 }
 
 // GrammarFormat is an OpenAI grammar variant key. Mirrors upstream GrammarFormat.
@@ -494,16 +540,51 @@ func ProviderHeadersFromStrings(values map[string]string) ProviderHeaders {
 	return headers
 }
 
+// ProviderResponse is the status and headers observed before consuming a provider response.
+type ProviderResponse struct {
+	Status  int               `json:"status"`
+	Headers map[string]string `json:"headers"`
+}
+
+// FetchFunction is a per-request HTTP transport. The request context owns cancellation; the caller owns and closes the returned streaming response body.
+// Ports packages/ai/src/types.ts (ProviderRequestOptions.fetch).
+type FetchFunction func(*http.Request) (*http.Response, error)
+
+func (fetch FetchFunction) RoundTrip(request *http.Request) (*http.Response, error) {
+	return fetch(request)
+}
+
 // StreamOptions are the options for a streaming LLM call.
 type StreamOptions struct {
-	MaxTokens   int
+	// TelemetryContext parents provider request spans; nil means no recording backend.
+	TelemetryContext telemetry.TelemetryContext
+	// Deferred preserves the deferred-generation boolean or window object.
+	Deferred *DeferredOption
+	// Fetch replaces HTTP execution with a caller-owned client, preserving its redirect policy and request context.
+	Fetch     *http.Client `json:"-"`
+	MaxTokens int
+	// Region selects the Bedrock request region. An inference-profile ARN's embedded region takes precedence.
+	Region string `json:"region,omitempty"`
+	// Profile selects the AWS shared credentials profile for a Bedrock request.
+	Profile     string `json:"profile,omitempty"`
 	Temperature float64
 	// TemperatureSet distinguishes an explicit zero temperature from omission.
 	// Non-zero Temperature values remain present for existing callers.
 	TemperatureSet  bool
 	SamplingParams  map[string]any
 	ThinkingBudgets *ThinkingBudgets
-	Thinking        ThinkingLevel
+	Thinking        ThinkingLevel `json:"reasoning,omitempty"`
+	// GoogleThinking carries Google's raw thinking object; Thinking is the provider-neutral reasoning option.
+	GoogleThinking       *GoogleThinkingOptions `json:"thinking,omitempty"`
+	ThinkingEnabled      *bool                  `json:"thinkingEnabled,omitempty"`
+	ThinkingBudgetTokens *int                   `json:"thinkingBudgetTokens,omitempty"`
+	Effort               string                 `json:"effort,omitempty"`
+	InterleavedThinking  *bool                  `json:"interleavedThinking,omitempty"`
+	RequestMetadata      map[string]string      `json:"requestMetadata,omitempty"`
+	// ReasoningEffort is the raw OpenAI-compatible or Mistral API effort. Unlike the provider-neutral Thinking level, it is mapped but not clamped so the provider can reject unsupported values.
+	ReasoningEffort string
+	// PromptMode is the raw Mistral prompt mode, independent of provider-neutral Thinking.
+	PromptMode string `json:"promptMode,omitempty"`
 	// IsReasoning indicates whether the model supports extended reasoning.
 	// Used by providers to decide developer vs system role and reasoning_effort gating.
 	// Mirrors upstream model.reasoning field.
@@ -520,16 +601,16 @@ type StreamOptions struct {
 	// Headers are request-specific HTTP headers. A nil value deletes a header
 	// supplied by configured or resolved authentication state.
 	Headers ProviderHeaders
-	// APIKey is a request-specific credential, upstream's options.apiKey. When
-	// set, ModelRuntime builds the provider with it instead of the configured
-	// credential and does not require configured auth. Providers never read it.
+	// Signal carries the request lifetime to extension-owned provider callbacks. Native Provider.Stream implementations receive the same lifetime as their context argument.
+	Signal context.Context `json:"-"`
+	// APIKey is the request credential; ModelRuntime and direct StreamSimple construct the selected API provider with it. Bedrock also accepts it directly as a bearer token.
 	APIKey string
 	// CacheRetention requests a provider-supported prompt-cache lifetime. Empty leaves the option unset.
 	CacheRetention CacheRetention
 	// SessionID is passed to the provider for prompt caching (OpenAI prompt_cache_key). When non-empty and the provider supports it, repeated calls with the same session ID can reuse cached prompt processing. Mirrors upstream openai-completions.ts:449.
 	SessionID string
 	// ToolChoice selects provider-neutral automatic/no-tool behavior or a
-	// provider-specific choice object. Anthropic also accepts "any" and
+	// provider-specific choice object. Anthropic and Bedrock also accept "any" and
 	// {"type":"tool","name":...}.
 	ToolChoice any
 	// Metadata contains optional provider request metadata. Providers extract
@@ -538,18 +619,19 @@ type StreamOptions struct {
 	// Transport requests a provider-specific streaming transport.
 	// Empty lets the provider choose its default.
 	Transport Transport
-	// TimeoutMs bounds response headers and WebSocket stream idleness for
-	// providers that support request timeouts. Zero leaves the provider default.
-	TimeoutMs int
-	// WebSocketConnectTimeoutMs bounds only the WebSocket opening handshake.
-	// Zero selects the provider default.
-	WebSocketConnectTimeoutMs int
-	// OnPayload is an optional parity/debug hook invoked after the provider
-	// builds its wire payload and before it sends the request. Returning nil
+	// TimeoutMs bounds the full Mistral request through SSE consumption, and response headers or stream idleness for other supported providers. Nil selects the provider default; zero remains explicit and follows the selected provider's timeout semantics.
+	TimeoutMs *int `json:"timeoutMs,omitempty"`
+	// WebSocketConnectTimeoutMs bounds only the opening handshake. Nil selects the provider default; zero explicitly disables it.
+	WebSocketConnectTimeoutMs *int `json:"websocketConnectTimeoutMs,omitempty"`
+	MaxRetries                *int `json:"maxRetries,omitempty"`
+	MaxRetryDelayMs           *int `json:"maxRetryDelayMs,omitempty"`
+	// OnPayload is an optional payload-inspection hook invoked after the provider builds its native payload and before it serializes and sends the request. Returning nil
 	// keeps the payload unchanged; returning a replacement asks providers that
 	// support replacement to send that value instead. Mirrors upstream
 	// StreamOptions.onPayload.
 	OnPayload func(payload any, model *Model) (any, error)
+	// OnResponse is awaited before response consumption. The request context owns cancellation.
+	OnResponse func(context.Context, ProviderResponse, *Model) error
 }
 
 // Provider is the interface implemented by each LLM backend.
@@ -709,6 +791,9 @@ func ptrString(v string) *string { return new(v) }
 func cloneCompat(in *ModelCompat) *ModelCompat {
 	if in == nil {
 		return nil
+	}
+	if out, ok := cloneScalarCompat(in); ok {
+		return out
 	}
 	data, err := json.Marshal(in)
 	if err != nil {

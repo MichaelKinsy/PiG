@@ -1,0 +1,31 @@
+# Pi 0.87.1 package-manager.test.ts:1418 and package-manager.ts:1018-1021,1446-1470 keep unprefixed host/path spellings local even when absent.
+# The real CLI oracle exits 1 with the complete missing-path error. A fake npm command prevents a regression from contacting a registry.
+name = "14-package-bare-source-local"
+description = "Unprefixed Package sources remain local rather than invoking npm"
+covers = ["packages/coding-agent/src/core/package-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig = ["PIG_CODING_AGENT_DIR=testdata/package-bare-local/agent", "PIG_HOME=testdata/empty-home"]
+pi = ["PI_CODING_AGENT_DIR=testdata/package-bare-local/agent"]
+
+[cli]
+cwd = "testdata/package-bare-local/project"
+snapshot_cwd = true
+args = ["install", "github.com/user/repo"]
+timeout_seconds = 15
+
+[assert]
+exit_code = 1
+output_equal = true
+both_contain = ["Installing github.com/user/repo...", "Error: Path does not exist:"]
+both_not_contain = ["UNEXPECTED_NPM"]
+runs = 3
+
+# normalize-rationale: Only the independently snapshotted working directory differs. Preserve every byte of the missing source and diagnostic.
+[[assert.normalize_replace]]
+pattern = 'Path does not exist: [^\r\n]*/parity-snap-cwd-[^/\r\n]+/github.com/user/repo'
+with = 'Path does not exist: CWD/github.com/user/repo'
+reason = "The binaries receive separate temporary working directories."

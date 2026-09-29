@@ -43,7 +43,7 @@ func countResultsFor(msgs []AgentMessage, id string) int {
 
 func TestDuplicateToolResultsCollapseToOne(t *testing.T) {
 	msgs := []AgentMessage{
-		{User: &UserMessage{Role: RoleUser, Content: []ai.UserContentBlock{ai.TextContent{Text: "go"}}}},
+		{User: &UserMessage{Role: RoleUser, Content: ai.UserContentBlocks{ai.TextContent{Text: "go"}}}},
 		toolUseTurn("toolu_01VMLTBnpSh575pvALvMaXBx", "read"),
 		toolResultFor("toolu_01VMLTBnpSh575pvALvMaXBx", "first"),
 		toolResultFor("toolu_01VMLTBnpSh575pvALvMaXBx", "duplicate"),

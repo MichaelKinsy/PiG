@@ -20,7 +20,7 @@ concurrency:
   cancel-in-progress: true
 
 # Go comes from go.mod, Node from .node-version, and Pi from
-# coding/pigversion/pigversion.go. make compliance checks every other copy
+# internal/coding/pigversion/pigversion.go. make compliance checks every other copy
 # of these pins.
 env:
   NPM_VERSION: 12.1.0
@@ -67,7 +67,7 @@ jobs:
           cache: true
       - name: Check the README, changelog and repository settings
         run: |
-          go test ./tests/ci-images/ ./tests/docs-drift/
+          go test ./test/ci-images/ ./test/docs-drift/
           python3 automation/ci/check-public-claims.py
 
   dco:
@@ -96,7 +96,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shard: [build, test-fast, test-cli, test-subprocess, test-conformance, sdk, extensions, race, integration, parity, drift, contracts, closure]
+        shard: [startup, build, test-fast, test-cli, test-subprocess, test-conformance, sdk, extensions, race, integration, parity, drift, contracts, closure]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -112,7 +112,7 @@ jobs:
           cache: npm
           cache-dependency-path: |
             extensions/sdk-ts/package-lock.json
-            parity/interface-extractor/package-lock.json
+            test/parity/interface-extractor/package-lock.json
             automation/images/ci-parity/package-lock.json
             automation/images/npm-runtime/package-lock.json
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -123,7 +123,8 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update
-          sudo apt-get install --yes tmux fd-find ripgrep
+          # The native clipboard fixtures compile C11 code and exercise a real X11 selection server.
+          sudo apt-get install --yes tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
           rustup toolchain install "$RUST_VERSION" --profile minimal
           rustup default "$RUST_VERSION"
       - name: Install pinned npm
@@ -146,12 +147,95 @@ jobs:
           test "$(node --version)" = "v$(cat .node-version)"
           test "$(npm --version)" = "$NPM_VERSION"
           test "$(rustc --version | cut -d' ' -f2)" = "$RUST_VERSION"
-          test "$(extensions/sdk-ts/node_modules/.bin/pi --version)" = "$(awk -F'"' '/^const UpstreamVersion = "/ { print $2; exit }' coding/pigversion/pigversion.go)"
+          test "$(extensions/sdk-ts/node_modules/.bin/pi --version)" = "$(awk -F'"' '/^const UpstreamVersion = "/ { print $2; exit }' internal/coding/pigversion/pigversion.go)"
       - name: Run PiG verification shard
         env:
           CI: '1'
           SHARD: ${{ matrix.shard }}
         run: make "ci-$SHARD"
+
+  node-runtime:
+    name: Node extensions / ${{ matrix.node_version_file }}
+    needs: [changes]
+    if: needs.changes.outputs.product == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # Pi's engine floor, the qualified build runtime, and current Node.
+        node_version_file: [automation/ci/node-minimum.version, .node-version, automation/ci/node-current.version]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      # Install the oracle with the qualified npm runtime before selecting the
+      # test runtime: pinned npm itself requires a newer Node than Pi's floor.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: extensions/sdk-ts/package-lock.json
+      - name: Prepare the Pi oracle and native test tools
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          # ci-node-runtime runs the native clipboard upstream tests on each Node version.
+          sudo apt-get install --yes tmux fd-find ripgrep build-essential xvfb xclip pkg-config libxcb1-dev
+          npm ci --prefix automation/ci/npm-toolchain --ignore-scripts --no-audit --no-fund
+          export PATH="$PWD/automation/ci/npm-toolchain/node_modules/.bin:$PATH"
+          make upstream-mirror
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ${{ matrix.node_version_file }}
+      - name: Test Node extension runtime and TypeScript parity
+        env:
+          CI: '1'
+        run: |
+          set -euo pipefail
+          node --version
+          automation/ci/with-isolated-pig-home.sh make ci-node-runtime
+  node-loader:
+    name: Node loader / ${{ matrix.os }} / ${{ matrix.node_version_file }}
+    needs: [changes]
+    if: needs.changes.outputs.product == 'true'
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-latest, macos-15]
+        # Exercise PiG's minimum and the current Node major, independently of
+        # the qualified default toolchain used by the full suites.
+        node_version_file: [automation/ci/node-loader-minimum.version, automation/ci/node-current.version]
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version-file: ${{ matrix.node_version_file }}
+      - name: Load TypeScript packages and check runtime preflight
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Keep Go's module and build caches outside the throwaway HOME: the module
+          # cache is read-only by design, and reusing it avoids a second download.
+          export GOMODCACHE="$(go env GOMODCACHE)" GOCACHE="$(go env GOCACHE)"
+          home=$(mktemp -d)
+          trap 'rm -rf "$home"' EXIT
+          export HOME="$home" PIG_HOME="$home/.pig"
+          export PIG_CODING_AGENT_DIR="$home/pig-agent" PI_CODING_AGENT_DIR="$home/pi-agent"
+          node --version
+          go test ./coding/extension/host/subprocess -count=1 -run '^(TestNodeLoaderUsesSynchronousHooksWhenAvailable|TestNodeIssuePackageForms|TestNodeRuntimePreflight.*)$'
 
   verify:
     name: Linux verification
@@ -235,6 +319,8 @@ jobs:
         run: ./automation/gen/mirror-upstream.sh
       - name: Build and test native Windows paths
         shell: pwsh
+        env:
+          PI_TEST_NATIVE_CLIPBOARD: '1'
         run: |
           $acceptanceRoot = Join-Path $env:RUNNER_TEMP 'pig native acceptance'
           New-Item -ItemType Directory -Force -Path $acceptanceRoot | Out-Null
@@ -252,7 +338,7 @@ jobs:
           '{"id":"state","type":"get_state"}' | & .\bin\pig.exe --mode rpc --model test-faux/faux-1 --no-session --no-extensions | Out-File -Encoding utf8 (Join-Path $acceptanceRoot 'rpc.jsonl')
           if ($LASTEXITCODE -ne 0) { throw "Windows RPC smoke failed" }
           if ((Get-Content -Raw (Join-Path $acceptanceRoot 'rpc.jsonl')) -notmatch '"type":"response"') { throw "Windows RPC response missing" }
-          go test ./ai ./internal/codingagent/tools ./tui
+          go test ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui
           if ($LASTEXITCODE -ne 0) { throw "Windows tests failed" }
       - name: Test Windows extension hosting and every SDK
         shell: pwsh
@@ -268,7 +354,7 @@ jobs:
           $env:PIG_HOME = Join-Path $acceptanceRoot 'config with spaces'
           go test -v -timeout 30m ./coding/extension/host/runtimecell ./coding/extension/host/subprocess
           if ($LASTEXITCODE -ne 0) { throw "Windows extension host tests failed" }
-          go test -v -timeout 30m ./tests/extension-conformance
+          go test -v -timeout 30m ./test/extension-conformance
           if ($LASTEXITCODE -ne 0) { throw "Windows Go, Node, Rust, Python, or fused-Go extension conformance failed" }
 
   macos:
@@ -302,19 +388,23 @@ jobs:
           export PATH="$bin:$PATH"
           test "$(npm --version)" = "$NPM_VERSION"
           npm ci --prefix extensions/sdk-ts --ignore-scripts --no-audit --no-fund
+      - name: Mirror the pinned Pi source
+        # The ai package's upstream tests read Pi's source from
+        # .upstream/current, as on Linux (make upstream-mirror) and Windows.
+        run: ./automation/gen/mirror-upstream.sh
       - name: Build and test native macOS paths
         run: |
           set -euo pipefail
           go build -trimpath -o bin/pig ./cmd/pig
           ./bin/pig --version
-          go test ./ai ./internal/codingagent/tools ./tui
+          go test ./ai ./internal/codingagent/tools ./internal/nativeplatform ./tui
 
   result:
     name: CI result
     # The one required check for this workflow. It runs even when a job it
     # needs failed, because a skipped job would otherwise count as passing.
     # A job may be skipped only where its own condition skips it.
-    needs: [changes, docs, dco, verify, windows, macos]
+    needs: [changes, docs, dco, verify, node-runtime, windows, macos, node-loader]
     if: ${{ always() }}
     runs-on: ubuntu-24.04
     timeout-minutes: 5
@@ -328,8 +418,10 @@ jobs:
           DOCS: ${{ needs.docs.result }}
           DCO: ${{ needs.dco.result }}
           VERIFY: ${{ needs.verify.result }}
+          NODE_RUNTIME: ${{ needs.node-runtime.result }}
           WINDOWS: ${{ needs.windows.result }}
           MACOS: ${{ needs.macos.result }}
+          NODE_LOADER: ${{ needs.node-loader.result }}
         shell: bash
         run: |
           set -euo pipefail
@@ -350,6 +442,8 @@ jobs:
           expect "Project documents" "$DOCS" "$docs_skip"
           expect "DCO" "$DCO" "$dco_skip"
           expect "Linux verification" "$VERIFY" false
+          expect "Node runtime matrix" "$NODE_RUNTIME" "$product_skip"
           expect "Windows" "$WINDOWS" "$product_skip"
           expect "macOS" "$MACOS" "$product_skip"
+          expect "Node loader" "$NODE_LOADER" "$product_skip"
           exit "$status"

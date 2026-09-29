@@ -5,13 +5,10 @@ import (
 	"testing"
 )
 
-// editorContentRows strips the leading blank + top + bottom dashed
-// borders from an Editor.Render output so the existing assertions
-// still target the content rows. (2026-04-30) introduced
-// the borders + leading blank to match upstream pi-tui's editor.ts.
+// editorContentRows strips the top and bottom borders. Pi's host owns the above-editor spacer.
 func editorContentRows(rows []string) []string {
 	if len(rows) >= 3 {
-		return rows[2 : len(rows)-1]
+		return rows[1 : len(rows)-1]
 	}
 	return rows
 }
@@ -70,12 +67,8 @@ func TestEditorEmptyHasCursor(t *testing.T) {
 	if !strings.Contains(content[0], "\033[7m") {
 		t.Errorf("cursor missing on empty editor: %q", content[0])
 	}
-	// leading blank + top + bottom dashed dividers wrap the content.
-	if strings.TrimSpace(out[0]) != "" {
-		t.Errorf("expected leading blank above top border, got: %q", out[0])
-	}
-	if !strings.Contains(out[1], "\u2500") {
-		t.Errorf("expected dashed top border on row 1, got: %q", out[1])
+	if !strings.Contains(out[0], "\u2500") {
+		t.Errorf("expected dashed top border on row 0, got: %q", out[0])
 	}
 	if !strings.Contains(out[len(out)-1], "\u2500") {
 		t.Errorf("expected dashed bottom border, got: %q", out[len(out)-1])
@@ -102,27 +95,27 @@ func TestEditorMultiLine(t *testing.T) {
 	}
 }
 
-func TestChunkByWidth(t *testing.T) {
-	chunks, starts := chunkByWidth("abcdefghij", 4)
+func TestWordWrapLineChunks(t *testing.T) {
+	chunks := wordWrapLine("abcdefghij", 4, nil)
 	wantChunks := []string{"abcd", "efgh", "ij"}
 	wantStarts := []int{0, 4, 8}
-	if len(chunks) != 3 {
-		t.Fatalf("expected 3 chunks, got %d", len(chunks))
+	if len(chunks) != len(wantChunks) {
+		t.Fatalf("expected %d chunks, got %d", len(wantChunks), len(chunks))
 	}
-	for i := range chunks {
-		if chunks[i] != wantChunks[i] {
-			t.Errorf("chunk[%d]: %q want %q", i, chunks[i], wantChunks[i])
+	for i, chunk := range chunks {
+		if chunk.text != wantChunks[i] {
+			t.Errorf("chunk[%d]: %q want %q", i, chunk.text, wantChunks[i])
 		}
-		if starts[i] != wantStarts[i] {
-			t.Errorf("start[%d]: %d want %d", i, starts[i], wantStarts[i])
+		if chunk.startIndex != wantStarts[i] {
+			t.Errorf("start[%d]: %d want %d", i, chunk.startIndex, wantStarts[i])
 		}
 	}
 }
 
-func TestChunkByWidthEmpty(t *testing.T) {
-	chunks, starts := chunkByWidth("", 5)
-	if len(chunks) != 1 || chunks[0] != "" || len(starts) != 1 || starts[0] != 0 {
-		t.Errorf("empty input should yield one empty chunk at 0, got chunks=%v starts=%v", chunks, starts)
+func TestWordWrapLineEmpty(t *testing.T) {
+	chunks := wordWrapLine("", 5, nil)
+	if len(chunks) != 1 || chunks[0].text != "" || chunks[0].startIndex != 0 || chunks[0].endIndex != 0 {
+		t.Errorf("empty input should yield one empty chunk at 0, got chunks=%v", chunks)
 	}
 }
 
@@ -146,19 +139,17 @@ func TestEditor_WordBoundaryHelpers(t *testing.T) {
 		{"underscore-stays-in-word", "foo_bar", 7, 0, 7},
 		{"empty", "", 0, 0, 0},
 		{"only-spaces-from-end", "   word", 7, 3, 7},
-		// D27: pig classifies per grapheme, so a CJK run with no internal
-		// whitespace/ASCII-punctuation is one word (12 bytes = 4 chars x 3).
-		// Upstream's Intl.Segmenter would split 学生/です; this case locks the
-		// documented divergence so a future uax29 port updates it deliberately.
-		{"cjk-run-is-one-word-backward", "学生です", 12, 0, 12},
-		{"cjk-ascii-punct-boundary", "学生.です", 13, 7, 13},
+		// Pi 0.87.1 Intl.Segmenter splits 学生/です; cursor columns are UTF-16 units.
+		{"cjk-dictionary-word-backward", "学生です", 4, 2, 4},
+		{"cjk-ascii-punct-boundary", "学生.です", 5, 3, 5},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := prevWordStart(tc.line, tc.col); got != tc.prevStart {
+			e := NewEditor()
+			if got := e.prevWordStart(tc.line, tc.col); got != tc.prevStart {
 				t.Errorf("prevWordStart(%q, %d) = %d, want %d", tc.line, tc.col, got, tc.prevStart)
 			}
-			if got := nextWordEnd(tc.line, tc.col); got != tc.nextEnd {
+			if got := e.nextWordEnd(tc.line, tc.col); got != tc.nextEnd {
 				t.Errorf("nextWordEnd(%q, %d) = %d, want %d", tc.line, tc.col, got, tc.nextEnd)
 			}
 		})
@@ -583,8 +574,8 @@ func TestEditor_VisualLineUp_WrappedLine(t *testing.T) {
 	e.SetText("abcdefghij1234567890")
 	e.renderWidth = 10
 	e.cursor = [2]int{0, 12} // on visual line 2 (past first 10 chars)
-	e.moveVisualLine(-1)     // should move to visual line 1
-	// Cursor should be within the first chunk (byte 0-9).
+	e.moveCursor(-1, 0)      // Production visual-line movement.
+	// Cursor should be within the first chunk (UTF-16 columns 0-9).
 	if e.cursor[1] >= 10 {
 		t.Errorf("after visual-up, cursor[1] = %d, want < 10", e.cursor[1])
 	}
@@ -595,7 +586,7 @@ func TestEditor_VisualLineDown_WrappedLine(t *testing.T) {
 	e.SetText("abcdefghij1234567890")
 	e.renderWidth = 10
 	e.cursor = [2]int{0, 2} // on visual line 1, column 2
-	e.moveVisualLine(1)     // should move to visual line 2
+	e.moveCursor(1, 0)      // Production visual-line movement.
 	if e.cursor[1] < 10 {
 		t.Errorf("after visual-down, cursor[1] = %d, want >= 10", e.cursor[1])
 	}
@@ -606,7 +597,7 @@ func TestEditor_VisualLineUp_AcrossLogicalLines(t *testing.T) {
 	e.SetText("short\nanother")
 	e.renderWidth = 80
 	e.cursor = [2]int{1, 3} // on second line
-	e.moveVisualLine(-1)    // should move to first line
+	e.moveCursor(-1, 0)     // Production visual-line movement.
 	if e.cursor[0] != 0 {
 		t.Errorf("after visual-up across lines, cursor[0] = %d, want 0", e.cursor[0])
 	}

@@ -74,11 +74,10 @@ func ActionKeyDisplayTextOr(action, fallback string) string {
 	return FormatKeyText(fallback, true)
 }
 
-// KeyHint formats a keybinding hint: dim key + muted description.
-// Example: KeyHint("Esc", "cancel") → "\x1b[…Esc\x1b[0m \x1b[…cancel\x1b[0m"
+// KeyHint formats a display key and description with foreground-only resets, preserving enclosing text styles.
 func KeyHint(key, description string) string {
 	t := ActiveTheme()
-	return t.Dim + key + "\x1b[0m" + t.Muted + " " + description + "\x1b[0m"
+	return t.FgText("dim", key) + t.FgText("muted", " "+description)
 }
 
 // RawKeyHint formats a raw key string without going through a keybinding registry.

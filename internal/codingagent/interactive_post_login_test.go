@@ -23,10 +23,10 @@ func newPostLoginTestMode(t *testing.T) *InteractiveMode {
 	}
 	registry.SetAuthStorage(auth)
 	m := NewInteractiveMode(InteractiveOptions{
-		AgentDir: dir, ModelRegistry: registry, SettingsManager: NewSettingsManager(t.TempDir(), dir),
+		AgentDir: dir, CWD: t.TempDir(), DefaultModelPerProvider: DefaultModelPerProvider(), ModelRegistry: registry, SettingsManager: NewSettingsManager(t.TempDir(), dir),
 		ModelBuilder: func(spec string) (*ai.Model, error) {
 			provider, id, _ := strings.Cut(spec, "/")
-			return &ai.Model{ID: id, ProviderMeta: ai.ProviderMetadata{ProviderID: provider}}, nil
+			return &ai.Model{ID: id, ProviderMeta: ai.ProviderMetadata{ProviderID: provider}, Capabilities: ai.ModelCapabilities{MaxThinking: ai.ThinkingHigh}}, nil
 		},
 	})
 	m.chatContainer = tui.NewContainer()
@@ -49,7 +49,7 @@ func TestAPIKeyLoginSelectsProviderDefault(t *testing.T) {
 	} {
 		t.Run(tc.provider, func(t *testing.T) {
 			m := newPostLoginTestMode(t)
-			if err := m.buildSlashContext(t.Context()).SetAPIKey(tc.provider, "test-secret"); err != nil {
+			if err := setPostLoginAPIKey(m, tc.provider, "test-secret"); err != nil {
 				t.Fatal(err)
 			}
 			waitPostLoginStatus(t, m, "Selected "+tc.model)
@@ -118,7 +118,7 @@ func (successfulLoginProvider) Login(ai.OAuthLoginCallbacks) (ai.OAuthCredential
 
 func TestAPIKeyLoginWithoutDefaultReportsGuidance(t *testing.T) {
 	m := newPostLoginTestMode(t)
-	if err := m.buildSlashContext(t.Context()).SetAPIKey("custom-provider", "test-secret"); err != nil {
+	if err := setPostLoginAPIKey(m, "custom-provider", "test-secret"); err != nil {
 		t.Fatal(err)
 	}
 	want := `Saved API key for custom-provider, but no default model is configured for provider "custom-provider". Use /model to select a model.`

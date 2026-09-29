@@ -70,7 +70,7 @@ func TestBuildModelLogoutFallsBackToEnv(t *testing.T) {
 						t.Fatalf("request key = %q, want %q", got, want)
 					}
 					// Same credential deletion as /logout, without rebuilding the model.
-					if err := auth.Delete("myco"); err != nil {
+					if err := auth.Delete(t.Context(), "myco"); err != nil {
 						t.Fatal(err)
 					}
 				}

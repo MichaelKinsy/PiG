@@ -16,7 +16,7 @@ import (
 //
 // This lives in this package because settingsWire is unexported.
 
-const settingsDocPath = "../../internal/pigdocs/content/settings.md"
+const settingsDocPath = "../pigdocs/content/settings.md"
 
 var settingsRowRE = regexp.MustCompile("(?m)^\\| `([a-zA-Z]+)` \\|")
 

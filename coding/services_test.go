@@ -52,11 +52,13 @@ func TestNewServicesAuthDirSelectsCorrectFile(t *testing.T) {
 	if got := srv.AgentDir(); got != want {
 		t.Errorf("AgentDir = %q, want %q", got, want)
 	}
-	// Auth should have been opened pointing at <agentDir>/auth.json,
-	// even if the file doesn't exist yet (NewAuthStorage creates the dir).
+	// Pi AuthStorage.create ensures an empty auth.json during Services startup.
 	wantAuth := filepath.Join(want, "auth.json")
 	if got := srv.Auth().Path(); got != wantAuth {
 		t.Errorf("auth path = %q, want %q", got, wantAuth)
+	}
+	if data, err := os.ReadFile(wantAuth); err != nil || string(data) != "{}" {
+		t.Fatalf("startup auth.json = %q, %v; want {}", data, err)
 	}
 }
 

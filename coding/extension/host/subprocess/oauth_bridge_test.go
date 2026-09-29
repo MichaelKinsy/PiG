@@ -33,7 +33,7 @@ func newOAuthProxyRig(t *testing.T) *oauthProxyRig {
 	conn := NewConn("example-extension", serverConn)
 	conn.Start(ctx)
 
-	me := &managedExt{conn: conn, config: ExtConfig{Name: "example-extension"}}
+	me := withConn(&managedExt{config: ExtConfig{Name: "example-extension"}}, conn)
 	host := &Host{}
 
 	t.Cleanup(func() {
@@ -177,7 +177,7 @@ func TestOAuthProxy_GetAPIKeyCachesPerCredential(t *testing.T) {
 // those callbacks; a value-returning prompt round-trips to the extension.
 func TestOAuthProxy_LoginRelaysCallbacks(t *testing.T) {
 	rig := newOAuthProxyRig(t)
-	go rig.host.handleIncoming(rig.me)
+	go rig.host.handleIncoming(rig.me, rig.me.connection())
 
 	p := &oauthProxy{host: rig.host, me: rig.me, name: "example-provider", cfg: ProviderOAuthConfig{HasLogin: true}}
 

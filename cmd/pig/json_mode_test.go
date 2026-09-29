@@ -198,7 +198,7 @@ func TestJSONModeToolExecutionEventsCarryNameAndErrorState(t *testing.T) {
 		},
 		agent.ToolExecutionEndEvent{
 			ToolCallID: "call-1", ToolName: "read",
-			Result: agent.AgentToolResult{Content: "boom", Images: []ai.ImageContent{{Data: "aW1n", MimeType: "image/png"}}, Details: map[string]any{"nested": map[string]any{"value": "kept"}}, IsError: true},
+			Result: agent.AgentToolResult{Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "boom"}, ai.ImageContent{Data: "aW1n", MimeType: "image/png"}}, Details: map[string]any{"nested": map[string]any{"value": "kept"}}, IsError: true},
 		},
 	)
 	data, err := json.Marshal(events)
@@ -343,8 +343,7 @@ func (jsonProductionTool) Schema() ai.ToolSchema {
 func (jsonProductionTool) Execute(_ context.Context, _ string, _ json.RawMessage, update agent.ToolUpdateCallback) (agent.AgentToolResult, error) {
 	update("working", map[string]any{"progress": float64(1)})
 	return agent.AgentToolResult{
-		Content: "done",
-		Images:  []ai.ImageContent{{Data: "aW1n", MimeType: "image/png"}},
+		Content: []ai.ToolResultMessageContent{ai.TextContent{Text: "done"}, ai.ImageContent{Data: "aW1n", MimeType: "image/png"}},
 		Details: map[string]any{"nested": map[string]any{"value": "kept"}},
 		IsError: true,
 	}, nil
@@ -427,7 +426,7 @@ func TestJSONAndRPCProductionToolEventsMatchPersistedResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	persistedMap := persistedWire.(map[string]any)
+	persistedMap := decodeRPCEvent(t, persistedWire)
 	// Pi 0.87.1 agent-loop.ts:870-894 puts isError beside result on the event, and inside the persisted toolResult message.
 	if !reflect.DeepEqual(endResult["content"], persistedMap["content"]) || !reflect.DeepEqual(endResult["details"], persistedMap["details"]) || toolEvents[2]["isError"] != persistedMap["isError"] {
 		t.Fatalf("execution end = %#v, persisted ToolResultMessage = %#v", endResult, persistedMap)

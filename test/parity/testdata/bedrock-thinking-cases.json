@@ -1,0 +1,12 @@
+[
+  {"name":"opus5-high","base":"global.anthropic.claude-opus-5","level":"high"},
+  {"name":"opus5-xhigh","base":"global.anthropic.claude-opus-5","level":"xhigh"},
+  {"name":"profile-name-xhigh","base":"global.anthropic.claude-opus-4-6-v1","level":"xhigh","model":{"id":"arn:aws:bedrock:us-east-1:123456789012:application-inference-profile/my-profile","name":"Claude Opus 5","thinkingLevelMap":{"xhigh":"max"}}},
+  {"name":"gov-model-budget","base":"us.anthropic.claude-sonnet-4-5-20250929-v1:0","level":"high","model":{"id":"us-gov.anthropic.claude-sonnet-4-5-20250929-v1:0","name":"Claude Sonnet 4.5 (GovCloud)"}},
+  {"name":"gov-region-adaptive","base":"global.anthropic.claude-opus-4-6-v1","level":"high","model":{"id":"global.anthropic.claude-opus-4-8-v1","name":"Claude Opus 4.8 (Global)"},"options":{"region":"us-gov-west-1"}},
+  {"name":"gov-arn","base":"global.anthropic.claude-opus-5","level":"high","model":{"id":"arn:aws-us-gov:bedrock:us-gov-west-1:123456789012:application-inference-profile/my-profile","name":"Claude Opus 5"}},
+  {"name":"gov-env","base":"global.anthropic.claude-sonnet-5","level":"high","options":{"env":{"AWS_REGION":"US-GOV-EAST-1"}}},
+  {"name":"gov-default-env","base":"global.anthropic.claude-fable-5","level":"high","options":{"env":{"AWS_DEFAULT_REGION":"us-gov-west-1"}}},
+  {"name":"explicit-commercial-overrides-env","base":"global.anthropic.claude-opus-5","level":"high","options":{"region":"us-east-1","env":{"AWS_REGION":"us-gov-west-1"}}},
+  {"name":"commercial-budget","base":"us.anthropic.claude-sonnet-4-5-20250929-v1:0","level":"high"}
+]

@@ -1,0 +1,5298 @@
+{
+ "pi": "0.87.1",
+ "genai": "2.21.0",
+ "node": "v24.19.0",
+ "cap": 160,
+ "note": "stamp = (seg, tick); see probe.mjs header. array order within a stamp is execution order.",
+ "cases": [
+  {
+   "name": "tool/buffered",
+   "deliveries": [
+    {
+     "at": 0,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"id\":\"call-1\",\"name\":\"read\",\"args\":{\"path\":\"parity-read-target.txt\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13},\"modelVersion\":\"probe\",\"responseId\":\"g1\"}\r\n\r\n"
+    }
+   ],
+   "sdk": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "call"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 12,
+     "ev": "sdk-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 20,
+     "ev": "chunk",
+     "index": 0,
+     "text": null,
+     "hasFunctionCall": true,
+     "responseId": "g1"
+    },
+    {
+     "seg": 1,
+     "tick": 23,
+     "ev": "sdk-end"
+    }
+   ],
+   "provider": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 14,
+     "ev": "push",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 22,
+     "ev": "push",
+     "type": "toolcall_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g1"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 22,
+     "ev": "push",
+     "type": "toolcall_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g1"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 22,
+     "ev": "push",
+     "type": "toolcall_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g1"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 25,
+     "ev": "push",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    }
+   ],
+   "consumer": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "returned"
+    },
+    {
+     "seg": 1,
+     "tick": 17,
+     "ev": "event",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 25,
+     "ev": "event",
+     "type": "toolcall_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 26,
+     "ev": "result",
+     "stopReason": "toolUse"
+    },
+    {
+     "seg": 1,
+     "tick": 27,
+     "ev": "event",
+     "type": "toolcall_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 29,
+     "ev": "event",
+     "type": "toolcall_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 31,
+     "ev": "event",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 32,
+     "ev": "iterator-end"
+    }
+   ]
+  },
+  {
+   "name": "tool/pending",
+   "deliveries": [
+    {
+     "at": 1,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"id\":\"call-1\",\"name\":\"read\",\"args\":{\"path\":\"parity-read-target.txt\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13},\"modelVersion\":\"probe\",\"responseId\":\"g1\"}\r\n\r\n"
+    }
+   ],
+   "sdk": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "call"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 12,
+     "ev": "sdk-resolved"
+    },
+    {
+     "seg": 2,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-1"
+    },
+    {
+     "seg": 2,
+     "tick": 8,
+     "ev": "chunk",
+     "index": 0,
+     "text": null,
+     "hasFunctionCall": true,
+     "responseId": "g1"
+    },
+    {
+     "seg": 2,
+     "tick": 11,
+     "ev": "sdk-end"
+    }
+   ],
+   "provider": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 14,
+     "ev": "push",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-1"
+    },
+    {
+     "seg": 2,
+     "tick": 8,
+     "ev": "push",
+     "type": "toolcall_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g1"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 8,
+     "ev": "push",
+     "type": "toolcall_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g1"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 8,
+     "ev": "push",
+     "type": "toolcall_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g1"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 11,
+     "ev": "push",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    }
+   ],
+   "consumer": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "returned"
+    },
+    {
+     "seg": 1,
+     "tick": 17,
+     "ev": "event",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 11,
+     "ev": "event",
+     "type": "toolcall_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 12,
+     "ev": "result",
+     "stopReason": "toolUse"
+    },
+    {
+     "seg": 2,
+     "tick": 13,
+     "ev": "event",
+     "type": "toolcall_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 15,
+     "ev": "event",
+     "type": "toolcall_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 17,
+     "ev": "event",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 18,
+     "ev": "iterator-end"
+    }
+   ]
+  },
+  {
+   "name": "tool/fragmented-buffered",
+   "deliveries": [
+    {
+     "at": 0,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":"
+    },
+    {
+     "at": 0,
+     "bytes": "\"model\",\"parts\":[{\"functionCall\":{\"id\":\"call-1\",\"name\":\"read\",\"args\":{\"path\":\"parity-read-target.txt\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13},\"modelVersion\":\"probe\",\"responseId\":\"g1\"}\r\n\r\n"
+    }
+   ],
+   "sdk": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "call"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 12,
+     "ev": "sdk-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 21,
+     "ev": "chunk",
+     "index": 0,
+     "text": null,
+     "hasFunctionCall": true,
+     "responseId": "g1"
+    },
+    {
+     "seg": 1,
+     "tick": 24,
+     "ev": "sdk-end"
+    }
+   ],
+   "provider": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 14,
+     "ev": "push",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 23,
+     "ev": "push",
+     "type": "toolcall_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g1"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 23,
+     "ev": "push",
+     "type": "toolcall_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g1"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 23,
+     "ev": "push",
+     "type": "toolcall_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g1"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 26,
+     "ev": "push",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    }
+   ],
+   "consumer": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "returned"
+    },
+    {
+     "seg": 1,
+     "tick": 17,
+     "ev": "event",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 26,
+     "ev": "event",
+     "type": "toolcall_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 27,
+     "ev": "result",
+     "stopReason": "toolUse"
+    },
+    {
+     "seg": 1,
+     "tick": 28,
+     "ev": "event",
+     "type": "toolcall_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 30,
+     "ev": "event",
+     "type": "toolcall_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 32,
+     "ev": "event",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 33,
+     "ev": "iterator-end"
+    }
+   ]
+  },
+  {
+   "name": "tool/fragmented-pending",
+   "deliveries": [
+    {
+     "at": 1,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":"
+    },
+    {
+     "at": 2,
+     "bytes": "\"model\",\"parts\":[{\"functionCall\":{\"id\":\"call-1\",\"name\":\"read\",\"args\":{\"path\":\"parity-read-target.txt\"}}}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13},\"modelVersion\":\"probe\",\"responseId\":\"g1\"}\r\n\r\n"
+    }
+   ],
+   "sdk": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "call"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 12,
+     "ev": "sdk-resolved"
+    },
+    {
+     "seg": 2,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-1"
+    },
+    {
+     "seg": 3,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-2"
+    },
+    {
+     "seg": 3,
+     "tick": 8,
+     "ev": "chunk",
+     "index": 0,
+     "text": null,
+     "hasFunctionCall": true,
+     "responseId": "g1"
+    },
+    {
+     "seg": 3,
+     "tick": 11,
+     "ev": "sdk-end"
+    }
+   ],
+   "provider": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 14,
+     "ev": "push",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-1"
+    },
+    {
+     "seg": 3,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-2"
+    },
+    {
+     "seg": 3,
+     "tick": 8,
+     "ev": "push",
+     "type": "toolcall_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g1"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 8,
+     "ev": "push",
+     "type": "toolcall_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g1"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 8,
+     "ev": "push",
+     "type": "toolcall_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g1"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 11,
+     "ev": "push",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    }
+   ],
+   "consumer": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "returned"
+    },
+    {
+     "seg": 1,
+     "tick": 17,
+     "ev": "event",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 11,
+     "ev": "event",
+     "type": "toolcall_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 12,
+     "ev": "result",
+     "stopReason": "toolUse"
+    },
+    {
+     "seg": 3,
+     "tick": 13,
+     "ev": "event",
+     "type": "toolcall_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 15,
+     "ev": "event",
+     "type": "toolcall_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 17,
+     "ev": "event",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "toolCall",
+        "id": "call-1",
+        "name": "read",
+        "arguments": {
+         "path": "parity-read-target.txt"
+        }
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "toolUse",
+      "timestamp": 0,
+      "responseId": "g1",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 18,
+     "ev": "iterator-end"
+    }
+   ]
+  },
+  {
+   "name": "text2/buffered-joined",
+   "deliveries": [
+    {
+     "at": 0,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"one\"}]}}],\"responseId\":\"g2\",\"modelVersion\":\"probe\"}\r\n\r\ndata: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\" two\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13}}\r\n\r\n"
+    }
+   ],
+   "sdk": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "call"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 12,
+     "ev": "sdk-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 20,
+     "ev": "chunk",
+     "index": 0,
+     "text": "one",
+     "hasFunctionCall": false,
+     "responseId": "g2"
+    },
+    {
+     "seg": 1,
+     "tick": 27,
+     "ev": "chunk",
+     "index": 1,
+     "text": " two",
+     "hasFunctionCall": false,
+     "responseId": null
+    },
+    {
+     "seg": 1,
+     "tick": 30,
+     "ev": "sdk-end"
+    }
+   ],
+   "provider": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 14,
+     "ev": "push",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 22,
+     "ev": "push",
+     "type": "text_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": ""
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 22,
+     "ev": "push",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 29,
+     "ev": "push",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 32,
+     "ev": "push",
+     "type": "text_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 32,
+     "ev": "push",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    }
+   ],
+   "consumer": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "returned"
+    },
+    {
+     "seg": 1,
+     "tick": 17,
+     "ev": "event",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 25,
+     "ev": "event",
+     "type": "text_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 27,
+     "ev": "event",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 32,
+     "ev": "event",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 33,
+     "ev": "result",
+     "stopReason": "stop"
+    },
+    {
+     "seg": 1,
+     "tick": 35,
+     "ev": "event",
+     "type": "text_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 37,
+     "ev": "event",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 38,
+     "ev": "iterator-end"
+    }
+   ]
+  },
+  {
+   "name": "text2/buffered-split",
+   "deliveries": [
+    {
+     "at": 0,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"one\"}]}}],\"responseId\":\"g2\",\"modelVersion\":\"probe\"}\r\n\r\n"
+    },
+    {
+     "at": 0,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\" two\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13}}\r\n\r\n"
+    }
+   ],
+   "sdk": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "call"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 12,
+     "ev": "sdk-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 20,
+     "ev": "chunk",
+     "index": 0,
+     "text": "one",
+     "hasFunctionCall": false,
+     "responseId": "g2"
+    },
+    {
+     "seg": 1,
+     "tick": 28,
+     "ev": "chunk",
+     "index": 1,
+     "text": " two",
+     "hasFunctionCall": false,
+     "responseId": null
+    },
+    {
+     "seg": 1,
+     "tick": 31,
+     "ev": "sdk-end"
+    }
+   ],
+   "provider": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 14,
+     "ev": "push",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 22,
+     "ev": "push",
+     "type": "text_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": ""
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 22,
+     "ev": "push",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 30,
+     "ev": "push",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 33,
+     "ev": "push",
+     "type": "text_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 33,
+     "ev": "push",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    }
+   ],
+   "consumer": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "returned"
+    },
+    {
+     "seg": 1,
+     "tick": 17,
+     "ev": "event",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 25,
+     "ev": "event",
+     "type": "text_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 27,
+     "ev": "event",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 33,
+     "ev": "event",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 34,
+     "ev": "result",
+     "stopReason": "stop"
+    },
+    {
+     "seg": 1,
+     "tick": 36,
+     "ev": "event",
+     "type": "text_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 38,
+     "ev": "event",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 39,
+     "ev": "iterator-end"
+    }
+   ]
+  },
+  {
+   "name": "text2/pending-joined",
+   "deliveries": [
+    {
+     "at": 1,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"one\"}]}}],\"responseId\":\"g2\",\"modelVersion\":\"probe\"}\r\n\r\ndata: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\" two\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13}}\r\n\r\n"
+    }
+   ],
+   "sdk": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "call"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 12,
+     "ev": "sdk-resolved"
+    },
+    {
+     "seg": 2,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-1"
+    },
+    {
+     "seg": 2,
+     "tick": 8,
+     "ev": "chunk",
+     "index": 0,
+     "text": "one",
+     "hasFunctionCall": false,
+     "responseId": "g2"
+    },
+    {
+     "seg": 2,
+     "tick": 15,
+     "ev": "chunk",
+     "index": 1,
+     "text": " two",
+     "hasFunctionCall": false,
+     "responseId": null
+    },
+    {
+     "seg": 2,
+     "tick": 18,
+     "ev": "sdk-end"
+    }
+   ],
+   "provider": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 14,
+     "ev": "push",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-1"
+    },
+    {
+     "seg": 2,
+     "tick": 8,
+     "ev": "push",
+     "type": "text_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": ""
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 8,
+     "ev": "push",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 15,
+     "ev": "push",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 18,
+     "ev": "push",
+     "type": "text_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 18,
+     "ev": "push",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    }
+   ],
+   "consumer": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "returned"
+    },
+    {
+     "seg": 1,
+     "tick": 17,
+     "ev": "event",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 11,
+     "ev": "event",
+     "type": "text_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 13,
+     "ev": "event",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 18,
+     "ev": "event",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 19,
+     "ev": "result",
+     "stopReason": "stop"
+    },
+    {
+     "seg": 2,
+     "tick": 21,
+     "ev": "event",
+     "type": "text_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 23,
+     "ev": "event",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 24,
+     "ev": "iterator-end"
+    }
+   ]
+  },
+  {
+   "name": "text2/pending-split",
+   "deliveries": [
+    {
+     "at": 1,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"one\"}]}}],\"responseId\":\"g2\",\"modelVersion\":\"probe\"}\r\n\r\n"
+    },
+    {
+     "at": 2,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\" two\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13}}\r\n\r\n"
+    }
+   ],
+   "sdk": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "call"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 12,
+     "ev": "sdk-resolved"
+    },
+    {
+     "seg": 2,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-1"
+    },
+    {
+     "seg": 2,
+     "tick": 8,
+     "ev": "chunk",
+     "index": 0,
+     "text": "one",
+     "hasFunctionCall": false,
+     "responseId": "g2"
+    },
+    {
+     "seg": 3,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-2"
+    },
+    {
+     "seg": 3,
+     "tick": 8,
+     "ev": "chunk",
+     "index": 1,
+     "text": " two",
+     "hasFunctionCall": false,
+     "responseId": null
+    },
+    {
+     "seg": 3,
+     "tick": 11,
+     "ev": "sdk-end"
+    }
+   ],
+   "provider": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 14,
+     "ev": "push",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-1"
+    },
+    {
+     "seg": 2,
+     "tick": 8,
+     "ev": "push",
+     "type": "text_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": ""
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 8,
+     "ev": "push",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-2"
+    },
+    {
+     "seg": 3,
+     "tick": 8,
+     "ev": "push",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 11,
+     "ev": "push",
+     "type": "text_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 11,
+     "ev": "push",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    }
+   ],
+   "consumer": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "returned"
+    },
+    {
+     "seg": 1,
+     "tick": 17,
+     "ev": "event",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 11,
+     "ev": "event",
+     "type": "text_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 13,
+     "ev": "event",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 11,
+     "ev": "event",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 12,
+     "ev": "result",
+     "stopReason": "stop"
+    },
+    {
+     "seg": 3,
+     "tick": 14,
+     "ev": "event",
+     "type": "text_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 16,
+     "ev": "event",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 3,
+     "tick": 17,
+     "ev": "iterator-end"
+    }
+   ]
+  },
+  {
+   "name": "text2/buffered-then-pending",
+   "deliveries": [
+    {
+     "at": 0,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"one\"}]}}],\"responseId\":\"g2\",\"modelVersion\":\"probe\"}\r\n\r\n"
+    },
+    {
+     "at": 1,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\" two\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13}}\r\n\r\n"
+    }
+   ],
+   "sdk": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "call"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 12,
+     "ev": "sdk-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 20,
+     "ev": "chunk",
+     "index": 0,
+     "text": "one",
+     "hasFunctionCall": false,
+     "responseId": "g2"
+    },
+    {
+     "seg": 2,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-1"
+    },
+    {
+     "seg": 2,
+     "tick": 8,
+     "ev": "chunk",
+     "index": 1,
+     "text": " two",
+     "hasFunctionCall": false,
+     "responseId": null
+    },
+    {
+     "seg": 2,
+     "tick": 11,
+     "ev": "sdk-end"
+    }
+   ],
+   "provider": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 14,
+     "ev": "push",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 22,
+     "ev": "push",
+     "type": "text_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": ""
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 22,
+     "ev": "push",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 0,
+     "ev": "segment",
+     "label": "delivery-1"
+    },
+    {
+     "seg": 2,
+     "tick": 8,
+     "ev": "push",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 11,
+     "ev": "push",
+     "type": "text_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 11,
+     "ev": "push",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    }
+   ],
+   "consumer": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "returned"
+    },
+    {
+     "seg": 1,
+     "tick": 17,
+     "ev": "event",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 25,
+     "ev": "event",
+     "type": "text_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 27,
+     "ev": "event",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g2"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 11,
+     "ev": "event",
+     "type": "text_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 12,
+     "ev": "result",
+     "stopReason": "stop"
+    },
+    {
+     "seg": 2,
+     "tick": 14,
+     "ev": "event",
+     "type": "text_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 16,
+     "ev": "event",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "text",
+        "text": "one two"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g2",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 2,
+     "tick": 17,
+     "ev": "iterator-end"
+    }
+   ]
+  },
+  {
+   "name": "thinking-text/buffered-split",
+   "deliveries": [
+    {
+     "at": 0,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"hmm\",\"thought\":true,\"thoughtSignature\":\"c2ln\"}]}}],\"responseId\":\"g3\"}\r\n\r\n"
+    },
+    {
+     "at": 0,
+     "bytes": "data: {\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"text\":\"done\"}]},\"finishReason\":\"STOP\"}],\"usageMetadata\":{\"promptTokenCount\":10,\"candidatesTokenCount\":3,\"totalTokenCount\":13}}\r\n\r\n"
+    }
+   ],
+   "sdk": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "call"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 12,
+     "ev": "sdk-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 20,
+     "ev": "chunk",
+     "index": 0,
+     "text": "hmm",
+     "hasFunctionCall": false,
+     "responseId": "g3"
+    },
+    {
+     "seg": 1,
+     "tick": 28,
+     "ev": "chunk",
+     "index": 1,
+     "text": "done",
+     "hasFunctionCall": false,
+     "responseId": null
+    },
+    {
+     "seg": 1,
+     "tick": 31,
+     "ev": "sdk-end"
+    }
+   ],
+   "provider": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "segment",
+     "label": "start"
+    },
+    {
+     "seg": 1,
+     "tick": 0,
+     "ev": "segment",
+     "label": "fetch-resolved"
+    },
+    {
+     "seg": 1,
+     "tick": 14,
+     "ev": "push",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 22,
+     "ev": "push",
+     "type": "thinking_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": ""
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g3"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 22,
+     "ev": "push",
+     "type": "thinking_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": "hmm",
+        "thinkingSignature": "c2ln"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g3"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 30,
+     "ev": "push",
+     "type": "thinking_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": "hmm",
+        "thinkingSignature": "c2ln"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g3"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 30,
+     "ev": "push",
+     "type": "text_start",
+     "contentIndex": 1,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": "hmm",
+        "thinkingSignature": "c2ln"
+       },
+       {
+        "type": "text",
+        "text": ""
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g3"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 30,
+     "ev": "push",
+     "type": "text_delta",
+     "contentIndex": 1,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": "hmm",
+        "thinkingSignature": "c2ln"
+       },
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g3"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 33,
+     "ev": "push",
+     "type": "text_end",
+     "contentIndex": 1,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": "hmm",
+        "thinkingSignature": "c2ln"
+       },
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g3",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 33,
+     "ev": "push",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": "hmm",
+        "thinkingSignature": "c2ln"
+       },
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g3",
+      "rawStopReason": "STOP"
+     }
+    }
+   ],
+   "consumer": [
+    {
+     "seg": 0,
+     "tick": 0,
+     "ev": "returned"
+    },
+    {
+     "seg": 1,
+     "tick": 17,
+     "ev": "event",
+     "type": "start",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 25,
+     "ev": "event",
+     "type": "thinking_start",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": "hmm",
+        "thinkingSignature": "c2ln"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g3"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 27,
+     "ev": "event",
+     "type": "thinking_delta",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": "hmm",
+        "thinkingSignature": "c2ln"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 0,
+       "output": 0,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "totalTokens": 0,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "pending",
+      "timestamp": 0,
+      "responseId": "g3"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 33,
+     "ev": "event",
+     "type": "thinking_end",
+     "contentIndex": 0,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": "hmm",
+        "thinkingSignature": "c2ln"
+       },
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g3",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 34,
+     "ev": "result",
+     "stopReason": "stop"
+    },
+    {
+     "seg": 1,
+     "tick": 35,
+     "ev": "event",
+     "type": "text_start",
+     "contentIndex": 1,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": "hmm",
+        "thinkingSignature": "c2ln"
+       },
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g3",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 37,
+     "ev": "event",
+     "type": "text_delta",
+     "contentIndex": 1,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": "hmm",
+        "thinkingSignature": "c2ln"
+       },
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g3",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 39,
+     "ev": "event",
+     "type": "text_end",
+     "contentIndex": 1,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": "hmm",
+        "thinkingSignature": "c2ln"
+       },
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g3",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 41,
+     "ev": "event",
+     "type": "done",
+     "contentIndex": null,
+     "snapshot": {
+      "role": "assistant",
+      "content": [
+       {
+        "type": "thinking",
+        "thinking": "hmm",
+        "thinkingSignature": "c2ln"
+       },
+       {
+        "type": "text",
+        "text": "done"
+       }
+      ],
+      "api": "google-generative-ai",
+      "provider": "google",
+      "model": "gemini-2.5-flash",
+      "usage": {
+       "input": 10,
+       "output": 3,
+       "cacheRead": 0,
+       "cacheWrite": 0,
+       "reasoning": 0,
+       "totalTokens": 13,
+       "cost": {
+        "input": 0,
+        "output": 0,
+        "cacheRead": 0,
+        "cacheWrite": 0,
+        "total": 0
+       }
+      },
+      "stopReason": "stop",
+      "timestamp": 0,
+      "responseId": "g3",
+      "rawStopReason": "STOP"
+     }
+    },
+    {
+     "seg": 1,
+     "tick": 42,
+     "ev": "iterator-end"
+    }
+   ]
+  }
+ ]
+}

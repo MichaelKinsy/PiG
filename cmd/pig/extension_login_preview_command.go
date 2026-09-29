@@ -16,6 +16,7 @@ import (
 	"github.com/MichaelKinsy/PiG/coding/extension/host/subprocess"
 	"github.com/MichaelKinsy/PiG/coding/extension/pigsdk"
 	"github.com/MichaelKinsy/PiG/internal/codingagent"
+	"github.com/MichaelKinsy/PiG/internal/packagemanager"
 	"github.com/MichaelKinsy/PiG/tui"
 )
 
@@ -68,12 +69,12 @@ func (u *loginPreviewUI) SetLogin(definition extension.LoginDefinition) error {
 func runExtensionLoginPreview(args []string) int {
 	for _, arg := range args {
 		if strings.HasPrefix(arg, "-") {
-			fmt.Fprintf(os.Stderr, "error: unknown option %s for extension preview-login\n", arg)
+			printCLIError("unknown option %s for extension preview-login", arg)
 			return 1
 		}
 	}
 	if len(args) != 1 || strings.TrimSpace(args[0]) == "" {
-		fmt.Fprintln(os.Stderr, "error: extension preview-login requires exactly one extension source")
+		printCLIError("extension preview-login requires exactly one extension source")
 		return 1
 	}
 
@@ -81,7 +82,11 @@ func runExtensionLoginPreview(args []string) int {
 	if err != nil {
 		return printLoginPreviewError("resolve working directory", err)
 	}
-	root, err := resolveInputPackageSourceRoot(cwd, args[0])
+	sm, err := createPackageCommandSettings(context.Background(), cwd, codingagent.AgentDir(), &packageCLIOptions{command: packageList})
+	if err != nil {
+		return printLoginPreviewError("resolve project trust", err)
+	}
+	root, err := packagemanager.ResolveInputPackageSourceRoot(cwd, sm.AgentDir(), sm, args[0])
 	if err != nil {
 		return printLoginPreviewError("resolve extension source", err)
 	}
@@ -125,7 +130,8 @@ func runExtensionLoginPreview(args []string) int {
 	}
 
 	runner := inproc.NewRunner(loaded, cwd)
-	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{UI: ui, Mode: extension.ModeTUI}, nil)
+	runner.SetUIContext(ui, extension.ModeTUI)
+	runner.BindCore(extension.ExtensionActions{}, extension.ContextActions{}, nil)
 	var handlerErrors []error
 	runner.AddErrorListener(func(err *extension.ExtensionError) {
 		handlerErrors = append(handlerErrors, fmt.Errorf("%s: %s", err.ExtensionPath, err.Error))
@@ -153,6 +159,6 @@ func runExtensionLoginPreview(args []string) int {
 }
 
 func printLoginPreviewError(action string, err error) int {
-	fmt.Fprintf(os.Stderr, "error: %s: %v\n", action, err)
+	printCLIError("%s: %v", action, err)
 	return 1
 }

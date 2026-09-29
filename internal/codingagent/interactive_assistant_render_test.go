@@ -46,7 +46,7 @@ func TestInteractiveMode_StreamingAssistantContentOrder(t *testing.T) {
 			prepareAssistantEventTest(t, m)
 			msg := assistantMsg("", ai.TextContent{Text: "  FIRST  "})
 			m.handleAgentEvent(agent.MessageStartEvent{Message: msg})
-			if got := assistantLines(m.evCurrentBlock); !slices.Equal(got, []string{"", " FIRST"}) {
+			if got := assistantLines(m.evCurrentBlock); !slices.Equal(got, []string{"\x1b]133;A\x07", "\x1b]133;B\x07\x1b]133;C\x07 FIRST"}) {
 				t.Errorf("message_start: %q", got)
 			}
 			msg.Assistant.Content = []ai.AssistantContentBlock{
@@ -64,13 +64,15 @@ func TestInteractiveMode_StreamingAssistantContentOrder(t *testing.T) {
 			if hidden {
 				want = []string{"", " FIRST", " Thinking...", "", " Thinking...", "", " LAST", " NEXT"}
 			}
+			want[0] = "\x1b]133;A\x07" + want[0]
+			want[len(want)-1] = "\x1b]133;B\x07\x1b]133;C\x07" + want[len(want)-1]
 			if got := assistantLines(m.evCurrentBlock); !slices.Equal(got, want) {
 				t.Errorf("message_update: %q, want %q", got, want)
 			}
 			// TextEnd/final replacements can differ from accumulated deltas.
 			msg.Assistant.Content = []ai.AssistantContentBlock{ai.TextContent{Text: " corrected final "}}
 			m.handleAgentEvent(agent.MessageEndEvent{Message: msg})
-			if got := assistantLines(m.assistantBlocks[0]); !slices.Equal(got, []string{"", " corrected final"}) {
+			if got := assistantLines(m.assistantBlocks[0]); !slices.Equal(got, []string{"\x1b]133;A\x07", "\x1b]133;B\x07\x1b]133;C\x07 corrected final"}) {
 				t.Errorf("message_end: %q", got)
 			}
 			if m.lastAssistantText != "corrected final" {
@@ -115,6 +117,10 @@ func TestInteractiveMode_AssistantTerminalStateLiveAndRedraw(t *testing.T) {
 						for line := range strings.SplitSeq(tc.want, "\n") {
 							want = append(want, " "+line)
 						}
+					}
+					if !tool && len(want) > 0 {
+						want[0] = "\x1b]133;A\x07" + want[0]
+						want[len(want)-1] = "\x1b]133;B\x07\x1b]133;C\x07" + want[len(want)-1]
 					}
 					m := resumeThinkingMode(t, false, userMsg("question"), msg)
 					prepareAssistantEventTest(t, m)

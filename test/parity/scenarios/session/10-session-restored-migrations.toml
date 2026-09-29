@@ -1,0 +1,26 @@
+# Pi 0.87.1 session-manager.ts:287-345 and :1085-1100 migrate header-bearing
+# restored entries and rewrite file-backed sessions. Headerless entries are
+# adopted at the current version without changing their messages. Both adapters
+# call production session loading and verify random ID relationships internally.
+name = "10-session-restored-migrations"
+description = "Old session trees migrate once on load, with stable IDs across reload"
+covers = ["packages/coding-agent/src/core/session-manager.ts"]
+tags = ["hermetic", "fast"]
+driver = "cli-mode"
+
+[env]
+override_base_args = true
+pig_bin = "/usr/bin/env"
+pi_bin = "/usr/bin/env"
+pig_args = ["bash", "./test/parity/testdata/session-restore-pig.sh"]
+pi_args = ["node", "./test/parity/testdata/session-restore-pi.mjs"]
+
+[cli]
+cwd = "../../../.."
+timeout_seconds = 60
+
+[assert]
+exit_code = 0
+output_equal = true
+both_contain = ["SESSION_MIGRATION version=3 entries=2 chain=true"]
+runs = 3

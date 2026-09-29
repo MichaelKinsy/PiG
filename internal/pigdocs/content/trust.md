@@ -32,6 +32,8 @@ Until you trust a project, Pig uses your global configuration alone.
 Pig asks once, when a session starts in an untrusted project that has one of the
 files above. Use `/trust` to record the decision for later sessions.
 
+The selector shows the saved decision separately from the current session's trust state. The checkmark stays on the saved choice while you browse. Select **Trust parent folder** to save trust for the parent and clear the project's override. Saving does not change the current session's trust state. Restart Pig to use the new decision.
+
 Decisions are stored in `~/.pig/agent/trust.json`, keyed by the project's
 canonical path. A path inherits the decision of its nearest stored ancestor, so
 trusting a directory trusts the repositories inside it.

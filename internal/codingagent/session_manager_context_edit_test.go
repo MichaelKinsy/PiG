@@ -33,7 +33,7 @@ func contextEditAssistant(text string) agent.AgentMessage {
 func contextEditUser(text string) agent.AgentMessage {
 	return agent.AgentMessage{User: &agent.UserMessage{
 		Role:      agent.RoleUser,
-		Content:   []ai.UserContentBlock{ai.TextContent{Text: text}},
+		Content:   ai.UserContentBlocks{ai.TextContent{Text: text}},
 		Timestamp: time.Now().UnixMilli(),
 	}}
 }
@@ -88,7 +88,7 @@ func projectedText(message agent.AgentMessage) string {
 	var out strings.Builder
 	switch {
 	case message.User != nil:
-		for _, block := range message.User.Content {
+		for _, block := range message.ContentBlocks() {
 			if text, ok := block.(ai.TextContent); ok {
 				out.WriteString(text.Text)
 			}
@@ -397,7 +397,8 @@ func TestSessionContextEditRoundTripsPiSessionFilesByteForByte(t *testing.T) {
 	path := filepath.Join(dir, "pi.jsonl")
 	lines := []string{
 		`{"type":"session","version":3,"id":"pi-file","timestamp":"2024-12-03T14:00:00.000Z","cwd":"/work"}`,
-		`{"type":"message","id":"c3d4e5f6","parentId":null,"timestamp":"2024-12-03T14:10:00.000Z","message":{"role":"user","content":"a <b> & c","timestamp":1733235000000}}`,
+		`{"type":"message","id":"a0","parentId":null,"timestamp":"2024-12-03T14:09:00.000Z","message":{"role":"assistant","content":[{"type":"text","text":"ready"}],"timestamp":1733234940000}}`,
+		`{"type":"message","id":"c3d4e5f6","parentId":"a0","timestamp":"2024-12-03T14:10:00.000Z","message":{"role":"user","content":"a <b> & c","timestamp":1733235000000}}`,
 		`{"type":"context_edit","id":"f6g7h8i9","parentId":"c3d4e5f6","timestamp":"2024-12-03T14:10:30.000Z","targetId":"c3d4e5f6","replacement":{"content":[{"type":"text","text":"x < y"}]}}`,
 		`{"type":"context_edit","id":"g6h7i8j9","parentId":"f6g7h8i9","timestamp":"2024-12-03T14:11:00.000Z","targetId":"c3d4e5f6","replacement":null}`,
 		`{"type":"compaction","id":"h1","parentId":"g6h7i8j9","timestamp":"2024-12-03T14:12:00.000Z","summary":"s","firstKeptEntryId":"h1","tokensBefore":5,"fromHook":false,"systemMessage":{"role":"system","content":"sys","timestamp":1733235120000}}`,

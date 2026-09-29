@@ -26,7 +26,10 @@ type EditsDiffPreview struct {
 // ComputeEditsDiff computes the diff the edits would make to path without
 // writing it, as the upstream edit renderer previews an edit call.
 func ComputeEditsDiff(path string, edits []EditReplacement, cwd string) EditsDiffPreview {
-	absolutePath := resolveToCwd(path, cwd)
+	absolutePath, err := resolveToCwd(path, cwd)
+	if err != nil {
+		return EditsDiffPreview{Error: fmt.Sprintf("Could not edit file: %s. Error: %s.", path, err.Error())}
+	}
 	file, err := os.Open(absolutePath)
 	if err != nil {
 		detail := "Error: " + err.Error()

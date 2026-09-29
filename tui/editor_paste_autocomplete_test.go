@@ -26,9 +26,9 @@ type countingAsyncSource struct {
 	calls atomic.Int64
 }
 
-func (s *countingAsyncSource) Suggest(ctx context.Context, lines []string, cursorLine, cursorCol int) *AutocompleteSuggestions {
+func (s *countingAsyncSource) GetSuggestions(ctx context.Context, lines []string, cursorLine, cursorCol int, force bool) (*AutocompleteSuggestions, error) {
 	s.calls.Add(1)
-	return &AutocompleteSuggestions{Items: []AutocompleteItem{{Value: "x"}}, Prefix: "x"}
+	return &AutocompleteSuggestions{Items: []AutocompleteItem{{Value: "x"}}, Prefix: "x"}, nil
 }
 
 // Ports upstream editor.test.ts "does not trigger autocomplete during
@@ -39,7 +39,7 @@ func TestEditorPasteDoesNotTriggerAutocomplete(t *testing.T) {
 	provider := &countingProvider{}
 	e.SetAutocomplete(provider)
 	source := &countingAsyncSource{}
-	e.AddAsyncSuggestionSource(source)
+	e.SetAsyncAutocomplete(&AsyncAutocompleteProvider{GetSuggestions: source.GetSuggestions}, t.Context(), func(func()) { t.Fatal("paste started a query worker") }, nil, func(err error) { t.Error(err) })
 	var posted []func()
 	e.SetAsyncApply(func(apply func()) { posted = append(posted, apply) })
 	provider.calls.Store(0)

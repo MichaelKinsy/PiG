@@ -558,6 +558,7 @@ func TestUIBridge_HandleSetToolsExpanded(t *testing.T) {
 
 func TestUIBridge_HandleUnsupported(t *testing.T) {
 	bridge := NewUIBridge(func() {})
+	bridge.SetUIContext(newFakeUIContext())
 
 	// ui.custom is supported for the TS shim runtime (which supplies a
 	// unique key plus a renderable factory). SDK Go/Rust callers that

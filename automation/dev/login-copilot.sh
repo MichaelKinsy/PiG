@@ -13,7 +13,7 @@
 #   automation/dev/login-copilot.sh --status  # only print status; never prompt
 #
 # After this, run:
-#   go test -tags="integration live" ./tests/integration/...
+#   go test -tags="integration live" ./test/integration/...
 
 set -euo pipefail
 

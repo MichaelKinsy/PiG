@@ -90,9 +90,9 @@ func TestMouseFilterableListWheelWithSearchRows(t *testing.T) {
 func TestMouseWheelMovesEditorAutocompleteSelection(t *testing.T) {
 	editor := NewEditor()
 	editor.SetAutocomplete(NewSlashOnlyProvider(sampleCommands()))
-	editor.SetText("/")
+	editor.HandleInput("/")
 	editor.Render(40)
-	wheel := componentMouseEvent(MouseWheel, 1, editor.renderedVisibleLineCount+3)
+	wheel := componentMouseEvent(MouseWheel, 1, editor.renderedVisibleLineCount+2)
 	wheel.WheelDelta = 1
 
 	result := DispatchMouseEvent(editor, wheel)
@@ -103,7 +103,7 @@ func TestMouseWheelMovesEditorAutocompleteSelection(t *testing.T) {
 		t.Fatalf("autocomplete cursor = %d, want 1", got)
 	}
 
-	counterWheel := componentMouseEvent(MouseWheel, 1, editor.renderedVisibleLineCount+3+editor.renderedAutocompleteHeight-1)
+	counterWheel := componentMouseEvent(MouseWheel, 1, editor.renderedVisibleLineCount+2+editor.renderedAutocompleteHeight-1)
 	counterWheel.WheelDelta = 1
 	result = DispatchMouseEvent(editor, counterWheel)
 	if result == nil || !result.Handled || !result.Focus {
@@ -210,7 +210,7 @@ func TestMousePositionsAndFocusesEditorThroughAltScreenDispatch(t *testing.T) {
 	h.tui.Add(editor)
 	h.start()
 
-	h.send("\x1b[<0;3;3M", "\x1b[<0;3;3m", "X")
+	h.send("\x1b[<0;3;2M", "\x1b[<0;3;2m", "X")
 	if focused := h.tui.FocusedComponent(); focused != editor {
 		t.Fatalf("focused component = %T, want editor", focused)
 	}
@@ -233,7 +233,7 @@ func TestMouseSelectsAndCopiesEditorTextOnDrag(t *testing.T) {
 	h.start()
 	cursorBefore := editor.cursor
 
-	h.send("\x1b[<0;1;3M", "\x1b[<32;5;3M", "\x1b[<0;5;3m")
+	h.send("\x1b[<0;1;2M", "\x1b[<32;5;2M", "\x1b[<0;5;2m")
 	if !slices.Equal(copied, []string{"hello"}) {
 		t.Fatalf("copied = %q, want [hello]", copied)
 	}

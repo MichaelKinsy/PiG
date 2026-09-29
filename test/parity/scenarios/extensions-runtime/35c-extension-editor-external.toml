@@ -1,0 +1,52 @@
+# Behavior family: extensions-runtime
+# Upstream evidence: Pi 0.87.1 extension-editor.ts:92-99,114-137 displays the app.editor.external
+# hint, stops terminal input, awaits the external edit, updates the dialog and
+# restarts the TUI. The child reads stdin itself: merely launching a command
+# without giving up the host's terminal reader cannot pass this scenario.
+name = "35c-extension-editor-external"
+description = "The multiline extension dialog hands stdin to the external editor and restores the edited buffer"
+covers = ["packages/coding-agent/src/modes/interactive/components/extension-editor.ts", "packages/coding-agent/src/modes/interactive/external-editor.ts"]
+tags = ["hermetic", "tui"]
+driver = "interactive-tmux"
+model = "test-faux/faux-1"
+
+[env]
+pig = ["PIG_TEST_FAUX=1", "VISUAL=node editor.mjs"]
+pi = ["VISUAL=node editor.mjs"]
+pig_args = ["--no-extensions"]
+pig_extensions = ["testdata/ext/external-editor.mjs"]
+pi_extensions = ["../../testdata/test-faux-provider.ts", "testdata/ext/external-editor.mjs"]
+
+[tmux]
+cwd = "testdata/external-editor-cwd"
+width = 100
+height = 40
+ready_pattern_pig = "(auto)"
+ready_pattern_pi = "(auto)"
+ready_timeout_seconds = 30
+capture_start = "External editor probe"
+capture_end = "external editor"
+
+[[tmux.steps]]
+keys = ["/editor-probe", "Enter"]
+wait_contains = ["External editor probe", "external editor"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["hex:07"]
+wait_contains = ["external-child-ready"]
+wait_timeout_seconds = 10
+
+[[tmux.steps]]
+keys = ["edited in child", "Enter"]
+# Title and hint are retained. Contiguous editor-buffer rows distinguish the restored dialog from the child's earlier input echo below it.
+wait_visible_contains = ["External editor probe", "initial line\nsecond line\nedited in child", "external editor"]
+settle_seconds = 1
+wait_timeout_seconds = 10
+
+[assert]
+both_reach_ready = true
+both_contain = ["initial line", "second line", "edited in child", "external editor"]
+both_not_contain = ["panic:", "goroutine "]
+escaped_output_equal = true
+runs = 3
