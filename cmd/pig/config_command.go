@@ -145,7 +145,6 @@ func runConfigSelectorTUI(selector *tui.ConfigSelectorComponent, themeName, agen
 	}
 	defer restore()
 	ui.HideCursor()
-	defer ui.ShowCursor()
 	return driveConfigSelector(ui, selector, os.Stdin)
 }
 
@@ -160,6 +159,7 @@ var normalizeConfigInputSequence = tui.NormalizeProcessInputSequence
 // component; handing a release to the selector moves its cursor a second time.
 // Takes a reader so the loop a user drives is the loop under test.
 func driveConfigSelector(ui *tui.TUI, selector *tui.ConfigSelectorComponent, source io.Reader) error {
+	defer ui.Stop()
 	done := false
 	selector.OnCancel = func() { done = true }
 	selector.OnExit = func() { done = true }

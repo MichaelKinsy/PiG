@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"os"
 	"path/filepath"
 	"slices"
@@ -12,6 +13,23 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/testenv"
 	"github.com/MichaelKinsy/PiG/tui"
 )
+
+func TestDriveConfigSelectorParksCursorAfterClose(t *testing.T) {
+	for _, key := range []string{"\x1b", "\x03"} {
+		t.Run(key, func(t *testing.T) {
+			var output bytes.Buffer
+			selector := tui.NewConfigSelector(nil, 0)
+			ui := tui.NewWithOutput(&output, 80, 24)
+			ui.Add(selector)
+			if err := driveConfigSelector(ui, selector, strings.NewReader(key)); err != nil {
+				t.Fatal(err)
+			}
+			if !strings.HasSuffix(output.String(), "\r\n\x1b[?25h") {
+				t.Fatalf("config returned without parking the shell cursor below the selector: %q", output.String())
+			}
+		})
+	}
+}
 
 func TestUpdateResourcePatterns_ReplacesExistingRule(t *testing.T) {
 	got := updateResourcePatterns([]string{"+prompts/a.md", "-themes/dark.json"}, "prompts/a.md", false)
