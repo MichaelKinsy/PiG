@@ -226,6 +226,9 @@ func TestCompromisedErrorsCarryProperLockfileMessages(t *testing.T) {
 		{"missing", &CompromisedError{Cause: statErr}, "ENOENT: no such file or directory, stat '" + path + "'", ""},
 		{"replaced", &CompromisedError{}, "Unable to update lock within the stale threshold", "Error: Unable to update lock within the stale threshold {\n  code: 'ECOMPROMISED'\n}"},
 		{"utime", &CompromisedError{Cause: &fs.PathError{Op: "chtimes", Path: "/p", Err: syscall.EACCES}}, "EACCES: permission denied, utime '/p'", ""},
+		// os.Stat on Windows names the Win32 call that failed; Node names it stat.
+		{"windows stat", &CompromisedError{Cause: &fs.PathError{Op: "GetFileAttributesEx", Path: "/p", Err: syscall.ENOENT}}, "ENOENT: no such file or directory, stat '/p'", ""},
+		{"windows stat handle", &CompromisedError{Cause: &fs.PathError{Op: "CreateFile", Path: "/p", Err: syscall.ENOENT}}, "ENOENT: no such file or directory, stat '/p'", ""},
 		{"unmapped", &CompromisedError{Cause: &fs.PathError{Op: "stat", Path: "/p", Err: syscall.EMFILE}}, "stat /p: " + syscall.EMFILE.Error(), ""},
 	} {
 		t.Run(test.name, func(t *testing.T) {
