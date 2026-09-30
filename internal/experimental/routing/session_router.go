@@ -205,6 +205,7 @@ func (r *SessionRouter[C]) closeInternal(ctx context.Context, operations []*rout
 			}
 		}
 	}
+	r.invalidateTerminated()
 	r.mu.Lock()
 	var attachments []*routerAttachment[C]
 	for _, id := range r.hostedOrder {
@@ -438,6 +439,29 @@ func (r *SessionRouter[C]) open(ctx context.Context, sessionID string) (*hostedS
 	}
 	r.mu.Unlock()
 	return hosted, nil
+}
+
+// invalidateTerminated applies every termination already signalled. session-router.ts:#open runs `handle.terminated?.then(invalidate)` as a microtask, so no later step (such as a close) can observe a terminated handle as live; the Go watcher goroutine may not have run yet, and a release through the retired handle fails with the worker no longer registered. invalidate is idempotent.
+func (r *SessionRouter[C]) invalidateTerminated() {
+	r.mu.Lock()
+	var terminated []*hostedSession[C]
+	for _, id := range r.hostedOrder {
+		hosted := r.hosted[id]
+		if hosted == nil {
+			continue
+		}
+		if channel := hosted.handle.Terminated(); channel != nil {
+			select {
+			case <-channel:
+				terminated = append(terminated, hosted)
+			default:
+			}
+		}
+	}
+	r.mu.Unlock()
+	for _, hosted := range terminated {
+		r.invalidate(hosted, hosted.handle.TerminalError())
+	}
 }
 func (r *SessionRouter[C]) invalidate(hosted *hostedSession[C], failure error) {
 	r.mu.Lock()
