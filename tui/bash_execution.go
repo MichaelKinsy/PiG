@@ -253,13 +253,27 @@ func (b *BashExecutionBlock) statusLines(hidden int) []string {
 	return lines
 }
 
-// Color tokens. Truecolor matches upstream theme/dark.json:
+// Color tokens. Resolved from the active theme (theme/dark.json values shown
+// as fallback when a custom theme omits the token):
 //
 //	bashMode  #b5bd68  green   (181,189,104)
 //	dim       #666666  dimGray (102,102,102)
 //	muted     #808080  gray    (128,128,128)
-//
-// Each follows the active theme's color mode.
-func bashHeaderColor() string { return ThemeHexFg("#b5bd68") } // bashMode
-func bashDimColor() string    { return ThemeHexFg("#666666") } // dim
-func bashMutedColor() string  { return ThemeHexFg("#808080") } // muted
+func bashHeaderColor() string {
+	if s := ActiveTheme().BashMode; s != "" {
+		return s
+	}
+	return ThemeHexFg("#b5bd68") // bashMode fallback
+}
+func bashDimColor() string {
+	if s := ActiveTheme().Dim; s != "" {
+		return s
+	}
+	return ThemeHexFg("#666666") // dim fallback
+}
+func bashMutedColor() string {
+	if s := ActiveTheme().Muted; s != "" {
+		return s
+	}
+	return ThemeHexFg("#808080") // muted fallback
+}
