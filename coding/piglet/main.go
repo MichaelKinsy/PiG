@@ -458,15 +458,8 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 }
 
 func pigletWithEffectiveDefaults(p *Piglet) (*Piglet, error) {
-	data, err := yaml.Marshal(p)
-	if err != nil {
-		return nil, err
-	}
-	effective, err := ParseBytes(data)
-	if err != nil {
-		return nil, err
-	}
-	effective.AgentEnv = p.EffectiveAgentEnvironment()
+	effective := Clone(p)
+	effective.AgentEnv = effective.EffectiveAgentEnvironment()
 	return effective, nil
 }
 
