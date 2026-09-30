@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"testing"
 
@@ -68,6 +69,9 @@ func TestRouterCloseAppliesTerminationSignalledBeforeClose(t *testing.T) {
 		},
 	}
 	server := createServer(t, host)
+	// Settle the parked watcher and lease release on failure too; cleanups run last-in first-out, so the server's Close cleanup does not wait on them forever.
+	release := sync.OnceFunc(func() { close(handle.release) })
+	t.Cleanup(release)
 	client := connect(t, server)
 	client.hello(protocol.ProtocolVersion)
 	expectOK(t, client.attach(testServerID, "session-1"))
@@ -82,7 +86,7 @@ func TestRouterCloseAppliesTerminationSignalledBeforeClose(t *testing.T) {
 			return strings.Contains(stack, "SessionRouter[...]).closeInternal(") && !strings.Contains(header, "runnable") && !strings.Contains(header, "running")
 		}) == 1
 	})
-	close(handle.release)
+	release()
 	if err := <-closing; err != nil {
 		t.Fatalf("Close = %v, want the terminated Session invalidated before shutdown", err)
 	}

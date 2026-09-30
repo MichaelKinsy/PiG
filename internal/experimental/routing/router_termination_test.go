@@ -184,6 +184,10 @@ func TestRouterCloseReportsSignalledTerminationBeforeOpeningFailures(t *testing.
 		}
 		return session.SessionMetadata{ID: id, CreatedAt: 1, StorageVersion: 1}, nil
 	}, func(int) routing.RoutedSessionHandle { return retired })
+	// Settle the parked watcher and resolution on failure too, so a failed run does not leave Close parked for the rest of the package.
+	resume, resolve := sync.OnceFunc(func() { close(retired.resume) }), sync.OnceFunc(func() { close(failResolve) })
+	t.Cleanup(resume)
+	t.Cleanup(resolve)
 	ctx := context.Background()
 	if err := probe.router.AttachClient(ctx, "client-1", "session-1"); err != nil {
 		t.Fatal(err)
@@ -196,10 +200,10 @@ func TestRouterCloseReportsSignalledTerminationBeforeOpeningFailures(t *testing.
 	closing := make(chan error, 1)
 	go func() { closing <- probe.router.Close(ctx) }()
 	pollUntil(t, "router draining in-flight acquisitions", routerIsDraining)
-	close(failResolve)
+	resolve()
 	// The terminal error, the opening failure and the background release failure through the retired lease are reported before Close joins the parked watcher.
 	pollUntil(t, "close reports", func() bool { return len(probe.reported()) == 3 })
-	close(retired.resume)
+	resume()
 	if err := <-closing; err != nil {
 		t.Fatalf("Close = %v", err)
 	}
