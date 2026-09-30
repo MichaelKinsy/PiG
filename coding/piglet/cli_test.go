@@ -485,6 +485,7 @@ func TestRunCommandAddRemoteOfflineFailsBeforeMaterialization(t *testing.T) {
 	}
 }
 
+// writeEffectiveShowLocalFixture creates a Piglet with each local Resource source and returns the expected canonical paths.
 func writeEffectiveShowLocalFixture(t *testing.T) (string, map[string]string) {
 	t.Helper()
 	t.Setenv("PIG_HOME", t.TempDir())
@@ -530,6 +531,7 @@ agentEnv:
 	return source, paths
 }
 
+// TestRunCommandShowEffectiveHumanResolvesLocalResourcePaths verifies that human output includes anchored Resource paths and environment defaults.
 func TestRunCommandShowEffectiveHumanResolvesLocalResourcePaths(t *testing.T) {
 	source, paths := writeEffectiveShowLocalFixture(t)
 	var stdout, stderr strings.Builder
@@ -551,6 +553,7 @@ func TestRunCommandShowEffectiveHumanResolvesLocalResourcePaths(t *testing.T) {
 	}
 }
 
+// TestRunCommandShowEffectiveJSONResolvesLocalResourcePaths verifies that JSON output includes anchored Resource paths and environment defaults.
 func TestRunCommandShowEffectiveJSONResolvesLocalResourcePaths(t *testing.T) {
 	source, paths := writeEffectiveShowLocalFixture(t)
 	var stdout, stderr strings.Builder
@@ -613,6 +616,7 @@ func TestRunCommandShowEffectiveJSONResolvesLocalResourcePaths(t *testing.T) {
 	}
 }
 
+// TestRunCommandShowEffectiveRejectsAuthoredAbsoluteLocalPaths verifies that effective inspection does not weaken source validation.
 func TestRunCommandShowEffectiveRejectsAuthoredAbsoluteLocalPaths(t *testing.T) {
 	absolute := filepath.ToSlash(t.TempDir())
 	cases := map[string]string{

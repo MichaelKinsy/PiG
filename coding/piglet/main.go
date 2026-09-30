@@ -457,6 +457,7 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 	return 0
 }
 
+// pigletWithEffectiveDefaults returns an independent validated Piglet with resolved source metadata and agent-environment defaults.
 func pigletWithEffectiveDefaults(p *Piglet) (*Piglet, error) {
 	effective := Clone(p)
 	effective.AgentEnv = effective.EffectiveAgentEnvironment()
