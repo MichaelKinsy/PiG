@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/ai"
+	"github.com/MichaelKinsy/PiG/internal/coding/pigidentity"
 	icodingagent "github.com/MichaelKinsy/PiG/internal/codingagent"
 )
 
@@ -521,20 +522,20 @@ func mergeProviderAttributionHeaders(providerID, baseURL string, telemetryEnable
 	set := func(name, value string) { headers[name] = new(value) }
 	if sessionID != "" && (providerID == "opencode" || providerID == "opencode-go" || matchesProviderHost(baseURL, openCodeHost)) {
 		set("x-opencode-session", sessionID)
-		set("x-opencode-client", "pig")
+		set("x-opencode-client", pigidentity.OpenCodeClient)
 	}
 
 	if telemetryEnabled {
 		switch {
 		// Upstream isOpenRouterModel matches the base URL by substring, not host.
 		case providerID == "openrouter" || strings.Contains(baseURL, openRouterHost):
-			set("HTTP-Referer", "https://github.com/MichaelKinsy/PiG")
-			set("X-OpenRouter-Title", "PiG")
-			set("X-OpenRouter-Categories", "cli-agent")
+			set("HTTP-Referer", pigidentity.OpenRouterReferer)
+			set("X-OpenRouter-Title", pigidentity.OpenRouterTitle)
+			set("X-OpenRouter-Categories", pigidentity.OpenRouterCategories)
 		case providerID == "nvidia" || matchesProviderHost(baseURL, nvidiaNIMHost):
-			set("X-BILLING-INVOKE-ORIGIN", "PiG")
+			set("X-BILLING-INVOKE-ORIGIN", pigidentity.NvidiaBillingOrigin)
 		case providerID == "cloudflare-workers-ai" || providerID == "cloudflare-ai-gateway" || matchesProviderHost(baseURL, cloudflareAPIHost) || matchesProviderHost(baseURL, cloudflareGatewayHost):
-			set("User-Agent", "pig-coding-agent")
+			set("User-Agent", pigidentity.CloudflareUserAgent)
 		}
 	}
 
@@ -578,6 +579,7 @@ func newProviderAttributionProvider(provider ai.Provider, providerID, baseURL st
 	}
 }
 
+// pig divergence (D74): a direct pi-ai call that the extension bridge streams through BuildModel also receives these attribution headers; Pi's pi-ai sends only its User-Agent there (packages/ai/src/api/openai-completions.ts:760).
 func (provider *providerAttributionProvider) Stream(ctx context.Context, transcript ai.TranscriptContext, options ai.StreamOptions) (*ai.AssistantMessageEventStream, error) {
 	telemetryEnabled := false
 	if provider.telemetryEnabled != nil {

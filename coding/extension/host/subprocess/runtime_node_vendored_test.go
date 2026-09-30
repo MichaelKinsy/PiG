@@ -278,6 +278,7 @@ func TestVendoredPiDistMatchesThePinnedPackage(t *testing.T) {
 			}
 			want = bytes.ReplaceAll(want, []byte(`"highlight.js/lib/`), []byte(`"../../../highlight.js/lib/`))
 		}
+		want = applyVendoredIdentityPatches(t, rel, want)
 		for _, rw := range rewrites {
 			line := []byte(rw[0] + "\n")
 			if !bytes.Contains(want, line) {

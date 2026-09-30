@@ -3,6 +3,7 @@ package codingagent
 import (
 	"context"
 	"fmt"
+	"net/url"
 	"strings"
 
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
@@ -178,14 +179,56 @@ func (m *InteractiveMode) appendChatBlock(comp tui.Component) {
 	m.chatContainer.Add(comp)
 }
 
+// noticeFg and noticeBold style notice text as upstream theme.fg and
+// theme.bold (chalk.bold) do: each closes only its own attribute.
+func noticeFg(color, text string) string { return color + text + tui.SGRFgReset }
+
+func noticeBold(text string) string { return "\x1b[1m" + text + tui.SGRBoldDimReset }
+
 // binaryUpdateNoticeBody builds the heading+instruction line for the
 // self-update notification, mirroring upstream showNewVersionNotification:
 // bold-warning "Update Available", newline, muted instruction with the accent
 // update command.
 func binaryUpdateNoticeBody(t *tui.Theme, latestVersion, command string) string {
-	const bold, reset = "\x1b[1m", "\x1b[0m"
-	return bold + t.Warning + "Update Available" + reset +
-		"\n" + t.Muted + fmt.Sprintf("New version %s is available. Run ", latestVersion) + reset + t.Accent + command + reset
+	return noticeBold(noticeFg(t.Warning, "Update Available")) +
+		"\n" + noticeFg(t.Muted, fmt.Sprintf("New version %s is available. Run ", latestVersion)) + noticeFg(t.Accent, command)
+}
+
+// showNewVersionNotification appends the startup update notice. Mirrors
+// upstream showNewVersionNotification (interactive-mode.ts:4475): the heading
+// block, the release note as a muted Markdown block between spacers, and the
+// Changelog line, each padded by one column.
+func (m *InteractiveMode) showNewVersionNotification(update *BinaryUpdate) {
+	t := tui.ActiveTheme()
+	blocks := []tui.Component{tui.NewPaddedText(binaryUpdateNoticeBody(t, update.LatestVersion, update.Command), 1, 0, nil)}
+	if note := strings.TrimSpace(update.Notes); note != "" {
+		muted := func(text string) string { return noticeFg(t.Muted, text) }
+		blocks = append(blocks,
+			tui.NewSpacer(1),
+			tui.NewMarkdownWithOptions(note, 1, 0, nil, &tui.DefaultTextStyle{Color: muted}, nil),
+			tui.NewSpacer(1),
+		)
+	}
+	if update.ChangelogURL != "" {
+		link := noticeFg(t.Accent, update.ChangelogURL)
+		if tui.GetCapabilities().Hyperlinks {
+			link = tui.Hyperlink(link, update.ChangelogURL)
+		}
+		blocks = append(blocks, tui.NewPaddedText(noticeFg(t.Muted, "Changelog: ")+link, 1, 0, nil))
+	}
+	m.appendBorderedNotice(blocks...)
+}
+
+// splitBinaryUpdateNotes separates a manifest note into a changelog URL and a
+// release note. PiG's release manifest carries the release page URL as its
+// note; that URL is the changelog link, so it is not repeated as a note block.
+// Any other text is a release note and names no changelog.
+func splitBinaryUpdateNotes(notes string) (changelogURL, note string) {
+	notes = strings.TrimSpace(notes)
+	if u, err := url.Parse(notes); err == nil && (u.Scheme == "https" || u.Scheme == "http") && u.Host != "" && !strings.ContainsAny(notes, " \t\r\n") {
+		return notes, ""
+	}
+	return "", notes
 }
 
 // packageUpdateNoticeBody builds the body text for the package-update
@@ -193,11 +236,10 @@ func binaryUpdateNoticeBody(t *tui.Theme, latestVersion, command string) string 
 // heading, muted instruction with the accent command, a muted "Packages:"
 // label, then one "- <name>" line per package.
 func packageUpdateNoticeBody(t *tui.Theme, packages []string) string {
-	const bold, reset = "\x1b[1m", "\x1b[0m"
 	var body strings.Builder
-	body.WriteString(bold + t.Warning + "Package Updates Available" + reset +
-		"\n" + t.Muted + "Package updates are available. Run " + reset + t.Accent + "pig update --extensions" + reset +
-		"\n" + t.Muted + "Packages:" + reset)
+	body.WriteString(noticeBold(noticeFg(t.Warning, "Package Updates Available")) +
+		"\n" + noticeFg(t.Muted, "Package updates are available. Run ") + noticeFg(t.Accent, AppName+" update --extensions") +
+		"\n" + noticeFg(t.Muted, "Packages:"))
 	for _, name := range packages {
 		body.WriteString("\n- " + name)
 	}
@@ -210,7 +252,7 @@ func packageUpdateNoticeBody(t *tui.Theme, packages []string) string {
 // restores the title in the check's finally on win32.
 func (m *InteractiveMode) finishPackageUpdateCheck(goos string, updates []string) {
 	if len(updates) > 0 {
-		m.appendBorderedNotice(tui.NewText(packageUpdateNoticeBody(tui.ActiveTheme(), updates)))
+		m.appendBorderedNotice(tui.NewPaddedText(packageUpdateNoticeBody(tui.ActiveTheme(), updates), 1, 0, nil))
 	}
 	if goos == "windows" {
 		m.updateTerminalTitle()

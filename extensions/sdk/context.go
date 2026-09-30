@@ -1453,11 +1453,19 @@ func (c Context) SetTheme(name string) (bool, string) {
 
 // ── Widgets & advanced UI ───────────────────────────────────────────────────
 
-// SetWidget sets or clears a widget. For the common []string case with no
-// options it uses widget_push for efficiency; all other shapes go through the
-// request/response bridge so nil clears and option-bearing calls work.
+// SetWidget sets or clears a widget. A []string is content the host lays out as
+// Pi does for ctx.ui.setWidget(key, string[]): each entry becomes Text(line, 1,
+// 0) at the host's width, the first ten entries are shown, and a muted
+// "... (widget truncated)" row follows a longer list (interactive-mode.ts:2321-2336).
+// A row wider than the pane wraps; it never reaches the renderer over-wide.
+//
+// A non-nil []string with no options goes out as a widget_push frame without a
+// width, which the host applies in arrival order and never answers: Pi's
+// setWidget returns void, so it may be called from an [Context.OnWidthChange]
+// handler, and the error reports only a failure to send. Every other shape
+// waits for the host.
 func (c Context) SetWidget(key string, content any, options ...WidgetOptions) error {
-	if lines, ok := content.([]string); ok && len(options) == 0 {
+	if lines, ok := content.([]string); ok && lines != nil && len(options) == 0 {
 		return c.ext.conn.pushWidget(key, lines)
 	}
 	var opts WidgetOptions
@@ -1475,14 +1483,19 @@ func (c Context) SetWidget(key string, content any, options ...WidgetOptions) er
 // SetFooter replaces the default footer with pre-rendered lines when lines
 // is a non-empty []string, or clears a previously set footer when lines is nil.
 // Component factories (non-string values) cannot be serialized across the
-// subprocess boundary.
+// subprocess boundary; use [Context.SetFooterRenderer] for a footer laid out at
+// the host's width.
+//
+// Pi renders a footer component at the current width every frame, so it never
+// paints rows laid out for another width. The rows sent here carry the width
+// the SDK holds when they are sent, and the host paints them only at that
+// width: after a resize they stay hidden until the extension sends rows for the
+// new width (see [Context.OnWidthChange]). Rows that were laid out for an
+// earlier Context.Width than the one current at this call are tagged with the
+// later width; a footer that must never be wrong renders through
+// SetFooterRenderer. Setting rows replaces any footer renderer.
 func (c Context) SetFooter(lines []string) error {
-	if lines == nil {
-		result, err := c.callHost("ui.setFooter", map[string]any{"clear": true})
-		return callResultError(result, err)
-	}
-	result, err := c.callHost("ui.setFooter", map[string]any{"lines": lines})
-	return callResultError(result, err)
+	return c.setSurface(footerMethod, lines)
 }
 
 // SetLogin replaces the shared header with a login rendered by the host.
@@ -1495,14 +1508,11 @@ func (c Context) SetLogin(definition LoginDefinition) error {
 // SetHeader replaces the default header with pre-rendered lines when lines
 // is a non-empty []string, or clears a previously set header when lines is nil.
 // Component factories (non-string values) cannot be serialized across the
-// subprocess boundary.
+// subprocess boundary; use [Context.SetHeaderRenderer] for a header laid out at
+// the host's width. The rows carry the width the SDK holds when they are sent,
+// as described at [Context.SetFooter].
 func (c Context) SetHeader(lines []string) error {
-	if lines == nil {
-		result, err := c.callHost("ui.setHeader", map[string]any{"clear": true})
-		return callResultError(result, err)
-	}
-	result, err := c.callHost("ui.setHeader", map[string]any{"lines": lines})
-	return callResultError(result, err)
+	return c.setSurface(headerMethod, lines)
 }
 
 // Custom opens a focused remote component. Pass a [RemoteComponent] as factory
@@ -1951,12 +1961,15 @@ func (c Context) Reload() error {
 //
 // Upstream Pi installs headers and footers as component factories whose
 // render(width) runs every frame, so they follow a resize with no work from the
-// extension. A pig extension is a subprocess and sends static lines instead, so
-// a footer keeps the width it was built for until something re-pushes it. This
-// is that trigger.
+// extension. Rows sent with [Context.SetFooter] or [Context.SetHeader] are
+// painted only at the width they carry, so after a resize they stay hidden until
+// the extension sends rows for the new width; this is that trigger.
+// [Context.SetFooterRenderer] and [Context.SetHeaderRenderer] follow a resize
+// with no handler.
 //
-// Handlers run on the message loop, so they must not block: re-push the lines
-// and return. The returned unsubscribe is idempotent.
+// Handlers run on the message loop, so they must not block. A string list
+// [Context.SetWidget] returns without waiting for the host; send footer or
+// header rows from a goroutine. The returned unsubscribe is idempotent.
 func (c Context) OnWidthChange(handler WidthChangeHandler) (func(), error) {
 	if handler == nil {
 		return func() {}, fmt.Errorf("OnWidthChange: handler must not be nil")

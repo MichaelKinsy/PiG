@@ -168,6 +168,11 @@ type Extension struct {
 	widthChangeFuncs  []widthChangeSub
 	widthChangeNextID uint64
 
+	// surfaceMu guards surfaces, the footer and header renderers keyed by the
+	// host method that installs them.
+	surfaceMu sync.Mutex
+	surfaces  map[string]*surfaceRenderer
+
 	// oauthProviders holds the OAuth closures for providers registered with an
 	// "oauth" capability, keyed by provider name for oauth_* dispatch.
 	oauthProviders map[string]*OAuthProvider
@@ -1232,6 +1237,7 @@ func (e *Extension) handleNotify(env envelope) {
 			e.width = payload.Width
 			e.mu.Unlock()
 			e.notifyWidthChange(payload.Width)
+			e.refreshSurfaces()
 			e.overlaysMu.RLock()
 			overlays := make(map[string]*remoteOverlay, len(e.overlays))
 			maps.Copy(overlays, e.overlays)

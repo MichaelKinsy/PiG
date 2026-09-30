@@ -136,3 +136,42 @@ func TestStreamContinuationAwaitResumesBeforeIOCompletionQueuedByTransferredCall
 		t.Fatalf("order = %v, want the parent to resume before the I/O completion", order)
 	}
 }
+
+// A host call reads the executor's observation to decide which turn to release. Another turn's callback replaces it while this turn waits, so a turn that resumes from a wait must find its own observation again; otherwise a result wait made after the resume neither releases its turn nor lets the stream advance.
+func TestStreamContinuationResumeRestoresItsObservation(t *testing.T) {
+	executor := &continuationExecutor{}
+	first := &StreamContinuation{turn: executor.newTurn()}
+	second := &StreamContinuation{turn: executor.newTurn()}
+	wait := newContinuationPromise[struct{}](executor)
+	var firstObservation *StreamObservation
+	var resumedWith *StreamObservation
+	firstDone := make(chan error, 1)
+	go func() {
+		firstDone <- first.Run(func(observation *StreamObservation) error {
+			firstObservation = observation
+			awaitContinuation(observation.turn, wait)
+			executor.mu.Lock()
+			resumedWith = executor.observation
+			executor.mu.Unlock()
+			return nil
+		})
+	}()
+	// The second callback starts only after the first has waited, replaces the executor's observation, and resolves the first's wait before it releases execution.
+	secondErr := second.Run(func(observation *StreamObservation) error {
+		executor.mu.Lock()
+		current := executor.observation
+		executor.mu.Unlock()
+		if current != observation {
+			t.Errorf("a running callback's observation is not the executor's")
+		}
+		wait.resolve(struct{}{})
+		suspendContinuation(observation.turn)
+		return nil
+	})
+	if err := <-firstDone; err != nil || secondErr != nil {
+		t.Fatalf("first=%v second=%v", err, secondErr)
+	}
+	if resumedWith != firstObservation {
+		t.Fatalf("resumed turn found observation %p, want its own %p", resumedWith, firstObservation)
+	}
+}

@@ -54,18 +54,22 @@ func startLazyStreamSync(ctx context.Context, model *Model, setup func(context.C
 	outer := NewAssistantMessageEventStream()
 	outer.executor = executor
 	var prepared lazySetupResult
-	run := func(ctx context.Context) { prepared.stream, prepared.err = setup(ctx) }
-	if turn := ownedContinuationTurn(ctx, executor); turn != nil {
-		run(context.WithValue(ctx, continuationTurnKey{}, turn))
+	var forward *continuationTurn
+	// The forwarding reaction is registered while the setup turn still runs, so it queues behind every reaction setup already queued and ahead of any that a released producer queues later. A caller that does not own the queue must not register it after its acquired turn releases: the release drains a buffered producer, and the goroutine's later registration would land behind that whole response.
+	run := func(ctx context.Context) {
+		prepared.stream, prepared.err = setup(ctx)
+		settled := newContinuationPromise[lazySetupResult](executor)
+		settled.resolve(prepared)
+		forward = executor.newDeferredTurn()
+		settled.onResolved(func(lazySetupResult) { forward.grant() })
+	}
+	if owned := ownedContinuationTurn(ctx, executor); owned != nil {
+		run(context.WithValue(ctx, continuationTurnKey{}, owned))
 	} else {
 		executor.run(func(turn *continuationTurn) { run(context.WithValue(ctx, continuationTurnKey{}, turn)) })
 	}
-	settled := newContinuationPromise[lazySetupResult](executor)
-	settled.resolve(prepared)
-	turn := executor.newDeferredTurn()
-	settled.onResolved(func(lazySetupResult) { turn.grant() })
 	launch(func() {
-		turn.run(func(turn *continuationTurn) {
+		forward.run(func(turn *continuationTurn) {
 			forwardLazySetup(ctx, turn, executor, outer, model, prepared.stream, prepared.err)
 		})
 	})

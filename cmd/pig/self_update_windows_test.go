@@ -64,7 +64,7 @@ func TestSelfUpdateOnWindowsRefusesReceiptedStandalone(t *testing.T) {
 // npm cannot remove the package directory pig runs from. The next start on
 // Windows clears the quarantine.
 func TestWindowsNpmSelfUpdateReplacesTheRunningInstallation(t *testing.T) {
-	manifest := `{"version":"9.9.9","packageName":"pig","binaries":{}}`
+	manifest := `{"version":"9.9.9","packageName":"@pi-in-go/pig","binaries":{}}`
 	srv := signedManifestServer(t, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(manifest))
 	}))

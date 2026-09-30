@@ -34,14 +34,17 @@ import sys
 import tarfile
 import zipfile
 
-SCOPE = "@pi-in-go"
-LAUNCHER = f"{SCOPE}/pig"
+HERE = pathlib.Path(__file__).resolve().parent
+sys.path.insert(0, str(HERE.parent))
+import pig_package  # noqa: E402
+
+LAUNCHER = pig_package.package_name()
+SCOPE = LAUNCHER.split("/", 1)[0]
 REPOSITORY = {"type": "git", "url": "git+https://github.com/MichaelKinsy/PiG.git"}
 HOMEPAGE = "https://pi-in-go.dev"
 BUGS = "https://github.com/MichaelKinsy/PiG/issues"
 LICENSE = "MIT"
 NOTICE_FILES = ("LICENSE", "NOTICE", "THIRD_PARTY_NOTICES.md")
-HERE = pathlib.Path(__file__).resolve().parent
 PIGVERSION_GO = HERE.parents[2] / "internal" / "coding" / "pigversion" / "pigversion.go"
 
 # (goos, goarch) in release archive names -> (npm os, npm cpu).

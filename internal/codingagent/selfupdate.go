@@ -29,7 +29,6 @@ import (
 	"github.com/MichaelKinsy/PiG/internal/lazyregexp"
 
 	semver "github.com/Masterminds/semver/v3"
-	"github.com/gofrs/flock"
 
 	"github.com/MichaelKinsy/PiG/internal/managementhttp"
 	"github.com/MichaelKinsy/PiG/internal/ownerfile"
@@ -86,7 +85,8 @@ type UpdateBinary struct {
 type BinaryUpdate struct {
 	CurrentVersion string
 	LatestVersion  string
-	Notes          string
+	Notes          string // release note text; a bare URL is ChangelogURL instead
+	ChangelogURL   string
 	Binary         UpdateBinary
 	Command        string // the command that applies it, e.g. "pig update self"
 }
@@ -428,10 +428,12 @@ func CheckForBinaryUpdate(ctx context.Context, client *http.Client, currentVersi
 	if !ok {
 		return nil
 	}
+	changelogURL, note := splitBinaryUpdateNotes(manifest.Notes)
 	return &BinaryUpdate{
 		CurrentVersion: currentVersion,
 		LatestVersion:  manifest.Version,
-		Notes:          manifest.Notes,
+		Notes:          note,
+		ChangelogURL:   changelogURL,
 		Binary:         binary,
 		Command:        AppName + " update",
 	}
@@ -611,16 +613,12 @@ func selfReplaceAt(ctx context.Context, client *http.Client, bin UpdateBinary, e
 	if err != nil {
 		return err
 	}
-	// pig divergence (D39): the native installation uses a stable OS-lock sidecar, not Pi's npm managed-release directory lock. Never unlink the sidecar while another process may hold its inode.
-	lock := flock.New(exePath + ".update.lock")
-	locked, err := lock.TryLock()
+	// pig divergence (D39): the native installation uses a per-executable OS-lock sidecar, not Pi's npm managed-release directory lock. Release removes the sidecar, as Pi's lock release does; acquireStandaloneUpdateLock keeps that removal exclusive.
+	releaseLock, err := acquireStandaloneUpdateLock(exePath + ".update.lock")
 	if err != nil {
-		return fmt.Errorf("lock standalone update: %w", err)
+		return err
 	}
-	if !locked {
-		return fmt.Errorf("another standalone pig update is already running")
-	}
-	defer func() { resultErr = errors.Join(resultErr, lock.Close()) }()
+	defer func() { resultErr = errors.Join(resultErr, releaseLock()) }()
 	dir := filepath.Dir(exePath)
 	tmpPath, sum, err := downloadBinaryToFile(ctx, client, bin.URL, dir, maxUpdateBinaryBytes)
 	if err != nil {

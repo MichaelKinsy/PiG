@@ -50,6 +50,6 @@
 //   - Extension → Host: response
 //   - Extension → Host: call (ui.notify, sendMessage, etc.)
 //   - Host → Extension: call_result
-//   - Extension → Host: widget_push (rendered lines)
+//   - Extension → Host: widget_push (a string list widget)
 //   - Host → Extension: shutdown
 package sdk

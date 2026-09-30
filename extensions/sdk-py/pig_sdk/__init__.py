@@ -890,6 +890,81 @@ class _RequestParent:
     finished: bool = False
 
 
+def _surface_args(lines: list[str], width: int) -> dict[str, Any]:
+    args: dict[str, Any] = {"lines": lines}
+    if width > 0:
+        args["width"] = width
+    return args
+
+
+class _SurfaceRenderer:
+    """A footer or header renderer, the subprocess form of Pi's component factory.
+
+    pig additive (D19): Pi's TUI renders the in-process component every frame; a
+    subprocess SDK renders at the host width itself and sends the width with the rows.
+
+    The TUI calls render(width) for every frame (interactive-mode.ts:2418-2480).
+    The SDK renders at the width the host reported, sends the rows with that
+    width so the host never paints them at another, and renders again after each
+    width_change. Only the newest width is rendered when several arrive together.
+    """
+
+    def __init__(self, method: str, render: "Callable[[int], list[str]]") -> None:
+        self.method = method
+        self.render = render
+        # Serializes a render with its push and orders a push against stop(), so
+        # a superseded renderer never overwrites the rows that replaced it.
+        self._lock = threading.Lock()
+        self._stopped = False
+        self._refresh_lock = threading.Lock()
+        self._refresh_queued = False
+        self._refresh_running = False
+
+    def _kind(self) -> str:
+        return "header" if self.method == "ui.setHeader" else "footer"
+
+    def push(self, ctx: "Context") -> None:
+        with self._lock:
+            if self._stopped:
+                return
+            width = ctx.width
+            try:
+                rendered = self.render(width)
+                # The Node runtime sends [] for a render result that is not an
+                # array (runtime.mjs renderSpecialSurface).
+                lines = [str(line) for line in rendered] if isinstance(rendered, (list, tuple)) else []
+            except Exception as error:  # a failing component must not end the extension
+                ctx.notify(f"{self._kind()} render failed: {error}", "error")
+                return
+            ctx._call(self.method, _surface_args(lines, width))
+
+    def stop(self) -> None:
+        with self._lock:
+            self._stopped = True
+
+    def refresh(self, ctx: "Context") -> None:
+        with self._refresh_lock:
+            self._refresh_queued = True
+            if self._refresh_running:
+                return
+            self._refresh_running = True
+        threading.Thread(target=self._refresh_loop, args=(ctx,), daemon=True).start()
+
+    def _refresh_loop(self, ctx: "Context") -> None:
+        while True:
+            with self._refresh_lock:
+                if not self._refresh_queued:
+                    self._refresh_running = False
+                    return
+                self._refresh_queued = False
+            try:
+                self.push(ctx)
+            except Exception:
+                # The host connection is gone or the call failed; the next width
+                # change or explicit set reports again.
+                pass
+
+
 @dataclass
 class Context:
     extension: "Extension"
@@ -1227,6 +1302,19 @@ class Context:
         return bool(result.get("success", result.get("ok", False))), str(result.get("error") or "")
 
     def set_widget(self, key: str, content: Any, options: dict[str, Any] | None = None) -> None:
+        """Set or clear a widget.
+
+        A list of strings is content the host lays out as Pi does for
+        ``ctx.ui.setWidget(key, string[])``: each entry becomes ``Text(line, 1,
+        0)`` at the host's width, the first ten entries are shown, and a muted
+        "... (widget truncated)" row follows a longer list
+        (interactive-mode.ts:2321-2336). A row wider than the pane wraps.
+
+        A string list with no options goes out as a ``widget_push`` frame
+        without a width, which the host applies in arrival order and never
+        answers: Pi's setWidget returns nothing, so it may be called from an
+        :meth:`on_width_change` handler. Every other shape waits for the host.
+        """
         if isinstance(content, list) and all(isinstance(x, str) for x in content) and options is None:
             self.extension._push_widget(key, content)
             return
@@ -1235,16 +1323,31 @@ class Context:
     def set_footer(self, lines: list[str] | None) -> None:
         """Replace the footer with pre-rendered lines, or clear it for None.
 
-        Upstream's component factory cannot cross the subprocess boundary,
-        so the lines are static: re-push them from :meth:`on_width_change`.
+        Pi renders a footer component at the current width every frame, so it
+        never paints rows laid out for another width. The rows sent here carry
+        the width the SDK holds when they are sent, and the host paints them only
+        at that width: after a resize they stay hidden until the extension sends
+        rows for the new width (see :meth:`on_width_change` for where to send
+        them from). A footer that must never be wrong renders through
+        :meth:`set_footer_renderer`. Setting rows replaces any footer renderer.
         """
-        if lines is None:
-            self.clear_footer()
-            return
-        self._call("ui.setFooter", {"lines": [str(line) for line in lines]})
+        self._set_surface("ui.setFooter", lines)
 
     def clear_footer(self) -> None:
-        self._call("ui.setFooter", {"clear": True})
+        self._set_surface("ui.setFooter", None)
+
+    def set_footer_renderer(self, render: "Callable[[int], list[str]] | None") -> None:
+        """Install a footer that ``render`` lays out at the host's terminal width.
+
+        This is the subprocess form of the component factory Pi's
+        ``ctx.ui.setFooter`` takes. The SDK renders at the width the host reports
+        and again after every width change, and sends each set of rows with the
+        width it was rendered for, so the host never paints rows laid out for
+        another width. ``None`` restores the built-in footer. An exception in
+        ``render`` is reported to the user as "footer render failed: ..." and
+        leaves the previous rows.
+        """
+        self._set_surface_renderer("ui.setFooter", render)
 
     def set_login(self, definition: LoginDefinition) -> None:
         """Set the shared header from a native login definition.
@@ -1257,15 +1360,37 @@ class Context:
     def set_header(self, lines: list[str] | None) -> None:
         """Replace the header with pre-rendered lines, or clear it for None.
 
-        As with :meth:`set_footer`, the lines are static.
+        As with :meth:`set_footer`, the rows carry the width the SDK holds when
+        they are sent.
         """
-        if lines is None:
-            self.clear_header()
-            return
-        self._call("ui.setHeader", {"lines": [str(line) for line in lines]})
+        self._set_surface("ui.setHeader", lines)
 
     def clear_header(self) -> None:
-        self._call("ui.setHeader", {"clear": True})
+        self._set_surface("ui.setHeader", None)
+
+    def set_header_renderer(self, render: "Callable[[int], list[str]] | None") -> None:
+        """Install a header that ``render`` lays out at the host's terminal width.
+
+        It follows the contract of :meth:`set_footer_renderer`.
+        """
+        self._set_surface_renderer("ui.setHeader", render)
+
+    def _set_surface(self, method: str, lines: "list[str] | None") -> None:
+        self.extension._replace_surface(method, None)
+        if lines is None:
+            self._call(method, {"clear": True})
+            return
+        self._call(method, _surface_args([str(line) for line in lines], self.width))
+
+    def _set_surface_renderer(self, method: str, render: "Callable[[int], list[str]] | None") -> None:
+        if render is None:
+            self._set_surface(method, None)
+            return
+        if not callable(render):
+            raise TypeError("a surface renderer must be callable")
+        surface = _SurfaceRenderer(method, render)
+        self.extension._replace_surface(method, surface)
+        surface.push(Context(self.extension))
 
     def clear_editor_component(self) -> None:
         self._call("ui.setEditorComponent", {"clear": True})
@@ -1316,13 +1441,18 @@ class Context:
 
         Upstream Pi installs headers and footers as component factories whose
         render(width) runs every frame, so they follow a resize with no work
-        from the extension. A pig extension is a subprocess and sends static
-        lines instead, so a footer keeps the width it was built for until
-        something re-pushes it. This is that trigger.
+        from the extension. Rows sent with :meth:`set_footer` or
+        :meth:`set_header` are painted only at the width they carry, so after a
+        resize they stay hidden until the extension sends rows for the new
+        width; this is that trigger. :meth:`set_footer_renderer` and
+        :meth:`set_header_renderer` follow a resize with no handler.
 
         The handler is called after ``width()`` is updated, so it observes the
-        new value. Handlers run on the message loop and must not block: re-push
-        the lines and return. Returns an idempotent unsubscribe callable.
+        new value. Handlers run on the loop that reads host replies, so a
+        handler must not wait for a host call: a string list
+        :meth:`set_widget` returns without waiting, but footer or header rows
+        must be sent from another thread. Returns an idempotent unsubscribe
+        callable.
         """
         if not callable(handler):
             raise TypeError("on_width_change requires a callable handler")
@@ -1710,6 +1840,8 @@ class Extension:
         self._term_input_seq = 0
         self._width_change: list[tuple[int, Any]] = []
         self._width_change_seq = 0
+        self._surface_lock = threading.Lock()
+        self._surfaces: dict[str, _SurfaceRenderer] = {}
         self._commands: list[dict[str, Any]] = []
         self._shortcuts: list[dict[str, Any]] = []
         self._handlers: list[dict[str, Any]] = []
@@ -2198,6 +2330,7 @@ class Extension:
                 new_width = self._width
             for handler in width_subs:
                 handler(new_width)
+            self._refresh_surfaces()
             with self._overlay_lock:
                 overlays = list(self._overlays.values())
             for overlay in overlays:
@@ -2715,6 +2848,22 @@ class Extension:
                 self._call("ui.offTerminalInput", {})
 
         return unsubscribe
+
+    def _replace_surface(self, method: str, surface: "_SurfaceRenderer | None") -> None:
+        """Retire the renderer installed for method and install surface (None for none)."""
+        with self._surface_lock:
+            previous = self._surfaces.pop(method, None)
+            if surface is not None:
+                self._surfaces[method] = surface
+        if previous is not None:
+            previous.stop()
+
+    def _refresh_surfaces(self) -> None:
+        with self._surface_lock:
+            surfaces = list(self._surfaces.values())
+        ctx = Context(self)
+        for surface in surfaces:
+            surface.refresh(ctx)
 
     def _add_width_change_handler(self, handler: Any) -> Callable[[], None]:
         with self._state_lock:

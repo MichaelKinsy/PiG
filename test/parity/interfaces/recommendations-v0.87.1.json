@@ -10543,21 +10543,23 @@
     {
       "id": "pkg:agent/.#AgentState",
       "upstreamShapeHash": "sha256:c75cc8d0e9479808bb2cf082010b3a619e5ef91c5d8c7940b4d9ee51fad94fe4",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/export#AgentState"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"
@@ -117383,21 +117385,23 @@
     {
       "id": "pkg:agent/node#AgentState",
       "upstreamShapeHash": "sha256:c75cc8d0e9479808bb2cf082010b3a619e5ef91c5d8c7940b4d9ee51fad94fe4",
-      "recommendedDisposition": "pending",
+      "recommendedDisposition": "partial",
       "confidence": "low",
       "basis": [
-        "No normalized-name candidate exists in the scanned Pig production packages."
+        "Exactly one normalized declared Go symbol name matches; package context, semantic shape, and production closure remain unverified."
       ],
       "alternatives": [
         "ported",
-        "partial",
+        "pending",
         "deferred",
         "designed-out",
         "divergence"
       ],
-      "pigCandidates": [],
+      "pigCandidates": [
+        "go:github.com/MichaelKinsy/PiG/internal/codingagent/export#AgentState"
+      ],
       "missingClosure": [
-        "pig-go-shape",
+        "shape-translation-review",
         "production-reachability",
         "required-layers",
         "behavioral-evidence"

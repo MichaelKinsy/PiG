@@ -162,6 +162,8 @@ type callResultMsg struct {
 	Error  *errorInfo      `json:"error,omitempty"`
 }
 
+// widgetPushMsg carries a string list widget. It has no width: the host lays
+// the list out at its own width, as Pi does for setWidget(key, string[]).
 type widgetPushMsg struct {
 	Key   string   `json:"key"`
 	Lines []string `json:"lines"`

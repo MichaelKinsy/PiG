@@ -145,7 +145,7 @@ func TestFetchUpdateManifestFindsTheSignatureBesideAQueriedManifest(t *testing.T
 		t.Fatal(err)
 	}
 	t.Setenv("PIG_UPDATE_TRUST_ROOT", trustPath)
-	body := []byte(`{"version":"9.9.9","packageName":"pig","binaries":{}}`)
+	body := []byte(`{"version":"9.9.9","packageName":"@pi-in-go/pig","binaries":{}}`)
 	signature := base64.StdEncoding.EncodeToString(ed25519.Sign(private, body))
 	for _, manifestPath := range []string{"/update.json", "/slot%2Fblue/update.json", "/update%3Fchannel.json"} {
 		t.Run(manifestPath, func(t *testing.T) {
@@ -183,7 +183,7 @@ func TestFetchUpdateManifestVerifiesADetachedSignature(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("PIG_UPDATE_TRUST_ROOT", trustPath)
-	body := []byte(`{"version":"9.9.9","packageName":"pig","binaries":{}}`)
+	body := []byte(`{"version":"9.9.9","packageName":"@pi-in-go/pig","binaries":{}}`)
 	signature := base64.StdEncoding.EncodeToString(ed25519.Sign(private, body))
 	for name, sig := range map[string]string{
 		"valid":   signature,
@@ -322,7 +322,7 @@ func TestSignUpdateManifestSupportsKeyRotation(t *testing.T) {
 	oldPub, oldKey := keyPair()
 	newPub, newKey := keyPair()
 	strangerPub, strangerKey := keyPair()
-	body := []byte(`{"version":"9.9.9","packageName":"pig","binaries":{}}`)
+	body := []byte(`{"version":"9.9.9","packageName":"@pi-in-go/pig","binaries":{}}`)
 	manifest := filepath.Join(t.TempDir(), "update.json")
 	if err := os.WriteFile(manifest, body, 0o600); err != nil {
 		t.Fatal(err)

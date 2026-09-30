@@ -7254,7 +7254,8 @@
       },
       "source": "dist/auth/oauth/openai-codex.js",
       "sourceSha256": "41432753ef2ec7ef21c577fdc8f83b731c78be90c10ed8e7e1df7010f84d198f",
-      "sha256": "41432753ef2ec7ef21c577fdc8f83b731c78be90c10ed8e7e1df7010f84d198f"
+      "sha256": "830d680f0e26b4cf7a3b043ecd61f1bb956d6cd865cd2f99faa630d86bf908e6",
+      "rewrite": "D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
       "path": "pi-dist/pi-ai/auth/oauth/openrouter.js",
@@ -7294,7 +7295,8 @@
       },
       "source": "dist/auth/oauth/xai.js",
       "sourceSha256": "d34783560dc2ac75d6e717b248136eb75a902fbd53b3e56fb9f2ec50c6c793d7",
-      "sha256": "d34783560dc2ac75d6e717b248136eb75a902fbd53b3e56fb9f2ec50c6c793d7"
+      "sha256": "14ffd968623a052c6befd04178e27be06f1599e75614c4fe03165ddc92129454",
+      "rewrite": "D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
       "path": "pi-dist/pi-ai/auth/resolve.js",
@@ -9128,7 +9130,8 @@
       },
       "source": "dist/utils/pi-user-agent.js",
       "sourceSha256": "03bea94c2f31a42729ab97a9c166655a3654f69dbdac3296ff0a789d76882611",
-      "sha256": "03bea94c2f31a42729ab97a9c166655a3654f69dbdac3296ff0a789d76882611"
+      "sha256": "e6e8474cf1457586278f1b1f303c882292ce889b115ea4f59f2e9569e0e4eb76",
+      "rewrite": "D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
       "path": "pi-dist/pi-ai/utils/provider-env.js",
@@ -9461,7 +9464,8 @@
       },
       "source": "dist/core/bug-report-upload.js",
       "sourceSha256": "418fe5448f98c8f1effdf8c4de6772dcdf26a0290ad86b4732b2785903a3e518",
-      "sha256": "418fe5448f98c8f1effdf8c4de6772dcdf26a0290ad86b4732b2785903a3e518"
+      "sha256": "06c2144b0f21c965607e910b864e7d7fe5610f6d1263b0a84314d0a99c214a15",
+      "rewrite": "D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/bug-report.js",
@@ -9927,7 +9931,8 @@
       },
       "source": "dist/core/provider-attribution.js",
       "sourceSha256": "da98e466cbaacad5d2ccdf6d37b650580e81691f2ebe7f3ca3fb04c62fc83a73",
-      "sha256": "da98e466cbaacad5d2ccdf6d37b650580e81691f2ebe7f3ca3fb04c62fc83a73"
+      "sha256": "2a86d37e8d3634a9045612fd693272f14d3a2dcb5eb0c8a28b2ddf78974a7acf",
+      "rewrite": "D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/provider-composer.js",
@@ -9962,7 +9967,8 @@
       },
       "source": "dist/core/remote-catalog-provider.js",
       "sourceSha256": "789f462d9cd4a050267a2243d0a5a6fc34bdd0f948e40b7e6a8ac8cf1865c105",
-      "sha256": "789f462d9cd4a050267a2243d0a5a6fc34bdd0f948e40b7e6a8ac8cf1865c105"
+      "sha256": "715aa862aea6ccbb493151a4932a29710b601ed1762436ad98c16ba1c82fa697",
+      "rewrite": "D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
       "path": "pi-dist/pi-coding-agent/core/resolve-config-value.js",
@@ -13052,8 +13058,8 @@
       },
       "source": "dist/modes/interactive/interactive-mode.js",
       "sourceSha256": "7dc366e8609d7d1e81fb85952e466aea9933b13e74842c2a9b9df678d267d12e",
-      "sha256": "8003c1d1b24b9d83fd641f6a097e587327c6c40987fe9bfd81fd459f67c8f83f",
-      "rewrite": "module specifiers"
+      "sha256": "c6c2d5254413e1aa0965b176dbdb0a5648742ea51403111294a3353f1787833f",
+      "rewrite": "module specifiers; D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/model-catalog-refresh.js",
@@ -13086,8 +13092,8 @@
       },
       "source": "dist/modes/interactive/session-share.js",
       "sourceSha256": "9b695dd7c99307f0a96fe14a72aec1867b2f60334714ccb09e260634c49fdbf7",
-      "sha256": "2e86550180706816cee24ba734680850bb61dd8c403fcb9e66b166eb00023dd5",
-      "rewrite": "module specifiers"
+      "sha256": "435a1775d15a6b8069340b6fc8a2ca72b459bcaf34b7a5dde2bda9f2cc0cd006",
+      "rewrite": "module specifiers; D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
       "path": "pi-dist/pi-coding-agent/modes/interactive/theme/dark.json",
@@ -13222,8 +13228,8 @@
       },
       "source": "dist/package-manager-cli.js",
       "sourceSha256": "d4373d2fdd4da36debe8443a7e49b349ad81754132f2cb63cd516365f9420a11",
-      "sha256": "207f12fee8470c7389e470d3e714767010a91be425f7534989c8954a51485844",
-      "rewrite": "module specifiers"
+      "sha256": "f7f6b071b7bea7031ac19cd67c0b2b207615d7696eb6c73a1449de35a4d1c471",
+      "rewrite": "module specifiers; D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
       "path": "pi-dist/pi-coding-agent/package.json",
@@ -13268,13 +13274,13 @@
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
-      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-CIPWXUZ4.js",
+      "path": "pi-dist/pi-coding-agent/sdk-bundle/chunk-DB45HMOM.js",
       "package": {
         "name": "@earendil-works/pi-coding-agent",
         "version": "0.87.1",
         "integrity": "sha512-m8ArJUtVcQMSe1lLE/Ei7vX/JV7O39sWmWBsXV2NOU70F0qCp8GubA24pT3LnwTmM6LL2xV80/h6sQg85n69ew=="
       },
-      "sha256": "9692e729132f234582ac20c5ac1981cf6cc2b5e916c8b38974ba985473b5aa75",
+      "sha256": "0002b677a2e90e71a36534869608112a6378ae0415fd9d4ff41758256a0a983d",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -13314,7 +13320,7 @@
         "version": "0.87.1",
         "integrity": "sha512-m8ArJUtVcQMSe1lLE/Ei7vX/JV7O39sWmWBsXV2NOU70F0qCp8GubA24pT3LnwTmM6LL2xV80/h6sQg85n69ew=="
       },
-      "sha256": "026d09e218ee8b1fe07b5b807ac4771bfe02857597538e06f0f916bbc2ab4961",
+      "sha256": "926458e51cd0eacb86ed9a42584fcdaf52292f77840355ce9d3f2d06cd0af3de",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -13324,7 +13330,7 @@
         "version": "0.87.1",
         "integrity": "sha512-m8ArJUtVcQMSe1lLE/Ei7vX/JV7O39sWmWBsXV2NOU70F0qCp8GubA24pT3LnwTmM6LL2xV80/h6sQg85n69ew=="
       },
-      "sha256": "7bee2ac2c621ce46869c2f278858352bc84b0717807978460e9d2063501aa669",
+      "sha256": "ba12d3f22805dd264bd5f4b8b4cb2d6e4daf7a4abea68de43175386836881dfb",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -13334,7 +13340,7 @@
         "version": "0.87.1",
         "integrity": "sha512-m8ArJUtVcQMSe1lLE/Ei7vX/JV7O39sWmWBsXV2NOU70F0qCp8GubA24pT3LnwTmM6LL2xV80/h6sQg85n69ew=="
       },
-      "sha256": "705bab3df8df64ca6f4c523eebac2fe9b2daa706c8d6e0c1cd1bacc97a563ace",
+      "sha256": "226a1b6f287b6ca627a30c3a3974a1f57d223138e9d12b84f4b873a663dc031b",
       "rewrite": "automation/gen/bundle-pi-sdk.mjs; exact input hashes in sdk-bundle/inputs.json"
     },
     {
@@ -13615,7 +13621,8 @@
       },
       "source": "dist/utils/pi-user-agent.js",
       "sourceSha256": "61e5861787d32aaae6d09e5ba108d4563eb17ea6ddc8743ed4778823b911b96b",
-      "sha256": "61e5861787d32aaae6d09e5ba108d4563eb17ea6ddc8743ed4778823b911b96b"
+      "sha256": "9129179017bd1aee506af4ca05a415ee0c6128048faf5f2584fa318089980e41",
+      "rewrite": "D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/shell.js",
@@ -13693,8 +13700,8 @@
       },
       "source": "dist/utils/version-check.js",
       "sourceSha256": "0c1e8df5aea8f10869d2a1bd11b696498d35757e13427650754124d039422eb8",
-      "sha256": "46d43d979816d477f507231e44ae893320a6c98ffb444ce457b5f6d12465cc11",
-      "rewrite": "module specifiers"
+      "sha256": "2b0b744cfec88b82b6e2c455e1409276b7513ebb3e7cca68d29c90d2af274fa7",
+      "rewrite": "module specifiers; D26 PiG product identity (automation/gen/pi-identity-patches.mjs)"
     },
     {
       "path": "pi-dist/pi-coding-agent/utils/windows-self-update.js",

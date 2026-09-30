@@ -1247,9 +1247,22 @@ func (b *UIBridge) handleCall(ctx context.Context, extName string, owner *Conn, 
 	}
 }
 
-// HandleWidgetPush processes a widget_push message by updating the cached lines.
+// HandleWidgetPush processes a widget_push message. A push with a width is a
+// frame a component rendered at that width. A push without one is a string
+// list widget (the Go, Rust and Python SDKs' setWidget(key, string[])), which
+// the host lays out at its own width as Pi's setExtensionWidget does.
 func (b *UIBridge) HandleWidgetPush(extName string, push *WidgetPushPayload) {
-	key := extName + ":" + push.Key
+	if push.Width == 0 {
+		b.updateWidget(extName, push.Key, func(proxy *PushProxy) { proxy.UpdateContent(push.Lines) })
+		return
+	}
+	b.updateWidget(extName, push.Key, func(proxy *PushProxy) { proxy.UpdateLinesAt(push.Lines, push.Width) })
+}
+
+// updateWidget applies update to the widget's proxy, creating and mounting the
+// proxy when the widget is new.
+func (b *UIBridge) updateWidget(extName, widgetKey string, update func(*PushProxy)) {
+	key := extName + ":" + widgetKey
 
 	b.mu.Lock()
 	if b.uiCtx == extension.NoopUIContext {
@@ -1265,7 +1278,7 @@ func (b *UIBridge) HandleWidgetPush(extName string, push *WidgetPushPayload) {
 	}
 	b.mu.Unlock()
 
-	proxy.UpdateLinesAt(push.Lines, push.Width)
+	update(proxy)
 	// Only sync widget container when a NEW proxy was created (widget added).
 	// Existing proxy updates request a render through PushProxy.UpdateLines.
 	if !ok {
@@ -3310,7 +3323,9 @@ func (b *UIBridge) handleSetWidget(extName string, args json.RawMessage) (*CallR
 			proxy.Clear()
 		}
 	} else {
-		// Set/update widget lines (same path as widget_push).
+		// A list with no width is a string[] widget: content the host lays out
+		// at its own width, as Pi's setExtensionWidget does. A list with a width
+		// is a frame a Node component rendered at that width.
 		b.HandleWidgetPush(extName, &WidgetPushPayload{Key: p.Key, Lines: lines, Width: p.Width})
 	}
 	b.notifyWidgetSync()
