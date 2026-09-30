@@ -460,6 +460,9 @@ func cmdShow(args []string, stdout, stderr io.Writer) int {
 func pigletWithEffectiveDefaults(p *Piglet) (*Piglet, error) {
 	effective := Clone(p)
 	effective.AgentEnv = effective.EffectiveAgentEnvironment()
+	if err := effective.Validate(); err != nil {
+		return nil, err
+	}
 	return effective, nil
 }
 
