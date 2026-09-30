@@ -91,7 +91,9 @@ def run(binary, api):
         def prompt(payload):
             # Pi clears the active-run state only when it emits agent_settled, after agent_end (agent-session.ts:_emitAgentSettled), and rejects a prompt sent in between ("Agent is already processing"). Wait for agent_settled like rpc-client.ts:waitForIdle, then return the events through agent_end.
             events = command(payload, "agent_settled")
-            return events[: next(i for i, event in enumerate(events) if event.get("type") == "agent_end") + 1]
+            end = next((i for i, event in enumerate(events) if event.get("type") == "agent_end"), None)
+            assert end is not None, events
+            return events[: end + 1]
 
         try:
             state = command({"type": "get_state", "id": "state"}, "response")[-1]
