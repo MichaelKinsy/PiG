@@ -380,6 +380,12 @@ func (t *TuiAltScreen) Start() {
 		t.invalidateMountedRoots()
 	}
 	_, _ = fmt.Fprint(t.out, altEnterAltScreen+altDisableAutowrap+mouse+"\x1b[2J\x1b[H\x1b[?25l")
+	// The main and alternate screens keep independent Kitty keyboard-protocol
+	// stacks. The flags enterRawMode pushed on the main screen do not apply
+	// after altEnterAltScreen, so push them again for the alt-screen lifetime.
+	// StopWithOptions pops them on exit. Without this, fullscreen terminals
+	// report legacy keys: ctrl+digit and shift+enter lose their modifiers.
+	_, _ = io.WriteString(t.out, kittyKeyboardProtocolQuery)
 	t.QueryCellSize()
 	t.Render()
 }
@@ -460,7 +466,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	}
 	width := max(1, t.width)
 	if options.PreserveScreen {
-		_, _ = fmt.Fprint(t.out, altBeginSynchronizedOutput+altExitAltScreen+"\x1b[?25h"+altEndSynchronizedOutput)
+		_, _ = fmt.Fprint(t.out, altBeginSynchronizedOutput+keyboardProtocolPop+altExitAltScreen+"\x1b[?25h"+altEndSynchronizedOutput)
 		t.unlockAndApplyHover()
 		if restore != nil {
 			SetCapabilities(*restore)
@@ -469,7 +475,7 @@ func (t *TuiAltScreen) StopWithOptions(options StopOptions) {
 	}
 	document := t.renderDocument(width)
 	var buf strings.Builder
-	buf.WriteString(altBeginSynchronizedOutput + altExitAltScreen + altDisableAutowrap)
+	buf.WriteString(altBeginSynchronizedOutput + keyboardProtocolPop + altExitAltScreen + altDisableAutowrap)
 	for row := range document {
 		if row > 0 {
 			buf.WriteString("\r\n")
