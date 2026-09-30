@@ -115,7 +115,7 @@ jobs:
               echo "${name}@${npm_version} already on npm; skipping"
               continue
             fi
-            npm publish "npm-out/${tarball}" --access public --tag "$DIST_TAG"
+            npm publish "./npm-out/${tarball}" --access public --tag "$DIST_TAG"
             echo "Published ${name}@${npm_version}"
           done < npm-out/publish-order.txt
       - name: Upload the npm tarballs
