@@ -959,7 +959,7 @@ class _SurfaceRenderer:
                 self._refresh_queued = False
             try:
                 self.push(ctx)
-            except Exception:
+            except Exception:  # noqa: BLE001 - the next width change or set reports again  # nosec B110
                 # The host connection is gone or the call failed; the next width
                 # change or explicit set reports again.
                 pass

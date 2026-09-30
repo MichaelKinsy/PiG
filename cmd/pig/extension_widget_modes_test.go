@@ -25,7 +25,8 @@ func TestSDKStringWidgetKeepsPiBehaviorInEveryMode(t *testing.T) {
 		extension := writeFooterProbe(t, language)
 		env := func() []string {
 			home := t.TempDir()
-			return []string{"HOME=" + home, "PIG_HOME=" + filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR=" + filepath.Join(home, "pig"), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "F104_MODE=none", "F104_WIDGET=1"}
+			// A fresh HOME hides rustup's toolchain selection; keep the real Cargo and rustup homes as extension_fresh_home_test.go does.
+			return []string{rustHome("CARGO_HOME", ".cargo"), rustHome("RUSTUP_HOME", ".rustup"), "HOME=" + home, "PIG_HOME=" + filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR=" + filepath.Join(home, "pig"), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "F104_MODE=none", "F104_WIDGET=1"}
 		}
 		args := []string{"--no-extensions", "--no-skills", "--no-prompt-templates", "--model", "test-faux/faux-1", "-e", extension}
 		t.Run(language+"/rpc", func(t *testing.T) {
@@ -66,4 +67,16 @@ func TestSDKStringWidgetKeepsPiBehaviorInEveryMode(t *testing.T) {
 			})
 		}
 	}
+}
+
+// rustHome keeps the real Cargo or rustup home for a Rust extension build under a fresh HOME.
+func rustHome(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return key + "=" + value
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return key + "="
+	}
+	return key + "=" + filepath.Join(home, fallback)
 }
