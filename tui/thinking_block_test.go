@@ -42,8 +42,14 @@ func TestThinkingBlock_VisibleContent(t *testing.T) {
 		t.Fatalf("visible: got %d lines, want >=2", len(lines))
 	}
 	for _, l := range lines {
-		if !strings.Contains(l, "\033[90m") {
-			t.Errorf("visible line %q missing gray SGR", l)
+		// Visible thinking uses the active theme's thinkingText fg (with
+		// \033[90m fallback when a custom theme omits the token).
+		wantFg := ActiveTheme().ThinkingText
+		if wantFg == "" {
+			wantFg = "\033[90m"
+		}
+		if !strings.Contains(l, wantFg) {
+			t.Errorf("visible line %q missing thinkingText fg SGR", l)
 		}
 		if !strings.Contains(l, "\033[3m") {
 			t.Errorf("visible line %q missing italic SGR", l)

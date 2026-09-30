@@ -13,10 +13,15 @@ import (
 // on a line renderer. "thinkingText" = "gray" in dark.json.
 const thinkingHiddenSGR = "\033[2m\033[3m"
 
-// thinkingVisibleSGR is gray fg + italic. Color #909090 is approximately
-// upstream's "gray" thinkingText (#808080-ish). We use a direct ANSI gray
-// (\033[90m = bright-black / dark-gray) + italic so it works on any terminal.
-const thinkingVisibleSGR = "\033[90m\033[3m"
+// thinkingVisibleSGR is the active theme's thinkingText fg + italic.
+// Falls back to direct ANSI gray (\033[90m = bright-black) + italic so it
+// works when a custom theme omits the token or on any terminal.
+func thinkingVisibleSGR() string {
+	if s := ActiveTheme().ThinkingText; s != "" {
+		return s + "\033[3m"
+	}
+	return "\033[90m\033[3m"
+}
 
 const thinkingHiddenResetSGR = SGRBoldDimReset + SGRItalicReset
 const thinkingVisibleResetSGR = SGRFgReset + SGRItalicReset
@@ -72,7 +77,7 @@ func (b *ThinkingBlock) Render(width int) []string {
 	for _, rawLine := range splitLines(b.content) {
 		wrapped := wrapLineByWidth(rawLine, width)
 		for _, chunk := range wrapped {
-			out = append(out, thinkingVisibleSGR+chunk+thinkingVisibleResetSGR)
+			out = append(out, thinkingVisibleSGR()+chunk+thinkingVisibleResetSGR)
 		}
 	}
 	return out
