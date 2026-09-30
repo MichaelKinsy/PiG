@@ -124,6 +124,9 @@ func newRouterProbe(t *testing.T, resolve func(context.Context, string) (session
 // upstream: packages/server/src/session-router.ts:#open registers `handle.terminated?.then(invalidate)` and #acquire reads hostedSessions. The invalidation microtask runs before a later attach request, so an attach after a Harness termination opens a fresh Harness instead of attaching to the retired one.
 func TestRouterAttachAfterSignalledTerminationOpensAFreshHarness(t *testing.T) {
 	retired, fresh := newRetiredHandle(nil), newRetiredHandle(nil)
+	resumeRetired, resumeFresh := sync.OnceFunc(func() { close(retired.resume) }), sync.OnceFunc(func() { close(fresh.resume) })
+	t.Cleanup(resumeRetired)
+	t.Cleanup(resumeFresh)
 	probe := newRouterProbe(t, nil, func(index int) routing.RoutedSessionHandle {
 		return []*retiredHandle{retired, fresh}[index]
 	})
@@ -133,8 +136,8 @@ func TestRouterAttachAfterSignalledTerminationOpensAFreshHarness(t *testing.T) {
 	}
 	retired.terminate()
 	err := probe.router.AttachClient(ctx, "client-2", "session-1")
-	close(retired.resume)
-	close(fresh.resume)
+	resumeRetired()
+	resumeFresh()
 	if err != nil {
 		t.Fatalf("attach after termination = %v, want a fresh Harness", err)
 	}
@@ -150,6 +153,8 @@ func TestRouterAttachAfterSignalledTerminationOpensAFreshHarness(t *testing.T) {
 // upstream: packages/server/src/session-router.ts:removeSession returns when hostedSessions no longer holds the Session. The termination microtask has already removed a terminated Harness, so removal neither releases through nor closes the retired handle.
 func TestRouterRemoveSessionAfterSignalledTerminationIsANoOp(t *testing.T) {
 	retired := newRetiredHandle(nil)
+	resumeRetired := sync.OnceFunc(func() { close(retired.resume) })
+	t.Cleanup(resumeRetired)
 	probe := newRouterProbe(t, nil, func(int) routing.RoutedSessionHandle { return retired })
 	ctx := context.Background()
 	if err := probe.router.AttachClient(ctx, "client-1", "session-1"); err != nil {
@@ -157,7 +162,7 @@ func TestRouterRemoveSessionAfterSignalledTerminationIsANoOp(t *testing.T) {
 	}
 	retired.terminate()
 	err := probe.router.RemoveSession(ctx, "session-1")
-	close(retired.resume)
+	resumeRetired()
 	if err != nil {
 		t.Fatalf("RemoveSession after termination = %v, want nil", err)
 	}
