@@ -6,6 +6,8 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
+	"sync/atomic"
 	"syscall"
 	"testing"
 	"time"
@@ -80,10 +82,13 @@ func TestLockHeartbeatAndReleaseJoin(t *testing.T) {
 	lock.mu.Lock()
 	initial := lock.mtime
 	lock.mu.Unlock()
-	time.Sleep(3 * stale)
-	lock.mu.Lock()
-	advanced := lock.mtime.After(initial)
-	lock.mu.Unlock()
+	// The acquisition probe leaves an mtime up to a second ahead (lib/mtime-precision.js), so the heartbeat's write moves it, in either direction. Waiting for the write is scheduling only: the heartbeat's own 20 ms interval is unchanged.
+	advanced := false
+	for deadline := time.Now().Add(5 * time.Second); !advanced && time.Now().Before(deadline); time.Sleep(stale) {
+		lock.mu.Lock()
+		advanced = !lock.mtime.Equal(initial)
+		lock.mu.Unlock()
+	}
 	if !advanced {
 		t.Error("heartbeat did not update mtime")
 	}
@@ -249,23 +254,28 @@ func TestCompromisedErrorsCarryProperLockfileMessages(t *testing.T) {
 }
 
 // The heartbeat reports the two proper-lockfile compromise shapes with their Node messages.
+//
+// A foreign write that lands between the heartbeat's stat and its utimes is overwritten by that utimes in proper-lockfile too (lib/lockfile.js:106-150), and the compromise is then never reported for that write. The harness therefore repeats the damage on every poll, as a still-running foreign writer would, so the test measures the heartbeat's detection and not the scheduling of a single write. One heartbeat interval is 5 ms and proper-lockfile's own default is stale/2 (lib/lockfile.js:208), so the 5 s wait is 1000 intervals.
 func TestHeartbeatCompromiseMessages(t *testing.T) {
 	for _, test := range []struct {
 		name   string
 		damage func(t *testing.T, lockPath string)
-		want   func(lockPath string) string
+		want   func(lockPath string) []string
 	}{
 		{"removed", func(t *testing.T, lockPath string) {
-			if err := os.Remove(lockPath); err != nil {
+			if err := os.Remove(lockPath); err != nil && !errors.Is(err, fs.ErrNotExist) {
 				t.Fatal(err)
 			}
-		}, func(lockPath string) string { return "ENOENT: no such file or directory, stat '" + lockPath + "'" }},
+		}, func(lockPath string) []string {
+			// A removal that lands between the heartbeat's stat and its utimes fails the utimes (lockfile.js:150-156).
+			return []string{"ENOENT: no such file or directory, stat '" + lockPath + "'", "ENOENT: no such file or directory, utime '" + lockPath + "'"}
+		}},
 		{"replaced", func(t *testing.T, lockPath string) {
 			later := time.Now().Add(time.Hour)
 			if err := os.Chtimes(lockPath, later, later); err != nil {
 				t.Fatal(err)
 			}
-		}, func(string) string { return "Unable to update lock within the stale threshold" }},
+		}, func(string) []string { return []string{"Unable to update lock within the stale threshold"} }},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			path := filepath.Join(t.TempDir(), "owned")
@@ -274,18 +284,83 @@ func TestHeartbeatCompromiseMessages(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
+			defer func() { _ = lock.Release() }()
+			poll := time.NewTicker(5 * time.Millisecond)
+			defer poll.Stop()
+			deadline := time.After(5 * time.Second)
 			test.damage(t, path+".lock")
-			select {
-			case err := <-compromised:
-				var compromise *CompromisedError
-				if !errors.As(err, &compromise) || err.Error() != test.want(path+".lock") {
-					t.Fatalf("compromise = %#v (%v), want message %q", err, err, test.want(path+".lock"))
+			for {
+				select {
+				case err := <-compromised:
+					var compromise *CompromisedError
+					if !errors.As(err, &compromise) || !slices.Contains(test.want(path+".lock"), err.Error()) {
+						t.Fatalf("compromise = %#v (%v), want one of %q", err, err, test.want(path+".lock"))
+					}
+					return
+				case <-poll.C:
+					test.damage(t, path+".lock")
+				case <-deadline:
+					t.Fatal("compromise not reported")
 				}
-			case <-time.After(5 * time.Second):
-				t.Fatal("compromise not reported")
 			}
-			_ = lock.Release()
 		})
+	}
+}
+
+// The heartbeat records the mtime it wrote and never reads the directory back (lib/lockfile.js:147-171). A foreign write that lands right after the heartbeat's utimes must therefore differ from the recorded mtime at the next heartbeat and be reported. Reading the mtime back adopted that write as the lock's own and hid the compromise for good, the flake behind "compromise not reported".
+func TestHeartbeatReportsForeignWriteAfterItsOwnUtimes(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "owned")
+	lockPath := path + ".lock"
+	var armed atomic.Bool
+	var damaged atomic.Int32
+	previous := osChtimes
+	osChtimes = func(name string, atime, mtime time.Time) error {
+		if err := previous(name, atime, mtime); err != nil {
+			return err
+		}
+		if name == lockPath && armed.Load() && damaged.Add(1) == 1 {
+			later := time.Now().Add(time.Hour)
+			return previous(name, later, later)
+		}
+		return nil
+	}
+	t.Cleanup(func() { osChtimes = previous })
+	compromised := make(chan error, 1)
+	lock, err := AcquireWithOptions(t.Context(), path, AcquireOptions{Stale: time.Second, Update: 5 * time.Millisecond, Retry: time.Millisecond, OnCompromised: func(err error) { compromised <- err }})
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = lock.Release() }()
+	armed.Store(true)
+	select {
+	case err := <-compromised:
+		if err.Error() != "Unable to update lock within the stale threshold" {
+			t.Fatalf("compromise = %v", err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("compromise not reported")
+	}
+}
+
+// The acquisition probe reads the file system's precision as lib/mtime-precision.js does, and the heartbeat's utimes rounds up to a whole second on a file system that keeps none (getMtime).
+func TestTouchHonorsMtimePrecision(t *testing.T) {
+	dir := t.TempDir()
+	written, err := touch(dir, precisionSecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if written.UnixMilli()%1000 != 0 || written.Before(time.Now().Add(-time.Second)) {
+		t.Fatalf("second precision wrote %v", written)
+	}
+	written, err = touch(dir, precisionMillisecond)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(dir); err != nil || !sameMtime(info.ModTime(), written) {
+		t.Fatalf("millisecond precision wrote %v, directory has %v (%v)", written, info, err)
+	}
+	if _, precision, err := probeMtime(dir); err != nil || (precision != precisionMillisecond && precision != precisionSecond) {
+		t.Fatalf("probe = %v, %v", precision, err)
 	}
 }
 

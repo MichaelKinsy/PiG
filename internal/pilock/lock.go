@@ -38,6 +38,7 @@ type Lock struct {
 	path       string
 	mu         sync.Mutex
 	mtime      time.Time
+	precision  mtimePrecision
 	err        error
 	ctx        context.Context
 	cancel     context.CancelCauseFunc
@@ -145,12 +146,12 @@ func tryAcquireWithUpdate(ctx context.Context, path string, stale, update time.D
 	if err := mkdir(path, stale); err != nil {
 		return nil, err
 	}
-	mtime, err := touch(path)
+	mtime, precision, err := probeMtime(path)
 	if err != nil {
 		return nil, errors.Join(err, syscall.Rmdir(path))
 	}
 	ctx, cancel := context.WithCancelCause(ctx)
-	lock := &Lock{path: path, mtime: mtime, ctx: ctx, cancel: cancel, stop: make(chan struct{}), done: make(chan struct{}), onCompromised: onCompromised}
+	lock := &Lock{path: path, mtime: mtime, precision: precision, ctx: ctx, cancel: cancel, stop: make(chan struct{}), done: make(chan struct{}), onCompromised: onCompromised}
 	held.add(lock)
 	go lock.heartbeat(stale, update)
 	return lock, nil
@@ -201,17 +202,49 @@ func mkdir(path string, stale time.Duration) error {
 	return mkdir(path, 0)
 }
 
-func touch(path string) (time.Time, error) {
-	now := time.Now().Truncate(time.Millisecond)
-	if err := os.Chtimes(path, now, now); err != nil {
-		return time.Time{}, err
+// mtimePrecision is proper-lockfile's 's' or 'ms' file-system timestamp precision (lib/mtime-precision.js).
+type mtimePrecision int
+
+const (
+	precisionMillisecond mtimePrecision = iota
+	precisionSecond
+)
+
+// osChtimes sets the lock directory's mtime; tests replace it to place a foreign write at an exact point of the heartbeat.
+var osChtimes = os.Chtimes
+
+// probeMtime is lib/mtime-precision.js probe: it sets an mtime that is 5 ms past a whole second, reads it back, and reports 's' when the file system dropped the milliseconds. The read-back mtime is the lock's initial mtime, as in lockfile.js:27-38.
+func probeMtime(path string) (time.Time, mtimePrecision, error) {
+	mtime := time.UnixMilli((time.Now().UnixMilli()+999)/1000*1000 + 5)
+	if err := osChtimes(path, mtime, mtime); err != nil {
+		return time.Time{}, 0, err
 	}
 	info, err := os.Stat(path)
 	if err != nil {
+		return time.Time{}, 0, err
+	}
+	observed := info.ModTime()
+	if observed.UnixMilli()%1000 == 0 {
+		return observed, precisionSecond, nil
+	}
+	return observed, precisionMillisecond, nil
+}
+
+// touch is lib/mtime-precision.js getMtime plus lockfile.js:150's utimes. It returns the mtime it wrote and does not read the directory back: lockfile.js:171 records the written value, so a foreign write after the utimes still differs from the recorded mtime at the next heartbeat. A read-back would adopt that write as the lock's own mtime and hide the compromise.
+func touch(path string, precision mtimePrecision) (time.Time, error) {
+	now := time.Now().UnixMilli()
+	if precision == precisionSecond {
+		now = (now + 999) / 1000 * 1000
+	}
+	mtime := time.UnixMilli(now)
+	if err := osChtimes(path, mtime, mtime); err != nil {
 		return time.Time{}, err
 	}
-	return info.ModTime(), nil
+	return mtime, nil
 }
+
+// sameMtime is lockfile.js:143's `lock.mtime.getTime() === stat.mtime.getTime()`: the comparison is in whole milliseconds.
+func sameMtime(a, b time.Time) bool { return a.UnixMilli() == b.UnixMilli() }
 
 func (l *Lock) check() error {
 	if l.err != nil {
@@ -220,7 +253,7 @@ func (l *Lock) check() error {
 	info, err := os.Stat(l.path)
 	if err != nil {
 		l.err = &CompromisedError{Cause: err}
-	} else if !info.IsDir() || !info.ModTime().Equal(l.mtime) {
+	} else if !info.IsDir() || !sameMtime(info.ModTime(), l.mtime) {
 		l.err = &CompromisedError{}
 	}
 	if l.err != nil {
@@ -254,12 +287,12 @@ func (l *Lock) heartbeat(stale, update time.Duration) {
 		}
 		l.mu.Lock()
 		info, err := os.Stat(l.path)
-		if err == nil && (!info.IsDir() || !info.ModTime().Equal(l.mtime)) {
+		if err == nil && (!info.IsDir() || !sameMtime(info.ModTime(), l.mtime)) {
 			l.err = &CompromisedError{}
 		} else {
 			if err == nil {
 				var next time.Time
-				next, err = touch(l.path)
+				next, err = touch(l.path, l.precision)
 				if err == nil {
 					l.mtime = next
 				}
