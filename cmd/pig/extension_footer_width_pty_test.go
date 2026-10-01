@@ -205,7 +205,8 @@ func TestExtensionFooterSurvivesNarrowingResize(t *testing.T) {
 		{language: "rs", mode: "renderer"},
 	} {
 		tc.probe = probes[tc.language]
-		t.Run(tc.language+"/"+tc.mode, func(t *testing.T) { runFooterProbe(t, binary, tc) })
+		// Each case owns its pseudo-terminal and PiG process; run them together.
+		t.Run(tc.language+"/"+tc.mode, func(t *testing.T) { t.Parallel(); runFooterProbe(t, binary, tc) })
 	}
 }
 
@@ -217,6 +218,7 @@ func TestExtensionStringWidgetIsWrappedByTheHost(t *testing.T) {
 	probes := footerProbes(t)
 	for _, language := range []string{"go", "py", "rs"} {
 		t.Run(language, func(t *testing.T) {
+			t.Parallel()
 			runFooterProbe(t, binary, footerProbeCase{language: language, mode: "none", widget: true, probe: probes[language]})
 		})
 	}
