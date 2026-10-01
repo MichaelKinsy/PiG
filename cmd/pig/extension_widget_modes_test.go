@@ -23,8 +23,9 @@ func TestSDKStringWidgetKeepsPiBehaviorInEveryMode(t *testing.T) {
 	wantLines := []any{"WIDGET-" + strings.Repeat("W", 200)}
 	for _, language := range []string{"go", "py", "rs"} {
 		extension := writeFooterProbe(t, language)
+		// One home per language: the three modes share PiG's extension build cache, so each probe compiles once.
+		home := t.TempDir()
 		env := func() []string {
-			home := t.TempDir()
 			// A fresh HOME hides rustup's toolchain selection; keep the real Cargo and rustup homes as extension_fresh_home_test.go does.
 			return []string{rustHome("CARGO_HOME", ".cargo"), rustHome("RUSTUP_HOME", ".rustup"), "HOME=" + home, "PIG_HOME=" + filepath.Join(home, ".pig"), "PIG_CODING_AGENT_DIR=" + filepath.Join(home, "pig"), "PIG_TEST_FAUX=1", "PIG_TEST_FAUX_SCENARIO=parity-basic", "F104_MODE=none", "F104_WIDGET=1"}
 		}
